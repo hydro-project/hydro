@@ -14,6 +14,7 @@ pub mod util;
 pub use bincode;
 pub use bytes;
 pub use futures;
+pub use futures_batch;
 pub use pusherator;
 pub use rustc_hash;
 pub use serde;

@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = [ "async", "macros" ]
-async = [ "futures" ]
+async = [ "futures", "futures-batch" ]
 macros = [ "hydroflow_macro", "hydroflow_datalog" ]
 hydroflow_macro = [ "dep:hydroflow_macro" ]
 hydroflow_datalog = [ "dep:hydroflow_datalog" ]
@@ -17,6 +17,7 @@ bincode = "1.3"
 byteorder = "1.4.3"
 bytes = "1.1.0"
 futures = { version = "0.3", optional = true }
+futures-batch = { version = "0.6.1", optional = true }
 hydroflow_datalog = { optional = true, path = "../hydroflow_datalog" }
 hydroflow_lang = { path = "../hydroflow_lang" }
 hydroflow_macro = { optional = true, path = "../hydroflow_macro" }

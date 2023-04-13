@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use hydroflow::{
     tokio_stream::wrappers::IntervalStream,
     util::{
@@ -26,12 +28,15 @@ async fn main() {
         (format!("world {sender_i}"),),
     ];
 
+    let batch_size = 8;
+    let batch_delay = Duration::from_millis(1);
+
     let df = datalog!(
         r#"
         .input repeated `repeat_iter_external(to_repeat.iter().cloned())`
         .input periodic `source_stream(periodic) -> map(|_| ())`
         .input peers `repeat_iter(peers.clone()) -> map(|p| (p,))`
-        .async broadcast `map(|(node_id, v)| (node_id, serialize_to_bytes(v))) -> dest_sink(broadcast_sink)` `null::<(String,)>()`
+        .async broadcast `map(|(node_id, v)| (node_id, serialize_to_bytes(v))) -> dest_sink_chunked(broadcast_sink, batch_size, batch_delay)` `null::<(String,)>()`
 
         broadcast@n(x) :~ repeated(x), periodic(), peers(n)
     "#

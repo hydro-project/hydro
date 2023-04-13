@@ -18,9 +18,10 @@ pub mod cli;
 
 use std::net::SocketAddr;
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use bincode;
-use futures::Stream;
+use futures::{Sink, SinkExt, Stream};
 use serde::{Deserialize, Serialize};
 
 pub fn unbounded_channel<T>() -> (
@@ -129,6 +130,36 @@ where
     K: Ord,
 {
     slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
+}
+
+pub fn batched_sink<I: Send + 'static, S: Sink<I> + Send + 'static>(
+    s: S,
+    cap: usize,
+    timeout: Duration,
+) -> impl Sink<I, Error = ()> + Unpin {
+    let (send, recv) = tokio::sync::mpsc::unbounded_channel::<I>();
+
+    use futures::{stream, StreamExt};
+    use futures_batch::ChunksTimeoutStreamExt;
+
+    tokio::spawn(async move {
+        let recv_stream = tokio_stream::wrappers::UnboundedReceiverStream::new(recv);
+        let mut batched_recv = recv_stream.chunks_timeout(cap, timeout);
+        let mut s = Box::pin(s);
+
+        while let Some(batch) = batched_recv.next().await {
+            if s.send_all(&mut stream::iter(batch).map(|v| Ok(v)))
+                .await
+                .is_err()
+            {
+                panic!("Batched sink failed")
+            }
+        }
+    });
+
+    Box::pin(futures::sink::unfold(send, |send, item| async move {
+        send.send(item).map(|_| send).map_err(|_| ())
+    }))
 }
 
 #[cfg(test)]

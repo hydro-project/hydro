@@ -526,7 +526,6 @@ impl ServerConfig {
             }
 
             ServerConfig::MergeSelect(underlying, key) => {
-                dbg!(underlying);
                 let key = *key;
                 underlying
                     .load_instantiated(

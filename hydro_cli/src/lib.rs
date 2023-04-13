@@ -30,8 +30,9 @@ struct SafeCancelToken {
 impl SafeCancelToken {
     fn safe_cancel(&mut self) {
         if let Some(token) = self.cancel_tx.take() {
-            eprintln!("Received cancellation, cleaning up...");
-            token.send(()).unwrap();
+            if token.send(()).is_ok() {
+                eprintln!("Received cancellation, cleaning up...");
+            }
         } else {
             eprintln!("Already received cancellation, please be patient!");
         }
@@ -52,13 +53,16 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
     while True:
         try:
             ok, cancel = await asyncio.shield(c)
+            is_done = True
         except asyncio.CancelledError:
             cancel_token.safe_cancel()
+            is_done = False
 
-        if not cancel:
-            return ok
-        else:
-            raise asyncio.CancelledError()
+        if is_done:
+            if not cancel:
+                return ok
+            else:
+                raise asyncio.CancelledError()
 "#,
         "coro_converter",
         "coro_converter",
