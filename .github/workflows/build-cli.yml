@@ -42,7 +42,7 @@ jobs:
         with:
           name: wheels
           path: hydro_cli/dist
-  
+
   linux:
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
         with:
           name: wheels
           path: hydro_cli/dist
-  
+
   musllinux-cross:
     if: ${{ needs.pre_job.outputs.should_skip != 'true' }}
     runs-on: ubuntu-latest
@@ -110,7 +110,7 @@ jobs:
         with:
           name: wheels
           path: hydro_cli/dist
-  
+
   windows:
     runs-on: windows-latest
     strategy:

@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Specify how to bump the version for `hydroflow` crates. Does not affect dependencies."
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+          - keep
+          - auto
+      execute:
+        description: "Actually execute and publish the release?"
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  release_job:
+    name: Release Job
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "Version bump: $BUMP"
+          echo "Execute: $EXECUTE"
+        env:
+          BUMP: ${{ inputs.bump }}
+          EXECUTE: ${{ inputs.execute }}
+
+      - name: Checkout sources
+        uses: actions/checkout@v3
+        with:
+          # Fetch all commit history so smart-release can generate changelogs.
+          fetch-depth: 0
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+
+      - name: Run cargo login
+        uses: actions-rs/cargo@v1
+        with:
+          command: login
+          args: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+      - name: Install cargo-smart-release
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-smart-release
+
+      # - name: Run cargo smart-release
+      #   run: >-
+      #     cargo smart-release
+      #     --update-crates-index --no-changelog-preview --bump patch --bump-dependencies auto --no-bump-on-demand
+      #     "$EXECUTE_ARG" hydroflow hydroflow_*
+      #   env:
+      #     EXECUTE_ARG: ${{ inputs.execute && '--execute' || '--dry-run-cargo-publish' }}
+
+      - name: Run cargo smart-release
+        run: >-
+          cargo smart-release
+          --update-crates-index --no-changelog-preview --bump patch --bump-dependencies auto --no-bump-on-demand
+          --no-publish hydroflow hydroflow_*
+
