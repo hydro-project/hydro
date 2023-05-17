@@ -4,9 +4,7 @@ use std::rc::Rc;
 
 use super::{CanReceive, Handoff, HandoffMeta, Iter};
 
-/**
- * A [Vec]-based FIFO handoff.
- */
+/// A [Vec]-based FIFO handoff.
 pub struct VecHandoff<T>
 where
     T: 'static,

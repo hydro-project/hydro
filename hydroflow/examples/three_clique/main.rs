@@ -1,8 +1,8 @@
 use clap::{Parser, ValueEnum};
 use hydroflow::hydroflow_syntax;
 
-//This example detects size three cliques in a graph. Size three cliques are also known as triangles.
-//The equivalent datalog program would be Triangle(x,y,z) := Edge(x,y), Edge(y,z), Edge(z,x)
+// This example detects size three cliques in a graph. Size three cliques are also known as triangles.
+// The equivalent datalog program would be Triangle(x,y,z) := Edge(x,y), Edge(y,z), Edge(z,x)
 #[derive(Parser, Debug, Clone, ValueEnum)]
 enum GraphType {
     Mermaid,

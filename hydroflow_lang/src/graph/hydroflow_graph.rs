@@ -320,7 +320,7 @@ impl HydroflowGraph {
             let Some(op_constraints) = find_op_op_constraints(operator) else { break 'oc None; };
             let (input_port, output_port) = self.ports.get(edge_id).cloned().unwrap();
             let generics = get_operator_generics(
-                &mut Vec::new(), /* TODO(mingwei) diagnostics */
+                &mut Vec::new(), // TODO(mingwei) diagnostics
                 operator,
             );
             Some(OperatorInstance {
@@ -1099,7 +1099,7 @@ impl HydroflowGraph {
 
         // Write out external handoffs (handoffs between different subgraphs).
         // This is set up in an awkward way in order to preserve the old write order.
-        //write out handoffs outside the clusters and adjacent edges
+        // write out handoffs outside the clusters and adjacent edges
         for (src_id, src_node) in self.nodes() {
             for (edge_id, dst_id) in self.node_successors(src_id) {
                 if barrier_handoffs.contains(&src_id) {

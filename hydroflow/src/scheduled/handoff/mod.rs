@@ -15,9 +15,7 @@ pub trait CanReceive<T> {
     fn give(&self, item: T) -> T;
 }
 
-/**
- * A handle onto the metadata part of a [Handoff], with no element type.
- */
+/// A handle onto the metadata part of a [Handoff], with no element type.
 pub trait HandoffMeta: Any {
     fn any_ref(&self) -> &dyn Any;
 

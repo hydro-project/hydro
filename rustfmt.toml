@@ -4,5 +4,7 @@ group_imports = "StdExternalCrate"
 hex_literal_case = "Lower"
 imports_granularity = "Module"
 newline_style = "Unix"
+normalize_comments = true
+normalize_doc_attributes = true
 use_field_init_shorthand = true
 use_try_shorthand = true

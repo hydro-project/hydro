@@ -3,12 +3,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use super::SubgraphId;
 
-/**
- * A handle into a specific [super::graph::Hydroflow] instance for triggering
- * subgraphs to run, possibly from another thread.
- *
- * Reactor events are considered to be external events.
- */
+/// A handle into a specific [super::graph::Hydroflow] instance for triggering
+/// subgraphs to run, possibly from another thread.
+///
+/// Reactor events are considered to be external events.
 #[derive(Clone)]
 pub struct Reactor {
     event_queue_send: UnboundedSender<(SubgraphId, bool)>,
