@@ -1,9 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-// use hydroflow::scheduled::Hydroflow;
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::handoff::Iter;
-// use hydroflow::scheduled::ctx::SendCtx;
-// use hydroflow::scheduled::handoff::TeeingHandoff;
 use hydroflow::scheduled::query::Query as Q;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};

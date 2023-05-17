@@ -60,10 +60,7 @@
 ///
 /// let list = var_expr!(10, false, "foo");
 ///
-/// assert_eq!(
-///   list,
-///   (10, (false, ("foo", ()))),
-/// )
+/// assert_eq!(list, (10, (false, ("foo", ()))),)
 /// ```
 ///
 /// It can also be used to unpack tuples:
@@ -91,7 +88,7 @@ macro_rules! var_expr {
 /// # Examples
 ///
 /// ```rust
-/// use variadics::{var_expr, var_args, var_type};
+/// use variadics::{var_args, var_expr, var_type};
 ///
 /// fn my_fn(var_args!(a, b, c): var_type!(usize, &str, bool)) {
 ///     println!("{} {} {}", a, b, c);
@@ -100,13 +97,12 @@ macro_rules! var_expr {
 /// ```
 ///
 /// ```rust
-/// use variadics::{var_expr, var_args};
+/// use variadics::{var_args, var_expr};
 ///
 /// let val = var_expr!(true, Some("foo"), 2);
 /// if let var_args!(true, Some(item), 0..=3) = val {
 ///     println!("{}", item);
-/// }
-/// else {
+/// } else {
 ///     unreachable!();
 /// }
 /// ```
@@ -119,7 +115,6 @@ macro_rules! var_expr {
 ///     var_args!(true, Some(0..=10), _) => unreachable!(),
 ///     var_args!(true, Some(a), b) => println!("{} {}", a, b),
 /// }
-///
 #[macro_export]
 macro_rules! var_args {
     () => ( () );
