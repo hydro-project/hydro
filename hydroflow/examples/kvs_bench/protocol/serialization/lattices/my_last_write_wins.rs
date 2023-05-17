@@ -1,10 +1,12 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use serde::de::{DeserializeSeed, Visitor};
+use serde::{Serialize, Serializer};
+
 use crate::buffer_pool::BufferPool;
 use crate::protocol::serialization::lattices::bottom::{BottomDeserializer, BottomWrapper};
 use crate::protocol::MyLastWriteWins;
-use serde::de::{DeserializeSeed, Visitor};
-use serde::{Serialize, Serializer};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[repr(transparent)]
 pub struct MyLastWriteWinsWrapper<'a, const SIZE: usize>(pub &'a MyLastWriteWins<SIZE>);

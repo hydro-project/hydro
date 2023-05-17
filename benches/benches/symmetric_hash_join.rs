@@ -1,9 +1,10 @@
+use std::hint::black_box;
+
 use criterion::{criterion_group, criterion_main, Criterion};
 use hydroflow::compiled::pull::{SetJoinState, SymmetricHashJoin};
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
 use rand::SeedableRng;
-use std::hint::black_box;
 
 fn ops(c: &mut Criterion) {
     let mut rng = StdRng::from_entropy();

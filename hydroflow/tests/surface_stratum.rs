@@ -1,10 +1,9 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
+use multiplatform_test::multiplatform_test;
 use tokio::sync::mpsc::error::SendError;
 
 // /// Testing an interesting topology: a self-loop which does nothing.

@@ -1,10 +1,10 @@
-use crate::protocol::Message;
-use crate::{GraphType, Opts};
 use chrono::prelude::*;
+use colored::Colorize;
 use hydroflow::hydroflow_syntax;
 use hydroflow::util::{UdpSink, UdpStream};
 
-use colored::Colorize;
+use crate::protocol::Message;
+use crate::{GraphType, Opts};
 
 fn pretty_print_msg(msg: Message) {
     if let Message::ChatMsg {

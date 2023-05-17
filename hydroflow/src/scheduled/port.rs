@@ -5,9 +5,8 @@ use std::marker::PhantomData;
 use ref_cast::RefCast;
 use sealed::sealed;
 
-use crate::scheduled::handoff::{CanReceive, Handoff, TryCanReceive};
-
 use super::HandoffId;
+use crate::scheduled::handoff::{CanReceive, Handoff, TryCanReceive};
 
 /// An empty trait used to denote [`Polarity`]: either **send** or **receive**.
 ///

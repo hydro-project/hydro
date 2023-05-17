@@ -1,9 +1,11 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use serde::de::{SeqAccess, Visitor};
+
 use super::lattices::MapUnionHashMapDeserializer;
 use crate::buffer_pool::BufferPool;
 use crate::protocol::KvsRequest;
-use serde::de::{SeqAccess, Visitor};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 pub struct KvsRequestGossipVisitor<const SIZE: usize> {
     pub collector: Rc<RefCell<BufferPool<SIZE>>>,

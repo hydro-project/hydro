@@ -1,6 +1,5 @@
 use hydroflow::hydroflow_syntax;
 use hydroflow::util::collect_ready;
-
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]

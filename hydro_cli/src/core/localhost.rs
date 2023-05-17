@@ -2,13 +2,11 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
 use std::net::SocketAddr;
-use std::sync::Arc;
-
-#[cfg(unix)]
-use std::os::unix::process::ExitStatusExt;
-
 #[cfg(unix)]
 use std::os::unix::prelude::PermissionsExt;
+#[cfg(unix)]
+use std::os::unix::process::ExitStatusExt;
+use std::sync::Arc;
 
 use anyhow::Result;
 use async_channel::{Receiver, Sender};

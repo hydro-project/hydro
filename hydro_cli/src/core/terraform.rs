@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
-use std::process::{Child, ChildStdout, Command};
-use std::sync::{Arc, RwLock};
-
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+use std::process::{Child, ChildStdout, Command};
+use std::sync::{Arc, RwLock};
 
 use anyhow::{bail, Context, Result};
 use async_process::Stdio;

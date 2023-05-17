@@ -1,6 +1,7 @@
+use std::net::SocketAddr;
+
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::net::SocketAddr;
 use tokio_util::codec::LinesCodecError;
 
 pub fn serialize_json<T>(msg: T) -> String

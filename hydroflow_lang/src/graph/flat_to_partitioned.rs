@@ -4,12 +4,11 @@ use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
-use crate::diagnostic::{Diagnostic, Level};
-use crate::union_find::UnionFind;
-
 use super::hydroflow_graph::HydroflowGraph;
 use super::ops::{find_node_op_constraints, DelayType};
 use super::{graph_algorithms, node_color, Color, GraphEdgeId, GraphNodeId, GraphSubgraphId, Node};
+use crate::diagnostic::{Diagnostic, Level};
+use crate::union_find::UnionFind;
 
 /// Return a map containing all barrier crossers.
 fn find_barrier_crossers(

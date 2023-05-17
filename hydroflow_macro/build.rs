@@ -6,10 +6,9 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter, Write};
 use std::path::{Path, PathBuf};
 
+use hydroflow_lang::graph::ops::{PortListSpec, OPERATORS};
 use hydroflow_lang::graph::PortIndexValue;
 use quote::ToTokens;
-
-use hydroflow_lang::graph::ops::{PortListSpec, OPERATORS};
 
 const FILENAME: &str = "surface_ops.gen.md";
 

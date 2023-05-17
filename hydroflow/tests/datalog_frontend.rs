@@ -1,7 +1,6 @@
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::datalog;
 use hydroflow::util::collect_ready;
+use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_minimal() {

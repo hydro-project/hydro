@@ -1,5 +1,6 @@
-use crate::protocol::KvsRequest;
 use serde::de::{SeqAccess, Visitor};
+
+use crate::protocol::KvsRequest;
 
 pub struct KvsRequestDeleteVisitor<const SIZE: usize>;
 impl<'de, const SIZE: usize> Visitor<'de> for KvsRequestDeleteVisitor<SIZE> {

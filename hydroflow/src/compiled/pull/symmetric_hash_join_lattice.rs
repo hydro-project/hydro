@@ -1,9 +1,11 @@
-use crate::lang::clear::Clear;
+use std::collections::hash_map::Entry;
+use std::collections::hash_set;
+
 use lattices::map_union::MapUnion;
 use lattices::{ConvertFrom, Merge};
 use rustc_hash::{FxHashMap, FxHashSet};
-use std::collections::hash_map::Entry;
-use std::collections::hash_set;
+
+use crate::lang::clear::Clear;
 
 pub struct HalfJoinStateLattice<K, Lattice> {
     table: MapUnion<FxHashMap<K, Lattice>>,
@@ -120,9 +122,10 @@ mod tests {
         HalfJoinStateLattice<K, RhsLattice>,
     );
 
-    use super::{HalfJoinStateLattice, SymmetricHashJoinLattice};
     use lattices::ord::Max;
     use rustc_hash::FxHashSet;
+
+    use super::{HalfJoinStateLattice, SymmetricHashJoinLattice};
 
     type MyLattice = Max<usize>;
     type JoinState = JoinStateLattice<usize, MyLattice, MyLattice>;

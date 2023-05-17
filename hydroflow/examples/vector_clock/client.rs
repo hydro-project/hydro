@@ -1,12 +1,14 @@
-use crate::protocol::{EchoMsg, VecClock};
-use crate::{GraphType, Opts};
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use hydroflow::hydroflow_syntax;
 use hydroflow::util::{UdpSink, UdpStream};
 use lattices::map_union::MapUnionSingletonMap;
 use lattices::ord::Max;
 use lattices::Merge;
-use std::net::SocketAddr;
+
+use crate::protocol::{EchoMsg, VecClock};
+use crate::{GraphType, Opts};
 
 pub(crate) async fn run_client(
     outbound: UdpSink,

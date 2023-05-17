@@ -2,13 +2,12 @@ use std::borrow::Cow;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::scheduled::graph::Hydroflow;
-use crate::scheduled::handoff::VecHandoff;
-
 use super::context::Context;
 use super::graph_ext::GraphExt;
 use super::handoff::Iter;
 use super::port::{RecvPort, SendCtx};
+use crate::scheduled::graph::Hydroflow;
+use crate::scheduled::handoff::VecHandoff;
 
 const QUERY_EDGE_NAME: Cow<'static, str> = Cow::Borrowed("query handoff");
 

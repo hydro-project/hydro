@@ -1,13 +1,12 @@
 #![feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)]
 #![allow(clippy::explicit_auto_deref)]
 
-use proc_macro2::{Ident, Literal, Span};
-use quote::quote;
-use syn::{parse_macro_input, LitStr};
-
 use hydroflow_lang::diagnostic::{Diagnostic, Level};
 use hydroflow_lang::graph::{build_hfcode, partition_graph, FlatGraphBuilder};
 use hydroflow_lang::parse::HfCode;
+use proc_macro2::{Ident, Literal, Span};
+use quote::quote;
+use syn::{parse_macro_input, LitStr};
 
 #[proc_macro]
 pub fn hydroflow_syntax(input: proc_macro::TokenStream) -> proc_macro::TokenStream {

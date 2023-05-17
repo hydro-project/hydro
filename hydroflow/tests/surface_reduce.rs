@@ -1,5 +1,4 @@
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
-
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]

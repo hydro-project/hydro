@@ -1,7 +1,6 @@
+use hydroflow_datalog_core::{gen_hydroflow_graph, hydroflow_graph_to_program};
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
-
-use hydroflow_datalog_core::{gen_hydroflow_graph, hydroflow_graph_to_program};
 
 #[proc_macro]
 pub fn datalog(item: proc_macro::TokenStream) -> proc_macro::TokenStream {

@@ -2,9 +2,8 @@
 
 use std::collections::HashMap;
 
-use hydroflow_cli_integration::{ServerBindConfig, ServerPort};
-
 pub use hydroflow_cli_integration::*;
+use hydroflow_cli_integration::{ServerBindConfig, ServerPort};
 
 use crate::scheduled::graph::Hydroflow;
 

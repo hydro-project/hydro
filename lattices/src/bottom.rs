@@ -2,10 +2,11 @@
 //!
 //! This can be used for giving a sensible default repersentation to types that don't necessarily have one.
 
-use super::{ConvertFrom, Merge};
-use crate::LatticeOrd;
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
+
+use super::{ConvertFrom, Merge};
+use crate::LatticeOrd;
 
 /// Bottom wrapper.
 #[repr(transparent)]

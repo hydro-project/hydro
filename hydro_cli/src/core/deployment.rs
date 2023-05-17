@@ -1,11 +1,9 @@
-use super::{ResourcePool, ResourceResult, Service};
-
-use super::{progress, Host};
+use std::sync::{Arc, Weak};
 
 use anyhow::Result;
 use tokio::sync::RwLock;
 
-use std::sync::{Arc, Weak};
+use super::{progress, Host, ResourcePool, ResourceResult, Service};
 
 #[derive(Default)]
 pub struct Deployment {

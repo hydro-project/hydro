@@ -2,11 +2,10 @@ use ref_cast::RefCast;
 use sealed::sealed;
 use variadics::Variadic;
 
+use super::Handoff;
 use crate::scheduled::graph::HandoffData;
 use crate::scheduled::port::{Polarity, Port, PortCtx};
 use crate::scheduled::{HandoffId, SubgraphId};
-
-use super::Handoff;
 
 #[sealed]
 pub trait PortList<S>: Variadic

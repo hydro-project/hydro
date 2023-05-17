@@ -1,13 +1,13 @@
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+
 /// This is a remedial distributed deadlock (cycle) detector
 use clap::{Parser, ValueEnum};
 use hydroflow::tokio;
 use peer::run_detector;
 use serde::Deserialize;
-
-use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
-use std::path::Path;
 
 mod helpers;
 mod peer;

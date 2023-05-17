@@ -1,8 +1,10 @@
-use crate::buffer_pool::{AutoReturnBufferDeserializer, BufferPool};
-use crate::protocol::KvsRequest;
-use serde::de::{SeqAccess, Visitor};
 use std::cell::RefCell;
 use std::rc::Rc;
+
+use serde::de::{SeqAccess, Visitor};
+
+use crate::buffer_pool::{AutoReturnBufferDeserializer, BufferPool};
+use crate::protocol::KvsRequest;
 
 pub struct KvsRequestPutVisitor<const SIZE: usize> {
     pub collector: Rc<RefCell<BufferPool<SIZE>>>,

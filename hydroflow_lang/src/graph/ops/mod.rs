@@ -5,15 +5,14 @@ use std::sync::OnceLock;
 
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote_spanned;
+use serde::{Deserialize, Serialize};
 use slotmap::Key;
 use syn::punctuated::Punctuated;
 use syn::{parse_quote_spanned, Token};
 
+use super::{GraphNodeId, GraphSubgraphId, Node, OpInstGenerics, OperatorInstance, PortIndexValue};
 use crate::diagnostic::Diagnostic;
 use crate::parse::{Operator, PortIndex};
-
-use super::{GraphNodeId, GraphSubgraphId, Node, OpInstGenerics, OperatorInstance, PortIndexValue};
-use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug)]
 pub enum DelayType {

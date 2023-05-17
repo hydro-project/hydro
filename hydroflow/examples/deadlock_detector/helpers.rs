@@ -1,8 +1,9 @@
+use std::fmt::Display;
+use std::net::SocketAddr;
+
 use regex::Regex;
 use serde::Serialize;
 use serde_json::json;
-use std::fmt::Display;
-use std::net::SocketAddr;
 use tokio_util::codec::LinesCodecError;
 
 pub fn serialize_msg<T>(msg: T) -> String

@@ -1,9 +1,9 @@
-use crate::protocol::{Timestamp, Token};
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
-
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use crate::protocol::{Timestamp, Token};
 
 pub(crate) fn rga_datalog_agg(
     input_recv: UnboundedReceiverStream<(Token, Timestamp)>,

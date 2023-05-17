@@ -7,8 +7,9 @@
 //! Conversely, Generic parameters that are single letters or acronyms (e.g. `K`, `T`) are scalar
 //! non-`Lattice` types.
 
-use sealed::sealed;
 use std::cmp::Ordering::{self, *};
+
+use sealed::sealed;
 
 pub mod bottom;
 pub mod collections;

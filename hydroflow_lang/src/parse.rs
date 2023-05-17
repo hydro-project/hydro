@@ -425,9 +425,9 @@ impl Ord for IndexInt {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use syn::parse_quote;
+
+    use super::*;
 
     #[test]
     fn test_operator_to_pretty_string() {

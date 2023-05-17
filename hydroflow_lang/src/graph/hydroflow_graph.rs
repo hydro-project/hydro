@@ -10,10 +10,6 @@ use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
 
-use crate::diagnostic::{Diagnostic, Level};
-use crate::graph::ops::null_write_iterator_fn;
-use crate::pretty_span::{PrettyRowCol, PrettySpan};
-
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{find_op_op_constraints, OperatorWriteOutput, WriteContextArgs, OPERATORS};
 use super::{
@@ -21,6 +17,9 @@ use super::{
     GraphSubgraphId, Node, OperatorInstance, PortIndexValue, Varname, CONTEXT, HANDOFF_NODE_STR,
     HYDROFLOW,
 };
+use crate::diagnostic::{Diagnostic, Level};
+use crate::graph::ops::null_write_iterator_fn;
+use crate::pretty_span::{PrettyRowCol, PrettySpan};
 
 /// A graph representing a hydroflow dataflow graph (with or without subgraph partitioning,
 /// stratification, and handoff insertion). This is a "meta" graph used for generating Rust source

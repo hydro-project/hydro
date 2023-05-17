@@ -1,6 +1,6 @@
-use super::{Pusherator, PusheratorBuild};
-
 use either::Either;
+
+use super::{Pusherator, PusheratorBuild};
 
 pub struct Switch<Next1, Next2> {
     next1: Next1,

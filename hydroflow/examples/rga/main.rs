@@ -1,14 +1,14 @@
-use clap::{Parser, ValueEnum};
-use hydroflow::util::collect_ready_async;
 use std::collections::{HashMap, HashSet};
-use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use adjacency::rga_adjacency;
+use clap::{Parser, ValueEnum};
 use datalog::rga_datalog;
 use datalog_agg::rga_datalog_agg;
+use hydroflow::util::collect_ready_async;
 use minimal::rga_minimal;
 use protocol::{Timestamp, Token};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 mod adjacency;
 mod datalog;

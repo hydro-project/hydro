@@ -1,12 +1,12 @@
+use std::net::SocketAddr;
+use std::path::Path;
+
 use clap::{Parser, ValueEnum};
 use coordinator::run_coordinator;
 use hydroflow::tokio;
 use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
 use serde::Deserialize;
 use subordinate::run_subordinate;
-
-use std::net::SocketAddr;
-use std::path::Path;
 
 mod coordinator;
 mod helpers;

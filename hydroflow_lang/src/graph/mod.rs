@@ -11,11 +11,10 @@ use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{Expr, ExprPath, GenericArgument, Token, Type};
 
+use self::ops::{OperatorConstraints, Persistence};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::parse::{HfCode, IndexInt, Operator, PortIndex, Ported};
 use crate::pretty_span::PrettySpan;
-
-use self::ops::{OperatorConstraints, Persistence};
 
 mod di_mul_graph;
 mod eliminate_extra_merges_tees;

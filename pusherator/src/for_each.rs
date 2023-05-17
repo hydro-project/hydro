@@ -1,6 +1,6 @@
-use super::Pusherator;
-
 use std::marker::PhantomData;
+
+use super::Pusherator;
 
 pub struct ForEach<Func, In> {
     func: Func,

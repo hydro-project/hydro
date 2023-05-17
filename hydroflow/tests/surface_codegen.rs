@@ -1,10 +1,9 @@
 use std::collections::HashSet;
 
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::collect_ready;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
+use multiplatform_test::multiplatform_test;
 
 // TODO(mingwei): custom operators? How to handle in syntax? How to handle state?
 

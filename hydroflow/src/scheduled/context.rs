@@ -1,7 +1,7 @@
 use std::any::Any;
+use std::future::Future;
 use std::marker::PhantomData;
 
-use std::future::Future;
 use tokio::runtime::{Handle, TryCurrentError};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
@@ -59,8 +59,9 @@ impl Context {
     /// Returns a `Waker` for interacting with async Rust.
     /// Waker events are considered to be extenral.
     pub fn waker(&self) -> std::task::Waker {
-        use futures::task::ArcWake;
         use std::sync::Arc;
+
+        use futures::task::ArcWake;
 
         struct ContextWaker {
             subgraph_id: SubgraphId,

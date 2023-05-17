@@ -1,5 +1,6 @@
-use crate::protocol::KVSMessage;
 use regex::Regex;
+
+use crate::protocol::KVSMessage;
 
 pub fn parse_command(line: String) -> Option<KVSMessage> {
     let re = Regex::new(r"([A-z]+)\s+(.+)").unwrap();

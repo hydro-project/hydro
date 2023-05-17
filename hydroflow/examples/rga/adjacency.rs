@@ -1,10 +1,11 @@
-use crate::protocol::{Timestamp, Token};
+use std::collections::VecDeque;
+
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
-
-use std::collections::VecDeque;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+use crate::protocol::{Timestamp, Token};
 
 pub(crate) fn rga_adjacency(
     input_recv: UnboundedReceiverStream<(Token, Timestamp)>,

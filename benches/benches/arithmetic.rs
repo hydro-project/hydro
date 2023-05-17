@@ -1,8 +1,9 @@
+use std::sync::mpsc::channel;
+use std::thread;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use hydroflow::hydroflow_syntax;
 use static_assertions::const_assert;
-use std::sync::mpsc::channel;
-use std::thread;
 use timely::dataflow::operators::{Inspect, Map, ToStream};
 
 const NUM_OPS: usize = 20;

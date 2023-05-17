@@ -111,11 +111,12 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashSet;
+
     use super::*;
     use crate::ord::Max;
     use crate::set_union::SetUnionHashSet;
     use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
-    use std::collections::HashSet;
 
     #[test]
     fn consistency() {

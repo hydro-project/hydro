@@ -1,12 +1,13 @@
 use std::net::SocketAddr;
 use std::path::Path;
 
-use crate::helpers::decide;
-use crate::protocol::{CoordMsg, MsgType, SubordResponse};
-use crate::{Addresses, GraphType};
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::{UdpSink, UdpStream};
+
+use crate::helpers::decide;
+use crate::protocol::{CoordMsg, MsgType, SubordResponse};
+use crate::{Addresses, GraphType};
 
 pub(crate) async fn run_subordinate(
     outbound: UdpSink,

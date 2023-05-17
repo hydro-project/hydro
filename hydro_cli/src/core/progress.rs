@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use futures::Future;
-
 use indicatif::MultiProgress;
 
 static PROGRESS_TRACKER: OnceLock<Mutex<ProgressTracker>> = OnceLock::new();

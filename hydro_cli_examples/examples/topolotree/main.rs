@@ -1,9 +1,10 @@
+use std::collections::{HashMap, HashSet};
+use std::hash::{Hash, Hasher};
+
 use hydroflow::serde::{Deserialize, Serialize};
 use hydroflow::util::cli::{ConnectedBidi, ConnectedSink, ConnectedSource};
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 use hydroflow::{hydroflow_syntax, tokio};
-use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, Hasher};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct IncrementRequest {

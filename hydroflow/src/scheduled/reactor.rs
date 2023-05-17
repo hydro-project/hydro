@@ -24,8 +24,9 @@ impl Reactor {
 
     #[cfg(feature = "async")]
     pub fn into_waker(self, sg_id: SubgraphId) -> std::task::Waker {
-        use futures::task::ArcWake;
         use std::sync::Arc;
+
+        use futures::task::ArcWake;
 
         struct ReactorWaker {
             reactor: Reactor,

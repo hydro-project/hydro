@@ -7,13 +7,12 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::Ident;
 
+use super::ops::find_op_op_constraints;
+use super::{GraphNodeId, HydroflowGraph, Node, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::ops::{PortListSpec, RangeTrait};
 use crate::parse::{HfCode, HfStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
-
-use super::ops::find_op_op_constraints;
-use super::{GraphNodeId, HydroflowGraph, Node, PortIndexValue};
 
 #[derive(Clone, Debug)]
 struct Ends {

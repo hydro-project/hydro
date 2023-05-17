@@ -1,7 +1,8 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
 pub struct Message {

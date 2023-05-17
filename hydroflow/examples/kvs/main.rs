@@ -1,9 +1,10 @@
+use std::net::SocketAddr;
+
 use clap::{Parser, ValueEnum};
 use client::run_client;
 use hydroflow::tokio;
 use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
 use server::run_server;
-use std::net::SocketAddr;
 
 mod client;
 mod helpers;

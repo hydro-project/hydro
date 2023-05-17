@@ -1,12 +1,14 @@
-use super::fake::FakeWrapper;
-use crate::buffer_pool::{AutoReturnBuffer, BufferPool};
-use crate::protocol::serialization::lattices::fake::FakeDeserializer;
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use lattices::bottom::Bottom;
 use lattices::fake::Fake;
 use serde::de::{DeserializeSeed, Visitor};
 use serde::{Serialize, Serializer};
-use std::cell::RefCell;
-use std::rc::Rc;
+
+use super::fake::FakeWrapper;
+use crate::buffer_pool::{AutoReturnBuffer, BufferPool};
+use crate::protocol::serialization::lattices::fake::FakeDeserializer;
 
 #[repr(transparent)]
 pub struct BottomWrapper<'a, const SIZE: usize>(pub &'a Bottom<Fake<AutoReturnBuffer<SIZE>>>);

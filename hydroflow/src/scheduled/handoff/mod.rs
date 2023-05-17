@@ -2,12 +2,11 @@ pub mod handoff_list;
 mod tee;
 mod vector;
 
+use std::any::Any;
 use std::cell::RefMut;
 
 pub use tee::TeeingHandoff;
 pub use vector::VecHandoff;
-
-use std::any::Any;
 
 pub trait TryCanReceive<T> {
     fn try_give(&self, item: T) -> Result<T, T>;

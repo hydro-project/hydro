@@ -1,14 +1,16 @@
 mod magic_buffer;
 mod util;
 
-use self::util::check_all;
-use crate::protocol::{KvsRequestDeserializer, MyLastWriteWins};
+use std::rc::Rc;
+
 use bincode::options;
 use lattices::bottom::Bottom;
 use lattices::fake::Fake;
 use lattices::map_union::MapUnionHashMap;
 use lattices::ord::Max;
-use std::rc::Rc;
+
+use self::util::check_all;
+use crate::protocol::{KvsRequestDeserializer, MyLastWriteWins};
 
 type BufferPool = crate::buffer_pool::BufferPool<16>;
 type KvsRequest = super::KvsRequest<16>;

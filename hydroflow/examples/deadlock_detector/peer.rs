@@ -1,13 +1,15 @@
-use crate::helpers::{deserialize_msg, format_cycle, gen_bool, parse_edge, serialize_msg};
-use crate::protocol::{Message, SimplePath};
-use crate::{GraphType, Opts};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph::Hydroflow;
 use std::convert::identity;
 use std::net::SocketAddr;
+
+use hydroflow::hydroflow_syntax;
+use hydroflow::scheduled::graph::Hydroflow;
 use tokio::io::AsyncBufReadExt;
 use tokio::net::UdpSocket;
 use tokio_stream::wrappers::LinesStream;
+
+use crate::helpers::{deserialize_msg, format_cycle, gen_bool, parse_edge, serialize_msg};
+use crate::protocol::{Message, SimplePath};
+use crate::{GraphType, Opts};
 
 pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     // setup message send/recv ports

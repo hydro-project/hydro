@@ -8,24 +8,20 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use bytes::{Bytes, BytesMut};
-use serde::{Deserialize, Serialize};
-
-use futures::sink::Buffer;
-use futures::{ready, stream, Future, Sink, SinkExt, Stream};
-
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+use bytes::{Bytes, BytesMut};
+use futures::sink::Buffer;
+use futures::{ready, stream, Future, Sink, SinkExt, Stream};
 use pin_project::pin_project;
-
+use serde::{Deserialize, Serialize};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
+#[cfg(unix)]
+use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::task::JoinHandle;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-
-#[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
 
 #[cfg(not(unix))]
 #[allow(dead_code)]

@@ -4,6 +4,13 @@ mod kvs_request_gossip_visitor;
 mod kvs_request_put_visitor;
 mod lattices;
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use serde::de::{DeserializeSeed, VariantAccess, Visitor};
+use serde::ser::SerializeStructVariant;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
 use self::lattices::MapUnionHashMapWrapper;
 use super::KvsRequest;
 use crate::buffer_pool::BufferPool;
@@ -11,11 +18,6 @@ use crate::protocol::serialization::kvs_request_delete_visitor::KvsRequestDelete
 use crate::protocol::serialization::kvs_request_get_visitor::KvsRequestGetVisitor;
 use crate::protocol::serialization::kvs_request_gossip_visitor::KvsRequestGossipVisitor;
 use crate::protocol::serialization::kvs_request_put_visitor::KvsRequestPutVisitor;
-use serde::de::{DeserializeSeed, VariantAccess, Visitor};
-use serde::ser::SerializeStructVariant;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::cell::RefCell;
-use std::rc::Rc;
 
 impl<const SIZE: usize> Serialize for KvsRequest<SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

@@ -15,11 +15,10 @@ use nanoid::nanoid;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 
-use crate::core::util::async_retry;
-
 use super::localhost::create_broadcast;
 use super::progress::ProgressTracker;
 use super::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy};
+use crate::core::util::async_retry;
 
 struct LaunchedSSHBinary {
     _resource_result: Arc<ResourceResult>,

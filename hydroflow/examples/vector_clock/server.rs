@@ -1,4 +1,5 @@
-use crate::protocol::{EchoMsg, VecClock};
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
@@ -6,7 +7,8 @@ use hydroflow::util::{UdpSink, UdpStream};
 use lattices::map_union::MapUnionSingletonMap;
 use lattices::ord::Max;
 use lattices::Merge;
-use std::net::SocketAddr;
+
+use crate::protocol::{EchoMsg, VecClock};
 
 pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: crate::Opts) {
     println!("Server live!");

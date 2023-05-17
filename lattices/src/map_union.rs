@@ -211,12 +211,12 @@ pub type MapUnionOption<K, Val> = MapUnion<Option<(K, Val)>>;
 
 #[cfg(test)]
 mod test {
-    use super::*;
+    use std::collections::HashSet;
 
+    use super::*;
     use crate::collections::{SingletonMap, SingletonSet};
     use crate::set_union::{SetUnionHashSet, SetUnionSingletonSet};
     use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
-    use std::collections::HashSet;
 
     #[test]
     fn test_map_union() {

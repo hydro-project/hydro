@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::util::collect_ready;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
+use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_fold_tick() {

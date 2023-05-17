@@ -1,6 +1,5 @@
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
+use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_context_ref() {

@@ -1,10 +1,9 @@
-use crate::{GraphType, Opts};
+use hydroflow::hydroflow_syntax;
+use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::{UdpSink, UdpStream};
 
 use crate::protocol::Message;
-
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph::Hydroflow;
+use crate::{GraphType, Opts};
 
 pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
     println!("Server live!");

@@ -1,5 +1,3 @@
-use rust_sitter::errors::{ParseError, ParseErrorReason};
-use rust_sitter::Spanned;
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
@@ -9,6 +7,8 @@ use hydroflow_lang::graph::{
 };
 use hydroflow_lang::parse::{IndexInt, Indexing, Pipeline, PipelineLink};
 use proc_macro2::{Span, TokenStream};
+use rust_sitter::errors::{ParseError, ParseErrorReason};
+use rust_sitter::Spanned;
 use syn::{parse_quote, parse_quote_spanned};
 
 mod grammar;

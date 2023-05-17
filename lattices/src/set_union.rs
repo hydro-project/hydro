@@ -119,7 +119,6 @@ pub type SetUnionOption<Item> = SetUnion<Option<Item>>;
 #[cfg(test)]
 mod test {
     use super::*;
-
     use crate::collections::SingletonSet;
     use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
 

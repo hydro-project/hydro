@@ -1,6 +1,6 @@
-use super::{Pusherator, PusheratorBuild};
-
 use std::marker::PhantomData;
+
+use super::{Pusherator, PusheratorBuild};
 
 pub struct Flatten<Next, In> {
     next: Next,

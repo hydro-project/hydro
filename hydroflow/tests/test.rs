@@ -3,19 +3,19 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::mpsc;
 
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::scheduled::graph_ext::GraphExt;
 use hydroflow::scheduled::handoff::VecHandoff;
 use hydroflow::scheduled::port::{RecvCtx, SendCtx};
 use hydroflow::{var_args, var_expr};
+use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 fn map_filter() {
-    use hydroflow::scheduled::handoff::VecHandoff;
     use std::cell::RefCell;
     use std::rc::Rc;
+
+    use hydroflow::scheduled::handoff::VecHandoff;
 
     // A simple dataflow with one source feeding into one sink with some processing in the middle.
     let mut df = Hydroflow::new();
@@ -284,9 +284,10 @@ fn test_cycle() {
 
 #[multiplatform_test]
 fn test_input_handle() {
+    use std::cell::RefCell;
+
     use hydroflow::scheduled::graph_ext::GraphExt;
     use hydroflow::scheduled::handoff::VecHandoff;
-    use std::cell::RefCell;
 
     let mut df = Hydroflow::new();
 
@@ -323,9 +324,10 @@ fn test_input_handle() {
 #[test]
 // #[multiplatform_test]  // no threads on WASM
 fn test_input_handle_thread() {
+    use std::cell::RefCell;
+
     use hydroflow::scheduled::graph_ext::GraphExt;
     use hydroflow::scheduled::handoff::VecHandoff;
-    use std::cell::RefCell;
 
     let mut df = Hydroflow::new();
 
@@ -363,10 +365,11 @@ fn test_input_channel() {
     // This test creates two parallel Hydroflow graphs and bounces messages back
     // and forth between them.
 
+    use std::cell::Cell;
+
     use futures::channel::mpsc::channel;
     use hydroflow::scheduled::graph_ext::GraphExt;
     use hydroflow::scheduled::handoff::VecHandoff;
-    use std::cell::Cell;
 
     let (s1, r1) = channel(8000);
     let (s2, r2) = channel(8000);

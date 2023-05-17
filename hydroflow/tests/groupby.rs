@@ -2,11 +2,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use multiplatform_test::multiplatform_test;
-
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::scheduled::graph_ext::GraphExt;
 use hydroflow::scheduled::handoff::{Iter, VecHandoff};
+use multiplatform_test::multiplatform_test;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Employee {

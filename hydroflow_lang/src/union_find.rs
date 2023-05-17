@@ -45,9 +45,9 @@ where
 
 #[cfg(test)]
 mod test {
-    use super::*;
-
     use slotmap::SlotMap;
+
+    use super::*;
 
     #[test]
     fn test_basic() {

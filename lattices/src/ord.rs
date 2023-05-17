@@ -2,9 +2,10 @@
 //!
 //! Uses [std::cmp::Ord`].
 
+use std::cmp::Ordering;
+
 use super::{ConvertFrom, Merge};
 use crate::LatticeOrd;
-use std::cmp::Ordering;
 
 /// A totally ordered max lattice. Merging takes the larger value.
 #[repr(transparent)]
@@ -103,9 +104,10 @@ where
 
 #[cfg(test)]
 mod test {
+    use std::cmp::Ordering::*;
+
     use super::*;
     use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
-    use std::cmp::Ordering::*;
 
     #[test]
     fn ordering() {
