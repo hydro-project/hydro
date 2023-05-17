@@ -3,16 +3,15 @@
 use std::collections::HashMap;
 
 use futures::{SinkExt, StreamExt};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
-use crate::scheduled::{
-    graph::Hydroflow,
-    graph_ext::GraphExt,
-    handoff::VecHandoff,
-    port::{RecvPort, SendPort},
-};
+use crate::scheduled::graph::Hydroflow;
+use crate::scheduled::graph_ext::GraphExt;
+use crate::scheduled::handoff::VecHandoff;
+use crate::scheduled::port::{RecvPort, SendPort};
 
 pub type Address = String;
 

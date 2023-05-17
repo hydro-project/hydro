@@ -1,5 +1,6 @@
 //! Organizational module for Hydroflow Send/RecvCtx structs and Input/OutputPort structs.
-use std::{cell::RefMut, marker::PhantomData};
+use std::cell::RefMut;
+use std::marker::PhantomData;
 
 use ref_cast::RefCast;
 use sealed::sealed;

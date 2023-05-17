@@ -7,9 +7,11 @@ pub use serialization::KvsRequestDeserializer;
 
 use crate::buffer_pool::AutoReturnBuffer;
 use lattices::bottom::Bottom;
+use lattices::dom_pair::DomPair;
+use lattices::fake::Fake;
 use lattices::map_union::MapUnionHashMap;
+use lattices::ord::Max;
 use lattices::set_union::SetUnionHashSet;
-use lattices::{dom_pair::DomPair, fake::Fake, ord::Max};
 
 pub type NodeId = usize;
 

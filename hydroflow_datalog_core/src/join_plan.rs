@@ -1,17 +1,16 @@
-use std::collections::{btree_map::Entry, BTreeMap, HashMap};
+use std::collections::btree_map::Entry;
+use std::collections::{BTreeMap, HashMap};
 use std::ops::Deref;
 
-use hydroflow_lang::diagnostic::Level;
+use hydroflow_lang::diagnostic::{Diagnostic, Level};
+use hydroflow_lang::graph::FlatGraphBuilder;
 use hydroflow_lang::parse::Pipeline;
-use hydroflow_lang::{diagnostic::Diagnostic, graph::FlatGraphBuilder};
 use proc_macro2::Span;
 use rust_sitter::Spanned;
 use syn::{self, parse_quote, parse_quote_spanned};
 
-use crate::{
-    grammar::datalog::{BoolExpr, BoolOp, IdentOrUnderscore, InputRelationExpr, IntExpr},
-    util::{repeat_tuple, Counter},
-};
+use crate::grammar::datalog::{BoolExpr, BoolOp, IdentOrUnderscore, InputRelationExpr, IntExpr};
+use crate::util::{repeat_tuple, Counter};
 
 /// Captures the tree of joins used to compute contributions from a single rule.
 pub enum JoinPlan<'a> {

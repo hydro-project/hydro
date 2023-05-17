@@ -1,17 +1,13 @@
-use rust_sitter::{
-    errors::{ParseError, ParseErrorReason},
-    Spanned,
-};
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
+use rust_sitter::errors::{ParseError, ParseErrorReason};
+use rust_sitter::Spanned;
+use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
 
-use hydroflow_lang::{
-    diagnostic::{Diagnostic, Level},
-    graph::{eliminate_extra_merges_tees, partition_graph, FlatGraphBuilder, HydroflowGraph},
-    parse::{IndexInt, Indexing, Pipeline, PipelineLink},
+use hydroflow_lang::diagnostic::{Diagnostic, Level};
+use hydroflow_lang::graph::{
+    eliminate_extra_merges_tees, partition_graph, FlatGraphBuilder, HydroflowGraph,
 };
+use hydroflow_lang::parse::{IndexInt, Indexing, Pipeline, PipelineLink};
 use proc_macro2::{Span, TokenStream};
 use syn::{parse_quote, parse_quote_spanned};
 
@@ -803,8 +799,7 @@ fn apply_aggregations(
 mod tests {
     use syn::parse_quote;
 
-    use super::gen_hydroflow_graph;
-    use super::hydroflow_graph_to_program;
+    use super::{gen_hydroflow_graph, hydroflow_graph_to_program};
 
     macro_rules! test_snapshots {
         ($program:literal) => {

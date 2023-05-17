@@ -4,7 +4,10 @@ mod util;
 use self::util::check_all;
 use crate::protocol::{KvsRequestDeserializer, MyLastWriteWins};
 use bincode::options;
-use lattices::{bottom::Bottom, fake::Fake, map_union::MapUnionHashMap, ord::Max};
+use lattices::bottom::Bottom;
+use lattices::fake::Fake;
+use lattices::map_union::MapUnionHashMap;
+use lattices::ord::Max;
 use std::rc::Rc;
 
 type BufferPool = crate::buffer_pool::BufferPool<16>;

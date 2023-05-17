@@ -1,5 +1,6 @@
 use crate::protocol::{Timestamp, Token};
-use hydroflow::{hydroflow_syntax, scheduled::graph::Hydroflow};
+use hydroflow::hydroflow_syntax;
+use hydroflow::scheduled::graph::Hydroflow;
 
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;

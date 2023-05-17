@@ -1,16 +1,20 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::Duration;
 
 use anyhow::{bail, Result};
 use async_channel::Receiver;
 use async_trait::async_trait;
 use hydroflow_cli_integration::ServerPort;
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 
 use self::ports::{HydroflowPortConfig, HydroflowSink, SourcePath};
 
+use super::progress::ProgressTracker;
 use super::{
-    progress::ProgressTracker, Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult,
-    ServerStrategy, Service,
+    Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
 };
 
 mod build;

@@ -4,19 +4,15 @@ use tokio::task;
 use tokio_stream::StreamExt;
 
 use crate::buffer_pool::BufferPool;
-use crate::protocol::KvsRequest;
-use crate::protocol::KvsRequestDeserializer;
-use crate::protocol::KvsResponse;
-use crate::protocol::MyLastWriteWins;
-use crate::protocol::MySetUnion;
+use crate::protocol::{
+    KvsRequest, KvsRequestDeserializer, KvsResponse, MyLastWriteWins, MySetUnion,
+};
 use bincode::options;
-use rand::Rng;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use serde::de::DeserializeSeed;
 use serde::Serialize;
 use std::rc::Rc;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 use crate::protocol::NodeId;
@@ -24,14 +20,11 @@ use crate::Topology;
 use futures::Stream;
 use lattices::bottom::Bottom;
 use lattices::fake::Fake;
-use lattices::map_union::MapUnionHashMap;
-use lattices::map_union::MapUnionSingletonMap;
+use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use lattices::ord::Max;
 use lattices::set_union::SetUnionSingletonSet;
 
-use bytes::BufMut;
-use bytes::Bytes;
-use bytes::BytesMut;
+use bytes::{BufMut, Bytes, BytesMut};
 use hydroflow::compiled::pull::HalfMultisetJoinState;
 
 pub fn run_server<RX>(

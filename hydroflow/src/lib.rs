@@ -12,18 +12,11 @@ pub mod props;
 pub mod scheduled;
 pub mod util;
 
-pub use bincode;
-pub use bytes;
-pub use futures;
-pub use lattices;
-pub use pusherator;
-pub use rustc_hash;
-pub use serde;
-pub use serde_json;
-pub use tokio;
-pub use tokio_stream;
-pub use tokio_util;
 pub use variadics::{self, var_args, var_expr, var_type};
+pub use {
+    bincode, bytes, futures, lattices, pusherator, rustc_hash, serde, serde_json, tokio,
+    tokio_stream, tokio_util,
+};
 
 mod declarative_macro;
 pub use declarative_macro::*;

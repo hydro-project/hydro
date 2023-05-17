@@ -1,8 +1,6 @@
-use std::{
-    cell::RefCell,
-    io::{Read, Write},
-    rc::Rc,
-};
+use std::cell::RefCell;
+use std::io::{Read, Write};
+use std::rc::Rc;
 
 #[derive(Clone, Default)]
 pub(crate) struct MagicBuffer {

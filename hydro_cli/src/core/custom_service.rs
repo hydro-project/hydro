@@ -1,20 +1,16 @@
-use std::{
-    any::Any,
-    ops::Deref,
-    sync::{Arc, Weak},
-};
+use std::any::Any;
+use std::ops::Deref;
+use std::sync::{Arc, Weak};
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 use hydroflow_cli_integration::ServerOrBound;
 use tokio::sync::RwLock;
 
-use super::{
-    hydroflow_crate::ports::{
-        HydroflowServer, HydroflowSink, HydroflowSource, ServerConfig, SourcePath,
-    },
-    Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
+use super::hydroflow_crate::ports::{
+    HydroflowServer, HydroflowSink, HydroflowSource, ServerConfig, SourcePath,
 };
+use super::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
 
 /// Represents an unknown, third-party service that is not part of the Hydroflow ecosystem.
 pub struct CustomService {

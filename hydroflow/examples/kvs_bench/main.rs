@@ -6,19 +6,15 @@ mod server;
 
 use crate::server::run_server;
 
-use clap::command;
-use clap::Parser;
-use clap::Subcommand;
+use clap::{command, Parser, Subcommand};
 
 use crate::protocol::NodeId;
 use bytes::Bytes;
 use futures::Stream;
 use std::collections::HashMap;
-use std::sync::atomic::AtomicUsize;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::StreamExt;
 

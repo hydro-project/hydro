@@ -3,12 +3,10 @@ use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 use std::rc::Rc;
 
-use hydroflow::hydroflow_syntax;
 use hydroflow::serde::{Deserialize, Serialize};
-use hydroflow::tokio;
-use hydroflow::util::cli::ConnectedDemux;
-use hydroflow::util::cli::{ConnectedBidi, ConnectedSink, ConnectedSource};
+use hydroflow::util::cli::{ConnectedBidi, ConnectedDemux, ConnectedSink, ConnectedSource};
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
+use hydroflow::{hydroflow_syntax, tokio};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 struct IncrementRequest {

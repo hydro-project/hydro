@@ -151,10 +151,13 @@ impl<T> PusheratorBuild for InputBuild<T> {
 mod tests {
     use std::rc::Rc;
 
-    use super::{
-        filter::Filter, for_each::ForEach, map::Map, partition::Partition, pivot::Pivot, tee::Tee,
-        Pusherator,
-    };
+    use super::filter::Filter;
+    use super::for_each::ForEach;
+    use super::map::Map;
+    use super::partition::Partition;
+    use super::pivot::Pivot;
+    use super::tee::Tee;
+    use super::Pusherator;
 
     #[test]
     fn linear_chains() {

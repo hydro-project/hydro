@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use timely::dataflow::{
-    channels::pact::Pipeline,
-    operators::{Operator, ToStream},
-};
+use timely::dataflow::channels::pact::Pipeline;
+use timely::dataflow::operators::{Operator, ToStream};
 
 trait JoinValue: Clone + std::hash::Hash + Eq {
     fn name() -> &'static str;

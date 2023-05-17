@@ -2,10 +2,8 @@ mod serialization;
 
 pub use serialization::AutoReturnBufferDeserializer;
 
-use std::{
-    cell::{Ref, RefCell, RefMut},
-    rc::{Rc, Weak},
-};
+use std::cell::{Ref, RefCell, RefMut};
+use std::rc::{Rc, Weak};
 
 /// It is slow to allocate and, in particular, free blocks of memory.
 /// If we know ahead of time what size buffers we will need then we can pre-allocate a bunch of them and

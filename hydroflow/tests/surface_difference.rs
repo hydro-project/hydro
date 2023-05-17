@@ -1,4 +1,5 @@
-use hydroflow::{assert_graphvis_snapshots, util::collect_ready};
+use hydroflow::assert_graphvis_snapshots;
+use hydroflow::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]

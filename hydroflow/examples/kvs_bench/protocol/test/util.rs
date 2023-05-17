@@ -1,11 +1,12 @@
 use super::magic_buffer::MagicBuffer;
-use crate::{
-    buffer_pool::BufferPool,
-    protocol::{serialization::KvsRequestDeserializer, KvsRequest},
-};
+use crate::buffer_pool::BufferPool;
+use crate::protocol::serialization::KvsRequestDeserializer;
+use crate::protocol::KvsRequest;
 use bincode::options;
-use serde::{de::DeserializeSeed, Serialize};
-use std::{cell::RefCell, rc::Rc};
+use serde::de::DeserializeSeed;
+use serde::Serialize;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 fn assert_eq_req<const SIZE: usize>(r1: &KvsRequest<SIZE>, r2: &KvsRequest<SIZE>) {
     match (r1, r2) {

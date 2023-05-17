@@ -1,9 +1,9 @@
 use crate::lang::clear::Clear;
 use lattices::map_union::MapUnion;
 use lattices::{ConvertFrom, Merge};
-use rustc_hash::FxHashMap;
-use rustc_hash::FxHashSet;
-use std::collections::{hash_map::Entry, hash_set};
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::collections::hash_map::Entry;
+use std::collections::hash_set;
 
 pub struct HalfJoinStateLattice<K, Lattice> {
     table: MapUnion<FxHashMap<K, Lattice>>,

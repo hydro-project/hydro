@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
 use hydroflow::hydroflow_syntax;
-use rand::distributions::Distribution;
-use rand::distributions::Uniform;
+use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 

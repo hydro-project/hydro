@@ -1,10 +1,6 @@
-use hydroflow::{
-    tokio_stream::wrappers::IntervalStream,
-    util::{
-        cli::{ConnectedBidi, ConnectedDemux, ConnectedSink},
-        serialize_to_bytes,
-    },
-};
+use hydroflow::tokio_stream::wrappers::IntervalStream;
+use hydroflow::util::cli::{ConnectedBidi, ConnectedDemux, ConnectedSink};
+use hydroflow::util::serialize_to_bytes;
 use hydroflow_datalog::datalog;
 
 #[tokio::main]

@@ -1,15 +1,11 @@
-use futures::SinkExt;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use hydroflow::bytes::Bytes;
-use hydroflow::serde::Deserialize;
-use hydroflow::serde::Serialize;
+use hydroflow::serde::{Deserialize, Serialize};
 use hydroflow::tokio;
 use hydroflow::util::cli::{ConnectedBidi, ConnectedSink, ConnectedSource};
-use hydroflow::util::deserialize_from_bytes;
-use hydroflow::util::serialize_to_bytes;
+use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 use std::sync::atomic::AtomicU64;
-use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
 

@@ -1,8 +1,11 @@
-use std::{fmt::Display, path::PathBuf};
+use std::fmt::Display;
+use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
-use pyo3::{exceptions::PyException, prelude::*, types::PyList};
+use pyo3::exceptions::PyException;
+use pyo3::prelude::*;
+use pyo3::types::PyList;
 
 use crate::{AnyhowError, AnyhowWrapper};
 

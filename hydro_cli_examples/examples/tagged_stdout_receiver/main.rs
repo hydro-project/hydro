@@ -1,7 +1,5 @@
-use hydroflow::{
-    hydroflow_syntax,
-    util::cli::{ConnectedBidi, ConnectedSource, ConnectedTagged},
-};
+use hydroflow::hydroflow_syntax;
+use hydroflow::util::cli::{ConnectedBidi, ConnectedSource, ConnectedTagged};
 
 #[tokio::main]
 async fn main() {

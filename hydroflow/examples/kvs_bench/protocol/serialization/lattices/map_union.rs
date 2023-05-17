@@ -1,16 +1,12 @@
 use super::my_last_write_wins::MyLastWriteWinsDeserializer;
-use crate::{
-    buffer_pool::BufferPool,
-    protocol::{
-        serialization::lattices::my_last_write_wins::MyLastWriteWinsWrapper, MyLastWriteWins,
-    },
-};
+use crate::buffer_pool::BufferPool;
+use crate::protocol::serialization::lattices::my_last_write_wins::MyLastWriteWinsWrapper;
+use crate::protocol::MyLastWriteWins;
 use lattices::map_union::MapUnionHashMap;
-use serde::{
-    de::{DeserializeSeed, Visitor},
-    Serialize, Serializer,
-};
-use std::{cell::RefCell, rc::Rc};
+use serde::de::{DeserializeSeed, Visitor};
+use serde::{Serialize, Serializer};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[repr(transparent)]
 pub struct MapUnionHashMapWrapper<'a, const SIZE: usize>(

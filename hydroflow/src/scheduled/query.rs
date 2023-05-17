@@ -1,5 +1,6 @@
 use std::borrow::Cow;
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use crate::scheduled::graph::Hydroflow;
 use crate::scheduled::handoff::VecHandoff;

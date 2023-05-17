@@ -1,18 +1,16 @@
-use std::{
-    collections::HashMap,
-    io::BufRead,
-    path::PathBuf,
-    process::Command,
-    process::Stdio,
-    sync::{Arc, Mutex},
-};
+use std::collections::HashMap;
+use std::io::BufRead;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex};
 
 use anyhow::{bail, Result};
 use nanoid::nanoid;
 use once_cell::sync::Lazy;
 use tokio::sync::OnceCell;
 
-use crate::core::{progress::ProgressTracker, HostTargetType};
+use crate::core::progress::ProgressTracker;
+use crate::core::HostTargetType;
 
 type CacheKey = (PathBuf, Option<String>, HostTargetType, Option<Vec<String>>);
 

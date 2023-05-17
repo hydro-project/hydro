@@ -1,10 +1,9 @@
 use crate::buffer_pool::{AutoReturnBuffer, AutoReturnBufferDeserializer, BufferPool};
 use lattices::fake::Fake;
-use serde::{
-    de::{DeserializeSeed, Visitor},
-    Serialize, Serializer,
-};
-use std::{cell::RefCell, rc::Rc};
+use serde::de::{DeserializeSeed, Visitor};
+use serde::{Serialize, Serializer};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[repr(transparent)]
 pub struct FakeWrapper<'a, const SIZE: usize>(pub &'a Fake<AutoReturnBuffer<SIZE>>);

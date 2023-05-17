@@ -61,18 +61,14 @@ use std::pin::Pin;
 
 use byteorder::{NetworkEndian, WriteBytesExt};
 use futures::{Sink, StreamExt};
-use tokio::net::{
-    tcp::{OwnedReadHalf, OwnedWriteHalf},
-    TcpStream,
-};
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
+use tokio::net::TcpStream;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
-use super::{
-    graph::Hydroflow,
-    graph_ext::GraphExt,
-    handoff::VecHandoff,
-    port::{RecvPort, SendPort},
-};
+use super::graph::Hydroflow;
+use super::graph_ext::GraphExt;
+use super::handoff::VecHandoff;
+use super::port::{RecvPort, SendPort};
 
 pub mod network_vertex;
 

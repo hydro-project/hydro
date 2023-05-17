@@ -1,7 +1,5 @@
-use hydroflow::util::{
-    cli::{ConnectedBidi, ConnectedSource},
-    deserialize_from_bytes,
-};
+use hydroflow::util::cli::{ConnectedBidi, ConnectedSource};
+use hydroflow::util::deserialize_from_bytes;
 use hydroflow_datalog::datalog;
 
 #[tokio::main]

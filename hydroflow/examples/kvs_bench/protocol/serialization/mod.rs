@@ -6,21 +6,16 @@ mod lattices;
 
 use self::lattices::MapUnionHashMapWrapper;
 use super::KvsRequest;
-use crate::{
-    buffer_pool::BufferPool,
-    protocol::serialization::{
-        kvs_request_delete_visitor::KvsRequestDeleteVisitor,
-        kvs_request_get_visitor::KvsRequestGetVisitor,
-        kvs_request_gossip_visitor::KvsRequestGossipVisitor,
-        kvs_request_put_visitor::KvsRequestPutVisitor,
-    },
-};
-use serde::{
-    de::{DeserializeSeed, VariantAccess, Visitor},
-    ser::SerializeStructVariant,
-    Deserialize, Deserializer, Serialize, Serializer,
-};
-use std::{cell::RefCell, rc::Rc};
+use crate::buffer_pool::BufferPool;
+use crate::protocol::serialization::kvs_request_delete_visitor::KvsRequestDeleteVisitor;
+use crate::protocol::serialization::kvs_request_get_visitor::KvsRequestGetVisitor;
+use crate::protocol::serialization::kvs_request_gossip_visitor::KvsRequestGossipVisitor;
+use crate::protocol::serialization::kvs_request_put_visitor::KvsRequestPutVisitor;
+use serde::de::{DeserializeSeed, VariantAccess, Visitor};
+use serde::ser::SerializeStructVariant;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 impl<const SIZE: usize> Serialize for KvsRequest<SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

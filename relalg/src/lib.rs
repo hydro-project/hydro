@@ -160,7 +160,10 @@ fn parse_relexpr(s: Sexp) -> anyhow::Result<RelExpr> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{codegen::generate_dataflow, parse_relexpr, runtime::run_dataflow, sexp::Sexp};
+    use crate::codegen::generate_dataflow;
+    use crate::parse_relexpr;
+    use crate::runtime::run_dataflow;
+    use crate::sexp::Sexp;
 
     #[test]
     fn datadriven_tests() {

@@ -5,7 +5,8 @@ use std::error::Error;
 use auto_impl::auto_impl;
 use slotmap::Key;
 
-use super::{ops::DelayType, Color, GraphNodeId, GraphSubgraphId};
+use super::ops::DelayType;
+use super::{Color, GraphNodeId, GraphSubgraphId};
 
 /// Trait for writing textual representations of graphs, i.e. mermaid or dot graphs.
 #[auto_impl(&mut, Box)]

@@ -112,11 +112,9 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        ord::Max,
-        set_union::SetUnionHashSet,
-        test::{assert_lattice_identities, assert_partial_ord_identities},
-    };
+    use crate::ord::Max;
+    use crate::set_union::SetUnionHashSet;
+    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
     use std::collections::HashSet;
 
     #[test]

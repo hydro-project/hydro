@@ -1,9 +1,8 @@
 use super::{AutoReturnBuffer, BufferPool};
-use serde::{
-    de::{DeserializeSeed, Visitor},
-    Deserializer, Serialize, Serializer,
-};
-use std::{cell::RefCell, rc::Rc};
+use serde::de::{DeserializeSeed, Visitor};
+use serde::{Deserializer, Serialize, Serializer};
+use std::cell::RefCell;
+use std::rc::Rc;
 
 impl<const SIZE: usize> Serialize for AutoReturnBuffer<SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

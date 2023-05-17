@@ -1,9 +1,7 @@
-use std::{
-    collections::HashMap,
-    io::{BufRead, BufReader},
-    process::{Child, ChildStdout, Command},
-    sync::{Arc, RwLock},
-};
+use std::collections::HashMap;
+use std::io::{BufRead, BufReader};
+use std::process::{Child, ChildStdout, Command};
+use std::sync::{Arc, RwLock};
 
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;

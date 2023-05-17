@@ -1,4 +1,8 @@
-use std::{collections::HashMap, fs::File, io::Write, net::SocketAddr, sync::Arc};
+use std::collections::HashMap;
+use std::fs::File;
+use std::io::Write;
+use std::net::SocketAddr;
+use std::sync::Arc;
 
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
@@ -10,7 +14,8 @@ use anyhow::Result;
 use async_channel::{Receiver, Sender};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
-use futures::{io::BufReader, AsyncBufReadExt, AsyncRead, AsyncWriteExt, StreamExt};
+use futures::io::BufReader;
+use futures::{AsyncBufReadExt, AsyncRead, AsyncWriteExt, StreamExt};
 use hydroflow_cli_integration::ServerBindConfig;
 use tempfile::{NamedTempFile, TempPath};
 use tokio::sync::RwLock;
