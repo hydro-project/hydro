@@ -8,15 +8,16 @@ use hydroflow_lang::graph::{
 use hydroflow_lang::parse::{IndexInt, Indexing, Pipeline, PipelineLink};
 use proc_macro2::{Span, TokenStream};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
-use rust_sitter::Spanned;
 use syn::{parse_quote, parse_quote_spanned};
 
 mod grammar;
 mod join_plan;
 mod util;
 
-use grammar::datalog::*;
-use join_plan::*;
+use grammar::datalog::{
+    Aggregation, Atom, Declaration, Ident, IntExpr, Program, Rule, RuleType, TargetExpr,
+};
+use join_plan::{IntermediateJoinNode, JoinPlan};
 use util::{repeat_tuple, Counter};
 
 static MAGIC_RELATIONS: [&str; 1] = ["less_than"];
@@ -333,7 +334,7 @@ pub fn hydroflow_graph_to_program(flat_graph: HydroflowGraph, root: TokenStream)
 #[allow(clippy::too_many_arguments)]
 fn generate_rule(
     plan: JoinPlan<'_>,
-    rule: &Spanned<Rule>,
+    rule: &rust_sitter::Spanned<Rule>,
     flat_graph_builder: &mut FlatGraphBuilder,
     tee_counter: &mut HashMap<String, Counter>,
     merge_counter: &mut HashMap<String, Counter>,
@@ -345,7 +346,7 @@ fn generate_rule(
     let target = &rule.target.name;
     let target_ident = syn::Ident::new(&format!("{}_insert", target.name), get_span(target.span));
 
-    let out_expanded = expand_join_plan(
+    let out_expanded = join_plan::expand_join_plan(
         &plan,
         flat_graph_builder,
         tee_counter,
@@ -505,7 +506,7 @@ fn compute_join_plan<'a>(sources: &'a [Atom], persisted_rules: &HashSet<String>)
 
 pub(crate) fn gen_value_expr(
     expr: &IntExpr,
-    lookup_ident: &mut impl FnMut(&Spanned<Ident>) -> syn::Expr,
+    lookup_ident: &mut impl FnMut(&rust_sitter::Spanned<Ident>) -> syn::Expr,
     get_span: &dyn Fn((usize, usize)) -> Span,
 ) -> syn::Expr {
     match expr {
@@ -543,7 +544,7 @@ pub(crate) fn gen_value_expr(
 
 fn gen_target_expr(
     expr: &TargetExpr,
-    lookup_ident: &mut impl FnMut(&Spanned<Ident>) -> syn::Expr,
+    lookup_ident: &mut impl FnMut(&rust_sitter::Spanned<Ident>) -> syn::Expr,
     get_span: &dyn Fn((usize, usize)) -> Span,
 ) -> syn::Expr {
     match expr {

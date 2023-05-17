@@ -1,6 +1,8 @@
 [build]
 rustflags = [
     "-Zproc-macro-backtrace",
-    # TODO(mingwei): Need rust-analyzer support:
-    "-Aclippy::uninlined-format-args",
+    "-Wunused_qualifications",
+    # https://github.com/rust-lang/rust-clippy/issues/10087
+    ## TODO(mingwei): Need rust-analyzer support:
+    # "-Aclippy::uninlined-format-args",
 ]

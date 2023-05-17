@@ -99,10 +99,7 @@ impl<T> Drop for Sender<T> {
 impl<T> Sink<T> for Sender<T> {
     type Error = TrySendError<Option<T>>;
 
-    fn poll_ready(
-        self: std::pin::Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Some(strong) = Weak::upgrade(&self.weak) {
             let mut shared = strong.borrow_mut();
             if shared
@@ -122,22 +119,19 @@ impl<T> Sink<T> for Sender<T> {
         }
     }
 
-    fn start_send(self: std::pin::Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
+    fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         self.try_send(item).map_err(|e| match e {
             TrySendError::Full(item) => TrySendError::Full(Some(item)),
             TrySendError::Closed(item) => TrySendError::Closed(Some(item)),
         })
     }
 
-    fn poll_flush(
-        self: std::pin::Pin<&mut Self>,
-        _ctx: &mut Context<'_>,
-    ) -> Poll<Result<(), Self::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
     fn poll_close(
-        mut self: std::pin::Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         ctx: &mut Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().poll_flush(ctx))?;
@@ -200,10 +194,7 @@ impl<T> Drop for Receiver<T> {
 impl<T> Stream for Receiver<T> {
     type Item = T;
 
-    fn poll_next(
-        mut self: std::pin::Pin<&mut Self>,
-        ctx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.poll_recv(ctx)
     }
 }
@@ -296,7 +287,7 @@ mod test {
         let b_fut = send.send(234);
 
         futures::future::try_join(a_fut, b_fut).await.unwrap();
-        std::mem::drop(send);
+        drop(send);
 
         let mut out: Vec<_> = recv.collect().await;
         out.sort_unstable();

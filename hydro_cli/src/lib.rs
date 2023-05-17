@@ -116,7 +116,7 @@ impl Deployment {
     }
 
     #[allow(non_snake_case)]
-    fn Localhost(&self, py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+    fn Localhost(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = self
             .underlying
             .blocking_write()
@@ -142,7 +142,7 @@ impl Deployment {
         region: String,
         network: GCPNetwork,
         user: Option<String>,
-    ) -> PyResult<Py<pyo3::PyAny>> {
+    ) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_write().add_host(|id| {
             crate::core::GCPComputeEngineHost::new(
                 id,
@@ -171,7 +171,7 @@ impl Deployment {
         py: Python<'_>,
         on: &Host,
         external_ports: Vec<u16>,
-    ) -> PyResult<Py<pyo3::PyAny>> {
+    ) -> PyResult<Py<PyAny>> {
         let service = self.underlying.blocking_write().add_service(|id| {
             crate::core::CustomService::new(id, on.underlying.clone(), external_ports)
         });
@@ -199,7 +199,7 @@ impl Deployment {
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Option<Vec<u16>>,
-    ) -> PyResult<Py<pyo3::PyAny>> {
+    ) -> PyResult<Py<PyAny>> {
         let service = self.underlying.blocking_write().add_service(|id| {
             crate::core::HydroflowCrate::new(
                 id,
@@ -225,7 +225,7 @@ impl Deployment {
         .into_py(py))
     }
 
-    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             underlying.write().await.deploy().await.map_err(|e| {
@@ -245,7 +245,7 @@ impl Deployment {
         })
     }
 
-    fn start<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn start<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             underlying.write().await.start().await;
@@ -266,7 +266,7 @@ struct LocalhostHost {
 
 #[pymethods]
 impl LocalhostHost {
-    fn client_only(&self, py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+    fn client_only(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(RwLock::new(
             self.underlying.try_read().unwrap().client_only(),
         ));
@@ -350,7 +350,7 @@ pub struct Service {
 
 #[pymethods]
 impl Service {
-    fn stop<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn stop<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             underlying.write().await.stop().await.unwrap();
@@ -366,7 +366,7 @@ struct PyReceiver {
 
 #[pymethods]
 impl PyReceiver {
-    fn next<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn next<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let my_receiver = self.receiver.clone();
         interruptible_future_to_py(py, async move {
             let underlying = my_receiver.recv();
@@ -382,7 +382,7 @@ struct CustomService {
 
 #[pymethods]
 impl CustomService {
-    fn client_port(&self, py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+    fn client_port(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(RwLock::new(
             crate::core::custom_service::CustomClientPort::new(Arc::downgrade(&self.underlying)),
         ));
@@ -424,7 +424,7 @@ impl CustomClientPort {
         }
     }
 
-    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -467,7 +467,7 @@ async def pyreceiver_to_async_generator(pyreceiver):
 
 #[pymethods]
 impl HydroflowCrate {
-    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -477,7 +477,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -487,7 +487,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -511,7 +511,7 @@ struct HydroflowCratePorts {
 
 #[pymethods]
 impl HydroflowCratePorts {
-    fn __getattribute__(&self, name: String, py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+    fn __getattribute__(&self, name: String, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(RwLock::new(
             self.underlying
                 .try_read()
@@ -538,7 +538,7 @@ struct HydroflowCratePort {
 
 #[pymethods]
 impl HydroflowCratePort {
-    fn merge(&self, py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+    fn merge(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(RwLock::new(
             self.underlying.try_read().unwrap().clone().merge(),
         ));
@@ -645,7 +645,7 @@ impl HydroflowNull {
 }
 
 #[pyfunction]
-fn null(py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
+fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let arc = Arc::new(RwLock::new(
         crate::core::hydroflow_crate::ports::NullSourceSink,
     ));
@@ -662,12 +662,12 @@ fn null(py: Python<'_>) -> PyResult<Py<pyo3::PyAny>> {
 
 #[pyclass]
 struct ServerPort {
-    underlying: Option<hydroflow_cli_integration::ServerOrBound>,
+    underlying: Option<ServerOrBound>,
 }
 
 #[pymethods]
 impl ServerPort {
-    fn json(&self, py: Python<'_>) -> Py<pyo3::PyAny> {
+    fn json(&self, py: Python<'_>) -> Py<PyAny> {
         if let ServerOrBound::Server(server) = self.underlying.as_ref().unwrap() {
             pythonize(py, &server).unwrap()
         } else {
@@ -676,7 +676,7 @@ impl ServerPort {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    fn into_source<'p>(&mut self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn into_source<'p>(&mut self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.take().unwrap();
         interruptible_future_to_py(py, async move {
             convert_next_to_generator(PythonStream {
@@ -688,7 +688,7 @@ impl ServerPort {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    fn into_sink<'p>(&mut self, py: Python<'p>) -> PyResult<&'p pyo3::PyAny> {
+    fn into_sink<'p>(&mut self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.take().unwrap();
         interruptible_future_to_py(py, async move {
             let connected = underlying.connect::<ConnectedBidi>().await.into_sink();

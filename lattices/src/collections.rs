@@ -1,6 +1,5 @@
 //! Simple singleton or array collection with [`cc_traits`] implementations.
 
-use std::array::IntoIter;
 use std::borrow::Borrow;
 use std::hash::Hash;
 
@@ -415,7 +414,7 @@ impl<K, V> MapIterMut for SingletonMap<K, V> {
 pub struct ArraySet<T, const N: usize>(pub [T; N]);
 impl<T, const N: usize> IntoIterator for ArraySet<T, N> {
     type Item = T;
-    type IntoIter = IntoIter<T, N>;
+    type IntoIter = std::array::IntoIter<T, N>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()

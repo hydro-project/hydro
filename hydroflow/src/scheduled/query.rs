@@ -90,7 +90,7 @@ where
             send.give(Iter(recv.take_inner().into_iter().map(&mut f)));
         });
 
-        std::mem::drop(df);
+        drop(df);
         Operator {
             df: self.df,
             recv_port,
@@ -114,7 +114,7 @@ where
             },
         );
 
-        std::mem::drop(df);
+        drop(df);
         Operator {
             df: self.df,
             recv_port,
@@ -139,7 +139,7 @@ where
             },
         );
 
-        std::mem::drop(df);
+        drop(df);
         Operator {
             df: self.df,
             recv_port,

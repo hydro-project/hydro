@@ -879,15 +879,18 @@ impl HydroflowGraph {
 
         quote! {
             {
-                use #root::{var_expr, var_args};
+                #[allow(unused_qualifications)]
+                {
+                    use #root::{var_expr, var_args};
 
-                let mut #hf = #root::scheduled::graph::Hydroflow::new();
-                #hf.__assign_meta_graph(#meta_graph_json);
-                #hf.__assign_diagnostics(#diagnostics_json);
+                    let mut #hf = #root::scheduled::graph::Hydroflow::new();
+                    #hf.__assign_meta_graph(#meta_graph_json);
+                    #hf.__assign_diagnostics(#diagnostics_json);
 
-                #code
+                    #code
 
-                #hf
+                    #hf
+                }
             }
         }
     }

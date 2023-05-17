@@ -25,7 +25,7 @@ pub fn test_fold_tick() {
     assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
     assert_eq!(
         &[vec![1, 2, 3, 4]],
-        &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
     items_send.send(vec![5, 6]).unwrap();
@@ -35,7 +35,7 @@ pub fn test_fold_tick() {
     assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
     assert_eq!(
         &[vec![5, 6, 7, 8]],
-        &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
     df.run_available(); // Should return quickly and not hang
@@ -62,7 +62,7 @@ pub fn test_fold_static() {
     assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
     assert_eq!(
         &[vec![1, 2, 3, 4]],
-        &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
     items_send.send(vec![5, 6]).unwrap();
@@ -72,7 +72,7 @@ pub fn test_fold_static() {
     assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
     assert_eq!(
         &[vec![1, 2, 3, 4, 5, 6, 7, 8]],
-        &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 
     df.run_available(); // Should return quickly and not hang

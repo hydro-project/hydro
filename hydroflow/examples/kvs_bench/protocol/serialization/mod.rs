@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use serde::de::{DeserializeSeed, VariantAccess, Visitor};
 use serde::ser::SerializeStructVariant;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 
 use self::lattices::MapUnionHashMapWrapper;
 use super::KvsRequest;
@@ -22,7 +22,7 @@ use crate::protocol::serialization::kvs_request_put_visitor::KvsRequestPutVisito
 impl<const SIZE: usize> Serialize for KvsRequest<SIZE> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: Serializer,
+        S: serde::Serializer,
     {
         match self {
             KvsRequest::Put { key, value } => {
@@ -128,10 +128,10 @@ impl<'de> Visitor<'de> for KVSRequestFieldVisitor {
         E: serde::de::Error,
     {
         match value {
-            0 => Result::Ok(KvsRequestField::Put),
-            1 => Result::Ok(KvsRequestField::Get),
-            2 => Result::Ok(KvsRequestField::Gossip),
-            3 => Result::Ok(KvsRequestField::Delete),
+            0 => Ok(KvsRequestField::Put),
+            1 => Ok(KvsRequestField::Get),
+            2 => Ok(KvsRequestField::Gossip),
+            3 => Ok(KvsRequestField::Delete),
             _ => panic!(),
         }
     }
@@ -152,8 +152,8 @@ impl<'de> Visitor<'de> for KVSRequestFieldVisitor {
 impl<'de> Deserialize<'de> for KvsRequestField {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: Deserializer<'de>,
+        D: serde::Deserializer<'de>,
     {
-        Deserializer::deserialize_identifier(deserializer, KVSRequestFieldVisitor)
+        serde::Deserializer::deserialize_identifier(deserializer, KVSRequestFieldVisitor)
     }
 }

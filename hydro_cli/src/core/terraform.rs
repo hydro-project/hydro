@@ -148,7 +148,7 @@ impl TerraformBatch {
 
 struct TerraformApply {
     child: Option<(u32, Arc<RwLock<Child>>)>,
-    deployment_folder: Option<tempfile::TempDir>,
+    deployment_folder: Option<TempDir>,
 }
 
 async fn display_apply_outputs(stdout: &mut ChildStdout) {
@@ -338,7 +338,7 @@ pub struct TerraformOutput {
 pub struct TerraformResult {
     pub outputs: HashMap<String, TerraformOutput>,
     /// `None` if no deployment was performed
-    pub deployment_folder: Option<tempfile::TempDir>,
+    pub deployment_folder: Option<TempDir>,
 }
 
 impl Drop for TerraformResult {

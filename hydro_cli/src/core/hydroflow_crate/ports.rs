@@ -50,7 +50,7 @@ pub trait HydroflowServer: DynClone + Send + Sync {
 pub type ReverseSinkInstantiator = Box<dyn FnOnce(&mut dyn Any) -> ServerStrategy>;
 
 pub trait HydroflowSink: Send + Sync {
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
 
     /// Instantiate the sink as the source host connecting to the sink host.
     /// Returns a thunk that can be called to perform mutations that instantiate the sink.

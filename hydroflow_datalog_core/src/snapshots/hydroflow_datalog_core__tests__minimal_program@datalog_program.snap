@@ -4,269 +4,299 @@ expression: "prettyplease::unparse(&wrapped)"
 ---
 fn main() {
     {
-        use hydroflow::{var_expr, var_args};
-        let mut df = hydroflow::scheduled::graph::Hydroflow::new();
-        df.__assign_meta_graph(
-            "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"source_stream (input)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | out . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ ,) | ((row . 1 , row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ ,) , _) | (g . 0 , g . 1 ,))\"},\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":3}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"input_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"out_insert\",\"version\":1}]}",
-        );
-        df.__assign_diagnostics("[]");
-        let mut sg_1v1_node_7v1_stream = {
-            #[inline(always)]
-            fn check_stream<
-                Stream: hydroflow::futures::stream::Stream<Item = Item>,
-                Item,
-            >(
-                stream: Stream,
-            ) -> ::std::pin::Pin<
-                ::std::boxed::Box<impl hydroflow::futures::stream::Stream<Item = Item>>,
-            > {
-                ::std::boxed::Box::pin(stream)
-            }
-            check_stream(input)
-        };
-        let sg_1v1_node_2v1_uniquedata = df
-            .add_state(
-                ::std::cell::RefCell::new(
-                    hydroflow::lang::monotonic_map::MonotonicMap::<
-                        _,
-                        hydroflow::rustc_hash::FxHashSet<_>,
-                    >::default(),
-                ),
+        #[allow(unused_qualifications)]
+        {
+            use hydroflow::{var_expr, var_args};
+            let mut df = hydroflow::scheduled::graph::Hydroflow::new();
+            df.__assign_meta_graph(
+                "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"source_stream (input)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | out . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ ,) | ((row . 1 , row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ ,) , _) | (g . 0 , g . 1 ,))\"},\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":3}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"input_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"out_insert\",\"version\":1}]}",
             );
-        let sg_1v1_node_5v1_uniquedata = df
-            .add_state(
-                ::std::cell::RefCell::new(
-                    hydroflow::lang::monotonic_map::MonotonicMap::<
-                        _,
-                        hydroflow::rustc_hash::FxHashSet<_>,
-                    >::default(),
-                ),
-            );
-        df.add_subgraph_stratified(
-            "Subgraph GraphSubgraphId(1v1)",
-            0,
-            var_expr!(),
-            var_expr!(),
-            move |context, var_args!(), var_args!()| {
-                let op_7v1 = std::iter::from_fn(|| {
-                    match hydroflow::futures::stream::Stream::poll_next(
-                        sg_1v1_node_7v1_stream.as_mut(),
-                        &mut std::task::Context::from_waker(&context.waker()),
-                    ) {
-                        std::task::Poll::Ready(maybe) => maybe,
-                        std::task::Poll::Pending => None,
-                    }
-                });
-                let op_7v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_7v1__source_stream__loc_unknown_start_2_26_end_2_46<
-                        Item,
-                        Input: ::std::iter::Iterator<Item = Item>,
-                    >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                        struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                            inner: Input,
-                        }
-                        impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator
-                        for Pull<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn next(&mut self) -> Option<Self::Item> {
-                                self.inner.next()
-                            }
-                            #[inline(always)]
-                            fn size_hint(&self) -> (usize, Option<usize>) {
-                                self.inner.size_hint()
-                            }
-                        }
-                        Pull { inner: input }
-                    }
-                    op_7v1__source_stream__loc_unknown_start_2_26_end_2_46(op_7v1)
-                };
-                let op_2v1 = op_7v1
-                    .filter(|item| {
-                        let mut borrow = context
-                            .state_ref(sg_1v1_node_2v1_uniquedata)
-                            .borrow_mut();
-                        let set = borrow
-                            .get_mut_clear((
-                                context.current_tick(),
-                                context.current_stratum(),
-                            ));
-                        if !set.contains(item) {
-                            set.insert(::std::clone::Clone::clone(item));
-                            true
-                        } else {
-                            false
-                        }
-                    });
-                let op_2v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_2v1__unique__loc_unknown_start_2_19_end_2_24<
-                        Item,
-                        Input: ::std::iter::Iterator<Item = Item>,
-                    >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                        struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                            inner: Input,
-                        }
-                        impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator
-                        for Pull<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn next(&mut self) -> Option<Self::Item> {
-                                self.inner.next()
-                            }
-                            #[inline(always)]
-                            fn size_hint(&self) -> (usize, Option<usize>) {
-                                self.inner.size_hint()
-                            }
-                        }
-                        Pull { inner: input }
-                    }
-                    op_2v1__unique__loc_unknown_start_2_19_end_2_24(op_2v1)
-                };
-                let op_9v1 = op_2v1.map(|row: (_, _)| ((row.1, row.0), ()));
-                let op_9v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_9v1__map__loc_unknown_start_1_0_end_1_0<
-                        Item,
-                        Input: ::std::iter::Iterator<Item = Item>,
-                    >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                        struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                            inner: Input,
-                        }
-                        impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator
-                        for Pull<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn next(&mut self) -> Option<Self::Item> {
-                                self.inner.next()
-                            }
-                            #[inline(always)]
-                            fn size_hint(&self) -> (usize, Option<usize>) {
-                                self.inner.size_hint()
-                            }
-                        }
-                        Pull { inner: input }
-                    }
-                    op_9v1__map__loc_unknown_start_1_0_end_1_0(op_9v1)
-                };
-                let op_10v1 = op_9v1.map(|(g, a): ((_, _), _)| (g.0, g.1));
-                let op_10v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_10v1__map__loc_unknown_start_1_0_end_1_0<
-                        Item,
-                        Input: ::std::iter::Iterator<Item = Item>,
-                    >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                        struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                            inner: Input,
-                        }
-                        impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator
-                        for Pull<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn next(&mut self) -> Option<Self::Item> {
-                                self.inner.next()
-                            }
-                            #[inline(always)]
-                            fn size_hint(&self) -> (usize, Option<usize>) {
-                                self.inner.size_hint()
-                            }
-                        }
-                        Pull { inner: input }
-                    }
-                    op_10v1__map__loc_unknown_start_1_0_end_1_0(op_10v1)
-                };
-                let op_5v1 = op_10v1
-                    .filter(|item| {
-                        let mut borrow = context
-                            .state_ref(sg_1v1_node_5v1_uniquedata)
-                            .borrow_mut();
-                        let set = borrow
-                            .get_mut_clear((
-                                context.current_tick(),
-                                context.current_stratum(),
-                            ));
-                        if !set.contains(item) {
-                            set.insert(::std::clone::Clone::clone(item));
-                            true
-                        } else {
-                            false
-                        }
-                    });
-                let op_5v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_5v1__unique__loc_unknown_start_3_20_end_3_23<
-                        Item,
-                        Input: ::std::iter::Iterator<Item = Item>,
-                    >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
-                        struct Pull<Item, Input: ::std::iter::Iterator<Item = Item>> {
-                            inner: Input,
-                        }
-                        impl<Item, Input: ::std::iter::Iterator<Item = Item>> Iterator
-                        for Pull<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn next(&mut self) -> Option<Self::Item> {
-                                self.inner.next()
-                            }
-                            #[inline(always)]
-                            fn size_hint(&self) -> (usize, Option<usize>) {
-                                self.inner.size_hint()
-                            }
-                        }
-                        Pull { inner: input }
-                    }
-                    op_5v1__unique__loc_unknown_start_3_20_end_3_23(op_5v1)
-                };
-                let op_8v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
-                    out.send(v).unwrap()
-                });
-                let op_8v1 = {
-                    #[allow(non_snake_case)]
-                    #[inline(always)]
-                    pub fn op_8v1__for_each__loc_unknown_start_3_25_end_3_59<
-                        Item,
-                        Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                    >(
-                        input: Input,
-                    ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
-                        struct Push<
-                            Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                        > {
-                            inner: Input,
-                        }
-                        impl<
-                            Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                        > hydroflow::pusherator::Pusherator for Push<Item, Input> {
-                            type Item = Item;
-                            #[inline(always)]
-                            fn give(&mut self, item: Self::Item) {
-                                self.inner.give(item)
-                            }
-                        }
-                        Push { inner: input }
-                    }
-                    op_8v1__for_each__loc_unknown_start_3_25_end_3_59(op_8v1)
-                };
+            df.__assign_diagnostics("[]");
+            let mut sg_1v1_node_7v1_stream = {
                 #[inline(always)]
-                fn check_pivot_run<
-                    Pull: ::std::iter::Iterator<Item = Item>,
-                    Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                fn check_stream<
+                    Stream: hydroflow::futures::stream::Stream<Item = Item>,
                     Item,
-                >(pull: Pull, push: Push) {
-                    hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                >(
+                    stream: Stream,
+                ) -> ::std::pin::Pin<
+                    ::std::boxed::Box<
+                        impl hydroflow::futures::stream::Stream<Item = Item>,
+                    >,
+                > {
+                    ::std::boxed::Box::pin(stream)
                 }
-                check_pivot_run(op_5v1, op_8v1);
-            },
-        );
-        df
+                check_stream(input)
+            };
+            let sg_1v1_node_2v1_uniquedata = df
+                .add_state(
+                    ::std::cell::RefCell::new(
+                        hydroflow::lang::monotonic_map::MonotonicMap::<
+                            _,
+                            hydroflow::rustc_hash::FxHashSet<_>,
+                        >::default(),
+                    ),
+                );
+            let sg_1v1_node_5v1_uniquedata = df
+                .add_state(
+                    ::std::cell::RefCell::new(
+                        hydroflow::lang::monotonic_map::MonotonicMap::<
+                            _,
+                            hydroflow::rustc_hash::FxHashSet<_>,
+                        >::default(),
+                    ),
+                );
+            df.add_subgraph_stratified(
+                "Subgraph GraphSubgraphId(1v1)",
+                0,
+                var_expr!(),
+                var_expr!(),
+                move |context, var_args!(), var_args!()| {
+                    let op_7v1 = std::iter::from_fn(|| {
+                        match hydroflow::futures::stream::Stream::poll_next(
+                            sg_1v1_node_7v1_stream.as_mut(),
+                            &mut std::task::Context::from_waker(&context.waker()),
+                        ) {
+                            std::task::Poll::Ready(maybe) => maybe,
+                            std::task::Poll::Pending => None,
+                        }
+                    });
+                    let op_7v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_7v1__source_stream__loc_unknown_start_2_26_end_2_46<
+                            Item,
+                            Input: ::std::iter::Iterator<Item = Item>,
+                        >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                            struct Pull<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > Iterator for Pull<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn next(&mut self) -> Option<Self::Item> {
+                                    self.inner.next()
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    self.inner.size_hint()
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_7v1__source_stream__loc_unknown_start_2_26_end_2_46(op_7v1)
+                    };
+                    let op_2v1 = op_7v1
+                        .filter(|item| {
+                            let mut borrow = context
+                                .state_ref(sg_1v1_node_2v1_uniquedata)
+                                .borrow_mut();
+                            let set = borrow
+                                .get_mut_clear((
+                                    context.current_tick(),
+                                    context.current_stratum(),
+                                ));
+                            if !set.contains(item) {
+                                set.insert(::std::clone::Clone::clone(item));
+                                true
+                            } else {
+                                false
+                            }
+                        });
+                    let op_2v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_2v1__unique__loc_unknown_start_2_19_end_2_24<
+                            Item,
+                            Input: ::std::iter::Iterator<Item = Item>,
+                        >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                            struct Pull<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > Iterator for Pull<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn next(&mut self) -> Option<Self::Item> {
+                                    self.inner.next()
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    self.inner.size_hint()
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_2v1__unique__loc_unknown_start_2_19_end_2_24(op_2v1)
+                    };
+                    let op_9v1 = op_2v1.map(|row: (_, _)| ((row.1, row.0), ()));
+                    let op_9v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_9v1__map__loc_unknown_start_1_0_end_1_0<
+                            Item,
+                            Input: ::std::iter::Iterator<Item = Item>,
+                        >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                            struct Pull<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > Iterator for Pull<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn next(&mut self) -> Option<Self::Item> {
+                                    self.inner.next()
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    self.inner.size_hint()
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_9v1__map__loc_unknown_start_1_0_end_1_0(op_9v1)
+                    };
+                    let op_10v1 = op_9v1.map(|(g, a): ((_, _), _)| (g.0, g.1));
+                    let op_10v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_10v1__map__loc_unknown_start_1_0_end_1_0<
+                            Item,
+                            Input: ::std::iter::Iterator<Item = Item>,
+                        >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                            struct Pull<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > Iterator for Pull<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn next(&mut self) -> Option<Self::Item> {
+                                    self.inner.next()
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    self.inner.size_hint()
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_10v1__map__loc_unknown_start_1_0_end_1_0(op_10v1)
+                    };
+                    let op_5v1 = op_10v1
+                        .filter(|item| {
+                            let mut borrow = context
+                                .state_ref(sg_1v1_node_5v1_uniquedata)
+                                .borrow_mut();
+                            let set = borrow
+                                .get_mut_clear((
+                                    context.current_tick(),
+                                    context.current_stratum(),
+                                ));
+                            if !set.contains(item) {
+                                set.insert(::std::clone::Clone::clone(item));
+                                true
+                            } else {
+                                false
+                            }
+                        });
+                    let op_5v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_5v1__unique__loc_unknown_start_3_20_end_3_23<
+                            Item,
+                            Input: ::std::iter::Iterator<Item = Item>,
+                        >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
+                            struct Pull<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: ::std::iter::Iterator<Item = Item>,
+                            > Iterator for Pull<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn next(&mut self) -> Option<Self::Item> {
+                                    self.inner.next()
+                                }
+                                #[inline(always)]
+                                fn size_hint(&self) -> (usize, Option<usize>) {
+                                    self.inner.size_hint()
+                                }
+                            }
+                            Pull { inner: input }
+                        }
+                        op_5v1__unique__loc_unknown_start_3_20_end_3_23(op_5v1)
+                    };
+                    let op_8v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
+                        out.send(v).unwrap()
+                    });
+                    let op_8v1 = {
+                        #[allow(non_snake_case)]
+                        #[inline(always)]
+                        pub fn op_8v1__for_each__loc_unknown_start_3_25_end_3_59<
+                            Item,
+                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                        >(
+                            input: Input,
+                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                            struct Push<
+                                Item,
+                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            > {
+                                inner: Input,
+                            }
+                            impl<
+                                Item,
+                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                type Item = Item;
+                                #[inline(always)]
+                                fn give(&mut self, item: Self::Item) {
+                                    self.inner.give(item)
+                                }
+                            }
+                            Push { inner: input }
+                        }
+                        op_8v1__for_each__loc_unknown_start_3_25_end_3_59(op_8v1)
+                    };
+                    #[inline(always)]
+                    fn check_pivot_run<
+                        Pull: ::std::iter::Iterator<Item = Item>,
+                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Item,
+                    >(pull: Pull, push: Push) {
+                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                    }
+                    check_pivot_run(op_5v1, op_8v1);
+                },
+            );
+            df
+        }
     }
 }
 

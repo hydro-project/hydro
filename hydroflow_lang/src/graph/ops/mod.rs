@@ -337,7 +337,7 @@ impl WriteContextArgs<'_> {
     }
 }
 
-pub trait RangeTrait<T>: Send + Sync + std::fmt::Debug
+pub trait RangeTrait<T>: Send + Sync + Debug
 where
     T: ?Sized,
 {
@@ -379,7 +379,7 @@ where
 
 impl<R, T> RangeTrait<T> for R
 where
-    R: RangeBounds<T> + Send + Sync + std::fmt::Debug,
+    R: RangeBounds<T> + Send + Sync + Debug,
 {
     fn start_bound(&self) -> Bound<&T> {
         self.start_bound()
