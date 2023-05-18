@@ -107,7 +107,7 @@ mod test {
     use std::cmp::Ordering::*;
 
     use super::*;
-    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
+    use crate::test::check_all;
 
     #[test]
     fn ordering() {
@@ -133,14 +133,7 @@ mod test {
 
     #[test]
     fn consistency() {
-        let test_vec = vec![Max::new(0), Max::new(1)];
-
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
-
-        let test_vec = vec![Min::new(0), Min::new(1)];
-
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
+        check_all(&[Max::new(0), Max::new(1)]);
+        check_all(&[Min::new(0), Min::new(1)]);
     }
 }

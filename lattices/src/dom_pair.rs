@@ -116,7 +116,9 @@ mod test {
     use super::*;
     use crate::ord::Max;
     use crate::set_union::SetUnionHashSet;
-    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
+    use crate::test::{
+        check_all, check_lattice_ord, check_lattice_properties, check_partial_ord_properties,
+    };
 
     #[test]
     fn consistency() {
@@ -131,9 +133,10 @@ mod test {
             }
         }
 
-        assert_partial_ord_identities(&test_vec);
+        check_lattice_ord(&test_vec);
+        check_partial_ord_properties(&test_vec);
         // DomPair is not actually a lattice.
-        assert!(std::panic::catch_unwind(|| assert_lattice_identities(&test_vec)).is_err());
+        assert!(std::panic::catch_unwind(|| check_lattice_properties(&test_vec)).is_err());
     }
 
     #[test]
@@ -149,7 +152,6 @@ mod test {
             }
         }
 
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
+        check_all(&test_vec);
     }
 }

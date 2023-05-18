@@ -7,7 +7,7 @@ use std::collections::{BTreeSet, HashSet};
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, SingletonSet};
-use crate::{ConvertFrom, Merge};
+use crate::{ConvertFrom, LatticeOrd, Merge};
 
 /// A set-union lattice.
 ///
@@ -82,6 +82,10 @@ where
         }
     }
 }
+impl<SetSelf, SetOther> LatticeOrd<SetUnion<SetOther>> for SetUnion<SetSelf> where
+    Self: PartialOrd<SetUnion<SetOther>>
+{
+}
 
 impl<SetSelf, SetOther, Item> PartialEq<SetUnion<SetOther>> for SetUnion<SetSelf>
 where
@@ -120,7 +124,7 @@ pub type SetUnionOption<Item> = SetUnion<Option<Item>>;
 mod test {
     use super::*;
     use crate::collections::SingletonSet;
-    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
+    use crate::test::check_all;
 
     #[test]
     fn test_set_union() {
@@ -159,14 +163,11 @@ mod test {
 
     #[test]
     fn consistency() {
-        let test_vec = vec![
+        check_all(&[
             SetUnionHashSet::new_from([]),
             SetUnionHashSet::new_from([0]),
             SetUnionHashSet::new_from([1]),
             SetUnionHashSet::new_from([0, 1]),
-        ];
-
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
+        ]);
     }
 }

@@ -89,7 +89,7 @@ where
 mod test {
     use super::*;
     use crate::set_union::SetUnionHashSet;
-    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
+    use crate::test::check_all;
 
     #[test]
     #[rustfmt::skip]
@@ -115,15 +115,12 @@ mod test {
 
     #[test]
     fn consistency() {
-        let test_vec = vec![
+        check_all(&[
             Bottom::default(),
             Bottom::new(SetUnionHashSet::new_from([])),
             Bottom::new(SetUnionHashSet::new_from([0])),
             Bottom::new(SetUnionHashSet::new_from([1])),
             Bottom::new(SetUnionHashSet::new_from([0, 1])),
-        ];
-
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
+        ])
     }
 }

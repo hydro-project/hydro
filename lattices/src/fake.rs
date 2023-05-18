@@ -65,30 +65,31 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::test::{assert_lattice_identities, assert_partial_ord_identities};
+    use crate::test::{
+        check_all, check_lattice_ord, check_lattice_properties, check_partial_ord_properties,
+    };
 
     #[test]
-    fn consistency() {
-        let test_vec = vec![Fake::new("hello world")];
-
-        assert_partial_ord_identities(&test_vec);
-        assert_lattice_identities(&test_vec);
+    fn consistency_equal() {
+        check_all(&[Fake::new("hello world")])
     }
 
     #[test]
     fn consistency_inequal() {
         use std::collections::BTreeSet;
 
-        let test_vec = vec![
+        let items = [
             Fake::new(BTreeSet::from_iter([])),
             Fake::new(BTreeSet::from_iter([0])),
             Fake::new(BTreeSet::from_iter([1])),
             Fake::new(BTreeSet::from_iter([0, 1])),
         ];
 
+        // Merged inequal elements panic, therefore `NaiveMerge` panics.
+        assert!(std::panic::catch_unwind(|| check_lattice_ord(&items)).is_err());
         // Fake does not have a partial order.
-        assert!(std::panic::catch_unwind(|| assert_partial_ord_identities(&test_vec)).is_err());
+        assert!(std::panic::catch_unwind(|| check_partial_ord_properties(&items)).is_err());
         // Fake is not actually a lattice.
-        assert!(std::panic::catch_unwind(|| assert_lattice_identities(&test_vec)).is_err());
+        assert!(std::panic::catch_unwind(|| check_lattice_properties(&items)).is_err());
     }
 }
