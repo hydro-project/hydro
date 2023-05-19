@@ -3,12 +3,9 @@ mod serialization;
 #[cfg(test)]
 mod test;
 
-use lattices::bottom::Bottom;
-use lattices::dom_pair::DomPair;
-use lattices::fake::Fake;
 use lattices::map_union::MapUnionHashMap;
-use lattices::ord::Max;
 use lattices::set_union::SetUnionHashSet;
+use lattices::{Bottom, DomPair, Fake, Max};
 pub use serialization::KvsRequestDeserializer;
 
 use crate::buffer_pool::AutoReturnBuffer;

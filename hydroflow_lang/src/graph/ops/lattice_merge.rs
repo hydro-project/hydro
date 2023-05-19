@@ -24,9 +24,9 @@ use syn::{parse_quote_spanned, spanned::Spanned};
 ///
 /// ```hydroflow
 /// source_iter([1,2,3,4,5])
-///     -> map(hydroflow::lattices::ord::Max::new)
-///     -> lattice_merge::<'static, hydroflow::lattices::ord::Max<usize>>()
-///     -> for_each(|x: hydroflow::lattices::ord::Max<usize>| println!("Least upper bound: {}", x.0));
+///     -> map(hydroflow::lattices::Max::new)
+///     -> lattice_merge::<'static, hydroflow::lattices::Max<usize>>()
+///     -> for_each(|x: hydroflow::lattices::Max<usize>| println!("Least upper bound: {}", x.0));
 /// ```
 #[hydroflow_internalmacro::operator_docgen]
 pub const LATTICE_MERGE: OperatorConstraints = OperatorConstraints {

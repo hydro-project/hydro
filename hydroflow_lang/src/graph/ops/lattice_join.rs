@@ -16,9 +16,9 @@ use syn::parse_quote;
 ///
 /// ```hydroflow
 /// // should print `(key, (2, 1))`
-/// my_join = lattice_join::<hydroflow::lattices::ord::Max<usize>, hydroflow::lattices::ord::Max<usize>>();
-/// source_iter(vec![("key", hydroflow::lattices::ord::Max::new(0)), ("key", hydroflow::lattices::ord::Max::new(2))]) -> [0]my_join;
-/// source_iter(vec![("key", hydroflow::lattices::ord::Max::new(1))]) -> [1]my_join;
+/// my_join = lattice_join::<hydroflow::lattices::Max<usize>, hydroflow::lattices::Max<usize>>();
+/// source_iter(vec![("key", hydroflow::lattices::Max::new(0)), ("key", hydroflow::lattices::Max::new(2))]) -> [0]my_join;
+/// source_iter(vec![("key", hydroflow::lattices::Max::new(1))]) -> [1]my_join;
 /// my_join -> for_each(|(k, (v1, v2))| println!("({}, ({:?}, {:?}))", k, v1, v2));
 /// ```
 ///
@@ -49,7 +49,7 @@ use syn::parse_quote;
 /// ### Examples
 ///
 /// ```rustbook
-/// use hydroflow::lattices::ord::Max;
+/// use hydroflow::lattices::Max;
 ///
 /// let (input_send, input_recv) = hydroflow::util::unbounded_channel::<(usize, Max<usize>)>();
 /// let (out_tx, mut out_rx) = hydroflow::util::unbounded_channel::<(usize, (Max<usize>, Max<usize>))>();

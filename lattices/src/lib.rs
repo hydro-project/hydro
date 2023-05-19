@@ -1,65 +1,37 @@
 #![deny(missing_docs)]
 #![feature(impl_trait_in_assoc_type)]
-//! Module containing lattice traits and implementations.
-//!
-//! Convention: Generic parameters that are full words (e.g. `Other`, `Key`, `Val`) are lattice
-//! types.
-//! Conversely, Generic parameters that are single letters or acronyms (e.g. `K`, `T`) are scalar
-//! non-`Lattice` types.
+#![doc = include_str!("../README.md")]
 
 use std::cmp::Ordering::{self, *};
 
 use sealed::sealed;
 
-pub mod bottom;
+mod bottom;
 pub mod collections;
-pub mod dom_pair;
-pub mod fake;
-pub mod map_union;
-pub mod ord;
-pub mod pair;
-pub mod set_union;
 pub mod test;
+pub use bottom::Bottom;
+mod dom_pair;
+pub use dom_pair::DomPair;
+mod fake;
+pub use fake::Fake;
+pub mod map_union;
+mod ord;
+pub use ord::{Max, Min};
+mod pair;
+pub use pair::Pair;
+pub mod cc_traits;
+pub mod set_union;
 
-/// Re-export of the [`cc_traits`](::cc_traits) crate with [`SimpleKeyedRef`](cc_traits::SimpleKeyedRef) added.
-pub mod cc_traits {
-    pub use ::cc_traits::*;
-
-    /// <https://github.com/timothee-haudebourg/cc-traits/pull/8>
-    ///
-    /// Keyed collection where each key reference can be converted into a standard
-    /// "simple" rust reference.
-    ///
-    /// This trait is particularly useful to avoid having to include where bounds
-    /// of the form `for<'r> T::KeyRef<'r>: Into<&'r T::Key>`, which can
-    /// currently lead the compiler to try to prove `T: 'static`
-    /// (see <https://github.com/rust-lang/rust/pull/96709#issuecomment-1182403490>)
-    /// for more details.
-    pub trait SimpleKeyedRef: KeyedRef {
-        /// Convert the borrow into a simple `&Key` ref.
-        fn into_ref<'r>(r: Self::KeyRef<'r>) -> &'r Self::Key
-        where
-            Self: 'r;
-    }
-    impl<T> SimpleKeyedRef for T
-    where
-        T: KeyedRef,
-        for<'a> Self::KeyRef<'a>: Into<&'a Self::Key>,
-    {
-        fn into_ref<'r>(r: Self::KeyRef<'r>) -> &'r Self::Key
-        where
-            Self: 'r,
-        {
-            r.into()
-        }
-    }
-}
-
-/// Trait for lattice merge (least upper bound).
+/// Trait for lattice merge (AKA "join" or "least upper bound").
 pub trait Merge<Other> {
     /// Merge `other` into the `self` lattice.
     ///
-    /// Returns whether `self` changed at all.
+    /// This operation must be associative, commutative, and idempotent.
+    ///
+    /// Returns `true` if `self` changed, `false` otherwise.
+    /// Returning `true` implies that the new value for `self` is later in the lattice order than
+    /// the old value. Returning `false` means that `self` was unchanged and therefore `other` came
+    /// before `self` (or the two are equal) in the lattice order.
     fn merge(&mut self, other: Other) -> bool;
 
     /// Merge `this` and `delta` together, returning the new value.
@@ -78,7 +50,7 @@ pub trait LatticeOrd<Rhs = Self>: PartialOrd<Rhs> {}
 
 /// Naive lattice compare, based on the [`Merge::merge`] function.
 #[sealed]
-pub trait NaiveOrd<Rhs = Self>
+pub trait NaiveLatticeOrd<Rhs = Self>
 where
     Self: Clone + Merge<Rhs> + Sized,
     Rhs: Clone + Merge<Self>,
@@ -101,7 +73,7 @@ where
     }
 }
 #[sealed]
-impl<This, Other> NaiveOrd<Other> for This
+impl<This, Other> NaiveLatticeOrd<Other> for This
 where
     Self: Clone + Merge<Other>,
     Other: Clone + Merge<Self>,
@@ -110,7 +82,8 @@ where
 
 /// Same as `From` but for lattices.
 ///
-/// Do not convert non-lattice (AKA scalar) types if you implement this trait.
+/// This should only be implemented between different representations of the same lattice type.
+/// This should recursively convert nested lattice types, but not non-lattice ("scalar") types.
 pub trait ConvertFrom<Other> {
     /// Convert from the `Other` lattice into `Self`.
     fn from(other: Other) -> Self;

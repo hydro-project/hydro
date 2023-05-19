@@ -1,5 +1,5 @@
 use hydroflow::hydroflow_syntax;
-use hydroflow::lattices::ord::Max;
+use hydroflow::lattices::Max;
 
 #[test]
 fn test_basic() {

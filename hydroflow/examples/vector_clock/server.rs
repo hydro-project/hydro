@@ -5,8 +5,7 @@ use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::{UdpSink, UdpStream};
 use lattices::map_union::MapUnionSingletonMap;
-use lattices::ord::Max;
-use lattices::Merge;
+use lattices::{Max, Merge};
 
 use crate::protocol::{EchoMsg, VecClock};
 

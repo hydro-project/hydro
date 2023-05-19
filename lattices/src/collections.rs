@@ -1,4 +1,4 @@
-//! Simple singleton or array collection with [`cc_traits`] implementations.
+//! Simple singleton or array collection with [`cc_traits`](crate::cc_traits) implementations.
 
 use std::borrow::Borrow;
 use std::hash::Hash;

@@ -1,17 +1,20 @@
-//! Dominating pair compound lattice.
-//!
-//! When merging if one `Key` (usually a timestamp) fully dominates (is greater than) the other,
-//! then both that `Key` and corresponding `Val` are selected. If the `Key`s are equal or
-//! incomparable, then both the `Key`s and `Val`s are merged.
-
 use std::cmp::Ordering::{self, *};
 
 use super::{ConvertFrom, Merge};
 use crate::LatticeOrd;
 
-/// Dominating pair lattice.
+/// Dominating pair compound lattice.
+///
+/// When merging if one `Key` (usually a timestamp) fully dominates (is greater than) the other,
+/// then both that `Key` and corresponding `Val` are selected. If the `Key`s are equal or
+/// incomparable, then both the `Key`s and `Val`s are merged.
 ///
 /// `Key` specifies the key lattice (usually a timestamp), and `Val` specifies the value lattice.
+///
+/// Note that this is not a proper lattice, it fails associativity. However it will behave like a
+/// proper lattice if `Key` is a totally ordered lattice or a properly formed vector clock lattice.
+/// The exact meaning of "properly formed" is still TBD, but each node always incrementing its
+/// entry for each operation sent should be sufficient.
 #[derive(Copy, Clone, Debug, Default, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DomPair<Key, Val> {

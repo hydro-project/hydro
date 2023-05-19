@@ -29,5 +29,7 @@
   - [Handoffs](./handoffs.md)
   - [Networking](./networking.md)
   - [Subgraph In-Out Trees](./in-out_trees.md)
+- [The Lattices Crate](./lattices_crate.md)
+  - [Lattice Math](./lattice_math.md)
 - [TODO](./todo.md)
 - [FAQ](./faq.md)

@@ -2,20 +2,20 @@
 
 use std::fmt::Debug;
 
-use crate::{LatticeOrd, Merge, NaiveOrd};
+use crate::{LatticeOrd, Merge, NaiveLatticeOrd};
 
 /// Helper which calls [`check_lattice_ord`], [`check_partial_ord_properties`], and
 /// [`check_lattice_properties`].
-pub fn check_all<T: LatticeOrd + NaiveOrd + Merge<T> + Clone + Eq + Debug>(items: &[T]) {
+pub fn check_all<T: LatticeOrd + NaiveLatticeOrd + Merge<T> + Clone + Eq + Debug>(items: &[T]) {
     check_lattice_ord(items);
     check_partial_ord_properties(items);
     check_lattice_properties(items);
 }
 
-/// Check that the lattice's `PartialOrd` implementation agrees with the `NaiveOrd` partial orde
-/// derived from `Merge.
-pub fn check_lattice_ord<T: LatticeOrd + NaiveOrd>(items: &[T]) {
-    // `NaiveOrd` is a better source of truth, as it is based on the `Merge` impl. But it
+/// Check that the lattice's `PartialOrd` implementation agrees with the `NaiveLatticeOrd` partial
+/// order derived from `Merge`.
+pub fn check_lattice_ord<T: LatticeOrd + NaiveLatticeOrd>(items: &[T]) {
+    // `NaiveLatticeOrd` is a better source of truth, as it is based on the `Merge` impl. But it
     // is inefficient. It also could be wrong if `Merge` doesn't properly return true/false
     // iff the merge changed things.
     for [a, b] in cartesian_power(items) {

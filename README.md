@@ -46,7 +46,7 @@ See the [setup section of the book](https://hydro-project.github.io/hydroflow/bo
 
 [The Hydroflow Book](https://hydro-project.github.io/hydroflow/book/) is generated using [mdBook](https://rust-lang.github.io/mdBook/). To install `mdbook` and dependencies:
 ```bash, ignore
-cargo install mdbook mdbook-mermaid mdbook-linkcheck
+cargo install mdbook mdbook-mermaid mdbook-linkcheck mdbook-katex
 ```
 The book can then be viewed locally with a web browser by running the following from the project root.
 ```bash, ignore

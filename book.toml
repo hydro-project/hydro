@@ -16,6 +16,9 @@ build-dir = "target/mdbook"
 # cargo install mdbook-mermaid && mdbook-mermaid install
 command = "mdbook-mermaid"
 
+[preprocessor.katex]
+after = ["links"]
+
 [output]
 
 [output.html]

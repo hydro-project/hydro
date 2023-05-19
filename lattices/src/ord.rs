@@ -1,13 +1,9 @@
-//! Totally-ordered lattices, [`Max`] and [`Min`].
-//!
-//! Uses [std::cmp::Ord`].
-
 use std::cmp::Ordering;
 
 use super::{ConvertFrom, Merge};
 use crate::LatticeOrd;
 
-/// A totally ordered max lattice. Merging takes the larger value.
+/// A totally ordered max lattice. Merging returns the larger value.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Default, PartialOrd, Ord, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -46,7 +42,10 @@ impl<T> ConvertFrom<Max<T>> for Max<T> {
 
 impl<T> LatticeOrd<Self> for Max<T> where Self: PartialOrd<Self> {}
 
-/// A totally ordered min lattice. Merging takes the smaller value.
+/// A totally ordered min lattice. Merging returns the smaller value.
+///
+/// This means the lattice order is the reverse of what you might naturally expect: 0 is greater
+/// than 1.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

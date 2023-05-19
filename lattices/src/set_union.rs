@@ -1,6 +1,4 @@
-//! Set-union compound lattice.
-//!
-//! Merging set-union lattices is done by unioning the keys.
+//! Module containing the [`SetUnion`] lattice and aliases for different datastructures.
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
@@ -9,10 +7,9 @@ use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, SingletonSet};
 use crate::{ConvertFrom, LatticeOrd, Merge};
 
-/// A set-union lattice.
+/// Set-union lattice.
 ///
-/// `Tag` specifies what datastructure to use, allowing us to deal with different datastructures
-/// generically.
+/// Merging set-union lattices is done by unioning the keys.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

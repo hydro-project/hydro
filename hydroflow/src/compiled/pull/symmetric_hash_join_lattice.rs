@@ -122,7 +122,7 @@ mod tests {
         HalfJoinStateLattice<K, RhsLattice>,
     );
 
-    use lattices::ord::Max;
+    use lattices::Max;
     use rustc_hash::FxHashSet;
 
     use super::{HalfJoinStateLattice, SymmetricHashJoinLattice};

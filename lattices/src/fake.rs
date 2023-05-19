@@ -1,11 +1,9 @@
-//! A fake lattice that will runtime panic if a merge is attempted.
-//!
-//! This is used to wrap non lattice data into a lattice in a way that typechecks
-
 use super::{ConvertFrom, Merge};
 use crate::LatticeOrd;
 
-/// Fake lattice.
+/// A fake lattice that will runtime panic if a merge between inequal values is attempted.
+///
+/// This is used to wrap non lattice data into a lattice in a way that typechecks
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Default, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

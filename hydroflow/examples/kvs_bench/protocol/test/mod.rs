@@ -4,10 +4,8 @@ mod util;
 use std::rc::Rc;
 
 use bincode::options;
-use lattices::bottom::Bottom;
-use lattices::fake::Fake;
 use lattices::map_union::MapUnionHashMap;
-use lattices::ord::Max;
+use lattices::{Bottom, Fake, Max};
 
 use self::util::check_all;
 use crate::protocol::{KvsRequestDeserializer, MyLastWriteWins};

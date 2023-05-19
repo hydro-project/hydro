@@ -275,14 +275,16 @@ jobs:
           RUSTDOCFLAGS: -Dwarnings
 
       - name: Install mdBook
-        run: curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.21/mdbook-v0.4.21-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+        run: curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.29/mdbook-v0.4.29-x86_64-unknown-linux-gnu.tar.gz | tar -xz
       - name: Install mdbook-mermaid
-        run: curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/v0.12.1/mdbook-mermaid-v0.12.1-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+        run: curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/v0.12.6/mdbook-mermaid-v0.12.6-x86_64-unknown-linux-gnu.tar.gz | tar -xz
       - name: Install mdbook-linkcheck
         run: |
           curl -sSL https://github.com/Michael-F-Bryan/mdbook-linkcheck/releases/download/v0.7.7/mdbook-linkcheck.x86_64-unknown-linux-gnu.zip -o linkcheck.zip
           unzip -qo linkcheck.zip mdbook-linkcheck
           chmod +x mdbook-linkcheck
+      - name: Install mdbook-katex
+        run: curl -sSL https://github.com/lzanini/mdbook-katex/releases/download/v0.4.2/mdbook-katex-v0.4.2-x86_64-unknown-linux-gnu.tar.gz | tar -xz
       - name: Run mdBook build
         run: PATH=$PATH:$(pwd) mdbook build
 

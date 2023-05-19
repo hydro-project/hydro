@@ -238,7 +238,7 @@ pub fn test_cross_join() {
 
 #[multiplatform_test]
 pub fn test_lattice_join() {
-    use hydroflow::lattices::ord::Max;
+    use hydroflow::lattices::Max;
 
     // 'static, 'tick.
     {

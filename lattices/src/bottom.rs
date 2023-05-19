@@ -1,14 +1,14 @@
-//! Gives a default representation that compares as less than to a lattice.
-//!
-//! This can be used for giving a sensible default repersentation to types that don't necessarily have one.
-
 use std::cmp::Ordering;
 use std::cmp::Ordering::*;
 
 use super::{ConvertFrom, Merge};
 use crate::LatticeOrd;
 
-/// Bottom wrapper.
+/// Wraps a lattice in [`Option`], treating [`None`] as a new bottom element which compares as less
+/// than to all other values.
+///
+/// This can be used for giving a sensible default/bottom element to lattices that don't
+/// necessarily have one.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

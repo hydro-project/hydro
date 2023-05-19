@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use lattices::fake::Fake;
+use lattices::Fake;
 use serde::de::{DeserializeSeed, Visitor};
 use serde::{Serialize, Serializer};
 

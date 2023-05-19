@@ -1,7 +1,4 @@
-//! Map-union compound lattice.
-//!
-//! Each key corresponds to a lattice value instance. Merging map-union lattices is done by
-//! unioning the keys and merging the values of intersecting keys.
+//! Module containing the [`MapUnion`] lattice and aliases for different datastructures.
 
 use std::cmp::Ordering::*;
 use std::collections::{BTreeMap, HashMap};
@@ -11,10 +8,10 @@ use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{ArrayMap, SingletonMap, VecMap};
 use crate::{ConvertFrom, LatticeOrd, Merge};
 
-/// A map-union lattice.
+/// Map-union compound lattice.
 ///
-/// `Tag` specifies what datastructure to use, allowing us to deal with different datastructures
-/// generically.
+/// Each key corresponds to a lattice value instance. Merging map-union lattices is done by
+/// unioning the keys and merging the values of intersecting keys.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
