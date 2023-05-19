@@ -24,7 +24,7 @@ hydroflow_cli_integration = { optional = true, path = "../hydroflow_cli_integrat
 hydroflow_datalog = { optional = true, path = "../hydroflow_datalog", version = "0.0.0" }
 hydroflow_lang = { path = "../hydroflow_lang", version = "0.0.0" }
 hydroflow_macro = { optional = true, path = "../hydroflow_macro", version = "0.0.0" }
-lattices = { path = "../lattices", version = "0.0.0", features = [ "serde" ] }
+lattices = { path = "../lattices", version = "0.1.0", features = [ "serde" ] }
 pusherator = { path = "../pusherator", version = "0.0.0" }
 ref-cast = "1.0"
 rustc-hash = "1.1.0"
