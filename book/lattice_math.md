@@ -115,3 +115,35 @@ $$
 $$
 
 Separately, meet-semilattices and join-semilattices are equivalent structures.
+
+### The CALM Theorem and Monotonicity
+
+The [CALM Theorem (_Consistency As Logical Monotonicity_)](https://cacm.acm.org/magazines/2020/9/246941-keeping-calm/fulltext)
+tells us: "a program has a consistent, coordination-free distributed
+implementation if and only if it is monotonic"
+
+A function $f: S\rightarrow T$ is _monotonic_ if it preserves a partial ordering of its domain to a
+(possibly different) partial ordering of its codomain.
+$$
+    a \sqsubseteq_S b \quad\Longrightarrow\quad f(a)\ \sqsubseteq_T\ f(b)
+    \quad\quad\quad\mathrm{\textit{(monotonicity)}}
+$$
+
+### Lattice Morphism
+
+A function $f: S\rightarrow T$ from lattice domain $S$ to lattice codomain $T$ is a _morphism_ if
+it structurally preserves merges, i.e. merges distribute across the function. For all $a,b\in S$:
+$$
+    f(a \sqcup_S b) \quad=\quad f(a) \sqcup_T f(b)
+    \quad\quad\quad\mathrm{\textit{(morphism)}}
+$$
+(Because both the domain and codomain are semilattice spaces, _semilattice homomorphism_ is the
+most precise term for this.)
+
+Lattice morphisms are a special kind of monotonic function which are _differentially computable_.
+Because merge distributes over a morphism, we can evaluate the morphisms on a small "delta" of data
+and merge that delta into the existing result rather than recompute the entire morphism on all data.
+
+### Further Reading
+
+* [The Hydroflow Thesis](https://hydro.run/papers/hydroflow-thesis.pdf)

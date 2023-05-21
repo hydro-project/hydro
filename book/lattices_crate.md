@@ -24,8 +24,8 @@
 [`set_union::SetUnionBTreeSet`]: https://hydro-project.github.io/hydroflow/doc/lattices/set_union/type.SetUnionBTreeSet.html
 [`set_union::SetUnionHashSet`]: https://hydro-project.github.io/hydroflow/doc/lattices/set_union/type.SetUnionHashSet.html
 
-## Learn More
+## Next
 
-Take a look at [Lattice Math](./lattice_math.md) for a simple explanation of what lattices are
-exactly. See the [`lattice` rustdoc](https://hydro-project.github.io/hydroflow/doc/lattices/index.html)
-for more information.
+Take a look at [Lattice Math](./lattice_math.md) for a simple explanation and summary of what
+lattices are exactly.
+See the [`lattice` rustdocs here](https://hydro-project.github.io/hydroflow/doc/lattices/index.html).

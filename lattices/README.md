@@ -17,9 +17,13 @@ Lattices also allow us to harness the power of the CALM Theorem: "a program has 
 coordination-free distributed implementation if and only if it is monotonic." Lattice state is
 always monotonic, meaning any part of a distributed system built on lattice state can be
 freely distributed with no coordination overhead. The goal of the [Hydro Project](https://hydro.run/)
-is to allow users to write programs that automatically scale and distribute effortlessly. For more
-information on the underlying mathematics of lattices and monotonicity, take a look at Section 2 of
-the [Hydroflow Thesis](https://hydro.run/papers/hydroflow-thesis.pdf).
+is to allow users to write programs that automatically scale and distribute effortlessly.
+
+For more information on the underlying mathematics of lattices and monotonicity, take a look at
+[Lattice Math section of the Hydroflow Book](https://hydro-project.github.io/hydroflow/book/lattice_math.html)
+and Section 2 of the [Hydroflow Thesis](https://hydro.run/papers/hydroflow-thesis.pdf).
+
+Take a look at the [`lattice` rustdocs](https://hydro-project.github.io/hydroflow/doc/lattices/index.html).
 
 ## Lattices
 
