@@ -1,10 +1,14 @@
-use crate::structs::LineItem;
-use crate::test_data::client_class_iter;
+use std::net::SocketAddr;
+
 use bytes::Bytes;
 use futures::stream::SplitSink;
-use hydroflow::{hydroflow_syntax, scheduled::graph::Hydroflow};
-use std::net::SocketAddr;
-use tokio_util::{codec::LengthDelimitedCodec, udp::UdpFramed};
+use hydroflow::hydroflow_syntax;
+use hydroflow::scheduled::graph::Hydroflow;
+use tokio_util::codec::LengthDelimitedCodec;
+use tokio_util::udp::UdpFramed;
+
+use crate::structs::LineItem;
+use crate::test_data::client_class_iter;
 
 pub(crate) async fn orig_flow(
     shopping: impl Iterator<Item = (usize, LineItem)> + 'static,
@@ -19,7 +23,9 @@ pub(crate) async fn orig_flow(
     // we grow a separate vector of ClLineItems. No seal is needed in the sequential case.
     hydroflow_syntax! {
         // the original flow
-        source_iter(shopping) -> [0]lookup_class;
+        source_iter(shopping)
+        -> inspect(|(client, li)| println!("client: {}, li: {:?}", client, li))
+        -> [0]lookup_class;
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join()
           -> map(|(client, (li, class))| ((client, class), li))

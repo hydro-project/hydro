@@ -1,11 +1,12 @@
-use crate::protocol::EchoMsg;
-use crate::{GraphType, Opts};
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use hydroflow::hydroflow_syntax;
-use hydroflow::lattices::ord::Max;
-use hydroflow::lattices::Merge;
+use hydroflow::lattices::{Max, Merge};
 use hydroflow::util::{UdpSink, UdpStream};
-use std::net::SocketAddr;
+
+use crate::protocol::EchoMsg;
+use crate::{GraphType, Opts};
 
 pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
     // server_addr is required for client

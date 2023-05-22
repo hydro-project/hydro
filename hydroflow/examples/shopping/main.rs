@@ -1,9 +1,15 @@
+// Test harness for the various implementations of shopping carts.
+
 use clap::{Parser, ValueEnum};
-use client::run_client;
+use driver::run_driver;
 use hydroflow::tokio;
 
-mod client;
+mod driver;
+mod flows;
 mod lattices;
+mod structs;
+mod test_data;
+mod wrappers;
 
 #[derive(Clone, ValueEnum, Debug)]
 enum Role {
@@ -25,8 +31,10 @@ struct Opts {
     opt: usize,
 }
 
-#[tokio::main]
+#[hydroflow::main]
 async fn main() {
     let opts = Opts::parse();
-    run_client(opts).await;
+
+    // all the interesting logic is in the driver
+    run_driver(opts).await;
 }

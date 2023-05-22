@@ -1,11 +1,12 @@
-use crate::protocol::EchoMsg;
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use hydroflow::hydroflow_syntax;
-use hydroflow::lattices::ord::Max;
-use hydroflow::lattices::Merge;
+use hydroflow::lattices::{Max, Merge};
 use hydroflow::scheduled::graph::Hydroflow;
 use hydroflow::util::{UdpSink, UdpStream};
-use std::net::SocketAddr;
+
+use crate::protocol::EchoMsg;
 
 pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream) {
     let bot: Max<usize> = Max(0);

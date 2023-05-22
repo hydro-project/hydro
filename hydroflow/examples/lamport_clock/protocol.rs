@@ -1,5 +1,4 @@
-use hydroflow::lattices::ord::Max;
-
+use hydroflow::lattices::Max;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]

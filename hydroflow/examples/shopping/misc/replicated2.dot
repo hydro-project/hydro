@@ -1,0 +1,126 @@
+digraph {
+    // subgraph "cluster n1v1" {
+    // fillcolor="#dddddd"
+    // style=fille
+    // label = "sg_1v1\nstratum 0"
+    rankdir = LR;
+    
+    // n1v1 [label="(n1v1) source_iter(shopping_ssiv)", fontname=Monaco, shape=box, style = filled, color = "#dddddd", fontcolor = "#000000"]
+    // n2v1 [label="(n2v1) map(|pair| (pair, remote_addr))", fontname=Monaco, shape=box, style = filled, color = "#dddddd", fontcolor = "#000000"]
+    // n3v1 [label="(n3v1) dest_sink_serde(reqs_out)", fontname=Monaco, shape=box, style = filled, color = "#dddddd"]
+    // n1v1 -> n2v1
+    // n2v1 -> n3v1
+    // }
+    // subgraph "cluster n2v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_2v1\nstratum 0"
+    n4v1 [label = "reqs_in";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    // n5v1 [label="map", fontname=Monaco, shape=box, style = filled, color = "#dddddd", fontcolor = "#000000"]
+    n6v1 [label = "map";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    n4v1 -> n6v1;
+    // n5v1 -> n6v1
+    // }
+    // subgraph "cluster n3v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_3v1\nstratum 1"
+    n7v1 [label = "group_by";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    n8v1 [label = "source_iter";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    subgraph {
+        rank = same;
+        n9v1 [label = "join";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+        n10v1 [label = "map";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    }
+    n11v1 [label = "tee";fontname = Monaco;shape = box;style = filled;color = "#dddddd";];
+    n7v1 -> n9v1 [label = "0";];
+    n8v1 -> n9v1 [label = "1";];
+    n9v1 -> n10v1;
+    n10v1 -> n11v1;
+    // subgraph "cluster sg_3v1_var_lookup_class" {
+    // label="var lookup_class"
+    n9v1;
+    n10v1;
+    n11v1;
+    // }
+    // }
+    // subgraph "cluster n4v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_4v1\nstratum 1"
+    n12v1 [label = "server_addrs";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    subgraph {
+        rank = same;
+        n13v1 [label = "cross_join";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+        n14v1 [label = "broadcast_out";fontname = Monaco;shape = box;style = filled;color = "#dddddd";];
+    }
+    n12v1 -> n13v1 [label = "1";];
+    n13v1 -> n14v1;
+    // subgraph "cluster sg_4v1_var_broadcast" {
+    // label="var broadcast"
+    n13v1;
+    n14v1;
+    // }
+    // }
+    // subgraph "cluster n5v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_5v1\nstratum 1"
+    // n17v1 [label="map", fontname=Monaco, shape=box, style = filled, color = "#dddddd", fontcolor = "#000000"]
+    n16v1 -> n18v1;
+    // n17v1 -> n18v1
+    // subgraph "cluster sg_5v1_var_all_in" {
+    // label="var all_in"
+    n18v1;
+    // }
+    // }
+    // subgraph "cluster n6v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_6v1\nstratum 2"
+    subgraph {
+        rank = same;
+        n18v1 [label = "merge";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+        n19v1 [label = "group_by";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    }
+    n20v1 [label = "unique";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    n21v1 [label = "map";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    n22v1 [label = "out";fontname = Monaco;shape = box;style = filled;color = "#dddddd";];
+    n19v1 -> n20v1;
+    n20v1 -> n21v1;
+    n21v1 -> n22v1;
+    // subgraph "cluster sg_6v1_var_all_in" {
+    // label="var all_in"
+    n19v1;
+    n20v1;
+    n21v1;
+    n22v1;
+    // }
+    // }
+    // subgraph "cluster n7v1" {
+    //     fillcolor="#dddddd"
+    //     style=filled
+    //     label = "sg_7v1\nstratum 0"
+    subgraph {
+        rank = same;
+        n15v1 [label = "broadcast_in";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+        n16v1 [label = "map";fontname = Monaco;shape = box;style = filled;color = "#dddddd";fontcolor = "#000000";];
+    }
+    // }
+    n6v1 -> n7v1;
+    n11v1 -> n18v1 [label = "clients";];
+    n11v1 -> n13v1 [label = "broadcast / 0";];
+    n15v1 -> n16v1;
+    n18v1 -> n19v1;
+    n14v1 -> n15v1 [style = dashed; color = gray;];
+    // n23v1 [label="(n23v1) handoff", fontname=Monaco, shape=parallelogram, style = filled, color = "#ddddff"]
+    // n23v1 -> n7v1 [arrowhead=box, color=red]
+    // n24v1 [label="(n24v1) handoff", fontname=Monaco, shape=parallelogram, style = filled, color = "#ddddff"]
+    // n24v1 -> n18v1
+    // n25v1 [label="(n25v1) handoff", fontname=Monaco, shape=parallelogram, style = filled, color = "#ddddff"]
+    // n25v1 -> n13v1 [label="0"]
+    // n26v1 [label="(n26v1) handoff", fontname=Monaco, shape=parallelogram, style = filled, color = "#ddddff"]
+    // n26v1 -> n19v1 [arrowhead=box, color=red]
+    // n27v1 [label="(n27v1) handoff", fontname=Monaco, shape=parallelogram, style = filled, color = "#ddddff"]
+    // n27v1 -> n16v1
+}

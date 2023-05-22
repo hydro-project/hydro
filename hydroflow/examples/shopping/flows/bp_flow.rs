@@ -1,13 +1,16 @@
-use crate::lattices::BoundedPrefix;
-use crate::structs::Request;
-use crate::test_data::client_class_iter;
-use hydroflow::lattices::Merge;
-use hydroflow::{hydroflow_syntax, scheduled::graph::Hydroflow};
+use std::net::SocketAddr;
 
 use bytes::Bytes;
 use futures::stream::SplitSink;
-use std::net::SocketAddr;
-use tokio_util::{codec::LengthDelimitedCodec, udp::UdpFramed};
+use hydroflow::hydroflow_syntax;
+use hydroflow::lattices::Merge;
+use hydroflow::scheduled::graph::Hydroflow;
+use tokio_util::codec::LengthDelimitedCodec;
+use tokio_util::udp::UdpFramed;
+
+use crate::lattices::BoundedPrefix;
+use crate::structs::Request;
+use crate::test_data::client_class_iter;
 
 pub(crate) async fn bp_flow(
     shopping_bp: impl Iterator<Item = (usize, BoundedPrefix<Request>)> + 'static,
@@ -18,7 +21,7 @@ pub(crate) async fn bp_flow(
 
     // First define some shorthand for the merge and bot of this lattice
     let bp_merge = <BoundedPrefix<Request> as Merge<BoundedPrefix<Request>>>::merge;
-    const bp_bot: fn() -> BoundedPrefix<Request> = Default::default;
+    const BP_BOT: fn() -> BoundedPrefix<Request> = Default::default;
 
     // This is the BP case for a server with interleaved requests from clients.
     // For each Request in "shopping_bp" we look up its "client_class" (basic or prime)
@@ -30,7 +33,7 @@ pub(crate) async fn bp_flow(
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join()
           -> map(|(client, (li, class))| ((client, class), li))
-          -> group_by(bp_bot, bp_merge)
+          -> group_by(BP_BOT, bp_merge)
           -> map(|m| (m, out_addr)) -> dest_sink_serde(out);
     }
 }

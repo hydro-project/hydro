@@ -6,10 +6,10 @@ pub enum ClientClass {
     Prime,
 }
 
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug, Default)]
+#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug, Default)]
 pub struct LineItem {
-    name: String,
-    qty: i16,
+    pub name: String,
+    pub qty: i16,
 }
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
@@ -18,11 +18,7 @@ pub struct ClLineItem {
     pub li: LineItem,
 }
 
-pub struct Checkout {
-    pub client: usize,
-}
-
-#[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug)]
+#[derive(PartialEq, Eq, Clone, Hash, Serialize, Deserialize, Debug)]
 pub enum Request {
     ClLineItem { client: usize, li: LineItem },
     Checkout { client: usize },

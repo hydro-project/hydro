@@ -1,13 +1,16 @@
-use crate::lattices::SealedSetOfIndexedValues;
-use crate::structs::Request;
-use crate::test_data::client_class_iter;
-use hydroflow::lattices::Merge;
-use hydroflow::{hydroflow_syntax, scheduled::graph::Hydroflow};
+use std::net::SocketAddr;
 
 use bytes::Bytes;
 use futures::stream::SplitSink;
-use std::net::SocketAddr;
-use tokio_util::{codec::LengthDelimitedCodec, udp::UdpFramed};
+use hydroflow::hydroflow_syntax;
+use hydroflow::lattices::Merge;
+use hydroflow::scheduled::graph::Hydroflow;
+use tokio_util::codec::LengthDelimitedCodec;
+use tokio_util::udp::UdpFramed;
+
+use crate::lattices::SealedSetOfIndexedValues;
+use crate::structs::Request;
+use crate::test_data::client_class_iter;
 
 pub(crate) async fn push_group_flow(
     shopping_ssiv: impl Iterator<Item = (usize, SealedSetOfIndexedValues<Request>)> + 'static,
@@ -19,7 +22,7 @@ pub(crate) async fn push_group_flow(
     // First define some shorthand for the merge and bot of this lattice
     let ssiv_merge =
         <SealedSetOfIndexedValues<Request> as Merge<SealedSetOfIndexedValues<Request>>>::merge;
-    const ssiv_bot: fn() -> SealedSetOfIndexedValues<Request> = Default::default;
+    const SSIV_BOT: fn() -> SealedSetOfIndexedValues<Request> = Default::default;
 
     // This is the SSIV implementation for a server with interleaved requests from clients,
     // after pushing down the group_by through the join to the left source.
@@ -28,7 +31,7 @@ pub(crate) async fn push_group_flow(
     // (basic or prime) via a join operator, and generate the output.
     hydroflow_syntax! {
         // push group_by through join
-        source_iter(shopping_ssiv) -> group_by(ssiv_bot, ssiv_merge) -> [0]lookup_class;
+        source_iter(shopping_ssiv) -> group_by(SSIV_BOT, ssiv_merge) -> [0]lookup_class;
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join()
           -> map(|(client, (li, class))| ((client, class), li))
