@@ -50,7 +50,8 @@ into a stream of the individual numbers which they contain.
 
 Now let's run the program:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 Howdy 16
 Howdy 17
@@ -96,7 +97,8 @@ use hydroflow::hydroflow_syntax;
 
 Results:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 G'day 16
 G'day 17

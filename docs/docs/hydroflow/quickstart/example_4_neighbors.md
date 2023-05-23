@@ -94,7 +94,8 @@ pub fn main() {
 
 Run the program and focus on the last three lines of output, which come from `flow.run_available()`:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 <graph output>
 Reached: 0

@@ -80,15 +80,18 @@ We call a running Hydroflow binary a *transducer*.
 
 Start by running a transducer for the server:
 ```console
-% cargo run -- --role server
+#shell-command-next-line
+cargo run -- --role server
 Listening on 127.0.0.1:<port>
 Server live!
 ```
 
 Take note of the server's port number, and in a separate terminal, start a client transducer:
 ```console
-% cd <project name>
-% cargo run -- --role client --server-addr 127.0.0.1:<port>
+#shell-command-next-line
+cd <project name>
+#shell-command-next-line
+cargo run -- --role client --server-addr 127.0.0.1:<port>
 Listening on 127.0.0.1:<client_port>
 Connecting to server at 127.0.0.1:<port>
 Client live!

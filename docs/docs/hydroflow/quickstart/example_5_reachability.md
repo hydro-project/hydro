@@ -92,7 +92,8 @@ pub fn main() {
 
 And now we get the full set of vertices reachable from `0`:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 <graph output>
 Reached: 3

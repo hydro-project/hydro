@@ -15,7 +15,7 @@ const FILENAME: &str = "surface_ops.gen.md";
 fn book_file(filename: impl AsRef<Path>) -> Result<PathBuf, VarError> {
     let mut pathbuf = PathBuf::new();
     pathbuf.push(std::env::var("CARGO_MANIFEST_DIR")?);
-    pathbuf.push("../docs/docs/syntax/");
+    pathbuf.push("../docs/docs/hydroflow/syntax/");
     pathbuf.push(filename);
     Ok(pathbuf)
 }

@@ -221,12 +221,14 @@ As described in the `README.md` file, we can run the server in one terminal, and
 
 Fire up the server in terminal 1:
 ```console
-% cargo run -p hydroflow --example echoserver -- --role server --addr localhost:12347
+#shell-command-next-line
+cargo run -p hydroflow --example echoserver -- --role server --addr localhost:12347
 ```
 
 Then start the client in terminal 2 and type some messages!
 ```console
-% cargo run -p hydroflow --example echoserver -- --role client --server-addr localhost:12347
+#shell-command-next-line
+cargo run -p hydroflow --example echoserver -- --role client --server-addr localhost:12347
 Listening on 127.0.0.1:54532
 Connecting to server at 127.0.0.1:12347
 Client live!

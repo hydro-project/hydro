@@ -84,7 +84,8 @@ pub fn main() {
 }
 ```
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 A
 Ahoy, 16

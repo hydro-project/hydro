@@ -21,34 +21,17 @@ export default function Home() {
               justifyContent: "center",
               flexWrap: "wrap"
             }}>
-              <Link href="/docs/quickstart/" style={{
-                display: "block",
-                padding: "15px",
-                textDecoration: "none",
-                color: "white",
-                textAlign: "center",
-                background: "linear-gradient(86.9deg, #3CB6FB -8.29%, #2DD3EA 109.09%)",
-                boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.25)",
-                borderRadius: "15px",
-                width: "200px",
+              <Link to="/docs/hydroflow/quickstart/" className="button button--primary button--lg" style={{
                 margin: "10px",
                 marginTop: 0,
-                fontSize: "1.25em"
+                fontSize: "1.4em",
+                color: "white"
               }}>Get Started</Link>
 
-              <Link href="/research/" style={{
-                display: "block",
-                padding: "15px",
-                textDecoration: "none",
-                color: "black",
-                textAlign: "center",
-                background: "white",
-                boxShadow: "0px 3px 8px rgba(0, 0, 0, 0.25)",
-                borderRadius: "15px",
-                width: "200px",
+              <Link to="/research/" className="button button--outline button--secondary button--lg" style={{
                 margin: "10px",
                 marginTop: 0,
-                fontSize: "1.25em"
+                fontSize: "1.4em"
               }}>
                 Latest Research
               </Link>

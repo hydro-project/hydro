@@ -90,7 +90,8 @@ pub fn main() {
 ```
 Notice that we are now sending in some new pairs to test this code. The output should be:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 <build output>
 <graph output>
 Received vertex: 12

@@ -404,14 +404,16 @@ The client and server need to agree on `server-addr` or this won't work!
 
 Fire up the server in terminal 1:
 ```console
-% cargo run -p hydroflow --example chat -- --name "_" --role server --server-addr 127.0.0.1:12347
+#shell-command-next-line
+cargo run -p hydroflow --example chat -- --name "_" --role server --server-addr 127.0.0.1:12347
 ```
 
 Start client "alice" in terminal 2 and type some messages, and you'll see them 
 echoed back to you. This will appear in colored fonts in most terminals
 (but unfortunately not in this markdown-based book!)
 ```console
-% cargo run -p hydroflow --example chat -- --name "alice" --role client --server-addr 127.0.0.1:12347
+#shell-command-next-line
+cargo run -p hydroflow --example chat -- --name "alice" --role client --server-addr 127.0.0.1:12347
 Listening on 127.0.0.1:50617
 Connecting to server at 127.0.0.1:12347
 Client live!
@@ -427,7 +429,8 @@ Now start client "bob" in terminal 3, and notice how he instantly receives the b
 (The messages may not be printed in the same order as they were timestamped! The `cross_join` operator is not guaranteed to preserve order, nor
 is the udp network. Fixing these issues requires extra client logic that we leave as an exercise to the reader.)
 ```console
-% cargo run -p hydroflow --example chat -- --name "bob" --role client --server-addr 127.0.0.1:12347
+#shell-command-next-line
+cargo run -p hydroflow --example chat -- --name "bob" --role client --server-addr 127.0.0.1:12347
 Listening on 127.0.0.1:63018
 Connecting to server at 127.0.0.1:12347
 Client live!

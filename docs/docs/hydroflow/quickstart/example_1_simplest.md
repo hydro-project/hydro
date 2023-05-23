@@ -15,7 +15,8 @@ the numbers in `0..10`.
 
 Create a clean template project:
 ```console
-% cargo generate hydro-project/hydroflow-template
+#shell-command-next-line
+cargo generate hydro-project/hydroflow-template
 ⚠️   Favorite `hydro-project/hydroflow-template` not found in config, using it as a git repository: https://github.com/hydro-project/hydroflow-template.git
 🤷   Project Name: simple
 🔧   Destination: /Users/jmh/code/sussudio/simple ...
@@ -43,7 +44,8 @@ pub fn main() {
 
 And then run the program:
 ```console
-% cargo run
+#shell-command-next-line
+cargo run
 Hello 0
 Hello 1
 Hello 2

@@ -63,3 +63,7 @@ body {
 .crate-title {
   display: none;
 }
+
+.shell-command-line::before {
+  content: "$ ";
+}
