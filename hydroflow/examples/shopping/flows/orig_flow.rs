@@ -23,9 +23,7 @@ pub(crate) async fn orig_flow(
     // we grow a separate vector of ClLineItems. No seal is needed in the sequential case.
     hydroflow_syntax! {
         // the original flow
-        source_iter(shopping)
-        -> inspect(|(client, li)| println!("client: {}, li: {:?}", client, li))
-        -> [0]lookup_class;
+        source_iter(shopping) -> [0]lookup_class;
         source_iter(client_class) -> [1]lookup_class;
         lookup_class = join()
           -> map(|(client, (li, class))| ((client, class), li))

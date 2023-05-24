@@ -1,4 +1,8 @@
-This directory contains the code for the shopping example from the paper. It includes a driver program in `driver.rs` that generates data from 3 client "sessions" defined in `test_data.rs`. The driver process shuts itself down after a short time since this is just an example.
+# The Shopping Cart Example from ApPLIED '23
+This directory contains the code for the shopping example from the paper 
+"Initial Steps Toward a Compiler for Distributed Programs", Hellerstein, et al., ApPLIED, 2023.
+
+The main program includes a driver program in `driver.rs` that generates data from 3 client "sessions" defined in `test_data.rs`. The driver process shuts itself down after a short time since this is just an example.
 
 Code for the BP and SSIV lattices is in `lattices.rs`. Basic types for the shopping scenario are defined in `structs.rs`. The code for the various Hydroflow examples is in `flows/`.
 
@@ -12,7 +16,7 @@ To run the driver on an example from the paper, choose one of the following numb
 6. decoupled across a network with state at the client (`flows/client_state_flow.rs`)
 7. decoupled across a network with state at a triply-replicated server (`flows/rep_server_flow.rs`)
 
-Then run the driver program, passing the number of your option to the `--opt` flag. E.g:
+Then, with your current directory set to the top of the `hydroflow` project, run the driver program, passing the number of your option to the `--opt` flag. E.g:
 ```
 cargo run -p hydroflow --example shopping -- --opt 5
 ```
