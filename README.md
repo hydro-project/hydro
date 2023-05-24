@@ -1,3 +1,12 @@
+> # Welcome!
+> 
+> For visitors coming from the ApPLIED '23 paper "Initial Steps Toward a Compiler for Distributed Programs",
+> this file is the README for the overall Hydroflow project. The README for the shopping examples from the paper can be found in
+> [hydroflow/examples/shopping/README.md](hydroflow/examples/shopping/README.md).
+>
+#
+#
+
 # Hydroflow
 
 Hydro's low-level dataflow runtime.
