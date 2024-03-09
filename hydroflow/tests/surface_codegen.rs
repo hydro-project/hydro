@@ -574,11 +574,18 @@ pub fn test_surface_syntax_reachability_generated() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (pairs_send, pairs_recv) = hydroflow::util::unbounded_channel::<(usize, usize)>();
 
+    let my_card = std::rc::Rc::new(std::cell::Cell::new(0));
+    let my_card_inner = std::rc::Rc::clone(&my_card);
+
     let mut df: Hydroflow = hydroflow_syntax! {
         reached_vertices = union() -> map(|v| (v, ()));
         source_iter(vec![0]) -> [0]reached_vertices;
 
-        my_join_tee = join() -> map(|(_src, ((), dst))| dst) -> tee();
+        my_join_tee = join::<'static, 'static>()
+            -> inspect(|_| {
+                my_card_inner.set(1 + my_card_inner.get())
+            })
+            -> map(|(_src, ((), dst))| dst) -> tee();
         reached_vertices -> [0]my_join_tee;
         source_stream(pairs_recv) -> [1]my_join_tee;
 
@@ -588,21 +595,33 @@ pub fn test_surface_syntax_reachability_generated() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
+
     pairs_send.send((0, 1)).unwrap();
     df.run_available();
+
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
 
     pairs_send.send((2, 4)).unwrap();
     pairs_send.send((3, 4)).unwrap();
     df.run_available();
 
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
+
     pairs_send.send((1, 2)).unwrap();
     df.run_available();
 
-    pairs_send.send((0, 3)).unwrap();
-    df.run_available();
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
 
     pairs_send.send((0, 3)).unwrap();
     df.run_available();
+
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
+
+    pairs_send.send((0, 3)).unwrap();
+    df.run_available();
+
+    println!("{} {} {}", line!(), df.current_tick(), my_card.get());
 
     // Reached: 1
     // Reached: 2
