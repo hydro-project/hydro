@@ -16,6 +16,7 @@ pub mod map_union_with_tombstones;
 mod ord;
 mod pair;
 mod point;
+pub mod semiring_application;
 pub mod set_union;
 pub mod set_union_with_tombstones;
 pub mod test;
@@ -40,6 +41,37 @@ pub trait Lattice: Sized + Merge<Self> + LatticeOrd + NaiveLatticeOrd + IsBot + 
 #[sealed]
 impl<T> Lattice for T where T: Sized + Merge<Self> + LatticeOrd + NaiveLatticeOrd + IsBot + IsTop {}
 
+/// Alias trait for semirings.
+#[sealed]
+pub trait Semiring<T>: Addition<T> + Multiplication<T> + Zero<T> + One<T> {}
+
+/// Trait to define addition in a semiring.
+pub trait Addition<T> {
+    /// Adds two elements of the semiring together.
+    ///
+    /// Addition of semiring must be associative and commutative.
+    fn add(&self, input_1: &T, input_2: &T) -> T;
+}
+
+/// Trait to define multiplication in a semiring.
+pub trait Multiplication<T> {
+    /// Multiplies two elements of the semiring.
+    ///
+    /// Multiplication of semiring must be associative and distribute over addition.
+    fn mul(&self, input_1: &T, input_2: &T) -> T;
+}
+
+/// Trait to check if semiring contains a zero.
+pub trait Zero<T> {
+    /// Returns the zero element of the semiring.
+    fn zero(&self) -> T;
+}
+
+/// Trait to define a one in a semiring.
+pub trait One<T> {
+    /// Returns the one element of the semiring.
+    fn one(&self) -> T;
+}
 /// Trait for lattice merge (AKA "join" or "least upper bound").
 pub trait Merge<Other> {
     /// Merge `other` into the `self` lattice.
