@@ -320,20 +320,44 @@ mod test {
         );
 
         // test multiplication (+)
-        assert_eq!(cost.mul(&U32WithInfinity::Finite(5), &U32WithInfinity::Finite(10)), U32WithInfinity::Finite(15));
-        assert_eq!(cost.mul(&U32WithInfinity::Finite(5), &U32WithInfinity::Infinity), U32WithInfinity::Infinity);
-        assert_eq!(cost.mul(&U32WithInfinity::Infinity, &U32WithInfinity::Finite(5)), U32WithInfinity::Infinity);
-        assert_eq!(cost.mul(&U32WithInfinity::Infinity, &U32WithInfinity::Infinity), U32WithInfinity::Infinity);
+        assert_eq!(
+            cost.mul(&U32WithInfinity::Finite(5), &U32WithInfinity::Finite(10)),
+            U32WithInfinity::Finite(15)
+        );
+        assert_eq!(
+            cost.mul(&U32WithInfinity::Finite(5), &U32WithInfinity::Infinity),
+            U32WithInfinity::Infinity
+        );
+        assert_eq!(
+            cost.mul(&U32WithInfinity::Infinity, &U32WithInfinity::Finite(5)),
+            U32WithInfinity::Infinity
+        );
+        assert_eq!(
+            cost.mul(&U32WithInfinity::Infinity, &U32WithInfinity::Infinity),
+            U32WithInfinity::Infinity
+        );
 
         // test identity element for addition (Infinity)
         assert_eq!(cost.zero(), U32WithInfinity::Infinity);
-        assert_eq!(cost.add(&cost.zero(), &U32WithInfinity::Finite(5)), U32WithInfinity::Finite(5));
-        assert_eq!(cost.add(&cost.zero(), &U32WithInfinity::Infinity), U32WithInfinity::Infinity);
+        assert_eq!(
+            cost.add(&cost.zero(), &U32WithInfinity::Finite(5)),
+            U32WithInfinity::Finite(5)
+        );
+        assert_eq!(
+            cost.add(&cost.zero(), &U32WithInfinity::Infinity),
+            U32WithInfinity::Infinity
+        );
 
         // test identity element for multiplication (0)
         assert_eq!(cost.one(), U32WithInfinity::Finite(0));
-        assert_eq!(cost.mul(&cost.one(), &U32WithInfinity::Finite(5)), U32WithInfinity::Finite(5));
-        assert_eq!(cost.mul(&cost.one(), &U32WithInfinity::Infinity), U32WithInfinity::Infinity);
+        assert_eq!(
+            cost.mul(&cost.one(), &U32WithInfinity::Finite(5)),
+            U32WithInfinity::Finite(5)
+        );
+        assert_eq!(
+            cost.mul(&cost.one(), &U32WithInfinity::Infinity),
+            U32WithInfinity::Infinity
+        );
     }
 
     // write test for confidence score ([0, 1], max, *, 0, 1)
