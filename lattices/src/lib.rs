@@ -63,13 +63,13 @@ pub trait Multiplication<T> {
 
 /// Trait to check if semiring contains a zero.
 pub trait Zero<T> {
-    /// Returns the zero element of the semiring.
+    /// Returns the zero element of the semiring. Identify for the Addition operation.
     fn zero(&self) -> T;
 }
 
 /// Trait to define a one in a semiring.
 pub trait One<T> {
-    /// Returns the one element of the semiring.
+    /// Returns the one element of the semiring. Identity for the multiplication operation.
     fn one(&self) -> T;
 }
 /// Trait for lattice merge (AKA "join" or "least upper bound").
