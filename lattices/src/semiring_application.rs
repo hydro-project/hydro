@@ -1,14 +1,14 @@
+//! Module containing the [`BinaryTrust`] applications.
+
 use std::cmp;
 
 use crate::{Addition, Multiplication, One, Zero};
-
-/// Binary Trust semiring.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(PartialEq, Debug)]
 // #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 
+/// Implementation of the Binary Trust semiring ({0,1}, OR, AND, False, True)
 pub struct BinaryTrust(bool, bool);
 
-/// Implementation of the Binary Trust semiring ({0,1}, OR, AND, False, True)
 impl BinaryTrust {
     /// Create a new 'Binary Trust' semiring instance.
     pub fn new() -> Self {
@@ -48,9 +48,9 @@ impl One<bool> for BinaryTrust {
     }
 }
 
+/// Implementation of the Multiplicity semiring (N, +, *, 0, 1)
 pub struct Multiplicity(u32);
 
-/// Implementation of the Multiplicity semiring (N, +, *, 0, 1)
 impl Multiplicity {
     /// Create a new instance of Multiplicity.
     pub fn new(value: u32) -> Self {
@@ -90,13 +90,14 @@ impl One<u32> for Multiplicity {
     }
 }
 
-/// Implementation of the Cost/Tropical semiring (N U Inf, min, +, inf, 0)
-#[derive(PartialEq, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+
 enum U32WithInfinity {
     Infinity,
     Finite(u32),
 }
 
+/// Implementation of the Cost/Tropical semiring (N U Inf, min, +, inf, 0)
 pub struct Cost(U32WithInfinity);
 
 impl Cost {
@@ -151,8 +152,9 @@ impl One<U32WithInfinity> for Cost {
     }
 }
 
-pub struct ConfidenceScore(f64);
 /// Implementation of the confidence Score semiring ([0, 1], max, *, 0, 1)
+pub struct ConfidenceScore(f64);
+
 impl ConfidenceScore {
     /// Create a new instance of ConfidenceScore with the given value.
     pub fn new(value: f64) -> Self {
@@ -194,8 +196,9 @@ impl One<f64> for ConfidenceScore {
     }
 }
 
-pub struct FuzzyLogic(f64);
 /// Implementation of Fuzzy Logic semiring ([0, 1], max, min, 0, 1).
+pub struct FuzzyLogic(f64);
+
 impl FuzzyLogic {
     /// Create a new instance of FuzzyLogic with the given value.
     pub fn new(value: f64) -> Self {
