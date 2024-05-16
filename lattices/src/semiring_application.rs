@@ -4,7 +4,7 @@ use crate::{Addition, Multiplication, One, Zero};
 
 /// Binary Trust semiring.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 
 pub struct BinaryTrust(bool, bool);
 
@@ -20,7 +20,7 @@ impl BinaryTrust {
 impl Addition<bool> for BinaryTrust {
     /// OR operation
     fn add(&self, input_1: &bool, input_2: &bool) -> bool {
-        return *input_1 || *input_2;
+        *input_1 || *input_2
     }
 }
 
@@ -28,7 +28,7 @@ impl Addition<bool> for BinaryTrust {
 impl Multiplication<bool> for BinaryTrust {
     /// AND operation
     fn mul(&self, input_1: &bool, input_2: &bool) -> bool {
-        return *input_1 && *input_2;
+        *input_1 && *input_2
     }
 }
 
@@ -157,7 +157,7 @@ impl ConfidenceScore {
     /// Create a new instance of ConfidenceScore with the given value.
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
-        assert!(value >= 0.0 && value <= 1.0);
+        (0.0..=1.0).contains(&value);
         ConfidenceScore(value)
     }
 }
@@ -200,7 +200,7 @@ impl FuzzyLogic {
     /// Create a new instance of FuzzyLogic with the given value.
     pub fn new(value: f64) -> Self {
         // Ensure the value is within the range [0, 1]
-        assert!(value >= 0.0 && value <= 1.0);
+        (0.0..=1.0).contains(&value);
         FuzzyLogic(value)
     }
 }
