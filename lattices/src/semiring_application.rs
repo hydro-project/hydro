@@ -16,6 +16,12 @@ impl BinaryTrust {
     }
 }
 
+impl Default for BinaryTrust {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Implementation of the addition trait for the Binary Trust semiring.
 impl Addition<bool> for BinaryTrust {
     /// OR operation
@@ -48,6 +54,7 @@ impl One<bool> for BinaryTrust {
     }
 }
 
+#[allow(dead_code)]
 /// Implementation of the Multiplicity semiring (N, +, *, 0, 1)
 pub struct Multiplicity(u32);
 
@@ -92,11 +99,15 @@ impl One<u32> for Multiplicity {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 
-enum U32WithInfinity {
+/// Implementation for N U Inf
+pub enum U32WithInfinity {
+    /// Infinity
     Infinity,
+    /// Natural numbers
     Finite(u32),
 }
 
+#[allow(dead_code)]
 /// Implementation of the Cost/Tropical semiring (N U Inf, min, +, inf, 0)
 pub struct Cost(U32WithInfinity);
 
@@ -152,6 +163,7 @@ impl One<U32WithInfinity> for Cost {
     }
 }
 
+#[allow(dead_code)]
 /// Implementation of the confidence Score semiring ([0, 1], max, *, 0, 1)
 pub struct ConfidenceScore(f64);
 
@@ -195,7 +207,7 @@ impl One<f64> for ConfidenceScore {
         1.0
     }
 }
-
+#[allow(dead_code)]
 /// Implementation of Fuzzy Logic semiring ([0, 1], max, min, 0, 1).
 pub struct FuzzyLogic(f64);
 
