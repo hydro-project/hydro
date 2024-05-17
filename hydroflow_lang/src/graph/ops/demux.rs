@@ -55,7 +55,8 @@ pub const DEMUX: OperatorConstraints = OperatorConstraints {
     has_singleton_output: false,
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
-    input_delaytype_fn: |_| None,    flow_prop_fn: None,
+    input_delaytype_fn: |_| None,
+    flow_prop_fn: None,
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,

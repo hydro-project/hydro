@@ -15,5 +15,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Serialize, Deserialize)]
 pub struct HydroflowPlusMeta {
     pub clusters: HashMap<usize, Vec<u32>>,
+    pub cluster_id: Option<u32>,
     pub subgraph_id: usize,
 }

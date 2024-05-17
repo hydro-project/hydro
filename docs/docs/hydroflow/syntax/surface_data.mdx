@@ -49,7 +49,7 @@ in from outside the flow:
 
 <CodeBlock language="rust" showLineNumbers>{exampleCodeInput}</CodeBlock>
 
-Sometimes we want to trigger activity based on timing, not data. To achieve this, we can use the [`source_interval()`](./surface_ops_gen.md#source_interval) operator, which takes a `Duration` `d` as an argument, and outputs a Tokio time Instant after every `d` units of time pass.
+Sometimes we want to trigger activity based on timing, not data. To achieve this, we can use the [`source_interval()`](./surface_ops_gen.md#source_interval) operator, which takes a `Duration` `d` as an argument, and outputs a unit `()` after every `d` units of time pass.
 
 ## Destinations
 As duals to our data source operators, we also have data destination operators. The dest operators you'll likely use

@@ -7,6 +7,28 @@ import styles from './research.module.css';
 
 const papers = [
   {
+    title: "Bigger, not Badder: Safely Scaling BFT Protocols",
+    pdf: "pathname:///papers/david-papoc-2024.pdf",
+    thumb: require("./img/papers/david-papoc-2024.png"),
+    authors: <>David Chu, Chris Liu, Natacha Crooks, Joe Hellerstein, & Heidi Howard</>,
+    description: [
+      <>Byzantine Fault Tolerant (BFT) protocols provide powerful guarantees in the presence of arbitrary machine failures, yet they do not scale. The process of creating new, scalable BFT protocols requires expert analysis and is often error-prone. Recent work suggests that localized, rule-driven rewrites can be mechanically applied to scale existing (non-BFT) protocols, including Paxos. We modify these rewrites--- decoupling and partitioning---so they can be safely applied to BFT protocols, and apply these rewrites to the critical path of PBFT, improving its throughput by 5x. We prove the correctness of the modified rewrites on any BFT protocol by formally modeling the arbitrary logic of a Byzantine node. We define the Borgesian simulator, a theoretical node that simulates a Byzantine node through randomness, and show that in any BFT protocol, the messages that a Borgesian simulator can generate before and after optimization is the same. Our initial results point the way towards an automatic optimizer for BFT protocols.</>
+    ],
+    conf: "PaPoC 2024",
+    links: <><Link href="pathname:///papers/david-papoc-2024.pdf">PDF</Link> / <Link href="https://github.com/rithvikp/autocomp">GitHub</Link></>
+  },
+  {
+    title: "Optimizing Distributed Protocols with Query Rewrites",
+    pdf: "pathname:///papers/david-sigmod-2024.pdf",
+    thumb: require("./img/papers/david-sigmod-2024.png"),
+    authors: <>David Chu, Rithvik Panchapakesan, Shadaj Laddad, Lucky Katahanas, Chris Liu, Kaushik Shivakumar, Natacha Crooks, Joe Hellerstein, & Heidi Howard</>,
+    description: [
+      <>Distributed protocols such as 2PC and Paxos lie at the core of many systems in the cloud, but standard implementations do not scale. New scalable distributed protocols are developed through careful analysis and rewrites, but this process is ad hoc and error-prone. This paper presents an approach for scaling any distributed protocol by applying rule-driven rewrites, borrowing from query optimization. Distributed protocol rewrites entail a new burden: reasoning about spatiotemporal correctness. We leverage order-insensitivity and data dependency analysis to systematically identify correct coordination-free scaling opportunities. We apply this analysis to create preconditions and mechanisms for coordination-free decoupling and partitioning, two fundamental vertical and horizontal scaling techniques. Manual rule-driven applications of decoupling and partitioning improve the throughput of 2PC by 5x and Paxos by 3x, and match state-of-the-art throughput in recent work. These results point the way toward automated optimizers for distributed protocols based on correct-by-construction rewrite rules.</>
+    ],
+    conf: "SIGMOD 2024",
+    links: <><Link href="pathname:///papers/david-sigmod-2024.pdf">PDF</Link> / <Link href="https://arxiv.org/abs/2404.01593">Tech Report</Link> / <Link href="https://github.com/rithvikp/autocomp">GitHub</Link></>
+  },
+  {
     title: "Keep CALM and CRDT On",
     pdf: "pathname:///papers/keep-calm-and-crdt-on.pdf",
     thumb: require("./img/papers/keep-calm-and-crdt-on.png"),

@@ -15,26 +15,28 @@ linkStyle default stroke:#aaa
 5v1[/"(5v1) <code>tee()</code>"\]:::pushClass
 6v1[\"(6v1) <code>identity::&lt;Max&lt;_&gt;&gt;()</code>"/]:::pullClass
 7v1[\"(7v1) <code>cross_join()</code>"/]:::pullClass
-8v1[\"(8v1) <code>filter(|(value, max_of_stream2)| { value &lt;= max_of_stream2.as_reveal_ref() })</code>"/]:::pullClass
-9v1[\"(9v1) <code>map(|(x, _max)| (context.current_tick(), x))</code>"/]:::pullClass
-10v1[/"(10v1) <code>for_each(|x| filter_send.send(x).unwrap())</code>"\]:::pushClass
-11v1[/"(11v1) <code>map(|x: Max&lt;_&gt;| (context.current_tick(), x.into_reveal()))</code>"\]:::pushClass
-12v1[/"(12v1) <code>for_each(|x| max_send.send(x).unwrap())</code>"\]:::pushClass
-13v1["(13v1) <code>handoff</code>"]:::otherClass
+8v1[\"(8v1) <code>persist()</code>"/]:::pullClass
+9v1[\"(9v1) <code>filter(|(value, max_of_stream2)| { value &lt;= max_of_stream2.as_reveal_ref() })</code>"/]:::pullClass
+10v1[\"(10v1) <code>map(|(x, _max)| (context.current_tick(), x))</code>"/]:::pullClass
+11v1[/"(11v1) <code>for_each(|x| filter_send.send(x).unwrap())</code>"\]:::pushClass
+12v1[/"(12v1) <code>map(|x: Max&lt;_&gt;| (context.current_tick(), x.into_reveal()))</code>"\]:::pushClass
+13v1[/"(13v1) <code>for_each(|x| max_send.send(x).unwrap())</code>"\]:::pushClass
 14v1["(14v1) <code>handoff</code>"]:::otherClass
+15v1["(15v1) <code>handoff</code>"]:::otherClass
 2v1-.->3v1; linkStyle 0 stroke:#060
 4v1==>5v1; linkStyle 1 stroke:#060
-3v1-.->13v1; linkStyle 2 stroke:#060
+3v1-.->14v1; linkStyle 2 stroke:#060
 1v1-->|0|7v1
 6v1-->|1|7v1
-5v1==>14v1; linkStyle 5 stroke:#060
+5v1==>15v1; linkStyle 5 stroke:#060
+10v1-->11v1
 9v1-->10v1
 8v1-->9v1
 7v1-->8v1
-11v1==>12v1; linkStyle 9 stroke:#060
-5v1==>11v1; linkStyle 10 stroke:#060
-13v1-.->4v1; linkStyle 11 stroke:#060
-14v1==>6v1; linkStyle 12 stroke:#060
+12v1==>13v1; linkStyle 10 stroke:#060
+5v1==>12v1; linkStyle 11 stroke:#060
+14v1-.->4v1; linkStyle 12 stroke:#060
+15v1==>6v1; linkStyle 13 stroke:#060
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     2v1
     3v1
@@ -50,11 +52,13 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
     8v1
     9v1
     10v1
+    11v1
     subgraph sg_2v1_var_filtered_stream2 ["var <tt>filtered_stream2</tt>"]
         7v1
         8v1
         9v1
         10v1
+        11v1
     end
     subgraph sg_2v1_var_stream1 ["var <tt>stream1</tt>"]
         1v1
@@ -63,8 +67,8 @@ end
 subgraph sg_3v1 ["sg_3v1 stratum 0"]
     4v1
     5v1
-    11v1
     12v1
+    13v1
     subgraph sg_3v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
         4v1
         5v1

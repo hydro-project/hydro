@@ -75,7 +75,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         let write_prologue = quote_spanned! {op_span=>
             let #zipbuf_ident = #hydroflow.add_state(::std::cell::RefCell::new(
                 #root::util::monotonic_map::MonotonicMap::<
-                    usize,
+                    #root::scheduled::ticks::TickInstant,
                     (::std::vec::Vec<_>, ::std::vec::Vec<_>),
                 >::default()
             ));

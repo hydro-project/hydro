@@ -176,7 +176,7 @@ impl HydroflowGraph {
         self.graph.successor_vertices(src)
     }
 
-    /// Predecessor edges, iterator of `GraphNodeId`.
+    /// Predecessor nodes, iterator of `GraphNodeId`.
     pub fn node_predecessor_nodes(
         &self,
         dst: GraphNodeId,

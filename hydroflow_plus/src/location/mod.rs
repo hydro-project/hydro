@@ -80,4 +80,6 @@ pub trait Cluster<'a>: Location {
     type Id: 'static;
 
     fn ids<'b>(&'b self) -> impl Quoted<'a, &'a Vec<Self::Id>> + Copy + 'a;
+
+    fn self_id<'b>(&'b self) -> impl Quoted<'a, Self::Id> + Copy + 'a;
 }

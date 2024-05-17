@@ -20,7 +20,7 @@ use super::{
 ///         source_iter(vec!(true))
 ///                 -> state;
 ///         state = union()
-///                 -> assert(|x| if context.current_tick() % 2 == 0 { *x == true } else { *x == false })
+///                 -> assert(|x| if context.current_tick().0 % 2 == 0 { *x == true } else { *x == false })
 ///                 -> map(|x| !x)
 ///                 -> defer_tick()
 ///                 -> state;
@@ -57,6 +57,9 @@ use super::{
 /// }
 /// flow.run_tick();
 /// ```
+///
+/// You can also supply a type parameter `defer_tick::<MyType>()` to specify what items flow
+/// through the the pipeline. This can be useful for helping the compiler infer types.
 pub const DEFER_TICK: OperatorConstraints = OperatorConstraints {
     name: "defer_tick",
     categories: &[OperatorCategory::Control],
@@ -66,7 +69,7 @@ pub const DEFER_TICK: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: RANGE_0,
-    type_args: RANGE_0,
+    type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: false,
     ports_inn: None,

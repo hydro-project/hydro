@@ -84,12 +84,14 @@ pub fn gen_macro(staged_path: &Path, crate_name: &str) {
     }
 
     fs::write(dest_path, out_file.to_token_stream().to_string()).unwrap();
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rustc-env=STAGELEFT_FINAL_CRATE_NAME={}", crate_name);
-    println!("cargo:rustc-cfg=stageleft_macro");
+
+    println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
+    println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rustc-env=STAGELEFT_FINAL_CRATE_NAME={}", crate_name);
+    println!("cargo::rustc-cfg=stageleft_macro");
 
     println!(
-        "cargo:rerun-if-changed={}",
+        "cargo::rerun-if-changed={}",
         staged_path_absolute.to_string_lossy()
     );
 }
@@ -250,9 +252,13 @@ pub fn gen_final_helper(final_crate: &str) {
     )
     .unwrap();
 
-    println!("cargo:rustc-env=STAGELEFT_FINAL_CRATE_NAME={}", final_crate);
-    println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=src");
+    println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
+    println!(
+        "cargo::rustc-env=STAGELEFT_FINAL_CRATE_NAME={}",
+        final_crate
+    );
+    println!("cargo::rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-changed=src");
 }
 
 #[macro_export]

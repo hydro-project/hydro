@@ -8,11 +8,11 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>source_iter([0])</code>"/]:::pullClass
+1v1[\"(1v1) <code>source_iter([TickInstant::new(0)])</code>"/]:::pullClass
 2v1[\"(2v1) <code>union()</code>"/]:::pullClass
 3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
-4v1[/"(4v1) <code>map(|n| n + 1)</code>"\]:::pushClass
-5v1[\"(5v1) <code>filter(|&amp;n| n &lt; 10)</code>"/]:::pullClass
+4v1[/"(4v1) <code>map(|n| n + TickDuration::SINGLE_TICK)</code>"\]:::pushClass
+5v1[\"(5v1) <code>filter(|&amp;n| n &lt; TickInstant::new(10))</code>"/]:::pullClass
 6v1[\"(6v1) <code>defer_tick()</code>"/]:::pullClass
 7v1[/"(7v1) <code>for_each(|v| out_send.send(v).unwrap())</code>"\]:::pushClass
 8v1["(8v1) <code>handoff</code>"]:::otherClass

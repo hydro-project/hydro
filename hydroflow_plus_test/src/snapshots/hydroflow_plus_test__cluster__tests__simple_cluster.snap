@@ -30,7 +30,7 @@ expression: builder.extract().ir()
                 ),
             ),
             input: Inspect {
-                f: { use crate :: __staged :: cluster :: * ; | n | println ! ("cluster received: {:?}" , n) },
+                f: { use crate :: __staged :: cluster :: * ; let cluster_self_id = { use hydroflow_plus_cli_integration :: __staged :: deploy :: * ; panic ! () } ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , cluster_self_id) },
                 input: Network {
                     to_location: 1,
                     serialize_pipeline: Some(

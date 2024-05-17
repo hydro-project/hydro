@@ -17,6 +17,7 @@ use hydroflow::util::cli::{
 };
 
 mod protocol;
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 use protocol::*;
 use tokio::time::Instant;
@@ -30,10 +31,10 @@ impl Display for NodeID {
     }
 }
 
-type PostNeighborJoin = (((u64, Option<NodeID>), (i64, usize)), NodeID);
+type PostNeighborJoin = (((u64, Option<NodeID>), (i64, TickInstant)), NodeID);
 
 type ContributionAgg =
-    Rc<RefCell<HashMap<u64, HashMap<Option<NodeID>, (Timestamped<i64>, usize)>>>>;
+    Rc<RefCell<HashMap<u64, HashMap<Option<NodeID>, (Timestamped<i64>, TickInstant)>>>>;
 
 fn run_topolotree(
     neighbors: Vec<u32>,
@@ -111,7 +112,7 @@ fn run_topolotree(
             -> fold::<'static>(|| Rc::new(RefCell::new(HashMap::new())), |acc: &mut ContributionAgg, (source, (key, val)): (NodeID, (u64, Timestamped<i64>))| {
                 let mut acc = acc.borrow_mut();
                 let key_entry = acc.entry(key).or_default();
-                let src_entry = key_entry.entry(Some(source)).or_insert((Timestamped { timestamp: -1, data: 0 }, 0));
+                let src_entry = key_entry.entry(Some(source)).or_insert((Timestamped { timestamp: -1, data: 0 }, TickInstant::default()));
                 if val.timestamp > src_entry.0.timestamp {
                     src_entry.0 = val;
                     *self_timestamp1.borrow_mut().entry(key).or_insert(0) += 1;
@@ -137,10 +138,10 @@ fn run_topolotree(
                 *self_timestamp2.borrow_mut().entry(change.key).or_insert(0) += 1;
             })
             -> map(|change_payload: OperationPayload| (change_payload.key, (change_payload.change, context.current_tick())))
-            -> fold::<'static>(|| Rc::new(RefCell::new(HashMap::new())), |agg: &mut ContributionAgg, change: (u64, (i64, usize))| {
+            -> fold::<'static>(|| Rc::new(RefCell::new(HashMap::new())), |agg: &mut ContributionAgg, change: (u64, (i64, TickInstant))| {
                 let mut agg = agg.borrow_mut();
                 let agg_key = agg.entry(change.0).or_default();
-                let agg_key = agg_key.entry(None).or_insert((Timestamped { timestamp: 0, data: 0 }, 0));
+                let agg_key = agg_key.entry(None).or_insert((Timestamped { timestamp: 0, data: 0 }, TickInstant::default()));
 
                 agg_key.0.data += change.1.0;
                 agg_key.1 = change.1.1;
@@ -165,10 +166,10 @@ fn run_topolotree(
         neighbors -> [1]all_neighbor_data;
 
         query_result = from_neighbors_or_local
-            -> map(|((key, _), payload): ((u64, _), (i64, usize))| {
+            -> map(|((key, _), payload): ((u64, _), (i64, TickInstant))| {
                 (key, payload)
             })
-            -> reduce_keyed(|acc: &mut (i64, usize), (data, change_tick): (i64, usize)| {
+            -> reduce_keyed(|acc: &mut (i64, TickInstant), (data, change_tick): (i64, TickInstant)| {
                 merge(&mut acc.0, data);
                 acc.1 = std::cmp::max(acc.1, change_tick);
             })
@@ -188,7 +189,7 @@ fn run_topolotree(
             -> map(|(((key, _), payload), target_neighbor)| {
                 ((key, target_neighbor), payload)
             })
-            -> reduce_keyed(|acc: &mut (i64, usize), (data, change_tick): (i64, usize)| {
+            -> reduce_keyed(|acc: &mut (i64, TickInstant), (data, change_tick): (i64, TickInstant)| {
                 merge(&mut acc.0, data);
                 acc.1 = std::cmp::max(acc.1, change_tick);
             })

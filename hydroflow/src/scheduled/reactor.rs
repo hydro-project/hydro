@@ -23,7 +23,6 @@ impl Reactor {
         self.event_queue_send.send((sg_id, true))
     }
 
-    #[cfg(feature = "async")]
     /// Convert this `Reactor` into a [`std::task::Waker`] for use with async runtimes.
     pub fn into_waker(self, sg_id: SubgraphId) -> std::task::Waker {
         use std::sync::Arc;

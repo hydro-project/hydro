@@ -50,7 +50,8 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
     has_singleton_output: false,
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
-    input_delaytype_fn: |_| None,    flow_prop_fn: Some(|FlowPropArgs { flow_props_in, .. }, _diagnostics| {
+    input_delaytype_fn: |_| None,
+    flow_prop_fn: Some(|FlowPropArgs { flow_props_in, .. }, _diagnostics| {
         // Preserve input flow properties.
         Ok(vec![flow_props_in[0]])
     }),

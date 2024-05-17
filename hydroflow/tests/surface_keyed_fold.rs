@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 use hydroflow::assert_graphvis_snapshots;
+use hydroflow::scheduled::ticks::TickInstant;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -25,9 +26,15 @@ pub fn test_fold_keyed_infer_basic() {
             -> for_each(|kv| result_send.send(kv).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     df.run_tick();
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     df.run_available(); // Should return quickly and not hang
 
@@ -48,9 +55,15 @@ pub fn test_fold_keyed_tick() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     df.run_tick();
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     items_send.send((0, vec![1, 2])).unwrap();
     items_send.send((0, vec![3, 4])).unwrap();
@@ -58,7 +71,10 @@ pub fn test_fold_keyed_tick() {
     items_send.send((1, vec![1, 2])).unwrap();
     df.run_tick();
 
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         [(0, vec![1, 2, 3, 4]), (1, vec![1, 1, 2])]
             .into_iter()
@@ -72,7 +88,10 @@ pub fn test_fold_keyed_tick() {
     items_send.send((1, vec![11, 12])).unwrap();
     df.run_tick();
 
-    assert_eq!((3, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(3), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         [(0, vec![5, 6, 7, 8]), (1, vec![10, 11, 12])]
             .into_iter()
@@ -94,9 +113,15 @@ pub fn test_fold_keyed_static() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     df.run_tick();
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     items_send.send((0, vec![1, 2])).unwrap();
     items_send.send((0, vec![3, 4])).unwrap();
@@ -104,7 +129,10 @@ pub fn test_fold_keyed_static() {
     items_send.send((1, vec![1, 2])).unwrap();
     df.run_tick();
 
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         [(0, vec![1, 2, 3, 4]), (1, vec![1, 1, 2])]
             .into_iter()
@@ -118,7 +146,10 @@ pub fn test_fold_keyed_static() {
     items_send.send((1, vec![11, 12])).unwrap();
     df.run_tick();
 
-    assert_eq!((3, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(3), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         [
             (0, vec![1, 2, 3, 4, 5, 6, 7, 8]),

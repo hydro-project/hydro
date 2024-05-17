@@ -9,10 +9,10 @@ use std::marker::PhantomData;
 
 use hydroflow_lang::diagnostic::{Diagnostic, SerdeSpan};
 use hydroflow_lang::graph::HydroflowGraph;
-use instant::Instant;
 use ref_cast::RefCast;
 use smallvec::SmallVec;
 use tokio::sync::mpsc::{self, UnboundedReceiver};
+use web_time::SystemTime;
 
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
@@ -22,6 +22,7 @@ use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
 use super::{HandoffId, SubgraphId};
+use crate::scheduled::ticks::{TickDuration, TickInstant};
 use crate::Never;
 
 /// A Hydroflow graph. Owns, schedules, and runs the compiled subgraphs.
@@ -56,9 +57,9 @@ impl<'a> Default for Hydroflow<'a> {
             event_queue_send,
 
             current_stratum: 0,
-            current_tick: 0,
+            current_tick: TickInstant::default(),
 
-            current_tick_start: Instant::now(),
+            current_tick_start: SystemTime::now(),
             subgraph_last_tick_run_in: None,
 
             subgraph_id: SubgraphId(0),
@@ -217,7 +218,7 @@ impl<'a> Hydroflow<'a> {
     }
 
     /// Gets the current tick (local time) count.
-    pub fn current_tick(&self) -> usize {
+    pub fn current_tick(&self) -> TickInstant {
         self.context.current_tick
     }
 
@@ -279,7 +280,7 @@ impl<'a> Hydroflow<'a> {
 
     /// Runs the current stratum of the dataflow until no more local work is available (does not receive events).
     /// Returns true if any work was done.
-    #[tracing::instrument(level = "trace", skip(self), fields(tick = self.context.current_tick, stratum = self.context.current_stratum), ret)]
+    #[tracing::instrument(level = "trace", skip(self), fields(tick = u64::from(self.context.current_tick), stratum = self.context.current_stratum), ret)]
     pub fn run_stratum(&mut self) -> bool {
         let current_tick = self.context.current_tick;
 
@@ -347,7 +348,7 @@ impl<'a> Hydroflow<'a> {
             // Starting the tick, reset this to `false`.
             tracing::trace!("Starting tick, setting `can_start_tick = false`.");
             self.can_start_tick = false;
-            self.context.current_tick_start = Instant::now();
+            self.context.current_tick_start = SystemTime::now();
 
             // Ensure external events are received before running the tick.
             if !self.events_received_tick {
@@ -361,7 +362,7 @@ impl<'a> Hydroflow<'a> {
 
         loop {
             tracing::trace!(
-                tick = self.context.current_tick,
+                tick = u64::from(self.context.current_tick),
                 stratum = self.context.current_stratum,
                 "Looking for work on stratum."
             );
@@ -369,7 +370,7 @@ impl<'a> Hydroflow<'a> {
             // If current stratum has work, return true.
             if !self.stratum_queues[self.context.current_stratum].is_empty() {
                 tracing::trace!(
-                    tick = self.context.current_tick,
+                    tick = u64::from(self.context.current_tick),
                     stratum = self.context.current_stratum,
                     "Work found on stratum."
                 );
@@ -383,11 +384,11 @@ impl<'a> Hydroflow<'a> {
                     can_start_tick = self.can_start_tick,
                     "End of tick {}, starting tick {}.",
                     self.context.current_tick,
-                    self.context.current_tick + 1,
+                    self.context.current_tick + TickDuration::SINGLE_TICK,
                 );
 
                 self.context.current_stratum = 0;
-                self.context.current_tick += 1;
+                self.context.current_tick += TickDuration::SINGLE_TICK;
                 self.events_received_tick = false;
 
                 if current_tick_only {
@@ -399,7 +400,7 @@ impl<'a> Hydroflow<'a> {
                     self.try_recv_events();
                     if std::mem::replace(&mut self.can_start_tick, false) {
                         tracing::trace!(
-                            tick = self.context.current_tick,
+                            tick = u64::from(self.context.current_tick),
                             "`can_start_tick` is `true`, continuing."
                         );
                         // Do a full loop more to find where events have been added.
@@ -893,7 +894,7 @@ pub(super) struct SubgraphData<'a> {
     is_scheduled: Cell<bool>,
 
     /// Keep track of the last tick that this subgraph was run in
-    last_tick_run_in: Option<usize>,
+    last_tick_run_in: Option<TickInstant>,
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,

@@ -1,5 +1,6 @@
 use hydroflow::assert_graphvis_snapshots;
 use multiplatform_test::multiplatform_test;
+use tokio::time::Instant;
 
 #[multiplatform_test]
 fn test_surface_flows_1() {
@@ -21,6 +22,7 @@ async fn test_source_interval() {
 
     let mut hf = hydroflow_syntax! {
         source_interval(Duration::from_secs(1))
+            -> map(|_| { Instant::now() } )
             -> for_each(|time| println!("This runs every second: {:?}", time));
     };
 

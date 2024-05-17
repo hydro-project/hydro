@@ -234,9 +234,6 @@ fn main() {
                     let mut sg_2v1_node_17v1_hashtable = context
                         .state_ref(sg_2v1_node_17v1_groupbydata)
                         .borrow_mut();
-                    let mut sg_2v1_node_17v1_keyset = hydroflow::rustc_hash::FxHashSet::<
-                        (),
-                    >::default();
                     {
                         #[inline(always)]
                         fn check_input<Iter, A, B>(
@@ -261,10 +258,6 @@ fn main() {
                             (f)(a, t)
                         }
                         for kv in check_input(hoff_9v3_recv) {
-                            if context.is_first_run_this_tick() {
-                                sg_2v1_node_17v1_keyset
-                                    .insert(::std::clone::Clone::clone(&kv.0));
-                            }
                             #[allow(unknown_lints, clippy::unwrap_or_default)]
                             let entry = sg_2v1_node_17v1_hashtable
                                 .entry(kv.0)
@@ -298,32 +291,22 @@ fn main() {
                             );
                         }
                     }
-                    let op_17v1 = if context.is_first_run_this_tick() {
-                        hydroflow::itertools::Either::Left(
-                            sg_2v1_node_17v1_hashtable
-                                .iter()
-                                .map(
-                                    #[allow(
-                                        unknown_lints,
-                                        suspicious_double_ref_op,
-                                        clippy::clone_on_copy
-                                    )]
-                                    |(k, v)| (
-                                        ::std::clone::Clone::clone(k),
-                                        ::std::clone::Clone::clone(v),
-                                    ),
-                                ),
-                        )
-                    } else {
-                        hydroflow::itertools::Either::Right(
-                            sg_2v1_node_17v1_keyset
-                                .into_iter()
-                                .map(|k| {
-                                    let v = sg_2v1_node_17v1_hashtable.get(&k).unwrap();
-                                    (k, ::std::clone::Clone::clone(v))
-                                }),
-                        )
-                    };
+                    let op_17v1 = context
+                        .is_first_run_this_tick()
+                        .then_some(sg_2v1_node_17v1_hashtable.iter())
+                        .into_iter()
+                        .flatten()
+                        .map(
+                            #[allow(
+                                unknown_lints,
+                                suspicious_double_ref_op,
+                                clippy::clone_on_copy
+                            )]
+                            |(k, v)| (
+                                ::std::clone::Clone::clone(k),
+                                ::std::clone::Clone::clone(v),
+                            ),
+                        );
                     let op_17v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]

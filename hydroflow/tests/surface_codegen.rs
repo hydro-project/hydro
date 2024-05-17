@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use hydroflow::scheduled::graph::Hydroflow;
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::util::collect_ready;
 use hydroflow::util::multiset::HashMultiSet;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
@@ -856,7 +857,9 @@ pub fn test_iter_stream_batches() {
     let stream = hydroflow::util::iter_batches_stream(0..ITEMS, BATCH);
 
     // expect 5 items per tick.
-    let expected: Vec<_> = (0..ITEMS).map(|n| (n / BATCH, n)).collect();
+    let expected: Vec<_> = (0..ITEMS)
+        .map(|n| (TickInstant::new((n / BATCH).try_into().unwrap()), n))
+        .collect();
 
     let mut df = hydroflow_syntax! {
         source_stream(stream)

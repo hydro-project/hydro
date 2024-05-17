@@ -1,3 +1,4 @@
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
 use multiplatform_test::multiplatform_test;
 
@@ -12,13 +13,19 @@ pub fn test_reduce_tick() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
     df.run_tick();
 
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         &[3],
         &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
@@ -28,7 +35,10 @@ pub fn test_reduce_tick() {
     items_send.send(4).unwrap();
     df.run_tick();
 
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         &[7],
         &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
@@ -46,13 +56,19 @@ pub fn test_reduce_static() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
     df.run_tick();
 
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         &[3],
         &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
@@ -62,7 +78,10 @@ pub fn test_reduce_static() {
     items_send.send(4).unwrap();
     df.run_tick();
 
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     assert_eq!(
         &[10],
         &*hydroflow::util::collect_ready::<Vec<_>, _>(&mut result_recv)
@@ -79,9 +98,15 @@ pub fn test_reduce_sum() {
             -> for_each(|v| print!("{:?}", v));
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     df.run_tick();
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     print!("\nA: ");
 
@@ -89,7 +114,10 @@ pub fn test_reduce_sum() {
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
     df.run_tick();
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     print!("\nB: ");
 
@@ -99,7 +127,10 @@ pub fn test_reduce_sum() {
     items_send.send(0).unwrap();
     items_send.send(3).unwrap();
     df.run_tick();
-    assert_eq!((3, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(3), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     println!();
 }
@@ -123,9 +154,15 @@ pub fn test_reduce() {
         my_join_tee[1] -> reduce(|a: &mut _, b| *a += b) -> for_each(|sum| println!("{}", sum));
     };
     assert_graphvis_snapshots!(df);
-    assert_eq!((0, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
     df.run_tick();
-    assert_eq!((1, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     println!("A");
 
@@ -134,12 +171,18 @@ pub fn test_reduce() {
     pairs_send.send((3, 4)).unwrap();
     pairs_send.send((1, 2)).unwrap();
     df.run_tick();
-    assert_eq!((2, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 
     println!("B");
 
     pairs_send.send((0, 3)).unwrap();
     pairs_send.send((0, 3)).unwrap();
     df.run_tick();
-    assert_eq!((3, 0), (df.current_tick(), df.current_stratum()));
+    assert_eq!(
+        (TickInstant::new(3), 0),
+        (df.current_tick(), df.current_stratum())
+    );
 }

@@ -36,7 +36,8 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
     has_singleton_output: false,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { input, signal })),
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),    flow_prop_fn: None,
+    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    context,
                    hydroflow,

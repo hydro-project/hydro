@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
 use hydroflow_macro::hydroflow_test;
-use instant::{Duration, Instant};
 use multiplatform_test::multiplatform_test;
+use web_time::Duration;
 
 #[multiplatform_test]
 pub fn test_context_ref() {
@@ -30,19 +30,6 @@ pub fn test_context_mut() {
     df.run_available();
 }
 
-#[multiplatform_test]
-pub fn test_context_current_tick_start() {
-    let mut df = hydroflow_syntax! {
-        source_iter([()])
-            -> map(|_| context.current_tick_start())
-            -> defer_tick()
-            -> assert(|t: &hydroflow::instant::Instant| t.elapsed().as_nanos() > 0)
-            -> for_each(|t: hydroflow::instant::Instant| println!("Time between ticks: {:?}", t.elapsed()));
-    };
-    assert_graphvis_snapshots!(df);
-    df.run_available();
-}
-
 #[multiplatform_test(hydroflow)]
 pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_async() {
     let time = Rc::new(Cell::new(None));
@@ -52,7 +39,7 @@ pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_a
         hydroflow_syntax! {
             source_iter([()])
                 -> persist()
-                -> for_each(|_| time.set(Some(Instant::now() - context.current_tick_start())));
+                -> for_each(|_| time.set(Some(context.current_tick_start().elapsed().unwrap())));
         }
     };
     assert_graphvis_snapshots!(df);

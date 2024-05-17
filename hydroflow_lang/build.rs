@@ -11,10 +11,10 @@ use syn::{
 const OPS_PATH: &str = "src/graph/ops";
 
 fn main() {
-    println!("cargo:rerun-if-changed={}", OPS_PATH);
+    println!("cargo::rerun-if-changed={}", OPS_PATH);
     if Err(VarError::NotPresent) != var("CARGO_CFG_HYDROFLOW_GENERATE_DOCS") {
         if let Err(err) = generate_op_docs() {
-            eprintln!("hydroflow_macro/build.rs error: {:?}", err);
+            eprintln!("hydroflow_lang/build.rs error: {:?}", err);
         }
     }
 }

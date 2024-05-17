@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use hydroflow::lattices::set_union::SetUnionSingletonSet;
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
 use lattices::set_union::SetUnionHashSet;
 use lattices::Merge;
@@ -23,7 +24,7 @@ macro_rules! assert_contains_each_by_tick {
 
 #[multiplatform_test]
 pub fn tick_tick_lhs_blocking_rhs_streaming() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -43,12 +44,16 @@ pub fn tick_tick_lhs_blocking_rhs_streaming() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]);
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(0),
+        &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]
+    );
 }
 
 #[multiplatform_test]
 pub fn static_tick_lhs_blocking_rhs_streaming() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -68,14 +73,26 @@ pub fn static_tick_lhs_blocking_rhs_streaming() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]);
-    assert_contains_each_by_tick!(results, 1, &[(7, (SetUnionHashSet::new_from([1, 2]), 1))]);
-    assert_contains_each_by_tick!(results, 2, &[(7, (SetUnionHashSet::new_from([1, 2]), 2))]);
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(0),
+        &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]
+    );
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(1),
+        &[(7, (SetUnionHashSet::new_from([1, 2]), 1))]
+    );
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(2),
+        &[(7, (SetUnionHashSet::new_from([1, 2]), 2))]
+    );
 }
 
 #[multiplatform_test]
 pub fn static_static_lhs_blocking_rhs_streaming() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -97,15 +114,15 @@ pub fn static_static_lhs_blocking_rhs_streaming() {
 
     #[rustfmt::skip]
     {
-        assert_contains_each_by_tick!(results, 0, &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]);
-        assert_contains_each_by_tick!(results, 1, &[(7, (SetUnionHashSet::new_from([1, 2]), 0)), (7, (SetUnionHashSet::new_from([1, 2]), 1))]);
-        assert_contains_each_by_tick!(results, 2, &[(7, (SetUnionHashSet::new_from([1, 2]), 0)), (7, (SetUnionHashSet::new_from([1, 2]), 1)), (7, (SetUnionHashSet::new_from([1, 2]), 2))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (SetUnionHashSet::new_from([1, 2]), 0)), (7, (SetUnionHashSet::new_from([1, 2]), 1))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (SetUnionHashSet::new_from([1, 2]), 0)), (7, (SetUnionHashSet::new_from([1, 2]), 1)), (7, (SetUnionHashSet::new_from([1, 2]), 2))]);
     };
 }
 
 #[multiplatform_test]
 pub fn tick_tick_lhs_streaming_rhs_blocking() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -125,12 +142,16 @@ pub fn tick_tick_lhs_streaming_rhs_blocking() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (0, (SetUnionHashSet::new_from([1, 2]))))]);
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(0),
+        &[(7, (0, (SetUnionHashSet::new_from([1, 2]))))]
+    );
 }
 
 #[multiplatform_test]
 pub fn static_tick_lhs_streaming_rhs_blocking() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -150,14 +171,26 @@ pub fn static_tick_lhs_streaming_rhs_blocking() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (0, SetUnionHashSet::new_from([1, 2])))]);
-    assert_contains_each_by_tick!(results, 1, &[(7, (1, SetUnionHashSet::new_from([1, 2])))]);
-    assert_contains_each_by_tick!(results, 2, &[(7, (2, SetUnionHashSet::new_from([1, 2])))]);
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(0),
+        &[(7, (0, SetUnionHashSet::new_from([1, 2])))]
+    );
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(1),
+        &[(7, (1, SetUnionHashSet::new_from([1, 2])))]
+    );
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(2),
+        &[(7, (2, SetUnionHashSet::new_from([1, 2])))]
+    );
 }
 
 #[multiplatform_test]
 pub fn static_static_lhs_streaming_rhs_blocking() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -180,15 +213,15 @@ pub fn static_static_lhs_streaming_rhs_blocking() {
 
     #[rustfmt::skip]
     {
-        assert_contains_each_by_tick!(results, 0, &[(7, (0, SetUnionHashSet::new_from([1, 2])))]);
-        assert_contains_each_by_tick!(results, 1, &[(7, (0, SetUnionHashSet::new_from([1, 2]))), (7, (1, SetUnionHashSet::new_from([1, 2])))]);
-        assert_contains_each_by_tick!(results, 2, &[(7, (0, SetUnionHashSet::new_from([1, 2]))), (7, (1, SetUnionHashSet::new_from([1, 2]))), (7, (2, SetUnionHashSet::new_from([1, 2])))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (0, SetUnionHashSet::new_from([1, 2])))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (0, SetUnionHashSet::new_from([1, 2]))), (7, (1, SetUnionHashSet::new_from([1, 2])))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (0, SetUnionHashSet::new_from([1, 2]))), (7, (1, SetUnionHashSet::new_from([1, 2]))), (7, (2, SetUnionHashSet::new_from([1, 2])))]);
     };
 }
 
 #[multiplatform_test]
 pub fn tick_tick_lhs_fold_rhs_reduce() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -208,5 +241,9 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]);
+    assert_contains_each_by_tick!(
+        results,
+        TickInstant::new(0),
+        &[(7, (SetUnionHashSet::new_from([1, 2]), 0))]
+    );
 }

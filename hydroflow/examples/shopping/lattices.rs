@@ -253,9 +253,9 @@ mod test {
             }
         }
 
-        hydroflow::lattices::test::check_lattice_ord(&test_vec);
-        hydroflow::lattices::test::check_partial_ord_properties(&test_vec);
-        hydroflow::lattices::test::check_lattice_properties(&test_vec);
+        lattices::test::check_lattice_ord(&test_vec);
+        lattices::test::check_partial_ord_properties(&test_vec);
+        lattices::test::check_lattice_properties(&test_vec);
     }
 
     #[test]
@@ -268,8 +268,8 @@ mod test {
             }
         }
 
-        hydroflow::lattices::test::check_lattice_ord(&test_vec);
-        hydroflow::lattices::test::check_partial_ord_properties(&test_vec);
-        hydroflow::lattices::test::check_lattice_properties(&test_vec);
+        lattices::test::check_lattice_ord(&test_vec);
+        lattices::test::check_partial_ord_properties(&test_vec);
+        lattices::test::check_lattice_properties(&test_vec);
     }
 }
