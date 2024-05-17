@@ -261,24 +261,24 @@ mod test {
 
         // Test addition (OR)
         binary_trust.add(BinaryTrust(true));
-        assert_eq!(binary_trust.0, true);
+        assert!(binary_trust.0);
         binary_trust = BinaryTrust::new();
         binary_trust.add(BinaryTrust(false));
-        assert_eq!(binary_trust.0, true);
+        assert!(binary_trust.0);
 
         // Test multiplication (AND)
         binary_trust = BinaryTrust::new();
         binary_trust.mul(BinaryTrust(true));
-        assert_eq!(binary_trust.0, true);
+        assert!(binary_trust.0);
         binary_trust = BinaryTrust::new();
         binary_trust.mul(BinaryTrust(false));
-        assert_eq!(binary_trust.0, false);
+        assert!(!binary_trust.0);
 
         // Test identity element for addition (False)
-        assert_eq!(BinaryTrust(false).zero(), false);
+        assert!(!BinaryTrust(false).zero());
 
         // Test identity element for multiplication (True)
-        assert_eq!(BinaryTrust(true).one(), true);
+        assert!(BinaryTrust(true).one());
     }
 
     // Test for Multiplicity (N, +, *, 0, 1)
