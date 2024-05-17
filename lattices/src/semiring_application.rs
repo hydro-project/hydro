@@ -264,24 +264,24 @@ mod test {
         let binary_trust: BinaryTrust = BinaryTrust::new();
 
         // test addition (OR)
-        assert_eq!(binary_trust.add(&true, &false), true);
-        assert_eq!(binary_trust.add(&true, &true), true);
-        assert_eq!(binary_trust.add(&false, &false), false);
+        assert!(binary_trust.add(&true, &false));
+        assert!(binary_trust.add(&true, &true));
+        assert!(!binary_trust.add(&false, &false));
 
         // test multiplication (AND)
-        assert_eq!(binary_trust.mul(&true, &false), false);
-        assert_eq!(binary_trust.mul(&true, &true), true);
-        assert_eq!(binary_trust.mul(&false, &false), false);
+        assert!(!binary_trust.mul(&true, &false));
+        assert!(binary_trust.mul(&true, &true));
+        assert!(!binary_trust.mul(&false, &false));
 
         // test identity element for addition (False)
-        assert_eq!(binary_trust.zero(), false);
-        assert_eq!(binary_trust.add(&binary_trust.zero(), &false), false);
-        assert_eq!(binary_trust.add(&binary_trust.zero(), &true), true);
+        assert!(!binary_trust.zero());
+        assert!(!binary_trust.add(&binary_trust.zero(), &false));
+        assert!(binary_trust.add(&binary_trust.zero(), &true));
 
         // test identity element for multiplication (TRUE)
-        assert_eq!(binary_trust.one(), true);
-        assert_eq!(binary_trust.mul(&binary_trust.one(), &true), true);
-        assert_eq!(binary_trust.mul(&binary_trust.one(), &false), false);
+        assert!(binary_trust.one());
+        assert!(binary_trust.mul(&binary_trust.one(), &true));
+        assert!(!binary_trust.mul(&binary_trust.one(), &false));
     }
 
     // write test for multiplicity (N, +, *, 0, 1)
