@@ -45,20 +45,31 @@ impl<T> Lattice for T where T: Sized + Merge<Self> + LatticeOrd + NaiveLatticeOr
 #[sealed]
 pub trait Semiring<T>: Addition<T> + Multiplication<T> + Zero<T> + One<T> {}
 
-/// Trait to define addition in a semiring.
-pub trait Addition<T> {
-    /// Adds two elements of the semiring together.
-    ///
-    /// Addition of semiring must be associative and commutative.
-    fn add(&self, input_1: &T, input_2: &T) -> T;
+pub trait Addition<Other> {
+    // Add-assign `other` into self.
+    fn add(&mut self, other: Other);
+
+    fn add_owned(mut self, other: Other) -> Self
+    where
+        Self: Sized,
+    {
+        self.add(other);
+        self
+    }
 }
 
 /// Trait to define multiplication in a semiring.
-pub trait Multiplication<T> {
-    /// Multiplies two elements of the semiring.
-    ///
-    /// Multiplication of semiring must be associative and distribute over addition.
-    fn mul(&self, input_1: &T, input_2: &T) -> T;
+pub trait Multiplication<Other> {
+    // Multiply-assign `other` into self.
+    fn mul(&mut self, other: Other);
+
+    fn mul_owned(mut self, other: Other) -> Self
+    where
+        Self: Sized,
+    {
+        self.mul(other);
+        self
+    }
 }
 
 /// Trait to check if semiring contains a zero.
