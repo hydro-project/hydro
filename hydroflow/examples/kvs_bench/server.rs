@@ -8,6 +8,7 @@ use bytes::{BufMut, Bytes, BytesMut};
 use futures::Stream;
 use hydroflow::compiled::pull::HalfMultisetJoinState;
 use hydroflow::hydroflow_syntax;
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow_lang::graph::{WriteConfig, WriteGraphType};
 use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::SetUnionSingletonSet;
@@ -122,15 +123,15 @@ pub fn run_server<RX>(
             let mut pre_gen_index = 0;
             let pre_gen_random_numbers: Vec<u64> = (0..(128*1024)).map(|_| rng.sample(dist) as u64).collect();
 
-            let create_unique_id = move |server_id: u128, tick: usize, e: u128| -> u128 {
-                assert!(tick < 1_000_000_000);
+            let create_unique_id = move |server_id: u128, tick: TickInstant, e: u128| -> u128 {
+                assert!(tick < TickInstant(1_000_000_000));
                 assert!(e < 1_000_000_000);
 
                 (relatively_recent_timestamp.load(Ordering::Relaxed) as u128)
                     .checked_mul(100).unwrap()
                     .checked_add(server_id).unwrap()
                     .checked_mul(1_000_000_000).unwrap()
-                    .checked_add(tick as u128).unwrap()
+                    .checked_add(tick.0 as u128).unwrap()
                     .checked_mul(1_000_000_000).unwrap()
                     .checked_add(e).unwrap()
             };

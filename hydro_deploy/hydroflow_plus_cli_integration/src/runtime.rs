@@ -80,6 +80,14 @@ impl<'a> Cluster<'a> for CLIRuntimeCluster<'a> {
         let self_id = self.id;
         q!(cli.meta.clusters.get(&self_id).unwrap())
     }
+
+    fn self_id(&self) -> impl Quoted<'a, u32> + Copy + 'a {
+        let cli = self.cli;
+        q!(cli
+            .meta
+            .cluster_id
+            .expect("Tried to read Cluster ID on a non-cluster node"))
+    }
 }
 
 impl<'a> HfSendOneToOne<CLIRuntimeNode<'a>> for CLIRuntimeNode<'a> {

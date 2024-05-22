@@ -1,10 +1,10 @@
 use chrono::prelude::*;
 use colored::Colorize;
 use hydroflow::hydroflow_syntax;
-use hydroflow::util::{UdpSink, UdpStream};
+use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
 
 use crate::protocol::Message;
-use crate::Opts;
+use crate::{default_server_address, Opts};
 
 fn pretty_print_msg(nickname: String, message: String, ts: DateTime<Utc>) {
     println!(
@@ -19,10 +19,20 @@ fn pretty_print_msg(nickname: String, message: String, ts: DateTime<Utc>) {
     );
 }
 
-pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
-    // server_addr is required for client
-    let server_addr = opts.server_addr.expect("Client requires a server address");
-    println!("Client live!");
+pub(crate) async fn run_client(opts: Opts) {
+    // Client listens on a port picked by the OS.
+    let client_addr = ipv4_resolve("localhost:0").unwrap();
+
+    // Use the server address that was provided in the command-line arguments, or use the default
+    // if one was not provided.
+    let server_addr = opts.address.unwrap_or_else(default_server_address);
+
+    let (outbound, inbound, allocated_client_addr) = bind_udp_bytes(client_addr).await;
+
+    println!(
+        "Client is live! Listening on {:?} and talking to server on {:?}",
+        allocated_client_addr, server_addr
+    );
 
     let mut hf = hydroflow_syntax! {
         // set up channels

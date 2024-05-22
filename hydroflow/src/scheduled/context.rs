@@ -5,13 +5,14 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
-use instant::Instant;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
+use web_time::SystemTime;
 
 use super::graph::StateData;
 use super::state::StateHandle;
 use super::{StateId, SubgraphId};
+use crate::scheduled::ticks::TickInstant;
 
 /// The main state of the Hydroflow instance, which is provided as a reference
 /// to each operator as it is run.
@@ -27,11 +28,11 @@ pub struct Context {
     // Second field (bool) is for if the event is an external "important" event (true).
     pub(crate) event_queue_send: UnboundedSender<(SubgraphId, bool)>,
 
-    pub(crate) current_tick: usize,
+    pub(crate) current_tick: TickInstant,
     pub(crate) current_stratum: usize,
 
-    pub(crate) current_tick_start: Instant,
-    pub(crate) subgraph_last_tick_run_in: Option<usize>,
+    pub(crate) current_tick_start: SystemTime,
+    pub(crate) subgraph_last_tick_run_in: Option<TickInstant>,
 
     /// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is (mostly)
@@ -45,12 +46,12 @@ pub struct Context {
 }
 impl Context {
     /// Gets the current tick (local time) count.
-    pub fn current_tick(&self) -> usize {
+    pub fn current_tick(&self) -> TickInstant {
         self.current_tick
     }
 
     /// Gets the timestamp of the beginning of the current tick.
-    pub fn current_tick_start(&self) -> Instant {
+    pub fn current_tick_start(&self) -> SystemTime {
         self.current_tick_start
     }
 

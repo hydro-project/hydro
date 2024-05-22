@@ -1,4 +1,4 @@
-#![cfg_attr(nightly, feature(never_type))]
+#![cfg_attr(feature = "nightly", feature(never_type))]
 #![allow(type_alias_bounds)]
 #![allow(clippy::let_and_return)]
 #![allow(clippy::iter_with_drain)]
@@ -28,12 +28,10 @@ pub mod util;
 
 #[cfg(feature = "python")]
 pub use pyo3;
-#[cfg(feature = "tracing")]
-pub use tracing;
 pub use variadics::{self, var_args, var_expr, var_type};
 pub use {
-    bincode, bytes, futures, hydroflow_lang as lang, instant, itertools, lattices, pusherator,
-    rustc_hash, serde, serde_json, tokio, tokio_stream, tokio_util,
+    bincode, bytes, futures, hydroflow_lang as lang, itertools, lattices, pusherator, rustc_hash,
+    serde, serde_json, tokio, tokio_stream, tokio_util, tracing, web_time,
 };
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
@@ -46,10 +44,11 @@ pub use hydroflow_macro::{
     hydroflow_test as test, monotonic_fn, morphism, DemuxEnum,
 };
 
-#[cfg(not(nightly))]
 /// Stand-in for the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
+#[cfg(not(feature = "nightly"))]
 pub type Never = std::convert::Infallible;
-#[cfg(nightly)]
+/// The [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)
+#[cfg(feature = "nightly")]
 pub type Never = !;
 
 #[cfg(doctest)]

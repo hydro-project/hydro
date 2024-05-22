@@ -79,7 +79,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     has_singleton_output: false,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),    flow_prop_fn: None,
+    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    hydroflow,
                    context,
@@ -120,17 +121,16 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                 .map(ToTokens::to_token_stream)
                 .unwrap_or(quote_spanned!(op_span=> _)),
         ];
-        let generic_type_key = &generic_type_args[0];
 
         let input = &inputs[0];
         let initfn = &arguments[0];
         let aggfn = &arguments[1];
 
+        let groupbydata_ident = wc.make_ident("groupbydata");
+        let hashtable_ident = wc.make_ident("hashtable");
+
         let (write_prologue, write_iterator, write_iterator_after) = match persistence {
             Persistence::Tick => {
-                let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
-
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
@@ -171,17 +171,12 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                 )
             }
             Persistence::Static => {
-                let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
-                let keyset_ident = wc.make_ident("keyset");
-
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
                         let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
-                        let mut #keyset_ident = #root::rustc_hash::FxHashSet::<#generic_type_key>::default();
 
                         {
                             #[inline(always)]
@@ -203,10 +198,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                             }
 
                             for kv in check_input(#input) {
-                                if #context.is_first_run_this_tick() {
-                                    // #[allow(unknown_lints, noop_method_call, clippy::clone_on_copy)]
-                                    #keyset_ident.insert(::std::clone::Clone::clone(&kv.0));
-                                }
                                 // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
                                 #[allow(unknown_lints, clippy::unwrap_or_default)]
                                 let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
@@ -214,73 +205,21 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                             }
                         }
 
-                        let #ident = if #context.is_first_run_this_tick() {
-                            #root::itertools::Either::Left(
-                                #hashtable_ident
-                                    .iter()
-                                    // TODO(mingwei): remove `unknown_lints` when `suspicious_double_ref_op` is stabilized.
-                                    .map(
-                                        #[allow(unknown_lints, suspicious_double_ref_op, clippy::clone_on_copy)]
-                                        |(k, v)| (
-                                            ::std::clone::Clone::clone(k),
-                                            ::std::clone::Clone::clone(v),
-                                        )
-                                    )
-                            )
-                        } else {
-                            #root::itertools::Either::Right(
-                                #keyset_ident.into_iter()
-                                    .map(|k| {
-                                        let v = #hashtable_ident.get(&k).unwrap();
-                                        (k, ::std::clone::Clone::clone(v))
-                                    })
-                            )
-                        };
-
-                        // let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
-
-                        // let #ident = {
-                        //     let replay_iter = if #context.is_first_run_this_tick() {
-                        //         // Note that this means streaming keys will get double-emited on the first run in the tick...
-                        //         #root::itertools::Either::Left(#hashtable_ident.iter())
-                        //     } else {
-                        //         #root::itertools::Either::Right(::std::iter::empty())
-                        //     };
-
-                        //     let new_items_iter = {
-                        //         #[inline(always)]
-                        //         fn check_input<Iter, A, B>(iter: Iter) -> impl ::std::iter::Iterator<Item = (A, B)>
-                        //         where
-                        //             Iter: std::iter::Iterator<Item = (A, B)>,
-                        //             A: ::std::clone::Clone,
-                        //             B: ::std::clone::Clone
-                        //         {
-                        //             iter
-                        //         }
-
-                        //         check_input(#input).map(|(key, val)| {
-                        //             /// A: accumulator type
-                        //             /// T: iterator item type
-                        //             /// O: output type
-                        //             #[inline(always)]
-                        //             fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
-                        //                 (f)(a, t)
-                        //             }
-
-                        //             // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
-                        //             #[allow(unknown_lints, clippy::unwrap_or_default)]
-                        //             let entry = #hashtable_ident.entry(key.clone()).or_insert_with(#initfn);
-                        //             #[allow(clippy::redundant_closure_call)]
-                        //             call_comb_type(entry, val, #aggfn);
-                        //             (key, entry.clone())
-                        //         })
-                        //     };
-
-                        //     replay_iter
-                        //         // TODO(mingwei): remove `unknown_lints` when `suspicious_double_ref_op` is stabilized.
-                        //         .map(#[allow(unknown_lints, suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()))
-                        //         .chain(new_items_iter)
-                        // };
+                        // Play everything but only on the first run of this tick/stratum.
+                        // (We know we won't have any more inputs, so it is fine to only play once.
+                        // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
+                        let #ident = #context.is_first_run_this_tick()
+                            .then_some(#hashtable_ident.iter())
+                            .into_iter()
+                            .flatten()
+                            .map(
+                                // TODO(mingwei): remove `unknown_lints` when `suspicious_double_ref_op` is stabilized.
+                                #[allow(unknown_lints, suspicious_double_ref_op, clippy::clone_on_copy)]
+                                |(k, v)| (
+                                    ::std::clone::Clone::clone(k),
+                                    ::std::clone::Clone::clone(v),
+                                )
+                            );
                     },
                     quote_spanned! {op_span=>
                         #context.schedule_subgraph(#context.current_subgraph(), false);
@@ -288,9 +227,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                 )
             }
             Persistence::Mutable => {
-                let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
-
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));

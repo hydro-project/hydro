@@ -1,11 +1,11 @@
 error: Cannot find referenced name `unknown`; name was never assigned.
- --> tests/compile-fail/surface_singleton_undefined_nostate.rs:5:41
+ --> tests/compile-fail/surface_singleton_undefined_nostate.rs:6:41
   |
-5 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())
+6 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())
   |                                         ^^^^^^^
 
 error: Cannot reference operator `null`. Only operators with singleton state can be referenced.
- --> tests/compile-fail/surface_singleton_undefined_nostate.rs:5:78
+ --> tests/compile-fail/surface_singleton_undefined_nostate.rs:6:78
   |
-5 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())
+6 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())
   |                                                                              ^^^^^^

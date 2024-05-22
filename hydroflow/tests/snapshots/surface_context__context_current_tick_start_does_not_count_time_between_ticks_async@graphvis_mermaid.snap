@@ -10,7 +10,7 @@ classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter([()])</code>"/]:::pullClass
 2v1[\"(2v1) <code>persist()</code>"/]:::pullClass
-3v1[/"(3v1) <code>for_each(|_| time.set(Some(Instant::now() - context.current_tick_start())))</code>"\]:::pushClass
+3v1[/"(3v1) <code>for_each(|_| time.set(Some(context.current_tick_start().elapsed().unwrap())))</code>"\]:::pushClass
 2v1-->3v1
 1v1-->2v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]

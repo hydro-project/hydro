@@ -19,6 +19,8 @@ pub mod reactor;
 pub mod state;
 pub(crate) mod subgraph;
 
+pub mod ticks;
+
 /// A subgraph's ID. Invalid if used in a different [`graph::Hydroflow`]
 /// instance than the original that created it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]

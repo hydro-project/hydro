@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use hydroflow::compiled::pull::HalfMultisetJoinState;
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::util::collect_ready;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
 use multiplatform_test::multiplatform_test;
@@ -19,7 +20,7 @@ pub fn test_persist_basic() {
     assert_graphvis_snapshots!(hf);
 
     for tick in 0..10 {
-        assert_eq!(tick, hf.current_tick());
+        assert_eq!(TickInstant::new(tick), hf.current_tick());
         hf.run_tick();
     }
     assert_eq!(
@@ -45,7 +46,7 @@ pub fn test_persist_pull() {
     assert_graphvis_snapshots!(hf);
 
     for tick in 0..10 {
-        assert_eq!(tick, hf.current_tick());
+        assert_eq!(TickInstant::new(tick), hf.current_tick());
         hf.run_tick();
     }
     assert_eq!(
@@ -68,7 +69,7 @@ pub fn test_persist_push() {
     assert_graphvis_snapshots!(hf);
 
     for tick in 0..10 {
-        assert_eq!(tick, hf.current_tick());
+        assert_eq!(TickInstant::new(tick), hf.current_tick());
         hf.run_tick();
     }
     assert_eq!(

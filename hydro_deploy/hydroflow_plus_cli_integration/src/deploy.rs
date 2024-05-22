@@ -130,6 +130,7 @@ impl Location for DeployNode {
         let mut n = self.underlying.try_write().unwrap();
         n.update_meta(HydroflowPlusMeta {
             clusters: meta.clone(),
+            cluster_id: None,
             subgraph_id: self.id,
         });
     }
@@ -172,14 +173,13 @@ impl Location for DeployCluster {
     }
 
     fn update_meta(&mut self, meta: &Self::Meta) {
-        let meta = HydroflowPlusMeta {
-            clusters: meta.clone(),
-            subgraph_id: self.id,
-        };
-
-        self.members.iter().for_each(|n| {
+        self.members.iter().enumerate().for_each(|(cluster_id, n)| {
             let mut n = n.underlying.try_write().unwrap();
-            n.update_meta(&meta);
+            n.update_meta(&HydroflowPlusMeta {
+                clusters: meta.clone(),
+                cluster_id: Some(cluster_id as u32),
+                subgraph_id: self.id,
+            });
         });
     }
 }
@@ -188,6 +188,10 @@ impl<'a> Cluster<'a> for DeployCluster {
     type Id = u32;
 
     fn ids(&self) -> impl stageleft::Quoted<'a, &'a Vec<u32>> + Copy + 'a {
+        q!(panic!())
+    }
+
+    fn self_id(&self) -> impl stageleft::Quoted<'a, Self::Id> + Copy + 'a {
         q!(panic!())
     }
 }

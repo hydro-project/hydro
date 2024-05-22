@@ -44,6 +44,12 @@ impl<'a> Cluster<'a> for SingleNode {
         #[allow(unreachable_code)]
         RuntimeData::new("")
     }
+
+    fn self_id(&self) -> impl Quoted<'a, Self::Id> + Copy + 'a {
+        panic!();
+        #[allow(unreachable_code)]
+        RuntimeData::new("")
+    }
 }
 
 pub struct MultiGraph {}
@@ -86,6 +92,12 @@ impl<'a> Cluster<'a> for MultiNode {
     type Id = u32;
 
     fn ids(&self) -> impl Quoted<'a, &'a Vec<u32>> + Copy + 'a {
+        panic!();
+        #[allow(unreachable_code)]
+        RuntimeData::new("")
+    }
+
+    fn self_id(&self) -> impl Quoted<'a, Self::Id> + Copy + 'a {
         panic!();
         #[allow(unreachable_code)]
         RuntimeData::new("")

@@ -9,7 +9,7 @@ on:
 
 env:
   PACKAGE_NAME: hydro_deploy
-  PYTHON_VERSION: "3.7" # to build abi3 wheels
+  PYTHON_VERSION: "3.10" # to build abi3 wheels
 
 # based on Ruff's CI
 jobs:
@@ -33,10 +33,9 @@ jobs:
           - universal2-apple-darwin
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          architecture: x64
       - name: "Build wheels"
         uses: PyO3/maturin-action@v1
         with:
@@ -63,7 +62,7 @@ jobs:
           - i686-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           architecture: x64
@@ -108,7 +107,7 @@ jobs:
             arch: armv7
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: "Build wheels"
@@ -139,7 +138,7 @@ jobs:
             arch: x64
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           architecture: ${{ matrix.platform.arch }}
@@ -173,7 +172,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: wheels
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - name: "Publish to PyPi"
         env:
           TWINE_USERNAME: __token__

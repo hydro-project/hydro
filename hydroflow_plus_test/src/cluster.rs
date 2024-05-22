@@ -17,10 +17,15 @@ pub fn simple_cluster<'a, D: Deploy<'a, ClusterId = u32>>(
     let numbers = flow.source_iter(&process, q!(0..5));
     let ids = flow.source_iter(&process, cluster.ids()).map(q!(|&id| id));
 
+    let cluster_self_id = cluster.self_id();
+
     ids.cross_product(numbers)
         .map(q!(|(id, n)| (id, (id, n))))
         .send_bincode(&cluster)
-        .inspect(q!(|n| println!("cluster received: {:?}", n)))
+        .inspect(q!(move |n| println!(
+            "cluster received: {:?} (self cluster id: {})",
+            n, cluster_self_id
+        )))
         .send_bincode(&process)
         .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
 
@@ -238,7 +243,7 @@ mod tests {
             for j in 0..5 {
                 assert_eq!(
                     stdout.recv().await.unwrap(),
-                    format!("cluster received: ({}, {})", i, j)
+                    format!("cluster received: ({}, {}) (self cluster id: {})", i, j, i)
                 );
             }
         }

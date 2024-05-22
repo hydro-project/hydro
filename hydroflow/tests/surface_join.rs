@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::{assert_graphvis_snapshots, hydroflow_syntax};
 use multiplatform_test::multiplatform_test;
 
@@ -23,7 +24,7 @@ macro_rules! assert_contains_each_by_tick {
 
 #[multiplatform_test]
 pub fn tick_tick() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -42,13 +43,13 @@ pub fn tick_tick() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (1, 0)), (7, (2, 0))]);
-    assert_contains_each_by_tick!(results, 1, &[]);
+    assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
+    assert_contains_each_by_tick!(results, TickInstant::new(1), &[]);
 }
 
 #[multiplatform_test]
 pub fn tick_static() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -67,13 +68,13 @@ pub fn tick_static() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (1, 0)), (7, (2, 0))]);
-    assert_contains_each_by_tick!(results, 1, &[]);
+    assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
+    assert_contains_each_by_tick!(results, TickInstant::new(1), &[]);
 }
 
 #[multiplatform_test]
 pub fn static_tick() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -92,15 +93,15 @@ pub fn static_tick() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 
-    assert_contains_each_by_tick!(results, 0, &[(7, (1, 0)), (7, (2, 0))]);
-    assert_contains_each_by_tick!(results, 1, &[(7, (1, 1)), (7, (2, 1))]);
-    assert_contains_each_by_tick!(results, 2, &[(7, (1, 2)), (7, (2, 2))]);
-    assert_contains_each_by_tick!(results, 3, &[]);
+    assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
+    assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (1, 1)), (7, (2, 1))]);
+    assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (1, 2)), (7, (2, 2))]);
+    assert_contains_each_by_tick!(results, TickInstant::new(3), &[]);
 }
 
 #[multiplatform_test]
 pub fn static_static() {
-    let results = Rc::new(RefCell::new(HashMap::<usize, Vec<_>>::new()));
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
     let mut df = hydroflow_syntax! {
@@ -121,9 +122,32 @@ pub fn static_static() {
 
     #[rustfmt::skip]
     {
-        assert_contains_each_by_tick!(results, 0, &[(7, (1, 0)), (7, (2, 0))]);
-        assert_contains_each_by_tick!(results, 1, &[(7, (1, 0)), (7, (2, 0)), (7, (1, 1)), (7, (2, 1))]);
-        assert_contains_each_by_tick!(results, 2, &[(7, (1, 0)), (7, (2, 0)), (7, (1, 1)), (7, (2, 1)), (7, (1, 2)), (7, (2, 2))]);
-        assert_contains_each_by_tick!(results, 3, &[]);
+        assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (1, 0)), (7, (2, 0)), (7, (1, 1)), (7, (2, 1))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (1, 0)), (7, (2, 0)), (7, (1, 1)), (7, (2, 1)), (7, (1, 2)), (7, (2, 2))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(3), &[]);
+    };
+}
+
+#[multiplatform_test]
+pub fn replay_static() {
+    let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
+    let results_inner = Rc::clone(&results);
+
+    let mut df = hydroflow_syntax! {
+        source_iter([(7, 1), (7, 2)]) -> [0]my_join;
+        source_iter([(7, 3), (7, 4)]) -> [1]my_join;
+        my_join = join::<'static, 'static>()
+            -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
+    };
+    df.run_tick();
+    df.run_tick();
+    df.run_tick();
+
+    #[rustfmt::skip]
+    {
+        assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 3)), (7, (1, 4)), (7, (2, 3)), (7, (2, 4))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (1, 3)), (7, (1, 4)), (7, (2, 3)), (7, (2, 4))]);
+        assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (1, 3)), (7, (1, 4)), (7, (2, 3)), (7, (2, 4))]);
     };
 }
