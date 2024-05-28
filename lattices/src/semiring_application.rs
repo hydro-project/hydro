@@ -95,6 +95,138 @@ impl One<u32> for Multiplicity {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+/// Implementation of the RealNumber semiring (R, +, *, 0, 1)
+pub struct RealNumber(f64);
+
+impl RealNumber {
+    /// Create a new instance of RealNumber.
+    pub fn new(value: f64) -> Self {
+        RealNumber(value)
+    }
+}
+
+/// Implementation of the addition trait for RealNumber semiring.
+impl Addition<RealNumber> for RealNumber {
+    /// + operation
+    fn add(&mut self, other: RealNumber) {
+        self.0 += other.0
+    }
+}
+
+/// Implementation of the multiplication trait for RealNumber semiring.
+impl Multiplication<RealNumber> for RealNumber {
+    /// * operation
+    fn mul(&mut self, other: RealNumber) {
+        self.0 *= other.0
+    }
+}
+
+/// Implementation of Identity for addition.
+impl Zero<f64> for RealNumber {
+    /// 0 is the zero element of the semiring.  
+    fn zero(&self) -> RealNumber {
+        RealNumber(0.0)
+    }
+}
+
+/// Implementation of Identity for multiplication.
+impl One<f64> for RealNumber {
+    /// 1 is the one element of the semiring.
+    fn one(&self) -> RealNumber {
+        RealNumber(1.0)
+    }
+}
+
+/// Ridge Regression using RealNumber semiring
+#[allow(dead_code)]
+fn ridge_regression(
+    a: Vec<Vec<f64>>,
+    b: Vec<f64>,
+    lambda: f64,
+    alpha: f64,
+    iterations: usize,
+    tolerance: f64,
+) -> Vec<f64> {
+    // Cast a, b, lambda, alpha to RealNumber
+    let a: Vec<Vec<RealNumber>> = a
+        .iter()
+        .map(|row| row.iter().map(|&x| RealNumber(x)).collect())
+        .collect();
+
+    let b: Vec<RealNumber> = b.iter().map(|&x| RealNumber(x)).collect();
+    let lambda = RealNumber(lambda);
+    let alpha = RealNumber(alpha);
+
+    // Initialize x with zeros
+    let mut x: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
+    // let mut gradient: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
+
+    for _ in 0..iterations {
+        // Reset gradient
+        let mut gradient: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
+
+        // Compute the gradient
+        for i in 0..x.len() {
+            let mut a_k_i_a_k_j_x_j = RealNumber(0.0);
+            let mut a_j_i_b_j = RealNumber(0.0);
+
+            for j in 0..x.len() {
+                let mut a_k_i_a_k_j_x_j_temp = RealNumber(0.0);
+                for a_k in &a {
+                    let mut temp1 = a_k[j];
+                    temp1.mul(x[j]);
+                    let mut temp2 = a_k[i];
+                    temp2.mul(temp1);
+                    a_k_i_a_k_j_x_j_temp.add(temp2);
+                }
+                a_k_i_a_k_j_x_j.add(a_k_i_a_k_j_x_j_temp);
+
+                let mut temp3 = a[j][i];
+                temp3.mul(RealNumber(-1.0));
+                temp3.mul(b[j]);
+                a_j_i_b_j.add(temp3);
+
+                let mut lambda_x_i = lambda;
+                lambda_x_i.mul(x[i]);
+                a_j_i_b_j.add(lambda_x_i);
+            }
+            gradient[i].add(a_k_i_a_k_j_x_j);
+            gradient[i].add(a_j_i_b_j);
+        }
+
+        // Update x using the gradient and check for convergence
+        let mut max_change = 0.0;
+        for i in 0..x.len() {
+            let mut alpha_gradient_i = alpha;
+            alpha_gradient_i.mul(RealNumber(-1.0));
+            alpha_gradient_i.mul(gradient[i]);
+
+            let new_x_i = {
+                let mut temp = x[i];
+                temp.add(alpha_gradient_i);
+                temp
+            };
+
+            let change = (new_x_i.0 - x[i].0).abs();
+            if change > max_change {
+                max_change = change;
+            }
+
+            x[i] = new_x_i;
+        }
+
+        // Check if the maximum change is less than the tolerance
+        if max_change < tolerance {
+            break;
+        }
+    }
+
+    // Convert x back to Vec<f64>
+    x.iter().map(|&RealNumber(value)| value).collect()
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Implementation for N U Inf
 pub enum U32WithInfinity {
@@ -165,13 +297,21 @@ impl One<U32WithInfinity> for Cost {
     }
 }
 
+/// Floyd-Warshall Algorithm
 #[allow(dead_code)]
-/// use Tropical Semiring implementation for calculating All Pair Shortest Path in a graph with positive edge weights.
-/// P(x,y) = shortest path from x to y
-/// E(x,y) = edge weight from x to y
-/// P(x,y) = min(E(x,y), min z (P(x,z) + E(z,y)) where (min,+) are the “addition” and “multiplication” operators in the tropical semirings
-fn all_pairs_shortest_path(graph: Vec<Vec<U32WithInfinity>>) -> Vec<Vec<u32>> {
-    let n = graph.len();
+fn all_pairs_shortest_path(edges: Vec<(usize, usize, u32)>, n: usize) -> Vec<(usize, usize, u32)> {
+    let inf = U32WithInfinity::Infinity;
+    let mut graph: Vec<Vec<U32WithInfinity>> = vec![vec![inf; n]; n];
+
+    // Initialize the graph with given edges
+    for &(start, destination, path_length) in &edges {
+        graph[start][destination] = U32WithInfinity::Finite(path_length);
+    }
+
+    for (i, graph_i) in graph.iter_mut().enumerate().take(n) {
+        graph_i[i] = U32WithInfinity::Finite(0);
+    }
+
     let mut dist: Vec<Vec<Cost>> = vec![vec![Cost::new(U32WithInfinity::Infinity); n]; n];
     for i in 0..n {
         for j in 0..n {
@@ -189,14 +329,14 @@ fn all_pairs_shortest_path(graph: Vec<Vec<U32WithInfinity>>) -> Vec<Vec<u32>> {
         }
     }
 
-    // Convert the Cost elements into U32WithInfinity
-    let mut result: Vec<Vec<u32>> = vec![vec![0; n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            match dist[i][j].0 {
-                // if infinity, don't change the value
-                U32WithInfinity::Infinity => result[i][j] = u32::MAX,
-                U32WithInfinity::Finite(x) => result[i][j] = x,
+    // Convert the result back into the edge list format
+    let mut result: Vec<(usize, usize, u32)> = Vec::new();
+    for (i, dist_i) in dist.iter().enumerate().take(n) {
+        for (j, dist_ij) in dist_i.iter().enumerate().take(n) {
+            if i != j {
+                if let U32WithInfinity::Finite(cost) = dist_ij.0 {
+                    result.push((i, j, cost));
+                }
             }
         }
     }
@@ -297,6 +437,17 @@ impl One<f64> for FuzzyLogic {
 mod test {
 
     use super::*;
+    fn assert_approx_eq(a: &[f64], b: &[f64], epsilon: f64) {
+        assert_eq!(a.len(), b.len());
+        for (x, y) in a.iter().zip(b.iter()) {
+            assert!(
+                (x - y).abs() < epsilon,
+                "Expected: {:?}, but got: {:?}",
+                a,
+                b
+            );
+        }
+    }
 
     // Test for BinaryTrust ({0,1}, OR, AND, False, True)
     #[test]
@@ -422,15 +573,8 @@ mod test {
     }
 
     #[test]
-    fn test_all_pairs_shortest_path_1() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-        let c3 = U32WithInfinity::Finite(3);
-        let c4 = U32WithInfinity::Finite(4);
-        let c5 = U32WithInfinity::Finite(5);
-        let c6 = U32WithInfinity::Finite(6);
+    fn test_graph_with_multiple_directed_cycle() {
+        // Testing a graph with more than one cycle between nodes.
 
         // Graph in matrix form:
         //     A  B  C  D  E
@@ -441,36 +585,52 @@ mod test {
         // E [1, ∞, ∞, 4, 0]
 
         // Graph :https://www.geeksforgeeks.org/floyd-warshall-algorithm-dp-16/
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c4, inf, c5, inf],
-            vec![inf, c0, c1, inf, c6],
-            vec![c2, inf, c0, c3, inf],
-            vec![inf, inf, c1, c0, c2],
-            vec![c1, inf, inf, c4, c0],
-        ];
 
-        let result = all_pairs_shortest_path(graph);
+        let edges = vec![
+            (0, 1, 4),
+            (0, 3, 5),
+            (1, 2, 1),
+            (1, 4, 6),
+            (2, 0, 2),
+            (2, 3, 3),
+            (3, 2, 1),
+            (3, 4, 2),
+            (4, 0, 1),
+            (4, 3, 4),
+        ];
+        let n = 5;
+
+        let result = all_pairs_shortest_path(edges, n);
 
         let expected = vec![
-            vec![0, 4, 5, 5, 7],
-            vec![3, 0, 1, 4, 6],
-            vec![2, 6, 0, 3, 5],
-            vec![3, 7, 1, 0, 2],
-            vec![1, 5, 5, 4, 0],
+            (0, 1, 4),
+            (0, 2, 5),
+            (0, 3, 5),
+            (0, 4, 7),
+            (1, 0, 3),
+            (1, 2, 1),
+            (1, 3, 4),
+            (1, 4, 6),
+            (2, 0, 2),
+            (2, 1, 6),
+            (2, 3, 3),
+            (2, 4, 5),
+            (3, 0, 3),
+            (3, 1, 7),
+            (3, 2, 1),
+            (3, 4, 2),
+            (4, 0, 1),
+            (4, 1, 5),
+            (4, 2, 5),
+            (4, 3, 4),
         ];
 
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_all_pairs_shortest_path_2() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-        let c4 = U32WithInfinity::Finite(4);
-        let c8 = U32WithInfinity::Finite(8);
-        let c9 = U32WithInfinity::Finite(9);
+    fn test_graph_with_one_directed_cycle() {
+        // Testing a graph with a directed cycle.
 
         // Graph in matrix form:
         //     A  B  C  D
@@ -478,36 +638,48 @@ mod test {
         // B [∞, 0, 1, ∞]
         // C [4, ∞, 0, ∞]
         // D [∞, 2, 9, 0]
+        // Has a cycle between A -> D -> C -> A
 
         // Graph: https://www.tutorialspoint.com/all-pairs-shortest-paths
 
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c8, inf, c1],
-            vec![inf, c0, c1, inf],
-            vec![c4, inf, c0, inf],
-            vec![inf, c2, c9, c0],
+        let edges = vec![
+            (0, 1, 8),
+            (0, 3, 1),
+            (1, 2, 1),
+            (2, 0, 4),
+            (3, 1, 2),
+            (3, 2, 9),
         ];
+        let n = 4;
 
-        let result = all_pairs_shortest_path(graph);
+        let result = all_pairs_shortest_path(edges, n);
 
         let expected = vec![
-            vec![0, 3, 4, 1],
-            vec![5, 0, 1, 6],
-            vec![4, 7, 0, 5],
-            vec![7, 2, 3, 0],
+            (0, 1, 3),
+            (0, 2, 4),
+            (0, 3, 1),
+            (1, 0, 5),
+            (1, 2, 1),
+            (1, 3, 6),
+            (2, 0, 4),
+            (2, 1, 7),
+            (2, 3, 5),
+            (3, 0, 7),
+            (3, 1, 2),
+            (3, 2, 3),
         ];
 
         assert_eq!(result, expected);
     }
 
     #[test]
-    fn test_all_pairs_shortest_path_3() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c2 = U32WithInfinity::Finite(2);
-        let c3 = U32WithInfinity::Finite(3);
-        let c5 = U32WithInfinity::Finite(5);
-        let c8 = U32WithInfinity::Finite(8);
+    fn test_graph_with_undirected_edges() {
+        // Testing a graph with undirected edges between nodes.
+        // A --(5)-- B
+        // |         |
+        // (8)       (2)
+        // |         |
+        // C --(3)-- D
 
         // Graph in matrix form:
         //     A  B  C  D
@@ -517,21 +689,173 @@ mod test {
         // D [∞, 2, 3, 0]
 
         // Graph: https://www.altcademy.com/blog/calculate-the-all-pairs-shortest-paths-in-a-graph/
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c5, c8, inf], // A
-            vec![c5, c0, inf, c2], // B
-            vec![c8, inf, c0, c3], // C
-            vec![inf, c2, c3, c0], // D
-        ];
 
-        let result = all_pairs_shortest_path(graph);
+        let edges = vec![
+            (0, 1, 5),
+            (0, 2, 8),
+            (1, 0, 5),
+            (1, 3, 2),
+            (2, 0, 8),
+            (2, 3, 3),
+            (3, 1, 2),
+            (3, 2, 3),
+        ];
+        let n = 4;
+
+        let result = all_pairs_shortest_path(edges, n);
+
+        // Expected Output in matrix form:
+        //    A  B  C  D
+        // A [0, 5, 8, 7]
+        // B [5, 0, 5, 2]
+        // C [8, 5, 0, 3]
+        // D [7, 2, 3, 0]
 
         let expected = vec![
-            vec![0, 5, 8, 7],
-            vec![5, 0, 5, 2],
-            vec![8, 5, 0, 3],
-            vec![7, 2, 3, 0],
+            (0, 1, 5),
+            (0, 2, 8),
+            (0, 3, 7),
+            (1, 0, 5),
+            (1, 2, 5),
+            (1, 3, 2),
+            (2, 0, 8),
+            (2, 1, 5),
+            (2, 3, 3),
+            (3, 0, 7),
+            (3, 1, 2),
+            (3, 2, 3),
         ];
         assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_graph_with_zero_weight_edges() {
+        // Testing a graph with zero weight edges.
+        let edges = vec![(0, 1, 0), (1, 2, 0), (2, 3, 0), (3, 0, 0)];
+        let n = 4;
+
+        let result = all_pairs_shortest_path(edges, n);
+
+        let expected = vec![
+            (0, 1, 0),
+            (0, 2, 0),
+            (0, 3, 0),
+            (1, 2, 0),
+            (1, 3, 0),
+            (2, 0, 0),
+            (2, 1, 0),
+            (2, 3, 0),
+            (3, 0, 0),
+            (3, 1, 0),
+            (3, 2, 0),
+        ];
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_disconnected_graph() {
+        // Testing a disconnected graph.
+        let edges = vec![(0, 1, 2), (2, 3, 3)];
+        let n = 4;
+
+        let result = all_pairs_shortest_path(edges, n);
+
+        let expected = vec![(0, 1, 2), (2, 3, 3)];
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_basic_ridge_regression() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let lambda = 0.1;
+        let alpha = 0.01;
+        let iterations = 1000;
+
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+
+        // The expected result is found by running a known-good implementation or manually computing it.
+        let expected_result = vec![0.090909, 0.136364];
+        assert_approx_eq(&result, &expected_result, 1e-4);
+    }
+
+    #[test]
+    fn test_zero_matrix() {
+        let a = vec![vec![0.0, 0.0], vec![0.0, 0.0]];
+        let b = vec![0.0, 0.0];
+        let lambda = 1.0;
+        let alpha = 0.01;
+        let iterations = 10;
+
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        let expected_result = vec![0.0, 0.0];
+        assert_approx_eq(&result, &expected_result, 1e-8);
+    }
+
+    #[test]
+    fn test_identity_matrix() {
+        let a = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
+        let b = vec![1.0, 1.0];
+        let lambda = 0.0;
+        let alpha = 0.01;
+        let iterations = 100;
+
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        let expected_result = vec![0.0, 1.0];
+        assert_approx_eq(&result, &expected_result, 1e-8);
+    }
+
+    #[test]
+    fn test_singular_matrix() {
+        let a = vec![vec![1.0, 2.0], vec![2.0, 4.0]];
+        let b = vec![1.0, 2.0];
+        let lambda = 0.1;
+        let alpha = 0.01;
+        let iterations = 1000;
+
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        let expected_result = vec![0.1992031, 0.39840637];
+        assert_approx_eq(&result, &expected_result, 1e-2);
+    }
+
+    #[test]
+    fn test_varying_lambda() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let alpha = 0.01;
+        let iterations = 1000;
+
+        // Testing different lambda values 0, 0.5, 1
+        let result1 = ridge_regression(a.clone(), b.clone(), 0.0, alpha, iterations, 1e-8);
+        let result2: Vec<f64> =
+            ridge_regression(a.clone(), b.clone(), 1.0, alpha, iterations, 1e-8);
+        let result3: Vec<f64> =
+            ridge_regression(a.clone(), b.clone(), 0.5, alpha, iterations, 1e-8);
+
+        let expected_result1: Vec<f64> = vec![0.0, 0.5];
+        let expected_result2 = vec![0.18965517, 0.3448276862];
+        let expected_result3 = vec![0.1577060932, 0.3727598566];
+
+        assert_approx_eq(&result1, &expected_result1, 1e-4);
+        assert_approx_eq(&result2, &expected_result2, 1e-4);
+        assert_approx_eq(&result3, &expected_result3, 1e-4);
+    }
+
+    #[test]
+    fn test_varying_alpha() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let lambda = 0.1;
+        let iterations = 1000;
+
+        let result1 = ridge_regression(a.clone(), b.clone(), lambda, 0.01, iterations, 1e-8);
+        let result2 = ridge_regression(a.clone(), b.clone(), lambda, 0.001, iterations, 1e-8);
+
+        let expected_result = vec![0.06644518272, 0.4469948656];
+
+        assert_approx_eq(&result1, &expected_result, 1e-4);
+        assert_approx_eq(&result2, &expected_result, 1e-4);
     }
 }
