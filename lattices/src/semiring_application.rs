@@ -1,8 +1,8 @@
-//! Module containing the [`BinaryTrust`] applications of semirings.
+//! Module containing the [`BinaryTrust`,`Cost`, `Multiplicity`, `FuzzyLogic`, `RealNumber`] applications of semirings.
 
 use crate::{Addition, Multiplication, One, Zero};
+
 #[derive(PartialEq, Debug)]
-// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 
 /// Implementation of the Binary Trust semiring ({0,1}, OR, AND, False, True)
 pub struct BinaryTrust(bool);
@@ -96,254 +96,6 @@ impl One<u32> for Multiplicity {
 }
 
 #[allow(dead_code)]
-#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
-/// Implementation of the RealNumber semiring (R, +, *, 0, 1)
-pub struct RealNumber(f64);
-
-impl RealNumber {
-    /// Create a new instance of RealNumber.
-    pub fn new(value: f64) -> Self {
-        RealNumber(value)
-    }
-}
-
-/// Implementation of the addition trait for RealNumber semiring.
-impl Addition<RealNumber> for RealNumber {
-    /// + operation
-    fn add(&mut self, other: RealNumber) {
-        self.0 += other.0
-    }
-}
-
-/// Implementation of the multiplication trait for RealNumber semiring.
-impl Multiplication<RealNumber> for RealNumber {
-    /// * operation
-    fn mul(&mut self, other: RealNumber) {
-        self.0 *= other.0
-    }
-}
-
-/// Implementation of Identity for addition.
-impl Zero<f64> for RealNumber {
-    /// 0 is the zero element of the semiring.  
-    fn zero(&self) -> RealNumber {
-        RealNumber(0.0)
-    }
-}
-
-/// Implementation of Identity for multiplication.
-impl One<f64> for RealNumber {
-    /// 1 is the one element of the semiring.
-    fn one(&self) -> RealNumber {
-        RealNumber(1.0)
-    }
-}
-
-/// Ridge Regression using RealNumber semiring
-#[allow(dead_code)]
-fn ridge_regression(
-    a: Vec<Vec<f64>>,
-    b: Vec<f64>,
-    lambda: f64,
-    alpha: f64,
-    iterations: usize,
-    tolerance: f64,
-) -> Vec<f64> {
-    // Cast a, b, lambda, alpha to RealNumber
-    let a: Vec<Vec<RealNumber>> = a
-        .iter()
-        .map(|row| row.iter().map(|&x| RealNumber(x)).collect())
-        .collect();
-
-    let b: Vec<RealNumber> = b.iter().map(|&x| RealNumber(x)).collect();
-    let lambda = RealNumber(lambda);
-    let alpha = RealNumber(alpha);
-
-    // Initialize x with zeros
-    let mut x: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
-    // let mut gradient: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
-
-    for _ in 0..iterations {
-        // Reset gradient
-        let mut gradient: Vec<RealNumber> = vec![RealNumber(0.0); a[0].len()];
-
-        // Compute the gradient
-        for i in 0..x.len() {
-            let mut a_k_i_a_k_j_x_j = RealNumber(0.0);
-            let mut a_j_i_b_j = RealNumber(0.0);
-
-            for j in 0..x.len() {
-                let mut a_k_i_a_k_j_x_j_temp = RealNumber(0.0);
-                for a_k in &a {
-                    let mut temp1 = a_k[j];
-                    temp1.mul(x[j]);
-                    let mut temp2 = a_k[i];
-                    temp2.mul(temp1);
-                    a_k_i_a_k_j_x_j_temp.add(temp2);
-                }
-                a_k_i_a_k_j_x_j.add(a_k_i_a_k_j_x_j_temp);
-
-                let mut temp3 = a[j][i];
-                temp3.mul(RealNumber(-1.0));
-                temp3.mul(b[j]);
-                a_j_i_b_j.add(temp3);
-
-                let mut lambda_x_i = lambda;
-                lambda_x_i.mul(x[i]);
-                a_j_i_b_j.add(lambda_x_i);
-            }
-            gradient[i].add(a_k_i_a_k_j_x_j);
-            gradient[i].add(a_j_i_b_j);
-        }
-
-        // Update x using the gradient and check for convergence
-        let mut max_change = 0.0;
-        for i in 0..x.len() {
-            let mut alpha_gradient_i = alpha;
-            alpha_gradient_i.mul(RealNumber(-1.0));
-            alpha_gradient_i.mul(gradient[i]);
-
-            let new_x_i = {
-                let mut temp = x[i];
-                temp.add(alpha_gradient_i);
-                temp
-            };
-
-            let change = (new_x_i.0 - x[i].0).abs();
-            if change > max_change {
-                max_change = change;
-            }
-
-            x[i] = new_x_i;
-        }
-
-        // Check if the maximum change is less than the tolerance
-        if max_change < tolerance {
-            break;
-        }
-    }
-
-    // Convert x back to Vec<f64>
-    x.iter().map(|&RealNumber(value)| value).collect()
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-/// Implementation for N U Inf
-pub enum U32WithInfinity {
-    /// Infinity
-    Infinity,
-    /// Natural numbers
-    Finite(u32),
-}
-
-#[allow(dead_code)]
-#[derive(Clone, Copy, PartialEq, Debug)]
-/// Implementation of the Cost/Tropical semiring (N U Inf, min, +, inf, 0)
-pub struct Cost(U32WithInfinity);
-
-impl Cost {
-    /// Create a new instance of Cost.
-    pub fn new(value: U32WithInfinity) -> Self {
-        Cost(value)
-    }
-}
-
-/// Implementation of the addition trait for Cost semiring.
-impl Addition<Cost> for Cost {
-    /// Min operation
-    fn add(&mut self, other: Self) {
-        match (self.0, other.0) {
-            (U32WithInfinity::Infinity, _) => self.0 = other.0,
-            (_, U32WithInfinity::Infinity) => (),
-            (U32WithInfinity::Finite(a), U32WithInfinity::Finite(b)) => {
-                if a < b {
-                    self.0 = U32WithInfinity::Finite(a);
-                } else {
-                    self.0 = U32WithInfinity::Finite(b);
-                }
-            }
-        }
-    }
-}
-
-/// Implementation of the multiplication trait for Cost semiring.
-impl Multiplication<Cost> for Cost {
-    /// + operation
-    fn mul(&mut self, other: Cost) {
-        match (self.0, other.0) {
-            (U32WithInfinity::Infinity, _) | (_, U32WithInfinity::Infinity) => {
-                self.0 = U32WithInfinity::Infinity;
-            }
-            (U32WithInfinity::Finite(a), U32WithInfinity::Finite(b)) => {
-                self.0 = U32WithInfinity::Finite(a + b);
-            }
-        }
-    }
-}
-
-/// Implementation of Identity for addition.
-impl Zero<U32WithInfinity> for Cost {
-    /// Infinity is the identity element for addition operation.
-    fn zero(&self) -> Cost {
-        Cost(U32WithInfinity::Infinity)
-    }
-}
-
-/// Implementation of Identity for multiplication.
-impl One<U32WithInfinity> for Cost {
-    /// 0 is the one element of the semiring.
-    fn one(&self) -> Cost {
-        Cost(U32WithInfinity::Finite(0))
-    }
-}
-
-/// Floyd-Warshall Algorithm
-#[allow(dead_code)]
-fn all_pairs_shortest_path(edges: Vec<(usize, usize, u32)>, n: usize) -> Vec<(usize, usize, u32)> {
-    let inf = U32WithInfinity::Infinity;
-    let mut graph: Vec<Vec<U32WithInfinity>> = vec![vec![inf; n]; n];
-
-    // Initialize the graph with given edges
-    for &(start, destination, path_length) in &edges {
-        graph[start][destination] = U32WithInfinity::Finite(path_length);
-    }
-
-    for (i, graph_i) in graph.iter_mut().enumerate().take(n) {
-        graph_i[i] = U32WithInfinity::Finite(0);
-    }
-
-    let mut dist: Vec<Vec<Cost>> = vec![vec![Cost::new(U32WithInfinity::Infinity); n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            dist[i][j] = Cost::new(graph[i][j]);
-        }
-    }
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                // distance[i][j] = min(distance[i][j], distance[i][k] + distance[k][j])
-                let mut new_cost = dist[i][k];
-                new_cost.mul(dist[k][j]);
-                dist[i][j].add(new_cost);
-            }
-        }
-    }
-
-    // Convert the result back into the edge list format
-    let mut result: Vec<(usize, usize, u32)> = Vec::new();
-    for (i, dist_i) in dist.iter().enumerate().take(n) {
-        for (j, dist_ij) in dist_i.iter().enumerate().take(n) {
-            if i != j {
-                if let U32WithInfinity::Finite(cost) = dist_ij.0 {
-                    result.push((i, j, cost));
-                }
-            }
-        }
-    }
-    result
-}
-
-#[allow(dead_code)]
 /// Implementation of the confidence Score semiring ([0, 1], max, *, 0, 1)
 pub struct ConfidenceScore(f64);
 
@@ -433,10 +185,240 @@ impl One<f64> for FuzzyLogic {
     }
 }
 
-#[cfg(test)]
-mod test {
+#[allow(dead_code)]
+#[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
+/// Implementation of the RealNumber semiring (R, +, *, 0, 1)
+pub struct RealNumber(f64);
 
+impl RealNumber {
+    /// Create a new instance of RealNumber.
+    pub fn new(value: f64) -> Self {
+        RealNumber(value)
+    }
+}
+
+/// Implementation of the addition trait for RealNumber semiring.
+impl Addition<RealNumber> for RealNumber {
+    /// + operation
+    fn add(&mut self, other: RealNumber) {
+        self.0 += other.0
+    }
+}
+
+/// Implementation of the multiplication trait for RealNumber semiring.
+impl Multiplication<RealNumber> for RealNumber {
+    /// * operation
+    fn mul(&mut self, other: RealNumber) {
+        self.0 *= other.0
+    }
+}
+
+/// Implementation of Identity for addition.
+impl Zero<f64> for RealNumber {
+    /// 0 is the zero element of the semiring.  
+    fn zero(&self) -> RealNumber {
+        RealNumber(0.0)
+    }
+}
+
+/// Implementation of Identity for multiplication.
+impl One<f64> for RealNumber {
+    /// 1 is the one element of the semiring.
+    fn one(&self) -> RealNumber {
+        RealNumber(1.0)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Implementation for N U Inf
+pub enum U32WithInfinity {
+    /// Infinity
+    Infinity,
+    /// Natural numbers
+    Finite(u32),
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Copy, PartialEq, Debug)]
+/// Implementation of the Cost/Tropical semiring (N U Inf, min, +, inf, 0)
+pub struct Cost(U32WithInfinity);
+
+impl Cost {
+    /// Create a new instance of Cost.
+    pub fn new(value: U32WithInfinity) -> Self {
+        Cost(value)
+    }
+}
+
+/// Implementation of the addition trait for Cost semiring.
+impl Addition<Cost> for Cost {
+    /// Min operation
+    fn add(&mut self, other: Self) {
+        match (self.0, other.0) {
+            (U32WithInfinity::Infinity, _) => self.0 = other.0,
+            (_, U32WithInfinity::Infinity) => (),
+            (U32WithInfinity::Finite(a), U32WithInfinity::Finite(b)) => {
+                if a < b {
+                    self.0 = U32WithInfinity::Finite(a);
+                } else {
+                    self.0 = U32WithInfinity::Finite(b);
+                }
+            }
+        }
+    }
+}
+
+/// Implementation of the multiplication trait for Cost semiring.
+impl Multiplication<Cost> for Cost {
+    /// + operation
+    fn mul(&mut self, other: Cost) {
+        match (self.0, other.0) {
+            (U32WithInfinity::Infinity, _) | (_, U32WithInfinity::Infinity) => {
+                self.0 = U32WithInfinity::Infinity;
+            }
+            (U32WithInfinity::Finite(a), U32WithInfinity::Finite(b)) => {
+                self.0 = U32WithInfinity::Finite(a + b);
+            }
+        }
+    }
+}
+
+/// Implementation of Identity for addition.
+impl Zero<U32WithInfinity> for Cost {
+    /// Infinity is the identity element for addition operation.
+    fn zero(&self) -> Cost {
+        Cost(U32WithInfinity::Infinity)
+    }
+}
+
+/// Implementation of Identity for multiplication.
+impl One<U32WithInfinity> for Cost {
+    /// 0 is the one element of the semiring.
+    fn one(&self) -> Cost {
+        Cost(U32WithInfinity::Finite(0))
+    }
+}
+
+/// Ridge Regression using RealNumber semiring
+#[allow(dead_code)]
+fn ridge_regression(
+    a: Vec<Vec<f64>>,
+    b: Vec<f64>,
+    lambda: f64,
+    alpha: f64,
+    iterations: usize,
+    tolerance: f64,
+) -> Vec<f64> {
+    // Convert input data to RealNumber semiring
+    let a: Vec<Vec<RealNumber>> = a
+        .iter()
+        .map(|row| row.iter().map(|&x| RealNumber::new(x)).collect())
+        .collect();
+    let b: Vec<RealNumber> = b.iter().map(|&x| RealNumber::new(x)).collect();
+    let lambda = RealNumber::new(lambda);
+    let alpha = RealNumber::new(alpha);
+
+    // Initialize x with zeros
+    let mut x: Vec<RealNumber> = vec![RealNumber::new(0.0); a[0].len()];
+
+    for _ in 0..iterations {
+        // Reset gradient
+        let mut gradient: Vec<RealNumber> = vec![RealNumber::new(0.0); a[0].len()];
+
+        // Compute the gradient
+        for i in 0..a[0].len() {
+            for j in 0..a.len() {
+                let mut sum = RealNumber::new(0.0);
+                for (k, &item) in x.iter().enumerate().take(a[0].len()) {
+                    let mut temp = a[j][k];
+                    temp.mul(item);
+                    sum.add(temp);
+                }
+                let mut negative = RealNumber::new(-1.0);
+                negative.mul(b[j]);
+                sum.add(negative);
+                let mut a_j_i = a[j][i];
+                a_j_i.mul(sum);
+                gradient[i].add(a_j_i);
+            }
+            let mut regularization = lambda;
+            regularization.mul(x[i]);
+            gradient[i].add(regularization);
+        }
+
+        // Update x using the gradient and check for convergence
+        let mut max_change = RealNumber::new(0.0);
+        for i in 0..x.len() {
+            let mut change = alpha;
+            change.mul(gradient[i]);
+            change.mul(RealNumber::new(-1.0));
+            x[i].add(change);
+
+            if change.0.abs() > max_change.0 {
+                max_change = change;
+            }
+        }
+
+        // Check if the maximum change is less than the tolerance
+        if max_change.0 < tolerance {
+            break;
+        }
+    }
+
+    // Convert x back to Vec<f64>
+    x.iter().map(|&RealNumber(value)| value).collect()
+}
+
+/// Floyd-Warshall Algorithm using Cost semiring
+#[allow(dead_code)]
+fn all_pairs_shortest_path(edges: Vec<(usize, usize, u32)>, n: usize) -> Vec<(usize, usize, u32)> {
+    let inf = U32WithInfinity::Infinity;
+    let mut graph: Vec<Vec<U32WithInfinity>> = vec![vec![inf; n]; n];
+
+    // Initialize the graph with given edges
+    for &(start, destination, path_length) in &edges {
+        graph[start][destination] = U32WithInfinity::Finite(path_length);
+    }
+
+    for (i, graph_i) in graph.iter_mut().enumerate().take(n) {
+        graph_i[i] = U32WithInfinity::Finite(0);
+    }
+
+    let mut dist: Vec<Vec<Cost>> = vec![vec![Cost::new(U32WithInfinity::Infinity); n]; n];
+    for i in 0..n {
+        for j in 0..n {
+            dist[i][j] = Cost::new(graph[i][j]);
+        }
+    }
+    for i in 0..n {
+        for j in 0..n {
+            for k in 0..n {
+                // distance[i][j] = min(distance[i][j], distance[i][k] + distance[k][j])
+                let mut new_cost = dist[i][k];
+                new_cost.mul(dist[k][j]);
+                dist[i][j].add(new_cost);
+            }
+        }
+    }
+
+    // Convert the result back into the edge list format
+    let mut result: Vec<(usize, usize, u32)> = Vec::new();
+    for (i, dist_i) in dist.iter().enumerate().take(n) {
+        for (j, dist_ij) in dist_i.iter().enumerate().take(n) {
+            if i != j {
+                if let U32WithInfinity::Finite(cost) = dist_ij.0 {
+                    result.push((i, j, cost));
+                }
+            }
+        }
+    }
+    result
+}
+
+#[cfg(test)]
+mod test_for_ridge_regression {
     use super::*;
+
     fn assert_approx_eq(a: &[f64], b: &[f64], epsilon: f64) {
         assert_eq!(a.len(), b.len());
         for (x, y) in a.iter().zip(b.iter()) {
@@ -449,129 +431,91 @@ mod test {
         }
     }
 
-    // Test for BinaryTrust ({0,1}, OR, AND, False, True)
     #[test]
-    fn test_binary_trust() {
-        let mut binary_trust = BinaryTrust::new();
+    fn test_zero_matrix_closed_form() {
+        let a = vec![vec![0.0, 0.0], vec![0.0, 0.0]];
+        let b = vec![0.0, 0.0];
+        let lambda = 0.1;
+        let alpha = 0.01;
+        let iterations = 1000;
 
-        // Test addition (OR)
-        binary_trust.add(BinaryTrust(true));
-        assert!(binary_trust.0);
-        binary_trust = BinaryTrust::new();
-        binary_trust.add(BinaryTrust(false));
-        assert!(binary_trust.0);
-
-        // Test multiplication (AND)
-        binary_trust = BinaryTrust::new();
-        binary_trust.mul(BinaryTrust(true));
-        assert!(binary_trust.0);
-        binary_trust = BinaryTrust::new();
-        binary_trust.mul(BinaryTrust(false));
-        assert!(!binary_trust.0);
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        // expected result is computed using ridge regression's closed form solution X = (A^T * A + λI)^-1 * A^T * B.
+        let expected_result = vec![0.0, 0.0];
+        assert_approx_eq(&result, &expected_result, 1e-8);
     }
 
-    // Test for Multiplicity (N, +, *, 0, 1)
     #[test]
-    fn test_multiplicity() {
-        let mut multiplicity = Multiplicity::new(5);
+    fn test_basic_ridge_regression() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let lambda = 0.1;
+        let alpha = 0.01;
+        let iterations = 1000;
 
-        // Test addition (+)
-        multiplicity.add(Multiplicity(10));
-        assert_eq!(multiplicity.0, 15);
-        multiplicity = Multiplicity::new(5);
-        multiplicity.add(Multiplicity(0));
-        assert_eq!(multiplicity.0, 5);
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
 
-        // Test multiplication (*)
-        multiplicity = Multiplicity::new(5);
-        multiplicity.mul(Multiplicity(10));
-        assert_eq!(multiplicity.0, 50);
-        multiplicity = Multiplicity::new(10);
-        multiplicity.mul(Multiplicity(5));
-        assert_eq!(multiplicity.0, 50);
-        multiplicity = Multiplicity::new(5);
-        multiplicity.mul(Multiplicity(0));
-        assert_eq!(multiplicity.0, 0);
+        // expected result is computed using ridge regression's closed form solution X = (A^T * A + λI)^-1 * A^T * B.
+        let expected_result = vec![0.06644518, 0.4469948656];
+        assert_approx_eq(&expected_result, &result, 1e-1);
     }
 
-    // Test for Cost/Tropical semiring
     #[test]
-    fn test_cost() {
-        let mut cost = Cost::new(U32WithInfinity::Finite(5));
+    fn test_singular_matrix() {
+        let a = vec![vec![1.0, 2.0], vec![2.0, 4.0]];
+        let b = vec![1.0, 2.0];
+        let lambda = 0.1;
+        let alpha = 0.01;
+        let iterations = 1000;
 
-        // Test addition (min)
-        cost.add(Cost::new(U32WithInfinity::Finite(10)));
-        assert_eq!(cost.0, U32WithInfinity::Finite(5));
-        cost = Cost::new(U32WithInfinity::Finite(5));
-        cost.add(Cost::new(U32WithInfinity::Infinity));
-        assert_eq!(cost.0, U32WithInfinity::Finite(5));
-        cost = Cost::new(U32WithInfinity::Infinity);
-        cost.add(Cost::new(U32WithInfinity::Finite(5)));
-        assert_eq!(cost.0, U32WithInfinity::Finite(5));
-        cost = Cost::new(U32WithInfinity::Infinity);
-        cost.add(Cost::new(U32WithInfinity::Infinity));
-        assert_eq!(cost.0, U32WithInfinity::Infinity);
-
-        // Test multiplication (+)
-        cost = Cost::new(U32WithInfinity::Finite(5));
-        cost.mul(Cost::new(U32WithInfinity::Finite(10)));
-        assert_eq!(cost.0, U32WithInfinity::Finite(15));
-        cost = Cost::new(U32WithInfinity::Finite(5));
-        cost.mul(Cost::new(U32WithInfinity::Infinity));
-        assert_eq!(cost.0, U32WithInfinity::Infinity);
-        cost = Cost::new(U32WithInfinity::Infinity);
-        cost.mul(Cost::new(U32WithInfinity::Finite(5)));
-        assert_eq!(cost.0, U32WithInfinity::Infinity);
-
-        cost = Cost::new(U32WithInfinity::Finite(7));
-        cost.mul(Cost::new(U32WithInfinity::Finite(3)));
-        assert_eq!(cost.0, U32WithInfinity::Finite(10));
-        cost.add(Cost::new(U32WithInfinity::Finite(5)));
-        assert_eq!(cost.0, U32WithInfinity::Finite(5));
+        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        // expected result is computed using ridge regression's closed form solution X = (A^T * A + λI)^-1 * A^T * B.
+        let expected_result = vec![0.1992031, 0.39840637];
+        assert_approx_eq(&result, &expected_result, 1e-2);
     }
 
-    // Test for Confidence Score ([0, 1], max, *, 0, 1)
     #[test]
-    fn test_confidence_score() {
-        let mut confidence_score = ConfidenceScore::new(0.5);
+    fn test_varying_lambda() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let alpha = 0.01;
+        let iterations = 1000;
 
-        // Test addition (max)
-        confidence_score.add(ConfidenceScore::new(0.6));
-        assert_eq!(confidence_score.0, 0.6);
-        confidence_score = ConfidenceScore::new(0.5);
-        confidence_score.add(ConfidenceScore::new(0.4));
-        assert_eq!(confidence_score.0, 0.5);
+        // Testing different lambda values 0, 0.5, 1
+        let result1 = ridge_regression(a.clone(), b.clone(), 0.0, alpha, iterations, 1e-8);
+        let result2 = ridge_regression(a.clone(), b.clone(), 1.0, alpha, iterations, 1e-8);
+        let result3 = ridge_regression(a.clone(), b.clone(), 0.5, alpha, iterations, 1e-8);
 
-        // Test multiplication (*)
-        confidence_score = ConfidenceScore::new(0.5);
-        confidence_score.mul(ConfidenceScore::new(0.6));
-        assert_eq!(confidence_score.0, 0.3);
-        confidence_score = ConfidenceScore::new(0.5);
-        confidence_score.mul(ConfidenceScore::new(0.4));
-        assert_eq!(confidence_score.0, 0.2);
+        // expected result is computed using ridge regression's closed form solution X = (A^T * A + λI)^-1 * A^T * B.
+        let expected_result1 = vec![0.0, 0.5];
+        let expected_result2 = vec![0.1577060932, 0.3727598566];
+        let expected_result3 = vec![0.1896551724, 0.3448275862];
+
+        assert_approx_eq(&result1, &expected_result1, 1e-1);
+        assert_approx_eq(&result2, &expected_result2, 1e-1);
+        assert_approx_eq(&result3, &expected_result3, 1e-1);
     }
-
-    // Test for Fuzzy Logic ([0, 1], max, min, 0, 1).
     #[test]
-    fn test_fuzzy_logic() {
-        let mut fuzzy_logic = FuzzyLogic::new(0.5);
+    fn test_varying_alpha() {
+        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
+        let b = vec![1.0, 2.0, 3.0];
+        let lambda = 0.1;
+        let iterations = 10000;
 
-        // Test addition (max)
-        fuzzy_logic.add(FuzzyLogic::new(0.6));
-        assert_eq!(fuzzy_logic.0, 0.6);
-        fuzzy_logic = FuzzyLogic::new(0.5);
-        fuzzy_logic.add(FuzzyLogic::new(0.4));
-        assert_eq!(fuzzy_logic.0, 0.5);
+        let result1 = ridge_regression(a.clone(), b.clone(), lambda, 0.01, iterations, 1e-8);
+        let result2 = ridge_regression(a.clone(), b.clone(), lambda, 0.005, iterations, 1e-8);
 
-        // Test multiplication (min)
-        fuzzy_logic = FuzzyLogic::new(0.5);
-        fuzzy_logic.mul(FuzzyLogic::new(0.6));
-        assert_eq!(fuzzy_logic.0, 0.5);
-        fuzzy_logic = FuzzyLogic::new(0.5);
-        fuzzy_logic.mul(FuzzyLogic::new(0.4));
-        assert_eq!(fuzzy_logic.0, 0.4);
+        // expected result is computed using ridge regression's closed form solution X = (A^T * A + λI)^-1 * A^T * B.
+        let expected_result = vec![0.06644518272, 0.4469948656];
+
+        assert_approx_eq(&expected_result, &result1, 1e-1);
+        assert_approx_eq(&expected_result, &result2, 1e-1);
     }
+}
 
+#[cfg(test)]
+mod test_for_all_pairs_shortest_path {
+    use super::*;
     #[test]
     fn test_graph_with_multiple_directed_cycle() {
         // Testing a graph with more than one cycle between nodes.
@@ -765,97 +709,132 @@ mod test {
 
         assert_eq!(result, expected);
     }
+}
 
+#[cfg(test)]
+mod test_for_semiring_applications {
+    use super::*;
+
+    // Test for BinaryTrust ({0,1}, OR, AND, False, True)
     #[test]
-    fn test_basic_ridge_regression() {
-        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
-        let b = vec![1.0, 2.0, 3.0];
-        let lambda = 0.1;
-        let alpha = 0.01;
-        let iterations = 1000;
+    fn test_binary_trust() {
+        let mut binary_trust = BinaryTrust::new();
 
-        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
+        // Test addition (OR)
+        binary_trust.add(BinaryTrust(true));
+        assert!(binary_trust.0);
+        binary_trust = BinaryTrust::new();
+        binary_trust.add(BinaryTrust(false));
+        assert!(binary_trust.0);
 
-        // The expected result is found by running a known-good implementation or manually computing it.
-        let expected_result = vec![0.090909, 0.136364];
-        assert_approx_eq(&result, &expected_result, 1e-4);
+        // Test multiplication (AND)
+        binary_trust = BinaryTrust::new();
+        binary_trust.mul(BinaryTrust(true));
+        assert!(binary_trust.0);
+        binary_trust = BinaryTrust::new();
+        binary_trust.mul(BinaryTrust(false));
+        assert!(!binary_trust.0);
     }
 
+    // Test for Multiplicity (N, +, *, 0, 1)
     #[test]
-    fn test_zero_matrix() {
-        let a = vec![vec![0.0, 0.0], vec![0.0, 0.0]];
-        let b = vec![0.0, 0.0];
-        let lambda = 1.0;
-        let alpha = 0.01;
-        let iterations = 10;
+    fn test_multiplicity() {
+        let mut multiplicity = Multiplicity::new(5);
 
-        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
-        let expected_result = vec![0.0, 0.0];
-        assert_approx_eq(&result, &expected_result, 1e-8);
+        // Test addition (+)
+        multiplicity.add(Multiplicity(10));
+        assert_eq!(multiplicity.0, 15);
+        multiplicity = Multiplicity::new(5);
+        multiplicity.add(Multiplicity(0));
+        assert_eq!(multiplicity.0, 5);
+
+        // Test multiplication (*)
+        multiplicity = Multiplicity::new(5);
+        multiplicity.mul(Multiplicity(10));
+        assert_eq!(multiplicity.0, 50);
+        multiplicity = Multiplicity::new(10);
+        multiplicity.mul(Multiplicity(5));
+        assert_eq!(multiplicity.0, 50);
+        multiplicity = Multiplicity::new(5);
+        multiplicity.mul(Multiplicity(0));
+        assert_eq!(multiplicity.0, 0);
     }
 
+    // Test for Cost/Tropical semiring
     #[test]
-    fn test_identity_matrix() {
-        let a = vec![vec![1.0, 0.0], vec![0.0, 1.0]];
-        let b = vec![1.0, 1.0];
-        let lambda = 0.0;
-        let alpha = 0.01;
-        let iterations = 100;
+    fn test_cost() {
+        let mut cost = Cost::new(U32WithInfinity::Finite(5));
 
-        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
-        let expected_result = vec![0.0, 1.0];
-        assert_approx_eq(&result, &expected_result, 1e-8);
+        // Test addition (min)
+        cost.add(Cost::new(U32WithInfinity::Finite(10)));
+        assert_eq!(cost.0, U32WithInfinity::Finite(5));
+        cost = Cost::new(U32WithInfinity::Finite(5));
+        cost.add(Cost::new(U32WithInfinity::Infinity));
+        assert_eq!(cost.0, U32WithInfinity::Finite(5));
+        cost = Cost::new(U32WithInfinity::Infinity);
+        cost.add(Cost::new(U32WithInfinity::Finite(5)));
+        assert_eq!(cost.0, U32WithInfinity::Finite(5));
+        cost = Cost::new(U32WithInfinity::Infinity);
+        cost.add(Cost::new(U32WithInfinity::Infinity));
+        assert_eq!(cost.0, U32WithInfinity::Infinity);
+
+        // Test multiplication (+)
+        cost = Cost::new(U32WithInfinity::Finite(5));
+        cost.mul(Cost::new(U32WithInfinity::Finite(10)));
+        assert_eq!(cost.0, U32WithInfinity::Finite(15));
+        cost = Cost::new(U32WithInfinity::Finite(5));
+        cost.mul(Cost::new(U32WithInfinity::Infinity));
+        assert_eq!(cost.0, U32WithInfinity::Infinity);
+        cost = Cost::new(U32WithInfinity::Infinity);
+        cost.mul(Cost::new(U32WithInfinity::Finite(5)));
+        assert_eq!(cost.0, U32WithInfinity::Infinity);
+
+        cost = Cost::new(U32WithInfinity::Finite(7));
+        cost.mul(Cost::new(U32WithInfinity::Finite(3)));
+        assert_eq!(cost.0, U32WithInfinity::Finite(10));
+        cost.add(Cost::new(U32WithInfinity::Finite(5)));
+        assert_eq!(cost.0, U32WithInfinity::Finite(5));
     }
 
+    // Test for Confidence Score ([0, 1], max, *, 0, 1)
     #[test]
-    fn test_singular_matrix() {
-        let a = vec![vec![1.0, 2.0], vec![2.0, 4.0]];
-        let b = vec![1.0, 2.0];
-        let lambda = 0.1;
-        let alpha = 0.01;
-        let iterations = 1000;
+    fn test_confidence_score() {
+        let mut confidence_score = ConfidenceScore::new(0.5);
 
-        let result = ridge_regression(a, b, lambda, alpha, iterations, 1e-8);
-        let expected_result = vec![0.1992031, 0.39840637];
-        assert_approx_eq(&result, &expected_result, 1e-2);
+        // Test addition (max)
+        confidence_score.add(ConfidenceScore::new(0.6));
+        assert_eq!(confidence_score.0, 0.6);
+        confidence_score = ConfidenceScore::new(0.5);
+        confidence_score.add(ConfidenceScore::new(0.4));
+        assert_eq!(confidence_score.0, 0.5);
+
+        // Test multiplication (*)
+        confidence_score = ConfidenceScore::new(0.5);
+        confidence_score.mul(ConfidenceScore::new(0.6));
+        assert_eq!(confidence_score.0, 0.3);
+        confidence_score = ConfidenceScore::new(0.5);
+        confidence_score.mul(ConfidenceScore::new(0.4));
+        assert_eq!(confidence_score.0, 0.2);
     }
 
+    // Test for Fuzzy Logic ([0, 1], max, min, 0, 1).
     #[test]
-    fn test_varying_lambda() {
-        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
-        let b = vec![1.0, 2.0, 3.0];
-        let alpha = 0.01;
-        let iterations = 1000;
+    fn test_fuzzy_logic() {
+        let mut fuzzy_logic = FuzzyLogic::new(0.5);
 
-        // Testing different lambda values 0, 0.5, 1
-        let result1 = ridge_regression(a.clone(), b.clone(), 0.0, alpha, iterations, 1e-8);
-        let result2: Vec<f64> =
-            ridge_regression(a.clone(), b.clone(), 1.0, alpha, iterations, 1e-8);
-        let result3: Vec<f64> =
-            ridge_regression(a.clone(), b.clone(), 0.5, alpha, iterations, 1e-8);
+        // Test addition (max)
+        fuzzy_logic.add(FuzzyLogic::new(0.6));
+        assert_eq!(fuzzy_logic.0, 0.6);
+        fuzzy_logic = FuzzyLogic::new(0.5);
+        fuzzy_logic.add(FuzzyLogic::new(0.4));
+        assert_eq!(fuzzy_logic.0, 0.5);
 
-        let expected_result1: Vec<f64> = vec![0.0, 0.5];
-        let expected_result2 = vec![0.18965517, 0.3448276862];
-        let expected_result3 = vec![0.1577060932, 0.3727598566];
-
-        assert_approx_eq(&result1, &expected_result1, 1e-4);
-        assert_approx_eq(&result2, &expected_result2, 1e-4);
-        assert_approx_eq(&result3, &expected_result3, 1e-4);
-    }
-
-    #[test]
-    fn test_varying_alpha() {
-        let a = vec![vec![1.0, 2.0], vec![3.0, 4.0], vec![5.0, 6.0]];
-        let b = vec![1.0, 2.0, 3.0];
-        let lambda = 0.1;
-        let iterations = 1000;
-
-        let result1 = ridge_regression(a.clone(), b.clone(), lambda, 0.01, iterations, 1e-8);
-        let result2 = ridge_regression(a.clone(), b.clone(), lambda, 0.001, iterations, 1e-8);
-
-        let expected_result = vec![0.06644518272, 0.4469948656];
-
-        assert_approx_eq(&result1, &expected_result, 1e-4);
-        assert_approx_eq(&result2, &expected_result, 1e-4);
+        // Test multiplication (min)
+        fuzzy_logic = FuzzyLogic::new(0.5);
+        fuzzy_logic.mul(FuzzyLogic::new(0.6));
+        assert_eq!(fuzzy_logic.0, 0.5);
+        fuzzy_logic = FuzzyLogic::new(0.5);
+        fuzzy_logic.mul(FuzzyLogic::new(0.4));
+        assert_eq!(fuzzy_logic.0, 0.4);
     }
 }
