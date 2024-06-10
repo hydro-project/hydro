@@ -116,12 +116,10 @@ mod tests {
         // Perform group sum operation
         let grouped_sums = group_sum(zset_map, key_fn);
 
-        // Define the expected results
         let mut expected: ZsetMap<char> = HashMap::new();
         expected.insert('j', Zset::new(5)); // joe (1) + john (1) + jack (3)
         expected.insert('a', Zset::new(1)); // anne (-1) + alice (2)
 
-        // Assert that the grouped sums match the expected results
         assert_eq!(grouped_sums, expected);
     }
 
@@ -133,13 +131,10 @@ mod tests {
         // Define a key function: extracts first character in the name variable.
         let key_fn = |name: &String| name.chars().next().unwrap();
 
-        // Perform group sum operation
         let grouped_sums = group_sum(zset_map, key_fn);
 
-        // Define the expected results (should be empty)
         let expected: ZsetMap<char> = HashMap::new();
 
-        // Assert that the grouped sums match the expected results
         assert_eq!(grouped_sums, expected);
     }
 
@@ -154,14 +149,11 @@ mod tests {
         // Define a key function
         let key_fn = |_name: &String| 'j'; // All keys will map to 'j'
 
-        // Perform group sum operation
         let grouped_sums = group_sum(zset_map, key_fn);
 
-        // Define the expected results
         let mut expected: ZsetMap<char> = HashMap::new();
         expected.insert('j', Zset::new(6)); // joe (1) + john (2) + jack (3)
 
-        // Assert that the grouped sums match the expected results
         assert_eq!(grouped_sums, expected);
     }
 
@@ -177,15 +169,12 @@ mod tests {
         // Define a key function: extracts first character in the name variable.
         let key_fn = |name: &String| name.chars().next().unwrap();
 
-        // Perform group sum operation
         let grouped_sums = group_sum(zset_map, key_fn);
 
-        // Define the expected results
         let mut expected: ZsetMap<char> = HashMap::new();
         expected.insert('j', Zset::new(-2)); // joe (-1) + john (-1)
         expected.insert('a', Zset::new(0)); // anne (-1) + alice (1)
 
-        // Assert that the grouped sums match the expected results
         assert_eq!(grouped_sums, expected);
     }
 }
