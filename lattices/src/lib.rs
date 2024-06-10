@@ -11,6 +11,7 @@ pub mod algebra;
 pub mod collections;
 mod conflict;
 mod dom_pair;
+pub mod group_application;
 pub mod map_union;
 pub mod map_union_with_tombstones;
 mod ord;
@@ -40,6 +41,16 @@ pub use with_top::WithTop;
 pub trait Lattice: Sized + Merge<Self> + LatticeOrd + NaiveLatticeOrd + IsBot + IsTop {}
 #[sealed]
 impl<T> Lattice for T where T: Sized + Merge<Self> + LatticeOrd + NaiveLatticeOrd + IsBot + IsTop {}
+
+/// Alias trait for groups.
+#[sealed]
+pub trait Group<T>: Addition<T> + Zero<T> + Inverse<T> {}
+
+/// Trait for Group Inverse.
+pub trait Inverse<T> {
+    /// Returns the inverse of the group element.
+    fn inverse(&self) -> Self;
+}
 
 /// Alias trait for semirings.
 #[sealed]
