@@ -3770,6 +3770,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm_test_site"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "hydroflow",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-bindgen-test",
+ "web-sys",
+]
+
+[[package]]
 name = "wasmparser"
 version = "0.206.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
