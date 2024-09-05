@@ -59,6 +59,7 @@ serde_json = "1.0.115"
 slotmap = "1.0.0"
 smallvec = "1.6.1"
 tokio-stream = { version = "0.1.3", default-features = false, features = [ "time", "io-util", "sync" ] }
+tokio-tungstenite = "0.23.1"
 tracing = "0.1.37"
 variadics = { path = "../variadics", version = "^0.0.6" }
 web-time = "1.0.0"

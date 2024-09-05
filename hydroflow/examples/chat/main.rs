@@ -49,17 +49,18 @@ async fn main() {
     let opts = Opts::parse();
 
     match opts.role {
-        Role::Client => {
-            run_client(opts).await;
-        }
+        // Role::Client => {
+        //     run_client(opts).await;
+        // }
         Role::Server => {
             run_server(opts).await;
         }
-        Role::GossipingServer1
-        | Role::GossipingServer2
-        | Role::GossipingServer3
-        | Role::GossipingServer4
-        | Role::GossipingServer5 => run_gossiping_server(opts).await,
+        // Role::GossipingServer1
+        // | Role::GossipingServer2
+        // | Role::GossipingServer3
+        // | Role::GossipingServer4
+        // | Role::GossipingServer5 => run_gossiping_server(opts).await,
+        _ => unimplemented!(),
     }
 }
 

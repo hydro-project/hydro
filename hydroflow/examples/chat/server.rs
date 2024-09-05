@@ -1,6 +1,6 @@
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph::Hydroflow;
-use hydroflow::util::bind_udp_bytes;
+use hydroflow::util::{bind_udp_bytes, bind_websocket};
 
 use crate::protocol::{Message, MessageWithAddr};
 use crate::{default_server_address, Opts};
@@ -14,27 +14,20 @@ pub(crate) async fn run_server(opts: Opts) {
 
     println!("Starting server on {:?}", server_address);
 
-    let (outbound, inbound, actual_server_addr) = bind_udp_bytes(server_address).await;
+    let (outbound, inbound, actual_server_addr) = bind_websocket(server_address).await.unwrap();
 
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
     let mut hf: Hydroflow = hydroflow_syntax! {
         // Define shared inbound and outbound channels
-        outbound_chan = union() -> dest_sink_serde(outbound);
-        inbound_chan = source_stream_serde(inbound)
+        inbound_chan = source_stream(inbound)
             -> map(Result::unwrap)
-            -> map(|(msg, addr)| MessageWithAddr::from_message(msg, addr))
-            -> demux_enum::<MessageWithAddr>();
-        clients = inbound_chan[ConnectRequest] -> map(|(addr,)| addr) -> tee();
-        inbound_chan[ConnectResponse] -> for_each(|(addr,)| println!("Received unexpected `ConnectResponse` as server from addr {}.", addr));
+            -> tee();
 
-        // Pipeline 1: Acknowledge client connections
-        clients[0] -> map(|addr| (Message::ConnectResponse, addr)) -> [0]outbound_chan;
+        inbound_chan -> map(|(msg, addr)| addr) -> [1]broadcast;
+        inbound_chan -> map(|(msg, addr)| msg) -> [0]broadcast;
 
-        // Pipeline 2: Broadcast messages to all clients
-        inbound_chan[ChatMsg] -> map(|(_addr, nickname, message, ts)| Message::ChatMsg { nickname, message, ts }) -> [0]broadcast;
-        clients[1] -> [1]broadcast;
-        broadcast = cross_join::<'tick, 'static>() -> [1]outbound_chan;
+        broadcast = cross_join::<'tick, 'static>() -> dest_sink(outbound);
     };
 
     #[cfg(feature = "debugging")]

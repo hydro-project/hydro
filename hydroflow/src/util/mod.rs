@@ -29,6 +29,8 @@ pub use socket::*;
 
 #[cfg(feature = "deploy_integration")]
 pub mod deploy;
+mod websocket;
+pub use websocket::*;
 
 use std::io::Read;
 use std::net::SocketAddr;
