@@ -5,6 +5,12 @@ fn log(string: impl AsRef<str>) {
 }
 
 #[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = window)]
+    fn writeToDom(s: &str);
+}
+
+#[wasm_bindgen]
 pub fn greet() {
     console_error_panic_hook::set_once();
 
@@ -17,7 +23,7 @@ pub fn test_hydroflow() -> web_sys::js_sys::Promise {
 
     let mut df = hydroflow::hydroflow_syntax! {
         // https://hydro.run/docs/hydroflow/quickstart/example_1_simplest
-        source_iter(0..10) -> for_each(|n| log(format!("Hello {}", n)));
+        source_iter(0..10) -> for_each(|n| writeToDom(&format!("Hello {}", n)));
     };
 
     wasm_bindgen_futures::future_to_promise(async move {
