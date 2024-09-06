@@ -30,6 +30,8 @@ if (siteConfig.customFields.LOAD_PLAYGROUND === '1') {
   }
 
   playgroundJS.init();
+
+  window.test_hydroflow = playgroundJS.test_hydroflow;
 }
 
 import mermaid from "mermaid";
