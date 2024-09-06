@@ -1,10 +1,53 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Hello wasm-pack!</title>
-  </head>
-  <body>
-    <script type="module" src="./index.ts"></script>
-  </body>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Chat</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        #chat-container {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+        #input-container {
+            display: flex;
+        }
+        #new-message {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+        }
+        #send-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        #send-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+<div id="chat-container"></div>
+<div id="input-container">
+    <input type="text" id="new-message" placeholder="Type your message here">
+    <button id="send-button">Send</button>
+</div>
+
+<script type="module" src="./index.ts"></script>
+
+</body>
 </html>
