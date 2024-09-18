@@ -284,39 +284,45 @@ impl One<U32WithInfinity> for Cost {
 /// Helper function for converting adjacency graph with infinity distances
 /// to set of triples with the infinity paths removed.
 /// The triple is (start, destination, distance).
-fn remove_infinity_from_adjacency_graph(
-    graph: Vec<Vec<U32WithInfinity>>,
-) -> HashSet<(u32, u32, U32WithInfinity)> {
+fn remove_infinity_from_adjacency_graph(graph: Vec<Vec<Cost>>) -> HashSet<(u32, u32, u32)> {
     let n = graph.len();
-    let mut set: HashSet<(u32, u32, U32WithInfinity)> = HashSet::new();
+    let mut result: HashSet<(u32, u32, u32)> = HashSet::new();
+
     for start in 0..n {
         for dest in 0..n {
-            if graph[start][dest] != U32WithInfinity::Infinity {
-                set.insert((start as u32, dest as u32, graph[start][dest]));
+            match graph[start][dest].0 {
+                U32WithInfinity::Finite(distance) => {
+                    result.insert((start as u32, dest as u32, distance));
+                }
+                U32WithInfinity::Infinity => {
+                    // Do nothing for infinity paths
+                }
             }
         }
     }
-    set
+    result
 }
 
 /// Helper function for converting the set of triples (start, destination, distance)
 /// to an adjacency graph.
 fn convert_triples_to_adjacency_graph(
-    triples: HashSet<(u32, u32, U32WithInfinity)>,
-) -> Vec<Vec<U32WithInfinity>> {
-    // Determine the size of the graph by finding the maximum node index.
-    let mut max_node = 0;
-    for &(start, dest, _) in &triples {
-        max_node = max_node.max(start).max(dest);
+    triples: Vec<(usize, usize, u32)>,
+    n: usize,
+) -> Vec<Vec<Cost>> {
+    // Initialize the adjacency graph with infinity distances
+    let mut dist: Vec<Vec<Cost>> = vec![vec![Cost(U32WithInfinity::Infinity); n]; n];
+
+    // Initialize distances with edge weights from the triples
+    for (start, end, distance) in triples {
+        dist[start][end] = Cost(U32WithInfinity::Finite(distance));
     }
 
-    let mut graph =
-        vec![vec![U32WithInfinity::Infinity; (max_node + 1) as usize]; (max_node + 1) as usize];
-
-    for (start, dest, distance) in triples {
-        graph[start as usize][dest as usize] = distance;
+    // Initialize distance from each node to itself as 0
+    for i in 0..n {
+        dist[i][i] = Cost(U32WithInfinity::Finite(0));
     }
-    graph
+
+    dist
 }
 
 /// Use Tropical Semiring implementation for calculating All Pair Shortest Path in a graph with positive edge weights.
@@ -324,33 +330,34 @@ fn convert_triples_to_adjacency_graph(
 /// P(x,y) = shortest path from x to y
 /// E(x,y) = edge weight from x to y
 /// P(x,y) = min(E(x,y), min z (P(x,z) + E(z,y)) where (min,+) are the “addition” and “multiplication” operators in the tropical semirings
-fn all_pairs_shortest_path(graph: Vec<Vec<U32WithInfinity>>) -> Vec<Vec<U32WithInfinity>> {
-    let n = graph.len();
-    let mut dist: Vec<Vec<Cost>> = vec![vec![Cost::new(U32WithInfinity::Infinity); n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            dist[i][j] = Cost::new(graph[i][j]);
-        }
-    }
-    for i in 0..n {
-        for j in 0..n {
-            for k in 0..n {
-                let mut new_cost = dist[i][k];
-                // multiply is an add operation
-                new_cost.mul(dist[k][j]);
-                // addition is a min operation
-                dist[i][j].add(new_cost);
+///  Input:
+///     - a list of (start, end, distance) if there exists a path between start and end nodes.
+/// Output
+///     - a list of (start, end, shortest_distance) if there exists a path between start and end nodes.
+fn all_pairs_shortest_path(edges: Vec<(usize, usize, u32)>) -> HashSet<(u32, u32, u32)> {
+    // Find the maximum node index by scanning through the triples
+    let max_node = edges
+        .iter()
+        .map(|(start, end, _)| start.max(end))
+        .max()
+        .unwrap_or(&0);
+
+    // The size of the graph is max_node + 1
+    let n = (max_node + 1) as usize;
+
+    let mut graph = convert_triples_to_adjacency_graph(edges, n);
+
+    // Apply Floyd-Warshall algorithm using the tropical semiring operations
+    for k in 0..n {
+        for i in 0..n {
+            for j in 0..n {
+                let mut new_cost = graph[i][k];
+                new_cost.mul(graph[k][j]);
+                graph[i][j].add(new_cost);
             }
         }
     }
-
-    // Convert the Cost elements into U32WithInfinity
-    let mut result: Vec<Vec<U32WithInfinity>> = vec![vec![U32WithInfinity::Infinity; n]; n];
-    for i in 0..n {
-        for j in 0..n {
-            result[i][j] = dist[i][j].0;
-        }
-    }
+    let result = remove_infinity_from_adjacency_graph(graph);
     result
 }
 
@@ -574,18 +581,8 @@ mod test {
 
     #[test]
     fn test_all_pairs_shortest_path_1() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-        let c3 = U32WithInfinity::Finite(3);
-        let c4 = U32WithInfinity::Finite(4);
-        let c5 = U32WithInfinity::Finite(5);
-        let c6 = U32WithInfinity::Finite(6);
-        let c7 = U32WithInfinity::Finite(7);
-
         // Graph in matrix form:
-        //     A  B  C  D  E
+        //     A(0)  B(1) C(2) D(3)  E (4)
         // A [0, 4, ∞, 5, ∞]
         // B [∞, 0, 1, ∞, 6]
         // C [2, ∞, 0, 3, ∞]
@@ -595,43 +592,58 @@ mod test {
         // This graph contains a cycle (A -> D -> E -> A) and is directed, sparse graph
         // with all pairs of vertices having path.
 
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c4, inf, c5, inf],
-            vec![inf, c0, c1, inf, c6],
-            vec![c2, inf, c0, c3, inf],
-            vec![inf, inf, c1, c0, c2],
-            vec![c1, inf, inf, c4, c0],
+        let edges = vec![
+            (0, 1, 4),
+            (0, 3, 5),
+            (1, 2, 1),
+            (1, 4, 6),
+            (2, 0, 2),
+            (2, 3, 3),
+            (3, 2, 1),
+            (3, 4, 2),
+            (4, 0, 1),
+            (4, 3, 4),
         ];
 
-        let result = all_pairs_shortest_path(graph);
+        let result: HashSet<(u32, u32, u32)> = all_pairs_shortest_path(edges).into_iter().collect();
 
-        let expected = vec![
-            vec![c0, c4, c5, c5, c7],
-            vec![c3, c0, c1, c4, c6],
-            vec![c2, c6, c0, c3, c5],
-            vec![c3, c7, c1, c0, c2],
-            vec![c1, c5, c5, c4, c0],
-        ];
+        let expected: HashSet<(u32, u32, u32)> = vec![
+            (0, 0, 0),
+            (0, 1, 4),
+            (0, 2, 5),
+            (0, 3, 5),
+            (0, 4, 7),
+            (1, 0, 3),
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 3, 4),
+            (1, 4, 6),
+            (2, 0, 2),
+            (2, 1, 6),
+            (2, 2, 0),
+            (2, 3, 3),
+            (2, 4, 5),
+            (3, 0, 3),
+            (3, 1, 7),
+            (3, 2, 1),
+            (3, 3, 0),
+            (3, 4, 2),
+            (4, 0, 1),
+            (4, 1, 5),
+            (4, 2, 5),
+            (4, 3, 4),
+            (4, 4, 0),
+        ]
+        .into_iter()
+        .collect();
 
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_all_pairs_shortest_path_2() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-        let c3 = U32WithInfinity::Finite(3);
-        let c4 = U32WithInfinity::Finite(4);
-        let c5 = U32WithInfinity::Finite(5);
-        let c6 = U32WithInfinity::Finite(6);
-        let c7 = U32WithInfinity::Finite(7);
-        let c8 = U32WithInfinity::Finite(8);
-        let c9 = U32WithInfinity::Finite(9);
-
         // Graph in matrix form:
-        //     A  B  C  D
+        //    A(0) B(1) C(2)  D(3)
         // A [0, 8, ∞, 1]
         // B [∞, 0, 1, ∞]
         // C [4, ∞, 0, ∞]
@@ -640,32 +652,43 @@ mod test {
         // This graph contains a cycle (A -> B -> C -> A) and is directed, sparse graph
         // with all pairs of vertices having path.
 
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c8, inf, c1],
-            vec![inf, c0, c1, inf],
-            vec![c4, inf, c0, inf],
-            vec![inf, c2, c9, c0],
+        let edges = vec![
+            (0, 1, 8),
+            (0, 3, 1),
+            (1, 2, 1),
+            (2, 0, 4),
+            (3, 1, 2),
+            (3, 2, 9),
         ];
 
-        let result = all_pairs_shortest_path(graph);
+        let result = all_pairs_shortest_path(edges);
 
-        let expected = vec![
-            vec![c0, c3, c4, c1],
-            vec![c5, c0, c1, c6],
-            vec![c4, c7, c0, c5],
-            vec![c7, c2, c3, c0],
-        ];
+        let expected: HashSet<(u32, u32, u32)> = vec![
+            (0, 0, 0),
+            (0, 1, 3),
+            (0, 2, 4),
+            (0, 3, 1),
+            (1, 0, 5),
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 3, 6),
+            (2, 0, 4),
+            (2, 1, 7),
+            (2, 2, 0),
+            (2, 3, 5),
+            (3, 0, 7),
+            (3, 1, 2),
+            (3, 2, 3),
+            (3, 3, 0),
+        ]
+        .into_iter()
+        .collect();
 
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_all_pairs_shortest_path_3() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-
         // Graph in matrix form:
         // A → B → C
         // ↓    ↓
@@ -681,37 +704,32 @@ mod test {
 
         // This graph doesn't have a cycle and some pairs of vercies don't have paths between them.
 
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c1, inf, c1, inf],   // A
-            vec![inf, c0, c1, inf, c1],   // B
-            vec![inf, inf, c0, inf, inf], // C
-            vec![inf, inf, inf, c0, c1],  // D
-            vec![inf, inf, inf, inf, c0], // E
-        ];
+        let edges = vec![(0, 1, 1), (0, 3, 1), (1, 2, 1), (1, 4, 1), (3, 4, 1)];
 
-        let result: Vec<Vec<U32WithInfinity>> = all_pairs_shortest_path(graph);
+        let result = all_pairs_shortest_path(edges);
 
-        let expected: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c1, c2, c1, c2],
-            vec![inf, c0, c1, inf, c1],
-            vec![inf, inf, c0, inf, inf],
-            vec![inf, inf, inf, c0, c1],
-            vec![inf, inf, inf, inf, c0],
-        ];
+        let expected: HashSet<(u32, u32, u32)> = vec![
+            (0, 0, 0),
+            (0, 1, 1),
+            (0, 2, 2),
+            (0, 3, 1),
+            (0, 4, 2),
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 4, 1),
+            (2, 2, 0),
+            (3, 3, 0),
+            (3, 4, 1),
+            (4, 4, 0),
+        ]
+        .into_iter()
+        .collect();
 
         assert_eq!(result, expected);
     }
 
     #[test]
     fn test_all_pairs_shortest_path_4() {
-        let inf = U32WithInfinity::Infinity;
-        let c0 = U32WithInfinity::Finite(0);
-        let c1 = U32WithInfinity::Finite(1);
-        let c2 = U32WithInfinity::Finite(2);
-        let c3 = U32WithInfinity::Finite(3);
-        let c4 = U32WithInfinity::Finite(4);
-        let c5 = U32WithInfinity::Finite(5);
-
         // Graph in matrix form:
         //     A  B  C  D  E
         // A [ 0,  1, ∞, ∞, ∞ ]
@@ -722,23 +740,33 @@ mod test {
 
         // This graph has a cycle but not all vertices have path between them.
 
-        let graph: Vec<Vec<U32WithInfinity>> = vec![
-            vec![c0, c1, inf, inf, inf], // A
-            vec![inf, c0, c1, inf, inf], // B
-            vec![inf, inf, c0, c1, inf], // C
-            vec![inf, inf, inf, c0, c1], // D
-            vec![inf, inf, c1, inf, c0],
-        ];
+        let edges = vec![(0, 1, 1), (1, 2, 1), (2, 3, 1), (3, 4, 1), (4, 2, 1)];
 
-        let result = all_pairs_shortest_path(graph);
+        let result = all_pairs_shortest_path(edges);
 
-        let expected = vec![
-            vec![c0, c1, c2, c3, c4],
-            vec![inf, c0, c1, c2, c3],
-            vec![inf, inf, c0, c1, c2],
-            vec![inf, inf, c2, c0, c1],
-            vec![inf, inf, c1, c2, c0],
-        ];
+        let expected: HashSet<(u32, u32, u32)> = vec![
+            (0, 0, 0),
+            (0, 1, 1),
+            (0, 2, 2),
+            (0, 3, 3),
+            (0, 4, 4),
+            (1, 1, 0),
+            (1, 2, 1),
+            (1, 3, 2),
+            (1, 4, 3),
+            (2, 2, 0),
+            (2, 3, 1),
+            (2, 4, 2),
+            (3, 2, 2),
+            (3, 3, 0),
+            (3, 4, 1),
+            (4, 2, 1),
+            (4, 3, 2),
+            (4, 4, 0),
+        ]
+        .into_iter()
+        .collect();
+
         assert_eq!(result, expected);
     }
 
