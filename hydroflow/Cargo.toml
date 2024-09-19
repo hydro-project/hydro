@@ -39,7 +39,7 @@ name = "modules_triple_cross_join"
 required-features = [ "debugging" ]
 
 [[example]]
-name = "echoserver_websocket"
+name = "chat_websocket"
 required-features = [ "websocket" ]
 
 [dependencies]

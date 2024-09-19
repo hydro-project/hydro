@@ -40,9 +40,12 @@ async fn main() {
         inbound_chan[0]
             -> for_each(|(msg, addr): (Message, SocketAddr)| println!("{}: Got {:?} from {:?}", Utc::now(), msg, addr));
 
-        // Echo back the Echo messages with updated timestamp
-        inbound_chan[1]
-            -> map(|(msg, addr)| (msg, addr) ) -> dest_sink(outbound);
+        clients = inbound_chan[1] -> map(|(_msg, addr)| addr) -> unique::<'static>();
+        messages = inbound_chan[2] -> map(|(msg, _addr)| msg);
+
+        messages -> [0]cj;
+        clients -> [1]cj;
+        cj = cross_join::<'tick, 'static>() -> inspect(|msg| println!("SEND {:?}", msg)) -> dest_sink(outbound);
     };
 
     // run the server

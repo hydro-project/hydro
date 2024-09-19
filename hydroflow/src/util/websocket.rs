@@ -3,15 +3,25 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::pin::pin;
 use std::rc::Rc;
+
 use futures::{SinkExt, StreamExt};
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::task::spawn_local;
 use tokio_tungstenite::tungstenite::{Error, Message};
+
 use crate::util::unsync::mpsc::{Receiver, Sender};
 use crate::util::unsync_channel;
 
-
-pub async fn bind_websocket(endpoint: SocketAddr) -> Result<(Sender<(Message, SocketAddr)>, Receiver<Result<(Message, SocketAddr), Error>>, SocketAddr), std::io::Error>{
+pub async fn bind_websocket(
+    endpoint: SocketAddr,
+) -> Result<
+    (
+        Sender<(Message, SocketAddr)>,
+        Receiver<Result<(Message, SocketAddr), Error>>,
+        SocketAddr,
+    ),
+    std::io::Error,
+> {
     let listener = TcpListener::bind(endpoint).await.unwrap();
 
     let bound_endpoint = listener.local_addr()?;
@@ -70,9 +80,7 @@ pub async fn bind_websocket(endpoint: SocketAddr) -> Result<(Sender<(Message, So
                 }
             });
         }
-
     });
 
     Ok((tx_egress, rx_ingress, bound_endpoint))
 }
-
