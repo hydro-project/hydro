@@ -35,7 +35,7 @@ async fn main() {
         .unwrap_or_else(|| ipv4_resolve("localhost:0").unwrap());
 
     // allocate `outbound` sink and `inbound` stream
-    let (outbound, inbound, addr) = bind_websocket(addr).await.unwrap();
+    let (outbound, inbound, addr) = bind_udp_bytes(addr).await.unwrap();
     println!("Listening on {:?}", addr);
 
     match opts.role {

@@ -10,9 +10,11 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 gloo = {  version = "0.11.0", features = ["futures"] }
 hydroflow = { path = "../hydroflow" }
+pharos = "0.5"
 wasm-bindgen = "0.2.84"
 wasm-bindgen-futures = "0.4.43"
 web-sys = { version = "0.3.51", features = [ "console", "Window", "Document", "Element", "HtmlElement", "HtmlInputElement", "EventTarget"] }
+ws_stream_wasm = "0.7.0"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires

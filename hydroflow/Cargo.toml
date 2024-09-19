@@ -20,6 +20,7 @@ hydroflow_datalog = [ "dep:hydroflow_datalog" ]
 deploy_integration = [ "dep:hydroflow_deploy_integration" ]
 python = [ "dep:pyo3" ]
 debugging = [ "hydroflow_lang/debugging" ]
+websocket = [ "dep:tokio-tungstenite" ]
 
 [[example]]
 name = "kvs_bench"
@@ -36,6 +37,10 @@ required-features = [ "debugging" ]
 [[example]]
 name = "modules_triple_cross_join"
 required-features = [ "debugging" ]
+
+[[example]]
+name = "echoserver_websocket"
+required-features = [ "websocket" ]
 
 [dependencies]
 bincode = "1.3.1"

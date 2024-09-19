@@ -17,6 +17,6 @@
         "**/target": true
     },
     "rust-analyzer.cargo.features": [
-        "python"
+        "python", "websocket",
     ]
 }

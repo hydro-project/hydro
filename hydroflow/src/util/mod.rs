@@ -30,9 +30,9 @@ pub use socket::*;
 #[cfg(feature = "deploy_integration")]
 pub mod deploy;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "websocket", not(target_arch = "wasm32")))]
 mod websocket;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(feature = "websocket", not(target_arch = "wasm32")))]
 pub use websocket::*;
 
 use std::io::Read;
