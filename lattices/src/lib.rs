@@ -54,7 +54,7 @@ pub trait Inverse<T> {
 
 /// Alias trait for semirings.
 #[sealed]
-pub trait Semiring<T>: Addition<T> + Multiplication<T> + Zero<T> + One<T> {}
+impl<This, T> Semiring<T> for This where This: Addition<T> + Multiplication<T> + Zero<T> + One<T> {}
 
 /// Trait for Semiring Addition.
 pub trait Addition<Other> {
