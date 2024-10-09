@@ -1,30 +1,31 @@
 use quote::quote_spanned;
 
 use super::{
-    FlowPropArgs, FlowProps, LatticeFlowType, OperatorCategory, OperatorConstraints,
-    OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory,
+    OperatorConstraints, OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs,
+    RANGE_0, RANGE_1,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
 /// Stores each item as it passes through, and replays all item every tick.
 ///
 /// ```hydroflow
-/// // Normally `source_iter(...)` only emits once, but `persist()` will replay the `"hello"`
+/// // Normally `source_iter(...)` only emits once, but `persist::<'static>()` will replay the `"hello"`
 /// // on every tick.
 /// source_iter(["hello"])
-///     -> persist()
+///     -> persist::<'static>()
 ///     -> assert_eq(["hello"]);
 /// ```
 ///
 /// `persist()` can be used to introduce statefulness into stateless pipelines. In the example below, the
-/// join only stores data for single tick. The `persist()` operator introduces statefulness
+/// join only stores data for single tick. The `persist::<'static>()` operator introduces statefulness
 /// across ticks. This can be useful for optimization transformations within the hydroflow
 /// compiler. Equivalently, we could specify that the join has `static` persistence (`my_join = join::<'static>()`).
 /// ```rustbook
 /// let (input_send, input_recv) = hydroflow::util::unbounded_channel::<(&str, &str)>();
 /// let mut flow = hydroflow::hydroflow_syntax! {
-///     source_iter([("hello", "world")]) -> persist() -> [0]my_join;
-///     source_stream(input_recv) -> persist() -> [1]my_join;
+///     source_iter([("hello", "world")]) -> persist::<'static>() -> [0]my_join;
+///     source_stream(input_recv) -> persist::<'static>() -> [1]my_join;
 ///     my_join = join::<'tick>() -> for_each(|(k, (v1, v2))| println!("({}, ({}, {}))", k, v1, v2));
 /// };
 /// input_send.send(("hello", "oakland")).unwrap();
@@ -43,51 +44,44 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     hard_range_out: RANGE_1,
     soft_range_out: RANGE_1,
     num_args: 0,
-    persistence_args: RANGE_0,
+    persistence_args: RANGE_1,
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: false,
+    has_singleton_output: true,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(
-        |fp @ FlowPropArgs {
-             op_span, op_name, ..
-         },
-         diagnostics| {
-            let input_flow_type = fp.flow_props_in[0].and_then(|fp| fp.lattice_flow_type);
-            let lattice_flow_type = match input_flow_type {
-                Some(LatticeFlowType::Delta) => Some(LatticeFlowType::Cumul),
-                Some(LatticeFlowType::Cumul) => {
-                    diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Warning,
-                    format!("`{}` input is already cumulative lattice flow, this operator is redundant.", op_name),
-                ));
-                    Some(LatticeFlowType::Cumul)
-                }
-                // Non-lattice peresist.
-                None => None,
-            };
-            Ok(vec![Some(FlowProps {
-                star_ord: fp.new_star_ord(),
-                lattice_flow_type,
-            })])
-        },
-    ),
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
                    hydroflow,
                    op_span,
                    ident,
+                   is_pull,
                    inputs,
                    outputs,
-                   is_pull,
+                   singleton_output_ident,
+                   op_name,
+                   op_inst:
+                       OperatorInstance {
+                           generics:
+                               OpInstGenerics {
+                                   persistence_args, ..
+                               },
+                           ..
+                       },
                    ..
                },
-               _| {
-        let persistdata_ident = wc.make_ident("persistdata");
+               diagnostics| {
+        if [Persistence::Static] != persistence_args[..] {
+            diagnostics.push(Diagnostic::spanned(
+                op_span,
+                Level::Error,
+                format!("{} only supports `'static`.", op_name),
+            ));
+        }
+
+        let persistdata_ident = singleton_output_ident;
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
             let #persistdata_ident = #hydroflow.add_state(::std::cell::RefCell::new(

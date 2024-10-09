@@ -29,7 +29,6 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
         }
         _ => None,
     },
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    ident,

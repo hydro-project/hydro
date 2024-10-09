@@ -66,7 +66,7 @@ source_iter(0..10)
   -> for_each(|n| println!("Howdy {}", n));`,
 
   "Chat Server": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_8_chat_server
+// https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/server.rs
 // Define shared inbound and outbound channels
 outbound_chan = union() -> dest_sink_serde(outbound);
 inbound_chan = source_stream_serde(inbound)
@@ -87,7 +87,7 @@ inbound_chan[msgs] -> [0]broadcast;
       clients[1] -> [1]broadcast;`,
 
   "Chat Client": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_8_chat_server
+// https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/client.rs
 // set up channels
 outbound_chan = union() -> dest_sink_serde(outbound);
 inbound_chan = source_stream_serde(inbound) -> map(|(m, _)| m)

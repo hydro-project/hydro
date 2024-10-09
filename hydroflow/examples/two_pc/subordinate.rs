@@ -61,6 +61,7 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
         }) -> [2]outbound_chan;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = df
             .meta_graph()

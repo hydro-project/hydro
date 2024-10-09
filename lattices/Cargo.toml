@@ -1,11 +1,14 @@
 [package]
 name = "lattices"
 publish = true
-version = "0.5.4"
+version = "0.5.7"
 edition = "2021"
 license = "Apache-2.0"
 documentation = "https://docs.rs/lattices/"
 description = "Lattice data types for simplifying distributed state by providing associativity, commutativity, and idempotence."
+
+[lints]
+workspace = true
 
 [features]
 default = []
@@ -13,5 +16,9 @@ serde = ["dep:serde"]
 
 [dependencies]
 cc-traits = "2.0.0"
-sealed = "0.5"
-serde = { version = "1.0.160", features = ["derive"], optional = true }
+sealed = "0.5.0"
+serde = { version = "1.0.197", features = ["derive"], optional = true }
+lattices_macro = { path = "../lattices_macro", version = "^0.5.6" }
+
+[dev-dependencies]
+trybuild = "1.0.0"

@@ -80,7 +80,7 @@ async fn test_persist_stratum_run_available() -> Result<(), Box<dyn Error>> {
 
     let mut df = hydroflow_syntax! {
         a = source_iter([0])
-            -> persist()
+            -> persist::<'static>()
             -> next_stratum()
             -> for_each(|x| out_send.send(x).unwrap());
     };
@@ -104,7 +104,7 @@ async fn test_persist_stratum_run_async() -> Result<(), Box<dyn Error>> {
 
     let mut df = hydroflow_syntax! {
         source_iter([0])
-            -> persist()
+            -> persist::<'static>()
             -> next_stratum()
             -> for_each(|x| out_send.send(x).unwrap());
     };
@@ -129,7 +129,7 @@ async fn test_persist_stratum_run_async() -> Result<(), Box<dyn Error>> {
 pub fn test_issue_800_1050_persist() {
     let mut df = hydroflow_syntax! {
         in1 = source_iter(0..10) -> map(|i| (i, i));
-        in1 -> persist() -> my_union_tee;
+        in1 -> persist::<'static>() -> my_union_tee;
 
         my_union_tee = union() -> tee();
         my_union_tee -> filter(|_| false) -> my_union_tee;
@@ -172,7 +172,7 @@ async fn test_nospin_issue_961() {
     let mut df = hydroflow_syntax! {
         source_iter([1])
             -> next_stratum()
-            -> persist()
+            -> persist::<'static>()
             -> defer_tick_lazy()
             -> null();
     };
@@ -190,7 +190,7 @@ async fn test_nospin_issue_961_complicated() {
         items = union();
 
         double = items
-            -> persist()
+            -> persist::<'static>()
             -> fold(|| 0, |accum, x| *accum += x)
             -> defer_tick_lazy()
             -> filter(|_| false)

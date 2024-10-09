@@ -1,27 +1,24 @@
 ---
 source: hydroflow_plus/src/profiler.rs
-expression: "&pushed_down.ir"
+expression: "&pushed_down.ir()"
 ---
 [
     ForEach {
-        f: { use crate :: __staged :: profiler :: tests :: * ; | n | println ! ("{}" , n) },
-        input: Map {
-            f: { use crate :: __staged :: profiler :: * ; let counter_queue = Fake ; let counters = Fake ; let my_id = 0u32 ; { counter_queue . borrow () . unbounded_send ((my_id as usize , counters . borrow () [my_id as usize])) . unwrap () ; counters . borrow_mut () [my_id as usize] = 0 ; move | v | { hydroflow_plus :: profiler :: increment_counter (& mut counters . borrow_mut () [my_id as usize] ,) ; v } } },
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: profiler :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Inspect {
+            f: { use crate :: __staged :: profiler :: * ; let counter_queue = Fake ; let counters = Fake ; let my_id = 0u32 ; { counter_queue . borrow () . unbounded_send ((my_id as usize , counters . borrow () [my_id as usize])) . unwrap () ; counters . borrow_mut () [my_id as usize] = 0 ; move | _ | { myself :: increment_counter (& mut counters . borrow_mut () [my_id as usize]) ; } } },
             input: Map {
-                f: { use crate :: __staged :: profiler :: tests :: * ; | v | v + 1 },
-                input: Map {
-                    f: { use crate :: __staged :: profiler :: * ; let counter_queue = Fake ; let counters = Fake ; let my_id = 1u32 ; { counter_queue . borrow () . unbounded_send ((my_id as usize , counters . borrow () [my_id as usize])) . unwrap () ; counters . borrow_mut () [my_id as usize] = 0 ; move | v | { hydroflow_plus :: profiler :: increment_counter (& mut counters . borrow_mut () [my_id as usize] ,) ; v } } },
-                    input: Persist(
-                        Map {
-                            f: { use crate :: __staged :: profiler :: * ; let counter_queue = Fake ; let counters = Fake ; let my_id = 2u32 ; { counter_queue . borrow () . unbounded_send ((my_id as usize , counters . borrow () [my_id as usize])) . unwrap () ; counters . borrow_mut () [my_id as usize] = 0 ; move | v | { hydroflow_plus :: profiler :: increment_counter (& mut counters . borrow_mut () [my_id as usize] ,) ; v } } },
-                            input: Source {
-                                source: Iter(
-                                    { use crate :: __staged :: profiler :: tests :: * ; 0 .. 10 },
-                                ),
-                                location_id: 0,
-                            },
-                        },
-                    ),
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: profiler :: tests :: * ; | v | v + 1 }),
+                input: Inspect {
+                    f: { use crate :: __staged :: profiler :: * ; let counter_queue = Fake ; let counters = Fake ; let my_id = 1u32 ; { counter_queue . borrow () . unbounded_send ((my_id as usize , counters . borrow () [my_id as usize])) . unwrap () ; counters . borrow_mut () [my_id as usize] = 0 ; move | _ | { myself :: increment_counter (& mut counters . borrow_mut () [my_id as usize]) ; } } },
+                    input: Source {
+                        source: Iter(
+                            { use crate :: __staged :: profiler :: tests :: * ; 0 .. 10 },
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                    },
                 },
             },
         },

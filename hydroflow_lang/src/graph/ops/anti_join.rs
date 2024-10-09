@@ -33,6 +33,9 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: RANGE_0,
     is_external_input: false,
+    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // to prevent reading uncleared data if this subgraph doesn't run.
+    // https://github.com/hydro-project/hydroflow/issues/1298
     has_singleton_output: false,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { pos, neg })),
     ports_out: None,
@@ -42,7 +45,6 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         }
         _else => None,
     },
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,

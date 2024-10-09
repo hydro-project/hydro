@@ -1,0 +1,86 @@
+---
+source: hydroflow_plus_test/src/cluster/compute_pi.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; } }),
+        input: Map {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydroflow_plus :: __staged :: singleton :: * ; | (d , _signal) | d }),
+            input: CrossSingleton(
+                Reduce {
+                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , (u64 , u64) , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , (inside_batch , total_batch) | { * inside += inside_batch ; * total += total_batch ; } }),
+                    input: Persist(
+                        Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < hydroflow_plus_test :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydroflow_plus :: __staged :: stream :: * ; | (_ , b) | b }),
+                            input: Network {
+                                from_location: Cluster(
+                                    0,
+                                ),
+                                from_key: None,
+                                to_location: Process(
+                                    1,
+                                ),
+                                to_key: None,
+                                serialize_pipeline: Some(
+                                    Operator(
+                                        Operator {
+                                            path: "map",
+                                            args: [
+                                                "| data | { hydroflow_plus :: runtime_support :: bincode :: serialize :: < (u64 , u64) > (& data) . unwrap () . into () }",
+                                            ],
+                                        },
+                                    ),
+                                ),
+                                instantiate_fn: <network instantiate>,
+                                deserialize_pipeline: Some(
+                                    Operator(
+                                        Operator {
+                                            path: "map",
+                                            args: [
+                                                "| res | { let (id , b) = res . unwrap () ; (hydroflow_plus :: ClusterId :: < hydroflow_plus_test :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydroflow_plus :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) }",
+                                            ],
+                                        },
+                                    ),
+                                ),
+                                input: Fold {
+                                    init: stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }),
+                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }),
+                                    input: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
+                                        input: Map {
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }),
+                                            input: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydroflow_plus :: __staged :: location :: * ; | _ | () }),
+                                                input: FlatMap {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydroflow_plus :: __staged :: location :: * ; let batch_size = { use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size = 8192usize ; batch_size } ; move | _ | 0 .. batch_size }),
+                                                    input: Source {
+                                                        source: Spin,
+                                                        location_kind: Cluster(
+                                                            0,
+                                                        ),
+                                                    },
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    ),
+                },
+                Map {
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydroflow_plus :: __staged :: singleton :: * ; | _u | () }),
+                    input: Source {
+                        source: Interval(
+                            stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) }),
+                        ),
+                        location_kind: Process(
+                            1,
+                        ),
+                    },
+                },
+            ),
+        },
+    },
+]

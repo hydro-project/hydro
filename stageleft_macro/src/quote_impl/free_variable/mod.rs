@@ -118,6 +118,11 @@ impl<'ast> syn::visit::Visit<'ast> for FreeVariableVisitor {
             syn::Pat::Wild(_) => {
                 // Do nothing
             }
+            syn::Pat::Tuple(pat_tuple) => {
+                for el in &pat_tuple.elems {
+                    self.visit_pat(el);
+                }
+            }
             _ => panic!("Local variables must be identifiers, got {:?}", i.pat),
         }
     }

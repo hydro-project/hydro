@@ -1,5 +1,5 @@
 //! Pull-based operator helpers, i.e. [`Iterator`] helpers.
-#![allow(missing_docs)] // TODO(mingwei)
+#![allow(missing_docs, reason = "// TODO(mingwei)")]
 
 mod cross_join;
 pub use cross_join::*;

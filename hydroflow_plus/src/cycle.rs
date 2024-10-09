@@ -1,30 +1,49 @@
-use std::cell::RefCell;
 use std::marker::PhantomData;
-use std::rc::Rc;
 
-use crate::ir::HfPlusLeaf;
-use crate::location::Location;
-use crate::Stream;
+use crate::builder::FlowState;
+use crate::location::{Location, LocationId};
+use crate::{NoTick, Tick};
+
+pub trait CycleComplete<'a, T> {
+    fn complete(self, ident: syn::Ident);
+}
+
+pub trait CycleCollection<'a, T>: CycleComplete<'a, T> {
+    type Location: Location<'a>;
+
+    fn create_source(ident: syn::Ident, flow_state: FlowState, l: LocationId) -> Self;
+}
+
+pub trait CycleCollectionWithInitial<'a, T>: CycleComplete<'a, T> {
+    type Location: Location<'a>;
+
+    fn create_source(
+        ident: syn::Ident,
+        flow_state: FlowState,
+        initial: Self,
+        l: LocationId,
+    ) -> Self;
+}
 
 /// Represents a fixpoint cycle in the graph that will be fulfilled
 /// by a stream that is not yet known.
 ///
-/// See [`Stream`] for an explainer on the type parameters.
-pub struct HfCycle<'a, T, W, N: Location + Clone> {
+/// See [`crate::FlowBuilder`] for an explainer on the type parameters.
+pub struct HfCycle<'a, T, S: CycleComplete<'a, T>> {
     pub(crate) ident: syn::Ident,
-    pub(crate) node: N,
-    pub(crate) ir_leaves: Rc<RefCell<Vec<HfPlusLeaf>>>,
-    pub(crate) _phantom: PhantomData<(&'a mut &'a (), T, W)>,
+    pub(crate) _phantom: PhantomData<(&'a mut &'a (), T, S)>,
 }
 
-impl<'a, T, W, N: Location + Clone> HfCycle<'a, T, W, N> {
-    pub fn complete(self, stream: Stream<'a, T, W, N>) {
+impl<'a, S: CycleComplete<'a, NoTick>> HfCycle<'a, NoTick, S> {
+    pub fn complete(self, stream: S) {
         let ident = self.ident;
+        S::complete(stream, ident)
+    }
+}
 
-        self.ir_leaves.borrow_mut().push(HfPlusLeaf::CycleSink {
-            ident,
-            location_id: self.node.id(),
-            input: Box::new(stream.ir_node.into_inner()),
-        });
+impl<'a, S: CycleComplete<'a, Tick>> HfCycle<'a, Tick, S> {
+    pub fn complete_next_tick(self, stream: S) {
+        let ident = self.ident;
+        S::complete(stream, ident)
     }
 }

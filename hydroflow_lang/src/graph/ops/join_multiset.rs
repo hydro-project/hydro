@@ -40,7 +40,6 @@ pub const JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,

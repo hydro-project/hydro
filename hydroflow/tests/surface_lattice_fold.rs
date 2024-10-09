@@ -37,12 +37,11 @@ fn test_fold_loop() {
 fn test_lattice_fold_loop() {
     let (output_send, output_recv) = hydroflow::util::unbounded_channel::<u8>();
     let mut df = hydroflow_syntax! {
-        start = source_iter_delta([1])
+        start = source_iter([1])
             -> map(Max::<u8>::new)
             -> folder;
         folder = union()
             -> lattice_fold::<'static>(|| Max::<u8>::new(0))
-            -> cast(Some(Delta))
             -> map(|x| Max::<u8>::new(x.into_reveal() + 1))
             -> filter(|x| !x.is_top())
             -> tee();

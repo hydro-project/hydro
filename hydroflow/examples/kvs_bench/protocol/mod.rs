@@ -38,7 +38,7 @@ pub enum KvsResponse<const SIZE: usize> {
     _PutResponse {
         key: u64,
     },
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "benchmark discards responses")]
     GetResponse {
         key: u64,
         reg: MyLastWriteWins<SIZE>,

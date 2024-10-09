@@ -1,17 +1,19 @@
-// TODO(mingwei): For pyo3 generated code.
-#![allow(unused_qualifications, non_local_definitions)]
+#![expect(
+    unused_qualifications,
+    non_local_definitions,
+    reason = "for pyo3 generated code"
+)]
 
 use core::hydroflow_crate::ports::HydroflowSource;
+use std::cell::OnceCell;
 use std::collections::HashMap;
-use std::ops::DerefMut;
-use std::path::PathBuf;
+use std::ops::Deref;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
-use async_channel::Receiver;
 use bytes::Bytes;
 use futures::{Future, SinkExt, StreamExt};
-use hydroflow_cli_integration::{
+use hydroflow_deploy_integration::{
     ConnectedDirect, ConnectedSink, ConnectedSource, DynSink, DynStream, ServerOrBound,
 };
 use pyo3::exceptions::{PyException, PyStopAsyncIteration};
@@ -21,11 +23,11 @@ use pyo3::{create_exception, wrap_pymodule};
 use pyo3_asyncio::TaskLocals;
 use pythonize::pythonize;
 use tokio::sync::oneshot::Sender;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 mod cli;
-use hydro_deploy as core;
-use hydro_deploy::ssh::LaunchedSSHHost;
+use hydro_deploy::ssh::LaunchedSshHost;
+use hydro_deploy::{self as core};
 
 static TOKIO_RUNTIME: std::sync::RwLock<Option<tokio::runtime::Runtime>> =
     std::sync::RwLock::new(None);
@@ -57,7 +59,7 @@ impl pyo3_asyncio::generic::Runtime for TokioRuntime {
 }
 
 tokio::task_local! {
-    static TASK_LOCALS: once_cell::unsync::OnceCell<TaskLocals>;
+    static TASK_LOCALS: OnceCell<TaskLocals>;
 }
 
 impl pyo3_asyncio::generic::ContextExt for TokioRuntime {
@@ -65,17 +67,16 @@ impl pyo3_asyncio::generic::ContextExt for TokioRuntime {
     where
         F: Future<Output = R> + Send + 'static,
     {
-        let cell = once_cell::unsync::OnceCell::new();
+        let cell = OnceCell::new();
         cell.set(locals).unwrap();
 
         Box::pin(TASK_LOCALS.scope(cell, fut))
     }
 
     fn get_task_locals() -> Option<TaskLocals> {
-        match TASK_LOCALS.try_with(|c| c.get().cloned()) {
-            Ok(locals) => locals,
-            Err(_) => None,
-        }
+        TASK_LOCALS
+            .try_with(|c| c.get().cloned())
+            .unwrap_or_default()
     }
 }
 
@@ -95,8 +96,7 @@ impl SafeCancelToken {
     }
 }
 
-static CONVERTERS_MODULE: once_cell::sync::OnceCell<Py<PyModule>> =
-    once_cell::sync::OnceCell::new();
+static CONVERTERS_MODULE: OnceLock<Py<PyModule>> = OnceLock::new();
 
 fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<&PyAny>
 where
@@ -145,7 +145,7 @@ impl AnyhowWrapper {
 #[pyclass(subclass)]
 #[derive(Clone)]
 struct HydroflowSink {
-    underlying: Arc<RwLock<dyn core::hydroflow_crate::ports::HydroflowSink>>,
+    underlying: Arc<dyn core::hydroflow_crate::ports::HydroflowSink>,
 }
 
 #[pyclass(name = "Deployment")]
@@ -158,13 +158,13 @@ impl Deployment {
     #[new]
     fn new() -> Self {
         Deployment {
-            underlying: Arc::new(RwLock::new(core::Deployment::default())),
+            underlying: Arc::new(RwLock::new(core::Deployment::new())),
         }
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case, reason = "pymethods")]
     fn Localhost(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let arc = self.underlying.blocking_write().Localhost();
+        let arc = self.underlying.blocking_read().Localhost();
 
         Ok(Py::new(
             py,
@@ -176,19 +176,20 @@ impl Deployment {
         .into_py(py))
     }
 
-    #[allow(non_snake_case, clippy::too_many_arguments)]
-    fn GCPComputeEngineHost(
+    #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    fn GcpComputeEngineHost(
         &self,
         py: Python<'_>,
         project: String,
         machine_type: String,
         image: String,
         region: String,
-        network: GCPNetwork,
+        network: GcpNetwork,
         user: Option<String>,
+        startup_script: Option<String>,
     ) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_write().add_host(|id| {
-            core::GCPComputeEngineHost::new(
+            core::GcpComputeEngineHost::new(
                 id,
                 project,
                 machine_type,
@@ -196,6 +197,7 @@ impl Deployment {
                 region,
                 network.underlying,
                 user,
+                startup_script,
             )
         });
 
@@ -204,12 +206,12 @@ impl Deployment {
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
-            .add_subclass(GCPComputeEngineHost { underlying: arc }),
+            .add_subclass(GcpComputeEngineHost { underlying: arc }),
         )?
         .into_py(py))
     }
 
-    #[allow(non_snake_case, clippy::too_many_arguments)]
+    #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
     fn AzureHost(
         &self,
         py: Python<'_>,
@@ -234,7 +236,7 @@ impl Deployment {
         .into_py(py))
     }
 
-    #[allow(non_snake_case)]
+    #[expect(non_snake_case, reason = "pymethods")]
     fn CustomService(
         &self,
         py: Python<'_>,
@@ -258,7 +260,7 @@ impl Deployment {
         .into_py(py))
     }
 
-    #[allow(non_snake_case, clippy::too_many_arguments)]
+    #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
     fn HydroflowCrate(
         &self,
         py: Python<'_>,
@@ -267,7 +269,6 @@ impl Deployment {
         bin: Option<String>,
         example: Option<String>,
         profile: Option<String>,
-        perf: Option<PathBuf>,
         features: Option<Vec<String>>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
@@ -281,7 +282,10 @@ impl Deployment {
                 bin,
                 example,
                 profile,
-                perf,
+                None,  // Python API doesn't support rustflags
+                None,  // Python API doesn't support target_dir
+                false, // Python API doesn't support no_default_features
+                None,  // Python API doesn't support perf
                 features,
                 args,
                 display_id,
@@ -330,20 +334,18 @@ impl Deployment {
 
 #[pyclass(subclass)]
 pub struct Host {
-    underlying: Arc<RwLock<dyn core::Host>>,
+    underlying: Arc<dyn core::Host>,
 }
 
 #[pyclass(extends=Host, subclass)]
 struct LocalhostHost {
-    underlying: Arc<RwLock<core::LocalhostHost>>,
+    underlying: Arc<core::LocalhostHost>,
 }
 
 #[pymethods]
 impl LocalhostHost {
     fn client_only(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let arc = Arc::new(RwLock::new(
-            self.underlying.try_read().unwrap().client_only(),
-        ));
+        let arc = Arc::new(self.underlying.client_only());
 
         Ok(Py::new(
             py,
@@ -358,55 +360,42 @@ impl LocalhostHost {
 
 #[pyclass]
 #[derive(Clone)]
-struct GCPNetwork {
-    underlying: Arc<RwLock<core::gcp::GCPNetwork>>,
+struct GcpNetwork {
+    underlying: Arc<RwLock<core::gcp::GcpNetwork>>,
 }
 
 #[pymethods]
-impl GCPNetwork {
+impl GcpNetwork {
     #[new]
     fn new(project: String, existing: Option<String>) -> Self {
-        GCPNetwork {
-            underlying: Arc::new(RwLock::new(core::gcp::GCPNetwork::new(project, existing))),
+        GcpNetwork {
+            underlying: Arc::new(RwLock::new(core::gcp::GcpNetwork::new(project, existing))),
         }
     }
 }
 
 #[pyclass(extends=Host, subclass)]
-struct GCPComputeEngineHost {
-    underlying: Arc<RwLock<core::GCPComputeEngineHost>>,
+struct GcpComputeEngineHost {
+    underlying: Arc<core::GcpComputeEngineHost>,
 }
 
 #[pymethods]
-impl GCPComputeEngineHost {
+impl GcpComputeEngineHost {
     #[getter]
     fn internal_ip(&self) -> String {
-        self.underlying
-            .blocking_read()
-            .launched
-            .as_ref()
-            .unwrap()
-            .internal_ip
-            .clone()
+        self.underlying.launched.get().unwrap().internal_ip.clone()
     }
 
     #[getter]
     fn external_ip(&self) -> Option<String> {
-        self.underlying
-            .blocking_read()
-            .launched
-            .as_ref()
-            .unwrap()
-            .external_ip
-            .clone()
+        self.underlying.launched.get().unwrap().external_ip.clone()
     }
 
     #[getter]
     fn ssh_key_path(&self) -> String {
         self.underlying
-            .blocking_read()
             .launched
-            .as_ref()
+            .get()
             .unwrap()
             .ssh_key_path()
             .to_str()
@@ -417,39 +406,26 @@ impl GCPComputeEngineHost {
 
 #[pyclass(extends=Host, subclass)]
 struct AzureHost {
-    underlying: Arc<RwLock<core::AzureHost>>,
+    underlying: Arc<core::AzureHost>,
 }
 
 #[pymethods]
 impl AzureHost {
     #[getter]
     fn internal_ip(&self) -> String {
-        self.underlying
-            .blocking_read()
-            .launched
-            .as_ref()
-            .unwrap()
-            .internal_ip
-            .clone()
+        self.underlying.launched.get().unwrap().internal_ip.clone()
     }
 
     #[getter]
     fn external_ip(&self) -> Option<String> {
-        self.underlying
-            .blocking_read()
-            .launched
-            .as_ref()
-            .unwrap()
-            .external_ip
-            .clone()
+        self.underlying.launched.get().unwrap().external_ip.clone()
     }
 
     #[getter]
     fn ssh_key_path(&self) -> String {
         self.underlying
-            .blocking_read()
             .launched
-            .as_ref()
+            .get()
             .unwrap()
             .ssh_key_path()
             .to_str()
@@ -477,7 +453,7 @@ impl Service {
 
 #[pyclass]
 struct PyReceiver {
-    receiver: Arc<Receiver<String>>,
+    receiver: Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<String>>>,
 }
 
 #[pymethods]
@@ -487,13 +463,15 @@ impl PyReceiver {
     }
 
     fn __anext__<'p>(&self, py: Python<'p>) -> Option<&'p PyAny> {
-        let my_receiver = self.receiver.clone();
+        let receiver = self.receiver.clone();
         Some(
             interruptible_future_to_py(py, async move {
-                let underlying = my_receiver.recv();
-                underlying
+                receiver
+                    .lock()
                     .await
-                    .map_err(|_| PyStopAsyncIteration::new_err(()))
+                    .recv()
+                    .await
+                    .ok_or_else(|| PyStopAsyncIteration::new_err(()))
             })
             .unwrap(),
         )
@@ -508,8 +486,8 @@ struct CustomService {
 #[pymethods]
 impl CustomService {
     fn client_port(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let arc = Arc::new(RwLock::new(core::custom_service::CustomClientPort::new(
-            Arc::downgrade(&self.underlying),
+        let arc = Arc::new(core::custom_service::CustomClientPort::new(Arc::downgrade(
+            &self.underlying,
         )));
 
         Ok(Py::new(
@@ -526,31 +504,27 @@ impl CustomService {
 #[pyclass(extends=HydroflowSink, subclass)]
 #[derive(Clone)]
 struct CustomClientPort {
-    underlying: Arc<RwLock<core::custom_service::CustomClientPort>>,
+    underlying: Arc<core::custom_service::CustomClientPort>,
 }
 
 #[pymethods]
 impl CustomClientPort {
-    fn send_to(&mut self, to: &HydroflowSink) {
-        self.underlying
-            .try_write()
-            .unwrap()
-            .send_to(to.underlying.try_write().unwrap().deref_mut());
+    fn send_to(&self, to: &HydroflowSink) {
+        self.underlying.send_to(to.underlying.deref());
     }
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(RwLock::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
-            })),
+            }),
         }
     }
 
     fn server_port<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
-            let underlying = underlying.read().await;
             Ok(ServerPort {
                 underlying: underlying.server_port().await,
             })
@@ -570,7 +544,7 @@ impl HydroflowCrate {
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
             Ok(PyReceiver {
-                receiver: Arc::new(underlying.stdout().await),
+                receiver: Arc::new(Mutex::new(underlying.stdout())),
             })
         })
     }
@@ -580,7 +554,7 @@ impl HydroflowCrate {
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
             Ok(PyReceiver {
-                receiver: Arc::new(underlying.stderr().await),
+                receiver: Arc::new(Mutex::new(underlying.stderr())),
             })
         })
     }
@@ -589,7 +563,7 @@ impl HydroflowCrate {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
-            Ok(underlying.exit_code().await)
+            Ok(underlying.exit_code())
         })
     }
 
@@ -610,12 +584,12 @@ struct HydroflowCratePorts {
 #[pymethods]
 impl HydroflowCratePorts {
     fn __getattribute__(&self, name: String, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let arc = Arc::new(RwLock::new(
+        let arc = Arc::new(
             self.underlying
                 .try_read()
                 .unwrap()
                 .get_port(name, &self.underlying),
-        ));
+        );
 
         Ok(Py::new(
             py,
@@ -631,15 +605,13 @@ impl HydroflowCratePorts {
 #[pyclass(extends=HydroflowSink, subclass)]
 #[derive(Clone)]
 struct HydroflowCratePort {
-    underlying: Arc<RwLock<core::hydroflow_crate::ports::HydroflowPortConfig>>,
+    underlying: Arc<core::hydroflow_crate::ports::HydroflowPortConfig>,
 }
 
 #[pymethods]
 impl HydroflowCratePort {
     fn merge(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
-        let arc = Arc::new(RwLock::new(
-            self.underlying.try_read().unwrap().clone().merge(),
-        ));
+        let arc = Arc::new(self.underlying.clone().merge());
 
         Ok(Py::new(
             py,
@@ -651,19 +623,16 @@ impl HydroflowCratePort {
         .into_py(py))
     }
 
-    fn send_to(&mut self, to: &HydroflowSink) {
-        self.underlying
-            .try_write()
-            .unwrap()
-            .send_to(to.underlying.try_write().unwrap().deref_mut());
+    fn send_to(&self, to: &HydroflowSink) {
+        self.underlying.send_to(to.underlying.deref());
     }
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(RwLock::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
-            })),
+            }),
         }
     }
 }
@@ -671,7 +640,7 @@ impl HydroflowCratePort {
 #[pyfunction]
 fn demux(mapping: &PyDict) -> HydroflowSink {
     HydroflowSink {
-        underlying: Arc::new(RwLock::new(core::hydroflow_crate::ports::DemuxSink {
+        underlying: Arc::new(core::hydroflow_crate::ports::DemuxSink {
             demux: mapping
                 .into_iter()
                 .map(|(k, v)| {
@@ -680,31 +649,28 @@ fn demux(mapping: &PyDict) -> HydroflowSink {
                     (k, v.underlying)
                 })
                 .collect(),
-        })),
+        }),
     }
 }
 
 #[pyclass(subclass)]
 #[derive(Clone)]
 struct TaggedSource {
-    underlying: Arc<RwLock<core::hydroflow_crate::ports::TaggedSource>>,
+    underlying: Arc<core::hydroflow_crate::ports::TaggedSource>,
 }
 
 #[pymethods]
 impl TaggedSource {
-    fn send_to(&mut self, to: &HydroflowSink) {
-        self.underlying
-            .try_write()
-            .unwrap()
-            .send_to(to.underlying.try_write().unwrap().deref_mut());
+    fn send_to(&self, to: &HydroflowSink) {
+        self.underlying.send_to(to.underlying.deref());
     }
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(RwLock::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
-            })),
+            }),
         }
     }
 }
@@ -712,31 +678,28 @@ impl TaggedSource {
 #[pyclass(extends=HydroflowSink, subclass)]
 #[derive(Clone)]
 struct HydroflowNull {
-    underlying: Arc<RwLock<core::hydroflow_crate::ports::NullSourceSink>>,
+    underlying: Arc<core::hydroflow_crate::ports::NullSourceSink>,
 }
 
 #[pymethods]
 impl HydroflowNull {
-    fn send_to(&mut self, to: &HydroflowSink) {
-        self.underlying
-            .try_write()
-            .unwrap()
-            .send_to(to.underlying.try_write().unwrap().deref_mut());
+    fn send_to(&self, to: &HydroflowSink) {
+        self.underlying.send_to(to.underlying.deref());
     }
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(RwLock::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
-            })),
+            }),
         }
     }
 }
 
 #[pyfunction]
 fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
-    let arc = Arc::new(RwLock::new(core::hydroflow_crate::ports::NullSourceSink));
+    let arc = Arc::new(core::hydroflow_crate::ports::NullSourceSink);
 
     Ok(Py::new(
         py,
@@ -750,7 +713,7 @@ fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
 
 #[pyclass]
 struct ServerPort {
-    underlying: hydroflow_cli_integration::ServerPort,
+    underlying: hydroflow_deploy_integration::ServerPort,
 }
 
 fn with_tokio_runtime<T>(f: impl Fn() -> T) -> T {
@@ -765,8 +728,8 @@ impl ServerPort {
         pythonize(py, &self.underlying).unwrap()
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    fn into_source<'p>(&mut self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    #[expect(clippy::wrong_self_convention, reason = "pymethods")]
+    fn into_source<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let realized = with_tokio_runtime(|| ServerOrBound::Server((&self.underlying).into()));
 
         interruptible_future_to_py(py, async move {
@@ -778,8 +741,8 @@ impl ServerPort {
         })
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    fn into_sink<'p>(&mut self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    #[expect(clippy::wrong_self_convention, reason = "pymethods")]
+    fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
         let realized = with_tokio_runtime(|| ServerOrBound::Server((&self.underlying).into()));
 
         interruptible_future_to_py(py, async move {
@@ -800,7 +763,7 @@ struct PythonSink {
 
 #[pymethods]
 impl PythonSink {
-    fn send<'p>(&mut self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn send<'p>(&self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<&'p PyAny> {
         let underlying = self.underlying.clone();
         let bytes = Bytes::from(data.as_bytes(py).to_vec());
         interruptible_future_to_py(py, async move {
@@ -877,8 +840,8 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
     module.add_class::<Host>()?;
     module.add_class::<LocalhostHost>()?;
 
-    module.add_class::<GCPNetwork>()?;
-    module.add_class::<GCPComputeEngineHost>()?;
+    module.add_class::<GcpNetwork>()?;
+    module.add_class::<GcpComputeEngineHost>()?;
 
     module.add_class::<Service>()?;
     module.add_class::<CustomService>()?;

@@ -6,6 +6,8 @@ use syn::{AngleBracketedGenericArguments, Token, Type};
 
 mod quote_impl;
 
+/// Creates a quoted expression for Hydroflow+.
+///
 /// Creates a quoted expression, which can be typechecked but has its AST serialized
 /// until it is spliced into a staged entrypoint. Returns a value which implements
 /// `Quoted<T>`, where `T` is the type of the expression, and also may implement
@@ -65,7 +67,7 @@ fn gen_use_paths(
                     #[allow(non_upper_case_globals, non_snake_case)]
                     let #name_ident_unspanned = #root::runtime_support::create_import(
                         #full_path,
-                        env!("STAGELEFT_FINAL_CRATE_NAME"),
+                        option_env!("STAGELEFT_FINAL_CRATE_NAME").unwrap_or(env!("CARGO_PKG_NAME")),
                         {
                             let __quse_local = ();
                             {
@@ -150,8 +152,9 @@ pub fn runtime(
     })
 }
 
-/// A utility for declaring top-level public modules in a Stageleft crate that will
-/// export macros. This gets around errors in compiling the macro crate when there
+/// A utility for declaring top-level public modules in a Stageleft crate that exports macros.
+///
+/// This gets around errors in compiling the macro crate when there
 /// are `pub mod` declarations at the top-level file.
 ///
 /// This macro will only work on nightly with `#![feature(proc_macro_hygiene)]`,
@@ -363,11 +366,11 @@ pub fn entry(
             #(#param_parsing)*
 
             let macro_crate_name = env!("CARGO_PKG_NAME");
-            let final_crate_name = env!("STAGELEFT_FINAL_CRATE_NAME");
+            let final_crate_name = option_env!("STAGELEFT_FINAL_CRATE_NAME").unwrap_or(macro_crate_name);
             #root::runtime_support::set_macro_to_crate(macro_crate_name, final_crate_name);
 
             let output_core = {
-                #root::Quoted::splice(#input_name #passed_generics(#root::QuotedContext::create(), #(#params_to_pass),*))
+                #root::Quoted::splice_untyped(#input_name #passed_generics(#root::QuotedContext::create(), #(#params_to_pass),*))
             };
 
             let final_crate_root = #root::runtime_support::get_final_crate_name(final_crate_name);

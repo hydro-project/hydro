@@ -3,38 +3,31 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, Result};
-use async_channel::Receiver;
+use anyhow::{bail, Context, Result};
 use async_trait::async_trait;
-use futures_core::Future;
-use hydroflow_cli_integration::{InitConfig, ServerPort};
+use futures::Future;
+use hydroflow_deploy_integration::{InitConfig, ServerPort};
 use serde::Serialize;
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 
-use super::build::{build_crate, BuildError, BuiltCrate};
+use super::build::{build_crate_memoized, BuildError, BuildOutput, BuildParams};
 use super::ports::{self, HydroflowPortConfig, HydroflowSink, SourcePath};
+use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
-    Host, HostTargetType, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult,
-    ServerStrategy, Service,
+    Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
 };
 
 pub struct HydroflowCrateService {
     id: usize,
-    src: PathBuf,
-    pub(super) on: Arc<RwLock<dyn Host>>,
-    bin: Option<String>,
-    example: Option<String>,
-    profile: Option<String>,
-    perf: Option<PathBuf>,
-    features: Option<Vec<String>>,
+    pub(super) on: Arc<dyn Host>,
+    build_params: BuildParams,
+    tracing: Option<TracingOptions>,
     args: Option<Vec<String>>,
     display_id: Option<String>,
     external_ports: Vec<u16>,
 
     meta: Option<String>,
-
-    target_type: HostTargetType,
 
     /// Configuration for the ports this service will connect to as a client.
     pub(super) port_to_server: HashMap<String, ports::ServerConfig>,
@@ -42,7 +35,6 @@ pub struct HydroflowCrateService {
     /// Configuration for the ports that this service will listen on a port for.
     pub(super) port_to_bind: HashMap<String, ServerStrategy>,
 
-    built_binary: Arc<async_once_cell::OnceCell<Result<BuiltCrate, BuildError>>>,
     launched_host: Option<Arc<dyn LaunchedHost>>,
 
     /// A map of port names to config for how other services can connect to this one.
@@ -50,44 +42,53 @@ pub struct HydroflowCrateService {
     /// in `server_ports`.
     pub(super) server_defns: Arc<RwLock<HashMap<String, ServerPort>>>,
 
-    launched_binary: Option<Arc<RwLock<dyn LaunchedBinary>>>,
+    launched_binary: Option<Box<dyn LaunchedBinary>>,
     started: bool,
 }
 
 impl HydroflowCrateService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments, reason = "internal code")]
     pub fn new(
         id: usize,
         src: PathBuf,
-        on: Arc<RwLock<dyn Host>>,
+        on: Arc<dyn Host>,
         bin: Option<String>,
         example: Option<String>,
         profile: Option<String>,
-        perf: Option<PathBuf>,
+        rustflags: Option<String>,
+        target_dir: Option<PathBuf>,
+        no_default_features: bool,
+        tracing: Option<TracingOptions>,
         features: Option<Vec<String>>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Vec<u16>,
     ) -> Self {
-        let target_type = on.try_read().unwrap().target_type();
+        let target_type = on.target_type();
+
+        let build_params = BuildParams::new(
+            src,
+            bin,
+            example,
+            profile,
+            rustflags,
+            target_dir,
+            no_default_features,
+            target_type,
+            features,
+        );
 
         Self {
             id,
-            src,
-            bin,
             on,
-            example,
-            profile,
-            perf,
-            features,
+            build_params,
+            tracing,
             args,
             display_id,
-            target_type,
             external_ports,
             meta: None,
             port_to_server: HashMap::new(),
             port_to_bind: HashMap::new(),
-            built_binary: Arc::new(async_once_cell::OnceCell::new()),
             launched_host: None,
             server_defns: Arc::new(RwLock::new(HashMap::new())),
             launched_binary: None,
@@ -121,7 +122,7 @@ impl HydroflowCrateService {
         &mut self,
         self_arc: &Arc<RwLock<HydroflowCrateService>>,
         my_port: String,
-        sink: &mut dyn HydroflowSink,
+        sink: &dyn HydroflowSink,
     ) -> Result<()> {
         let forward_res = sink.instantiate(&SourcePath::Direct(self.on.clone()));
         if let Ok(instantiated) = forward_res {
@@ -145,80 +146,40 @@ impl HydroflowCrateService {
 
             assert!(!self.port_to_bind.contains_key(&my_port));
             self.port_to_bind
-                .insert(my_port, instantiated(sink.as_any_mut()));
+                .insert(my_port, instantiated(sink.as_any()));
 
             Ok(())
         }
     }
 
-    pub async fn stdout(&self) -> Receiver<String> {
-        self.launched_binary
-            .as_ref()
-            .unwrap()
-            .read()
-            .await
-            .stdout()
-            .await
+    pub fn stdout(&self) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary.as_ref().unwrap().stdout()
     }
 
-    pub async fn stderr(&self) -> Receiver<String> {
-        self.launched_binary
-            .as_ref()
-            .unwrap()
-            .read()
-            .await
-            .stderr()
-            .await
+    pub fn stderr(&self) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary.as_ref().unwrap().stderr()
     }
 
-    pub async fn exit_code(&self) -> Option<i32> {
-        self.launched_binary
-            .as_ref()
-            .unwrap()
-            .read()
-            .await
-            .exit_code()
-            .await
+    pub fn exit_code(&self) -> Option<i32> {
+        self.launched_binary.as_ref().unwrap().exit_code()
     }
 
-    fn build(&self) -> impl Future<Output = Result<BuiltCrate, BuildError>> {
-        let src_cloned = self.src.clone();
-        let bin_cloned = self.bin.clone();
-        let example_cloned = self.example.clone();
-        let features_cloned = self.features.clone();
-        let profile_cloned = self.profile.clone();
-        let target_type = self.target_type;
-        let built_binary_cloned = self.built_binary.clone();
-
-        async move {
-            built_binary_cloned
-                .get_or_init(build_crate(
-                    src_cloned,
-                    bin_cloned,
-                    example_cloned,
-                    profile_cloned,
-                    target_type,
-                    features_cloned,
-                ))
-                .await
-                .clone()
-        }
+    fn build(&self) -> impl Future<Output = Result<&'static BuildOutput, BuildError>> {
+        // Memoized, so no caching in `self` is needed.
+        build_crate_memoized(self.build_params.clone())
     }
 }
 
 #[async_trait]
 impl Service for HydroflowCrateService {
-    fn collect_resources(&mut self, _resource_batch: &mut ResourceBatch) {
+    fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {
         if self.launched_host.is_some() {
             return;
         }
 
         tokio::task::spawn(self.build());
 
-        let mut host = self
-            .on
-            .try_write()
-            .expect("No one should be reading/writing the host while resources are collected");
+        let host = &self.on;
 
         host.request_custom_binary();
         for (_, bind_type) in self.port_to_bind.iter() {
@@ -236,18 +197,17 @@ impl Service for HydroflowCrateService {
         }
 
         ProgressTracker::with_group(
-            &self
-                .display_id
+            self.display_id
                 .clone()
                 .unwrap_or_else(|| format!("service/{}", self.id)),
             None,
             || async {
-                let built = self.build().await?;
+                let built = ProgressTracker::leaf("build", self.build()).await?;
 
-                let mut host_write = self.on.write().await;
-                let launched = host_write.provision(resource_result).await;
+                let host = &self.on;
+                let launched = host.provision(resource_result);
 
-                launched.copy_binary(built.clone()).await?;
+                launched.copy_binary(built).await?;
 
                 self.launched_host = Some(launched);
                 Ok(())
@@ -262,8 +222,7 @@ impl Service for HydroflowCrateService {
         }
 
         ProgressTracker::with_group(
-            &self
-                .display_id
+            self.display_id
                 .clone()
                 .unwrap_or_else(|| format!("service/{}", self.id)),
             None,
@@ -278,9 +237,9 @@ impl Service for HydroflowCrateService {
                         self.display_id
                             .clone()
                             .unwrap_or_else(|| format!("service/{}", self.id)),
-                        built.clone(),
+                        built,
                         &args,
-                        self.perf.clone(),
+                        self.tracing.clone(),
                     )
                     .await?;
 
@@ -293,21 +252,17 @@ impl Service for HydroflowCrateService {
                     serde_json::to_string::<InitConfig>(&(bind_config, self.meta.clone())).unwrap();
 
                 // request stdout before sending config so we don't miss the "ready" response
-                let stdout_receiver = binary.write().await.cli_stdout().await;
+                let stdout_receiver = binary.deploy_stdout();
 
-                binary
-                    .write()
-                    .await
-                    .stdin()
-                    .await
-                    .send(format!("{formatted_bind_config}\n"))
-                    .await?;
+                binary.stdin().send(format!("{formatted_bind_config}\n"))?;
 
                 let ready_line = ProgressTracker::leaf(
-                    "waiting for ready".to_string(),
+                    "waiting for ready",
                     tokio::time::timeout(Duration::from_secs(60), stdout_receiver),
                 )
-                .await??;
+                .await
+                .context("Timed out waiting for ready")?
+                .context("Program unexpectedly quit")?;
                 if ready_line.starts_with("ready: ") {
                     *self.server_defns.try_write().unwrap() =
                         serde_json::from_str(ready_line.trim_start_matches("ready: ")).unwrap();
@@ -335,28 +290,20 @@ impl Service for HydroflowCrateService {
 
         let formatted_defns = serde_json::to_string(&sink_ports).unwrap();
 
-        let stdout_receiver = self
-            .launched_binary
-            .as_mut()
-            .unwrap()
-            .write()
-            .await
-            .cli_stdout()
-            .await;
+        let stdout_receiver = self.launched_binary.as_ref().unwrap().deploy_stdout();
 
         self.launched_binary
-            .as_mut()
+            .as_ref()
             .unwrap()
-            .write()
-            .await
             .stdin()
-            .await
             .send(format!("start: {formatted_defns}\n"))
-            .await
             .unwrap();
 
         let start_ack_line = ProgressTracker::leaf(
-            "waiting for ack start".to_string(),
+            self.display_id
+                .clone()
+                .unwrap_or_else(|| format!("service/{}", self.id))
+                + " / waiting for ack start",
             tokio::time::timeout(Duration::from_secs(60), stdout_receiver),
         )
         .await??;
@@ -369,24 +316,30 @@ impl Service for HydroflowCrateService {
     }
 
     async fn stop(&mut self) -> Result<()> {
-        self.launched_binary
-            .as_mut()
-            .unwrap()
-            .write()
-            .await
-            .stdin()
-            .await
-            .send("stop\n".to_string())
-            .await?;
+        ProgressTracker::with_group(
+            self.display_id
+                .clone()
+                .unwrap_or_else(|| format!("service/{}", self.id)),
+            None,
+            || async {
+                let launched_binary = self.launched_binary.as_mut().unwrap();
+                launched_binary.stdin().send("stop\n".to_string())?;
 
-        self.launched_binary
-            .as_mut()
-            .unwrap()
-            .write()
-            .await
-            .wait()
-            .await;
+                let timeout_result = ProgressTracker::leaf(
+                    "waiting for exit",
+                    tokio::time::timeout(Duration::from_secs(60), launched_binary.wait()),
+                )
+                .await;
+                match timeout_result {
+                    Err(_timeout) => {} // `wait()` timed out, but stop will force quit.
+                    Ok(Err(unexpected_error)) => return Err(unexpected_error), // `wait()` errored.
+                    Ok(Ok(_exit_status)) => {}
+                }
+                launched_binary.stop().await?;
 
-        Ok(())
+                Ok(())
+            },
+        )
+        .await
     }
 }

@@ -1,0 +1,47 @@
+---
+sidebar_position: 8
+---
+import CodeBlock from '@theme/CodeBlock';
+import exampleCode from '!!raw-loader!../../../../hydroflow/examples/example_6_unreachability.rs';
+import exampleOutput from '!!raw-loader!../../../../hydroflow/tests/snapshots/surface_examples__example_6_unreachability.snap';
+import { getLines, extractOutput, extractMermaid } from '../../../src/util';
+
+# Networked Services
+
+Hydroflow provides a robust framework for developing networked services. The best way to get started is to use
+the Hydroflow template.
+
+```bash
+cargo generate gh:hydro-project/hydroflow template/hydroflow
+```
+
+`cd` into the generated folder, ensure the correct nightly version of rust is installed, and test the generated project:
+```bash
+#shell-command-next-line
+cd <my-project>
+#shell-command-next-line
+rustup update
+#shell-command-next-line
+cargo test
+```
+
+The template contains a chat server & client implementation using UDP. You can start multiple instances of
+the client and connect to the same server.
+
+## Things to Check
+* [README](https://github.com/hydro-project/hydroflow/tree/main/template/hydroflow#readme) - Contains instructions on building the template and
+running the client and server examples.
+* [server.rs](https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/server.rs) - Contains the chat server
+implementation. The inline rust documentation explains the networking-related hydroflow operators and their usage.
+* [client.rs](https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/client.rs) - Contains the chat client
+implementation. The inline rust documentation explains the networking-related hydroflow operators and their usage.
+
+Hydroflow also supports TCP for reliable, connection-oriented communication. Understanding the differences and use
+cases of these protocols can help you choose the right one for your networked service.
+
+## Additional Examples
+
+The Hydroflow examples directory contains additional examples that deal with networking. For example, the [Randomized
+Gossip Server](https://github.com/hydro-project/hydroflow/blob/main/hydroflow/examples/chat/randomized_gossiping_server.rs)
+example extends the chat example to work with a cluster of redundant servers that use gossip for sharing chat-related
+state between themselves.

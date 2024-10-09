@@ -2,15 +2,17 @@ use std::cmp::Ordering::{self, *};
 
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
-/// Wraps a lattice in [`Option`], treating [`None`] as a new top element which compares as greater
-/// than to all other values.
+/// Adds a new "top" value to the nested lattice type.
 ///
-/// This can be used for giving a sensible top element to lattices that don't
-/// necessarily have one. Can be used to implement 'tombstones'
+/// Given an existing lattice, wrap it into a new lattice with a new top element. The new top
+/// element compares as less than all the values of the wrapped lattice.  This can be used for
+/// giving a sensible default/bottom element to lattices that don't necessarily have one.
+///
+/// The implementation wraps an [`Option`], with [`None`] representing the top element.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct WithTop<Inner>(pub Option<Inner>);
+pub struct WithTop<Inner>(Option<Inner>);
 impl<Inner> WithTop<Inner> {
     /// Create a new `WithTop` lattice instance from a value.
     pub fn new(val: Option<Inner>) -> Self {

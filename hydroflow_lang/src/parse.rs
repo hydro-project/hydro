@@ -1,5 +1,5 @@
 //! AST for surface syntax, modelled on [`syn`]'s ASTs.
-#![allow(missing_docs)]
+#![allow(clippy::allow_attributes, missing_docs, reason = "internal use")]
 
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -519,7 +519,7 @@ impl Parse for IndexInt {
 }
 impl ToTokens for IndexInt {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let lit_int = LitInt::new(&*self.value.to_string(), self.span);
+        let lit_int = LitInt::new(&self.value.to_string(), self.span);
         lit_int.to_tokens(tokens)
     }
 }

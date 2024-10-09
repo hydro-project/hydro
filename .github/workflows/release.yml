@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
+      # https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
       # Unfortunately branch protection means that this workflow can't push the updated changelogs
       # and tags to `main` in the normal way. Instead we have an app:
       # https://github.com/organizations/hydro-project/settings/apps/hydro-project-bot
@@ -35,10 +36,10 @@ jobs:
       # `APP_PRIVATE_KEY` ("Generate a private key").
       - name: Generate token
         id: generate_token
-        uses: tibdex/github-app-token@v1
+        uses: actions/create-github-app-token@v1
         with:
-          app_id: ${{ secrets.APP_ID }}
-          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - run: |
           echo "Version bump: $BUMP"
@@ -54,7 +55,7 @@ jobs:
           git config --global user.email "132423234+hydro-project-bot[bot]@users.noreply.github.com"
 
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           # Fetch all commit history so smart-release can generate changelogs.
           fetch-depth: 0
@@ -87,10 +88,11 @@ jobs:
           ${{ inputs.execute && '--execute' || '--no-publish' }}
           hydroflow hydroflow_lang hydroflow_macro hydroflow_plus
           hydroflow_datalog hydroflow_datalog_core
-          hydro_deploy hydro_cli hydroflow_cli_integration
-          hydroflow_plus_cli_integration
+          hydro_deploy hydro_cli hydroflow_deploy_integration
           stageleft stageleft_macro stageleft_tool
           multiplatform_test
         env:
           # Make sure to set this so the `gh` CLI works using our token.
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+          # Show `cargo-smart-release`'s stack trace on error.
+          RUST_BACKTRACE: 1

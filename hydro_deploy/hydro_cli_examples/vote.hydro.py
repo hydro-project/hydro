@@ -9,14 +9,14 @@ async def main(args):
     deployment = hydro.Deployment()
     localhost_machine = deployment.Localhost()
 
-    machine1 = deployment.GCPComputeEngineHost(
+    machine1 = deployment.GcpComputeEngineHost(
         project="autocompartmentalization",
         machine_type="e2-micro",
         image="debian-cloud/debian-11",
         region="us-west1-a"
     ) if machine_1_gcp else localhost_machine
 
-    machine2 = deployment.GCPComputeEngineHost(
+    machine2 = deployment.GcpComputeEngineHost(
         project="autocompartmentalization",
         machine_type="e2-micro",
         image="debian-cloud/debian-11",

@@ -23,7 +23,7 @@ This API follows the same pattern as processes, where a cluster spec represents 
 Instantiating streams on clusters uses the same APIs as streams: `source_iter` and `source_stream` are both available. But when using these APIs, the root streams will be instantiated on _all_ instances in the cluster.
 
 ```rust
-let stream = flow.source_iter(&cluster, q!(vec![1, 2, 3]));
+let stream = cluster.source_iter(q!(vec![1, 2, 3]));
 
 stream.for_each(q!(|x| println!("{}", x)))
 // will print 1, 2, 3 on **each** instance
@@ -32,33 +32,33 @@ stream.for_each(q!(|x| println!("{}", x)))
 ## Sending Data
 Because clusters represent a set of instances, adding networking requires us to specify _which_ instance(s) to send data to. Clusters provide different types depending on if the source or receiver is a cluster or a process.
 
-Elements in a cluster are identified by a **cluster ID** (a `u32`). To get the IDs of all instances in a cluster, use the `ids` method on cluster, which returns a runtime expression of type `&Vec<u32>` (which can only be used inside `q!()` or as an argument to `source_iter`). All IDs always are ranging from 0 through the length of the IDs vector.
+Elements in a cluster are identified by a **cluster ID** (a `ClusterId<C>` where `C` is the typetag of the cluster). To get the IDs of all instances in a cluster, use the `members` method on cluster, which returns a runtime expression of type `&Vec<ClusterId<_>>` (which can only be used inside `q!()` or as an argument to `source_iter`). All IDs always are ranging from 0 through the length of the IDs vector.
 
 This can then be passed into `source_iter` to load the IDs into the graph.
 ```rust
-let stream = flow.source_iter(&process, cluster.ids()).cloned();
+let stream = process.source_iter(cluster.members()).cloned();
 ```
 
 ### One-to-Many
-When sending data from a process to a cluster, the source must be a stream of tuples of the form `(u32, T)` and sends each `T` element to the instance with the matching `u32` ID.
+When sending data from a process to a cluster, the source must be a stream of tuples of the form `(ClusterId<_>, T)` and sends each `T` element to the instance with the matching ID.
 
 This is useful for partitioning data across instances. For example, we can partition a stream of elements in a round-robin fashion by using `enumerate` to add a sequence number to each element, then using `send_bincode` to send each element to the instance with the matching sequence number:
 ```rust
-let cluster_ids = cluster.ids();
-let stream = flow.source_iter(&process, q!(vec![123, 456, 789]))
+let cluster_ids = cluster.members();
+let stream = process.source_iter(q!(vec![123, 456, 789]))
     .enumerate()
     .map(q!(|(i, x)| (
-        i % cluster_ids.len() as u32,
+        ClusterId::from_raw(i % cluster_ids.len() as u32),
         x
     )))
-    .send_bincode(cluster);
+    .send_bincode(&cluster);
 ```
 
 To broadcast data to all instances in a cluster, use `broadcast_{bincode,bytes}`, which acts as a shortcut for the cross product.
 
 ```rust
-let stream = flow.source_iter(&process, q!(vec![123, 456, 789]))
-    .broadcast_bincode(cluster);
+let stream = process.source_iter(q!(vec![123, 456, 789]))
+    .broadcast_bincode(&cluster);
 ```
 
 ### Many-to-One
@@ -66,15 +66,15 @@ In the other direction, sending data from a cluster to a process, we have a stre
 
 This is useful for aggregating data from multiple instances into a single stream. For example, we can use `send_bincode` to send data from all instances to a single process, and then print them all out:
 ```rust
-let stream = flow.source_iter(&cluster, q!(vec![123, 456, 789]))
-    .send_bincode(process)
+let stream = cluster.source_iter(q!(vec![123, 456, 789]))
+    .send_bincode(&process)
     .for_each(q!(|(id, x)| println!("{}: {}", id, x)));
 ```
 
 If you don't care which instance sent the data, you can use `send_{bincode,bytes}_interleaved`, where the recipient receives a stream of `T` elements, but the elements received from different instances will be interleaved.
 ```rust
-let stream = flow.source_iter(&cluster, q!(vec![123, 456, 789]))
-    .send_bincode_interleaved(process)
+let stream = cluster.source_iter(q!(vec![123, 456, 789]))
+    .send_bincode_interleaved(&process)
     .for_each(q!(|x| println!("{}", x)));
 ```
 
@@ -83,7 +83,7 @@ Finally, when sending data from one cluster to another (or to itself as in distr
 
 We can use the same shortcuts as before. For example, we can use `broadcast_bincode_interleaved` to send data from all instances in a cluster to all instances in another cluster, and then print them all out:
 ```rust
-let stream = flow.source_iter(&cluster1, q!(vec![123, 456, 789]))
-    .broadcast_bincode_interleaved(cluster2)
+let stream = cluster1.source_iter(q!(vec![123, 456, 789]))
+    .broadcast_bincode_interleaved(&cluster2)
     .for_each(q!(|x| println!("{}", x)));
 ```

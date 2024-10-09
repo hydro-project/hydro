@@ -1,0 +1,18 @@
+---
+source: hydroflow_plus_test/src/cluster/map_reduce.rs
+expression: ir.surface_syntax_string()
+---
+1v1 = source_stream ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let c2_port = "port_0" ; let env = FAKE ; { env . port (c2_port) . connect_local_blocking :: < ConnectedDirect > () . into_source () } });
+2v1 = map (| res | { hydroflow_plus :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () });
+3v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }));
+4v1 = fold_keyed :: < 'tick > (stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | | 0 }) , stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | count , _ | * count += 1 }));
+5v1 = inspect (stageleft :: runtime_support :: fn1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("partition count: {} - {}" , string , count) }));
+6v1 = map (| data | { hydroflow_plus :: runtime_support :: bincode :: serialize :: < (std :: string :: String , i32) > (& data) . unwrap () . into () });
+7v1 = dest_sink ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let c1_port = "port_1" ; let env = FAKE ; { env . port (c1_port) . connect_local_blocking :: < ConnectedDirect > () . into_sink () } });
+
+1v1 -> 2v1;
+2v1 -> 3v1;
+3v1 -> 4v1;
+4v1 -> 5v1;
+6v1 -> 7v1;
+5v1 -> 6v1;

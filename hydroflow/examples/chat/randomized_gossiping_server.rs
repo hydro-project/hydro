@@ -190,6 +190,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
 
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

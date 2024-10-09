@@ -1,9 +1,10 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
 };
+use crate::diagnostic::{Diagnostic, Level};
 
 /// `persist_mut()` is similar to `persist()` except that it also enables deletions.
 /// `persist_mut()` expects an input of type [`Persistence<T>`](https://docs.rs/hydroflow/latest/hydroflow/util/enum.Persistence.html),
@@ -19,7 +20,7 @@ use super::{
 ///         Persistence::Persist(2),
 ///         Persistence::Delete(1),
 ///     ])
-///     -> persist_mut()
+///     -> persist_mut::<'static>()
 ///     -> assert_eq([2]);
 /// ```
 pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
@@ -30,14 +31,17 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     hard_range_out: RANGE_1,
     soft_range_out: RANGE_1,
     num_args: 0,
-    persistence_args: RANGE_0,
+    persistence_args: RANGE_1,
     type_args: RANGE_0,
     is_external_input: false,
+    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // to prevent reading uncleared data if this subgraph doesn't run.
+    // https://github.com/hydro-project/hydroflow/issues/1298
+    // If `'tick` lifetimes are added.
     has_singleton_output: false,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
@@ -46,10 +50,27 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
+                   op_name,
+                   op_inst:
+                       OperatorInstance {
+                           generics:
+                               OpInstGenerics {
+                                   persistence_args, ..
+                               },
+                           ..
+                       },
                    ..
                },
-               _| {
+               diagnostics| {
         assert!(is_pull);
+
+        if [Persistence::Static] != persistence_args[..] {
+            diagnostics.push(Diagnostic::spanned(
+                op_span,
+                Level::Error,
+                format!("{} only supports `'static`.", op_name),
+            ));
+        }
 
         let persistdata_ident = wc.make_ident("persistdata");
         let vec_ident = wc.make_ident("persistvec");

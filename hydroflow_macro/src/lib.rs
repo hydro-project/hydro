@@ -2,7 +2,6 @@
     feature = "diagnostics",
     feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)
 )]
-#![allow(clippy::explicit_auto_deref)]
 
 use std::path::PathBuf;
 
@@ -12,7 +11,7 @@ use hydroflow_lang::parse::HfCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, parse_quote, Attribute, GenericParam, ItemEnum, LitStr, Variant,
+    parse_macro_input, parse_quote, Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant,
     WherePredicate,
 };
 
@@ -135,8 +134,8 @@ pub fn hydroflow_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStre
             let part_graph = partition_graph(flat_graph).unwrap();
             let part_mermaid = part_graph.to_mermaid(&Default::default());
 
-            let lit0 = Literal::string(&*flat_mermaid);
-            let lit1 = Literal::string(&*part_mermaid);
+            let lit0 = Literal::string(&flat_mermaid);
+            let lit1 = Literal::string(&part_mermaid);
 
             return quote! {
                 {
@@ -158,7 +157,7 @@ pub fn surface_booktest_operators(input: proc_macro::TokenStream) -> proc_macro:
     let each = hydroflow_lang::graph::ops::OPERATORS.iter().map(|op| {
         let op_ident = Ident::new(op.name, Span::call_site());
         let op_filename = format!("../../docs/docgen/{}.md", op.name);
-        let lit_filename = LitStr::new(&*op_filename, Span::call_site());
+        let lit_filename = LitStr::new(&op_filename, Span::call_site());
         quote! {
             #[doc = include_str!(#lit_filename)]
             mod #op_ident {}
@@ -243,21 +242,21 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let root = root();
 
     let ItemEnum {
-        ident,
+        ident: item_ident,
         generics,
         variants,
         ..
     } = parse_macro_input!(item as ItemEnum);
 
     // Sort variants alphabetically.
-    let mut variants_sorted = variants.into_iter().collect::<Vec<_>>();
-    variants_sorted.sort_by(|a, b| a.ident.cmp(&b.ident));
+    let mut variants = variants.into_iter().collect::<Vec<_>>();
+    variants.sort_by(|a, b| a.ident.cmp(&b.ident));
 
-    let variant_pusherator_generics = variants_sorted
+    let variant_pusherator_generics = variants
         .iter()
         .map(|variant| format_ident!("__Pusherator{}", variant.ident))
         .collect::<Vec<_>>();
-    let variant_pusherator_localvars = variants_sorted
+    let variant_pusherator_localvars = variants
         .iter()
         .map(|variant| {
             format_ident!(
@@ -267,26 +266,22 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
             )
         })
         .collect::<Vec<_>>();
-    let variant_output_types = variants_sorted
+    let variant_output_types = variants
         .iter()
         .map(|variant| match &variant.fields {
-            syn::Fields::Named(fields) => {
+            Fields::Named(fields) => {
                 let field_types = fields.named.iter().map(|field| &field.ty);
-                parse_quote! {
+                quote! {
                     ( #( #field_types, )* )
                 }
             }
-            syn::Fields::Unnamed(fields) => {
-                if 1 == fields.unnamed.len() {
-                    fields.unnamed.first().unwrap().ty.clone()
-                } else {
-                    let field_types = fields.unnamed.iter().map(|field| &field.ty);
-                    parse_quote! {
-                        ( #( #field_types, )* )
-                    }
+            Fields::Unnamed(fields) => {
+                let field_types = fields.unnamed.iter().map(|field| &field.ty);
+                quote! {
+                    ( #( #field_types, )* )
                 }
             }
-            syn::Fields::Unit => parse_quote!(()),
+            Fields::Unit => quote!(()),
         })
         .collect::<Vec<_>>();
 
@@ -310,43 +305,43 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
     let (impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
     let (impl_generics, _ty_generics, where_clause) = full_generics.split_for_impl();
 
-    let variant_pats = variants_sorted
+    let variant_pats = variants
         .iter()
         .zip(variant_pusherator_localvars.iter())
         .map(|(variant, pushvar)| {
             let Variant { ident, fields, .. } = variant;
-            let idents = fields
-                .iter()
-                .enumerate()
-                .map(|(i, field)| {
-                    field
-                        .ident
-                        .clone()
-                        .unwrap_or_else(|| format_ident!("_{}", i))
-                })
-                .collect::<Vec<_>>();
-            let (fields_pat, push_item) = match fields {
-                syn::Fields::Named(_) => {
-                    (quote!( { #( #idents, )* } ), quote!( ( #( #idents, )* ) ))
-                }
-                syn::Fields::Unnamed(_) => {
-                    (quote!( ( #( #idents ),* ) ), quote!( ( #( #idents ),* ) ))
-                }
-                syn::Fields::Unit => (quote!(), quote!(())),
-            };
+            let (fields_pat, push_item) = field_pattern_item(fields);
             quote! {
                 Self::#ident #fields_pat => #pushvar.give(#push_item)
             }
         });
 
+    let single_impl = (1 == variants.len()).then(|| {
+        let Variant { ident, fields, .. } = variants.first().unwrap();
+        let (fields_pat, push_item) = field_pattern_item(fields);
+        let out_type = variant_output_types.first().unwrap();
+        quote! {
+            impl #impl_generics_item #root::util::demux_enum::SingleVariant
+                for #item_ident #ty_generics #where_clause_item
+            {
+                type Output = #out_type;
+                fn single_variant(self) -> Self::Output {
+                    match self {
+                        Self::#ident #fields_pat => #push_item,
+                    }
+                }
+            }
+        }
+    });
+
     quote! {
-        impl #impl_generics #root::util::demux_enum::DemuxEnum<#root::variadics::var_type!( #( #variant_pusherator_generics, )* )>
-            for #ident #ty_generics #where_clause
+        impl #impl_generics #root::util::demux_enum::DemuxEnum<( #( #variant_pusherator_generics, )* )>
+            for #item_ident #ty_generics #where_clause
         {
             fn demux_enum(
                 self,
-                #root::variadics::var_args!( #( #variant_pusherator_localvars, )* ):
-                    &mut #root::variadics::var_type!( #( #variant_pusherator_generics, )* )
+                ( #( #variant_pusherator_localvars, )* ):
+                    &mut ( #( #variant_pusherator_generics, )* )
             ) {
                 match self {
                     #( #variant_pats, )*
@@ -354,9 +349,30 @@ pub fn derive_answer_fn(item: proc_macro::TokenStream) -> proc_macro::TokenStrea
             }
         }
 
-        impl #impl_generics_item #root::util::demux_enum::DemuxEnumItems for #ident #ty_generics #where_clause_item {
-            type Items = #root::variadics::var_type!( #( #variant_output_types, )* );
-        }
+        impl #impl_generics_item #root::util::demux_enum::DemuxEnumBase
+            for #item_ident #ty_generics #where_clause_item {}
+
+        #single_impl
     }
     .into()
+}
+
+/// (fields pattern, push item expr)
+fn field_pattern_item(fields: &Fields) -> (proc_macro2::TokenStream, proc_macro2::TokenStream) {
+    let idents = fields
+        .iter()
+        .enumerate()
+        .map(|(i, field)| {
+            field
+                .ident
+                .clone()
+                .unwrap_or_else(|| format_ident!("_{}", i))
+        })
+        .collect::<Vec<_>>();
+    let (fields_pat, push_item) = match fields {
+        Fields::Named(_) => (quote!( { #( #idents, )* } ), quote!( ( #( #idents, )* ) )),
+        Fields::Unnamed(_) => (quote!( ( #( #idents ),* ) ), quote!( ( #( #idents, )* ) )),
+        Fields::Unit => (quote!(), quote!(())),
+    };
+    (fields_pat, push_item)
 }

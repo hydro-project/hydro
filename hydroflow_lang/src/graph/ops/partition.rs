@@ -17,9 +17,9 @@ use crate::pretty_span::PrettySpan;
 /// pipeline each item should be delivered to.
 ///
 /// > Arguments: A Rust closure, the first argument is a reference to the item and the second
-/// argument corresponds to one of two modes, either named or indexed.
+/// > argument corresponds to one of two modes, either named or indexed.
 ///
-/// > Note: The closure has access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closure has access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// # Named mode
 /// With named ports, the closure's second argument must be a Rust 'slice pattern' of names, such as
@@ -68,7 +68,6 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
@@ -278,7 +277,7 @@ fn extract_closure_idents(
     };
     if 2 != func.inputs.len() {
         return Err(Diagnostic::spanned(
-            func.span(),
+            func.inputs.span(),
             Level::Error,
             &*format!(
                 "Closure provided to `{}(..)` must have two arguments: \

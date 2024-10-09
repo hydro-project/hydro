@@ -3,13 +3,13 @@
 use std::any::Any;
 use std::future::Future;
 use std::marker::PhantomData;
+use std::ops::DerefMut;
 use std::pin::Pin;
 
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
-use super::graph::StateData;
 use super::state::StateHandle;
 use super::{StateId, SubgraphId};
 use crate::scheduled::ticks::TickInstant;
@@ -22,7 +22,7 @@ use crate::scheduled::ticks::TickInstant;
 /// Before the `Context` is provided to a running operator, the `subgraph_id`
 /// field must be updated.
 pub struct Context {
-    pub(crate) states: Vec<StateData>,
+    states: Vec<StateData>,
 
     // TODO(mingwei): as long as this is here, it's impossible to know when all work is done.
     // Second field (bool) is for if the event is an external "important" event (true).
@@ -39,11 +39,12 @@ pub struct Context {
     /// meaningless.
     pub(crate) subgraph_id: SubgraphId,
 
-    pub(crate) tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
+    tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
 
     /// Join handles for spawned tasks.
-    pub(crate) task_join_handles: Vec<JoinHandle<()>>,
+    task_join_handles: Vec<JoinHandle<()>>,
 }
+/// Public APIs.
 impl Context {
     /// Gets the current tick (local time) count.
     pub fn current_tick(&self) -> TickInstant {
@@ -138,6 +139,7 @@ impl Context {
 
         let state_data = StateData {
             state: Box::new(state),
+            tick_reset: None,
         };
         self.states.push(state_data);
 
@@ -145,6 +147,22 @@ impl Context {
             state_id,
             _phantom: PhantomData,
         }
+    }
+
+    /// Sets a hook to modify the state at the end of each tick, using the supplied closure.
+    pub fn set_state_tick_hook<T>(
+        &mut self,
+        handle: StateHandle<T>,
+        mut tick_hook_fn: impl 'static + FnMut(&mut T),
+    ) where
+        T: Any,
+    {
+        self.states
+            .get_mut(handle.state_id.0)
+            .expect("Failed to find state with given handle.")
+            .tick_reset = Some(Box::new(move |state| {
+            (tick_hook_fn)(state.downcast_mut::<T>().unwrap());
+        }));
     }
 
     /// Removes state from the context returns it as an owned heap value.
@@ -188,3 +206,40 @@ impl Context {
         futures::future::join_all(self.task_join_handles.drain(..)).await;
     }
 }
+/// Internal APIs.
+impl Context {
+    /// Create a new context for the Hydroflow graph instance, used internally.
+    pub(crate) fn new(event_queue_send: UnboundedSender<(SubgraphId, bool)>) -> Self {
+        Context {
+            states: Vec::new(),
+
+            event_queue_send,
+
+            current_stratum: 0,
+            current_tick: TickInstant::default(),
+
+            current_tick_start: SystemTime::now(),
+            subgraph_last_tick_run_in: None,
+
+            subgraph_id: SubgraphId(0),
+
+            tasks_to_spawn: Vec::new(),
+            task_join_handles: Vec::new(),
+        }
+    }
+
+    pub(crate) fn reset_state_at_end_of_tick(&mut self) {
+        for StateData { state, tick_reset } in self.states.iter_mut() {
+            if let Some(tick_reset) = tick_reset {
+                (tick_reset)(Box::deref_mut(state));
+            }
+        }
+    }
+}
+
+/// Internal struct containing a pointer to [`Hydroflow`]-owned state.
+struct StateData {
+    state: Box<dyn Any>,
+    tick_reset: Option<TickResetFn>,
+}
+type TickResetFn = Box<dyn FnMut(&mut dyn Any)>;

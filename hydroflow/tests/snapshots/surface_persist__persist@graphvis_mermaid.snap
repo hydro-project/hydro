@@ -9,10 +9,10 @@ classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter([1, 2, 3])</code>"/]:::pullClass
-2v1[\"(2v1) <code>persist()</code>"/]:::pullClass
+2v1[\"(2v1) <code>persist::&lt;'static&gt;()</code>"/]:::pullClass
 3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
 4v1[/"(4v1) <code>for_each(|v| pull_tx.send(v).unwrap())</code>"\]:::pushClass
-5v1[/"(5v1) <code>persist()</code>"\]:::pushClass
+5v1[/"(5v1) <code>persist::&lt;'static&gt;()</code>"\]:::pushClass
 6v1[/"(6v1) <code>for_each(|v| push_tx.send(v).unwrap())</code>"\]:::pushClass
 2v1-->3v1
 1v1-->2v1

@@ -7,11 +7,11 @@ async def main(args):
     deployment = hydro.Deployment()
     localhost_machine = deployment.Localhost()
 
-    gcp_vpc = hydro.GCPNetwork(
+    gcp_vpc = hydro.GcpNetwork(
         project="autocompartmentalization",
     )
 
-    machine2 = deployment.GCPComputeEngineHost(
+    machine2 = deployment.GcpComputeEngineHost(
         project="autocompartmentalization",
         machine_type="e2-micro",
         image="debian-cloud/debian-11",

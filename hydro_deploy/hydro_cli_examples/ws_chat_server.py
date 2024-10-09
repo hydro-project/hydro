@@ -10,15 +10,15 @@ async def main(args):
     deployment = hydro.Deployment()
     localhost_machine = deployment.Localhost()
 
-    gcp_vpc = hydro.GCPNetwork(
+    gcp_vpc = hydro.GcpNetwork(
         project="autocompartmentalization",
     )
 
-    machines: List[hydro.GCPComputeEngineHost] = []
+    machines: List[hydro.GcpComputeEngineHost] = []
     chat_servers: Dict[int, hydro.HydroflowCrate] = {}
     ports: List[int] = []
     for i in range(num_replicas):
-        machine = deployment.GCPComputeEngineHost(
+        machine = deployment.GcpComputeEngineHost(
             project="autocompartmentalization",
             machine_type="e2-micro",
             image="debian-cloud/debian-11",

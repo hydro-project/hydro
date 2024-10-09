@@ -81,7 +81,7 @@ impl SubgraphBuilder {
             }
             RelExpr::Filter(preds, input) => {
                 let op_name = self.gensym("filter");
-                let input_name = self.compile_op(&**input);
+                let input_name = self.compile_op(input);
 
                 let pred = quote! {
                     #(#preds.eval(row).is_true())&&*
@@ -95,7 +95,7 @@ impl SubgraphBuilder {
             }
             RelExpr::Project(exprs, input) => {
                 let op_name = self.gensym("project");
-                let input_name = self.compile_op(&**input);
+                let input_name = self.compile_op(input);
 
                 let pred = quote! {
                     vec![ #(#exprs.eval(&row)),* ]

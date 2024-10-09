@@ -8,7 +8,7 @@ digraph {
     n1v1 [label="(n1v1) source_iter(1..=10)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) source_iter(3..=5)", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) reduce(|a, b| *a = std::cmp::max(*a, b))", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) persist()", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
     n5v1 [label="(n5v1) filter(|&value| { value <= max_of_stream2.unwrap_or(0) })", shape=invhouse, fillcolor="#88aaff"]
     n6v1 [label="(n6v1) map(|x| (context.current_tick(), x))", shape=invhouse, fillcolor="#88aaff"]
     n7v1 [label="(n7v1) for_each(|x| filter_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]

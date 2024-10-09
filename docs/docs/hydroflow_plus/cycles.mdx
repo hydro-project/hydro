@@ -10,7 +10,7 @@ Because streams are represented as values when constructing a Hydroflow+ graph, 
 We can create a cycle by using the `cycle` method on flow with a process or cluster. This returns a tuple of two values: a `HfCycle` value that can be used to complete the cycle later and the placeholder stream.
 
 ```rust
-let (complete_cycle, cycle_placeholder) = flow.cycle(&process);
+let (complete_cycle, cycle_placeholder) = process.cycle();
 ```
 
 For example, consider the classic graph reachability problem, which computes the nodes reachable from a given set of roots in a directed graph. This can be modeled as an iterative fixpoint computation where we start with the roots, then repeatedly add the children of each node to the set of reachable nodes until we reach a fixpoint.
@@ -18,10 +18,10 @@ For example, consider the classic graph reachability problem, which computes the
 In Hydroflow+, we can implement this using cycles:
 
 ```rust
-let roots = flow.source_stream(&process, roots);
-let edges = flow.source_stream(&process, edges);
+let roots = process.source_stream(roots);
+let edges = process.source_stream(edges);
 
-let (complete_reached_nodes, reached_nodes) = flow.cycle(&process);
+let (complete_reached_nodes, reached_nodes) = process.cycle();
 
 let reach_iteration = roots
     .union(&reached_nodes)

@@ -1,6 +1,6 @@
 use hydroflow::compiled::pull::HalfMultisetJoinState;
 use hydroflow::hydroflow_syntax;
-use hydroflow::util::cli::{ConnectedSink, ConnectedSource};
+use hydroflow::util::deploy::{ConnectedSink, ConnectedSource};
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
@@ -29,17 +29,17 @@ struct ChatMessage {
 
 #[hydroflow::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
 
     let from_peer = ports
         .port("from_peer")
-        .connect::<hydroflow::util::cli::ConnectedDirect>()
+        .connect::<hydroflow::util::deploy::ConnectedDirect>()
         .await
         .into_source();
 
     let to_peer = ports
         .port("to_peer")
-        .connect::<hydroflow::util::cli::ConnectedDemux<hydroflow::util::cli::ConnectedDirect>>()
+        .connect::<hydroflow::util::deploy::ConnectedDemux<hydroflow::util::deploy::ConnectedDirect>>()
         .await
         .into_sink();
 
@@ -54,7 +54,7 @@ async fn main() {
         util::ws_server(ws_port).await;
 
     let df = hydroflow_syntax! {
-        all_peers = source_iter((0..number_of_nodes).filter(move |&i| i != self_node_id)) -> persist();
+        all_peers = source_iter((0..number_of_nodes).filter(move |&i| i != self_node_id)) -> persist::<'static>();
 
         // networking
         from_peer = source_stream(from_peer) -> map(|b| deserialize_from_bytes::<PeerMessage>(b.unwrap()).unwrap());
@@ -68,16 +68,16 @@ async fn main() {
 
         // helpers
         peer_broadcast = cross_join::<'tick, 'tick, HalfMultisetJoinState>() -> to_peer;
-        all_peers -> [0] peer_broadcast;
-        to_peers =  [1] peer_broadcast;
+        all_peers -> [0]peer_broadcast;
+        to_peers =  [1]peer_broadcast;
 
         names = from_client ->
             filter_map(|(client, msg)| if let FromClient::Name(name) = msg { Some((client, name)) } else { None });
         messages = from_client ->
             filter_map(|(client, msg)| if let FromClient::Message { id, text } = msg { Some((client, (id, text))) } else { None });
 
-        clients_connect -> persist() -> [pos] active_clients;
-        clients_disconnect -> persist() -> [neg] active_clients;
+        clients_connect -> persist::<'static>() -> [pos]active_clients;
+        clients_disconnect -> persist::<'static>() -> [neg]active_clients;
         active_clients = difference() -> null();
 
         // logic
@@ -88,8 +88,8 @@ async fn main() {
         // })) -> to_client;
 
         // replicated chat
-        messages -> [0] local_messages;
-        names -> persist() -> [1] local_messages;
+        messages -> [0]local_messages;
+        names -> persist::<'static>() -> [1]local_messages;
         local_messages = join::<'tick, 'tick, HalfMultisetJoinState>() -> tee();
 
         local_messages -> map(|(client_id, ((msg_id, text), name))| (ChatMessage {
@@ -108,13 +108,13 @@ async fn main() {
 
         from_peer -> map(|p| (p.msg, p.node_id, p.client_id, p.msg_id)) -> all_messages;
 
-        all_messages = union() /* -> persist() -> (PATCH 2) */ -> unique::<'tick>() -> map(|t| t.0);
+        all_messages = union() /* -> persist::<'static>() -> (PATCH 2) */ -> unique::<'tick>() -> map(|t| t.0);
 
         broadcast_clients = cross_join::<'static /*'tick (PATCH 1) */, 'static /*'tick, HalfMultisetJoinState (PATCH 2) */>() -> multiset_delta() -> to_client;
-        // active_clients -> [0] broadcast_clients; (PATCH 1)
-        clients_connect -> [0] broadcast_clients;
-        all_messages -> [1] broadcast_clients;
+        // active_clients -> [0]broadcast_clients; (PATCH 1)
+        clients_connect -> [0]broadcast_clients;
+        all_messages -> [1]broadcast_clients;
     };
 
-    hydroflow::util::cli::launch_flow(df).await;
+    hydroflow::util::deploy::launch_flow(df).await;
 }

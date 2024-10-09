@@ -35,7 +35,7 @@ pub fn test_persist_multiset_delta() {
     let (output_send, mut output_recv) = hydroflow::util::unbounded_channel::<usize>();
     let mut flow = hydroflow::hydroflow_syntax! {
         source_stream(input_recv)
-            -> persist()
+            -> persist::<'static>()
             -> multiset_delta()
             -> for_each(|x| output_send.send(x).unwrap());
     };
@@ -84,8 +84,8 @@ fn test_chat_app_replay() {
     let (out, mut out_recv) = hydroflow::util::unbounded_channel::<(u32, String)>();
 
     let mut chat_server = hydroflow_syntax! {
-        users = source_stream(users) -> persist();
-        messages = source_stream(messages) -> persist();
+        users = source_stream(users) -> persist::<'static>();
+        messages = source_stream(messages) -> persist::<'static>();
         users -> [0]crossed;
         messages -> [1]crossed;
         crossed = cross_join::<'tick, 'tick>()

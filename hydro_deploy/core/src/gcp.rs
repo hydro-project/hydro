@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::Result;
 use async_trait::async_trait;
@@ -12,7 +12,8 @@ use super::{
     ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult,
     ServerStrategy,
 };
-use crate::ssh::LaunchedSSHHost;
+use crate::ssh::LaunchedSshHost;
+use crate::HostStrategyGetter;
 
 pub struct LaunchedComputeEngine {
     resource_result: Arc<ResourceResult>,
@@ -21,7 +22,7 @@ pub struct LaunchedComputeEngine {
     pub external_ip: Option<String>,
 }
 
-impl LaunchedSSHHost for LaunchedComputeEngine {
+impl LaunchedSshHost for LaunchedComputeEngine {
     fn get_external_ip(&self) -> Option<String> {
         self.external_ip.clone()
     }
@@ -44,13 +45,13 @@ impl LaunchedSSHHost for LaunchedComputeEngine {
 }
 
 #[derive(Debug)]
-pub struct GCPNetwork {
+pub struct GcpNetwork {
     pub project: String,
     pub existing_vpc: Option<String>,
     id: String,
 }
 
-impl GCPNetwork {
+impl GcpNetwork {
     pub fn new(project: impl Into<String>, existing_vpc: Option<String>) -> Self {
         Self {
             project: project.into(),
@@ -167,27 +168,35 @@ impl GCPNetwork {
     }
 }
 
-pub struct GCPComputeEngineHost {
-    pub id: usize,
-    pub project: String,
-    pub machine_type: String,
-    pub image: String,
-    pub region: String,
-    pub network: Arc<RwLock<GCPNetwork>>,
-    pub user: Option<String>,
-    pub launched: Option<Arc<LaunchedComputeEngine>>,
-    external_ports: Vec<u16>,
+pub struct GcpComputeEngineHost {
+    /// ID from [`crate::Deployment::add_host`].
+    id: usize,
+
+    project: String,
+    machine_type: String,
+    image: String,
+    region: String,
+    network: Arc<RwLock<GcpNetwork>>,
+    user: Option<String>,
+    startup_script: Option<String>,
+    pub launched: OnceLock<Arc<LaunchedComputeEngine>>, // TODO(mingwei): fix pub
+    external_ports: Mutex<Vec<u16>>,
 }
 
-impl GCPComputeEngineHost {
+impl GcpComputeEngineHost {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "internal code called by builder elsewhere"
+    )]
     pub fn new(
         id: usize,
         project: impl Into<String>,
         machine_type: impl Into<String>,
         image: impl Into<String>,
         region: impl Into<String>,
-        network: Arc<RwLock<GCPNetwork>>,
+        network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
+        startup_script: Option<String>,
     ) -> Self {
         Self {
             id,
@@ -197,29 +206,30 @@ impl GCPComputeEngineHost {
             region: region.into(),
             network,
             user,
-            launched: None,
-            external_ports: vec![],
+            startup_script,
+            launched: OnceLock::new(),
+            external_ports: Mutex::new(Vec::new()),
         }
     }
 }
 
 #[async_trait]
-impl Host for GCPComputeEngineHost {
+impl Host for GcpComputeEngineHost {
     fn target_type(&self) -> HostTargetType {
         HostTargetType::Linux
     }
 
-    fn request_port(&mut self, bind_type: &ServerStrategy) {
+    fn request_port(&self, bind_type: &ServerStrategy) {
         match bind_type {
             ServerStrategy::UnixSocket => {}
             ServerStrategy::InternalTcpPort => {}
             ServerStrategy::ExternalTcpPort(port) => {
-                if !self.external_ports.contains(port) {
-                    if self.launched.is_some() {
+                let mut external_ports = self.external_ports.lock().unwrap();
+                if !external_ports.contains(port) {
+                    if self.launched.get().is_some() {
                         todo!("Cannot adjust firewall after host has been launched");
                     }
-
-                    self.external_ports.push(*port);
+                    external_ports.push(*port);
                 }
             }
             ServerStrategy::Demux(demux) => {
@@ -239,7 +249,7 @@ impl Host for GCPComputeEngineHost {
         }
     }
 
-    fn request_custom_binary(&mut self) {
+    fn request_custom_binary(&self) {
         self.request_port(&ServerStrategy::ExternalTcpPort(22));
     }
 
@@ -251,12 +261,8 @@ impl Host for GCPComputeEngineHost {
         self
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn collect_resources(&self, resource_batch: &mut ResourceBatch) {
-        if self.launched.is_some() {
+        if self.launched.get().is_some() {
             return;
         }
 
@@ -339,7 +345,8 @@ impl Host for GCPComputeEngineHost {
         let mut tags = vec![];
         let mut external_interfaces = vec![];
 
-        if self.external_ports.is_empty() {
+        let external_ports = self.external_ports.lock().unwrap();
+        if external_ports.is_empty() {
             external_interfaces.push(json!({ "network": format!("${{{vpc_path}.self_link}}") }));
         } else {
             external_interfaces.push(json!({
@@ -352,7 +359,7 @@ impl Host for GCPComputeEngineHost {
             }));
 
             // open the external ports that were requested
-            let my_external_tags = self.external_ports.iter().map(|port| {
+            let my_external_tags = external_ports.iter().map(|port| {
                 let rule_id = nanoid!(8, &TERRAFORM_ALPHABET);
                 let firewall_rule = resource_batch
                     .terraform
@@ -386,6 +393,7 @@ impl Host for GCPComputeEngineHost {
                 }
             );
         }
+        drop(external_ports); // Drop the lock as soon as possible.
 
         let user = self.user.as_ref().cloned().unwrap_or("hydro".to_string());
         resource_batch
@@ -413,7 +421,8 @@ impl Host for GCPComputeEngineHost {
                             ]
                         }
                     ],
-                    "network_interface": external_interfaces
+                    "network_interface": external_interfaces,
+                    "metadata_startup_script": self.startup_script,
                 }),
             );
 
@@ -429,46 +438,43 @@ impl Host for GCPComputeEngineHost {
 
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>> {
         self.launched
-            .as_ref()
+            .get()
             .map(|a| a.clone() as Arc<dyn LaunchedHost>)
     }
 
-    async fn provision(&mut self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
-        if self.launched.is_none() {
-            let id = self.id;
+    fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
+        self.launched
+            .get_or_init(|| {
+                let id = self.id;
 
-            let internal_ip = resource_result
-                .terraform
-                .outputs
-                .get(&format!("vm-instance-{id}-internal-ip"))
-                .unwrap()
-                .value
-                .clone();
+                let internal_ip = resource_result
+                    .terraform
+                    .outputs
+                    .get(&format!("vm-instance-{id}-internal-ip"))
+                    .unwrap()
+                    .value
+                    .clone();
 
-            let external_ip = resource_result
-                .terraform
-                .outputs
-                .get(&format!("vm-instance-{id}-public-ip"))
-                .map(|v| v.value.clone());
+                let external_ip = resource_result
+                    .terraform
+                    .outputs
+                    .get(&format!("vm-instance-{id}-public-ip"))
+                    .map(|v| v.value.clone());
 
-            self.launched = Some(Arc::new(LaunchedComputeEngine {
-                resource_result: resource_result.clone(),
-                user: self.user.as_ref().cloned().unwrap_or("hydro".to_string()),
-                internal_ip,
-                external_ip,
-            }))
-        }
-
-        self.launched.as_ref().unwrap().clone()
+                Arc::new(LaunchedComputeEngine {
+                    resource_result: resource_result.clone(),
+                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_string()),
+                    internal_ip,
+                    external_ip,
+                })
+            })
+            .clone()
     }
 
     fn strategy_as_server<'a>(
         &'a self,
         client_host: &dyn Host,
-    ) -> Result<(
-        ClientStrategy<'a>,
-        Box<dyn FnOnce(&mut dyn std::any::Any) -> ServerStrategy>,
-    )> {
+    ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)> {
         if client_host.can_connect_to(ClientStrategy::UnixSocket(self.id)) {
             Ok((
                 ClientStrategy::UnixSocket(self.id),
@@ -483,7 +489,7 @@ impl Host for GCPComputeEngineHost {
             Ok((
                 ClientStrategy::ForwardedTcpPort(self),
                 Box::new(|me| {
-                    me.downcast_mut::<GCPComputeEngineHost>()
+                    me.downcast_ref::<GcpComputeEngineHost>()
                         .unwrap()
                         .request_port(&ServerStrategy::ExternalTcpPort(22)); // needed to forward
                     ServerStrategy::InternalTcpPort
@@ -510,7 +516,7 @@ impl Host for GCPComputeEngineHost {
             }
             ClientStrategy::InternalTcpPort(target_host) => {
                 if let Some(gcp_target) =
-                    target_host.as_any().downcast_ref::<GCPComputeEngineHost>()
+                    target_host.as_any().downcast_ref::<GcpComputeEngineHost>()
                 {
                     self.project == gcp_target.project
                 } else {

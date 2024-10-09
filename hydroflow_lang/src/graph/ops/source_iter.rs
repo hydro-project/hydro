@@ -8,6 +8,7 @@ use super::{
 /// > 0 input streams, 1 output stream
 ///
 /// > Arguments: An iterable Rust object.
+///
 /// Takes the iterable object and delivers its elements downstream
 /// one by one.
 ///
@@ -32,7 +33,6 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    ident,

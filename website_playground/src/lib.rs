@@ -15,12 +15,6 @@ use quote::quote;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-// When the `wee_alloc` feature is enabled, use `wee_alloc` as the global
-// allocator.
-#[cfg(feature = "wee_alloc")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 #[wasm_bindgen]
 extern "C" {
     fn alert(s: &str);
@@ -34,14 +28,14 @@ pub fn init() {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JSLineColumn {
+pub struct JsLineColumn {
     pub line: usize,
     pub column: usize,
 }
 
-impl From<LineColumn> for JSLineColumn {
+impl From<LineColumn> for JsLineColumn {
     fn from(lc: LineColumn) -> Self {
-        JSLineColumn {
+        JsLineColumn {
             line: lc.line,
             column: lc.column,
         }
@@ -49,12 +43,12 @@ impl From<LineColumn> for JSLineColumn {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JSSpan {
-    pub start: JSLineColumn,
-    pub end: Option<JSLineColumn>,
+pub struct JsSpan {
+    pub start: JsLineColumn,
+    pub end: Option<JsLineColumn>,
 }
 
-impl From<Span> for JSSpan {
+impl From<Span> for JsSpan {
     fn from(span: Span) -> Self {
         #[cfg(procmacro2_semver_exempt)]
         let is_call_site = span.eq(&Span::call_site());
@@ -63,12 +57,12 @@ impl From<Span> for JSSpan {
         let is_call_site = true;
 
         if is_call_site {
-            JSSpan {
-                start: JSLineColumn { line: 0, column: 0 },
+            JsSpan {
+                start: JsLineColumn { line: 0, column: 0 },
                 end: None,
             }
         } else {
-            JSSpan {
+            JsSpan {
                 start: span.start().into(),
                 end: Some(span.end().into()),
             }
@@ -77,15 +71,15 @@ impl From<Span> for JSSpan {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JSDiagnostic {
-    pub span: JSSpan,
+pub struct JsDiagnostic {
+    pub span: JsSpan,
     pub message: String,
     pub is_error: bool,
 }
 
-impl From<Diagnostic> for JSDiagnostic {
+impl From<Diagnostic> for JsDiagnostic {
     fn from(diag: Diagnostic) -> Self {
-        JSDiagnostic {
+        JsDiagnostic {
             span: diag.span.into(),
             message: diag.message,
             is_error: diag.level == Level::Error,
@@ -96,7 +90,7 @@ impl From<Diagnostic> for JSDiagnostic {
 #[derive(Serialize, Deserialize)]
 pub struct HydroflowResult {
     pub output: Option<HydroflowOutput>,
-    pub diagnostics: Vec<JSDiagnostic>,
+    pub diagnostics: Vec<JsDiagnostic>,
 }
 #[derive(Serialize, Deserialize)]
 pub struct HydroflowOutput {
@@ -148,7 +142,7 @@ pub fn compile_hydroflow(
             output: None,
             diagnostics: errors
                 .into_iter()
-                .map(|e| JSDiagnostic {
+                .map(|e| JsDiagnostic {
                     span: e.span().into(),
                     message: e.to_string(),
                     is_error: true,

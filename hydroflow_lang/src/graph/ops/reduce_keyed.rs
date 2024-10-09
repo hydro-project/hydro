@@ -7,19 +7,19 @@ use super::{
 use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream of type `(K, V)`, 1 output stream of type `(K, V)`.
-/// The output will have one tuple for each distinct `K`, with an accumulated (reduced) value of
-/// type `V`.
+/// > The output will have one tuple for each distinct `K`, with an accumulated (reduced) value of
+/// > type `V`.
 ///
 /// If you need the accumulated value to have a different type than the input, use [`fold_keyed`](#keyed_fold).
 ///
 /// > Arguments: one Rust closures. The closure takes two arguments: an `&mut` 'accumulator', and
-/// an element. Accumulator should be updated based on the element.
+/// > an element. Accumulator should be updated based on the element.
 ///
 /// A special case of `reduce`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
 /// is partitioned into groups by the first field, and for each group the values in the second
 /// field are accumulated via the closures in the arguments.
 ///
-/// > Note: The closures have access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closures have access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// `reduce_keyed` can also be provided with one generic lifetime persistence argument, either
 /// `'tick` or `'static`, to specify how data persists. With `'tick`, values will only be collected
@@ -66,11 +66,13 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=2),
     is_external_input: false,
+    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // to prevent reading uncleared data if this subgraph doesn't run.
+    // https://github.com/hydro-project/hydroflow/issues/1298
     has_singleton_output: false,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    hydroflow,
                    context,

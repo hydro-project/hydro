@@ -3,7 +3,7 @@ use syn::parse_quote;
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    JOIN_CROSS_JOIN_FLOW_PROP_FN, RANGE_0, RANGE_1,
+    RANGE_0, RANGE_1,
 };
 
 // TODO(mingwei):
@@ -22,8 +22,7 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(JOIN_CROSS_JOIN_FLOW_PROP_FN),
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |&WriteContextArgs {
                    root,
                    context,
                    op_span,
@@ -37,7 +36,7 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                _| {
         assert!(is_pull);
 
-        let func = wc.wrap_check_func_arg(&arguments[0]);
+        let func = &arguments[0];
         let lhs_state_handle = &arguments_handles[1];
         let rhs_state_handle = &arguments_handles[2];
 

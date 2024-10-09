@@ -46,11 +46,11 @@ use super::{
 /// Instead of discrete values we send arbitrary streams of bytes into an `AsyncWrite` value. For
 /// example, writings a stream of bytes to a file, a socket, or stdout.
 ///
-/// To handle those situations we can use a codec from [`tokio_util::codec`](crate::tokio_util::codec).
+/// To handle those situations we can use a codec from [`tokio_util::codec`](https://docs.rs/tokio-util/latest/tokio_util/codec/index.html).
 /// These specify ways in which the byte stream is broken into individual items, such as with
 /// newlines or with length delineation.
 ///
-/// If we only want to write a stream of bytes without delineation we can use the [`BytesCodec`](crate::tokio_util::codec::BytesCodec).
+/// If we only want to write a stream of bytes without delineation we can use the [`BytesCodec`](https://docs.rs/tokio-util/latest/tokio_util/codec/struct.BytesCodec.html).
 ///
 /// In this example we use a [`duplex`](crate::tokio::io::duplex) as our `AsyncWrite` with a
 /// `BytesCodec`.
@@ -96,7 +96,6 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    hydroflow,

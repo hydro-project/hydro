@@ -1,8 +1,4 @@
 #![cfg_attr(feature = "nightly", feature(never_type))]
-#![allow(type_alias_bounds)]
-#![allow(clippy::let_and_return)]
-#![allow(clippy::iter_with_drain)]
-#![allow(clippy::explicit_auto_deref)]
 #![warn(missing_docs)]
 
 //! Hydroflow is a low-level dataflow-based runtime system for the [Hydro Project](https://hydro.run/).
@@ -22,7 +18,6 @@
 //! For more examples, check out the [`examples` folder on Github](https://github.com/hydro-project/hydroflow/tree/main/hydroflow/examples).
 
 pub mod compiled;
-pub mod props;
 pub mod scheduled;
 pub mod util;
 

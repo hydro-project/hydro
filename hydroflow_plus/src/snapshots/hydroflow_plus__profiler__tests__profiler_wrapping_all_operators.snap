@@ -1,20 +1,24 @@
 ---
 source: hydroflow_plus/src/profiler.rs
-expression: "&built.ir"
+expression: "&built.ir()"
 ---
 [
     ForEach {
-        f: { use crate :: __staged :: profiler :: tests :: * ; | n | println ! ("{}" , n) },
-        input: Map {
-            f: { use crate :: __staged :: profiler :: tests :: * ; | v | v + 1 },
-            input: Persist(
-                Source {
-                    source: Iter(
-                        { use crate :: __staged :: profiler :: tests :: * ; 0 .. 10 },
-                    ),
-                    location_id: 0,
-                },
-            ),
-        },
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: profiler :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Unpersist(
+            Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: profiler :: tests :: * ; | v | v + 1 }),
+                input: Persist(
+                    Source {
+                        source: Iter(
+                            { use crate :: __staged :: profiler :: tests :: * ; 0 .. 10 },
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                    },
+                ),
+            },
+        ),
     },
 ]

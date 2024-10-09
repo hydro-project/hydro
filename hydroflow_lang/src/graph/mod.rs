@@ -20,7 +20,6 @@ mod di_mul_graph;
 mod eliminate_extra_unions_tees;
 mod flat_graph_builder;
 mod flat_to_partitioned;
-mod flow_props;
 mod graph_write;
 mod hydroflow_graph;
 mod hydroflow_graph_debugging;
@@ -32,12 +31,10 @@ pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 pub use flat_graph_builder::FlatGraphBuilder;
 pub use flat_to_partitioned::partition_graph;
-pub use flow_props::*;
 pub use hydroflow_graph::{HydroflowGraph, WriteConfig, WriteGraphType};
 
 pub mod graph_algorithms;
 pub mod ops;
-pub mod propagate_flow_props;
 
 new_key_type! {
     /// ID to identify a node (operator or handoff) in [`HydroflowGraph`].
@@ -66,7 +63,7 @@ mod serde_syn {
         S: Serializer,
         T: quote::ToTokens,
     {
-        serializer.serialize_str(&*value.to_token_stream().to_string())
+        serializer.serialize_str(&value.to_token_stream().to_string())
     }
 
     pub fn deserialize<'de, D, T>(deserializer: D) -> Result<T, D::Error>
@@ -75,7 +72,7 @@ mod serde_syn {
         T: syn::parse::Parse,
     {
         let s = String::deserialize(deserializer)?;
-        syn::parse_str(&*s).map_err(<D::Error as serde::de::Error>::custom)
+        syn::parse_str(&s).map_err(<D::Error as serde::de::Error>::custom)
     }
 }
 
@@ -193,9 +190,10 @@ pub struct OpInstGenerics {
     pub type_args: Vec<Type>,
 }
 
-/// Gets the generic arguments for the operator. This helper method is here due to the special
-/// handling of persistence lifetimes (`'static`, `'tick`, `'mutable`) which must come before
-/// other generic parameters.
+/// Gets the generic arguments for the operator.
+///
+/// This helper method is useful due to the special handling of persistence lifetimes (`'static`,
+/// `'tick`, `'mutable`) which must come before other generic parameters.
 pub fn get_operator_generics(
     diagnostics: &mut Vec<Diagnostic>,
     operator: &Operator,
@@ -387,27 +385,49 @@ pub fn build_hfcode(
 
         eliminate_extra_unions_tees(&mut flat_graph);
         match partition_graph(flat_graph) {
-            Ok(mut partitioned_graph) => {
-                // Propagate flow properties throughout the graph.
-                // TODO(mingwei): Should this be done at a flat graph stage instead?
-                if let Ok(()) = propagate_flow_props::propagate_flow_props(
-                    &mut partitioned_graph,
+            Ok(partitioned_graph) => {
+                let code = partitioned_graph.as_code(
+                    root,
+                    true,
+                    quote::quote! { #( #uses )* },
                     &mut diagnostics,
-                ) {
-                    let code = partitioned_graph.as_code(
-                        root,
-                        true,
-                        quote::quote! { #( #uses )* },
-                        &mut diagnostics,
-                    );
-                    if !diagnostics.iter().any(Diagnostic::is_error) {
-                        // Success.
-                        return (Some((partitioned_graph, code)), diagnostics);
-                    }
+                );
+                if !diagnostics.iter().any(Diagnostic::is_error) {
+                    // Success.
+                    return (Some((partitioned_graph, code)), diagnostics);
                 }
             }
             Err(diagnostic) => diagnostics.push(diagnostic),
         }
     }
     (None, diagnostics)
+}
+
+/// Changes all of token's spans to `span`, recursing into groups.
+fn change_spans(tokens: TokenStream, span: Span) -> TokenStream {
+    use proc_macro2::{Group, TokenTree};
+    tokens
+        .into_iter()
+        .map(|token| match token {
+            TokenTree::Group(mut group) => {
+                group.set_span(span);
+                TokenTree::Group(Group::new(
+                    group.delimiter(),
+                    change_spans(group.stream(), span),
+                ))
+            }
+            TokenTree::Ident(mut ident) => {
+                ident.set_span(span.resolved_at(ident.span()));
+                TokenTree::Ident(ident)
+            }
+            TokenTree::Punct(mut punct) => {
+                punct.set_span(span);
+                TokenTree::Punct(punct)
+            }
+            TokenTree::Literal(mut literal) => {
+                literal.set_span(span);
+                TokenTree::Literal(literal)
+            }
+        })
+        .collect()
 }

@@ -72,7 +72,7 @@ async def run_experiment(
             return ret
         else:
             if is_gcp:
-                out = deployment.GCPComputeEngineHost(
+                out = deployment.GcpComputeEngineHost(
                     project="hydro-chrisdouglas",
                     machine_type="n2-standard-4",
                     image="debian-cloud/debian-11",
@@ -331,7 +331,7 @@ async def main(args):
     pool = []
 
     network = (
-        hydro.GCPNetwork(
+        hydro.GcpNetwork(
             project="hydro-chrisdouglas",
         )
         if args[0] == "gcp"

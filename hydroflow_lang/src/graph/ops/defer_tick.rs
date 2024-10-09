@@ -75,6 +75,5 @@ pub const DEFER_TICK: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Tick),
-    flow_prop_fn: None,
     write_fn: IDENTITY_WRITE_FN,
 };

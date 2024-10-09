@@ -19,7 +19,7 @@ impl<'a, const SIZE: usize> Serialize for WithBotWrapper<'a, SIZE> {
     where
         S: Serializer,
     {
-        if let Some(inner) = &self.0 .0 {
+        if let Some(inner) = self.0.as_reveal_ref() {
             serializer.serialize_some(&PointWrapper(inner))
         } else {
             serializer.serialize_none()

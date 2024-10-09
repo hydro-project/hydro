@@ -18,7 +18,7 @@ pub fn main() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (edges_send, edges_recv) = hydroflow::util::unbounded_channel::<(usize, usize)>();
 
-    #[allow(clippy::map_identity)]
+    #[expect(clippy::map_identity, reason = "code symmetry")]
     let mut df = hydroflow_syntax! {
         edges = source_stream(edges_recv) -> tee();
 
@@ -42,12 +42,14 @@ pub fn main() {
         }) -> for_each(|e| println!("three_clique found: {:?}", e));
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = df
             .meta_graph()
             .expect("No graph found, maybe failed to parse.");
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
+    let _ = opts;
 
     df.run_available();
 

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::ticks::TickInstant;
 use hydroflow::serde::{Deserialize, Serialize};
-use hydroflow::util::cli::{
+use hydroflow::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged,
 };
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
@@ -24,7 +24,7 @@ type NextStateType = (u64, bool, Rc<RefCell<(Vec<u64>, Vec<u64>)>>);
 
 #[hydroflow::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
 
     let my_id: Vec<usize> = serde_json::from_str(&std::env::args().nth(1).unwrap()).unwrap();
     let my_id = my_id[0];
@@ -163,6 +163,6 @@ async fn main() {
     }
 
     let f1_handle = tokio::spawn(f1);
-    hydroflow::util::cli::launch_flow(df).await;
+    hydroflow::util::deploy::launch_flow(df).await;
     f1_handle.abort();
 }

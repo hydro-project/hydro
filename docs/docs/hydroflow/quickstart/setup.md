@@ -41,6 +41,7 @@ In this book we will be using the Hydroflow template generator, which we recomme
 as a starting point for your Hydroflow projects. For this purpose you
 will need to install the `cargo-generate` tool:
 ```bash
+#shell-command-next-line
 cargo install cargo-generate
 ```
 
@@ -50,26 +51,35 @@ We recommend using VS Code with the `rust-analyzer` extension (and NOT the
 `Rust` extension).
 
 ## Setting up a Hydroflow Project
-The easiest way to get started with Hydroflow is to begin with a template project. 
+The easiest way to get started with Hydroflow is to begin with a template project.
 Create a directory where you'd like to put that project, direct your terminal there and run:
 ```bash
-cargo generate hydro-project/hydroflow-template
+#shell-command-next-line
+cargo generate gh:hydro-project/hydroflow template/hydroflow
 ```
-You will be prompted to name your project. The `cargo generate` command will create a subdirectory 
-with the relevant files and folders. 
+You will be prompted to name your project. The `cargo generate` command will create a subdirectory
+with the relevant files and folders.
+
+`cd` into the generated folder, ensure the correct nightly version of rust is installed:
+```bash
+#shell-command-next-line
+cd <my-project>
+#shell-command-next-line
+rustup update
+```
 
 As part of generating the project, the `hydroflow` library will be downloaded as a dependency.
 You can then open the project in VS Code or IDE of your choice, or
 you can simply build the template project with `cargo build`.
 ```bash
-cd <project name>
+#shell-command-next-line
 cargo build
 ```
 This should return successfully.
 
 The template provides a simple working example of a Hydroflow program.
 As a sort of "hello, world" of distributed systems, it implements an "echo server" that
-simply echoes back the messages you sent it; it also implements a client to test the server. 
+simply echoes back the messages you sent it; it also implements a client to test the server.
 We will replace the code in that example with our own, but it's a good idea to run it first to make sure everything is working.
 
 :::note
@@ -104,7 +114,7 @@ Hello!
 
 This book will assume you are using the template project, but some
 Rust experts may want to get started with Hydroflow by cloning and working in the
-repository directly. 
+repository directly.
 You should fork the repository if you want to push your
 changes.
 
@@ -120,7 +130,7 @@ will provide inline type and error messages, code completion, etc.
 
 To work with the repository, it's best to start with an "example", found in the
 [`hydroflow/examples` folder](https://github.com/hydro-project/hydroflow/tree/main/hydroflow/examples).
-The simplest example is the 
+The simplest example is the
 ['hello world'](https://github.com/hydro-project/hydroflow/blob/main/hydroflow/examples/hello_world/main.rs) example;
 the simplest example with networking is the
 [`echo server`](https://github.com/hydro-project/hydroflow/blob/main/hydroflow/examples/echoserver/main.rs).
@@ -129,4 +139,4 @@ The Hydroflow repository is set up as a [workspace](https://doc.rust-lang.org/bo
 i.e. a repo containing a bunch of separate packages, `hydroflow` is just the
 main one. So if you want to work in a proper separate cargo package, you can
 create one and add it into the [root `Cargo.toml`](https://github.com/hydro-project/hydroflow/blob/main/Cargo.toml),
-much like the [provided template](https://github.com/hydro-project/hydroflow-template/blob/main/Cargo.toml).
+much like the [provided template](https://github.com/hydro-project/hydroflow/tree/main/template/hydroflow#readme).

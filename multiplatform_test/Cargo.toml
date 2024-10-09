@@ -1,22 +1,25 @@
 [package]
 name = "multiplatform_test"
 publish = true
-version = "0.0.0"
+version = "0.2.0"
 edition = "2021"
 license = "Apache-2.0"
 documentation = "https://docs.rs/multiplatform_test/"
 description = "A simple attribute macro to combine `#[test]` and `#[wasm_bindgen_test]`"
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 
 [dependencies]
-proc-macro2 = "1.0.63"
-quote = "1.0"
+proc-macro2 = "1.0.74"
+quote = "1.0.35"
 
 [dev-dependencies]
-env_logger = "0.10"
-log = "0.4"
-tracing = "0.1"
+env_logger = "0.11"
+log = "0.4.21"
+tracing = "0.1.37"
 tracing-subscriber = { version = "0.3", features = [ "env-filter" ] }
-wasm-bindgen-test = "0.3"
+wasm-bindgen-test = "0.3.33"

@@ -1,99 +1,136 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::Display;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::OnceLock;
 
 use cargo_metadata::diagnostic::Diagnostic;
+use memo_map::MemoMap;
 use nanoid::nanoid;
-use once_cell::sync::Lazy;
 use tokio::sync::OnceCell;
 
 use crate::progress::ProgressTracker;
 use crate::HostTargetType;
 
-#[derive(PartialEq, Eq, Hash)]
-struct CacheKey {
+/// Build parameters for [`build_crate_memoized`].
+#[derive(PartialEq, Eq, Hash, Clone)]
+pub struct BuildParams {
+    /// The working directory for the build, where the `cargo build` command will be run. Crate root.
+    /// [`Self::new`] canonicalizes this path.
     src: PathBuf,
+    /// `--bin` binary name parameter.
     bin: Option<String>,
+    /// `--example` parameter.
     example: Option<String>,
+    /// `--profile` parameter.
     profile: Option<String>,
+    rustflags: Option<String>,
+    target_dir: Option<PathBuf>,
+    no_default_features: bool,
+    /// `--target <linux>` if cross-compiling for linux ([`HostTargetType::Linux`]).
     target_type: HostTargetType,
+    /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
 }
+impl BuildParams {
+    /// Creates a new `BuildParams` and canonicalizes the `src` path.
+    #[expect(clippy::too_many_arguments, reason = "internal code")]
+    pub fn new(
+        src: impl AsRef<Path>,
+        bin: Option<String>,
+        example: Option<String>,
+        profile: Option<String>,
+        rustflags: Option<String>,
+        target_dir: Option<PathBuf>,
+        no_default_features: bool,
+        target_type: HostTargetType,
+        features: Option<Vec<String>>,
+    ) -> Self {
+        // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
+        // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
+        // However, this breaks the `include!(concat!(env!("OUT_DIR"), "/my/forward/slash/path.rs"))`
+        // Rust codegen pattern on windows. To help mitigate this happening in third party crates, we
+        // instead use `dunce::canonicalize` which is the same as `fs::canonicalize` but avoids the
+        // `\\?\` prefix when possible.
+        let src = dunce::canonicalize(src).expect("Failed to canonicalize path for build.");
 
-pub type BuiltCrate = Arc<(String, Vec<u8>, PathBuf)>;
+        BuildParams {
+            src,
+            bin,
+            example,
+            profile,
+            rustflags,
+            target_dir,
+            no_default_features,
+            target_type,
+            features,
+        }
+    }
+}
 
-static BUILDS: Lazy<Mutex<HashMap<CacheKey, Arc<OnceCell<BuiltCrate>>>>> =
-    Lazy::new(Default::default);
+/// Information about a built crate. See [`build_crate`].
+pub struct BuildOutput {
+    /// A unique but meaningless id.
+    pub unique_id: String,
+    /// The binary contents as a byte array.
+    pub bin_data: Vec<u8>,
+    /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
+    pub bin_path: PathBuf,
+}
 
-pub async fn build_crate(
-    src: impl AsRef<Path>,
-    bin: Option<String>,
-    example: Option<String>,
-    profile: Option<String>,
-    target_type: HostTargetType,
-    features: Option<Vec<String>>,
-) -> Result<BuiltCrate, BuildError> {
-    // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
-    // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
-    // However, this breaks the `include!(concat!(env!("OUT_DIR"), "/my/forward/slash/path.rs"))`
-    // Rust codegen pattern on windows. To help mitigate this happening in third party crates, we
-    // instead use `dunce::canonicalize` which is the same as `fs::canonicalize` but avoids the
-    // `\\?\` prefix when possible.
-    let src = dunce::canonicalize(src).expect("Failed to canonicalize path for build.");
+/// Build memoization cache.
+static BUILDS: OnceLock<MemoMap<BuildParams, OnceCell<BuildOutput>>> = OnceLock::new();
 
-    let key = CacheKey {
-        src: src.clone(),
-        bin: bin.clone(),
-        example: example.clone(),
-        profile: profile.clone(),
-        target_type,
-        features: features.clone(),
-    };
-
-    let unit_of_work = {
-        let mut builds = BUILDS.lock().unwrap();
-        builds.entry(key).or_default().clone()
-        // Release BUILDS table lock here.
-    };
-
-    unit_of_work
+pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildOutput, BuildError> {
+    BUILDS
+        .get_or_init(MemoMap::new)
+        .get_or_insert(&params, Default::default)
         .get_or_try_init(move || {
-            ProgressTracker::rich_leaf("build".to_string(), move |_, set_msg| async move {
+            ProgressTracker::rich_leaf("build", move |set_msg| async move {
                 tokio::task::spawn_blocking(move || {
                     let mut command = Command::new("cargo");
-                    command.args([
-                        "build".to_string(),
-                        "--profile".to_string(),
-                        profile.unwrap_or("release".to_string()),
-                    ]);
+                    command.args(["build"]);
 
-                    if let Some(bin) = bin.as_ref() {
+                    if let Some(profile) = params.profile.as_ref() {
+                        command.args(["--profile", profile]);
+                    }
+
+                    if let Some(bin) = params.bin.as_ref() {
                         command.args(["--bin", bin]);
                     }
 
-                    if let Some(example) = example.as_ref() {
+                    if let Some(example) = params.example.as_ref() {
                         command.args(["--example", example]);
                     }
 
-                    match target_type {
+                    match params.target_type {
                         HostTargetType::Local => {}
                         HostTargetType::Linux => {
                             command.args(["--target", "x86_64-unknown-linux-musl"]);
                         }
                     }
 
-                    if let Some(features) = features {
+                    if params.no_default_features {
+                        command.arg("--no-default-features");
+                    }
+
+                    if let Some(features) = params.features {
                         command.args(["--features", &features.join(",")]);
                     }
 
                     command.arg("--message-format=json-diagnostic-rendered-ansi");
 
+                    if let Some(rustflags) = params.rustflags.as_ref() {
+                        command.env("RUSTFLAGS", rustflags);
+                    }
+
+                    if let Some(target_dir) = params.target_dir.as_ref() {
+                        command.env("CARGO_TARGET_DIR", target_dir);
+                    }
+
                     let mut spawned = command
-                        .current_dir(&src)
+                        .current_dir(&params.src)
                         .stdout(Stdio::piped())
                         .stderr(Stdio::piped())
                         .stdin(Stdio::null())
@@ -119,7 +156,7 @@ pub async fn build_crate(
                     for message in cargo_metadata::Message::parse_stream(reader) {
                         match message.unwrap() {
                             cargo_metadata::Message::CompilerArtifact(artifact) => {
-                                let is_output = if example.is_some() {
+                                let is_output = if params.example.is_some() {
                                     artifact.target.kind.contains(&"example".to_string())
                                 } else {
                                     artifact.target.kind.contains(&"bin".to_string())
@@ -130,7 +167,11 @@ pub async fn build_crate(
                                     let path_buf: PathBuf = path.clone().into();
                                     let path = path.into_string();
                                     let data = std::fs::read(path).unwrap();
-                                    return Ok(Arc::new((nanoid!(8), data, path_buf)));
+                                    return Ok(BuildOutput {
+                                        unique_id: nanoid!(8),
+                                        bin_data: data,
+                                        bin_path: path_buf,
+                                    });
                                 }
                             }
                             cargo_metadata::Message::CompilerMessage(msg) => {
@@ -152,7 +193,6 @@ pub async fn build_crate(
             })
         })
         .await
-        .cloned()
 }
 
 #[derive(Clone, Debug)]

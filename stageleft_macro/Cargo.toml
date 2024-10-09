@@ -1,24 +1,26 @@
 [package]
 name = "stageleft_macro"
 publish = true
-version = "0.1.1"
+version = "0.3.0"
 edition = "2021"
 license = "Apache-2.0"
 documentation = "https://docs.rs/stageleft_macro/"
 description = "Helper macros for the stageleft crate"
+
+[lints]
+workspace = true
 
 [lib]
 proc-macro = true
 path = "src/lib.rs"
 
 [dependencies]
-quote = "1.0.0"
-syn = { version = "2.0.0", features = [ "parsing", "extra-traits", "visit" ] }
-proc-macro2 = "1.0.57"
-proc-macro-crate = "1.1.0"
-lazy_static = "1.4.0"
-sha256 = "1.4.0"
+quote = "1.0.35"
+syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit" ] }
+proc-macro2 = "1.0.74"
+proc-macro-crate = "1.0.0"
+sha256 = "1.0.0"
 
 [dev-dependencies]
-insta = "1.7.1"
-prettyplease = "0.2.0"
+insta = "1.39"
+prettyplease = { version = "0.2.0", features = [ "verbatim" ] }

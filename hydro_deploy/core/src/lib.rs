@@ -1,13 +1,11 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
-use async_channel::{Receiver, Sender};
 use async_trait::async_trait;
-use hydroflow_cli_integration::ServerBindConfig;
-use tokio::sync::RwLock;
+use hydroflow_crate::tracing_options::TracingOptions;
+use hydroflow_deploy_integration::ServerBindConfig;
 
 pub mod deployment;
 pub use deployment::Deployment;
@@ -20,7 +18,7 @@ pub use localhost::LocalhostHost;
 pub mod ssh;
 
 pub mod gcp;
-pub use gcp::GCPComputeEngineHost;
+pub use gcp::GcpComputeEngineHost;
 
 pub mod azure;
 pub use azure::AzureHost;
@@ -30,6 +28,9 @@ pub use hydroflow_crate::HydroflowCrate;
 
 pub mod custom_service;
 pub use custom_service::CustomService;
+use tokio::sync::{mpsc, oneshot};
+
+use crate::hydroflow_crate::build::BuildOutput;
 
 pub mod terraform;
 
@@ -71,20 +72,23 @@ pub struct ResourceResult {
 
 #[async_trait]
 pub trait LaunchedBinary: Send + Sync {
-    async fn stdin(&self) -> Sender<String>;
+    fn stdin(&self) -> mpsc::UnboundedSender<String>;
 
-    /// Provides a oneshot channel for the CLI to handshake with the binary,
-    /// with the guarantee that as long as the CLI is holding on
+    /// Provides a oneshot channel to handshake with the binary,
+    /// with the guarantee that as long as deploy is holding on
     /// to a handle, none of the messages will also be broadcast
     /// to the user-facing [`LaunchedBinary::stdout`] channel.
-    async fn cli_stdout(&self) -> tokio::sync::oneshot::Receiver<String>;
+    fn deploy_stdout(&self) -> oneshot::Receiver<String>;
 
-    async fn stdout(&self) -> Receiver<String>;
-    async fn stderr(&self) -> Receiver<String>;
+    fn stdout(&self) -> mpsc::UnboundedReceiver<String>;
+    fn stderr(&self) -> mpsc::UnboundedReceiver<String>;
 
-    async fn exit_code(&self) -> Option<i32>;
+    fn exit_code(&self) -> Option<i32>;
 
-    async fn wait(&mut self) -> Option<i32>;
+    /// Wait for the process to stop on its own. Returns the exit code.
+    async fn wait(&mut self) -> Result<i32>;
+    /// If the process is still running, force stop it. Then run post-run tasks.
+    async fn stop(&mut self) -> Result<()>;
 }
 
 #[async_trait]
@@ -93,15 +97,15 @@ pub trait LaunchedHost: Send + Sync {
     /// to listen to network connections (such as the IP address to bind to).
     fn server_config(&self, strategy: &ServerStrategy) -> ServerBindConfig;
 
-    async fn copy_binary(&self, binary: Arc<(String, Vec<u8>, PathBuf)>) -> Result<()>;
+    async fn copy_binary(&self, binary: &BuildOutput) -> Result<()>;
 
     async fn launch_binary(
         &self,
         id: String,
-        binary: Arc<(String, Vec<u8>, PathBuf)>,
+        binary: &BuildOutput,
         args: &[String],
-        perf: Option<PathBuf>,
-    ) -> Result<Arc<RwLock<dyn LaunchedBinary>>>;
+        perf: Option<TracingOptions>,
+    ) -> Result<Box<dyn LaunchedBinary>>;
 
     async fn forward_port(&self, addr: &SocketAddr) -> Result<SocketAddr>;
 }
@@ -142,31 +146,28 @@ pub enum HostTargetType {
     Linux,
 }
 
-pub type HostStrategyGetter = Box<dyn FnOnce(&mut dyn std::any::Any) -> ServerStrategy>;
+pub type HostStrategyGetter = Box<dyn FnOnce(&dyn std::any::Any) -> ServerStrategy>;
 
-#[async_trait]
 pub trait Host: Send + Sync {
     fn target_type(&self) -> HostTargetType;
 
-    fn request_port(&mut self, bind_type: &ServerStrategy);
+    fn request_port(&self, bind_type: &ServerStrategy);
 
     /// An identifier for this host, which is unique within a deployment.
     fn id(&self) -> usize;
 
-    /// Returns a reference to the host as a trait object.
-    fn as_any(&self) -> &dyn std::any::Any;
-
-    /// Returns a reference to the host as a trait object.
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
-
     /// Configures the host to support copying and running a custom binary.
-    fn request_custom_binary(&mut self);
+    fn request_custom_binary(&self);
 
     /// Makes requests for physical resources (servers) that this host needs to run.
+    ///
+    /// This should be called before `provision` is called.
     fn collect_resources(&self, resource_batch: &mut ResourceBatch);
 
     /// Connects to the acquired resources and prepares the host to run services.
-    async fn provision(&mut self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost>;
+    ///
+    /// This should be called after `collect_resources` is called.
+    fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost>;
 
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>>;
 
@@ -179,6 +180,9 @@ pub trait Host: Send + Sync {
 
     /// Determines whether this host can connect to another host using the given strategy.
     fn can_connect_to(&self, typ: ClientStrategy) -> bool;
+
+    /// Returns a reference to the host as a trait object.
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 #[async_trait]
@@ -189,7 +193,7 @@ pub trait Service: Send + Sync {
     ///
     /// This should also perform any "free", non-blocking computations (compilations),
     /// because the `deploy` method will be called after these resources are allocated.
-    fn collect_resources(&mut self, resource_batch: &mut ResourceBatch);
+    fn collect_resources(&self, resource_batch: &mut ResourceBatch);
 
     /// Connects to the acquired resources and prepares the service to be launched.
     async fn deploy(&mut self, resource_result: &Arc<ResourceResult>) -> Result<()>;

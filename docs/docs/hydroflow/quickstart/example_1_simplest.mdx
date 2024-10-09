@@ -20,10 +20,10 @@ the numbers in `0..10`.
 Create a clean template project:
 ```console
 #shell-command-next-line
-cargo generate hydro-project/hydroflow-template
-⚠️   Favorite `hydro-project/hydroflow-template` not found in config, using it as a git repository: https://github.com/hydro-project/hydroflow-template.git
+cargo generate gh:hydro-project/hydroflow template/hydroflow
+⚠️   Favorite `gh:hydro-project/hydroflow` not found in config, using it as a git repository: https://github.com/hydro-project/hydroflow.git
 🤷   Project Name: simple
-🔧   Destination: /Users/jmh/code/sussudio/simple ...
+🔧   Destination: /Users/me/code/simple ...
 🔧   project-name: simple ...
 🔧   Generating template ...
 [11/11]   Done: src
@@ -32,7 +32,15 @@ cargo generate hydro-project/hydroflow-template
 ✨   Done! New project created <dir>/simple
 ```
 
-Change directory into the resulting `simple` folder or open it in your IDE. Then edit the `src/main.rs` file, replacing
+After `cd`ing into the generated folder, ensure the correct nightly version of rust is installed, and test the generated project:
+```bash
+#shell-command-next-line
+rustup update
+#shell-command-next-line
+cargo test
+```
+
+Then edit the `src/main.rs` file, replacing
 *all* of its contents with the following code:
 
 <CodeBlock language="rust" showLineNumbers>{exampleCode}</CodeBlock>
@@ -71,10 +79,11 @@ We can run this flow from within Rust via the [`run_available()` method](https:/
 Note that `run_available()` runs the Hydroflow graph until no more work is immediately
 available. In this example flow, running the graph drains the iterator completely, so no
 more work will *ever* be available. In future examples we will use external inputs such as
-network ingress, in which case more work might appear at any time. In those examples we may need a different method than `run_available()`, 
-e.g. the [`run_async()`](https://hydro-project.github.io/hydroflow/doc/hydroflow/scheduled/graph/struct.Hydroflow.html#method.run_async) method,
-which we'll see
-in [the EchoServer example](./example_7_echo_server).
+network ingress, in which case more work might appear at any time.
+
+In server applications that use network ingress for inputs, new work can appear at any time. In these application
+we may need a different method than `run_available()`, e.g. the [`run_async()`](https://hydro-project.github.io/hydroflow/doc/hydroflow/scheduled/graph/struct.Hydroflow.html#method.run_async) method, check [the networking
+examples](./example_7_networking) for more.
 
 ### A Note on Project Structure
 The template project is intended to be a starting point for your own Hydroflow project, and you can add files and directories as you see fit. The only requirement is that the `src/main.rs` file exists and contains a `main()` function.

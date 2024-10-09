@@ -29,7 +29,7 @@ fn raise_to_power(_ctx: BorrowBounds<'_>, value: RuntimeData<i32>, power: u32) -
 fn closure_capture_lifetime<'a, I: Copy + Into<u32> + 'a>(
     _ctx: BorrowBounds<'a>,
     v: RuntimeData<I>,
-) -> impl Quoted<Box<dyn Fn() -> u32 + 'a>> {
+) -> impl Quoted<'a, Box<dyn Fn() -> u32 + 'a>> {
     q!(Box::new(move || { v.into() }) as Box<dyn Fn() -> u32 + 'a>)
 }
 

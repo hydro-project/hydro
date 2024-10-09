@@ -1,10 +1,9 @@
 use quote::{quote_spanned, ToTokens};
 
 use super::{
-    FlowPropArgs, FlowProps, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput,
     WriteContextArgs, RANGE_0, RANGE_1, RANGE_ANY,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > *n* input streams of the same type, 1 output stream of the same type
 ///
@@ -36,38 +35,6 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(
-        |fp @ FlowPropArgs {
-             op_name,
-             op_inst,
-             flow_props_in,
-             ..
-         },
-         diagnostics| {
-            let lattice_flow_type = flow_props_in
-                .iter()
-                .map(|flow_props| flow_props.and_then(|fp| fp.lattice_flow_type))
-                .reduce(std::cmp::min)
-                .flatten();
-            // Warn if we are doing any implied downcasting.
-            for (fp_in, port_in) in flow_props_in.iter().zip(op_inst.input_ports.iter()) {
-                if lattice_flow_type != fp_in.and_then(|fp| fp.lattice_flow_type) {
-                    diagnostics.push(Diagnostic::spanned(
-                        port_in.span(),
-                        Level::Warning,
-                        format!(
-                            "Input to `{}()` will be downcast to `{:?}` to match other inputs.",
-                            op_name, lattice_flow_type,
-                        ),
-                    ));
-                }
-            }
-            Ok(vec![Some(FlowProps {
-                star_ord: fp.new_star_ord(),
-                lattice_flow_type,
-            })])
-        },
-    ),
     write_fn: |&WriteContextArgs {
                    op_span,
                    ident,

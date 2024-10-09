@@ -859,8 +859,6 @@ where
     Q: Eq + ?Sized,
 {
     fn get_key_value(&self, key: &'a Q) -> Option<(Self::KeyRef<'_>, Self::ItemRef<'_>)> {
-        // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/11764
-        #[allow(clippy::map_identity)]
         self.0
             .as_ref()
             .filter(|(k, _v)| key == k.borrow())
@@ -897,8 +895,6 @@ impl<K, V> MapIter for OptionMap<K, V> {
 		Self: 'a;
 
     fn iter(&self) -> Self::Iter<'_> {
-        // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/11764
-        #[allow(clippy::map_identity)]
         self.0.as_ref().map(|(k, v)| (k, v)).into_iter()
     }
 }

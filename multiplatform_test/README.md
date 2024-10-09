@@ -17,7 +17,7 @@ fn my_test() {
 
 Expands to
 
-```rust
+```rust,no_run
 #[test]
 #[wasm_bindgen_test::wasm_bindgen_test]
 fn my_test() {
@@ -61,7 +61,7 @@ fn my_test() {
 
 expands to
 
-```rust
+```rust,no_run
 use multiplatform_test::multiplatform_test;
 
 #[test]

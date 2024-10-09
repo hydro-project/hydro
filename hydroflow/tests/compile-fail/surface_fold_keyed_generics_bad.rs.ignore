@@ -1,5 +1,3 @@
-use hydroflow::hydroflow_syntax;
-
 fn main() {
     let mut df = hydroflow::hydroflow_syntax! {
         source_iter(["hello", "world"])

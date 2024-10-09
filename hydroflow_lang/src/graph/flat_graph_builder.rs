@@ -9,7 +9,7 @@ use itertools::Itertools;
 use proc_macro2::Span;
 use quote::ToTokens;
 use syn::spanned::Spanned;
-use syn::{parse_quote_spanned, Error, Ident, ItemUse};
+use syn::{Error, Ident, ItemUse};
 
 use super::{GraphEdgeId, GraphNode, GraphNodeId, HydroflowGraph, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Level};
@@ -562,7 +562,6 @@ impl FlatGraphBuilder {
         self.make_operator_instances();
         self.check_operator_errors();
         self.warn_unused_port_indexing();
-        self.ensure_singleton_referencers_succeed_persist();
     }
 
     /// Make `OperatorInstance`s for each operator node.
@@ -784,7 +783,7 @@ impl FlatGraphBuilder {
                                 self.diagnostics.push(Diagnostic::spanned(
                                     singleton_ident.span(),
                                     Level::Error,
-                                    &format!(
+                                    format!(
                                         "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
                                         ref_op_constraints.name,
                                     ),
@@ -886,44 +885,6 @@ impl FlatGraphBuilder {
                 // When errored, just use original and ignore OTHER port to minimize
                 // noisy/extra diagnostics.
                 Some((og_port, og_node))
-            }
-        }
-    }
-
-    /// Operators with singleton references must be preceeded by a `persist()` in their pipeline,
-    /// to enable replay when the singleton updates.
-    fn ensure_singleton_referencers_succeed_persist(&mut self) {
-        // Resolve the singleton references for each node.
-        for node_id in self.flat_graph.node_ids().collect::<Vec<_>>() {
-            let GraphNode::Operator(operator) = self.flat_graph.node(node_id) else {
-                continue;
-            };
-            if operator.singletons_referenced.is_empty() {
-                continue;
-            }
-            let op_span = operator.span();
-            for (pred_edge, pred_node_id) in self
-                .flat_graph
-                .node_predecessors(node_id)
-                .collect::<Vec<_>>()
-            {
-                if let Some(op_inst) = self.flat_graph.node_op_inst(pred_node_id) {
-                    if "persist" == op_inst.op_constraints.name
-                        || "state" == op_inst.op_constraints.name
-                    {
-                        continue;
-                    }
-                }
-                self.flat_graph.insert_intermediate_node(
-                    pred_edge,
-                    GraphNode::Operator(parse_quote_spanned! {op_span=> persist() }),
-                );
-                self.diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Warning,
-                    "Note: A `persist()` will be inserted before this singleton-referencing operator to enable replay. \
-To silence this warning, insert a `persist()` or `state()` operator explicitly. This behavior will change in the future."
-                ))
             }
         }
     }

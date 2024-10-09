@@ -1,0 +1,104 @@
+---
+source: hydroflow_plus_test/src/cluster/simple_cluster.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < () > , (hydroflow_plus :: location :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
+        input: Network {
+            from_location: Cluster(
+                1,
+            ),
+            from_key: None,
+            to_location: Process(
+                0,
+            ),
+            to_key: None,
+            serialize_pipeline: Some(
+                Operator(
+                    Operator {
+                        path: "map",
+                        args: [
+                            "| data | { hydroflow_plus :: runtime_support :: bincode :: serialize :: < (hydroflow_plus :: location :: ClusterId < () > , i32) > (& data) . unwrap () . into () }",
+                        ],
+                    },
+                ),
+            ),
+            instantiate_fn: <network instantiate>,
+            deserialize_pipeline: Some(
+                Operator(
+                    Operator {
+                        path: "map",
+                        args: [
+                            "| res | { let (id , b) = res . unwrap () ; (hydroflow_plus :: ClusterId :: < () > :: from_raw (id) , hydroflow_plus :: runtime_support :: bincode :: deserialize :: < (hydroflow_plus :: location :: ClusterId < () > , i32) > (& b) . unwrap ()) }",
+                        ],
+                    },
+                ),
+            ),
+            input: Inspect {
+                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydroflow_plus :: location :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; let cluster_self_id = hydroflow_plus :: ClusterId :: < () > :: from_raw (__hydroflow_plus_cluster_self_id_1) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , cluster_self_id) }),
+                input: Network {
+                    from_location: Process(
+                        0,
+                    ),
+                    from_key: None,
+                    to_location: Cluster(
+                        1,
+                    ),
+                    to_key: None,
+                    serialize_pipeline: Some(
+                        Operator(
+                            Operator {
+                                path: "map",
+                                args: [
+                                    "| (id , data) : (hydroflow_plus :: ClusterId < _ > , (hydroflow_plus :: location :: ClusterId < () > , i32)) | { (id . raw_id , hydroflow_plus :: runtime_support :: bincode :: serialize :: < (hydroflow_plus :: location :: ClusterId < () > , i32) > (& data) . unwrap () . into ()) }",
+                                ],
+                            },
+                        ),
+                    ),
+                    instantiate_fn: <network instantiate>,
+                    deserialize_pipeline: Some(
+                        Operator(
+                            Operator {
+                                path: "map",
+                                args: [
+                                    "| res | { hydroflow_plus :: runtime_support :: bincode :: deserialize :: < (hydroflow_plus :: location :: ClusterId < () > , i32) > (& res . unwrap ()) . unwrap () }",
+                                ],
+                            },
+                        ),
+                    ),
+                    input: Map {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < () > , i32) , (hydroflow_plus :: location :: ClusterId < () > , (hydroflow_plus :: location :: ClusterId < () > , i32)) > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
+                        input: Delta(
+                            CrossProduct(
+                                Persist(
+                                    Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydroflow_plus :: location :: ClusterId < () > , hydroflow_plus :: location :: ClusterId < () > > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | & id | id }),
+                                        input: Source {
+                                            source: Iter(
+                                                unsafe { :: std :: mem :: transmute :: < _ , & :: std :: vec :: Vec < hydroflow_plus :: ClusterId < () > > > (__hydroflow_plus_cluster_ids_1) },
+                                            ),
+                                            location_kind: Process(
+                                                0,
+                                            ),
+                                        },
+                                    },
+                                ),
+                                Persist(
+                                    Source {
+                                        source: Iter(
+                                            { use crate :: __staged :: cluster :: simple_cluster :: * ; 0 .. 5 },
+                                        ),
+                                        location_kind: Process(
+                                            0,
+                                        ),
+                                    },
+                                ),
+                            ),
+                        ),
+                    },
+                },
+            },
+        },
+    },
+]

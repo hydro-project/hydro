@@ -1,0 +1,51 @@
+---
+source: hydroflow_plus_test/src/cluster/many_to_many.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
+        input: Network {
+            from_location: Cluster(
+                0,
+            ),
+            from_key: None,
+            to_location: Cluster(
+                0,
+            ),
+            to_key: None,
+            serialize_pipeline: Some(
+                Operator(
+                    Operator {
+                        path: "map",
+                        args: [
+                            "| (id , data) : (hydroflow_plus :: ClusterId < _ > , i32) | { (id . raw_id , hydroflow_plus :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) }",
+                        ],
+                    },
+                ),
+            ),
+            instantiate_fn: <network instantiate>,
+            deserialize_pipeline: Some(
+                Operator(
+                    Operator {
+                        path: "map",
+                        args: [
+                            "| res | { let (id , b) = res . unwrap () ; (hydroflow_plus :: ClusterId :: < () > :: from_raw (id) , hydroflow_plus :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) }",
+                        ],
+                    },
+                ),
+            ),
+            input: FlatMap {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydroflow_plus :: location :: ClusterId < () > > , _ > > ({ use hydroflow_plus :: __staged :: stream :: * ; let ids = unsafe { :: std :: mem :: transmute :: < _ , & :: std :: vec :: Vec < hydroflow_plus :: ClusterId < () > > > (__hydroflow_plus_cluster_ids_0) } ; | b | ids . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
+                input: Source {
+                    source: Iter(
+                        { use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
+                    ),
+                    location_kind: Cluster(
+                        0,
+                    ),
+                },
+            },
+        },
+    },
+]

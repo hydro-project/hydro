@@ -9,7 +9,7 @@ classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(persist_input)</code>"/]:::pullClass
-2v1[\"(2v1) <code>persist()</code>"/]:::pullClass
+2v1[\"(2v1) <code>persist::&lt;'static&gt;()</code>"/]:::pullClass
 3v1[\"(3v1) <code>fold::&lt;'tick&gt;(|| 0, |a: &amp;mut _, b| *a += b)</code>"/]:::pullClass
 4v1[\"(4v1) <code>next_stratum()</code>"/]:::pullClass
 5v1[\"(5v1) <code>source_stream(other_input)</code>"/]:::pullClass

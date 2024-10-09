@@ -115,8 +115,8 @@ enum KvsRequestField {
     Gossip,
     Delete,
 }
-struct KVSRequestFieldVisitor;
-impl<'de> Visitor<'de> for KVSRequestFieldVisitor {
+struct KvsRequestFieldVisitor;
+impl<'de> Visitor<'de> for KvsRequestFieldVisitor {
     type Value = KvsRequestField;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -154,6 +154,6 @@ impl<'de> Deserialize<'de> for KvsRequestField {
     where
         D: Deserializer<'de>,
     {
-        Deserializer::deserialize_identifier(deserializer, KVSRequestFieldVisitor)
+        Deserializer::deserialize_identifier(deserializer, KvsRequestFieldVisitor)
     }
 }

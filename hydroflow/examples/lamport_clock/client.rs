@@ -49,6 +49,7 @@ pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts
         stamped_output[send] -> outbound_chan;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = flow
             .meta_graph()

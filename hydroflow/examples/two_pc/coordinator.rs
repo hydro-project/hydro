@@ -25,7 +25,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         //   2. coordinator send final decision, subordinates ACK
         //   3. coordinate sends END, subordinates respond with ENDED
         // After phase 3 we delete the xid from the phase_map
-        phase_map = union() -> persist_mut_keyed();
+        phase_map = union() -> persist_mut_keyed::<'static>();
 
         // set up channels
         outbound_chan = tee();
@@ -127,6 +127,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         // Handler for ended acknowledgments not necessary; we just print them
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = df
             .meta_graph()

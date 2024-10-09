@@ -1,5 +1,4 @@
 //! Helper extensions for [`Hydroflow`].
-#![allow(missing_docs)]
 
 use core::task;
 use std::borrow::Cow;
@@ -92,6 +91,7 @@ pub trait GraphExt {
         (send_port_1: W1, send_port_2: W2)
     );
 
+    /// Adds a channel input which sends to the `send_port`.
     fn add_channel_input<Name, T, W>(
         &mut self,
         name: Name,
@@ -114,6 +114,7 @@ pub trait GraphExt {
         T: 'static,
         W: 'static + Handoff + CanReceive<T>;
 
+    /// Adds a subgraph which pulls from the async stream and sends to the `send_port`.
     fn add_input_from_stream<Name, T, W, S>(
         &mut self,
         name: Name,

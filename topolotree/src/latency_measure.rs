@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use futures::{SinkExt, StreamExt};
 use hydroflow::bytes::Bytes;
-use hydroflow::util::cli::{ConnectedDirect, ConnectedSink, ConnectedSource};
+use hydroflow::util::deploy::{ConnectedDirect, ConnectedSink, ConnectedSource};
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 
 mod protocol;
@@ -15,7 +15,7 @@ use protocol::*;
 
 #[tokio::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
     let mut start_node = ports
         .port("increment_start_node")
         .connect::<ConnectedDirect>()

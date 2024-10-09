@@ -21,7 +21,6 @@ $ rustup target add wasm32-unknown-unknown
 $ cargo install wasm-pack
 $ cd ../website_playground
 $ CARGO_CFG_HYDROFLOW_GENERATE_DOCS="1" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" wasm-pack build
-$ cd ../docs
 ```
 
 ### Notes on building on macOS
@@ -40,6 +39,7 @@ $ TARGET_CC="$(brew --prefix)/opt/llvm/bin/clang" TARGET_AR="$(brew --prefix)/op
 With the WASM portion built, we can launch the website with the playground loaded:
 
 ```bash
+$ cd ../docs
 $ LOAD_PLAYGROUND=1 npm run start
 ```
 

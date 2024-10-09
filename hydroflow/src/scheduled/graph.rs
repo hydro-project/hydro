@@ -51,22 +51,7 @@ impl<'a> Default for Hydroflow<'a> {
     fn default() -> Self {
         let stratum_queues = vec![Default::default()]; // Always initialize stratum #0.
         let (event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
-        let context = Context {
-            states: Vec::new(),
-
-            event_queue_send,
-
-            current_stratum: 0,
-            current_tick: TickInstant::default(),
-
-            current_tick_start: SystemTime::now(),
-            subgraph_last_tick_run_in: None,
-
-            subgraph_id: SubgraphId(0),
-
-            tasks_to_spawn: Vec::new(),
-            task_join_handles: Vec::new(),
-        };
+        let context = Context::new(event_queue_send);
         Self {
             subgraphs: Vec::new(),
             context,
@@ -183,7 +168,11 @@ impl<'a> Hydroflow<'a> {
 
         let mut op_inst_diagnostics = Vec::new();
         meta_graph.insert_node_op_insts_all(&mut op_inst_diagnostics);
-        assert!(op_inst_diagnostics.is_empty());
+        assert!(
+            op_inst_diagnostics.is_empty(),
+            "Expected no diagnostics, got: {:#?}",
+            op_inst_diagnostics
+        );
 
         assert!(self.meta_graph.replace(meta_graph).is_none());
     }
@@ -282,6 +271,10 @@ impl<'a> Hydroflow<'a> {
     /// Returns true if any work was done.
     #[tracing::instrument(level = "trace", skip(self), fields(tick = u64::from(self.context.current_tick), stratum = self.context.current_stratum), ret)]
     pub fn run_stratum(&mut self) -> bool {
+        // Make sure to spawn tasks once hydroflow is running!
+        // This drains the task buffer, so becomes a no-op after first call.
+        self.context.spawn_tasks();
+
         let current_tick = self.context.current_tick;
 
         let mut work_done = false;
@@ -386,6 +379,7 @@ impl<'a> Hydroflow<'a> {
                     self.context.current_tick,
                     self.context.current_tick + TickDuration::SINGLE_TICK,
                 );
+                self.context.reset_state_at_end_of_tick();
 
                 self.context.current_stratum = 0;
                 self.context.current_tick += TickDuration::SINGLE_TICK;
@@ -445,7 +439,6 @@ impl<'a> Hydroflow<'a> {
     /// TODO(mingwei): Currently blocks forever, no notion of "completion."
     #[tracing::instrument(level = "trace", skip(self), ret)]
     pub async fn run_async(&mut self) -> Option<Never> {
-        self.context.spawn_tasks();
         loop {
             // Run any work which is immediately available.
             self.run_available_async().await;
@@ -622,8 +615,8 @@ impl<'a> Hydroflow<'a> {
         let sg_id = SubgraphId(self.subgraphs.len());
 
         let (mut subgraph_preds, mut subgraph_succs) = Default::default();
-        recv_ports.set_graph_meta(&mut *self.handoffs, &mut subgraph_preds, sg_id, true);
-        send_ports.set_graph_meta(&mut *self.handoffs, &mut subgraph_succs, sg_id, false);
+        recv_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_preds, sg_id, true);
+        send_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_succs, sg_id, false);
 
         let subgraph = move |context: &mut Context, handoffs: &mut Vec<HandoffData>| {
             let recv = recv_ports.make_ctx(&*handoffs);
@@ -781,6 +774,19 @@ impl<'a> Hydroflow<'a> {
         self.context.add_state(state)
     }
 
+    /// Sets a hook to modify the state at the end of each tick, using the supplied closure.
+    ///
+    /// This is part of the "state API".
+    pub fn set_state_tick_hook<T>(
+        &mut self,
+        handle: StateHandle<T>,
+        tick_hook_fn: impl 'static + FnMut(&mut T),
+    ) where
+        T: Any,
+    {
+        self.context.set_state_tick_hook(handle, tick_hook_fn)
+    }
+
     /// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
     pub fn context_mut(&mut self, sg_id: SubgraphId) -> &mut Context {
         self.context.subgraph_id = sg_id;
@@ -822,7 +828,6 @@ impl<'a> Drop for Hydroflow<'a> {
 #[doc(hidden)]
 pub struct HandoffData {
     /// A friendly name for diagnostics.
-    #[allow(dead_code)] // TODO(mingwei): remove attr once used.
     pub(super) name: Cow<'static, str>,
     /// Crate-visible to crate for `handoff_list` internals.
     pub(super) handoff: Box<dyn HandoffMeta>,
@@ -877,13 +882,13 @@ impl HandoffData {
 /// structure and scheduled state.
 pub(super) struct SubgraphData<'a> {
     /// A friendly name for diagnostics.
-    #[allow(dead_code)] // TODO(mingwei): remove attr once used.
     pub(super) name: Cow<'static, str>,
     /// This subgraph's stratum number.
     pub(super) stratum: usize,
     /// The actual execution code of the subgraph.
     subgraph: Box<dyn Subgraph + 'a>,
-    #[allow(dead_code)]
+
+    #[expect(dead_code, reason = "may be useful in the future")]
     preds: Vec<HandoffId>,
     succs: Vec<HandoffId>,
 
@@ -920,9 +925,4 @@ impl<'a> SubgraphData<'a> {
             is_lazy: laziness,
         }
     }
-}
-
-/// Internal struct containing a pointer to [`Hydroflow`]-owned state.
-pub(crate) struct StateData {
-    pub state: Box<dyn Any>,
 }

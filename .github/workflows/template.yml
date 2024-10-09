@@ -1,0 +1,154 @@
+name: Template
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "14 04 * * *" # Daily at 9:14 PM PDT, 8:14 PM PST.
+
+jobs:
+  pre_job:
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v3.4.0
+        with:
+          cancel_others: "true"
+
+  test_hydroflow:
+    name: Test hydroflow
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+    timeout-minutes: 10
+    needs: pre_job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+
+      - name: Action cargo-generate
+        uses: cargo-generate/cargo-generate-action@v0.20.0
+        with:
+          name: generated
+          template: template/hydroflow
+          arguments: "-d hydroflow_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydroflow_branch=${{ github.event.pull_request.head.ref }}"
+      - name: Move generated project
+        run: |
+          mv generated ${{ runner.temp }}/
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml" --all-targets
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all --all-targets -- -D warnings
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all-targets --no-fail-fast
+
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all-targets
+
+      - name: test template example
+        run: |
+          ECHO_STRING='hello this is a test'
+
+          trap 'rm client-input && rm client-output && kill $(jobs -p)' EXIT
+
+          echo "$ECHO_STRING" >client-input
+
+          "${{ runner.temp }}/generated/target/debug/hydroflow-template" --role server --address 127.0.0.100:2048 &
+          "${{ runner.temp }}/generated/target/debug/hydroflow-template" --role client --address 127.0.0.100:2048 <client-input >client-output &
+
+          sleep 1
+
+          if cat client-output | grep -q "$ECHO_STRING"; then
+              exit 0
+          else
+              exit -1
+          fi
+
+  test_hydroflow_plus:
+    name: Test hydroflow_plus
+    if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
+    timeout-minutes: 10
+    needs: pre_job
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install nightly toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt, clippy
+
+      - name: Action cargo-generate
+        uses: cargo-generate/cargo-generate-action@v0.20.0
+        with:
+          name: generated
+          template: template/hydroflow_plus
+          arguments: "-d hydroflow_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydroflow_branch=${{ github.event.pull_request.head.ref }}"
+      - name: Move generated project
+        run: |
+          mv generated ${{ runner.temp }}/
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml" --all-targets
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all --all-targets -- -D warnings
+
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all-targets --no-fail-fast
+
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all-targets

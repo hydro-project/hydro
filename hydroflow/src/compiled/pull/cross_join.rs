@@ -61,7 +61,7 @@ where
                 self.state.draw_from_left = !self.state.draw_from_left;
 
                 // try to fetch from the specified side
-                #[allow(clippy::collapsible_else_if)]
+                #[expect(clippy::collapsible_else_if, reason = "code symmetry")]
                 if self.state.draw_from_left {
                     if let Some(l) = self.lhs.next() {
                         self.state.draw_from_left = true;

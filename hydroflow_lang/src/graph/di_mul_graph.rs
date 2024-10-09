@@ -313,7 +313,7 @@ where
 }
 
 /// A compact edge list representation of a [`DiMulGraph`], used for serialization.
-#[allow(type_alias_bounds)]
+#[expect(type_alias_bounds, reason = "code readability")]
 pub type EdgeList<V, E>
 where
     V: Key,

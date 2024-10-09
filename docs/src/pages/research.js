@@ -7,10 +7,32 @@ import styles from './research.module.css';
 
 const papers = [
   {
+    title: "Optimizing Distributed Protocols with Query Rewrites",
+    pdf: "pathname:///papers/david-sigmod-2024.pdf",
+    thumb: require("./img/papers/david-sigmod-2024.png"),
+    authors: <>David Chu, Rithvik Panchapakesan, Shadaj Laddad, Lucky Katahanas, Chris Liu, Kaushik Shivakumar, Natacha Crooks, Joseph M. Hellerstein, & Heidi Howard</>,
+    description: [
+      <>Distributed protocols such as 2PC and Paxos lie at the core of many systems in the cloud, but standard implementations do not scale. New scalable distributed protocols are developed through careful analysis and rewrites, but this process is ad hoc and error-prone. This paper presents an approach for scaling any distributed protocol by applying rule-driven rewrites, borrowing from query optimization. Distributed protocol rewrites entail a new burden: reasoning about spatiotemporal correctness. We leverage order-insensitivity and data dependency analysis to systematically identify correct coordination-free scaling opportunities. We apply this analysis to create preconditions and mechanisms for coordination-free decoupling and partitioning, two fundamental vertical and horizontal scaling techniques. Manual rule-driven applications of decoupling and partitioning improve the throughput of 2PC by 5x and Paxos by 3x, and match state-of-the-art throughput in recent work. These results point the way toward automated optimizers for distributed protocols based on correct-by-construction rewrite rules.</>
+    ],
+    conf: "SIGMOD 2024",
+    links: <><Link href="pathname:///papers/david-sigmod-2024.pdf">PDF</Link> / <Link href="https://arxiv.org/abs/2404.01593">Tech Report</Link> / <Link href="https://github.com/rithvikp/autocomp">GitHub</Link></>
+  },
+  {
+    title: "SkyPIE: A Fast & Accurate Oracle for Object Placement",
+    pdf: "pathname:///papers/tiemo-sigmod-2024.pdf",
+    thumb: require("./img/papers/tiemo-sigmod-2024.png"),
+    authors: <>Tiemo Bang, Chris Douglas, Natacha Crooks and Joseph M. Hellerstein</>,
+    description: [
+      <>Cloud object stores offer vastly different price points for object storage as a function of workload and geography. Poor object placement can thus lead to significant cost overheads. Prior cost-saving techniques attempt to optimize placement policies on the fly, deciding object placements for each object individually. In practice, these techniques do not scale to the size of the modern cloud. In this work, we leverage the static nature and pay-per-use pricing model of cloud environments to explore a different approach. Rather than computing object placements on the fly, we precompute a SkyPIE oracle---a lookup structure representing all possible placement policies and the workloads for which they are optimal. Internally, SkyPIE represents placement policies as a matrix of cost-hyperplanes, which we effectively precompute through pruning and convex optimization. By leveraging a fast geometric algorithm, online queries then are 1 to 8 orders of magnitude faster but as accurate as Integer-Linear-Programming. This makes exact optimization tractable for real workloads and we show >10x cost savings compared to state-of-the-art heuristic approaches.</>
+    ],
+    conf: "SIGMOD 2024",
+    links: <><Link href="pathname:///papers/tiemo-sigmod-2024.pdf">PDF</Link> / <Link href="https://github.com/hydro-project/cloud_oracle_skypie">GitHub</Link></>
+  },
+  {
     title: "Bigger, not Badder: Safely Scaling BFT Protocols",
     pdf: "pathname:///papers/david-papoc-2024.pdf",
     thumb: require("./img/papers/david-papoc-2024.png"),
-    authors: <>David Chu, Chris Liu, Natacha Crooks, Joe Hellerstein, & Heidi Howard</>,
+    authors: <>David Chu, Chris Liu, Natacha Crooks, Joseph M. Hellerstein, & Heidi Howard</>,
     description: [
       <>Byzantine Fault Tolerant (BFT) protocols provide powerful guarantees in the presence of arbitrary machine failures, yet they do not scale. The process of creating new, scalable BFT protocols requires expert analysis and is often error-prone. Recent work suggests that localized, rule-driven rewrites can be mechanically applied to scale existing (non-BFT) protocols, including Paxos. We modify these rewrites--- decoupling and partitioning---so they can be safely applied to BFT protocols, and apply these rewrites to the critical path of PBFT, improving its throughput by 5x. We prove the correctness of the modified rewrites on any BFT protocol by formally modeling the arbitrary logic of a Byzantine node. We define the Borgesian simulator, a theoretical node that simulates a Byzantine node through randomness, and show that in any BFT protocol, the messages that a Borgesian simulator can generate before and after optimization is the same. Our initial results point the way towards an automatic optimizer for BFT protocols.</>
     ],
@@ -18,15 +40,26 @@ const papers = [
     links: <><Link href="pathname:///papers/david-papoc-2024.pdf">PDF</Link> / <Link href="https://github.com/rithvikp/autocomp">GitHub</Link></>
   },
   {
-    title: "Optimizing Distributed Protocols with Query Rewrites",
-    pdf: "pathname:///papers/david-sigmod-2024.pdf",
-    thumb: require("./img/papers/david-sigmod-2024.png"),
-    authors: <>David Chu, Rithvik Panchapakesan, Shadaj Laddad, Lucky Katahanas, Chris Liu, Kaushik Shivakumar, Natacha Crooks, Joe Hellerstein, & Heidi Howard</>,
+    title: "Wrapping Rings in Lattices: An Algebraic Symbiosis of Incremental View Maintenance and Eventual Consistency",
+    pdf: "pathname:///papers/conor-papoc-2024.pdf",
+    thumb: require("./img/papers/conor-papoc-2024.png"),
+    authors: <>Conor Power, Saikrishna Achalla, Ryan Cottone, Nathaniel Macasaet & Joseph M. Hellerstein</>,
     description: [
-      <>Distributed protocols such as 2PC and Paxos lie at the core of many systems in the cloud, but standard implementations do not scale. New scalable distributed protocols are developed through careful analysis and rewrites, but this process is ad hoc and error-prone. This paper presents an approach for scaling any distributed protocol by applying rule-driven rewrites, borrowing from query optimization. Distributed protocol rewrites entail a new burden: reasoning about spatiotemporal correctness. We leverage order-insensitivity and data dependency analysis to systematically identify correct coordination-free scaling opportunities. We apply this analysis to create preconditions and mechanisms for coordination-free decoupling and partitioning, two fundamental vertical and horizontal scaling techniques. Manual rule-driven applications of decoupling and partitioning improve the throughput of 2PC by 5x and Paxos by 3x, and match state-of-the-art throughput in recent work. These results point the way toward automated optimizers for distributed protocols based on correct-by-construction rewrite rules.</>
+      <>We reconcile the use of semi-lattices in CRDTs and the use of groups and rings in incremental view maintenance to construct systems with strong eventual consistency, incremental computation, and database query optimization.</>
     ],
-    conf: "SIGMOD 2024",
-    links: <><Link href="pathname:///papers/david-sigmod-2024.pdf">PDF</Link> / <Link href="https://arxiv.org/abs/2404.01593">Tech Report</Link> / <Link href="https://github.com/rithvikp/autocomp">GitHub</Link></>
+    conf: "PaPoC 2024",
+    links: <><Link href="pathname:///papers/conor-papoc-2024.pdf">PDF</Link></>
+  },
+  {
+    title: "Optimizing the cloud? Don't train models. Build oracles!",
+    pdf: "pathname:///papers/tiemo-cidr-2024.pdf",
+    thumb: require("./img/papers/tiemo-cidr-2024.png"),
+    authors: <>Tiemo Bang, Conor Power, Siavash Ameli, Natacha Crooks & Joseph M. Hellerstein</>,
+    description: [
+      <>We propose cloud oracles as an alternative to machine learning for online optimization of cloud configurations. Our cloud oracle approach guarantees complete accuracy and explainability of decisions for problems that can be formulated as parametric convex optimizations. We give experimental evidence of this technique’s efficacy and share a vision of research directions for expanding its applicability.</>
+    ],
+    conf: "CIDR 2024",
+    links: <><Link href="pathname:///papers/tiemo-cidr-2024.pdf">PDF</Link></>
   },
   {
     title: "Keep CALM and CRDT On",
@@ -39,6 +72,17 @@ const papers = [
     ],
     conf: "VLDB 2023",
     links: <><Link href="pathname:///papers/keep-calm-and-crdt-on.pdf">PDF</Link> / <Link href="https://arxiv.org/abs/2210.12605">arXiv</Link></>
+  },
+  {
+    title: "Invited Paper: Initial Steps Toward a Compiler for Distributed Programs",
+    pdf: "pathname:///papers/joe-applied-2023.pdf",
+    thumb: require("./img/papers/joe-applied-2023.png"),
+    authors: <>Joseph M. Hellerstein, Shadaj Laddad, Mae Milano, Conor Power & Mingwei Samuel</>,
+    description: [
+      <>In the Hydro project we are designing a compiler toolkit that can optimize for the concerns of distributed systems, including scale-up and scale-down, availability, and consistency of outcomes across replicas. This invited paper overviews the project, and provides an early walk-through of the kind of optimization that is possible. We illustrate how type transformations as well as local program transformations can combine, step by step, to convert a single- node program into a variety of distributed design points that offer the same semantics with different performance and deployment characteristics.</>
+    ],
+    conf: "ApPLIED 2023",
+    links: <><Link href="pathname:///papers/joe-applied-2023.pdf">PDF</Link> / <Link href="https://arxiv.org/abs/2210.12605">arXiv</Link></>
   },
   {
     title: "Katara: Synthesizing CRDTs with Verified Lifting",
@@ -96,8 +140,8 @@ const linkIcon = (
     top: "50%",
     transform: "translate(-50%, -50%)",
   }}>
-    <path d="M0 0h24v24H0z" fill="none"/>
-    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+    <path d="M0 0h24v24H0z" fill="none" />
+    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z" />
   </svg>
 );
 

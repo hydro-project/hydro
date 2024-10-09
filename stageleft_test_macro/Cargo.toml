@@ -4,12 +4,15 @@ publish = false
 version = "0.0.0"
 edition = "2021"
 
+[lints]
+workspace = true
+
 [lib]
 proc-macro = true
 path = "../stageleft_test/src/lib.rs"
 
 [dependencies]
-stageleft = { path = "../stageleft", version = "^0.2.1" }
+stageleft = { path = "../stageleft", version = "^0.4.0" }
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.1.1" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.3.0" }

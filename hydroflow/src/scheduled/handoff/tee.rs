@@ -1,5 +1,4 @@
 //! Module for teeing handoffs, not currently used much.
-#![allow(missing_docs)]
 
 use std::any::Any;
 use std::cell::RefCell;

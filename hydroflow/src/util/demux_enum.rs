@@ -1,43 +1,34 @@
-//! Traits for the `demux_enum` derive and operator.
+//! Trait for the `demux_enum` derive and operator.
 
 pub use hydroflow_macro::DemuxEnum;
-use pusherator::demux::PusheratorList;
-use pusherator::Pusherator;
-use variadics::Variadic;
 
 /// Trait for use with the `demux_enum` operator.
 ///
-/// This trait is meant to be derived: `#[derive(DemuEnum)]`.
-pub trait DemuxEnum<Nexts>: DemuxEnumItems
-where
-    Nexts: PusheratorListForItems<Self::Items>,
-{
-    /// Pushes self into the corresponding output pusherator.
-    fn demux_enum(self, outputs: &mut Nexts);
+/// This trait is meant to be derived: `#[derive(DemuxEnum)]`.
+///
+/// The derive will implement this such that `Outputs` can be any tuple where each item is a
+/// `Pusherator` that corresponds to each of the variants of the tuple, in alphabetic order.
+#[diagnostic::on_unimplemented(
+    note = "ensure there is exactly one output for each enum variant.",
+    note = "ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`."
+)]
+pub trait DemuxEnum<Outputs>: DemuxEnumBase {
+    /// Pushes self into the corresponding output pusherator in `outputs`.
+    fn demux_enum(self, outputs: &mut Outputs);
 }
 
-/// Fixed output item list for [`DemuxEnum`].
-///
-/// This trait is meant to be derived: `#[derive(DemuEnum)]`.
-pub trait DemuxEnumItems {
-    /// A `var_type!(...)` list of items corresponding to each variant's output type.
-    type Items: Variadic;
+/// Special case of [`DemuxEnum`] for when there is only one variant.
+#[diagnostic::on_unimplemented(
+    note = "requires that the enum have only one variant.",
+    note = "ensure there are no missing outputs; there must be exactly one output for each enum variant."
+)]
+pub trait SingleVariant: DemuxEnumBase {
+    /// Output tuple type.
+    type Output;
+    /// Convert self into it's single variant tuple Output.
+    fn single_variant(self) -> Self::Output;
 }
 
-/// Helper trait to bound a [`PusheratorList`] variadic to some coresponding item list variadic.
-///
-/// A pusherator list `var_type!(PushA, PushB, PushC)` implements `PusheratorListForItems<var_type!(ItemA, ItemB, ItemC)>`,
-/// where `PushA: Pusherator<Item = ItemA>`, etc.
-pub trait PusheratorListForItems<Items>: PusheratorList
-where
-    Items: Variadic,
-{
-}
-impl<HeadPush, RestPush, Head, Rest> PusheratorListForItems<(Head, Rest)> for (HeadPush, RestPush)
-where
-    HeadPush: Pusherator<Item = Head>,
-    RestPush: PusheratorListForItems<Rest>,
-    Rest: Variadic,
-{
-}
-impl PusheratorListForItems<()> for () {}
+/// Base implementation to constrain that [`DemuxEnum<SOMETHING>`] is implemented.
+#[diagnostic::on_unimplemented(note = "use `#[derive(hydroflow::DemuxEnum)]`")]
+pub trait DemuxEnumBase {}

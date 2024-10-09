@@ -5,7 +5,99 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.9.0 (2024-08-30)
+
+### Chore
+
+ - <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/> lower min dependency versions where possible, update `Cargo.lock`
+   Moved from #1418
+   
+   ---------
+
+### New Features
+
+ - <csr-id-9e5f58ef773f0aee39a9705d9845361a2488649b/> allow `demux_enum` to have any number of outputs, fix #1329
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#1409](https://github.com/hydro-project/hydroflow/issues/1409), [#1423](https://github.com/hydro-project/hydroflow/issues/1423)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1409](https://github.com/hydro-project/hydroflow/issues/1409)**
+    - Allow `demux_enum` to have any number of outputs, fix #1329 ([`9e5f58e`](https://github.com/hydro-project/hydroflow/commit/9e5f58ef773f0aee39a9705d9845361a2488649b))
+ * **[#1423](https://github.com/hydro-project/hydroflow/issues/1423)**
+    - Lower min dependency versions where possible, update `Cargo.lock` ([`11af328`](https://github.com/hydro-project/hydroflow/commit/11af32828bab6e4a4264d2635ff71a12bb0bb778))
+</details>
+
+## 0.8.0 (2024-07-23)
+
+<csr-id-186310f453f6a935ac5f53fdcaf07fe1337833bf/>
+
+Unchanged from previous release.
+
+### Chore
+
+ - <csr-id-186310f453f6a935ac5f53fdcaf07fe1337833bf/> mark `hydroflow_datalog` and `hydroflow_macro` as unchanged for 0.8.0 release
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release hydroflow_lang v0.8.0, hydroflow_datalog_core v0.8.0, hydroflow_datalog v0.8.0, hydroflow_macro v0.8.0, lattices_macro v0.5.5, lattices v0.5.6, variadics v0.0.5, pusherator v0.0.7, hydroflow v0.8.0, hydroflow_plus v0.8.0, hydro_deploy v0.8.0, hydro_cli v0.8.0, hydroflow_plus_cli_integration v0.8.0, safety bump 7 crates ([`ca6c16b`](https://github.com/hydro-project/hydroflow/commit/ca6c16b4a7ce35e155fe7fc6c7d1676c37c9e4de))
+    - Mark `hydroflow_datalog` and `hydroflow_macro` as unchanged for 0.8.0 release ([`186310f`](https://github.com/hydro-project/hydroflow/commit/186310f453f6a935ac5f53fdcaf07fe1337833bf))
+</details>
+
+## 0.7.0 (2024-05-24)
+
+<csr-id-826dbd9a709de2f883992bdcefa8f2d566d74ecb/>
+
+### Refactor
+
+ - <csr-id-826dbd9a709de2f883992bdcefa8f2d566d74ecb/> simplify `demux_enum()`, somewhat improves error messages #1201
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#1204](https://github.com/hydro-project/hydroflow/issues/1204)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1204](https://github.com/hydro-project/hydroflow/issues/1204)**
+    - Simplify `demux_enum()`, somewhat improves error messages #1201 ([`826dbd9`](https://github.com/hydro-project/hydroflow/commit/826dbd9a709de2f883992bdcefa8f2d566d74ecb))
+ * **Uncategorized**
+    - Release hydroflow_lang v0.7.0, hydroflow_datalog_core v0.7.0, hydroflow_datalog v0.7.0, hydroflow_macro v0.7.0, lattices v0.5.5, multiplatform_test v0.1.0, pusherator v0.0.6, hydroflow v0.7.0, stageleft_macro v0.2.0, stageleft v0.3.0, stageleft_tool v0.2.0, hydroflow_plus v0.7.0, hydro_deploy v0.7.0, hydro_cli v0.7.0, hydroflow_plus_cli_integration v0.7.0, safety bump 8 crates ([`2852147`](https://github.com/hydro-project/hydroflow/commit/285214740627685e911781793e05d234ab2ad2bd))
+</details>
+
 ## 0.6.0 (2024-03-02)
+
+<csr-id-83cac6bb7fccd7589a5b3fcc36c465496b33bf2b/>
 
 Unchanged from previous release.
 
@@ -17,8 +109,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
- - 28 days passed between releases.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -29,6 +120,7 @@ Unchanged from previous release.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release hydroflow_lang v0.6.0, hydroflow_datalog_core v0.6.0, hydroflow_datalog v0.6.0, hydroflow_macro v0.6.0, lattices v0.5.3, variadics v0.0.4, pusherator v0.0.5, hydroflow v0.6.0, stageleft v0.2.0, hydroflow_plus v0.6.0, hydro_deploy v0.6.0, hydro_cli v0.6.0, hydroflow_plus_cli_integration v0.6.0, safety bump 7 crates ([`09ea65f`](https://github.com/hydro-project/hydroflow/commit/09ea65fe9cd45c357c43bffca30e60243fa45cc8))
     - Mark hydroflow_datalog, hydroflow_macro as unchanged for release ([`83cac6b`](https://github.com/hydro-project/hydroflow/commit/83cac6bb7fccd7589a5b3fcc36c465496b33bf2b))
 </details>
 
@@ -43,8 +135,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 2 calendar days.
- - 3 days passed between releases.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1041](https://github.com/hydro-project/hydroflow/issues/1041)
 
@@ -79,13 +170,18 @@ Unchanged from previous release.
    --
  - <csr-id-6158a7aae2ef9b58245c23fc668715a3fb2ff7dc/> new implementation and Hydro Deploy setup
    --
+ - <csr-id-6158a7aae2ef9b58245c23fc668715a3fb2ff7dc/> new implementation and Hydro Deploy setup
+   --
+ - <csr-id-6158a7aae2ef9b58245c23fc668715a3fb2ff7dc/> new implementation and Hydro Deploy setup
+   --
+ - <csr-id-6158a7aae2ef9b58245c23fc668715a3fb2ff7dc/> new implementation and Hydro Deploy setup
+   --
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 58 calendar days.
- - 110 days passed between releases.
+ - 3 commits contributed to the release.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#909](https://github.com/hydro-project/hydroflow/issues/909)
 
@@ -138,8 +234,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release over the course of 55 calendar days.
- - 56 days passed between releases.
+ - 11 commits contributed to the release.
  - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 6 unique issues were worked on: [#881](https://github.com/hydro-project/hydroflow/issues/881), [#882](https://github.com/hydro-project/hydroflow/issues/882), [#884](https://github.com/hydro-project/hydroflow/issues/884), [#898](https://github.com/hydro-project/hydroflow/issues/898), [#932](https://github.com/hydro-project/hydroflow/issues/932), [#938](https://github.com/hydro-project/hydroflow/issues/938)
 
@@ -180,8 +275,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release over the course of 26 calendar days.
- - 42 days passed between releases.
+ - 2 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#845](https://github.com/hydro-project/hydroflow/issues/845)
 
@@ -219,8 +313,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 25 calendar days.
- - 33 days passed between releases.
+ - 5 commits contributed to the release.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#758](https://github.com/hydro-project/hydroflow/issues/758), [#780](https://github.com/hydro-project/hydroflow/issues/780), [#801](https://github.com/hydro-project/hydroflow/issues/801)
 
@@ -267,7 +360,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 5 commits contributed to the release.
- - 1 day passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#728](https://github.com/hydro-project/hydroflow/issues/728), [#730](https://github.com/hydro-project/hydroflow/issues/730)
 
@@ -299,7 +391,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 6 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#686](https://github.com/hydro-project/hydroflow/issues/686)
 
@@ -333,7 +424,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 5 commits contributed to the release.
- - 2 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#661](https://github.com/hydro-project/hydroflow/issues/661), [#671](https://github.com/hydro-project/hydroflow/issues/671), [#677](https://github.com/hydro-project/hydroflow/issues/677), [#684](https://github.com/hydro-project/hydroflow/issues/684)
 
@@ -367,8 +457,7 @@ Unchanged from previous release.
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 14 calendar days.
- - 24 days passed between releases.
+ - 3 commits contributed to the release.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#643](https://github.com/hydro-project/hydroflow/issues/643), [#660](https://github.com/hydro-project/hydroflow/issues/660)
 
@@ -386,13 +475,13 @@ Unchanged from previous release.
     - Release hydroflow_cli_integration v0.0.1, hydroflow_lang v0.0.1, hydroflow_datalog_core v0.0.1, hydroflow_datalog v0.0.1, hydroflow_macro v0.0.1, lattices v0.1.0, variadics v0.0.2, pusherator v0.0.1, hydroflow v0.0.2 ([`809395a`](https://github.com/hydro-project/hydroflow/commit/809395acddb78949d7a2bf036e1a94972f23b1ad))
 </details>
 
-## 0.0.0 (2023-04-26)
+## 0.0.0 (2023-04-25)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 42 commits contributed to the release over the course of 302 calendar days.
+ - 42 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 13 unique issues were worked on: [#162](https://github.com/hydro-project/hydroflow/issues/162), [#310](https://github.com/hydro-project/hydroflow/issues/310), [#311](https://github.com/hydro-project/hydroflow/issues/311), [#318](https://github.com/hydro-project/hydroflow/issues/318), [#329](https://github.com/hydro-project/hydroflow/issues/329), [#404](https://github.com/hydro-project/hydroflow/issues/404), [#419](https://github.com/hydro-project/hydroflow/issues/419), [#441 11/14](https://github.com/hydro-project/hydroflow/issues/441 11/14), [#441 14/14](https://github.com/hydro-project/hydroflow/issues/441 14/14), [#501](https://github.com/hydro-project/hydroflow/issues/501), [#603](https://github.com/hydro-project/hydroflow/issues/603), [#609](https://github.com/hydro-project/hydroflow/issues/609), [#617](https://github.com/hydro-project/hydroflow/issues/617)
 

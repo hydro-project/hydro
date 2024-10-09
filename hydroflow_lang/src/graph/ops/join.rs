@@ -2,8 +2,8 @@ use quote::{quote_spanned, ToTokens};
 use syn::parse_quote;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, JOIN_CROSS_JOIN_FLOW_PROP_FN, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, WriteContextArgs, RANGE_1,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -94,7 +94,6 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(JOIN_CROSS_JOIN_FLOW_PROP_FN),
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
@@ -137,25 +136,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
         let mut make_joindata = |persistence, side| {
             let joindata_ident = wc.make_ident(format!("joindata_{}", side));
             let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
-            let (init, borrow) = match persistence {
-                Persistence::Tick => (
-                    quote_spanned! {op_span=>
-                        #root::util::monotonic_map::MonotonicMap::new_init(
-                            #join_type::default()
-                        )
-                    },
-                    quote_spanned! {op_span=>
-                        &mut *#borrow_ident.get_mut_clear(#context.current_tick())
-                    },
-                ),
-                Persistence::Static => (
-                    quote_spanned! {op_span=>
-                        #join_type::default()
-                    },
-                    quote_spanned! {op_span=>
-                        &mut *#borrow_ident
-                    },
-                ),
+            let reset = match persistence {
+                Persistence::Tick => quote_spanned! {op_span=>
+                    #hydroflow.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
+                },
+                Persistence::Static => Default::default(),
                 Persistence::Mutable => {
                     diagnostics.push(Diagnostic::spanned(
                         op_span,
@@ -165,7 +150,13 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
             };
-            Ok((joindata_ident, borrow_ident, init, borrow))
+            let init = quote_spanned! {op_span=>
+                let #joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                    #join_type::default()
+                ));
+                #reset
+            };
+            Ok((joindata_ident, borrow_ident, init))
         };
 
         let persistences = match persistence_args[..] {
@@ -175,18 +166,14 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             _ => panic!(),
         };
 
-        let (lhs_joindata_ident, lhs_borrow_ident, lhs_init, lhs_borrow) =
+        let (lhs_joindata_ident, lhs_borrow_ident, lhs_init) =
             make_joindata(persistences[0], "lhs")?;
-        let (rhs_joindata_ident, rhs_borrow_ident, rhs_init, rhs_borrow) =
+        let (rhs_joindata_ident, rhs_borrow_ident, rhs_init) =
             make_joindata(persistences[1], "rhs")?;
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lhs_joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
-                #lhs_init
-            ));
-            let #rhs_joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
-                #rhs_init
-            ));
+            #lhs_init
+            #rhs_init
         };
 
         let lhs = &inputs[0];
@@ -214,7 +201,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
                 }
 
-                check_inputs(#lhs, #rhs, #lhs_borrow, #rhs_borrow, #context.is_first_run_this_tick())
+                check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick())
             };
         };
 

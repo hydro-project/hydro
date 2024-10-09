@@ -40,15 +40,26 @@ For more, check out the [surface syntax section of the Hydroflow book](https://h
 We provide a `cargo-generate` template for you to get started from a simple working example.
 
 To install `cargo-generate`, run the following:
-```bash, ignore
+```bash,ignore
 cargo install cargo-generate
 ```
 
-Then run
-```bash, ignore
-cargo generate gh:hydro-project/hydroflow-template
+Then run:
+```bash,ignore
+cargo generate gh:hydro-project/hydroflow template/hydroflow
 ```
-and you will get a well-formed Hydroflow/Rust project to use as a starting point. It provides a simple Echo Server and Client, and advice
+
+`cd` into the generated folder, ensure the correct nightly version of rust is installed, and test the generated project:
+```bash
+#shell-command-next-line
+cd <my-project>
+#shell-command-next-line
+rustup update
+#shell-command-next-line
+cargo test
+```
+
+And you will get a well-formed Hydroflow/Rust project to use as a starting point. It provides a simple Echo Server and Client, and advice
 for adapting it to other uses.
 
 ### Enable IDE Support for Ligatures

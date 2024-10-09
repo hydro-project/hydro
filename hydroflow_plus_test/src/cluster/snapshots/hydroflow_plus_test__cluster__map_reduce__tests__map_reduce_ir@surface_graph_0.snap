@@ -1,0 +1,25 @@
+---
+source: hydroflow_plus_test/src/cluster/map_reduce.rs
+expression: ir.surface_syntax_string()
+---
+1v1 = source_iter ({ use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] });
+2v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }));
+3v1 = enumerate ();
+4v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydroflow_plus :: location :: ClusterId < hydroflow_plus_test :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use crate :: __staged :: cluster :: map_reduce :: * ; let all_ids_vec = unsafe { :: std :: mem :: transmute :: < _ , & :: std :: vec :: Vec < hydroflow_plus :: ClusterId < hydroflow_plus_test :: cluster :: map_reduce :: Worker > > > (__hydroflow_plus_cluster_ids_1) } ; | (i , w) | (ClusterId :: from_raw ((i % all_ids_vec . len ()) as u32) , w) }));
+5v1 = map (| (id , data) : (hydroflow_plus :: ClusterId < _ > , std :: string :: String) | { (id . raw_id , hydroflow_plus :: runtime_support :: bincode :: serialize :: < std :: string :: String > (& data) . unwrap () . into ()) });
+6v1 = dest_sink ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let env = FAKE ; let p1_port = "port_0" ; { env . port (p1_port) . connect_local_blocking :: < ConnectedDemux < ConnectedDirect > > () . into_sink () } });
+7v1 = source_stream ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let env = FAKE ; let p2_port = "port_1" ; { env . port (p2_port) . connect_local_blocking :: < ConnectedTagged < ConnectedDirect > > () . into_source () } });
+8v1 = map (| res | { let (id , b) = res . unwrap () ; (hydroflow_plus :: ClusterId :: < hydroflow_plus_test :: cluster :: map_reduce :: Worker > :: from_raw (id) , hydroflow_plus :: runtime_support :: bincode :: deserialize :: < (std :: string :: String , i32) > (& b) . unwrap ()) });
+9v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < hydroflow_plus_test :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydroflow_plus :: __staged :: stream :: * ; | (_ , b) | b }));
+10v1 = reduce_keyed :: < 'static > (stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | total , count | * total += count }));
+11v1 = for_each (stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("{}: {}" , string , count) }));
+
+1v1 -> 2v1;
+2v1 -> 3v1;
+3v1 -> 4v1;
+5v1 -> 6v1;
+4v1 -> 5v1;
+7v1 -> 8v1;
+8v1 -> 9v1;
+9v1 -> 10v1;
+10v1 -> 11v1;

@@ -4,17 +4,17 @@ expression: optimized.ir()
 ---
 [
     ForEach {
-        f: { use crate :: __staged :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) },
-        input: Persist(
-            Map {
-                f: { use crate :: __staged :: persist_pullup :: tests :: * ; | v | v + 1 },
-                input: Source {
-                    source: Iter(
-                        { use crate :: __staged :: persist_pullup :: tests :: * ; 0 .. 10 },
-                    ),
-                    location_id: 0,
-                },
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Map {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: persist_pullup :: tests :: * ; | v | v + 1 }),
+            input: Source {
+                source: Iter(
+                    { use crate :: __staged :: persist_pullup :: tests :: * ; 0 .. 10 },
+                ),
+                location_kind: Process(
+                    0,
+                ),
             },
-        ),
+        },
     },
 ]

@@ -9,6 +9,8 @@ pub mod multiset;
 pub mod sparse_vec;
 pub mod unsync;
 
+pub mod simulation;
+
 mod monotonic;
 pub use monotonic::*;
 
@@ -25,8 +27,8 @@ mod socket;
 #[cfg(unix)]
 pub use socket::*;
 
-#[cfg(feature = "cli_integration")]
-pub mod cli;
+#[cfg(feature = "deploy_integration")]
+pub mod deploy;
 
 use std::io::Read;
 use std::net::SocketAddr;
@@ -112,6 +114,9 @@ where
 {
     use std::sync::atomic::Ordering;
 
+    // Yield to let any background async tasks send to the stream.
+    tokio::task::yield_now().await;
+
     let got_any_items = std::sync::atomic::AtomicBool::new(true);
     let mut unfused_iter =
         ready_iter(stream).inspect(|_| got_any_items.store(true, Ordering::Relaxed));
@@ -172,6 +177,7 @@ pub async fn bind_udp_lines(addr: SocketAddr) -> (UdpLinesSink, UdpLinesStream, 
 }
 
 /// Returns a newline-delimited bytes `Sender`, `Receiver`, and `SocketAddr` bound to the given address.
+///
 /// The input `addr` may have a port of `0`, the returned `SocketAddr` will be the address of the newly bound endpoint.
 /// The inbound connections can be used in full duplex mode. When a `(T, SocketAddr)` pair is fed to the `Sender`
 /// returned by this function, the `SocketAddr` will be looked up against the currently existing connections.
@@ -203,7 +209,9 @@ pub async fn bind_tcp_lines(
         .unwrap()
 }
 
-/// This is inverse of bind_tcp_bytes. `(Bytes, SocketAddr)` pairs fed to the returned `Sender` will initiate new tcp connections to the specified `SocketAddr`.
+/// The inverse of [`bind_tcp_bytes`].
+///
+/// `(Bytes, SocketAddr)` pairs fed to the returned `Sender` will initiate new tcp connections to the specified `SocketAddr`.
 /// These connections will be cached and reused, so that there will only be one connection per destination endpoint. When the endpoint sends data back it will be available via the returned `Receiver`
 #[cfg(not(target_arch = "wasm32"))]
 pub fn connect_tcp_bytes() -> (
@@ -234,9 +242,13 @@ where
     slice.sort_unstable_by(|a, b| f(a).cmp(f(b)))
 }
 
-/// When a child process is spawned often you want to wait until the child process is ready before moving on.
-/// One way to do that synchronization is by waiting for the child process to output something and match regex against that output.
-/// For example, you could wait until the child process outputs "Client live!" which would indicate that it is ready to receive input now on stdin.
+/// Waits for a specific process output before returning.
+///
+/// When a child process is spawned often you want to wait until the child process is ready before
+/// moving on. One way to do that synchronization is by waiting for the child process to output
+/// something and match regex against that output. For example, you could wait until the child
+/// process outputs "Client live!" which would indicate that it is ready to receive input now on
+/// stdin.
 pub fn wait_for_process_output(
     output_so_far: &mut String,
     output: &mut ChildStdout,
@@ -259,8 +271,10 @@ pub fn wait_for_process_output(
     }
 }
 
-/// When a `Child` is dropped normally nothing happens but in unit tests you usually want to terminate
-/// the child and wait for it to terminate. `DroppableChild` does that for us.
+/// Terminates the inner [`Child`] process when dropped.
+///
+/// When a `Child` is dropped normally nothing happens but in unit tests you usually want to
+/// terminate the child and wait for it to terminate. `DroppableChild` does that for us.
 pub struct DroppableChild(Child);
 
 impl Drop for DroppableChild {
@@ -274,9 +288,12 @@ impl Drop for DroppableChild {
     }
 }
 
-/// rust examples are meant to be run by people and have a natural interface for that. This makes unit testing them cumbersome.
-/// This function wraps calling cargo run and piping the stdin/stdout of the example to easy to handle returned objects.
-/// The function also returns a `DroppableChild` which will ensure that the child processes will be cleaned up appropriately.
+/// Run a rust example as a test.
+///
+/// Rust examples are meant to be run by people and have a natural interface for that. This makes
+/// unit testing them cumbersome. This function wraps calling cargo run and piping the stdin/stdout
+/// of the example to easy to handle returned objects. The function also returns a `DroppableChild`
+/// which will ensure that the child processes will be cleaned up appropriately.
 pub fn run_cargo_example(test_name: &str, args: &str) -> (DroppableChild, ChildStdin, ChildStdout) {
     let mut server = if args.is_empty() {
         std::process::Command::new("cargo")
@@ -304,19 +321,21 @@ pub fn run_cargo_example(test_name: &str, args: &str) -> (DroppableChild, ChildS
     (DroppableChild(server), stdin, stdout)
 }
 
-/// Returns an [`Stream`] that emits `n` items at a time from `iter` at a time, yielding in-between.
+/// Converts an iterator into a stream that emits `n` items at a time, yielding between each batch.
+///
 /// This is useful for breaking up a large iterator across several ticks: `source_iter(...)` always
 /// releases all items in the first tick. However using `iter_batches_stream` with `source_stream(...)`
 /// will cause `n` items to be released each tick. (Although more than that may be emitted if there
 /// are loops in the stratum).
 pub fn iter_batches_stream<I>(
-    mut iter: I,
+    iter: I,
     n: usize,
 ) -> futures::stream::PollFn<impl FnMut(&mut Context<'_>) -> Poll<Option<I::Item>>>
 where
-    I: Iterator + Unpin,
+    I: IntoIterator + Unpin,
 {
     let mut count = 0;
+    let mut iter = iter.into_iter();
     futures::stream::poll_fn(move |ctx| {
         count += 1;
         if n < count {

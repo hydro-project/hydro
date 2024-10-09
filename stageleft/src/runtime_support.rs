@@ -81,7 +81,7 @@ pub trait FreeVariable<O> {
         Self: Sized;
 
     fn uninitialized(&self) -> O {
-        #[allow(clippy::uninit_assumed_init)]
+        #[expect(clippy::uninit_assumed_init, reason = "this code should never run")]
         unsafe {
             MaybeUninit::uninit().assume_init()
         }
@@ -154,4 +154,26 @@ impl<T> FreeVariable<T> for Import<T> {
             None,
         )
     }
+}
+
+pub fn type_hint<O>(v: O) -> O {
+    v
+}
+
+pub fn fn0_type_hint<'a, O>(f: impl Fn() -> O + 'a) -> impl Fn() -> O + 'a {
+    f
+}
+
+pub fn fn1_type_hint<'a, I, O>(f: impl Fn(I) -> O + 'a) -> impl Fn(I) -> O + 'a {
+    f
+}
+
+pub fn fn1_borrow_type_hint<'a, I, O>(f: impl Fn(&I) -> O + 'a) -> impl Fn(&I) -> O + 'a {
+    f
+}
+
+pub fn fn2_borrow_mut_type_hint<'a, I1, I2, O>(
+    f: impl Fn(&mut I1, I2) -> O + 'a,
+) -> impl Fn(&mut I1, I2) -> O + 'a {
+    f
 }

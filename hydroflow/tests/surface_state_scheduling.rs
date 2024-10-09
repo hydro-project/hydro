@@ -8,7 +8,7 @@ pub fn test_repeat_iter() {
     let (out_send, mut out_recv) = hydroflow::util::unbounded_channel::<usize>();
 
     let mut df = hydroflow_syntax! {
-        source_iter([1]) -> persist() -> for_each(|v| out_send.send(v).unwrap());
+        source_iter([1]) -> persist::<'static>() -> for_each(|v| out_send.send(v).unwrap());
     };
     assert_eq!(
         (TickInstant::new(0), 0),
@@ -62,7 +62,7 @@ pub fn test_fold_tick() {
         (df.current_tick(), df.current_stratum())
     );
 
-    assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
+    assert_eq!(&[1, 0, 0], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 
     df.run_available(); // Should return quickly and not hang
 }

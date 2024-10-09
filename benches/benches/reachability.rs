@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Cursor};
 use std::rc::Rc;
+use std::sync::LazyLock;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use differential_dataflow::input::Input;
@@ -9,44 +10,45 @@ use differential_dataflow::operators::{Iterate, Join, Threshold};
 use hydroflow::hydroflow_syntax;
 use hydroflow::scheduled::graph_ext::GraphExt;
 
-lazy_static::lazy_static! {
-    static ref EDGES: HashMap<usize, Vec<usize>> = {
-        let cursor = Cursor::new(include_bytes!("reachability_edges.txt"));
-        let reader = BufReader::new(cursor);
+static EDGES: LazyLock<HashMap<usize, Vec<usize>>> = LazyLock::new(|| {
+    let cursor = Cursor::new(include_bytes!("reachability_edges.txt"));
+    let reader = BufReader::new(cursor);
 
-        let mut edges = HashMap::<_, Vec<_>>::new();
-        for line in reader.lines() {
-            let line = line.unwrap();
-            let mut nums = line.split_whitespace();
-            let a = nums.next().unwrap().parse().unwrap();
-            let b = nums.next().unwrap().parse().unwrap();
-            assert!(nums.next().is_none());
-            edges.entry(a).or_default().push(b);
-        }
-        edges
-    };
-    static ref EDGE_VEC: Vec<(usize, usize)> = {
-        let cursor = Cursor::new(include_bytes!("reachability_edges.txt"));
-        let reader = BufReader::new(cursor);
+    let mut edges = HashMap::<_, Vec<_>>::new();
+    for line in reader.lines() {
+        let line = line.unwrap();
+        let mut nums = line.split_whitespace();
+        let a = nums.next().unwrap().parse().unwrap();
+        let b = nums.next().unwrap().parse().unwrap();
+        assert!(nums.next().is_none());
+        edges.entry(a).or_default().push(b);
+    }
+    edges
+});
+static EDGE_VEC: LazyLock<Vec<(usize, usize)>> = LazyLock::new(|| {
+    let cursor = Cursor::new(include_bytes!("reachability_edges.txt"));
+    let reader = BufReader::new(cursor);
 
-        reader.lines().map(|line| {
+    reader
+        .lines()
+        .map(|line| {
             let line = line.unwrap();
             let mut v = line.split_whitespace().map(|n| n.parse::<usize>().unwrap());
             (v.next().unwrap(), v.next().unwrap())
-        }).collect()
-    };
-    static ref REACHABLE: HashSet<usize> = {
-        let cursor = Cursor::new(include_bytes!("reachability_reachable.txt"));
-        let reader = BufReader::new(cursor);
+        })
+        .collect()
+});
+static REACHABLE: LazyLock<HashSet<usize>> = LazyLock::new(|| {
+    let cursor = Cursor::new(include_bytes!("reachability_reachable.txt"));
+    let reader = BufReader::new(cursor);
 
-        let mut set = HashSet::new();
-        for line in reader.lines() {
-            let line = line.unwrap();
-            set.insert(line.parse().unwrap());
-        }
-        set
-    };
-}
+    let mut set = HashSet::new();
+    for line in reader.lines() {
+        let line = line.unwrap();
+        set.insert(line.parse().unwrap());
+    }
+    set
+});
 
 fn benchmark_timely(c: &mut Criterion) {
     use timely::dataflow::operators::{
@@ -287,7 +289,6 @@ fn benchmark_hydroflow(c: &mut Criterion) {
     });
 }
 
-#[allow(clippy::map_clone)]
 fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
     c.bench_function("reachability/hydroflow/surface_cheating", |b| {
         b.iter_batched(

@@ -1,0 +1,12 @@
+[package]
+name = "hydroflow-template"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+chrono = { version = "0.4.20", features = [ "serde" ], default-features = true }
+clap = { version = "4.5.4", features = [ "derive" ] }
+hydroflow = { git = "{{ hydroflow_git | default: 'https://github.com/hydro-project/hydroflow.git' }}", branch = "{{ hydroflow_branch | default: 'main' }}" }
+serde = { version = "1.0.197", features = [ "derive" ] }

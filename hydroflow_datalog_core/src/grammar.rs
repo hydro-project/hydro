@@ -1,5 +1,5 @@
 #[rust_sitter::grammar("datalog")]
-#[allow(dead_code)]
+// #[expect(dead_code)]
 pub mod datalog {
     use rust_sitter::Spanned;
 
@@ -85,6 +85,7 @@ pub mod datalog {
     #[derive(Debug, Clone)]
     pub enum ExtractExpr {
         Ident(Spanned<Ident>),
+        #[expect(dead_code, reason = "unused spanned")]
         Underscore(#[rust_sitter::leaf(text = "_")] Spanned<()>),
         Flatten(#[rust_sitter::leaf(text = "*")] (), Box<ExtractExpr>),
         Untuple(
@@ -135,7 +136,7 @@ pub mod datalog {
     }
 
     #[derive(Debug, Clone)]
-    #[allow(clippy::manual_non_exhaustive)]
+    #[expect(clippy::manual_non_exhaustive, reason = "`()` used for leaf")]
     pub struct AtNode {
         #[rust_sitter::leaf(text = "@")]
         _at: (),

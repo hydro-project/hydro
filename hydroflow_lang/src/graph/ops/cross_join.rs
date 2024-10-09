@@ -1,10 +1,7 @@
 use quote::quote_spanned;
 use syn::parse_quote;
 
-use super::{
-    OperatorCategory, OperatorConstraints, WriteContextArgs,
-    JOIN_CROSS_JOIN_FLOW_PROP_FN, RANGE_1,
-};
+use super::{OperatorCategory, OperatorConstraints, WriteContextArgs, RANGE_1};
 
 /// > 2 input streams of type S and T, 1 output stream of type (S, T)
 ///
@@ -51,7 +48,6 @@ pub const CROSS_JOIN: OperatorConstraints = OperatorConstraints {
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(JOIN_CROSS_JOIN_FLOW_PROP_FN),
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    ident,

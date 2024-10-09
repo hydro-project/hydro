@@ -1,21 +1,22 @@
 use std::any::Any;
 use std::ops::Deref;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, OnceLock, Weak};
 
 use anyhow::{bail, Result};
 use async_trait::async_trait;
-use hydroflow_cli_integration::{ConnectedDirect, ServerPort};
+use hydroflow_deploy_integration::{ConnectedDirect, ServerPort};
 use tokio::sync::RwLock;
 
 use super::hydroflow_crate::ports::{
     HydroflowServer, HydroflowSink, HydroflowSource, ServerConfig, SourcePath,
 };
 use super::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
+use crate::hydroflow_crate::ports::ReverseSinkInstantiator;
 
 /// Represents an unknown, third-party service that is not part of the Hydroflow ecosystem.
 pub struct CustomService {
     _id: usize,
-    on: Arc<RwLock<dyn Host>>,
+    on: Arc<dyn Host>,
 
     /// The ports that the service wishes to expose to the public internet.
     external_ports: Vec<u16>,
@@ -24,7 +25,7 @@ pub struct CustomService {
 }
 
 impl CustomService {
-    pub fn new(id: usize, on: Arc<RwLock<dyn Host>>, external_ports: Vec<u16>) -> Self {
+    pub fn new(id: usize, on: Arc<dyn Host>, external_ports: Vec<u16>) -> Self {
         Self {
             _id: id,
             on,
@@ -40,15 +41,12 @@ impl CustomService {
 
 #[async_trait]
 impl Service for CustomService {
-    fn collect_resources(&mut self, _resource_batch: &mut ResourceBatch) {
+    fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {
         if self.launched_host.is_some() {
             return;
         }
 
-        let mut host = self
-            .on
-            .try_write()
-            .expect("No one should be reading/writing the host while resources are collected");
+        let host = &self.on;
 
         for port in self.external_ports.iter() {
             host.request_port(&ServerStrategy::ExternalTcpPort(*port));
@@ -60,9 +58,9 @@ impl Service for CustomService {
             return Ok(());
         }
 
-        let mut host_write = self.on.write().await;
-        let launched = host_write.provision(resource_result);
-        self.launched_host = Some(launched.await);
+        let host = &self.on;
+        let launched = host.provision(resource_result);
+        self.launched_host = Some(launched);
         Ok(())
     }
 
@@ -81,20 +79,20 @@ impl Service for CustomService {
 
 pub struct CustomClientPort {
     pub on: Weak<RwLock<CustomService>>,
-    client_port: Option<ServerConfig>,
+    client_port: OnceLock<ServerConfig>,
 }
 
 impl CustomClientPort {
     pub fn new(on: Weak<RwLock<CustomService>>) -> Self {
         Self {
             on,
-            client_port: None,
+            client_port: OnceLock::new(),
         }
     }
 
     pub async fn server_port(&self) -> ServerPort {
         self.client_port
-            .as_ref()
+            .get()
             .unwrap()
             .load_instantiated(&|p| p)
             .await
@@ -102,7 +100,7 @@ impl CustomClientPort {
 
     pub async fn connect(&self) -> ConnectedDirect {
         self.client_port
-            .as_ref()
+            .get()
             .unwrap()
             .load_instantiated(&|p| p)
             .await
@@ -117,7 +115,7 @@ impl HydroflowSource for CustomClientPort {
         SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
     }
 
-    fn host(&self) -> Arc<RwLock<dyn Host>> {
+    fn host(&self) -> Arc<dyn Host> {
         panic!("Custom services cannot be used as the server")
     }
 
@@ -125,17 +123,20 @@ impl HydroflowSource for CustomClientPort {
         panic!("Custom services cannot be used as the server")
     }
 
-    fn record_server_config(&mut self, config: ServerConfig) {
-        self.client_port = Some(config);
+    fn record_server_config(&self, config: ServerConfig) {
+        self.client_port
+            .set(config)
+            .map_err(drop) // `ServerConfig` doesn't implement `Debug` for `.expect()`.
+            .expect("Cannot call `record_server_config()` multiple times.");
     }
 
-    fn record_server_strategy(&mut self, _config: ServerStrategy) {
+    fn record_server_strategy(&self, _config: ServerStrategy) {
         panic!("Custom services cannot be used as the server")
     }
 }
 
 impl HydroflowSink for CustomClientPort {
-    fn as_any_mut(&mut self) -> &mut dyn Any {
+    fn as_any(&self) -> &dyn Any {
         self
     }
 
@@ -145,26 +146,24 @@ impl HydroflowSink for CustomClientPort {
 
     fn instantiate_reverse(
         &self,
-        server_host: &Arc<RwLock<dyn Host>>,
+        server_host: &Arc<dyn Host>,
         server_sink: Arc<dyn HydroflowServer>,
         wrap_client_port: &dyn Fn(ServerConfig) -> ServerConfig,
-    ) -> Result<Box<dyn FnOnce(&mut dyn Any) -> ServerStrategy>> {
+    ) -> Result<ReverseSinkInstantiator> {
         let client = self.on.upgrade().unwrap();
         let client_read = client.try_read().unwrap();
 
-        let server_host_clone = server_host.clone();
-        let server_host = server_host_clone.try_read().unwrap();
+        let server_host = server_host.clone();
 
-        let (conn_type, bind_type) =
-            server_host.strategy_as_server(client_read.on.try_read().unwrap().deref())?;
+        let (conn_type, bind_type) = server_host.strategy_as_server(client_read.on.deref())?;
 
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
-        let server_host_clone = server_host_clone.clone();
         Ok(Box::new(move |me| {
-            let mut server_host = server_host_clone.try_write().unwrap();
-            me.downcast_mut::<CustomClientPort>().unwrap().client_port = Some(client_port);
-            bind_type(server_host.as_any_mut())
+            me.downcast_ref::<CustomClientPort>()
+                .unwrap()
+                .record_server_config(client_port);
+            bind_type(server_host.as_any())
         }))
     }
 }

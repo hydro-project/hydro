@@ -37,6 +37,7 @@ pub(crate) async fn run_server(opts: Opts) {
         broadcast = cross_join::<'tick, 'static>() -> [1]outbound_chan;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

@@ -1,15 +1,15 @@
 ---
 source: hydroflow/tests/surface_singleton.rs
-expression: "df.meta_graph().unwrap().to_dot(&Default::default())"
+expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) source_iter_delta(15..=25)", shape=invhouse, fillcolor="#88aaff"]
+    n1v1 [label="(n1v1) source_iter(15..=25)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) map(Max::new)", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) state::<Max<_>>()", shape=house, fillcolor="#ffff88"]
-    n1v1 -> n2v1 [color=darkgreen, style=dashed]
-    n2v1 -> n3v1 [color=darkgreen, style=dashed]
+    n3v1 [label="(n3v1) state::<'static, Max<_>>()", shape=house, fillcolor="#ffff88"]
+    n1v1 -> n2v1
+    n2v1 -> n3v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"
         style=filled

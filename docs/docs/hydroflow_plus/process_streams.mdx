@@ -41,7 +41,7 @@ Root streams are created using methods available on an an instantiated process.
 To create a stream from a Rust iterator, use `source_iter`. This is useful for loading static data into the graph. Each element of the iterator will be emitted _exactly once_ in the _first tick_ of execution (see [Aggregations and Ticks](./aggregations.mdx)).
 
 ```rust
-let stream = flow.source_iter(&process, q!(vec![1, 2, 3]));
+let stream = process.source_iter(q!(vec![1, 2, 3]));
 ```
 
 #### `source_stream`
@@ -52,7 +52,7 @@ pub fn my_flow<'a, D: Deploy<'a>>(
     ...,
     my_stream: RuntimeData<impl Stream<Item = i32>>
 ) {
-    let stream = flow.source_stream(&process, my_stream);
+    let stream = process.source_stream(my_stream);
     ...
 }
 ```
@@ -66,13 +66,13 @@ If sending a type that supports serialization using `serde`, use `send_bincode`,
 let process0 = flow.process(process_spec);
 let process1 = flow.process(process_spec);
 
-let stream0 = flow.source_iter(&process0, ...);
-let stream1 = stream0.send_bincode(process1);
+let stream0 = process0.source_iter(...);
+let stream1 = stream0.send_bincode(&process1);
 ```
 
 To use custom serializers, you can use the `send_bytes` method to send a stream of `Bytes` values.
 
 ```rust
-let stream0 = flow.source_iter(&process0, ...);
-let stream1 = stream0.send_bytes(process1);
+let stream0 = process0.source_iter(...);
+let stream1 = stream0.send_bytes(&process1);
 ```

@@ -167,7 +167,7 @@ pub fn test_surface_syntax_graph_unreachability() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (pairs_send, pairs_recv) = hydroflow::util::unbounded_channel::<(usize, usize)>();
 
-    #[allow(clippy::map_identity)]
+    #[expect(clippy::map_identity, reason = "stratification topology testing")]
     let mut df = hydroflow_syntax! {
         reached_vertices = union() -> map(|v| (v, ()));
         source_iter(vec![0]) -> [0]reached_vertices;

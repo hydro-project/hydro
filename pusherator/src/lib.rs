@@ -115,7 +115,6 @@ pub trait PusheratorBuild {
     ) -> Self::Output<demux::Demux<Func, Nexts, Self::ItemOut>>
     where
         Self: Sized,
-        Nexts: demux::PusheratorList,
         Func: FnMut(Self::ItemOut, &mut Nexts),
     {
         self.push_to(demux::Demux::new(func, nexts))

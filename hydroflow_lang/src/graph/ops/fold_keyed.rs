@@ -6,20 +6,20 @@ use super::{
 };
 
 /// > 1 input stream of type `(K, V1)`, 1 output stream of type `(K, V2)`.
-/// The output will have one tuple for each distinct `K`, with an accumulated value of type `V2`.
+/// > The output will have one tuple for each distinct `K`, with an accumulated value of type `V2`.
 ///
 /// If the input and output value types are the same and do not require initialization then use
 /// [`reduce_keyed`](#reduce_keyed).
 ///
 /// > Arguments: two Rust closures. The first generates an initial value per group. The second
-/// itself takes two arguments: an 'accumulator', and an element. The second closure returns the
-/// value that the accumulator should have for the next iteration.
+/// > itself takes two arguments: an 'accumulator', and an element. The second closure returns the
+/// > value that the accumulator should have for the next iteration.
 ///
 /// A special case of `fold`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
 /// is partitioned into groups by the first field ("keys"), and for each group the values in the second
 /// field are accumulated via the closures in the arguments.
 ///
-/// > Note: The closures have access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closures have access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// ```hydroflow
 /// source_iter([("toy", 1), ("toy", 2), ("shoe", 11), ("shoe", 35), ("haberdashery", 7)])
@@ -76,11 +76,13 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=2),
     is_external_input: false,
+    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // to prevent reading uncleared data if this subgraph doesn't run.
+    // https://github.com/hydro-project/hydroflow/issues/1298
     has_singleton_output: false,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    hydroflow,
                    context,

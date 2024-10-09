@@ -7,7 +7,7 @@ use auto_impl::auto_impl;
 use slotmap::Key;
 
 use super::ops::DelayType;
-use super::{Color, FlowProps, GraphNodeId, GraphSubgraphId, LatticeFlowType};
+use super::{Color, GraphNodeId, GraphSubgraphId};
 
 /// Trait for writing textual representations of graphs, i.e. mermaid or dot graphs.
 #[auto_impl(&mut, Box)]
@@ -32,7 +32,6 @@ pub(crate) trait GraphWrite {
         src_id: GraphNodeId,
         dst_id: GraphNodeId,
         delay_type: Option<DelayType>,
-        flow_props: Option<FlowProps>,
         label: Option<&str>,
         is_reference: bool,
     ) -> Result<(), Self::Err>;
@@ -163,22 +162,17 @@ where
         src_id: GraphNodeId,
         dst_id: GraphNodeId,
         delay_type: Option<DelayType>,
-        flow_props: Option<FlowProps>,
         label: Option<&str>,
         _is_reference: bool,
     ) -> Result<(), Self::Err> {
         let src_str = format!("{:?}", src_id.data());
         let dest_str = format!("{:?}", dst_id.data());
-        let lattice_flow_type = flow_props.and_then(|flow_props| flow_props.lattice_flow_type);
+        #[expect(clippy::write_literal, reason = "code readability")]
         write!(
             self.write,
             "{src}{arrow_body}{arrow_head}{label}{dst}",
             src = src_str.trim(),
-            arrow_body = match lattice_flow_type {
-                None => "--",
-                Some(LatticeFlowType::Delta) => "-.-",
-                Some(LatticeFlowType::Cumul) => "==",
-            },
+            arrow_body = "--",
             arrow_head = match delay_type {
                 None | Some(DelayType::MonotoneAccum) => ">",
                 Some(DelayType::Stratum) => "x",
@@ -191,17 +185,14 @@ where
             },
             dst = dest_str.trim(),
         )?;
-        if delay_type.is_some() || lattice_flow_type.is_some() {
+        if let Some(delay_type) = delay_type {
             write!(
                 self.write,
                 "; linkStyle {} stroke:{}",
                 self.link_count,
-                match (delay_type, lattice_flow_type) {
-                    (None, None) => unreachable!(),
-                    (Some(DelayType::Stratum), _)
-                    | (Some(DelayType::Tick), _)
-                    | (Some(DelayType::TickLazy), _) => "red",
-                    (Some(DelayType::MonotoneAccum), _) | (None, Some(_)) => "#060",
+                match delay_type {
+                    DelayType::Stratum | DelayType::Tick | DelayType::TickLazy => "red",
+                    DelayType::MonotoneAccum => "#060",
                 }
             )?;
         }
@@ -342,11 +333,9 @@ where
         src_id: GraphNodeId,
         dst_id: GraphNodeId,
         delay_type: Option<DelayType>,
-        flow_props: Option<FlowProps>,
         label: Option<&str>,
         _is_reference: bool,
     ) -> Result<(), Self::Err> {
-        let lattice_flow_type = flow_props.and_then(|flow_props| flow_props.lattice_flow_type);
         let mut properties = Vec::<Cow<'static, str>>::new();
         if let Some(label) = label {
             properties.push(format!("label=\"{}\"", escape_dot(label, "\\n")).into());
@@ -354,14 +343,6 @@ where
         // Color
         if delay_type.is_some() {
             properties.push("color=red".into());
-        } else if lattice_flow_type.is_some() {
-            properties.push("color=darkgreen".into());
-        }
-        // Bold or dashed
-        match lattice_flow_type {
-            None => {}
-            Some(LatticeFlowType::Delta) => properties.push("style=dashed".into()),
-            Some(LatticeFlowType::Cumul) => properties.push("style=bold".into()),
         }
 
         write!(

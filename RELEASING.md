@@ -18,6 +18,8 @@ messages, but requires manually intervention to do so in some situations.
 ```sh
 cargo install cargo-smart-release
 ```
+Re-run this command before each release to update the tool before testing locally, as the CI will
+always use the latest version.
 
 ## Dry run to ensure changelogs can be generated
 
@@ -41,8 +43,8 @@ showing that all the changelogs can be modified. Make sure the version bumps loo
 
 ```log
 [INFO ] Updating crates-io index
-[WARN ] Refused to publish 'hydroflow_cli_integration' as as it didn't change.
-[INFO ] Will not publish or alter 3 dependent crates: unchanged = 'hydroflow_cli_integration', 'variadics', 'pusherator'
+[WARN ] Refused to publish 'hydroflow_deploy_integration' as as it didn't change.
+[INFO ] Will not publish or alter 3 dependent crates: unchanged = 'hydroflow_deploy_integration', 'variadics', 'pusherator'
 [INFO ] WOULD auto-bump dependent package 'hydroflow_lang' from 0.4.0 to 0.5.0 for publishing
 [INFO ] WOULD auto-bump dependent package 'hydroflow_datalog_core' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_lang'
 [INFO ] WOULD auto-bump dependent package 'hydroflow_datalog' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_datalog_core'
@@ -118,12 +120,50 @@ On the commit immediately _before_ you move the package(s) and run the following
 ```
 cargo changelog --write <crate_to_be_moved> <other_crate_to_be_moved> ...
 ```
-Then, before committing the changes, go through the modified `CHANGELOG.md` files and add a prefix
-to the `Commit Statistics` and `Commit Details` headers, for example: `Pre-Move Commit Statistics`/`Pre-Move Commit Details`.
+(This command is provided by `cargo install cargo-smart-release`; don't use any other `cargo changelog` command)
+
+Next (even if there are no changes), go through the modified `CHANGELOG.md` files and add a prefix
+to **all** (not just the new) the `Commit Statistics` and `Commit Details` headers, for example:
+`Pre-Move Commit Statistics`/`Pre-Move Commit Details`.
 This is necessary because otherwise `cargo-smart-release` will treat those sections as auto-generated
 and will not preserve them, but then won't regenerate them due to the package moving. Commit the
 updated changelogs and cherry-pick that commit to the latest version if you went back in history.
 The changelogs should now be safely preserved by future releases.
+
+## Addendum: Renaming crates
+
+First, follow the [steps above for moving crates](#addendum-moving-crates).
+
+After renaming a crate, `cargo-smart-release` will see it a brand new crate with no published
+versions on crates.io, and will therefore not bump the version. This is not desired behavior, and
+generating the changelog will fail unintelligibly due to the conflicting versions:
+```log
+BUG: User segments are never auto-generated: ...
+```
+
+To fix this, before releasing, manually bump the version of the renamed crate. `Cargo.toml`:
+```toml
+name = "crate_old_name"
+publish = true
+version = "0.8.0"
+# becomes
+name = "crate_new_name"
+publish = true
+version = "0.9.0"
+```
+(In this case, bumping the minor version)
+
+You will also need to manually update any crates that depend on the renamed crate as well:
+```toml
+crate_old_name = { path = "../crate_old_path", version = "^0.8.0" }
+# becomes
+crate_new_name = { path = "../crate_new_path", version = "^0.9.0" }
+```
+
+Commit those changes, then continue as normal.
+
+(There may be other issues with the `git tag`s `cargo-smart-release` uses to track versions if you
+are renaming a crate _back to an old name_).
 
 ## Addendum: The GitHub App account
 

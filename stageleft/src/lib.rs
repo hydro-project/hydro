@@ -3,6 +3,7 @@ use std::marker::PhantomData;
 
 use internal::CaptureVec;
 use proc_macro2::{Span, TokenStream};
+use proc_macro_crate::FoundCrate;
 use quote::quote;
 
 pub mod internal {
@@ -53,9 +54,15 @@ macro_rules! stageleft_crate {
             "lib_macro.rs"
         ));
 
+        #[cfg(not(feature = "stageleft_devel"))]
         #[cfg(not(stageleft_macro))]
         #[doc(hidden)]
-        #[allow(unused, ambiguous_glob_reexports)]
+        #[allow(
+            unused,
+            ambiguous_glob_reexports,
+            clippy::suspicious_else_formatting,
+            reason = "generated code"
+        )]
         pub mod __staged {
             include!(concat!(
                 env!("OUT_DIR"),
@@ -69,8 +76,14 @@ macro_rules! stageleft_crate {
 #[macro_export]
 macro_rules! stageleft_no_entry_crate {
     () => {
+        #[cfg(not(feature = "stageleft_devel"))]
         #[doc(hidden)]
-        #[allow(unused, ambiguous_glob_reexports)]
+        #[allow(
+            unused,
+            ambiguous_glob_reexports,
+            clippy::suspicious_else_formatting,
+            reason = "generated code"
+        )]
         pub mod __staged {
             include!(concat!(
                 env!("OUT_DIR"),
@@ -98,7 +111,7 @@ impl<'a> QuotedContext for BorrowBounds<'a> {
 }
 
 pub trait Quoted<'a, T>: FreeVariable<T> {
-    fn splice(self) -> syn::Expr
+    fn splice_untyped(self) -> syn::Expr
     where
         Self: Sized,
     {
@@ -108,6 +121,94 @@ pub trait Quoted<'a, T>: FreeVariable<T> {
         }
 
         syn::parse2(value.unwrap()).unwrap()
+    }
+
+    fn splice_typed(self) -> syn::Expr
+    where
+        Self: Sized,
+    {
+        let inner_expr = self.splice_untyped();
+        let stageleft_root = stageleft_root();
+
+        let out_type = quote_type::<T>();
+
+        syn::parse_quote! {
+            #stageleft_root::runtime_support::type_hint::<#out_type>(#inner_expr)
+        }
+    }
+
+    fn splice_fn0<O>(self) -> syn::Expr
+    where
+        Self: Sized,
+        T: Fn() -> O,
+    {
+        let inner_expr = self.splice_untyped();
+        let stageleft_root = stageleft_root();
+
+        let out_type = quote_type::<O>();
+
+        syn::parse_quote! {
+            #stageleft_root::runtime_support::fn0_type_hint::<#out_type>(#inner_expr)
+        }
+    }
+
+    fn splice_fn1<I, O>(self) -> syn::Expr
+    where
+        Self: Sized,
+        T: Fn(I) -> O,
+    {
+        let inner_expr = self.splice_untyped();
+        let stageleft_root = stageleft_root();
+
+        let in_type = quote_type::<I>();
+        let out_type = quote_type::<O>();
+
+        syn::parse_quote! {
+            #stageleft_root::runtime_support::fn1_type_hint::<#in_type, #out_type>(#inner_expr)
+        }
+    }
+
+    fn splice_fn1_borrow<I, O>(self) -> syn::Expr
+    where
+        Self: Sized,
+        T: Fn(&I) -> O,
+    {
+        let inner_expr = self.splice_untyped();
+        let stageleft_root = stageleft_root();
+
+        let in_type = quote_type::<I>();
+        let out_type = quote_type::<O>();
+
+        syn::parse_quote! {
+            #stageleft_root::runtime_support::fn1_borrow_type_hint::<#in_type, #out_type>(#inner_expr)
+        }
+    }
+
+    fn splice_fn2_borrow_mut<I1, I2, O>(self) -> syn::Expr
+    where
+        Self: Sized,
+        T: Fn(&mut I1, I2) -> O,
+    {
+        let inner_expr = self.splice_untyped();
+        let stageleft_root = stageleft_root();
+
+        let in1_type = quote_type::<I1>();
+        let in2_type = quote_type::<I2>();
+        let out_type = quote_type::<O>();
+
+        syn::parse_quote! {
+            #stageleft_root::runtime_support::fn2_borrow_mut_type_hint::<#in1_type, #in2_type, #out_type>(#inner_expr)
+        }
+    }
+}
+
+fn stageleft_root() -> syn::Ident {
+    let stageleft_crate = proc_macro_crate::crate_name("stageleft")
+        .unwrap_or_else(|_| panic!("stageleft should be present in `Cargo.toml`"));
+
+    match stageleft_crate {
+        FoundCrate::Name(name) => syn::Ident::new(&name, Span::call_site()),
+        FoundCrate::Itself => syn::Ident::new("crate", Span::call_site()),
     }
 }
 
@@ -226,7 +327,7 @@ pub struct RuntimeData<T> {
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T> Quoted<'a, T> for RuntimeData<T> {}
+impl<'a, T: 'a> Quoted<'a, T> for RuntimeData<T> {}
 
 impl<T: Copy> Copy for RuntimeData<T> {}
 

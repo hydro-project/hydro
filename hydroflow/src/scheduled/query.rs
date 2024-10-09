@@ -1,5 +1,5 @@
 //! Old query API, where each operator is a single subgraph. Deprecated.
-#![allow(missing_docs)]
+#![allow(clippy::allow_attributes, missing_docs, reason = "deprecated")]
 
 use std::borrow::Cow;
 use std::cell::RefCell;

@@ -130,7 +130,7 @@ where
 {
     fn merge(&mut self, other: UnionFind<MapOther>) -> bool {
         let mut changed = false;
-        for (item, parent) in other.0.into_iter() {
+        for (item, parent) in other.0 {
             // Do not short circuit.
             changed |= self.union(item, parent.get()).into_reveal();
         }

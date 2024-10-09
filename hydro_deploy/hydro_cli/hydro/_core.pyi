@@ -16,7 +16,7 @@ class Deployment(object):
 
     def Localhost(self) -> "LocalhostHost": ...
 
-    def GCPComputeEngineHost(self, project: str, machine_type: str, image: str, region: str, network: "GCPNetwork", user: Optional[str] = None) -> "GCPComputeEngineHost": ...
+    def GcpComputeEngineHost(self, project: str, machine_type: str, image: str, region: str, network: "GcpNetwork", user: Optional[str] = None) -> "GcpComputeEngineHost": ...
 
     def CustomService(self, on: "Host", external_ports: List[int]) -> "CustomService": ...
 
@@ -32,10 +32,10 @@ class Host(object):
 class LocalhostHost(Host):
     def client_only() -> "LocalhostHost": ...
 
-class GCPNetwork(object):
+class GcpNetwork(object):
     def __init__(self, project: str, existing: Optional[str] = None) -> None: ...
 
-class GCPComputeEngineHost(Host):
+class GcpComputeEngineHost(Host):
     internal_ip: str
     external_ip: Optional[str]
     ssh_key_path: str

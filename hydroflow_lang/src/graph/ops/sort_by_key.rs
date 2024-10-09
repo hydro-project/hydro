@@ -8,7 +8,7 @@ use super::{
 /// Like sort, takes a stream as input and produces a version of the stream as output.
 /// This operator sorts according to the key extracted by the closure.
 ///
-/// > Note: The closure has access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closure has access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// ```hydroflow
 /// source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])
@@ -30,7 +30,6 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
-    flow_prop_fn: None,
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,

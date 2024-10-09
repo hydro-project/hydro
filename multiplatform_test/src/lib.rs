@@ -1,4 +1,3 @@
-#![allow(clippy::test_attr_in_doctest)]
 #![doc = include_str!("../README.md")]
 
 use proc_macro::TokenStream;

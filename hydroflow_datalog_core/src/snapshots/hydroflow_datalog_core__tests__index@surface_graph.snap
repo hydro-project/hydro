@@ -21,7 +21,7 @@ expression: flat_graph_ref.surface_syntax_string()
 28v1 = for_each (| v | result2 . send (v) . unwrap ());
 29v1 = for_each (| v | result3 . send (v) . unwrap ());
 30v1 = for_each (| v | result4 . send (v) . unwrap ());
-31v1 = persist ();
+31v1 = persist :: < 'static > ();
 32v1 = for_each (| v | result5 . send (v) . unwrap ());
 33v1 = map (| row : (_ , _ ,) | ((row . 0 , row . 1 ,) , ()));
 34v1 = enumerate :: < 'tick > ();
@@ -35,7 +35,7 @@ expression: flat_graph_ref.surface_syntax_string()
 42v1 = map (| row : (_ , _ ,) | ((row . 0 , row . 1 ,) , ()));
 43v1 = enumerate :: < 'static > ();
 44v1 = map (| (__enumerate_index , (g , a)) : (_ , ((_ , _ ,) , _)) | (g . 0 , g . 1 , __enumerate_index ,));
-45v1 = persist ();
+45v1 = persist :: < 'static > ();
 46v1 = map (| row : (_ , _ ,) | ((row . 0 ,) , ((row . 1) ,)));
 47v1 = fold_keyed :: < 'static , (_ ,) , (Option < _ > ,) > (| | (None ,) , | old : & mut (Option < _ > ,) , val : (_ ,) | { old . 0 = if let Some (prev) = old . 0 . take () { Some ({ let prev : (hydroflow :: rustc_hash :: FxHashSet < _ > , _) = prev ; let mut set : hydroflow :: rustc_hash :: FxHashSet < _ > = prev . 0 ; if set . insert (val . 0) { (set , prev . 1 + 1) } else { (set , prev . 1) } }) } else { Some ({ let mut set = hydroflow :: rustc_hash :: FxHashSet :: < _ > :: default () ; set . insert (val . 0) ; (set , 1) }) } ; });
 48v1 = enumerate :: < 'tick > ();
@@ -86,3 +86,4 @@ expression: flat_graph_ref.surface_syntax_string()
 51v1 -> 52v1;
 50v1 -> 51v1;
 24v1 -> 50v1;
+

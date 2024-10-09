@@ -35,7 +35,6 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
@@ -58,6 +57,14 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
+            [Persistence::Mutable] => {
+                diagnostics.push(Diagnostic::spanned(
+                    op_span,
+                    Level::Error,
+                    "An implementation of 'mutable does not exist",
+                ));
+                Persistence::Tick
+            },
             [a] => a,
             _ => unreachable!(),
         };
@@ -67,39 +74,18 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
 
         let counter_ident = wc.make_ident("counterdata");
 
-        let (write_prologue, get_counter) = match persistence {
-            Persistence::Tick => (
-                quote_spanned! {op_span=>
-                    let #counter_ident = #hydroflow.add_state(::std::cell::RefCell::new(
-                        #root::util::monotonic_map::MonotonicMap::new_init(0..),
-                    ));
-                },
-                quote_spanned! {op_span=>
-                    let mut borrow = #context.state_ref(#counter_ident).borrow_mut();
-                    let counter = borrow.get_mut_with((#context.current_tick(), #context.current_stratum()), || 0..);
-                },
-            ),
-            Persistence::Static => (
-                quote_spanned! {op_span=>
-                    let #counter_ident = #hydroflow.add_state(::std::cell::RefCell::new(0..));
-                },
-                quote_spanned! {op_span=>
-                    let mut counter = #context.state_ref(#counter_ident).borrow_mut();
-                },
-            ),
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+        let mut write_prologue = quote_spanned! {op_span=>
+            let #counter_ident = #hydroflow.add_state(::std::cell::RefCell::new(0..));
         };
+        if Persistence::Tick == persistence {
+            write_prologue.extend(quote_spanned! {op_span=>
+                #hydroflow.set_state_tick_hook(#counter_ident, |rcell| { rcell.replace(0..); });
+            });
+        }
 
         let map_fn = quote_spanned! {op_span=>
             |item| {
-                #get_counter
+                let mut counter = #context.state_ref(#counter_ident).borrow_mut();
                 (counter.next().unwrap(), item)
             }
         };

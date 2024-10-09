@@ -17,13 +17,13 @@ async def main(args):
         on=localhost_machine,
     )
 
-    gcp_vpc = hydro.GCPNetwork(
+    gcp_vpc = hydro.GcpNetwork(
         project="hydro-chrisdouglas",
     )
 
     def create_machine():
         if args[0] == "gcp":
-            return deployment.GCPComputeEngineHost(
+            return deployment.GcpComputeEngineHost(
                 project="hydro-chrisdouglas",
                 machine_type="e2-micro",
                 image="debian-cloud/debian-11",

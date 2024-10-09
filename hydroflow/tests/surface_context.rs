@@ -38,7 +38,7 @@ pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_a
         let time = time.clone();
         hydroflow_syntax! {
             source_iter([()])
-                -> persist()
+                -> persist::<'static>()
                 -> for_each(|_| time.set(Some(context.current_tick_start().elapsed().unwrap())));
         }
     };

@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use crate::test::cartesian_power;
 
 /// Defines a monoid structure.
+///
 /// A monoid is a set of items along with an associative binary operation `f` and an identity element `zero`.
 /// The `f` operation combines two items and the `zero` element acts as the identity for `f`.
 pub fn monoid<S: Debug + PartialEq + Clone, const N: usize>(
@@ -16,6 +17,7 @@ pub fn monoid<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a semigroup structure.
+///
 /// A semigroup is a set of items along with an associative binary operation `f`.
 pub fn semigroup<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -26,6 +28,7 @@ pub fn semigroup<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a semiring structure.
+///
 /// A semiring is a set of items along with two associative binary operations `f` and `g`,
 /// and two identity elements `zero` and `one`.
 /// f must be commutative and g must distribute over f.
@@ -48,6 +51,7 @@ pub fn semiring<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a ring structure.
+///
 /// A ring is a semiring with an inverse operation on f.
 pub fn ring<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -63,6 +67,7 @@ pub fn ring<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines an integral domain structure.
+///
 /// An integral domain is a nonzero commutative ring with no nonzero zero divisors.
 pub fn integral_domain<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -78,6 +83,7 @@ pub fn integral_domain<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a no-nonzero-zero-divisors property.
+///
 /// x is a nonzero divisor if xy = 0 and y is also a nonzero element.
 pub fn no_nonzero_zero_divisors<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -100,6 +106,7 @@ pub fn no_nonzero_zero_divisors<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a commutative ring structure.
+///
 /// A commutative ring is a ring where the multiplication operation g is commutative.
 pub fn commutative_ring<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -116,6 +123,7 @@ pub fn commutative_ring<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a field structure.
+///
 /// A field is a commutative ring where every element has a multiplicative inverse.
 pub fn field<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -132,6 +140,7 @@ pub fn field<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a commutative monoid structure.
+///
 /// A commutative monoid is a monoid where the operation f is commutative.
 pub fn commutative_monoid<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -144,6 +153,7 @@ pub fn commutative_monoid<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines a group structure.
+///
 /// A group is a set of items along with an associative binary operation `f`
 /// an identity element `zero`
 /// and every element has an inverse element with respect to `f`
@@ -159,6 +169,7 @@ pub fn group<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines an abelian group structure.
+///
 /// An abelian group is a group where the operation f is commutative.
 pub fn abelian_group<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -173,6 +184,7 @@ pub fn abelian_group<S: Debug + PartialEq + Clone, const N: usize>(
 
 // Algebraic Properties
 /// Defines the distributive property
+///
 /// a(b+c) = ab + ac
 /// and (b+c)a = ba + ca
 pub fn distributive<S: Debug + PartialEq + Clone, const N: usize>(
@@ -186,6 +198,7 @@ pub fn distributive<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the left distributive property
+///
 /// a(b+c) = ab + ac
 pub fn left_distributes<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -203,6 +216,7 @@ pub fn left_distributes<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the right distributive property.
+///
 /// (b+c)a = ba + ca
 pub fn right_distributes<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -220,6 +234,7 @@ pub fn right_distributes<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the absorbing_element property.
+///
 /// An element z is absorbing if az = z and za = z for all a.
 pub fn absorbing_element<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -241,6 +256,7 @@ pub fn absorbing_element<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the inverse property.
+///
 /// An element b is the inverse of a if ab = e and ba = e for some identity element e.
 pub fn inverse<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -261,6 +277,7 @@ pub fn inverse<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the non_zero inverse property.
+///
 /// Every element except zero must have an inverse.
 pub fn nonzero_inverse<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -284,6 +301,7 @@ pub fn nonzero_inverse<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the identity property.
+///
 /// An element e is the identity of f if ae = a and ea = a for all a.
 pub fn identity<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -303,6 +321,7 @@ pub fn identity<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the associativity property.
+///
 /// a(bc) = (ab)c
 pub fn associativity<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -320,6 +339,7 @@ pub fn associativity<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the commutativity property.
+///
 /// xy = yx
 pub fn commutativity<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -335,6 +355,7 @@ pub fn commutativity<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the idempotency property.
+///
 /// xx = x
 pub fn idempotency<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
@@ -349,6 +370,7 @@ pub fn idempotency<S: Debug + PartialEq + Clone, const N: usize>(
 }
 
 /// Defines the linearity property
+///
 /// q is linear with respect to some group operation + if q(a+b) = q(a) + q(b)
 /// This is the same as q being a group homomorphism
 /// As defined in the paper "DBSP: Automatic Incremental View Maintenance for Rich Query Languages"
@@ -371,6 +393,7 @@ pub fn linearity<S: Debug + PartialEq + Clone, R: Debug + PartialEq + Clone>(
 }
 
 /// Defines the bilinearity property
+///
 /// q is bilinear with respect to + if q(a + b, c) = q(a,c) + q(b,c) and q(a,c + d) = q(a,c) + q(a,d)
 /// This is the same as q being distributive over the addition operation of the three groups S, T, and R in q:S x T --> R
 /// As defined in the paper "DBSP: Automatic Incremental View Maintenance for Rich Query Languages
@@ -417,7 +440,7 @@ pub fn bilinearity<
 //     ("inverse", inverse),
 //     ("absorbing_element", absorbing_element)];
 
-/// Loop through each algebraic property in SINGLE_FUNCTION_PROPERTIES and test for them
+/// Loop through each algebraic property in SINGLE_FUNCTION_PROPERTIES and test for them.
 pub fn get_single_function_properties<S: Debug + PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,

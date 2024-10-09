@@ -3,7 +3,7 @@ use syn::parse_quote_spanned;
 
 use super::{
     DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, LATTICE_FOLD_REDUCE_FLOW_PROP_FN, RANGE_0, RANGE_1,
+    WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 /// > 1 input stream, 1 output stream
@@ -43,7 +43,6 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
-    flow_prop_fn: Some(LATTICE_FOLD_REDUCE_FLOW_PROP_FN),
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    inputs,

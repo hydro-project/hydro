@@ -60,6 +60,7 @@ pub async fn main() {
         None => rga_adjacency(input_recv, rga_send, list_send),
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

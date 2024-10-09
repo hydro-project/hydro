@@ -1,0 +1,20 @@
+[package]
+name = "hydroflow_plus_test_local_macro"
+publish = false
+version = "0.0.0"
+edition = "2021"
+
+[lints]
+workspace = true
+
+[lib]
+proc-macro = true
+path = "../hydroflow_plus_test_local/src/lib.rs"
+
+[dependencies]
+hydroflow_plus = { path = "../hydroflow_plus", version = "^0.9.0" }
+stageleft = { path = "../stageleft", version = "^0.4.0" }
+rand = "0.8.0"
+
+[build-dependencies]
+stageleft_tool = { path = "../stageleft_tool", version = "^0.3.0" }

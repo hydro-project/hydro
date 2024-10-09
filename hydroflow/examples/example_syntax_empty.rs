@@ -1,4 +1,4 @@
-#![allow(unused_mut, unused_variables)]
+#![expect(unused_mut, unused_variables, reason = "example code")]
 
 use hydroflow::hydroflow_syntax;
 

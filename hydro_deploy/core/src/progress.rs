@@ -64,9 +64,6 @@ impl BarTree {
                 }
             }
             BarTree::Group(name, pb, children, anticipated_total) => {
-                let mut path_with_group = cur_path.to_vec();
-                path_with_group.push(name.clone());
-
                 let finished_count = children
                     .iter()
                     .filter(|child| child.status() == LeafStatus::Finished)
@@ -78,23 +75,46 @@ impl BarTree {
                 let queued_count =
                     anticipated_total.map(|total| total - finished_count - started_count);
 
-                match queued_count {
-                    Some(queued_count) => {
-                        pb.set_prefix(format!(
-                            "{} ({}/{}/{})",
-                            path_with_group.join(" / "),
-                            finished_count,
-                            started_count,
-                            queued_count
-                        ));
-                    }
-                    None => pb.set_prefix(format!(
-                        "{} ({}/{})",
-                        path_with_group.join(" / "),
-                        finished_count,
-                        started_count
-                    )),
+                let progress_str =
+                    if anticipated_total.iter().any(|v| *v == 1) && started_count == 1 {
+                        "".to_string()
+                    } else {
+                        match queued_count {
+                            Some(queued_count) => {
+                                format!(
+                                    " ({}/{}/{})",
+                                    finished_count,
+                                    started_count,
+                                    queued_count + finished_count + started_count
+                                )
+                            }
+                            None => format!(" ({}/{}/?)", finished_count, started_count),
+                        }
+                    };
+
+                if cur_path.is_empty() {
+                    pb.set_prefix(format!("{}{}", name, progress_str));
+                } else {
+                    pb.set_prefix(format!(
+                        "{} / {}{}",
+                        cur_path.join(" / "),
+                        name,
+                        progress_str,
+                    ));
                 }
+
+                let mut path_with_group = cur_path.to_vec();
+                let non_finished_count = children
+                    .iter()
+                    .filter(|child| child.status() != LeafStatus::Finished)
+                    .count();
+
+                if non_finished_count == 1 {
+                    path_with_group.push(format!("{}{}", name, progress_str));
+                } else {
+                    path_with_group.push(name.clone());
+                }
+
                 for child in children {
                     child.refresh_prefix(&path_with_group);
                 }
@@ -108,7 +128,7 @@ impl BarTree {
         }
     }
 
-    fn find_node(&mut self, path: &[usize]) -> &mut BarTree {
+    fn find_node(&self, path: &[usize]) -> &BarTree {
         if path.is_empty() {
             return self;
         }
@@ -120,12 +140,26 @@ impl BarTree {
             _ => panic!(),
         }
     }
+
+    fn find_node_mut(&mut self, path: &[usize]) -> &mut BarTree {
+        if path.is_empty() {
+            return self;
+        }
+
+        match self {
+            BarTree::Root(children) | BarTree::Group(_, _, children, _) => {
+                children[path[0]].find_node_mut(&path[1..])
+            }
+            _ => panic!(),
+        }
+    }
 }
 
 pub struct ProgressTracker {
     pub(crate) multi_progress: MultiProgress,
     tree: BarTree,
     pub(crate) current_count: usize,
+    progress_list: Vec<(Arc<indicatif::ProgressBar>, bool)>,
 }
 
 impl ProgressTracker {
@@ -134,6 +168,7 @@ impl ProgressTracker {
             multi_progress: MultiProgress::new(),
             tree: BarTree::Root(vec![]),
             current_count: 0,
+            progress_list: vec![],
         }
     }
 
@@ -152,6 +187,49 @@ impl ProgressTracker {
             _ => panic!(),
         };
 
+        if let Some(surrounding_pb) = &surrounding_pb {
+            let non_finished_count = surrounding_children
+                .iter()
+                .filter(|child| child.status() != LeafStatus::Finished)
+                .count();
+            if non_finished_count == 0 {
+                self.multi_progress.remove(surrounding_pb.as_ref());
+                let surrounding_idx = self
+                    .progress_list
+                    .iter()
+                    .position(|(pb, _)| Arc::ptr_eq(pb, surrounding_pb))
+                    .unwrap();
+                self.progress_list[surrounding_idx].1 = false;
+            } else if non_finished_count == 1 {
+                let self_idx = self
+                    .progress_list
+                    .iter()
+                    .position(|(pb, _)| Arc::ptr_eq(pb, surrounding_pb))
+                    .unwrap();
+                let last_visible_before = self.progress_list[..self_idx]
+                    .iter()
+                    .rposition(|(_, visible)| *visible);
+                if let Some(last_visible_before) = last_visible_before {
+                    self.multi_progress.insert_after(
+                        &self.progress_list[last_visible_before].0,
+                        surrounding_pb.as_ref().clone(),
+                    );
+                } else {
+                    self.multi_progress
+                        .insert(0, surrounding_pb.as_ref().clone());
+                }
+
+                self.progress_list[self_idx].1 = true;
+            }
+        }
+
+        let surrounding = self.tree.find_node_mut(&under_path);
+        let (surrounding_children, surrounding_pb) = match surrounding {
+            BarTree::Root(children) => (children, None),
+            BarTree::Group(_, pb, children, _) => (children, Some(pb)),
+            _ => panic!(),
+        };
+
         self.current_count += 1;
 
         let core_bar = indicatif::ProgressBar::new(100);
@@ -160,15 +238,45 @@ impl ProgressTracker {
             .rev()
             .flat_map(|c| c.get_pb())
             .next();
-        let created_bar = if let Some(previous_bar) = previous_bar {
-            self.multi_progress.insert_after(previous_bar, core_bar)
+
+        let index_to_insert = if let Some(previous_bar) = previous_bar {
+            let index_of_prev = self
+                .progress_list
+                .iter()
+                .position(|pb| Arc::ptr_eq(&pb.0, previous_bar))
+                .unwrap();
+            index_of_prev + 1
         } else if let Some(group_pb) = surrounding_pb {
-            self.multi_progress.insert_after(group_pb, core_bar)
+            let index_of_group = self
+                .progress_list
+                .iter()
+                .position(|pb| Arc::ptr_eq(&pb.0, group_pb))
+                .unwrap();
+            index_of_group + 1
+        } else if !self.progress_list.is_empty() {
+            self.progress_list.len()
         } else {
-            self.multi_progress.add(core_bar)
+            0
+        };
+
+        let last_visible = if !self.progress_list.is_empty() {
+            self.progress_list[..index_to_insert]
+                .iter()
+                .rposition(|(_, visible)| *visible)
+        } else {
+            None
+        };
+
+        let created_bar = if let Some(last_visible) = last_visible {
+            self.multi_progress
+                .insert_after(&self.progress_list[last_visible].0, core_bar)
+        } else {
+            self.multi_progress.insert(0, core_bar)
         };
 
         let pb = Arc::new(created_bar);
+        self.progress_list
+            .insert(index_to_insert, (pb.clone(), true));
         if group {
             surrounding_children.push(BarTree::Group(name, pb.clone(), vec![], anticipated_total));
         } else {
@@ -197,11 +305,50 @@ impl ProgressTracker {
     }
 
     pub fn end_task(&mut self, path: Vec<usize>) {
-        match self.tree.find_node(&path[0..path.len() - 1]) {
+        let parent = self.tree.find_node_mut(&path[0..path.len() - 1]);
+        match parent {
             BarTree::Root(children) | BarTree::Group(_, _, children, _) => {
                 let removed = children[*path.last().unwrap()].get_pb().unwrap().clone();
                 children[*path.last().unwrap()] = BarTree::Finished;
                 self.multi_progress.remove(&removed);
+                self.progress_list
+                    .retain(|(pb, _)| !Arc::ptr_eq(pb, &removed));
+
+                let non_finished_count = children
+                    .iter()
+                    .filter(|child| child.status() != LeafStatus::Finished)
+                    .count();
+                if let BarTree::Group(_, pb, _, _) = parent {
+                    if non_finished_count == 1 {
+                        self.multi_progress.remove(pb.as_ref());
+                        self.progress_list
+                            .iter_mut()
+                            .find(|(pb2, _)| Arc::ptr_eq(pb2, pb))
+                            .unwrap()
+                            .1 = false;
+                    } else if non_finished_count == 0 {
+                        let self_idx = self
+                            .progress_list
+                            .iter()
+                            .position(|(pb2, _)| Arc::ptr_eq(pb2, pb))
+                            .unwrap();
+
+                        let last_visible_before = self.progress_list[..self_idx]
+                            .iter()
+                            .rposition(|(_, visible)| *visible);
+
+                        if let Some(last_visible_before) = last_visible_before {
+                            self.multi_progress.insert_after(
+                                &self.progress_list[last_visible_before].0,
+                                pb.as_ref().clone(),
+                            );
+                        } else {
+                            self.multi_progress.insert(0, pb.as_ref().clone());
+                        }
+
+                        self.progress_list[self_idx].1 = true;
+                    }
+                }
             }
 
             _ => panic!(),
@@ -217,19 +364,19 @@ impl ProgressTracker {
 }
 
 impl ProgressTracker {
-    pub fn println(msg: &str) {
+    pub fn println(msg: impl AsRef<str>) {
         let progress_bar = PROGRESS_TRACKER
             .get_or_init(|| Mutex::new(ProgressTracker::new()))
             .lock()
             .unwrap();
 
-        if progress_bar.multi_progress.println(msg).is_err() {
-            println!("{}", msg);
+        if progress_bar.multi_progress.println(msg.as_ref()).is_err() {
+            println!("{}", msg.as_ref());
         }
     }
 
     pub fn with_group<'a, T, F: Future<Output = T>>(
-        name: &str,
+        name: impl Into<String>,
         anticipated_total: Option<usize>,
         f: impl FnOnce() -> F + 'a,
     ) -> impl Future<Output = T> + 'a {
@@ -242,13 +389,7 @@ impl ProgressTracker {
                 .get_or_init(|| Mutex::new(ProgressTracker::new()))
                 .lock()
                 .unwrap();
-            progress_bar.start_task(
-                group.clone(),
-                name.to_string(),
-                true,
-                anticipated_total,
-                false,
-            )
+            progress_bar.start_task(group.clone(), name.into(), true, anticipated_total, false)
         };
 
         group.push(group_i);
@@ -264,7 +405,10 @@ impl ProgressTracker {
         })
     }
 
-    pub fn leaf<T, F: Future<Output = T>>(name: String, f: F) -> impl Future<Output = T> {
+    pub fn leaf<T, F: Future<Output = T>>(
+        name: impl Into<String>,
+        f: F,
+    ) -> impl Future<Output = T> {
         let mut group = CURRENT_GROUP
             .try_with(|cur| cur.clone())
             .unwrap_or_default();
@@ -274,7 +418,7 @@ impl ProgressTracker {
                 .get_or_init(|| Mutex::new(ProgressTracker::new()))
                 .lock()
                 .unwrap();
-            progress_bar.start_task(group.clone(), name, false, None, false)
+            progress_bar.start_task(group.clone(), name.into(), false, None, false)
         };
 
         group.push(leaf_i);
@@ -291,7 +435,40 @@ impl ProgressTracker {
     }
 
     pub fn rich_leaf<'a, T, F: Future<Output = T>>(
-        name: String,
+        name: impl Into<String>,
+        f: impl FnOnce(Box<dyn Fn(String) + Send + Sync>) -> F + 'a,
+    ) -> impl Future<Output = T> + 'a {
+        let mut group = CURRENT_GROUP
+            .try_with(|cur| cur.clone())
+            .unwrap_or_default();
+
+        let (leaf_i, bar) = {
+            let mut progress_bar = PROGRESS_TRACKER
+                .get_or_init(|| Mutex::new(ProgressTracker::new()))
+                .lock()
+                .unwrap();
+            progress_bar.start_task(group.clone(), name.into(), false, None, false)
+        };
+
+        group.push(leaf_i);
+
+        async move {
+            let my_bar = bar.clone();
+            let out = f(Box::new(move |msg| {
+                my_bar.set_message(msg);
+            }))
+            .await;
+            let mut progress_bar = PROGRESS_TRACKER
+                .get_or_init(|| Mutex::new(ProgressTracker::new()))
+                .lock()
+                .unwrap();
+            progress_bar.end_task(group);
+            out
+        }
+    }
+
+    pub fn progress_leaf<'a, T, F: Future<Output = T>>(
+        name: impl Into<String>,
         f: impl FnOnce(Box<dyn Fn(u64) + Send + Sync>, Box<dyn Fn(String) + Send + Sync>) -> F + 'a,
     ) -> impl Future<Output = T> + 'a {
         let mut group = CURRENT_GROUP
@@ -303,7 +480,7 @@ impl ProgressTracker {
                 .get_or_init(|| Mutex::new(ProgressTracker::new()))
                 .lock()
                 .unwrap();
-            progress_bar.start_task(group.clone(), name, false, None, true)
+            progress_bar.start_task(group.clone(), name.into(), false, None, true)
         };
 
         group.push(leaf_i);

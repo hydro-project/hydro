@@ -2,7 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/**
   pull_request:
   schedule:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
@@ -27,7 +29,7 @@ jobs:
   check:
     name: Lint and Check
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
     needs: pre_job
     runs-on: ${{ matrix.os }}
     strategy:
@@ -123,7 +125,7 @@ jobs:
   test:
     name: Test Suite
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
-    timeout-minutes: 25
+    timeout-minutes: 35
     needs: pre_job
     runs-on: ${{ matrix.os }}
     strategy:
@@ -179,10 +181,10 @@ jobs:
         run: curl -LsSf https://get.nexte.st/latest/windows-tar | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
       - name: Run cargo nextest on all targets
-        run: cargo nextest run --no-fail-fast --features python --all-targets
+        run: cargo nextest run --no-fail-fast --features python --features deploy --all-targets
 
       - name: Run doctests
-        run: cargo test --no-fail-fast --features python --doc
+        run: cargo test --no-fail-fast --features python --features deploy --doc
 
       - name: Install Python
         uses: actions/setup-python@v4

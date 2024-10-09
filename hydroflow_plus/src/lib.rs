@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 use hydroflow::scheduled::context::Context;
 pub use hydroflow::scheduled::graph::Hydroflow;
 pub use hydroflow::*;
-use lang::graph::{partition_graph, propagate_flow_props, HydroflowGraph};
+use lang::graph::{partition_graph, HydroflowGraph};
 use proc_macro2::TokenStream;
 use quote::quote;
 use stageleft::runtime_support::FreeVariable;
@@ -19,13 +19,16 @@ pub mod runtime_support {
 }
 
 pub mod stream;
-pub use stream::Stream;
+pub use stream::{Bounded, NoTick, Stream, Tick, Unbounded};
+
+pub mod singleton;
+pub use singleton::{Optional, Singleton};
 
 pub mod location;
-pub use location::{
-    Cluster, ClusterSpec, Deploy, LocalDeploy, Location, MultiGraph, ProcessSpec,
-    SingleProcessGraph,
-};
+pub use location::{Cluster, ClusterId, Location, Process};
+
+pub mod deploy;
+pub use deploy::{ClusterSpec, Deploy, ProcessSpec};
 
 pub mod cycle;
 pub use cycle::HfCycle;
@@ -39,6 +42,8 @@ pub mod persist_pullup;
 pub mod profiler;
 
 pub mod properties;
+
+mod staging_util;
 
 #[derive(Clone)]
 pub struct RuntimeContext<'a> {
@@ -55,6 +60,7 @@ impl<'a> FreeVariable<&'a Context> for RuntimeContext<'a> {
 
 pub struct HfCompiled<'a, ID> {
     hydroflow_ir: BTreeMap<usize, HydroflowGraph>,
+    extra_stmts: BTreeMap<usize, Vec<syn::Stmt>>,
     _phantom: PhantomData<&'a mut &'a ID>,
 }
 
@@ -65,7 +71,7 @@ impl<'a, ID> HfCompiled<'a, ID> {
 }
 
 impl<'a> HfCompiled<'a, usize> {
-    pub fn with_dynamic_id(self, id: impl Quoted<'a, usize>) -> HfBuiltWithID<'a> {
+    pub fn with_dynamic_id(self, id: impl Quoted<'a, usize>) -> HfBuiltWithId<'a> {
         let hydroflow_crate = proc_macro_crate::crate_name("hydroflow_plus")
             .expect("hydroflow_plus should be present in `Cargo.toml`");
         let root = match hydroflow_crate {
@@ -78,28 +84,28 @@ impl<'a> HfCompiled<'a, usize> {
 
         let mut conditioned_tokens = None;
         for (subgraph_id, flat_graph) in self.hydroflow_ir {
-            let mut partitioned_graph =
+            let partitioned_graph =
                 partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
             let mut diagnostics = Vec::new();
-            // Propagate flow properties throughout the graph.
-            // TODO(mingwei): Should this be done at a flat graph stage instead?
-            let _ = propagate_flow_props::propagate_flow_props(
-                &mut partitioned_graph,
-                &mut diagnostics,
-            );
-
             let tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
+            let my_extra_stmts = self
+                .extra_stmts
+                .get(&subgraph_id)
+                .cloned()
+                .unwrap_or_default();
 
             if let Some(conditioned_tokens) = conditioned_tokens.as_mut() {
                 *conditioned_tokens = syn::parse_quote! {
                     #conditioned_tokens else if __given_id == #subgraph_id {
+                        #(#my_extra_stmts)*
                         #tokens
                     }
                 };
             } else {
                 conditioned_tokens = Some(syn::parse_quote! {
                     if __given_id == #subgraph_id {
+                        #(#my_extra_stmts)*
                         #tokens
                     }
                 });
@@ -107,8 +113,8 @@ impl<'a> HfCompiled<'a, usize> {
         }
 
         let conditioned_tokens: TokenStream = conditioned_tokens.unwrap();
-        let id = id.splice();
-        HfBuiltWithID {
+        let id = id.splice_untyped();
+        HfBuiltWithId {
             tokens: syn::parse_quote!({
                 let __given_id = #id;
                 #conditioned_tokens else {
@@ -139,30 +145,34 @@ impl<'a> FreeVariable<Hydroflow<'a>> for HfCompiled<'a, ()> {
         }
 
         let flat_graph = self.hydroflow_ir.remove(&0).unwrap();
-        let mut partitioned_graph =
+        let partitioned_graph =
             partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
         let mut diagnostics = Vec::new();
-        // Propagate flow properties throughout the graph.
-        // TODO(mingwei): Should this be done at a flat graph stage instead?
-        let _ =
-            propagate_flow_props::propagate_flow_props(&mut partitioned_graph, &mut diagnostics);
-
         let tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
 
         (None, Some(tokens))
     }
 }
 
-pub struct HfBuiltWithID<'a> {
+pub struct HfBuiltWithId<'a> {
     tokens: TokenStream,
     _phantom: PhantomData<&'a mut &'a ()>,
 }
 
-impl<'a> Quoted<'a, Hydroflow<'a>> for HfBuiltWithID<'a> {}
+impl<'a> Quoted<'a, Hydroflow<'a>> for HfBuiltWithId<'a> {}
 
-impl<'a> FreeVariable<Hydroflow<'a>> for HfBuiltWithID<'a> {
+impl<'a> FreeVariable<Hydroflow<'a>> for HfBuiltWithId<'a> {
     fn to_tokens(self) -> (Option<TokenStream>, Option<TokenStream>) {
         (None, Some(self.tokens))
+    }
+}
+
+#[stageleft::runtime]
+#[cfg(test)]
+mod tests {
+    #[ctor::ctor]
+    fn init() {
+        crate::deploy::init_test();
     }
 }

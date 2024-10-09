@@ -7,8 +7,16 @@ To get started with a new project, we'll use the Hydroflow+ template. The templa
 #shell-command-next-line
 cargo install cargo-generate
 #shell-command-next-line
-cargo generate hydro-project/hydroflow-plus-template
+cargo generate gh:hydro-project/hydroflow template/hydroflow_plus
 # Project Name: my-example-project
 #shell-command-next-line
 cd my-example-project
+```
+
+After `cd`ing into the generated folder, ensure the correct nightly version of rust is installed and test the generated project:
+```bash
+#shell-command-next-line
+rustup update
+#shell-command-next-line
+cargo test
 ```

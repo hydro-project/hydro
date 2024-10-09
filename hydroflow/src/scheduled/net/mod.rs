@@ -1,5 +1,5 @@
 #![cfg(not(target_arch = "wasm32"))]
-#![allow(missing_docs)]
+#![allow(clippy::allow_attributes, missing_docs, reason = "// TODO(mingwei)")]
 
 //! This module contiains networking code.
 //!

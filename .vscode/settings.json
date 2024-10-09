@@ -9,10 +9,11 @@
                 // Make sure all snapshots are written instead of just the first failure.
                 "INSTA_FORCE_PASS": "1",
                 "INSTA_UPDATE": "always",
+                "TRYBUILD": "overwrite",
             }
         }
     ],
     "files.watcherExclude": {
         "**/target": true
-    }
+    },
 }

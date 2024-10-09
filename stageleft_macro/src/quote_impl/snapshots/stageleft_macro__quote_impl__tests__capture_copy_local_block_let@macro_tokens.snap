@@ -1,6 +1,6 @@
 ---
 source: stageleft_macro/src/quote_impl/mod.rs
-expression: "prettyplease::unparse(&wrapped)"
+expression: "prettyplease :: unparse(& wrapped)"
 ---
 fn main() {
     {
@@ -22,7 +22,8 @@ fn main() {
                 _out
             };
             *set_mod = module_path!().to_string();
-            *set_crate_name = env!("STAGELEFT_FINAL_CRATE_NAME");
+            *set_crate_name = option_env!("STAGELEFT_FINAL_CRATE_NAME")
+                .unwrap_or(env!("CARGO_PKG_NAME"));
             *set_tokens = stageleft::internal::quote! {
                 { let x = x + 2; let _ = x + 2; }
             };

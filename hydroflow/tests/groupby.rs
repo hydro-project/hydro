@@ -119,7 +119,7 @@ fn fold_keyed_monotonic_core() {
     let output = <Rc<RefCell<Vec<&'static str>>>>::default();
     let output_ref = output.clone();
     hf.add_subgraph_sink("sink", sink_recv, move |_ctx, recv| {
-        for v in recv.take_inner().into_iter() {
+        for v in recv.take_inner() {
             output_ref.borrow_mut().push(v);
         }
     });

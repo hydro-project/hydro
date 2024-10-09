@@ -229,6 +229,22 @@ const config = {
         indexName: 'hydro'
       },
     }),
+    scripts: [
+      {
+        id: "runllm-widget-script",
+        type: "module",
+        src: "https://widget.runllm.com",
+        "runllm-server-address": "https://api.runllm.com",
+        "runllm-assistant-id": "136",
+        "runllm-position": "BOTTOM_RIGHT",
+        "runllm-keyboard-shortcut": "Mod+j",
+        "runllm-preset": "docusaurus",
+        "runllm-slack-community-url": "",
+        "runllm-name": "Hydro",
+        "runllm-theme-color": "#005EEC",
+        async: true,
+      },
+    ],
 };
 
 module.exports = config;

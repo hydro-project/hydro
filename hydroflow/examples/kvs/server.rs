@@ -12,7 +12,6 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
         // Setup network channels.
         network_send = dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)
-            -> _upcast(Some(Delta))
             -> map(Result::unwrap)
             -> inspect(|(msg, addr)| println!("Message received {:?} from {:?}", msg, addr))
             -> map(|(msg, addr)| KvsMessageWithAddr::from_message(msg, addr))
@@ -33,12 +32,14 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
             -> network_send;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()
             .expect("No graph found, maybe failed to parse.");
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
+    let _ = opts;
 
     hf.run_async().await.unwrap();
 }

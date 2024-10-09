@@ -2,15 +2,17 @@ use std::cmp::Ordering::{self, *};
 
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
-/// Wraps a lattice in [`Option`], treating [`None`] as a new bottom element which compares as less
-/// than to all other values.
+/// Adds a new "bot" value to the nested lattice type.
 ///
-/// This can be used for giving a sensible default/bottom element to lattices that don't
-/// necessarily have one.
+/// Given an existing lattice, wrap it into a new lattice with a new bottom element. The new bottom
+/// element compares as less than all the values of the wrapped lattice.  This can be used for
+/// giving a sensible default/bottom element to lattices that don't necessarily have one.
+///
+/// The implementation wraps an [`Option`], with [`None`] representing the bottom element.
 #[repr(transparent)]
 #[derive(Copy, Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct WithBot<Inner>(pub Option<Inner>);
+pub struct WithBot<Inner>(Option<Inner>);
 impl<Inner> WithBot<Inner> {
     /// Create a new `WithBot` lattice instance from a value.
     pub fn new(val: Option<Inner>) -> Self {

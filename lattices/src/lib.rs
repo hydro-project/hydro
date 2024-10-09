@@ -18,6 +18,7 @@ mod ord;
 mod pair;
 mod point;
 pub mod semiring_application;
+pub mod semiring_application;
 pub mod set_union;
 pub mod set_union_with_tombstones;
 pub mod test;
@@ -29,8 +30,9 @@ mod with_top;
 
 pub use conflict::Conflict;
 pub use dom_pair::DomPair;
+pub use lattices_macro::*;
 pub use ord::{Max, Min};
-pub use pair::Pair;
+pub use pair::{Pair, PairBimorphism};
 pub use point::Point;
 pub use vec_union::VecUnion;
 pub use with_bot::WithBot;
@@ -96,6 +98,51 @@ pub trait Zero<T> {
 pub trait One<T> {
     /// Returns the one element of the semiring. Identity for the multiplication operation.
     fn one(&self) -> Self;
+}
+/// Alias trait for semirings.
+#[sealed]
+pub trait Semiring<T>: Addition<T> + Multiplication<T> + Zero<T> + One<T> {}
+
+/// Trait for Semiring Addition.
+pub trait Addition<Other> {
+    /// Add-assign `other` into self.
+    fn add(&mut self, other: Self);
+
+    /// Add `this` and `delta` together, returning the new value.
+    fn add_owned(mut self, other: Self) -> Self
+    where
+        Self: Sized,
+    {
+        self.add(other);
+        self
+    }
+}
+
+/// Trait for Semiring Multiplication.
+pub trait Multiplication<Other> {
+    /// Multiply-assign `other` into self.
+    fn mul(&mut self, other: Self);
+
+    /// Multiply `this` and `delta` together, returning the new value.
+    fn mul_owned(mut self, other: Self) -> Self
+    where
+        Self: Sized,
+    {
+        self.mul(other);
+        self
+    }
+}
+
+/// Trait to check if semiring contains a zero.
+pub trait Zero<T> {
+    /// Returns the zero element of the semiring. Identify for the Addition operation.
+    fn zero(&self) -> T;
+}
+
+/// Trait to define a one in a semiring.
+pub trait One<T> {
+    /// Returns the one element of the semiring. Identity for the multiplication operation.
+    fn one(&self) -> T;
 }
 /// Trait for lattice merge (AKA "join" or "least upper bound").
 pub trait Merge<Other> {

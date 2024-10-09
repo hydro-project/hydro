@@ -27,7 +27,7 @@ fn map_filter() {
         var_expr!(),
         var_expr!(source),
         move |_ctx, var_args!(), var_args!(send)| {
-            for x in data.into_iter() {
+            for x in data {
                 send.give(Some(x));
             }
         },
@@ -38,7 +38,7 @@ fn map_filter() {
         var_expr!(map_in),
         var_expr!(map_out),
         |_ctx, var_args!(recv), var_args!(send)| {
-            for x in recv.take_inner().into_iter() {
+            for x in recv.take_inner() {
                 send.give(Some(3 * x + 1));
             }
         },
@@ -49,7 +49,7 @@ fn map_filter() {
         var_expr!(filter_in),
         var_expr!(filter_out),
         |_ctx, var_args!(recv), var_args!(send)| {
-            for x in recv.take_inner().into_iter() {
+            for x in recv.take_inner() {
                 if x % 2 == 0 {
                     send.give(Some(x));
                 }
@@ -64,7 +64,7 @@ fn map_filter() {
         var_expr!(sink),
         var_expr!(),
         move |_ctx, var_args!(recv), var_args!()| {
-            for x in recv.take_inner().into_iter() {
+            for x in recv.take_inner() {
                 (*inner_outputs).borrow_mut().push(x);
             }
         },
@@ -87,7 +87,7 @@ fn test_basic_variadic() {
     let val_ref = val.clone();
 
     df.add_subgraph_sink("sink", sink_recv, move |_ctx, recv| {
-        for v in recv.take_inner().into_iter() {
+        for v in recv.take_inner() {
             let old_val = val_ref.replace(Some(v));
             assert!(old_val.is_none()); // Only run once.
         }
@@ -121,7 +121,7 @@ fn test_basic_n_m() {
         vec![sink_recv],
         vec![],
         move |_ctx, recv, _send: &[&SendCtx<VecHandoff<usize>>]| {
-            for v in recv[0].take_inner().into_iter() {
+            for v in recv[0].take_inner() {
                 let old_val = val_ref.replace(Some(v));
                 assert!(old_val.is_none()); // Only run once.
             }
@@ -190,7 +190,7 @@ fn test_cycle() {
         distinct_in,
         distinct_out,
         move |_ctx, recv, send| {
-            for v in recv.take_inner().into_iter() {
+            for v in recv.take_inner() {
                 if seen.insert(v) {
                     send.give(Some(v));
                 }
@@ -203,7 +203,7 @@ fn test_cycle() {
         neighbors_in,
         neighbors_out,
         move |_ctx, recv, send| {
-            for v in recv.take_inner().into_iter() {
+            for v in recv.take_inner() {
                 if let Some(neighbors) = edges.get(&v) {
                     for &n in neighbors {
                         send.give(Some(n));
@@ -219,7 +219,7 @@ fn test_cycle() {
         tee_out1,
         tee_out2,
         |_ctx, recv, send1, send2| {
-            for v in recv.take_inner().into_iter() {
+            for v in recv.take_inner() {
                 send1.give(Some(v));
                 send2.give(Some(v));
             }
@@ -229,7 +229,7 @@ fn test_cycle() {
     let reachable_verts = Rc::new(RefCell::new(Vec::new()));
     let reachable_inner = reachable_verts.clone();
     df.add_subgraph_sink("sink", sink_in, move |_ctx, recv| {
-        for v in recv.take_inner().into_iter() {
+        for v in recv.take_inner() {
             (*reachable_inner).borrow_mut().push(v);
         }
     });

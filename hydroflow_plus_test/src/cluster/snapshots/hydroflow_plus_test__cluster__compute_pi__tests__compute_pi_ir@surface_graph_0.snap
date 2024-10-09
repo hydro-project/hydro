@@ -1,0 +1,20 @@
+---
+source: hydroflow_plus_test/src/cluster/compute_pi.rs
+expression: ir.surface_syntax_string()
+---
+1v1 = spin ();
+2v1 = flat_map (stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydroflow_plus :: __staged :: location :: * ; let batch_size = { use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size = 8192usize ; batch_size } ; move | _ | 0 .. batch_size }));
+3v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydroflow_plus :: __staged :: location :: * ; | _ | () }));
+4v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }));
+5v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }));
+6v1 = fold :: < 'tick > (stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }) , stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }));
+7v1 = map (| data | { hydroflow_plus :: runtime_support :: bincode :: serialize :: < (u64 , u64) > (& data) . unwrap () . into () });
+8v1 = dest_sink ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let c1_port = "port_0" ; let env = FAKE ; { env . port (c1_port) . connect_local_blocking :: < ConnectedDirect > () . into_sink () } });
+
+1v1 -> 2v1;
+2v1 -> 3v1;
+3v1 -> 4v1;
+4v1 -> 5v1;
+5v1 -> 6v1;
+7v1 -> 8v1;
+6v1 -> 7v1;

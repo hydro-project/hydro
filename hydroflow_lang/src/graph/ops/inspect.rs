@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    FlowPropArgs, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput,
     WriteContextArgs, RANGE_0, RANGE_1,
 };
 
@@ -12,7 +12,7 @@ use super::{
 /// mainly useful for debugging as in the example below, and it is generally an
 /// anti-pattern to provide a closure with side effects.
 ///
-/// > Note: The closure has access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closure has access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// ```hydroflow
 /// source_iter([1, 2, 3, 4])
@@ -34,10 +34,6 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: Some(|FlowPropArgs { flow_props_in, .. }, _diagnostics| {
-        // Preserve input flow properties.
-        Ok(vec![flow_props_in[0]])
-    }),
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,

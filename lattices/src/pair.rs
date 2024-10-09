@@ -1,17 +1,18 @@
-use std::cmp::Ordering::{self, *};
-
-use crate::{DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
+use crate::{DeepReveal, Lattice, LatticeBimorphism};
 
 /// Pair compound lattice.
 ///
 /// `LatA` and `LatB` specify the nested lattice types.
 ///
 /// When merging, both sub-lattices are always merged.
-#[derive(Copy, Clone, Debug, Default, Eq)]
+#[derive(Copy, Clone, Debug, Default, Eq, Lattice)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Pair<LatA, LatB> {
-    a: LatA,
-    b: LatB,
+    /// The "left" Lattice of the Pair lattice.
+    pub a: LatA,
+
+    /// The "right" Lattice of the Pair lattice.
+    pub b: LatB,
 }
 
 impl<LatA, LatB> Pair<LatA, LatB> {
@@ -53,90 +54,6 @@ where
     }
 }
 
-impl<LatASelf, LatAOther, LatBSelf, LatBOther> Merge<Pair<LatAOther, LatBOther>>
-    for Pair<LatASelf, LatBSelf>
-where
-    LatASelf: Merge<LatAOther>,
-    LatBSelf: Merge<LatBOther>,
-{
-    fn merge(&mut self, other: Pair<LatAOther, LatBOther>) -> bool {
-        // Do NOT use short-circuiting `||`.
-        self.a.merge(other.a) | self.b.merge(other.b)
-    }
-}
-
-impl<LatASelf, LatAOther, LatBSelf, LatBOther> LatticeFrom<Pair<LatAOther, LatBOther>>
-    for Pair<LatASelf, LatBSelf>
-where
-    LatASelf: LatticeFrom<LatAOther>,
-    LatBSelf: LatticeFrom<LatBOther>,
-{
-    fn lattice_from(other: Pair<LatAOther, LatBOther>) -> Self {
-        Self {
-            a: LatticeFrom::lattice_from(other.a),
-            b: LatticeFrom::lattice_from(other.b),
-        }
-    }
-}
-
-impl<LatASelf, LatAOther, LatBSelf, LatBOther> PartialOrd<Pair<LatAOther, LatBOther>>
-    for Pair<LatASelf, LatBSelf>
-where
-    LatASelf: PartialOrd<LatAOther>,
-    LatBSelf: PartialOrd<LatBOther>,
-{
-    fn partial_cmp(&self, other: &Pair<LatAOther, LatBOther>) -> Option<Ordering> {
-        let ord_a = self.a.partial_cmp(&other.a);
-        let ord_b = self.b.partial_cmp(&other.b);
-        if ord_a == ord_b {
-            ord_a
-        } else {
-            match (ord_a, ord_b) {
-                (ord_a, Some(Equal)) => ord_a,
-                (Some(Equal), ord_b) => ord_b,
-                _conflicting => None,
-            }
-        }
-    }
-}
-impl<LatASelf, LatAOther, LatBSelf, LatBOther> LatticeOrd<Pair<LatAOther, LatBOther>>
-    for Pair<LatASelf, LatBSelf>
-where
-    Self: PartialOrd<Pair<LatAOther, LatBOther>>,
-{
-}
-
-impl<LatASelf, LatAOther, LatBSelf, LatBOther> PartialEq<Pair<LatAOther, LatBOther>>
-    for Pair<LatASelf, LatBSelf>
-where
-    LatASelf: PartialEq<LatAOther>,
-    LatBSelf: PartialEq<LatBOther>,
-{
-    fn eq(&self, other: &Pair<LatAOther, LatBOther>) -> bool {
-        self.a == other.a && self.b == other.b
-    }
-}
-
-impl<Key, Val> IsBot for Pair<Key, Val>
-where
-    Key: IsBot,
-    Val: IsBot,
-{
-    fn is_bot(&self) -> bool {
-        self.a.is_bot() && self.b.is_bot()
-    }
-}
-
-impl<Key, Val> IsTop for Pair<Key, Val>
-where
-    Key: IsTop,
-    Val: IsTop,
-{
-    fn is_top(&self) -> bool {
-        self.a.is_top() && self.b.is_top()
-    }
-}
-
 /// Bimorphism which pairs up the two input lattices.
 #[derive(Default)]
 pub struct PairBimorphism;
@@ -153,9 +70,9 @@ mod test {
     use std::collections::HashSet;
 
     use super::*;
-    use crate::set_union::{SetUnionBTreeSet, SetUnionHashSet};
+    use crate::set_union::{SetUnionBTreeSet, SetUnionHashSet, SetUnionSingletonSet};
     use crate::test::{check_all, check_lattice_bimorphism};
-    use crate::WithTop;
+    use crate::{Merge, WithTop};
 
     #[test]
     fn consistency() {
@@ -199,6 +116,19 @@ mod test {
         }
 
         check_all(&test_vec);
+    }
+
+    #[test]
+    fn test_merge_direction() {
+        let src = Pair::new(
+            SetUnionSingletonSet::new_from(5),
+            SetUnionSingletonSet::new_from("hello"),
+        );
+        let mut dst = Pair::new(
+            SetUnionHashSet::new_from([1, 2]),
+            SetUnionBTreeSet::new_from(["world"]),
+        );
+        dst.merge(src);
     }
 
     #[test]

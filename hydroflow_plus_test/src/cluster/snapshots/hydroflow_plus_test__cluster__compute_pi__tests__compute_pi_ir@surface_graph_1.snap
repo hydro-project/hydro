@@ -1,0 +1,22 @@
+---
+source: hydroflow_plus_test/src/cluster/compute_pi.rs
+expression: ir.surface_syntax_string()
+---
+1v1 = source_stream ({ use hydroflow_plus :: __staged :: deploy :: deploy_runtime :: * ; let env = FAKE ; let p2_port = "port_0" ; { env . port (p2_port) . connect_local_blocking :: < ConnectedTagged < ConnectedDirect > > () . into_source () } });
+2v1 = map (| res | { let (id , b) = res . unwrap () ; (hydroflow_plus :: ClusterId :: < hydroflow_plus_test :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydroflow_plus :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) });
+3v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < (hydroflow_plus :: location :: ClusterId < hydroflow_plus_test :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydroflow_plus :: __staged :: stream :: * ; | (_ , b) | b }));
+4v1 = reduce :: < 'static > (stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , (u64 , u64) , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , (inside_batch , total_batch) | { * inside += inside_batch ; * total += total_batch ; } }));
+5v1 = source_interval (stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) }));
+6v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydroflow_plus :: __staged :: singleton :: * ; | _u | () }));
+7v1 = cross_singleton ();
+8v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydroflow_plus :: __staged :: singleton :: * ; | (d , _signal) | d }));
+9v1 = for_each (stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; } }));
+
+1v1 -> 2v1;
+2v1 -> 3v1;
+3v1 -> 4v1;
+5v1 -> 6v1;
+4v1 -> 7v1;
+6v1 -> 7v1;
+7v1 -> 8v1;
+8v1 -> 9v1;

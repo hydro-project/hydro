@@ -1,11 +1,11 @@
 use hydroflow::tokio_stream::wrappers::IntervalStream;
-use hydroflow::util::cli::{ConnectedDemux, ConnectedDirect, ConnectedSink};
+use hydroflow::util::deploy::{ConnectedDemux, ConnectedDirect, ConnectedSink};
 use hydroflow::util::serialize_to_bytes;
 use hydroflow_datalog::datalog;
 
 #[hydroflow::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
     let broadcast_port = ports
         .port("broadcast")
         .connect::<ConnectedDemux<ConnectedDirect>>()
@@ -25,12 +25,12 @@ async fn main() {
         r#"
         .input repeated `spin() -> flat_map(|_| to_repeat.iter().cloned())`
         .input periodic `source_stream(periodic) -> map(|_| ())`
-        .input peers `source_iter(peers.clone()) -> persist() -> map(|p| (p,))`
+        .input peers `source_iter(peers.clone()) -> persist::<'static>() -> map(|p| (p,))`
         .async broadcast `map(|(node_id, v)| (node_id, serialize_to_bytes(v))) -> dest_sink(broadcast_sink)` `null::<(String,)>()`
 
         broadcast@n(x) :~ repeated(x), periodic(), peers(n)
     "#
     );
 
-    hydroflow::util::cli::launch_flow(df).await;
+    hydroflow::util::deploy::launch_flow(df).await;
 }

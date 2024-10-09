@@ -1,4 +1,4 @@
-#![allow(missing_docs)]
+#![allow(clippy::allow_attributes, missing_docs, reason = "deprecated code")]
 
 use std::cell::RefCell;
 use std::marker::PhantomData;

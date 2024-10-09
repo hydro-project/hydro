@@ -1,10 +1,10 @@
-use hydroflow::util::cli::{ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource};
+use hydroflow::util::deploy::{ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource};
 use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 use hydroflow_datalog::datalog;
 
 #[hydroflow::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
     let vote_to_participant_port = ports
         .port("vote_to_participant")
         .connect::<ConnectedDemux<ConnectedDirect>>()
@@ -34,16 +34,16 @@ async fn main() {
 
     let mut df = datalog!(
         r#"
-        .input clientIn `source_iter([("vote".to_string(),),]) -> persist()`
+        .input clientIn `source_iter([("vote".to_string(),),]) -> persist::<'static>()`
         .output clientOut `for_each(|(i,msg):(u32,String,)| println!("committed {:?}: {:?}", i, msg))`
 
         # EDBs
-        .input startIndex `source_iter([(1u32,),]) -> persist()`
-        .input participants `source_iter(peers.clone()) -> map(|p| (p,)) -> persist()`
-        .input success `source_iter([(true,),]) -> persist()`
-        .input reject `source_iter([(false,),]) -> persist()`
-        .input commitInstruct `source_iter([(true,),]) -> persist()`
-        .input rollbackInstruct `source_iter([(false,),]) -> persist()`
+        .input startIndex `source_iter([(1u32,),]) -> persist::<'static>()`
+        .input participants `source_iter(peers.clone()) -> map(|p| (p,)) -> persist::<'static>()`
+        .input success `source_iter([(true,),]) -> persist::<'static>()`
+        .input reject `source_iter([(false,),]) -> persist::<'static>()`
+        .input commitInstruct `source_iter([(true,),]) -> persist::<'static>()`
+        .input rollbackInstruct `source_iter([(false,),]) -> persist::<'static>()`
 
         .async voteToParticipant `map(|(node_id, v):(u32,(u32,String))| (node_id, serialize_to_bytes(v))) -> dest_sink(vote_to_participant_sink)` `null::<(u32,String,)>()`
         .async voteFromParticipant `null::<(u32,String,bool,u32,)>()` `source_stream(vote_from_participant_source) -> map(|v| deserialize_from_bytes::<(u32,String,bool,u32,)>(v.unwrap()).unwrap())`

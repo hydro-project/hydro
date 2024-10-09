@@ -5,23 +5,24 @@ version = "0.0.0"
 edition = "2021"
 license = "Apache-2.0"
 
+[lints]
+workspace = true
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
 [dev-dependencies]
-criterion = { version = "0.5", features = [ "async_tokio", "html_reports" ] }
-hydroflow = { path = "../hydroflow" }
-lazy_static = "1.4.0"
-futures = "0.3"
-# pprof = { version = "0.6", features = [ "flamegraph", "criterion" ] }
-rand = "0.8.4"
+criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
+hydroflow = { path = "../hydroflow", features = [ "debugging" ] }
+nameof = "1.0.0"
+rand = "0.8.0"
 rand_distr = "0.4.3"
-seq-macro = "0.2"
+seq-macro = "0.2.0"
 timely = { package = "timely-master", version = "0.13.0-dev.1" }
 differential-dataflow = { package = "differential-dataflow-master", version = "0.13.0-dev.1" } # git = "https://github.com/TimelyDataflow/differential-dataflow.git", rev = "7bc5338a977fe1d95b96a9ba84ba8cd460e0cdd7" } # "0.12"
-tokio = { version = "1.0", features = [ "rt-multi-thread" ] }
-static_assertions = "1.1.0"
+tokio = { version = "1.29.0", features = [ "rt-multi-thread" ] }
+static_assertions = "1.0.0"
 
 [[bench]]
 name = "arithmetic"
@@ -64,5 +65,5 @@ name = "symmetric_hash_join"
 harness = false
 
 [[bench]]
-name = "futures"
+name = "words_diamond"
 harness = false

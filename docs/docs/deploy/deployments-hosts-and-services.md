@@ -30,16 +30,16 @@ Hydro Deploy also supports deploying to cloud VMs, currently supporting Google C
 ### Google Cloud Platform
 To deploy to Google Cloud Platform, you will need to install Terraform and the Google Cloud SDK (see [install](./install)). You will also need to create a Google Cloud project.
 
-The first step is to create a VPC, which will enable network connections for our services. We can do this by creating a `hydro.GCPNetwork` object:
+The first step is to create a VPC, which will enable network connections for our services. We can do this by creating a `hydro.GcpNetwork` object:
 ```python
-network = deployment.GCPNetwork(
+network = deployment.GcpNetwork(
     project="my-project"
 )
 ```
 
-Then, we can launch a VM on this network using `hydro.GCPComputeEngineHost`:
+Then, we can launch a VM on this network using `hydro.GcpComputeEngineHost`:
 ```python
-host = deployment.GCPComputeEngineHost(
+host = deployment.GcpComputeEngineHost(
     name="my-host",
     network=network,
     machine_type="e2-micro",

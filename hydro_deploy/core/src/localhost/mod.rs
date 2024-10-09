@@ -1,18 +1,23 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Context, Result};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
-use hydroflow_cli_integration::ServerBindConfig;
-use tokio::sync::RwLock;
+use hydroflow_deploy_integration::ServerBindConfig;
+use nameof::name_of;
 
 use super::{
     ClientStrategy, Host, HostTargetType, LaunchedBinary, LaunchedHost, ResourceBatch,
     ResourceResult, ServerStrategy,
 };
+use crate::hydroflow_crate::build::BuildOutput;
+use crate::hydroflow_crate::tracing_options::TracingOptions;
+use crate::progress::ProgressTracker;
+use crate::HostStrategyGetter;
 
 pub mod launched_binary;
 pub use launched_binary::*;
@@ -45,9 +50,9 @@ impl Host for LocalhostHost {
         HostTargetType::Local
     }
 
-    fn request_port(&mut self, _bind_type: &ServerStrategy) {}
+    fn request_port(&self, _bind_type: &ServerStrategy) {}
     fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {}
-    fn request_custom_binary(&mut self) {}
+    fn request_custom_binary(&self) {}
 
     fn id(&self) -> usize {
         self.id
@@ -57,25 +62,18 @@ impl Host for LocalhostHost {
         self
     }
 
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>> {
-        Some(Arc::new(LaunchedLocalhost {}))
+        Some(Arc::new(LaunchedLocalhost))
     }
 
-    async fn provision(&mut self, _resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
-        Arc::new(LaunchedLocalhost {})
+    fn provision(&self, _resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
+        Arc::new(LaunchedLocalhost)
     }
 
     fn strategy_as_server<'a>(
         &'a self,
         connection_from: &dyn Host,
-    ) -> Result<(
-        ClientStrategy<'a>,
-        Box<dyn FnOnce(&mut dyn std::any::Any) -> ServerStrategy>,
-    )> {
+    ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)> {
         if self.client_only {
             anyhow::bail!("Localhost cannot be a server if it is client only")
         }
@@ -115,7 +113,7 @@ impl Host for LocalhostHost {
     }
 }
 
-struct LaunchedLocalhost {}
+struct LaunchedLocalhost;
 
 #[async_trait]
 impl LaunchedHost for LaunchedLocalhost {
@@ -147,45 +145,127 @@ impl LaunchedHost for LaunchedLocalhost {
         }
     }
 
-    async fn copy_binary(&self, _binary: Arc<(String, Vec<u8>, PathBuf)>) -> Result<()> {
+    async fn copy_binary(&self, _binary: &BuildOutput) -> Result<()> {
         Ok(())
     }
 
     async fn launch_binary(
         &self,
         id: String,
-        binary: Arc<(String, Vec<u8>, PathBuf)>,
+        binary: &BuildOutput,
         args: &[String],
-        perf: Option<PathBuf>,
-    ) -> Result<Arc<RwLock<dyn LaunchedBinary>>> {
-        let mut command = if let Some(perf) = perf {
-            println!("Profiling binary with perf");
-            let mut tmp = Command::new("perf");
-            tmp.args(["record", "-F", "5", "--call-graph", "dwarf,64000", "-o"])
-                .arg(&perf)
-                .arg(&binary.2)
-                .args(args);
-            tmp
+        tracing: Option<TracingOptions>,
+    ) -> Result<Box<dyn LaunchedBinary>> {
+        let mut command = if let Some(tracing) = tracing.as_ref() {
+            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                // dtrace
+                ProgressTracker::println(
+                    format!("[{id} tracing] Profiling binary with `dtrace`.",),
+                );
+                let dtrace_outfile = tracing.dtrace_outfile.as_ref().ok_or_else(|| {
+                    anyhow!(
+                        "`{}` must be set for `dtrace` on localhost.",
+                        name_of!(dtrace_outfile in TracingOptions)
+                    )
+                })?;
+
+                let mut command = Command::new("dtrace");
+                command
+                    .arg("-o")
+                    .arg(dtrace_outfile)
+                    .arg("-n")
+                    .arg(format!(
+                        "profile-{} /pid == $target/ {{ @[ustack()] = count(); }}",
+                        tracing.frequency
+                    ))
+                    .arg("-c")
+                    .arg({
+                        // TODO(mingwei): use std `intersperse` when stabilized.
+                        let inner_command = itertools::Itertools::intersperse(
+                            std::iter::once(binary.bin_path.to_str().unwrap())
+                                .chain(args.iter().map(Deref::deref))
+                                .map(|s| shell_escape::unix::escape(s.into())),
+                            Cow::Borrowed(" "),
+                        )
+                        .collect::<String>();
+                        &*shell_escape::unix::escape(inner_command.into())
+                    });
+                command
+            }
+            // else if cfg!(target_family = "windows") {
+            //     // blondie_dtrace
+            //     ProgressTracker::println(&format!(
+            //         "[{id} tracing] Profiling binary with `blondie`. `TracingOptions::frequency` is ignored. Ensure that this is run as admin.",
+            //     ));
+            //     ProgressTracker::println(&format!(
+            //         "[{id} tracing] Install `blondie` via `cargo install blondie --all-features`.",
+            //     ));
+            //     let _ = tracing;
+            //     let mut command = Command::new("blondie");
+            //     command
+            //         .arg("-o")
+            //         .arg(format!(
+            //             "./blondie-{}.stacks",
+            //             nanoid::nanoid!(5), // TODO!
+            //         ))
+            //         .arg("folded-text")
+            //         .arg(&binary.bin_path)
+            //         .args(args);
+            //     command
+            // }
+            else if cfg!(target_family = "unix") {
+                // perf
+                ProgressTracker::println(format!("[{} tracing] Tracing binary with `perf`.", id));
+                let perf_outfile = tracing.perf_raw_outfile.as_ref().ok_or_else(|| {
+                    anyhow!(
+                        "`{}` must be set for `perf` on localhost.",
+                        name_of!(perf_raw_outfile in TracingOptions)
+                    )
+                })?;
+
+                let mut command = Command::new("perf");
+                command
+                    .args([
+                        "record",
+                        "-F",
+                        &tracing.frequency.to_string(),
+                        "-e",
+                        "cycles:u",
+                        "--call-graph",
+                        "dwarf,65528",
+                        "-o",
+                    ])
+                    .arg(perf_outfile)
+                    .arg(&binary.bin_path)
+                    .args(args);
+                command
+            } else {
+                bail!(
+                    "Unknown OS for perf/dtrace tracing: {}",
+                    std::env::consts::OS
+                );
+            }
         } else {
-            let mut tmp = Command::new(&binary.2);
-            tmp.args(args);
-            tmp
+            let mut command = Command::new(&binary.bin_path);
+            command.args(args);
+            command
         };
 
         command
-            .args(args)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
-        #[cfg(not(unix))]
+        #[cfg(not(target_family = "unix"))]
         command.kill_on_drop(true);
 
-        let child = command.spawn()?;
+        ProgressTracker::println(format!("[{}] running command: `{:?}`", id, command));
 
-        Ok(Arc::new(RwLock::new(LaunchedLocalhostBinary::new(
-            child, id,
-        ))))
+        let child = command
+            .spawn()
+            .with_context(|| format!("Failed to execute command: {:?}", command))?;
+
+        Ok(Box::new(LaunchedLocalhostBinary::new(child, id, tracing)))
     }
 
     async fn forward_port(&self, addr: &SocketAddr) -> Result<SocketAddr> {

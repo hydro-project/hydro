@@ -42,7 +42,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         }
         _ => None,
     },
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    context,
                    hydroflow,

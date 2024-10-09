@@ -3,8 +3,7 @@ use std::ops::Deref;
 
 use hydroflow_lang::diagnostic::{Diagnostic, Level};
 use hydroflow_lang::graph::{
-    eliminate_extra_unions_tees, partition_graph, propagate_flow_props, FlatGraphBuilder,
-    HydroflowGraph,
+    eliminate_extra_unions_tees, partition_graph, FlatGraphBuilder, HydroflowGraph,
 };
 use hydroflow_lang::parse::{
     HfStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
@@ -193,7 +192,7 @@ pub fn gen_hydroflow_graph(
 
         let output_pipeline: Pipeline = parse_pipeline(&hf_code.code, &get_span)?;
         let output_pipeline = if persists.contains(&target.name) {
-            parse_quote_spanned! {get_span(target.span)=> persist() -> #output_pipeline}
+            parse_quote_spanned! {get_span(target.span)=> persist::<'static>() -> #output_pipeline}
         } else {
             output_pipeline
         };
@@ -244,7 +243,7 @@ pub fn gen_hydroflow_graph(
         let static_expression: syn::Expr = parse_static(&hf_code.code, &get_span)?;
 
         flat_graph_builder.add_statement(parse_quote_spanned! {get_span(target.span)=>
-            source_iter(#static_expression) -> persist() -> [#my_union_index_lit] #name;
+            source_iter(#static_expression) -> persist::<'static>() -> [#my_union_index_lit] #name;
         });
     }
 
@@ -326,14 +325,10 @@ fn handle_errors(
 }
 
 pub fn hydroflow_graph_to_program(flat_graph: HydroflowGraph, root: TokenStream) -> TokenStream {
-    let mut partitioned_graph =
+    let partitioned_graph =
         partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
     let mut diagnostics = Vec::new();
-    // Propagate flow properties throughout the graph.
-    // TODO(mingwei): Should this be done at a flat graph stage instead?
-    let _ = propagate_flow_props::propagate_flow_props(&mut partitioned_graph, &mut diagnostics);
-
     let code_tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
     assert_eq!(
         0,
@@ -344,7 +339,7 @@ pub fn hydroflow_graph_to_program(flat_graph: HydroflowGraph, root: TokenStream)
     code_tokens
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "internal code")]
 fn generate_rule(
     plan: JoinPlan<'_>,
     rule: &rust_sitter::Spanned<Rule>,
@@ -712,7 +707,7 @@ fn apply_aggregations(
 
     if agg_exprs.is_empty() {
         if out_expanded.persisted && !consumer_is_persist {
-            parse_quote!(#pre_fold_keyed_map -> #after_group_pipeline -> persist())
+            parse_quote!(#pre_fold_keyed_map -> #after_group_pipeline -> persist::<'static>())
         } else {
             parse_quote!(#pre_fold_keyed_map -> #after_group_pipeline)
         }
@@ -833,7 +828,7 @@ mod tests {
 
             let flat_graph_ref = &flat_graph;
             insta::with_settings!({snapshot_suffix => "surface_graph"}, {
-                insta::assert_display_snapshot!(flat_graph_ref.surface_syntax_string());
+                insta::assert_snapshot!(flat_graph_ref.surface_syntax_string());
             });
 
             let tokens = hydroflow_graph_to_program(flat_graph, quote::quote! { hydroflow });
@@ -845,7 +840,7 @@ mod tests {
             };
 
             insta::with_settings!({snapshot_suffix => "datalog_program"}, {
-                insta::assert_display_snapshot!(
+                insta::assert_snapshot!(
                     prettyplease::unparse(&wrapped)
                 );
             });
@@ -1123,7 +1118,7 @@ mod tests {
             .persist ints2
 
             .input ints3 `source_stream(ints3)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
             .output result2 `for_each(|v| result2.send(v).unwrap())`
             .output result3 `for_each(|v| result3.send(v).unwrap())`
@@ -1149,9 +1144,9 @@ mod tests {
             .persist ints1
 
             .input ints2 `source_stream(ints2)`
-            
+
             ints1(a) :- ints2(a)
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(count(a)) :- ints1(a)
@@ -1163,9 +1158,9 @@ mod tests {
     fn test_wildcard_join_count() {
         test_snapshots!(
             r#"
-            .input ints1 `source_stream(ints1)` 
+            .input ints1 `source_stream(ints1)`
             .input ints2 `source_stream(ints2)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
             .output result2 `for_each(|v| result2.send(v).unwrap())`
 
@@ -1179,8 +1174,8 @@ mod tests {
     fn test_index() {
         test_snapshots!(
             r#"
-            .input ints `source_stream(ints)` 
-            
+            .input ints `source_stream(ints)`
+
             .output result `for_each(|v| result.send(v).unwrap())`
             .output result2 `for_each(|v| result2.send(v).unwrap())`
             .output result3 `for_each(|v| result3.send(v).unwrap())`
@@ -1206,9 +1201,9 @@ mod tests {
     fn test_collect_vec() {
         test_snapshots!(
             r#"
-            .input ints1 `source_stream(ints1)` 
+            .input ints1 `source_stream(ints1)`
             .input ints2 `source_stream(ints2)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(collect_vec(a, b)) :- ints1(a), ints2(b)
@@ -1221,7 +1216,7 @@ mod tests {
         test_snapshots!(
             r#"
             .input ints1 `source_stream(ints1)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(a, b) :- ints1(a, *b)
@@ -1234,7 +1229,7 @@ mod tests {
         test_snapshots!(
             r#"
             .input ints1 `source_stream(ints1)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(a, b) :- ints1((a, b))
@@ -1247,7 +1242,7 @@ mod tests {
         test_snapshots!(
             r#"
             .input ints1 `source_stream(ints1)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(a, b, c, d) :- ints1((a, b), (c, d))
@@ -1260,7 +1255,7 @@ mod tests {
         test_snapshots!(
             r#"
             .input ints1 `source_stream(ints1)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(a, b) :- ints1(*(a, b))
@@ -1273,7 +1268,7 @@ mod tests {
         test_snapshots!(
             r#"
             .input ints1 `source_stream(ints1)`
-            
+
             .output result `for_each(|v| result.send(v).unwrap())`
 
             result(a, b) :- ints1((*a, *b))

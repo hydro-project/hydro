@@ -2,7 +2,7 @@
 
 use itertools::Itertools;
 use proc_macro2::{Group, Ident, TokenStream, TokenTree};
-use quote::quote;
+use quote::quote_spanned;
 use syn::punctuated::Punctuated;
 use syn::{Expr, Token};
 
@@ -32,16 +32,22 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_idents: impl IntoIterator<Item = Ident>,
+    context: &Ident,
 ) -> Punctuated<Expr, Token![,]> {
     let mut resolved_idents_iter = resolved_idents.into_iter();
-    let processed = process_singletons(tokens, &mut |_singleton_ident| {
-        let resolved_ident = resolved_idents_iter.next().unwrap();
-        TokenTree::Group(Group::new(
+    let processed = process_singletons(tokens, &mut |singleton_ident| {
+        let span = singleton_ident.span();
+        let context = Ident::new(&context.to_string(), span.resolved_at(context.span()));
+        let mut resolved_ident = resolved_idents_iter.next().unwrap();
+        resolved_ident.set_span(span);
+        let mut group = Group::new(
             proc_macro2::Delimiter::Parenthesis,
-            quote! {
-                *context.state_ref(#resolved_ident).borrow_mut()
+            quote_spanned! {span=>
+                *#context.state_ref(#resolved_ident).borrow_mut()
             },
-        ))
+        );
+        group.set_span(singleton_ident.span());
+        TokenTree::Group(group)
     });
     parse_terminated(processed).unwrap()
 }
@@ -53,8 +59,9 @@ pub fn postprocess_singletons_handles(
     resolved_idents: impl IntoIterator<Item = Ident>,
 ) -> Punctuated<Expr, Token![,]> {
     let mut resolved_idents_iter = resolved_idents.into_iter();
-    let processed = process_singletons(tokens, &mut |_singleton_ident| {
-        let resolved_ident = resolved_idents_iter.next().unwrap();
+    let processed = process_singletons(tokens, &mut |singleton_ident| {
+        let mut resolved_ident = resolved_idents_iter.next().unwrap();
+        resolved_ident.set_span(singleton_ident.span().resolved_at(resolved_ident.span()));
         TokenTree::Ident(resolved_ident)
     });
     parse_terminated(processed).unwrap()
@@ -83,9 +90,17 @@ fn process_singletons(
                 TokenTree::Punct(punct) => {
                     if '#' == punct.as_char() && matches!(iter.peek(), Some(TokenTree::Ident(_))) {
                         // Found a singleton.
-                        let Some(TokenTree::Ident(singleton_ident)) = iter.next() else {
+                        let Some(TokenTree::Ident(mut singleton_ident)) = iter.next() else {
                             unreachable!()
                         };
+                        {
+                            // Include the `#` in the span.
+                            let span = singleton_ident
+                                .span()
+                                .join(punct.span())
+                                .unwrap_or(singleton_ident.span());
+                            singleton_ident.set_span(span.resolved_at(singleton_ident.span()));
+                        }
                         (map_singleton_fn)(singleton_ident)
                     } else {
                         TokenTree::Punct(punct)

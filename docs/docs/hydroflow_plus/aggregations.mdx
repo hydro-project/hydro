@@ -21,7 +21,7 @@ To specify this **window**, Hydroflow+ offers two operators, `tick_batch()` and 
 For example, consider a pipelined aggregation across two processes. We can sum up elements on the first process in a batched manner using `tick_batch()`, then sum up the results on the second process in an unbounded manner using `all_ticks()`:
 
 ```rust
-let root_stream = flow.source_stream(&process, q!(1..=10));
+let root_stream = process.source_stream(q!(1..=10));
 root_stream
     .tick_batch()
     .fold(q!(|| 0), q!(|acc, x| *acc += x))

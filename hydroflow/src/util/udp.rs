@@ -13,9 +13,8 @@ use tokio_util::udp::UdpFramed;
 pub type UdpFramedSink<Codec, Item> = SplitSink<UdpFramed<Codec>, (Item, SocketAddr)>;
 /// A framed UDP `Stream` (receiving).
 pub type UdpFramedStream<Codec> = SplitStream<UdpFramed<Codec>>;
-/// Helper creates a UDP `Stream` and `Sink` from the given socket, using the given `Codec` to
-/// handle delineation between inputs/outputs. Also returns the bound UdpSocket, which will be
-/// different than the input UdpSocket if the input socket was set to port 0.
+/// Returns a UDP `Stream`, `Sink`, and address for the given socket, using the given `Codec` to
+/// handle delineation between inputs/outputs.
 pub fn udp_framed<Codec, Item>(
     socket: UdpSocket,
     codec: Codec,

@@ -19,7 +19,6 @@ where
     K: Key,
 {
     /// Creates a new `UnionFind`, same as [`Default::default()`].
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::default()
     }

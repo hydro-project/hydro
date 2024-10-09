@@ -1,18 +1,21 @@
 [package]
 name = "stageleft"
 publish = true
-version = "0.2.1"
+version = "0.4.0"
 edition = "2021"
 license = "Apache-2.0"
 documentation = "https://docs.rs/stageleft/"
 description = "Type-safe staged programming for Rust"
 
+[lints]
+workspace = true
+
 [lib]
 path = "src/lib.rs"
 
 [dependencies]
-quote = "1.0.0"
-syn = { version = "2.0.0", features = [ "parsing", "extra-traits" ] }
-proc-macro2 = "1.0.57"
-proc-macro-crate = "1.1.0"
-stageleft_macro = { path = "../stageleft_macro", version = "^0.1.1" }
+quote = "1.0.35"
+syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit-mut" ] }
+proc-macro2 = "1.0.74"
+proc-macro-crate = "1.0.0"
+stageleft_macro = { path = "../stageleft_macro", version = "^0.3.0" }

@@ -14,7 +14,6 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
         // Setup network channels.
         network_send = union() -> dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)
-            -> _upcast(Some(Delta))
             -> map(Result::unwrap)
             -> inspect(|(msg, addr)| println!("Message received {:?} from {:?}", msg, addr))
             -> map(|(msg, addr)| KvsMessageWithAddr::from_message(msg, addr))
@@ -28,7 +27,7 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
 
         // Join PUTs and GETs by key
         writes -> map(|(key, value, _addr)| (key, value)) -> writes_store;
-        writes_store = persist() -> tee();
+        writes_store = persist::<'static>() -> tee();
         writes_store -> [0]lookup;
         gets -> [1]lookup;
         lookup = join();
@@ -40,7 +39,7 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
             -> network_send;
 
         // Join as a peer if peer_server is set.
-        source_iter_delta(peer_server) -> map(|peer_addr| (KvsMessage::PeerJoin, peer_addr)) -> network_send;
+        source_iter(peer_server) -> map(|peer_addr| (KvsMessage::PeerJoin, peer_addr)) -> network_send;
 
         // Peers: When a new peer joins, send them all data.
         writes_store -> [0]peer_join;
@@ -51,8 +50,8 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
 
         // Outbound gossip. Send updates to peers.
         peers -> peer_store;
-        source_iter_delta(peer_server) -> peer_store;
-        peer_store = union() -> persist();
+        source_iter(peer_server) -> peer_store;
+        peer_store = union() -> persist::<'static>();
         writes -> [0]outbound_gossip;
         peer_store -> [1]outbound_gossip;
         outbound_gossip = cross_join()
@@ -62,6 +61,7 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
             -> network_send;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

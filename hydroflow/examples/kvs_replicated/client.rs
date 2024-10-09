@@ -24,6 +24,7 @@ pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts
         inbound_chan -> for_each(|(response, _addr): (KvsMessage, _)| println!("Got a Response: {:?}", response));
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

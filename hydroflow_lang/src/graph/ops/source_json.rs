@@ -8,7 +8,7 @@ use super::{
 /// > 0 input streams, 1 output stream
 ///
 /// > Arguments: An [`AsRef`](https://doc.rust-lang.org/std/convert/trait.AsRef.html)`<`[`Path`](https://doc.rust-lang.org/nightly/std/path/struct.Path.html)`>`
-/// for a file to read as json. This will emit the parsed value one time.
+/// > for a file to read as json. This will emit the parsed value one time.
 ///
 /// `source_json` may take one generic type argument, the type of the value to be parsed, which must implement [`Deserialize`](https://docs.rs/serde/latest/serde/de/trait.Deserialize.html).
 ///
@@ -30,7 +30,6 @@ pub const SOURCE_JSON: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
@@ -52,7 +51,7 @@ pub const SOURCE_JSON: OperatorConstraints = OperatorConstraints {
             // reader: https://github.com/serde-rs/json/issues/160
             let mut #ident_jsonread = {
                 let string = ::std::fs::read_to_string(#arguments).unwrap();
-                let value #generic_type = #root::serde_json::from_str(&*string).unwrap();
+                let value #generic_type = #root::serde_json::from_str(&string).unwrap();
                 ::std::iter::once(value)
             };
         };

@@ -1,6 +1,6 @@
 ---
 source: hydroflow_datalog_core/src/lib.rs
-expression: "prettyplease::unparse(&wrapped)"
+expression: "prettyplease :: unparse(& wrapped)"
 ---
 fn main() {
     {
@@ -9,7 +9,7 @@ fn main() {
             use hydroflow::{var_expr, var_args};
             let mut df = hydroflow::scheduled::graph::Hydroflow::new();
             df.__assign_meta_graph(
-                "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints1)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints2)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints3)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result2 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result3 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result4 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'static , hydroflow :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'tick , hydroflow :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ , _ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 0 . 1 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ , _ ,) | (() , (_v . 0 , _v . 1 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ , _ ,) | ((row . 0 , row . 1 , row . 2 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ , _ ,) , _) | (g . 0 , g . 1 , g . 2 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"anti_join ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : ((_ ,) , ()) | (kv . 0 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | ((_v . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"persist ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (_v . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist ()\"},\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":34,\"version\":1},{\"idx\":14,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":28,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":25,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":35,\"version\":1},{\"idx\":11,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":22,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":19,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":36,\"version\":1},{\"idx\":6,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":13,\"version\":3},{\"idx\":33,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":16,\"version\":3},{\"idx\":31,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":19,\"version\":3},{\"idx\":10,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":22,\"version\":3},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":25,\"version\":3},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":28,\"version\":3},{\"idx\":3,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1},{\"idx\":16,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":13,\"version\":3}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":6,\"version\":3},{\"idx\":12,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":11,\"version\":3},{\"idx\":7,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":43,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":29,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":26,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":47,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":48,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":14,\"version\":3},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":23,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":56,\"version\":1},{\"idx\":20,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":17,\"version\":3},{\"idx\":65,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":26,\"version\":3},{\"idx\":44,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":20,\"version\":3},{\"idx\":51,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":29,\"version\":3},{\"idx\":43,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":64,\"version\":1},{\"idx\":17,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":23,\"version\":3},{\"idx\":53,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"2\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[{\"Int\":\"3\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":1}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":9,\"version\":1},\"version\":1},{\"value\":{\"idx\":10,\"version\":1},\"version\":1},{\"value\":{\"idx\":11,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":5,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":43,\"version\":1},{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1},{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":34,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":35,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":36,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":1,\"version\":1},{\"value\":2,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints1_insert\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints2_insert\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result2_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result4_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_persist_insert\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_2\",\"version\":1},{\"value\":\"join_2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_4\",\"version\":1},{\"value\":\"join_4\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_7\",\"version\":1},{\"value\":\"join_7\",\"version\":1}],\"flow_props\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":14,\"lattice_flow_type\":null},\"version\":3},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":40,\"lattice_flow_type\":null},\"version\":3},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":33,\"lattice_flow_type\":null},\"version\":3},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":10,\"lattice_flow_type\":null},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":14,\"lattice_flow_type\":null},\"version\":1},{\"value\":{\"star_ord\":10,\"lattice_flow_type\":null},\"version\":1},{\"value\":{\"star_ord\":10,\"lattice_flow_type\":null},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":14,\"lattice_flow_type\":null},\"version\":1},{\"value\":{\"star_ord\":14,\"lattice_flow_type\":null},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":22,\"lattice_flow_type\":null},\"version\":1},{\"value\":{\"star_ord\":22,\"lattice_flow_type\":null},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":24,\"lattice_flow_type\":null},\"version\":3},{\"value\":{\"star_ord\":24,\"lattice_flow_type\":null},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"star_ord\":24,\"lattice_flow_type\":null},\"version\":3}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}",
+                "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints1)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints2)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints3)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result2 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result3 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result4 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'static , hydroflow :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'tick , hydroflow :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ , _ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 0 . 1 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ , _ ,) | (() , (_v . 0 , _v . 1 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ , _ ,) | ((row . 0 , row . 1 , row . 2 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ , _ ,) , _) | (g . 0 , g . 1 , g . 2 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"anti_join ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : ((_ ,) , ()) | (kv . 0 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | ((_v . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (_v . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":34,\"version\":1},{\"idx\":14,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":28,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":25,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":35,\"version\":1},{\"idx\":11,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":22,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":19,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":36,\"version\":1},{\"idx\":6,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":13,\"version\":3},{\"idx\":33,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":16,\"version\":3},{\"idx\":31,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":19,\"version\":3},{\"idx\":10,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":22,\"version\":3},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":25,\"version\":3},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":28,\"version\":3},{\"idx\":3,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1},{\"idx\":16,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":13,\"version\":3}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":6,\"version\":3},{\"idx\":12,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":11,\"version\":3},{\"idx\":7,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":43,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":29,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":26,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":47,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":48,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":14,\"version\":3},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":23,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":56,\"version\":1},{\"idx\":20,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":17,\"version\":3},{\"idx\":65,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":26,\"version\":3},{\"idx\":44,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":20,\"version\":3},{\"idx\":51,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":29,\"version\":3},{\"idx\":43,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":64,\"version\":1},{\"idx\":17,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":23,\"version\":3},{\"idx\":53,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"2\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[{\"Int\":\"3\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":1}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":9,\"version\":1},\"version\":1},{\"value\":{\"idx\":10,\"version\":1},\"version\":1},{\"value\":{\"idx\":11,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":5,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":43,\"version\":1},{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1},{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":34,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":35,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":36,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":1,\"version\":1},{\"value\":2,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints1_insert\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints2_insert\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result2_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result4_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_persist_insert\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_2\",\"version\":1},{\"value\":\"join_2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_4\",\"version\":1},{\"value\":\"join_4\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_7\",\"version\":1},{\"value\":\"join_7\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}",
             );
             df.__assign_diagnostics("[]");
             let (hoff_6v3_send, hoff_6v3_recv) = df
@@ -138,30 +138,32 @@ fn main() {
                 );
             let sg_4v1_node_41v1_joindata_lhs = df
                 .add_state(
-                    std::cell::RefCell::new(
+                    ::std::cell::RefCell::new(
                         hydroflow::compiled::pull::HalfMultisetJoinState::default(),
                     ),
                 );
             let sg_4v1_node_41v1_joindata_rhs = df
                 .add_state(
-                    std::cell::RefCell::new(
+                    ::std::cell::RefCell::new(
                         hydroflow::compiled::pull::HalfMultisetJoinState::default(),
                     ),
                 );
             let sg_4v1_node_45v1_joindata_lhs = df
                 .add_state(
-                    std::cell::RefCell::new(
+                    ::std::cell::RefCell::new(
                         hydroflow::compiled::pull::HalfMultisetJoinState::default(),
                     ),
                 );
             let sg_4v1_node_45v1_joindata_rhs = df
                 .add_state(
-                    std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::new_init(
-                            hydroflow::compiled::pull::HalfMultisetJoinState::default(),
-                        ),
+                    ::std::cell::RefCell::new(
+                        hydroflow::compiled::pull::HalfMultisetJoinState::default(),
                     ),
                 );
+            df.set_state_tick_hook(
+                sg_4v1_node_45v1_joindata_rhs,
+                |rcell| hydroflow::util::clear::Clear::clear(rcell.get_mut()),
+            );
             let sg_4v1_node_15v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
@@ -171,7 +173,7 @@ fn main() {
                         >::default(),
                     ),
                 );
-            let sg_5v1_node_53v1_persistdata = df
+            let singleton_op_53v1 = df
                 .add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
             let sg_5v1_node_51v1_antijoindata_neg = df
                 .add_state(
@@ -240,7 +242,7 @@ fn main() {
                         >::default(),
                     ),
                 );
-            let sg_6v1_node_61v1_persistdata = df
+            let singleton_op_61v1 = df
                 .add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
             let sg_7v1_node_30v1_uniquedata = df
                 .add_state(
@@ -273,7 +275,7 @@ fn main() {
                         >::default(),
                     ),
                 );
-            let sg_7v1_node_68v1_persistdata = df
+            let singleton_op_68v1 = df
                 .add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
             let sg_8v1_node_7v1_uniquedata = df
                 .add_state(
@@ -297,7 +299,7 @@ fn main() {
                         >::default(),
                     ),
                 );
-            let sg_8v1_node_55v1_persistdata = df
+            let singleton_op_55v1 = df
                 .add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
             df.add_subgraph_stratified(
                 "Subgraph GraphSubgraphId(9v1)",
@@ -323,7 +325,7 @@ fn main() {
                     let op_34v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_34v1__source_stream__loc_unknown_start_2_26_end_2_46<
+                        pub fn op_34v1__source_stream__loc_nopath_2_26_2_46<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -350,7 +352,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_34v1__source_stream__loc_unknown_start_2_26_end_2_46(op_34v1)
+                        op_34v1__source_stream__loc_nopath_2_26_2_46(op_34v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_9v1<
@@ -387,7 +389,7 @@ fn main() {
                     let op_35v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_35v1__source_stream__loc_unknown_start_5_26_end_5_46<
+                        pub fn op_35v1__source_stream__loc_nopath_5_26_5_46<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -414,7 +416,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_35v1__source_stream__loc_unknown_start_5_26_end_5_46(op_35v1)
+                        op_35v1__source_stream__loc_nopath_5_26_5_46(op_35v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_10v1<
@@ -451,7 +453,7 @@ fn main() {
                     let op_36v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_36v1__source_stream__loc_unknown_start_8_26_end_8_46<
+                        pub fn op_36v1__source_stream__loc_nopath_8_26_8_46<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -478,7 +480,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_36v1__source_stream__loc_unknown_start_8_26_end_8_46(op_36v1)
+                        op_36v1__source_stream__loc_nopath_8_26_8_46(op_36v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_11v1<
@@ -516,7 +518,7 @@ fn main() {
                     let op_5v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_5v1__defer_tick__loc_unknown_start_2_19_end_2_24<
+                        pub fn op_5v1__defer_tick__loc_nopath_2_19_2_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -543,7 +545,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_5v1__defer_tick__loc_unknown_start_2_19_end_2_24(op_5v1)
+                        op_5v1__defer_tick__loc_nopath_2_19_2_24(op_5v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_1v1<
@@ -581,7 +583,7 @@ fn main() {
                     let op_10v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_10v1__defer_tick__loc_unknown_start_5_19_end_5_24<
+                        pub fn op_10v1__defer_tick__loc_nopath_5_19_5_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -608,7 +610,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_10v1__defer_tick__loc_unknown_start_5_19_end_5_24(op_10v1)
+                        op_10v1__defer_tick__loc_nopath_5_19_5_24(op_10v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_2v1<
@@ -646,7 +648,7 @@ fn main() {
                     let op_33v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_33v1__defer_tick__loc_unknown_start_21_21_end_21_41<
+                        pub fn op_33v1__defer_tick__loc_nopath_21_21_21_41<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -673,7 +675,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_33v1__defer_tick__loc_unknown_start_21_21_end_21_41(op_33v1)
+                        op_33v1__defer_tick__loc_nopath_21_21_21_41(op_33v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_3v1<
@@ -723,7 +725,7 @@ fn main() {
                     let op_12v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_12v1__unique__loc_unknown_start_8_19_end_8_24<
+                        pub fn op_12v1__unique__loc_nopath_8_19_8_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -750,13 +752,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_12v1__unique__loc_unknown_start_8_19_end_8_24(op_12v1)
+                        op_12v1__unique__loc_nopath_8_19_8_24(op_12v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_43v1 = hoff_29v3_recv.map(|_v: (_,)| ((), (_v.0,)));
                     let op_43v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_43v1__map__loc_unknown_start_15_31_end_15_39<
+                        pub fn op_43v1__map__loc_nopath_15_31_15_39<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -783,13 +789,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_43v1__map__loc_unknown_start_15_31_end_15_39(op_43v1)
+                        op_43v1__map__loc_nopath_15_31_15_39(op_43v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_44v1 = hoff_26v3_recv.map(|_v: (_,)| ((), (_v.0,)));
                     let op_44v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_44v1__map__loc_unknown_start_15_41_end_15_49<
+                        pub fn op_44v1__map__loc_nopath_15_41_15_49<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -816,7 +826,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_44v1__map__loc_unknown_start_15_41_end_15_49(op_44v1)
+                        op_44v1__map__loc_nopath_15_41_15_49(op_44v1)
                     };
                     let mut sg_4v1_node_41v1_joindata_lhs_borrow = context
                         .state_ref(sg_4v1_node_41v1_joindata_lhs)
@@ -867,7 +877,7 @@ fn main() {
                     let op_41v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_41v1__join__loc_unknown_start_15_12_end_15_59<
+                        pub fn op_41v1__join__loc_nopath_15_12_15_59<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -894,14 +904,18 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_41v1__join__loc_unknown_start_15_12_end_15_59(op_41v1)
+                        op_41v1__join__loc_nopath_15_12_15_59(op_41v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_42v1 = op_41v1
                         .map(|kv: ((), ((_,), (_,)))| (kv.1.0.0, kv.1.1.0));
                     let op_42v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_42v1__map__loc_unknown_start_15_12_end_15_59<
+                        pub fn op_42v1__map__loc_nopath_15_12_15_59<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -928,13 +942,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_42v1__map__loc_unknown_start_15_12_end_15_59(op_42v1)
+                        op_42v1__map__loc_nopath_15_12_15_59(op_42v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_47v1 = op_42v1.map(|_v: (_, _)| ((), (_v.0, _v.1)));
                     let op_47v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_47v1__map__loc_unknown_start_15_31_end_15_49<
+                        pub fn op_47v1__map__loc_nopath_15_31_15_49<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -961,13 +979,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_47v1__map__loc_unknown_start_15_31_end_15_49(op_47v1)
+                        op_47v1__map__loc_nopath_15_31_15_49(op_47v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_48v1 = op_12v1.map(|_v: (_,)| ((), (_v.0,)));
                     let op_48v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_48v1__map__loc_unknown_start_15_51_end_15_59<
+                        pub fn op_48v1__map__loc_nopath_15_51_15_59<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -994,7 +1016,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_48v1__map__loc_unknown_start_15_51_end_15_59(op_48v1)
+                        op_48v1__map__loc_nopath_15_51_15_59(op_48v1)
                     };
                     let mut sg_4v1_node_45v1_joindata_lhs_borrow = context
                         .state_ref(sg_4v1_node_45v1_joindata_lhs)
@@ -1038,15 +1060,14 @@ fn main() {
                             op_47v1,
                             op_48v1,
                             &mut *sg_4v1_node_45v1_joindata_lhs_borrow,
-                            &mut *sg_4v1_node_45v1_joindata_rhs_borrow
-                                .get_mut_clear(context.current_tick()),
+                            &mut *sg_4v1_node_45v1_joindata_rhs_borrow,
                             context.is_first_run_this_tick(),
                         )
                     };
                     let op_45v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_45v1__join__loc_unknown_start_15_12_end_15_59<
+                        pub fn op_45v1__join__loc_nopath_15_12_15_59<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1073,14 +1094,18 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_45v1__join__loc_unknown_start_15_12_end_15_59(op_45v1)
+                        op_45v1__join__loc_nopath_15_12_15_59(op_45v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_46v1 = op_45v1
                         .map(|kv: ((), ((_, _), (_,)))| (kv.1.0.0, kv.1.0.1, kv.1.1.0));
                     let op_46v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_46v1__map__loc_unknown_start_15_12_end_15_59<
+                        pub fn op_46v1__map__loc_nopath_15_12_15_59<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1107,14 +1132,18 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_46v1__map__loc_unknown_start_15_12_end_15_59(op_46v1)
+                        op_46v1__map__loc_nopath_15_12_15_59(op_46v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_49v1 = op_46v1
                         .map(|row: (_, _, _)| ((row.0, row.1, row.2), ()));
                     let op_49v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_49v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_49v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1141,13 +1170,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_49v1__map__loc_unknown_start_1_0_end_1_0(op_49v1)
+                        op_49v1__map__loc_nopath_1_0_1_0(op_49v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_50v1 = op_49v1.map(|(g, a): ((_, _, _), _)| (g.0, g.1, g.2));
                     let op_50v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_50v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_50v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1174,7 +1207,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_50v1__map__loc_unknown_start_1_0_end_1_0(op_50v1)
+                        op_50v1__map__loc_nopath_1_0_1_0(op_50v1)
                     };
                     let op_15v1 = op_50v1
                         .filter(|item| {
@@ -1196,7 +1229,7 @@ fn main() {
                     let op_15v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_15v1__unique__loc_unknown_start_10_20_end_10_26<
+                        pub fn op_15v1__unique__loc_nopath_10_20_10_26<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1223,7 +1256,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_15v1__unique__loc_unknown_start_10_20_end_10_26(op_15v1)
+                        op_15v1__unique__loc_nopath_10_20_10_26(op_15v1)
                     };
                     let op_37v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
                         result.send(v).unwrap()
@@ -1231,7 +1264,7 @@ fn main() {
                     let op_37v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_37v1__for_each__loc_unknown_start_10_28_end_10_65<
+                        pub fn op_37v1__for_each__loc_nopath_10_28_10_65<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1256,7 +1289,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_37v1__for_each__loc_unknown_start_10_28_end_10_65(op_37v1)
+                        op_37v1__for_each__loc_nopath_10_28_10_65(op_37v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_4v1<
@@ -1283,7 +1316,7 @@ fn main() {
                     let mut hoff_23v3_recv = hoff_23v3_recv.borrow_mut_swap();
                     let hoff_23v3_recv = hoff_23v3_recv.drain(..);
                     let mut sg_5v1_node_53v1_persistvec = context
-                        .state_ref(sg_5v1_node_53v1_persistdata)
+                        .state_ref(singleton_op_53v1)
                         .borrow_mut();
                     let op_53v1 = {
                         if context.is_first_run_this_tick() {
@@ -1298,7 +1331,7 @@ fn main() {
                     let op_53v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_53v1__persist__loc_unknown_start_16_26_end_16_34<
+                        pub fn op_53v1__persist__loc_nopath_16_26_16_34<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1325,13 +1358,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_53v1__persist__loc_unknown_start_16_26_end_16_34(op_53v1)
+                        op_53v1__persist__loc_nopath_16_26_16_34(op_53v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_54v1 = op_53v1.map(|_v: (_,)| ((_v.0,), ()));
                     let op_54v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_54v1__map__loc_unknown_start_16_26_end_16_34<
+                        pub fn op_54v1__map__loc_nopath_16_26_16_34<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1358,7 +1395,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_54v1__map__loc_unknown_start_16_26_end_16_34(op_54v1)
+                        op_54v1__map__loc_nopath_16_26_16_34(op_54v1)
                     };
                     let mut sg_5v1_node_51v1_antijoindata_neg_borrow = context
                         .state_ref(sg_5v1_node_51v1_antijoindata_neg)
@@ -1403,7 +1440,7 @@ fn main() {
                     let op_51v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_51v1__anti_join__loc_unknown_start_16_12_end_16_45<
+                        pub fn op_51v1__anti_join__loc_nopath_16_12_16_45<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1430,13 +1467,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_51v1__anti_join__loc_unknown_start_16_12_end_16_45(op_51v1)
+                        op_51v1__anti_join__loc_nopath_16_12_16_45(op_51v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_52v1 = op_51v1.map(|kv: ((_,), ())| (kv.0.0,));
                     let op_52v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_52v1__map__loc_unknown_start_16_12_end_16_45<
+                        pub fn op_52v1__map__loc_nopath_16_12_16_45<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1463,13 +1504,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_52v1__map__loc_unknown_start_16_12_end_16_45(op_52v1)
+                        op_52v1__map__loc_nopath_16_12_16_45(op_52v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_57v1 = op_52v1.map(|row: (_,)| ((row.0,), ()));
                     let op_57v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_57v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_57v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1496,13 +1541,17 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_57v1__map__loc_unknown_start_1_0_end_1_0(op_57v1)
+                        op_57v1__map__loc_nopath_1_0_1_0(op_57v1)
                     };
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_58v1 = op_57v1.map(|(g, a): ((_,), _)| (g.0,));
                     let op_58v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_58v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_58v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1529,7 +1578,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_58v1__map__loc_unknown_start_1_0_end_1_0(op_58v1)
+                        op_58v1__map__loc_nopath_1_0_1_0(op_58v1)
                     };
                     let op_18v1 = op_58v1
                         .filter(|item| {
@@ -1551,7 +1600,7 @@ fn main() {
                     let op_18v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_18v1__unique__loc_unknown_start_11_20_end_11_27<
+                        pub fn op_18v1__unique__loc_nopath_11_20_11_27<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1578,7 +1627,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_18v1__unique__loc_unknown_start_11_20_end_11_27(op_18v1)
+                        op_18v1__unique__loc_nopath_11_20_11_27(op_18v1)
                     };
                     let op_38v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
                         result2.send(v).unwrap()
@@ -1586,7 +1635,7 @@ fn main() {
                     let op_38v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_38v1__for_each__loc_unknown_start_11_29_end_11_67<
+                        pub fn op_38v1__for_each__loc_nopath_11_29_11_67<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1611,7 +1660,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_38v1__for_each__loc_unknown_start_11_29_end_11_67(op_38v1)
+                        op_38v1__for_each__loc_nopath_11_29_11_67(op_38v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_5v1<
@@ -1684,7 +1733,7 @@ fn main() {
                     let op_2v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_2v1__unique__loc_unknown_start_2_19_end_2_24<
+                        pub fn op_2v1__unique__loc_nopath_2_19_2_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1711,7 +1760,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_2v1__unique__loc_unknown_start_2_19_end_2_24(op_2v1)
+                        op_2v1__unique__loc_nopath_2_19_2_24(op_2v1)
                     };
                     let op_2v1 = op_2v1.map(|k| (k, ()));
                     let mut sg_6v1_node_3v1_antijoindata_neg_borrow = context
@@ -1757,7 +1806,7 @@ fn main() {
                     let op_3v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_3v1__difference__loc_unknown_start_2_19_end_2_24<
+                        pub fn op_3v1__difference__loc_nopath_2_19_2_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -1784,7 +1833,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_3v1__difference__loc_unknown_start_2_19_end_2_24(op_3v1)
+                        op_3v1__difference__loc_nopath_2_19_2_24(op_3v1)
                     };
                     let op_64v1 = hydroflow::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
@@ -1793,7 +1842,7 @@ fn main() {
                     let op_64v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_64v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_64v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1818,7 +1867,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_64v1__map__loc_unknown_start_1_0_end_1_0(op_64v1)
+                        op_64v1__map__loc_nopath_1_0_1_0(op_64v1)
                     };
                     let op_39v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
                         result3.send(v).unwrap()
@@ -1826,7 +1875,7 @@ fn main() {
                     let op_39v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_39v1__for_each__loc_unknown_start_12_29_end_12_67<
+                        pub fn op_39v1__for_each__loc_nopath_12_29_12_67<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1851,7 +1900,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_39v1__for_each__loc_unknown_start_12_29_end_12_67(op_39v1)
+                        op_39v1__for_each__loc_nopath_12_29_12_67(op_39v1)
                     };
                     let op_21v1 = hydroflow::pusherator::filter::Filter::new(
                         |item| {
@@ -1875,7 +1924,7 @@ fn main() {
                     let op_21v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_21v1__unique__loc_unknown_start_12_20_end_12_27<
+                        pub fn op_21v1__unique__loc_nopath_12_20_12_27<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1900,7 +1949,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_21v1__unique__loc_unknown_start_12_20_end_12_27(op_21v1)
+                        op_21v1__unique__loc_nopath_12_20_12_27(op_21v1)
                     };
                     let op_63v1 = hydroflow::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
@@ -1909,7 +1958,7 @@ fn main() {
                     let op_63v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_63v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_63v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1934,7 +1983,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_63v1__map__loc_unknown_start_1_0_end_1_0(op_63v1)
+                        op_63v1__map__loc_nopath_1_0_1_0(op_63v1)
                     };
                     let op_62v1 = hydroflow::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
@@ -1943,7 +1992,7 @@ fn main() {
                     let op_62v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_62v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_62v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -1968,7 +2017,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_62v1__map__loc_unknown_start_1_0_end_1_0(op_62v1)
+                        op_62v1__map__loc_nopath_1_0_1_0(op_62v1)
                     };
                     let op_27v1 = hydroflow::pusherator::filter::Filter::new(
                         |item| {
@@ -1992,7 +2041,7 @@ fn main() {
                     let op_27v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_27v1__unique__loc_unknown_start_18_12_end_18_24<
+                        pub fn op_27v1__unique__loc_nopath_18_12_18_24<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2017,10 +2066,10 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_27v1__unique__loc_unknown_start_18_12_end_18_24(op_27v1)
+                        op_27v1__unique__loc_nopath_18_12_18_24(op_27v1)
                     };
                     let mut sg_6v1_node_61v1_persistvec = context
-                        .state_ref(sg_6v1_node_61v1_persistdata)
+                        .state_ref(singleton_op_61v1)
                         .borrow_mut();
                     let op_61v1 = {
                         fn constrain_types<'ctx, Push, Item>(
@@ -2056,7 +2105,7 @@ fn main() {
                     let op_61v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_61v1__persist__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_61v1__persist__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2081,7 +2130,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_61v1__persist__loc_unknown_start_1_0_end_1_0(op_61v1)
+                        op_61v1__persist__loc_nopath_1_0_1_0(op_61v1)
                     };
                     let op_60v1 = hydroflow::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
@@ -2090,7 +2139,7 @@ fn main() {
                     let op_60v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_60v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_60v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2115,7 +2164,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_60v1__map__loc_unknown_start_1_0_end_1_0(op_60v1)
+                        op_60v1__map__loc_nopath_1_0_1_0(op_60v1)
                     };
                     let op_59v1 = hydroflow::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
@@ -2124,7 +2173,7 @@ fn main() {
                     let op_59v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_59v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_59v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2149,7 +2198,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_59v1__map__loc_unknown_start_1_0_end_1_0(op_59v1)
+                        op_59v1__map__loc_nopath_1_0_1_0(op_59v1)
                     };
                     let op_4v1 = hydroflow::pusherator::tee::Tee::new(
                         hoff_29v3_send,
@@ -2167,7 +2216,7 @@ fn main() {
                     let op_4v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_4v1__tee__loc_unknown_start_2_19_end_2_24<
+                        pub fn op_4v1__tee__loc_nopath_2_19_2_24<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2192,7 +2241,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_4v1__tee__loc_unknown_start_2_19_end_2_24(op_4v1)
+                        op_4v1__tee__loc_nopath_2_19_2_24(op_4v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_6v1<
@@ -2226,11 +2275,15 @@ fn main() {
                     {
                         hoff_13v3_send.give(Some(v));
                     });
+                    #[allow(
+                        clippy::map_clone,
+                        reason = "hydroflow has no explicit `cloned`/`copied` operator"
+                    )]
                     let op_65v1 = hoff_17v3_recv.map(|(g, a): ((_,), _)| (g.0,));
                     let op_65v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_65v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_65v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -2257,7 +2310,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_65v1__map__loc_unknown_start_1_0_end_1_0(op_65v1)
+                        op_65v1__map__loc_nopath_1_0_1_0(op_65v1)
                     };
                     let op_30v1 = op_65v1
                         .filter(|item| {
@@ -2279,7 +2332,7 @@ fn main() {
                     let op_30v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_30v1__unique__loc_unknown_start_21_21_end_21_41<
+                        pub fn op_30v1__unique__loc_nopath_21_21_21_41<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -2306,7 +2359,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_30v1__unique__loc_unknown_start_21_21_end_21_41(op_30v1)
+                        op_30v1__unique__loc_nopath_21_21_21_41(op_30v1)
                     };
                     let op_30v1 = op_30v1.map(|k| (k, ()));
                     let mut sg_7v1_node_31v1_antijoindata_neg_borrow = context
@@ -2352,7 +2405,7 @@ fn main() {
                     let op_31v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_31v1__difference__loc_unknown_start_21_21_end_21_41<
+                        pub fn op_31v1__difference__loc_nopath_21_21_21_41<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -2379,7 +2432,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_31v1__difference__loc_unknown_start_21_21_end_21_41(op_31v1)
+                        op_31v1__difference__loc_nopath_21_21_21_41(op_31v1)
                     };
                     let op_40v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
                         result4.send(v).unwrap()
@@ -2387,7 +2440,7 @@ fn main() {
                     let op_40v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_40v1__for_each__loc_unknown_start_13_29_end_13_67<
+                        pub fn op_40v1__for_each__loc_nopath_13_29_13_67<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2412,7 +2465,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_40v1__for_each__loc_unknown_start_13_29_end_13_67(op_40v1)
+                        op_40v1__for_each__loc_nopath_13_29_13_67(op_40v1)
                     };
                     let op_24v1 = hydroflow::pusherator::filter::Filter::new(
                         |item| {
@@ -2436,7 +2489,7 @@ fn main() {
                     let op_24v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_24v1__unique__loc_unknown_start_13_20_end_13_27<
+                        pub fn op_24v1__unique__loc_nopath_13_20_13_27<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2461,10 +2514,10 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_24v1__unique__loc_unknown_start_13_20_end_13_27(op_24v1)
+                        op_24v1__unique__loc_nopath_13_20_13_27(op_24v1)
                     };
                     let mut sg_7v1_node_68v1_persistvec = context
-                        .state_ref(sg_7v1_node_68v1_persistdata)
+                        .state_ref(singleton_op_68v1)
                         .borrow_mut();
                     let op_68v1 = {
                         fn constrain_types<'ctx, Push, Item>(
@@ -2500,7 +2553,7 @@ fn main() {
                     let op_68v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_68v1__persist__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_68v1__persist__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2525,7 +2578,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_68v1__persist__loc_unknown_start_1_0_end_1_0(op_68v1)
+                        op_68v1__persist__loc_nopath_1_0_1_0(op_68v1)
                     };
                     let op_67v1 = hydroflow::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
@@ -2534,7 +2587,7 @@ fn main() {
                     let op_67v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_67v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_67v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2559,7 +2612,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_67v1__map__loc_unknown_start_1_0_end_1_0(op_67v1)
+                        op_67v1__map__loc_nopath_1_0_1_0(op_67v1)
                     };
                     let op_66v1 = hydroflow::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
@@ -2568,7 +2621,7 @@ fn main() {
                     let op_66v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_66v1__map__loc_unknown_start_1_0_end_1_0<
+                        pub fn op_66v1__map__loc_nopath_1_0_1_0<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2593,7 +2646,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_66v1__map__loc_unknown_start_1_0_end_1_0(op_66v1)
+                        op_66v1__map__loc_nopath_1_0_1_0(op_66v1)
                     };
                     let op_32v1 = hydroflow::pusherator::tee::Tee::new(
                         op_66v1,
@@ -2602,7 +2655,7 @@ fn main() {
                     let op_32v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_32v1__tee__loc_unknown_start_21_21_end_21_41<
+                        pub fn op_32v1__tee__loc_nopath_21_21_21_41<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2627,7 +2680,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_32v1__tee__loc_unknown_start_21_21_end_21_41(op_32v1)
+                        op_32v1__tee__loc_nopath_21_21_21_41(op_32v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_7v1<
@@ -2691,7 +2744,7 @@ fn main() {
                     let op_7v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_7v1__unique__loc_unknown_start_5_19_end_5_24<
+                        pub fn op_7v1__unique__loc_nopath_5_19_5_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -2718,7 +2771,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_7v1__unique__loc_unknown_start_5_19_end_5_24(op_7v1)
+                        op_7v1__unique__loc_nopath_5_19_5_24(op_7v1)
                     };
                     let op_7v1 = op_7v1.map(|k| (k, ()));
                     let mut sg_8v1_node_8v1_antijoindata_neg_borrow = context
@@ -2764,7 +2817,7 @@ fn main() {
                     let op_8v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_8v1__difference__loc_unknown_start_5_19_end_5_24<
+                        pub fn op_8v1__difference__loc_nopath_5_19_5_24<
                             Item,
                             Input: ::std::iter::Iterator<Item = Item>,
                         >(input: Input) -> impl ::std::iter::Iterator<Item = Item> {
@@ -2791,7 +2844,7 @@ fn main() {
                             }
                             Pull { inner: input }
                         }
-                        op_8v1__difference__loc_unknown_start_5_19_end_5_24(op_8v1)
+                        op_8v1__difference__loc_nopath_5_19_5_24(op_8v1)
                     };
                     let op_56v1 = hydroflow::pusherator::map::Map::new(
                         |_v: (_,)| (_v.0,),
@@ -2800,7 +2853,7 @@ fn main() {
                     let op_56v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_56v1__map__loc_unknown_start_16_37_end_16_45<
+                        pub fn op_56v1__map__loc_nopath_16_37_16_45<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2825,10 +2878,10 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_56v1__map__loc_unknown_start_16_37_end_16_45(op_56v1)
+                        op_56v1__map__loc_nopath_16_37_16_45(op_56v1)
                     };
                     let mut sg_8v1_node_55v1_persistvec = context
-                        .state_ref(sg_8v1_node_55v1_persistdata)
+                        .state_ref(singleton_op_55v1)
                         .borrow_mut();
                     let op_55v1 = {
                         fn constrain_types<'ctx, Push, Item>(
@@ -2864,7 +2917,7 @@ fn main() {
                     let op_55v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_55v1__persist__loc_unknown_start_16_37_end_16_45<
+                        pub fn op_55v1__persist__loc_nopath_16_37_16_45<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2889,7 +2942,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_55v1__persist__loc_unknown_start_16_37_end_16_45(op_55v1)
+                        op_55v1__persist__loc_nopath_16_37_16_45(op_55v1)
                     };
                     let op_9v1 = hydroflow::pusherator::tee::Tee::new(
                         hoff_26v3_send,
@@ -2898,7 +2951,7 @@ fn main() {
                     let op_9v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
-                        pub fn op_9v1__tee__loc_unknown_start_5_19_end_5_24<
+                        pub fn op_9v1__tee__loc_nopath_5_19_5_24<
                             Item,
                             Input: hydroflow::pusherator::Pusherator<Item = Item>,
                         >(
@@ -2923,7 +2976,7 @@ fn main() {
                             }
                             Push { inner: input }
                         }
-                        op_9v1__tee__loc_unknown_start_5_19_end_5_24(op_9v1)
+                        op_9v1__tee__loc_nopath_5_19_5_24(op_9v1)
                     };
                     #[inline(always)]
                     fn pivot_run_sg_8v1<
@@ -2941,4 +2994,3 @@ fn main() {
         }
     }
 }
-

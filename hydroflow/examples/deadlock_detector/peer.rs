@@ -20,7 +20,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     let reader = tokio::io::BufReader::new(tokio::io::stdin());
     let stdin_lines = LinesStream::new(reader.lines());
 
-    #[allow(clippy::map_identity)]
+    #[expect(clippy::map_identity, reason = "helps type inference?")]
     let mut hf: Hydroflow = hydroflow_syntax! {
         // fetch peers from file, convert ip:port to a SocketAddr, and tee
         peers = source_iter(peer_list)
@@ -47,8 +47,8 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
         // setup gossip channel to all peers. gen_bool chooses True with the odds passed in.
         gossip_join = cross_join::<'tick>()
             -> filter(|_| gen_bool(0.8)) -> outbound_chan;
-        gossip = map(identity) -> persist() -> [0]gossip_join;
-        peers[1] -> persist() -> [1]gossip_join;
+        gossip = map(identity) -> persist::<'static>() -> [0]gossip_join;
+        peers[1] -> persist::<'static>() -> [1]gossip_join;
         peers[2] -> for_each(|s| println!("Peer: {:?}", s));
 
         // prompt for input
@@ -102,6 +102,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
 
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()

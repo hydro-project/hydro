@@ -3,7 +3,9 @@ name: examples-container-build
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - feature/**
 
 jobs:
   pre_job:

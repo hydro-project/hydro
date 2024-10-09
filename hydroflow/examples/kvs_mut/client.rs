@@ -30,12 +30,14 @@ pub(crate) async fn run_client(
         inbound_chan -> for_each(|(response, _addr): (KvsResponse, _)| println!("Got a Response: {:?}", response));
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = hf
             .meta_graph()
             .expect("No graph found, maybe failed to parse.");
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
+    let _ = opts;
 
     hf.run_async().await.unwrap();
 }

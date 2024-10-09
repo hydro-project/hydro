@@ -6,7 +6,7 @@ digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([0])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) persist()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) next_stratum()", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) for_each(|x| out_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) handoff", shape=parallelogram, fillcolor="#ddddff"]

@@ -7,7 +7,7 @@ use lattices::map_union::MapUnionSingletonMap;
 use lattices::{Max, Merge};
 
 use crate::protocol::{EchoMsg, VecClock};
-use crate::{GraphType, Opts};
+use crate::Opts;
 
 pub(crate) async fn run_client(
     outbound: UdpSink,
@@ -53,18 +53,19 @@ pub(crate) async fn run_client(
         stamped_output[send] -> outbound_chan;
     };
 
+    #[cfg(feature = "debugging")]
     if let Some(graph) = opts.graph {
         let serde_graph = flow
             .meta_graph()
             .expect("No graph found, maybe failed to parse.");
         match graph {
-            GraphType::Mermaid => {
+            crate::GraphType::Mermaid => {
                 serde_graph.open_mermaid(&Default::default()).unwrap();
             }
-            GraphType::Dot => {
+            crate::GraphType::Dot => {
                 serde_graph.open_dot(&Default::default()).unwrap();
             }
-            GraphType::Json => {
+            crate::GraphType::Json => {
                 unimplemented!();
             }
         }

@@ -1,9 +1,9 @@
 use hydroflow::hydroflow_syntax;
-use hydroflow::util::cli::{ConnectedDirect, ConnectedSource};
+use hydroflow::util::deploy::{ConnectedDirect, ConnectedSource};
 
 #[hydroflow::main]
 async fn main() {
-    let ports = hydroflow::util::cli::init::<()>().await;
+    let ports = hydroflow::util::deploy::init::<()>().await;
     let echo_recv = ports
         .port("echo")
         .connect::<ConnectedDirect>()
@@ -16,5 +16,5 @@ async fn main() {
             for_each(|x| println!("echo {:?}", x));
     };
 
-    hydroflow::util::cli::launch_flow(df).await;
+    hydroflow::util::deploy::launch_flow(df).await;
 }

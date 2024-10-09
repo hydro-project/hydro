@@ -1,22 +1,15 @@
-error[E0277]: the trait bound `Shape: DemuxEnumItems` is not satisfied
+error[E0277]: the trait bound `Shape: DemuxEnumBase` is not satisfied
   --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
    |
 12 |         ]) -> demux_enum::<Shape>();
-   |                            ^^^^^ the trait `DemuxEnumItems` is not implemented for `Shape`
+   |                            ^^^^^ the trait `DemuxEnumBase` is not implemented for `Shape`
    |
+   = note: use `#[derive(hydroflow::DemuxEnum)]`
 note: required by a bound in `check_impl_demux_enum`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:8:18
+  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
    |
-8  |       let mut df = hydroflow_syntax! {
-   |  __________________^
-9  | |         my_demux = source_iter([
-10 | |             Shape { area: 10.0 },
-11 | |             Shape { area: 9.0 },
-...  |
-16 | |         my_demux[Ellipse] -> for_each(std::mem::drop);
-17 | |     };
-   | |_____^ required by this bound in `check_impl_demux_enum`
-   = note: this error originates in the macro `hydroflow_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
+12 |         ]) -> demux_enum::<Shape>();
+   |                            ^^^^^ required by this bound in `check_impl_demux_enum`
 
 error[E0223]: ambiguous associated type
   --> tests/compile-fail/surface_demuxenum_notenum.rs:14:18
@@ -62,72 +55,11 @@ help: if there were a trait named `Example` with associated type `Square` implem
 15 |         my_demux[<Shape as Example>::Square] -> for_each(std::mem::drop);
    |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error[E0277]: the trait bound `Shape: DemuxEnumItems` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
-   |
-12 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ the trait `DemuxEnumItems` is not implemented for `Shape`
-
 error[E0277]: the trait bound `Shape: DemuxEnum<_>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
-   |
-12 |         ]) -> demux_enum::<Shape>();
-   |                            ^^^^^ the trait `DemuxEnum<_>` is not implemented for `Shape`
-   |
-note: required by a bound in `__typeguard_demux_enum_fn`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:8:18
-   |
-8  |       let mut df = hydroflow_syntax! {
-   |  __________________^
-9  | |         my_demux = source_iter([
-10 | |             Shape { area: 10.0 },
-11 | |             Shape { area: 9.0 },
-...  |
-16 | |         my_demux[Ellipse] -> for_each(std::mem::drop);
-17 | |     };
-   | |_____^ required by this bound in `__typeguard_demux_enum_fn`
-   = note: this error originates in the macro `hydroflow_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: the trait bound `Shape: DemuxEnum<(impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, ()))))>` is not satisfied
   --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ the trait `DemuxEnum<(impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, ()))))>` is not implemented for `Shape`
+   |               ^^^^^^^^^^^^^^^^^^^^^ the trait `DemuxEnum<_>` is not implemented for `Shape`
    |
-note: required by a bound in `__typeguard_demux_enum_fn`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:8:18
-   |
-8  |       let mut df = hydroflow_syntax! {
-   |  __________________^
-9  | |         my_demux = source_iter([
-10 | |             Shape { area: 10.0 },
-11 | |             Shape { area: 9.0 },
-...  |
-16 | |         my_demux[Ellipse] -> for_each(std::mem::drop);
-17 | |     };
-   | |_____^ required by this bound in `__typeguard_demux_enum_fn`
-   = note: this error originates in the macro `hydroflow_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0277]: the trait bound `Shape: DemuxEnum<(impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, ()))))>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:9:20
-   |
-9  |           my_demux = source_iter([
-   |  ____________________^
-10 | |             Shape { area: 10.0 },
-11 | |             Shape { area: 9.0 },
-12 | |         ]) -> demux_enum::<Shape>();
-   | |___________________________________^ the trait `DemuxEnum<(impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, (impl Pusherator<Item = _>, ()))))>` is not implemented for `Shape`
-   |
-note: required by a bound in `__typeguard_demux_enum_fn`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:8:18
-   |
-8  |       let mut df = hydroflow_syntax! {
-   |  __________________^
-9  | |         my_demux = source_iter([
-10 | |             Shape { area: 10.0 },
-11 | |             Shape { area: 9.0 },
-...  |
-16 | |         my_demux[Ellipse] -> for_each(std::mem::drop);
-17 | |     };
-   | |_____^ required by this bound in `__typeguard_demux_enum_fn`
-   = note: this error originates in the macro `hydroflow_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: ensure there is exactly one output for each enum variant.
+   = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.

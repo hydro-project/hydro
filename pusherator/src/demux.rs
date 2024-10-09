@@ -2,11 +2,6 @@ use std::marker::PhantomData;
 
 use super::Pusherator;
 
-variadics::variadic_trait! {
-    /// A variadic list of Pusherators.
-    pub variadic<T> PusheratorList where T: Pusherator {}
-}
-
 pub struct Demux<Func, Nexts, Item> {
     func: Func,
     nexts: Nexts,
@@ -15,7 +10,6 @@ pub struct Demux<Func, Nexts, Item> {
 impl<Func, Nexts, Item> Pusherator for Demux<Func, Nexts, Item>
 where
     Func: FnMut(Item, &mut Nexts),
-    Nexts: PusheratorList,
 {
     type Item = Item;
     fn give(&mut self, item: Self::Item) {
@@ -25,7 +19,6 @@ where
 impl<Func, Nexts, Item> Demux<Func, Nexts, Item>
 where
     Func: FnMut(Item, &mut Nexts),
-    Nexts: PusheratorList,
 {
     pub fn new(func: Func, nexts: Nexts) -> Self {
         Self {

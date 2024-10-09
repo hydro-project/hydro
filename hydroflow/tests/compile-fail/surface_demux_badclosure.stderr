@@ -1,15 +1,8 @@
 error: Closure provided to `demux(..)` must have two arguments: the first argument is the item, and the second argument lists ports. E.g. the second argument could be `var_args!(port_a, port_b, ..)`.
-  --> tests/compile-fail/surface_demux_badclosure.rs:5:48
-   |
-5  |           my_demux = source_iter(0..10) -> demux(|var_args!(a, b, c)| {
-   |  ________________________________________________^
-6  | |             match item % 3 {
-7  | |                 0 => a.give(item),
-8  | |                 1 => b.give(item),
-9  | |                 2 => c.give(item),
-10 | |             }
-11 | |         });
-   | |_________^
+ --> tests/compile-fail/surface_demux_badclosure.rs:5:49
+  |
+5 |         my_demux = source_iter(0..10) -> demux(|var_args!(a, b, c)| {
+  |                                                 ^^^^^^^^^^^^^^^^^^
 
 warning: unused import: `var_args`
  --> tests/compile-fail/surface_demux_badclosure.rs:1:35

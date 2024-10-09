@@ -12,7 +12,7 @@ use super::{
 /// Iterates through a stream passing each element to the closure in the
 /// argument.
 ///
-/// > Note: The closure has access to the [`context` object](surface_flows.md#the-context-object).
+/// > Note: The closure has access to the [`context` object](surface_flows.mdx#the-context-object).
 ///
 /// ```hydroflow
 ///     source_iter(vec!["Hello", "World"])
@@ -33,8 +33,7 @@ pub const FOR_EACH: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    flow_prop_fn: None,
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |&WriteContextArgs {
                    root,
                    op_span,
                    ident,
@@ -42,7 +41,7 @@ pub const FOR_EACH: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
-        let func = wc.wrap_check_func_arg(&arguments[0]);
+        let func = &arguments[0];
         let write_iterator = quote_spanned! {op_span=>
             let #ident = #root::pusherator::for_each::ForEach::new(#func);
         };

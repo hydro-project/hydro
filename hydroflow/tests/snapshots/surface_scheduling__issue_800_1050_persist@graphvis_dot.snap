@@ -7,7 +7,7 @@ digraph {
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter(0..10)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) map(|i| (i, i))", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) persist()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) persist::<'static>()", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) union()", shape=invhouse, fillcolor="#88aaff"]
     n5v1 [label="(n5v1) tee()", shape=house, fillcolor="#ffff88"]
     n6v1 [label="(n6v1) filter(|_| false)", shape=invhouse, fillcolor="#88aaff"]

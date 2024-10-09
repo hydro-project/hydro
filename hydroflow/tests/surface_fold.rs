@@ -98,6 +98,49 @@ pub fn test_fold_static() {
 }
 
 #[multiplatform_test]
+pub fn test_fold_static_join() {
+    let (items_send, items_recv) = hydroflow::util::unbounded_channel::<usize>();
+    let (result_send, mut result_recv) = hydroflow::util::unbounded_channel::<(usize, usize)>();
+
+    let mut df = hydroflow::hydroflow_syntax! {
+        teed_fold = source_iter(Vec::<usize>::new())
+            -> fold::<'tick>(|| 0, |old: &mut usize, _: usize| { *old += 1; })
+            -> tee();
+        teed_fold -> for_each(|_| {});
+        teed_fold -> [1]join_node;
+
+        source_stream(items_recv) -> [0]join_node;
+
+        join_node = cross_join_multiset();
+        join_node -> for_each(|v| result_send.send(v).unwrap());
+    };
+    assert_graphvis_snapshots!(df);
+
+    assert_eq!(
+        (TickInstant::new(0), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+
+    items_send.send(0).unwrap();
+    df.run_available();
+
+    assert_eq!(
+        (TickInstant::new(1), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+    assert_eq!(&[(0, 0)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
+
+    items_send.send(1).unwrap();
+    df.run_available();
+
+    assert_eq!(
+        (TickInstant::new(2), 0),
+        (df.current_tick(), df.current_stratum())
+    );
+    assert_eq!(&[(1, 0)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
+}
+
+#[multiplatform_test]
 pub fn test_fold_flatten() {
     // test pull
     let (out_send, mut out_recv) = hydroflow::util::unbounded_channel::<(u8, u8)>();

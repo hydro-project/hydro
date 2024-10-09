@@ -36,19 +36,19 @@ module main(
 Assume we also have a `src/echo_client.hf` file that periodically sends `EchoMsg`s to an `outbound` channel and logs echos from the `inbound` channel. We can deploy this program to a cloud machine using the following `echo.hydro.py` config file:
 ```python
 from hydro import Deployment
-from hydro.gcp import GCPMachine # keys are automatically loaded from somewhere
+from hydro.gcp import GcpMachine # keys are automatically loaded from somewhere
 
 async def main():
     deployment = Deployment()
 
     # Specify the GCP instances we want to deploy to
-    server_machine = deployment.GCPMachine(
+    server_machine = deployment.GcpMachine(
         project="hydro-1234",
         zone="us-west1-a",
         type="e2-micro",
     )
 
-    client_machine = deployment.GCPMachine(
+    client_machine = deployment.GcpMachine(
         project="hydro-1234",
         zone="us-west1-a",
         type="e2-micro",
