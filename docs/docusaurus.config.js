@@ -136,6 +136,10 @@ const config = {
               {
                 href: 'pathname:///rustdoc/hydroflow/',
                 label: 'Rustdoc',
+              },
+              {
+                href: "https://axiomatic-dead-766.notion.site",
+                label: 'Algebra Wiki',
               }
             ]
           },
