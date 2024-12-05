@@ -85,9 +85,18 @@ impl Context {
         self.subgraph_id
     }
 
-    /// Schedules a subgraph.
+    /// Schedules a subgraph for the next tick.
+    ///
+    /// If `is_external` is `true`, the scheduling will trigger the next tick to begin. If it is
+    /// `false` then scheduling will be lazy and the next tick will not begin unless there is other
+    /// reason to.
     pub fn schedule_subgraph(&self, sg_id: SubgraphId, is_external: bool) {
         self.event_queue_send.send((sg_id, is_external)).unwrap()
+    }
+
+    /// Schedules the current subgraph to run again _this tick_.
+    pub fn reschedule_current_subgraph(&mut self) {
+        self.stratum_queues[self.current_stratum].push_back(self.subgraph_id);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
