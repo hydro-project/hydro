@@ -3,12 +3,14 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
+use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
 
+use smallvec::SmallVec;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
@@ -36,9 +38,12 @@ pub struct Context {
     /// If the events have been received for this tick.
     pub(super) events_received_tick: bool,
 
-    // TODO(mingwei): as long as this is here, it's impossible to know when all work is done.
-    // Second field (bool) is for if the event is an external "important" event (true).
+    // TODO(mingwei): as long as this is unclosed, it's impossible to know when all work is done.
+    /// Second field (bool) is for if the event is an external "important" event (true).
     pub(super) event_queue_send: UnboundedSender<(SubgraphId, bool)>,
+
+    /// Subgraphs rescheduled in the current stratum.
+    pub(super) rescheduled_subgraphs: RefCell<SmallVec<[SubgraphId; 1]>>,
 
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
@@ -51,7 +56,6 @@ pub struct Context {
     pub(super) subgraph_id: SubgraphId,
 
     tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
-
     /// Join handles for spawned tasks.
     task_join_handles: Vec<JoinHandle<()>>,
 }
@@ -95,8 +99,10 @@ impl Context {
     }
 
     /// Schedules the current subgraph to run again _this tick_.
-    pub fn reschedule_current_subgraph(&mut self) {
-        self.stratum_queues[self.current_stratum].push_back(self.subgraph_id);
+    pub fn reschedule_current_subgraph(&self) {
+        self.rescheduled_subgraphs
+            .borrow_mut()
+            .push(self.subgraph_id);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -240,6 +246,7 @@ impl Default for Context {
             events_received_tick: false,
 
             event_queue_send,
+            rescheduled_subgraphs: Default::default(),
 
             current_stratum: 0,
             current_tick: TickInstant::default(),

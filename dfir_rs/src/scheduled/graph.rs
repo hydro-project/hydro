@@ -298,6 +298,14 @@ impl<'a> Dfir<'a> {
                     }
                 }
             }
+
+            for sg_id in self.context.rescheduled_subgraphs.borrow_mut().drain(..) {
+                let sg_data = &self.subgraphs[sg_id.0];
+                assert_eq!(sg_data.stratum, self.context.current_stratum);
+                if !sg_data.is_scheduled.replace(true) {
+                    self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                }
+            }
         }
         work_done
     }
