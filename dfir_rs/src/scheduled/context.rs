@@ -3,14 +3,13 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
 
-use smallvec::SmallVec;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
@@ -42,8 +41,8 @@ pub struct Context {
     /// Second field (bool) is for if the event is an external "important" event (true).
     pub(super) event_queue_send: UnboundedSender<(SubgraphId, bool)>,
 
-    /// Subgraphs rescheduled in the current stratum.
-    pub(super) rescheduled_subgraphs: RefCell<SmallVec<[SubgraphId; 1]>>,
+    /// If the current subgraph wants to reschedule in the current tick+stratum.
+    pub(super) reschedule_current_subgraph: Cell<bool>,
 
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
@@ -100,9 +99,7 @@ impl Context {
 
     /// Schedules the current subgraph to run again _this tick_.
     pub fn reschedule_current_subgraph(&self) {
-        self.rescheduled_subgraphs
-            .borrow_mut()
-            .push(self.subgraph_id);
+        self.reschedule_current_subgraph.set(true);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -246,7 +243,7 @@ impl Default for Context {
             events_received_tick: false,
 
             event_queue_send,
-            rescheduled_subgraphs: Default::default(),
+            reschedule_current_subgraph: Cell::new(false),
 
             current_stratum: 0,
             current_tick: TickInstant::default(),

@@ -282,6 +282,7 @@ impl<'a> Dfir<'a> {
             }
 
             let sg_data = &self.subgraphs[sg_id.0];
+            debug_assert_eq!(self.context.current_stratum, sg_data.stratum);
             for &handoff_id in sg_data.succs.iter() {
                 let handoff = &self.handoffs[handoff_id.0];
                 if !handoff.handoff.is_bottom() {
@@ -299,9 +300,9 @@ impl<'a> Dfir<'a> {
                 }
             }
 
-            for sg_id in self.context.rescheduled_subgraphs.borrow_mut().drain(..) {
-                let sg_data = &self.subgraphs[sg_id.0];
-                assert_eq!(sg_data.stratum, self.context.current_stratum);
+            // Check if subgraph wants rescheduling
+            if self.context.reschedule_current_subgraph.take() {
+                // Add subgraph to stratum queue if it is not already scheduled.
                 if !sg_data.is_scheduled.replace(true) {
                     self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
                 }
