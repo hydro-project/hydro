@@ -86,6 +86,7 @@ pub fn test_flo_repeat_n() {
                 cp
                     -> repeat_n(3)
                     -> map(|vec| (context.current_tick().0, vec))
+                    -> inspect(|x| println!("{:?}", x))
                     -> assert_eq([
                         (0, vec![("alice", 0), ("alice", 1), ("alice", 2), ("bob", 0), ("bob", 1), ("bob", 2)]),
                         (0, vec![("alice", 0), ("alice", 1), ("alice", 2), ("bob", 0), ("bob", 1), ("bob", 2)]),
@@ -100,6 +101,30 @@ pub fn test_flo_repeat_n() {
                         (3, vec![("alice", 9), ("alice", 10), ("alice", 11), ("bob", 9), ("bob", 10), ("bob", 11)]),
                         (3, vec![("alice", 9), ("alice", 10), ("alice", 11), ("bob", 9), ("bob", 10), ("bob", 11)]),
                     ]);
+            }
+        }
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+}
+
+#[multiplatform_test]
+pub fn test_flo_repeat_n_nested() {
+    let mut df = dfir_syntax! {
+        usrs1 = source_iter(["alice", "bob"]);
+        loop {
+            usrs2 = usrs1 -> batch() -> flatten();
+            loop {
+                usrs3 = usrs2 -> repeat_n(3) -> flatten();
+                loop {
+                    usrs3 -> repeat_n(3)
+                        -> inspect(|x| println!("{:?}", x))
+                        -> assert_eq([
+                            vec!["alice", "bob", "alice", "bob", "alice", "bob"],
+                            vec!["alice", "bob", "alice", "bob", "alice", "bob"],
+                            vec!["alice", "bob", "alice", "bob", "alice", "bob"],
+                        ]);
+                }
             }
         }
     };
