@@ -2,14 +2,15 @@ use std::convert::Infallible;
 use std::num::{NonZeroU32, ParseFloatError};
 use std::thread::sleep;
 use std::time::Duration;
-
 use clap::Parser;
 use dfir_rs::util::{unbounded_channel, unsync_channel};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
-use gossip_kv::{ClientRequest, GossipMessage};
+use gossip_kv::{ClientRequest, GossipMessage, Key};
 use governor::{Quota, RateLimiter};
-use prometheus::{gather, Encoder, TextEncoder};
-use tokio::sync::mpsc::UnboundedSender;
+use lazy_static::lazy_static;
+use prometheus::{gather, register_int_counter, Encoder, IntCounter, TextEncoder};
+use tokio::sync::mpsc::{Sender, UnboundedSender};
+use tokio::sync::watch::Receiver;
 use tokio::task;
 use tracing::{error, info, trace};
 use warp::Filter;
@@ -40,6 +41,12 @@ struct Opts {
     max_set_throughput: u32,
 }
 
+
+lazy_static! {
+    pub static ref SETS_SENT: IntCounter =
+        register_int_counter!("sets_sent", "Counts the number of SET requests sent.").unwrap();
+}
+
 /// Parse duration from float string for clap args.
 fn clap_duration_from_secs(arg: &str) -> Result<Duration, ParseFloatError> {
     arg.parse().map(Duration::from_secs_f32)
@@ -59,6 +66,8 @@ fn run_server(
             .build()
             .unwrap();
 
+        let (client_input_tx, client_input_rx) = bounded(1000);
+
         let (gossip_output_tx, mut gossip_output_rx) = unsync_channel(None);
 
         let (gossip_trigger_tx, gossip_trigger_rx) = unbounded_channel();
@@ -68,33 +77,29 @@ fn run_server(
             .build();
 
         rt.block_on(async {
+            // Disabled gossip for now
+            // let gossip_frequency = opts.gossip_frequency;
+            // local.spawn_local(async move {
+            //     loop {
+            //         tokio::time::sleep(gossip_frequency).await;
+            //         gossip_trigger_tx.send(()).unwrap();
+            //     }
+            // });
+
+            // let put_throughput = opts.max_set_throughput;
             let local = task::LocalSet::new();
-
-            let (client_input_tx, client_input_rx) = unbounded_channel();
-
-            let put_throughput = opts.max_set_throughput;
             local.spawn_local(async move {
-                let rate_limiter = RateLimiter::direct(Quota::per_second(
-                    NonZeroU32::new(put_throughput).unwrap(),
-                ));
+                let key_master: Key = "/usr/table/key".parse().unwrap();
                 loop {
-                    rate_limiter.until_ready().await;
-                    let key = "/usr/table/key".parse().unwrap();
                     let request = ClientRequest::Set {
-                        key,
+                        key: key_master.clone(),
                         value: "FOOBAR".to_string(),
                     };
-                    client_input_tx.send((request, UNKNOWN_ADDRESS)).unwrap();
+                    client_input_tx.send((request, UNKNOWN_ADDRESS)).await.unwrap();
+                    SETS_SENT.inc();
                 }
             });
 
-            let gossip_frequency = opts.gossip_frequency;
-            local.spawn_local(async move {
-                loop {
-                    tokio::time::sleep(gossip_frequency).await;
-                    gossip_trigger_tx.send(()).unwrap();
-                }
-            });
 
             // Networking
             local.spawn_local(async move {

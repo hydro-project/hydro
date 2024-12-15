@@ -158,7 +158,7 @@ where
 
         incoming_gossip_messages = gossip_in[Gossip]
             -> inspect(|request| trace!("{:?}: Received gossip request: {:?}.", context.current_tick(), request))
-            -> tee();
+            -> null();
 
         gossip_in[Ack]
             -> inspect(|request| trace!("{:?}: Received gossip ack: {:?}.", context.current_tick(), request))
@@ -173,58 +173,58 @@ where
 
         gossip_out = union() -> dest_sink(gossip_outputs);
 
-        incoming_gossip_messages
-            -> map(|(_msg_id, _member_id, writes, _addr)| writes )
-            -> writes;
+        // incoming_gossip_messages
+        //     -> map(|(_msg_id, _member_id, writes, _addr)| writes )
+        //     -> writes;
+        //
+        // gossip_processing_pipeline = incoming_gossip_messages
+        //     -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, Namespaces<Max<u64>>, Addr)| {
+        //         let namespaces = &#namespaces;
+        //         let all_data: &HashMap<Namespace, TableMap<RowValue<Clock>>> = namespaces.as_reveal_ref();
+        //         let possible_new_data: &HashMap<Namespace, TableMap<RowValue<Max<u64>>>>= writes.as_reveal_ref();
+        //
+        //         // Check if any of the data is new
+        //         /* TODO: This logic is duplicated in MapUnion::Merge and ideally should be accessed
+        //            from the pass-through streaming output from `state`. See
+        //            https://www.notion.so/hydro-project/Proposal-for-State-API-10a2a586262f8080b981d1a2948a69ac
+        //            for more. */
+        //         let gossip_has_new_data = possible_new_data.iter()
+        //             .flat_map(|(namespace, tables)| {
+        //                 tables.as_reveal_ref().iter().flat_map(move |(table, rows)|{
+        //                     rows.as_reveal_ref().iter().map(move |(row_key, row_value)| (namespace, table, row_key, row_value.as_reveal_ref().0.as_reveal_ref()))
+        //                 })
+        //             })
+        //             .any(|(ns,table, row_key, new_ts)| {
+        //                 let existing_tables = all_data.get(ns);
+        //                 let existing_rows = existing_tables.and_then(|tables| tables.as_reveal_ref().get(table));
+        //                 let existing_row = existing_rows.and_then(|rows| rows.as_reveal_ref().get(row_key));
+        //                 let existing_ts = existing_row.map(|row| row.as_reveal_ref().0.as_reveal_ref());
+        //
+        //                 if let Some(existing_ts) = existing_ts {
+        //                     trace!("Comparing timestamps: {:?} vs {:?}", new_ts, existing_ts);
+        //                     new_ts > existing_ts
+        //                 } else {
+        //                     true
+        //                 }
+        //             });
+        //
+        //         if gossip_has_new_data {
+        //             (Ack { message_id: msg_id, member_id: member_id_2.clone()}, sender_address, Some(writes))
+        //         } else {
+        //             (Nack { message_id: msg_id, member_id: member_id_3.clone()}, sender_address, None)
+        //         }
+        //      })
+        //     -> tee();
 
-        gossip_processing_pipeline = incoming_gossip_messages
-            -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, Namespaces<Max<u64>>, Addr)| {
-                let namespaces = &#namespaces;
-                let all_data: &HashMap<Namespace, TableMap<RowValue<Clock>>> = namespaces.as_reveal_ref();
-                let possible_new_data: &HashMap<Namespace, TableMap<RowValue<Max<u64>>>>= writes.as_reveal_ref();
-
-                // Check if any of the data is new
-                /* TODO: This logic is duplicated in MapUnion::Merge and ideally should be accessed
-                   from the pass-through streaming output from `state`. See
-                   https://www.notion.so/hydro-project/Proposal-for-State-API-10a2a586262f8080b981d1a2948a69ac
-                   for more. */
-                let gossip_has_new_data = possible_new_data.iter()
-                    .flat_map(|(namespace, tables)| {
-                        tables.as_reveal_ref().iter().flat_map(move |(table, rows)|{
-                            rows.as_reveal_ref().iter().map(move |(row_key, row_value)| (namespace, table, row_key, row_value.as_reveal_ref().0.as_reveal_ref()))
-                        })
-                    })
-                    .any(|(ns,table, row_key, new_ts)| {
-                        let existing_tables = all_data.get(ns);
-                        let existing_rows = existing_tables.and_then(|tables| tables.as_reveal_ref().get(table));
-                        let existing_row = existing_rows.and_then(|rows| rows.as_reveal_ref().get(row_key));
-                        let existing_ts = existing_row.map(|row| row.as_reveal_ref().0.as_reveal_ref());
-
-                        if let Some(existing_ts) = existing_ts {
-                            trace!("Comparing timestamps: {:?} vs {:?}", new_ts, existing_ts);
-                            new_ts > existing_ts
-                        } else {
-                            true
-                        }
-                    });
-
-                if gossip_has_new_data {
-                    (Ack { message_id: msg_id, member_id: member_id_2.clone()}, sender_address, Some(writes))
-                } else {
-                    (Nack { message_id: msg_id, member_id: member_id_3.clone()}, sender_address, None)
-                }
-             })
-            -> tee();
-
-        gossip_processing_pipeline
-            -> map(|(response, address, _writes)| (response, address))
-            -> inspect( |(msg, addr)| trace!("{:?}: Sending gossip response: {:?} to {:?}.", context.current_tick(), msg, addr))
-            -> gossip_out;
-
-        gossip_processing_pipeline
-            -> filter(|(_, _, writes)| writes.is_some())
-            -> map(|(_, _, writes)| writes.unwrap())
-            -> writes;
+        // gossip_processing_pipeline
+        //     -> map(|(response, address, _writes)| (response, address))
+        //     -> inspect( |(msg, addr)| trace!("{:?}: Sending gossip response: {:?} to {:?}.", context.current_tick(), msg, addr))
+        //     -> gossip_out;
+        //
+        // gossip_processing_pipeline
+        //     -> filter(|(_, _, writes)| writes.is_some())
+        //     -> map(|(_, _, writes)| writes.unwrap())
+        //     -> writes;
 
         writes = union();
 
@@ -271,79 +271,79 @@ where
                 response
             }) -> client_out;
 
-        new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
+        // new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
         // Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
         infecting_writes = union() -> state::<'static, MapUnionHashMap<MessageId, InfectingWrite>>();
+        //
+        // new_writes -> map(|write| {
+        //     // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
+        //     // have a hash implementation. So we just generate a GUID identifier for the write
+        //     // for now.
+        //     let id = uuid::Uuid::new_v4().to_string();
+        //     MapUnionSingletonMap::new_from((id, InfectingWrite { write, members: BoundedSetLattice::new() }))
+        // }) -> infecting_writes;
 
-        new_writes -> map(|write| {
-            // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
-            // have a hash implementation. So we just generate a GUID identifier for the write
-            // for now.
-            let id = uuid::Uuid::new_v4().to_string();
-            MapUnionSingletonMap::new_from((id, InfectingWrite { write, members: BoundedSetLattice::new() }))
-        }) -> infecting_writes;
+        // gossip_trigger = source_stream(gossip_trigger);
 
-        gossip_trigger = source_stream(gossip_trigger);
-
-        gossip_messages = gossip_trigger
-        -> flat_map( |_|
-            {
-                let infecting_writes = #infecting_writes.as_reveal_ref().clone();
-                trace!("{:?}: Currently gossipping {} infecting writes.", context.current_tick(), infecting_writes.iter().filter(|(_, write)| !write.members.is_top()).count());
-                infecting_writes
-            }
-        )
-        -> filter(|(_id, infecting_write)| !infecting_write.members.is_top())
-        -> map(|(id, infecting_write)| {
-            trace!("{:?}: Choosing a peer to gossip to. {:?}:{:?}", context.current_tick(), id, infecting_write);
-            let peers = #namespaces.as_reveal_ref().get(&Namespace::System).unwrap().as_reveal_ref().get("members").unwrap().as_reveal_ref().clone();
-
-            let mut peer_names = HashSet::new();
-            peers.iter().for_each(|(row_key, _)| {
-                peer_names.insert(row_key.clone());
-            });
-
-            let seed_nodes = &#seed_nodes;
-            seed_nodes.iter().for_each(|seed_node| {
-                peer_names.insert(seed_node.id.clone());
-            });
-
-            // Exclude self from the list of peers.
-            peer_names.remove(&member_id_5);
-
-            trace!("{:?}: Peers: {:?}", context.current_tick(), peer_names);
-
-            let chosen_peer_name = peer_names.iter().choose(&mut thread_rng());
-
-            if chosen_peer_name.is_none() {
-                trace!("{:?}: No peers to gossip to.", context.current_tick());
-                return None;
-            }
-
-            let chosen_peer_name = chosen_peer_name.unwrap();
-            let gossip_address = if peers.contains_key(chosen_peer_name) {
-                let peer_info_value = peers.get(chosen_peer_name).unwrap().as_reveal_ref().1.as_reveal_ref().iter().next().unwrap().clone();
-                let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(&peer_info_value).unwrap();
-                peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint
-            } else {
-                seed_nodes.iter().find(|seed_node| seed_node.id == *chosen_peer_name).unwrap().address.clone()
-            };
-
-            trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, gossip_address);
-            Some((id, infecting_write, gossip_address))
-        })
-        -> flatten()
-        -> inspect(|(message_id, infecting_write, peer_gossip_address)| trace!("{:?}: Sending write:\nMessageId:{:?}\nWrite:{:?}\nPeer Address:{:?}", context.current_tick(), message_id, infecting_write, peer_gossip_address))
-        -> map(|(message_id, infecting_write, peer_gossip_address): (String, InfectingWrite, Addr)| {
-            let gossip_request = GossipMessage::Gossip {
-                message_id: message_id.clone(),
-                member_id: member_id_4.clone(),
-                writes: infecting_write.write.clone(),
-            };
-            (gossip_request, peer_gossip_address)
-        })
-        -> gossip_out;
+        // gossip_messages = gossip_trigger
+        // -> flat_map( |_|
+        //     {
+        //         let infecting_writes = #infecting_writes.as_reveal_ref().clone();
+        //         trace!("{:?}: Currently gossipping {} infecting writes.", context.current_tick(), infecting_writes.iter().filter(|(_, write)| !write.members.is_top()).count());
+        //         infecting_writes
+        //     }
+        // )
+        // -> filter(|(_id, infecting_write)| !infecting_write.members.is_top())
+        // -> map(|(id, infecting_write)| {
+        //     trace!("{:?}: Choosing a peer to gossip to. {:?}:{:?}", context.current_tick(), id, infecting_write);
+        //     let peers = #namespaces.as_reveal_ref().get(&Namespace::System).unwrap().as_reveal_ref().get("members").unwrap().as_reveal_ref().clone();
+        //
+        //     let mut peer_names = HashSet::new();
+        //     peers.iter().for_each(|(row_key, _)| {
+        //         peer_names.insert(row_key.clone());
+        //     });
+        //
+        //     let seed_nodes = &#seed_nodes;
+        //     seed_nodes.iter().for_each(|seed_node| {
+        //         peer_names.insert(seed_node.id.clone());
+        //     });
+        //
+        //     // Exclude self from the list of peers.
+        //     peer_names.remove(&member_id_5);
+        //
+        //     trace!("{:?}: Peers: {:?}", context.current_tick(), peer_names);
+        //
+        //     let chosen_peer_name = peer_names.iter().choose(&mut thread_rng());
+        //
+        //     if chosen_peer_name.is_none() {
+        //         trace!("{:?}: No peers to gossip to.", context.current_tick());
+        //         return None;
+        //     }
+        //
+        //     let chosen_peer_name = chosen_peer_name.unwrap();
+        //     let gossip_address = if peers.contains_key(chosen_peer_name) {
+        //         let peer_info_value = peers.get(chosen_peer_name).unwrap().as_reveal_ref().1.as_reveal_ref().iter().next().unwrap().clone();
+        //         let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(&peer_info_value).unwrap();
+        //         peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint
+        //     } else {
+        //         seed_nodes.iter().find(|seed_node| seed_node.id == *chosen_peer_name).unwrap().address.clone()
+        //     };
+        //
+        //     trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, gossip_address);
+        //     Some((id, infecting_write, gossip_address))
+        // })
+        // -> flatten()
+        // -> inspect(|(message_id, infecting_write, peer_gossip_address)| trace!("{:?}: Sending write:\nMessageId:{:?}\nWrite:{:?}\nPeer Address:{:?}", context.current_tick(), message_id, infecting_write, peer_gossip_address))
+        // -> map(|(message_id, infecting_write, peer_gossip_address): (String, InfectingWrite, Addr)| {
+        //     let gossip_request = GossipMessage::Gossip {
+        //         message_id: message_id.clone(),
+        //         member_id: member_id_4.clone(),
+        //         writes: infecting_write.write.clone(),
+        //     };
+        //     (gossip_request, peer_gossip_address)
+        // })
+        // -> gossip_out;
     }
 }
 
