@@ -105,6 +105,8 @@ where
 
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
+    let pre_generated_random_idx : Vec<u64>= (0..128*1024).map(|_| zipf.sample(&mut rng) as u64).collect();
+    let mut pre_gen_index = 0;
 
     dfir_syntax! {
 
@@ -153,6 +155,8 @@ where
             -> writes;
 
         simulated_puts = repeat_fn(20000, move || {
+            let key = pre_generated_random_idx[pre_gen_index % pre_generated_random_idx.len()];
+            pre_gen_index += 1;
             upsert_row(Clock::new(100), zipf.sample(&mut rng) as u64, "value".to_string())
         })
             -> inspect (|_| {
