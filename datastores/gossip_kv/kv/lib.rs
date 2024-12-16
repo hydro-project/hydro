@@ -139,7 +139,7 @@ pub enum ClientRequest {
     /// A request to get the value of a key.
     Get { key: Key },
     /// A request to set the value of a key.
-    Set { key: Key, value: String },
+    Set { key: u64, value: String },
     /// A request to delete the value of a key.
     Delete { key: Key },
 }

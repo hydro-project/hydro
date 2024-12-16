@@ -84,10 +84,10 @@ fn run_server(
 
             let local = task::LocalSet::new();
             local.spawn_local(async move {
-                let key_master: Key = "/usr/table/key".parse().unwrap();
+                // let key_master: Key = "/usr/table/key".parse().unwrap();
                 loop {
                     let request = ClientRequest::Set {
-                        key: key_master.clone(),
+                        key: 100,
                         value: "FOOBAR".to_string(),
                     };
                     client_input_tx.send((request, UNKNOWN_ADDRESS)).await.unwrap();

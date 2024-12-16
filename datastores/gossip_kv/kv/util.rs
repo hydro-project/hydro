@@ -10,7 +10,7 @@ pub enum ClientRequestWithAddress<A> {
     /// A get request with the key and the address of the client.
     Get { key: Key, addr: A },
     /// A set request with the key, value and the address of the client.
-    Set { key: Key, value: String, addr: A },
+    Set { key: u64, value: String, addr: A },
     /// A delete request with the key and the address of the client.
     Delete { key: Key, addr: A },
 }

@@ -24,7 +24,7 @@ pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
 
 pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
-pub type Namespaces<C> = NamespaceMap<RowValue<C>>;
+pub type Namespaces<C> = MapUnionHashMap<u64, RowValue<C>>;
 
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
@@ -42,36 +42,32 @@ pub type Clock = Max<u64>;
 /// - `val`: Row value.
 pub fn upsert_row<C>(
     row_ts: C,
-    ns: Namespace,
-    table_name: TableName,
-    key: RowKey,
+    key: u64,
     val: String,
 ) -> Namespaces<C> {
     let value: RowValue<C> = RowValue::new_from(row_ts, SetUnionHashSet::new_from([val]));
-    let row: Table<RowValue<C>> = Table::new_from([(key, value)]);
-    let table: TableMap<RowValue<C>> = TableMap::new_from([(table_name, row)]);
-    Namespaces::new_from([(ns, table)])
+    Namespaces::new_from([(key, value)])
 }
-
-/// TableMap element to delete a row from an existing TableMap.
-///
-/// Merge this into an existing TableMap to delete a row from a table.
-///
-/// Parameters:
-/// - `row_ts`: New timestamp of the row being deleted.
-/// - `table_name`: Name of the table.
-/// - `key`: Primary key of the row.
-pub fn delete_row<C>(
-    row_ts: C,
-    ns: Namespace,
-    table_name: TableName,
-    key: RowKey,
-) -> Namespaces<C> {
-    let value: RowValue<C> = RowValue::new_from(row_ts, SetUnionHashSet::new_from([]));
-    let row: Table<RowValue<C>> = Table::new_from([(key, value)]);
-    let table = TableMap::new_from([(table_name, row)]);
-    Namespaces::new_from([(ns, table)])
-}
+//
+// /// TableMap element to delete a row from an existing TableMap.
+// ///
+// /// Merge this into an existing TableMap to delete a row from a table.
+// ///
+// /// Parameters:
+// /// - `row_ts`: New timestamp of the row being deleted.
+// /// - `table_name`: Name of the table.
+// /// - `key`: Primary key of the row.
+// pub fn delete_row<C>(
+//     row_ts: C,
+//     ns: Namespace,
+//     table_name: TableName,
+//     key: RowKey,
+// ) -> Namespaces<C> {
+//     let value: RowValue<C> = RowValue::new_from(row_ts, SetUnionHashSet::new_from([]));
+//     let row: Table<RowValue<C>> = Table::new_from([(key, value)]);
+//     let table = TableMap::new_from([(table_name, row)]);
+//     Namespaces::new_from([(ns, table)])
+// }
 
 #[cfg(test)]
 mod tests {

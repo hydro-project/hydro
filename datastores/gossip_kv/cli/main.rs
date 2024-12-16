@@ -31,7 +31,7 @@ enum InteractiveCommands {
     /// Upsert a value in the store.
     Set {
         #[arg(value_parser = parse_key, required = true, help = "Key to set")]
-        key: Key,
+        key: u64,
         value: String,
     },
     /// Delete a value from the store.
