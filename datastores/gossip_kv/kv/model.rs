@@ -11,7 +11,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, SetUnionHashSet<String>>;
+pub type RowValue<C> = DomPair<C, ()>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionHashMap<RowKey, V>;
@@ -45,7 +45,7 @@ pub fn upsert_row<C>(
     key: u64,
     val: String,
 ) -> Namespaces<C> {
-    let value: RowValue<C> = RowValue::new_from(row_ts, SetUnionHashSet::new_from([val]));
+    let value: RowValue<C> = RowValue::new_from(row_ts, ());
     Namespaces::new_from([(key, value)])
 }
 //
