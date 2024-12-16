@@ -140,31 +140,24 @@ pub fn run_server<RX>(
 
             let mut df = dfir_syntax! {
 
-                simulated_put_requests = spin() -> flat_map(|_| {
-                    let buffer_pool = buffer_pool.clone();
-                    let pre_gen_random_numbers = &pre_gen_random_numbers;
-                    std::iter::repeat_with(move || {
-                        let value = BufferPool::get_from_buffer_pool(&buffer_pool);
 
-                        // Did the original C++ benchmark do anything with the data..?
-                        // Can uncomment this to modify the buffers then.
-                        //
-                        // let mut borrow = buff.borrow_mut().unwrap();
-
-                        // let mut r = rng.sample(dist_uniform) as u64;
-                        // for i in 0..8 {
-                        //     borrow[i] = (r % 256) as u8;
-                        //     r /= 256;
-                        // }
-
-                        let key = pre_gen_random_numbers[pre_gen_index % pre_gen_random_numbers.len()];
-                        pre_gen_index += 1;
-
-                        (KvsRequest::Put {
-                            key,
-                            value,
-                        }, 99999999)
-                    })
+                simulated_put_requests = repeat_fn(2000, move || {
+                    let value = BufferPool::get_from_buffer_pool(&buffer_pool);
+                    // Did the original C++ benchmark do anything with the data..?
+                    // Can uncomment this to modify the buffers then.
+                    //
+                    // let mut borrow = buff.borrow_mut().unwrap();
+                    // let mut r = rng.sample(dist_uniform) as u64;
+                    // for i in 0..8 {
+                    //     borrow[i] = (r % 256) as u8;
+                    //     r /= 256;
+                    // }
+                    let key = pre_gen_random_numbers[pre_gen_index % pre_gen_random_numbers.len()];
+                    pre_gen_index += 1;
+                    (KvsRequest::Put {
+                        key,
+                        value,
+                    }, 99999999)
                 });
 
                 union_puts_and_gossip_requests = union();

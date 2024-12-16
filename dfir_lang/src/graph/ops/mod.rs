@@ -1,5 +1,6 @@
 //! Hydroflow's operators
 
+
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::ops::{Bound, RangeBounds};
@@ -296,6 +297,7 @@ declare_ops![
     py_udf::PY_UDF,
     reduce::REDUCE,
     spin::SPIN,
+    repeat_fn::REPEAT_FN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,
     source_file::SOURCE_FILE,
