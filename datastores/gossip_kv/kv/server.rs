@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-
+use std::iter::Zip;
 use dfir_rs::dfir_syntax;
 use dfir_rs::futures::{Sink, Stream};
 use dfir_rs::itertools::Itertools;
@@ -15,6 +15,7 @@ use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::seq::IteratorRandom;
 use rand::thread_rng;
+use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
@@ -102,6 +103,9 @@ where
     let member_id_5 = my_member_id.clone();
     let member_id_6 = my_member_id.clone();
 
+    let zipf = Zipf::new(1_000_000, 4.0).unwrap();
+    let mut rng = thread_rng();
+
     dfir_syntax! {
 
         on_start = initialize() -> tee();
@@ -148,8 +152,8 @@ where
             })
             -> writes;
 
-        simulated_puts = repeat_fn(2000, || {
-            upsert_row(Clock::new(100), rand::random(), "value".to_string())
+        simulated_puts = repeat_fn(20000, move || {
+            upsert_row(Clock::new(100), zipf.sample(&mut rng) as u64, "value".to_string())
         })
             -> inspect (|_| {
                 SETS_COUNTER.inc();
