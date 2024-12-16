@@ -148,6 +148,14 @@ where
             })
             -> writes;
 
+        simulated_puts = repeat_fn(2000, || {
+            upsert_row(Clock::new(100), rand::random(), "value".to_string())
+        })
+            -> inspect (|_| {
+                SETS_COUNTER.inc();
+            })
+            -> writes;
+
         client_in[Delete]
             -> null();
             // -> inspect(|req| trace!("{:?}: Received Delete request: {:?}.", context.current_tick(), req))
