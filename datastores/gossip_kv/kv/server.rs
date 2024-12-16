@@ -108,6 +108,8 @@ where
     let pre_generated_random_idx : Vec<u64>= (0..128*1024).map(|_| zipf.sample(&mut rng) as u64).collect();
     let mut pre_gen_index = 0;
 
+    let pre_gen_values : Vec<_> = (0..128*1024).map(|i| upsert_row(Clock::new(100), pre_generated_random_idx[i], "value".to_string())).collect();
+
     dfir_syntax! {
 
         on_start = initialize() -> tee();
@@ -157,7 +159,7 @@ where
         simulated_puts = repeat_fn(20000, move || {
             let key = pre_generated_random_idx[pre_gen_index % pre_generated_random_idx.len()];
             pre_gen_index += 1;
-            upsert_row(Clock::new(100), key, "value".to_string())
+            pre_gen_values[key as usize].clone()
         })
             -> inspect (|_| {
                 SETS_COUNTER.inc();
