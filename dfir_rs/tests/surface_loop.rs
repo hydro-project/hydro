@@ -131,3 +131,83 @@ pub fn test_flo_repeat_n_nested() {
     assert_graphvis_snapshots!(df);
     df.run_available();
 }
+
+#[multiplatform_test(test, env_tracing)]
+pub fn test_flo_repeat_kmeans() {
+    const POINTS: &[[i32; 2]] = &[
+        [-210, -104],
+        [-226, -143],
+        [-258, -119],
+        [-331, -129],
+        [-250, -69],
+        [-202, -113],
+        [-222, -133],
+        [-232, -155],
+        [-220, -107],
+        [-159, -109],
+        [-49, 57],
+        [-156, 52],
+        [-22, 125],
+        [-140, 168],
+        [-118, 89],
+        [-93, 133],
+        [-101, 80],
+        [-145, 79],
+        [187, 36],
+        [208, -66],
+        [142, 5],
+        [232, 41],
+        [91, -37],
+        [132, 16],
+        [248, -39],
+        [158, 65],
+        [108, -41],
+        [171, -121],
+        [147, 5],
+        [192, 58],
+    ];
+    const CENTROIDS: &[[i32; 2]] = &[[-50, 0], [0, 0], [50, 0]];
+
+    let mut df = dfir_syntax! {
+        init_points = source_iter(POINTS) -> map(std::clone::Clone::clone);
+        init_centroids = source_iter(CENTROIDS) -> map(std::clone::Clone::clone);
+        loop {
+            batch_points = init_points -> batch() -> flatten();
+            batch_centroids = init_centroids -> batch() -> flatten();
+
+            loop {
+                points = batch_points -> repeat_n(10) -> enumerate() -> flat_map(|(n, batch)| {
+                    println!("{}! {}", n, batch.len());
+                    batch
+                }) -> [0]cj;
+                batch_centroids -> all_once() -> flatten() -> centroids;
+                centroids = union() -> [1]cj;
+
+                cj = cross_join()
+                    -> map(|(point, centroid): ([i32; 2], [i32; 2])| {
+                        let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);
+                        (point, (dist2, centroid))
+                    })
+                    -> reduce_keyed(|a, b| {
+                        *a = std::cmp::min(*a, b);
+                    })
+                    -> map(|(point, (_dist2, centroid))| {
+                        (centroid, (point, 1))
+                    })
+                    -> reduce_keyed(|(p1, n1), (p2, n2): ([i32; 2], i32)| {
+                        p1[0] += p2[0];
+                        p1[1] += p2[1];
+                        *n1 += n2;
+                    })
+                    -> map(|(_centroid, (p, n))| {
+                        [p[0] / n, p[1] / n]
+                    })
+                    -> inspect(|x| println!("{}: {:?}", context.current_tick(), x))
+                    -> next_loop::<[i32; 2]>()
+                    -> centroids;
+            }
+        }
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+}

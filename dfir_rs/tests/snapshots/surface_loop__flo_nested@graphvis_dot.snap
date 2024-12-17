@@ -67,7 +67,7 @@ digraph {
     subgraph "cluster n4v1" {
         fillcolor="#dddddd"
         style=filled
-        label = "sg_4v1\nstratum 1"
+        label = "sg_4v1\nstratum 0"
         n8v1
         n9v1
         n10v1

@@ -9,7 +9,7 @@ use syn::parse_quote;
 use super::hydroflow_graph::DfirGraph;
 use super::ops::{find_node_op_constraints, DelayType};
 use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::Diagnostic;
 use crate::union_find::UnionFind;
 
 /// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
@@ -51,7 +51,12 @@ impl BarrierCrossers {
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
         .edges()
-        .filter_map(|(edge_id, (_src, dst))| {
+        .filter_map(|(edge_id, (src, dst))| {
+            // TODO(mingwei)
+            // No barriers within loop context DAGs.
+            if partitioned_graph.node_loop(src).is_some() {
+                return None;
+            }
             let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
             let input_barrier = (op_constraints.input_delaytype_fn)(dst_port)?;
@@ -396,7 +401,7 @@ fn find_subgraph_strata(
     let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
     for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
-        let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+        // let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());
         let src = partitioned_graph
@@ -448,12 +453,13 @@ fn find_subgraph_strata(
                 }
             }
             DelayType::Stratum => {
-                // Any negative edges which go onto the same or previous stratum are bad.
-                // Indicates an unbroken negative cycle.
-                // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydro/issues/1115#issuecomment-2018385033
-                if dst_stratum <= src_stratum {
-                    return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
-                }
+                // TODO(mingwei): ignore for `loop {`s.
+                // // Any negative edges which go onto the same or previous stratum are bad.
+                // // Indicates an unbroken negative cycle.
+                // // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydroflow/issues/1115#issuecomment-2018385033
+                // if dst_stratum <= src_stratum {
+                //     return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
+                // }
             }
             DelayType::MonotoneAccum => {
                 // cycles are actually fine

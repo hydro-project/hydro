@@ -55,7 +55,7 @@ subgraph sg_3v1 ["sg_3v1 stratum 0"]
         7v1
     end
 end
-subgraph sg_4v1 ["sg_4v1 stratum 1"]
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
     8v1
     9v1
     10v1

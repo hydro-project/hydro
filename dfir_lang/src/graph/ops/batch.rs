@@ -22,7 +22,7 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |_wc @ &WriteContextArgs {
                    root,
                    context,
                    hydroflow,
@@ -46,17 +46,15 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
             #hydroflow.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.take(); });
         };
 
-        let vec_ident = wc.make_ident("vec");
-
         let write_iterator = if is_pull {
             // Pull.
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                let mut vec = #context.state_ref(#singleton_output_ident).borrow_mut();
                 if #context.is_first_run_this_tick() {
-                    *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
+                    *vec = #input.collect::<::std::vec::Vec<_>>();
                 }
-                let #ident = ::std::iter::once(::std::clone::Clone::clone(&*#vec_ident));
+                let #ident = ::std::iter::once(::std::clone::Clone::clone(&*vec));
             }
         } else if let Some(_output) = outputs.first() {
             // Push with output.
@@ -65,9 +63,9 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
         } else {
             // Push with no output.
             quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                let mut vec = #context.state_ref(#singleton_output_ident).borrow_mut();
                 let #ident = #root::pusherator::for_each::ForEach::new(|item| {
-                    ::std::vec::Vec::push(#vec_ident, item);
+                    ::std::vec::Vec::push(vec, item);
                 });
             }
         };

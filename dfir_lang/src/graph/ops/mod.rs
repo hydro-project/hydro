@@ -235,6 +235,7 @@ pub const NULL_WRITE_FN: WriteFn = |write_context_args, _| {
 macro_rules! declare_ops {
     ( $( $mod:ident :: $op:ident, )* ) => {
         $( pub(crate) mod $mod; )*
+
         /// All Hydroflow operators.
         pub const OPERATORS: &[OperatorConstraints] = &[
             $( $mod :: $op, )*
@@ -252,6 +253,9 @@ declare_ops![
     cross_join::CROSS_JOIN,
     cross_join_multiset::CROSS_JOIN_MULTISET,
     cross_singleton::CROSS_SINGLETON,
+    defer_signal::DEFER_SIGNAL,
+    defer_tick::DEFER_TICK,
+    defer_tick_lazy::DEFER_TICK_LAZY,
     demux::DEMUX,
     demux_enum::DEMUX_ENUM,
     dest_file::DEST_FILE,
@@ -282,12 +286,9 @@ declare_ops![
     _lattice_join_fused_join::_LATTICE_JOIN_FUSED_JOIN,
     lattice_reduce::LATTICE_REDUCE,
     map::MAP,
-    union::UNION,
     multiset_delta::MULTISET_DELTA,
+    next_loop::NEXT_LOOP,
     next_stratum::NEXT_STRATUM,
-    defer_signal::DEFER_SIGNAL,
-    defer_tick::DEFER_TICK,
-    defer_tick_lazy::DEFER_TICK_LAZY,
     null::NULL,
     partition::PARTITION,
     persist::PERSIST,
@@ -309,6 +310,7 @@ declare_ops![
     state::STATE,
     state_by::STATE_BY,
     tee::TEE,
+    union::UNION,
     unique::UNIQUE,
     unzip::UNZIP,
     zip::ZIP,
