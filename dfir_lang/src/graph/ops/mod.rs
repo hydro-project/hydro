@@ -13,7 +13,8 @@ use syn::punctuated::Punctuated;
 use syn::{parse_quote_spanned, Expr, Token};
 
 use super::{
-    GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance, PortIndexValue,
+    GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
+    PortIndexValue,
 };
 use crate::diagnostic::Diagnostic;
 use crate::parse::{Operator, PortIndex};
@@ -366,6 +367,8 @@ pub struct WriteContextArgs<'a> {
     pub outputs: &'a [Ident],
     /// Ident for the singleton output of this operator, if any.
     pub singleton_output_ident: &'a Ident,
+    /// The loops this operator is contained in, innermost first, outermost (first at root) last. Empty if in the root.
+    pub loop_stack: &'a [GraphLoopId],
 
     /// Operator name.
     pub op_name: &'static str,
@@ -564,4 +567,6 @@ pub enum FloType {
     Windowing,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
+    /// Moves data into the next loop iteration within a loop context.
+    NextLoop,
 }

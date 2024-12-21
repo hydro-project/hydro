@@ -268,15 +268,20 @@ impl<'a> Dfir<'a> {
             {
                 let sg_data = &mut self.subgraphs[sg_id.0];
                 // This must be true for the subgraph to be enqueued.
+                // (`take()` must execute, do not replace with `debug_assert!`).
                 assert!(sg_data.is_scheduled.take());
-                tracing::trace!(
-                    sg_id = sg_id.0,
-                    sg_name = &*sg_data.name,
-                    "Running subgraph."
-                );
 
                 self.context.subgraph_id = sg_id;
                 self.context.subgraph_last_tick_run_in = sg_data.last_tick_run_in;
+                self.context.was_rescheduled = sg_data.is_rescheduled.take();
+
+                tracing::trace!(
+                    sg_id = sg_id.0,
+                    sg_name = &*sg_data.name,
+                    was_rescheduled = self.context.was_rescheduled,
+                    "Running subgraph."
+                );
+
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
                 sg_data.last_tick_run_in = Some(current_tick);
             }
@@ -303,6 +308,12 @@ impl<'a> Dfir<'a> {
             // Check if subgraph wants rescheduling
             if self.context.reschedule_current_subgraph.take() {
                 // Add subgraph to stratum queue if it is not already scheduled.
+                tracing::trace!(
+                    sg_id = sg_id.0,
+                    sg_name = &*sg_data.name,
+                    "Subgraph requested to be rescheduled."
+                );
+                sg_data.is_rescheduled.set(true);
                 if !sg_data.is_scheduled.replace(true) {
                     self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
                 }
@@ -888,6 +899,8 @@ pub(super) struct SubgraphData<'a> {
     /// `Self::succs`, as all `SubgraphData` are owned by the same vec
     /// `dfir_rs::subgraphs`.
     is_scheduled: Cell<bool>,
+    /// If this subgraph is scheduled because it was rescheduled.
+    is_rescheduled: Cell<bool>,
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
@@ -912,6 +925,7 @@ impl<'a> SubgraphData<'a> {
             preds,
             succs,
             is_scheduled: Cell::new(is_scheduled),
+            is_rescheduled: Cell::new(false),
             last_tick_run_in: None,
             is_lazy: laziness,
         }

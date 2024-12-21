@@ -874,6 +874,19 @@ impl FlatGraphBuilder {
                         ));
                     }
                 }
+                Some(FloType::NextLoop) => {
+                    // Must be in a loop context.
+                    if loop_id.is_none() {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Operator `{}(...)` must be within a `loop {{ ... }}` context.",
+                                op_inst.op_constraints.name
+                            ),
+                        ));
+                    }
+                }
                 Some(FloType::Source) => {
                     // Handled above.
                 }

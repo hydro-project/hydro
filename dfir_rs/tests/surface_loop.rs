@@ -176,20 +176,24 @@ pub fn test_flo_repeat_kmeans() {
             batch_centroids = init_centroids -> batch() -> flatten();
 
             loop {
-                points = batch_points -> repeat_n(10) -> enumerate() -> flat_map(|(n, batch)| {
-                    println!("{}! {}", n, batch.len());
-                    batch
-                }) -> [0]cj;
+                points = batch_points
+                    -> repeat_n(10)
+                    -> flatten()
+                    -> [0]cj;
                 batch_centroids -> all_once() -> flatten() -> centroids;
+
                 centroids = union() -> [1]cj;
 
-                cj = cross_join()
+                cj = cross_join_multiset()
                     -> map(|(point, centroid): ([i32; 2], [i32; 2])| {
                         let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);
                         (point, (dist2, centroid))
                     })
-                    -> reduce_keyed(|a, b| {
-                        *a = std::cmp::min(*a, b);
+                    -> reduce_keyed(|(a_dist2, a_centroid), (b_dist2, b_centroid)| {
+                        if b_dist2 < *a_dist2 {
+                            *a_dist2 = b_dist2;
+                            *a_centroid = b_centroid;
+                        }
                     })
                     -> map(|(point, (_dist2, centroid))| {
                         (centroid, (point, 1))
@@ -200,10 +204,10 @@ pub fn test_flo_repeat_kmeans() {
                         *n1 += n2;
                     })
                     -> map(|(_centroid, (p, n))| {
-                        [p[0] / n, p[1] / n]
+                         [p[0] / n, p[1] / n]
                     })
-                    -> inspect(|x| println!("{}: {:?}", context.current_tick(), x))
-                    -> next_loop::<[i32; 2]>()
+                    -> next_loop()
+                    -> inspect(|x| println!("centroid: {:?}", x))
                     -> centroids;
             }
         }

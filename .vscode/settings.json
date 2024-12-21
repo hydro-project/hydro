@@ -13,6 +13,9 @@
             }
         }
     ],
+    "rust-analyzer.runnables.extraTestBinaryArgs": [
+        "--nocapture"
+    ],
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {

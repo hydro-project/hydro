@@ -7,9 +7,9 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::hydroflow_graph::DfirGraph;
-use super::ops::{find_node_op_constraints, DelayType};
+use super::ops::{find_node_op_constraints, DelayType, FloType};
 use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
 
 /// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
@@ -18,9 +18,11 @@ struct BarrierCrossers {
     pub edge_barrier_crossers: SecondaryMap<GraphEdgeId, DelayType>,
     /// Singleton reference barrier crossers, considered to be [`DelayType::Stratum`].
     pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
+    /// The edges _after_ a `next_loop()`.
+    pub next_loop_output_edges: SparseSecondaryMap<GraphEdgeId, ()>,
 }
 impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier.
+    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextLoop` pairs.
     fn iter_node_pairs<'a>(
         &'a self,
         partitioned_graph: &'a DfirGraph,
@@ -51,18 +53,20 @@ impl BarrierCrossers {
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
         .edges()
-        .filter_map(|(edge_id, (src, dst))| {
-            // TODO(mingwei)
-            // No barriers within loop context DAGs.
-            if partitioned_graph.node_loop(src).is_some() {
-                return None;
-            }
+        .filter_map(|(edge_id, (_src, dst))| {
             let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
             let input_barrier = (op_constraints.input_delaytype_fn)(dst_port)?;
+
+            // Exclude edges within `loop {` contexts.
+            if partitioned_graph.node_loop(dst).is_some() {
+                return None;
+            }
+
             Some((edge_id, input_barrier))
         })
         .collect();
+
     let singleton_barrier_crossers = partitioned_graph
         .node_ids()
         .flat_map(|dst| {
@@ -73,9 +77,21 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
                 .map(move |&src_ref| (src_ref, dst))
         })
         .collect();
+
+    let next_loop_output_edges = partitioned_graph
+        .edges()
+        .filter(|&(_edge_id, (src, _dst))| {
+            partitioned_graph
+                .node_op_inst(src)
+                .is_some_and(|op_inst| Some(FloType::NextLoop) == op_inst.op_constraints.flo_type)
+        })
+        .map(|(edge_id, _)| (edge_id, ()))
+        .collect();
+
     BarrierCrossers {
         edge_barrier_crossers,
         singleton_barrier_crossers,
+        next_loop_output_edges,
     }
 }
 
@@ -136,6 +152,14 @@ fn find_subgraph_unionfind(
 
             // Do not connect across loop contexts.
             if partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
+                continue;
+            }
+
+            // Do not connect `next_loop()` output edges.
+            if barrier_crossers
+                .next_loop_output_edges
+                .contains_key(edge_id)
+            {
                 continue;
             }
 
@@ -229,7 +253,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
 
     // Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
-    // Eventually returned directly in the `HydroflowGraph`.
+    // Eventually returned directly in the `DfirGraph`.
     let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
     for (_repr_node, member_nodes) in grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
@@ -339,7 +363,7 @@ fn find_subgraph_strata(
                 .edge_barrier_crossers
                 .get(succ_edge)
                 .copied();
-            // Ignore tick edges.
+            // Ignore tick edges & `next_loop()` edges.
             if let Some(DelayType::Tick | DelayType::TickLazy) = succ_edge_delaytype {
                 continue;
             }
@@ -401,7 +425,13 @@ fn find_subgraph_strata(
     let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
     for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
-        // let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+
+        // ignore for `loop {`s.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
+
+        let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());
         let src = partitioned_graph
@@ -453,13 +483,12 @@ fn find_subgraph_strata(
                 }
             }
             DelayType::Stratum => {
-                // TODO(mingwei): ignore for `loop {`s.
-                // // Any negative edges which go onto the same or previous stratum are bad.
-                // // Indicates an unbroken negative cycle.
-                // // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydroflow/issues/1115#issuecomment-2018385033
-                // if dst_stratum <= src_stratum {
-                //     return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
-                // }
+                // Any negative edges which go onto the same or previous stratum are bad.
+                // Indicates an unbroken negative cycle.
+                // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydroflow/issues/1115#issuecomment-2018385033
+                if dst_stratum <= src_stratum {
+                    return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
+                }
             }
             DelayType::MonotoneAccum => {
                 // cycles are actually fine

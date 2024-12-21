@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
+    RANGE_1,
 };
 use crate::graph::{OpInstGenerics, OperatorInstance};
 
@@ -18,13 +19,12 @@ pub const NEXT_LOOP: OperatorConstraints = OperatorConstraints {
     type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: false,
-    flo_type: None,
+    flo_type: Some(FloType::NextLoop),
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |&WriteContextArgs {
                    root,
-                   hydroflow,
                    context,
                    op_span,
                    ident,
@@ -44,51 +44,30 @@ pub const NEXT_LOOP: OperatorConstraints = OperatorConstraints {
             .map(quote::ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let state_ident = wc.make_ident("prev_loop");
-
-        let write_prologue = quote_spanned! {op_span=>
-            let #state_ident = #hydroflow.add_state(
-                ::std::cell::RefCell::new(::std::vec::Vec::<#generic_type>::new())
-            );
-
-            // TODO(mingwei): Is this needed?
-            // Reset if it is a new tick.
-            #hydroflow.set_state_tick_hook(#state_ident, move |rcell| { rcell.take(); });
-        };
-
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    let out = #context.state_ref(#state_ident).take();
-                    #input.for_each(|item| {
-                        let mut vec = #context.state_ref(#state_ident).borrow_mut();
-                        ::std::vec::Vec::push(&mut *vec, item);
-                    });
-                    println!("OUT {:?}", out);
-                    out.into_iter()
+                    fn check_input<Iter: ::std::iter::Iterator<Item = Item>, Item>(iter: Iter, filter: bool) -> impl ::std::iter::Iterator<Item = Item> {
+                        iter.filter(move |_item| filter)
+                    }
+                    check_input::<_, #generic_type>(#input, #context.is_first_run_this_tick() || #context.was_rescheduled())
                 };
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    let out = #context.state_ref(#state_ident).take();
-                    println!("OUT {:?}", out);
-                    for item in out {
-                        #output.push(item);
+                    fn check_output<Push: #root::pusherator::Pusherator<Item = Item>, Item>(push: Push, filter: bool) -> impl #root::pusherator::Pusherator<Item = Item> {
+                        // Don't continue to the next loop iteration if we weren't rescheduled, to prevent spinning.
+                        #root::pusherator::filter::Filter::new(push, move |_item| filter)
                     }
-                    #root::pusherator::for_each::ForEach::new(|item| {
-                        let mut vec = #context.state_ref(#state_ident).borrow_mut();
-                        println!("VEC {:?}", vec);
-                        ::std::vec::Vec::push(&mut *vec, item);
-                    });
+                    check_output::<_, #generic_type>(#output, #context.is_first_run_this_tick() || #context.was_rescheduled())
                 };
             }
         };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
             write_iterator,
             ..Default::default()
         })

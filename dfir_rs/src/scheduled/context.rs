@@ -43,6 +43,8 @@ pub struct Context {
 
     /// If the current subgraph wants to reschedule in the current tick+stratum.
     pub(super) reschedule_current_subgraph: Cell<bool>,
+    /// If the current subgraph was rescheduled.
+    pub(super) was_rescheduled: bool,
 
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
@@ -100,6 +102,11 @@ impl Context {
     /// Schedules the current subgraph to run again _this tick_.
     pub fn reschedule_current_subgraph(&self) {
         self.reschedule_current_subgraph.set(true);
+    }
+
+    /// Returns whether the current subgraph is running because it was rescheduled.
+    pub fn was_rescheduled(&self) -> bool {
+        self.was_rescheduled
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -244,6 +251,7 @@ impl Default for Context {
 
             event_queue_send,
             reschedule_current_subgraph: Cell::new(false),
+            was_rescheduled: false,
 
             current_stratum: 0,
             current_tick: TickInstant::default(),

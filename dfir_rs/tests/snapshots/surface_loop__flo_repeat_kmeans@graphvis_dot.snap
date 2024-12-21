@@ -14,55 +14,53 @@ digraph {
     n7v1 [label="(n7v1) batch()", shape=invhouse, fillcolor="#88aaff"]
     n8v1 [label="(n8v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
     n9v1 [label="(n9v1) repeat_n(10)", shape=invhouse, fillcolor="#88aaff"]
-    n10v1 [label="(n10v1) enumerate()", shape=invhouse, fillcolor="#88aaff"]
-    n11v1 [label="(n11v1) flat_map(|(n, batch)| {\l    println!(\"{}! {}\", n, batch.len());\l    batch\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n12v1 [label="(n12v1) all_once()", shape=invhouse, fillcolor="#88aaff"]
-    n13v1 [label="(n13v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
-    n14v1 [label="(n14v1) union()", shape=invhouse, fillcolor="#88aaff"]
-    n15v1 [label="(n15v1) cross_join()", shape=invhouse, fillcolor="#88aaff"]
-    n16v1 [label="(n16v1) map(|(point, centroid): ([i32; 2], [i32; 2])| {\l    let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);\l    (point, (dist2, centroid))\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n17v1 [label="(n17v1) reduce_keyed(|a, b| {\l    *a = std::cmp::min(*a, b);\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n18v1 [label="(n18v1) map(|(point, (_dist2, centroid))| { (centroid, (point, 1)) })", shape=invhouse, fillcolor="#88aaff"]
-    n19v1 [label="(n19v1) reduce_keyed(|(p1, n1), (p2, n2): ([i32; 2], i32)| {\l    p1[0] += p2[0];\l    p1[1] += p2[1];\l    *n1 += n2;\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n20v1 [label="(n20v1) map(|(_centroid, (p, n))| { [p[0] / n, p[1] / n] })", shape=invhouse, fillcolor="#88aaff"]
-    n21v1 [label="(n21v1) inspect(|x| println!(\"{}: {:?}\", context.current_tick(), x))", shape=invhouse, fillcolor="#88aaff"]
-    n22v1 [label="(n22v1) next_loop::<[i32; 2]>()", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
+    n11v1 [label="(n11v1) all_once()", shape=invhouse, fillcolor="#88aaff"]
+    n12v1 [label="(n12v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
+    n13v1 [label="(n13v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n14v1 [label="(n14v1) cross_join_multiset()", shape=invhouse, fillcolor="#88aaff"]
+    n15v1 [label="(n15v1) map(|(point, centroid): ([i32; 2], [i32; 2])| {\l    let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);\l    (point, (dist2, centroid))\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n16v1 [label="(n16v1) reduce_keyed(|(a_dist2, a_centroid), (b_dist2, b_centroid)| {\l    if b_dist2 < *a_dist2 {\l        *a_dist2 = b_dist2;\l        *a_centroid = b_centroid;\l    }\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n17v1 [label="(n17v1) map(|(point, (_dist2, centroid))| { (centroid, (point, 1)) })", shape=invhouse, fillcolor="#88aaff"]
+    n18v1 [label="(n18v1) reduce_keyed(|(p1, n1), (p2, n2): ([i32; 2], i32)| {\l    p1[0] += p2[0];\l    p1[1] += p2[1];\l    *n1 += n2;\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n19v1 [label="(n19v1) map(|(_centroid, (p, n))| { [p[0] / n, p[1] / n] })", shape=invhouse, fillcolor="#88aaff"]
+    n20v1 [label="(n20v1) next_loop()", shape=invhouse, fillcolor="#88aaff"]
+    n21v1 [label="(n21v1) inspect(|x| println!(\"centroid: {:?}\", x))", shape=invhouse, fillcolor="#88aaff"]
+    n22v1 [label="(n22v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n23v1 [label="(n23v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n24v1 [label="(n24v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n25v1 [label="(n25v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n26v1 [label="(n26v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n27v1 [label="(n27v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n28v1 [label="(n28v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n29v1 [label="(n29v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n1v1 -> n2v1
     n3v1 -> n4v1
-    n5v1 -> n23v1
-    n2v1 -> n24v1
-    n7v1 -> n25v1
-    n4v1 -> n26v1
-    n11v1 -> n15v1 [label="0"]
-    n10v1 -> n11v1
+    n5v1 -> n22v1
+    n2v1 -> n23v1
+    n7v1 -> n24v1
+    n4v1 -> n25v1
+    n10v1 -> n14v1 [label="0"]
     n9v1 -> n10v1
-    n6v1 -> n27v1
-    n13v1 -> n14v1
+    n6v1 -> n26v1
     n12v1 -> n13v1
-    n8v1 -> n28v1
-    n14v1 -> n15v1 [label="1"]
-    n22v1 -> n14v1
-    n21v1 -> n22v1
-    n20v1 -> n21v1
+    n11v1 -> n12v1
+    n8v1 -> n27v1
+    n13v1 -> n14v1 [label="1"]
+    n21v1 -> n13v1
+    n20v1 -> n28v1
     n19v1 -> n20v1
-    n18v1 -> n19v1 [color=red]
-    n17v1 -> n18v1
-    n16v1 -> n17v1 [color=red]
-    n15v1 -> n29v1
-    n23v1 -> n6v1
-    n24v1 -> n5v1
-    n25v1 -> n8v1
-    n26v1 -> n7v1
-    n27v1 -> n9v1 [color=red]
-    n28v1 -> n12v1 [color=red]
-    n29v1 -> n16v1
+    n18v1 -> n19v1
+    n17v1 -> n18v1 [color=red]
+    n16v1 -> n17v1
+    n15v1 -> n16v1 [color=red]
+    n14v1 -> n15v1
+    n22v1 -> n6v1
+    n23v1 -> n5v1
+    n24v1 -> n8v1
+    n25v1 -> n7v1
+    n26v1 -> n9v1
+    n27v1 -> n11v1
+    n28v1 -> n21v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"
         style=filled
@@ -131,27 +129,27 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_7v1\nstratum 0"
-        n29v1
+        n28v1
         n9v1
         n10v1
         n11v1
         n12v1
+        n21v1
         n13v1
+        n14v1
+        n15v1
         n16v1
         n17v1
         n18v1
         n19v1
         n20v1
-        n21v1
-        n22v1
-        n14v1
-        n15v1
         subgraph "cluster_sg_7v1_var_centroids" {
             label="var centroids"
-            n14v1
+            n13v1
         }
         subgraph "cluster_sg_7v1_var_cj" {
             label="var cj"
+            n14v1
             n15v1
             n16v1
             n17v1
@@ -159,13 +157,11 @@ digraph {
             n19v1
             n20v1
             n21v1
-            n22v1
         }
         subgraph "cluster_sg_7v1_var_points" {
             label="var points"
             n9v1
             n10v1
-            n11v1
         }
     }
 }

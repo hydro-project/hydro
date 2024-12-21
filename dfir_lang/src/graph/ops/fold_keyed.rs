@@ -1,9 +1,10 @@
 use quote::{quote_spanned, ToTokens};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
 };
+use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream of type `(K, V1)`, 1 output stream of type `(K, V2)`.
 /// > The output will have one tuple for each distinct `K`, with an accumulated value of type `V2`.
@@ -86,12 +87,14 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    hydroflow,
+                   root,
                    context,
                    op_span,
                    ident,
                    inputs,
                    is_pull,
-                   root,
+                   loop_stack,
+                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -105,8 +108,17 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    arguments,
                    ..
                },
-               _| {
-        assert!(is_pull);
+               diagnostics| {
+        // TODO(mingwei): May possibly be push inside of loops?
+        assert!(is_pull || loop_stack.is_empty());
+        if !is_pull {
+            diagnostics.push(Diagnostic::spanned(
+                op_span,
+                Level::Error,
+                format!("TODO: `{}()` does not have a push implementation.", op_name),
+            ));
+            return Err(());
+        }
 
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
@@ -132,8 +144,49 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         let groupbydata_ident = wc.make_ident("groupbydata");
         let hashtable_ident = wc.make_ident("hashtable");
 
-        let (write_prologue, write_iterator, write_iterator_after) = match persistence {
-            Persistence::Tick => {
+        let (write_prologue, write_iterator, write_iterator_after) = match (
+            persistence,
+            loop_stack.first(),
+        ) {
+            (Persistence::Tick, Some(_loop_id)) => {
+                (
+                    Default::default(),
+                    quote_spanned! {op_span=>
+                        let #hashtable_ident = &mut #root::rustc_hash::FxHashMap::<#( #generic_type_args ), *>::default();
+
+                        {
+                            #[inline(always)]
+                            fn check_input<Iter, A, B>(iter: Iter) -> impl ::std::iter::Iterator<Item = (A, B)>
+                            where
+                                Iter: std::iter::Iterator<Item = (A, B)>,
+                                A: ::std::clone::Clone,
+                                B: ::std::clone::Clone
+                            {
+                                iter
+                            }
+
+                            /// A: accumulator type
+                            /// T: iterator item type
+                            /// O: output type
+                            #[inline(always)]
+                            fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
+                                (f)(a, t)
+                            }
+
+                            for kv in check_input(#input) {
+                                // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
+                                #[allow(unknown_lints, clippy::unwrap_or_default)]
+                                let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
+                                #[allow(clippy::redundant_closure_call)] call_comb_type(entry, kv.1, #aggfn);
+                            }
+                        }
+
+                        let #ident = #hashtable_ident.drain();
+                    },
+                    Default::default(),
+                )
+            }
+            (Persistence::Tick, None) => {
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
@@ -173,7 +226,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     Default::default(),
                 )
             }
-            Persistence::Static => {
+            (Persistence::Static, _maybe_loop) => {
+                // TODO(mingwei): think about the semantics when inside a loop.
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
@@ -229,7 +283,15 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     },
                 )
             }
-            Persistence::Mutable => {
+            (Persistence::Mutable, maybe_loop) => {
+                if maybe_loop.is_some() {
+                    diagnostics.push(Diagnostic::spanned(
+                        op_span,
+                        Level::Error,
+                        "Mutable persistence is not supported inside a loop",
+                    ));
+                    // Fall through to still generate code.
+                }
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));

@@ -1,0 +1,5 @@
+error[E0433]: failed to resolve: use of undeclared crate or module `hydroflow`
+ --> tests/compile-fail/surface_loop_nextloop.rs:2:18
+  |
+2 |     let mut df = hydroflow::hydroflow_syntax! {
+  |                  ^^^^^^^^^ use of undeclared crate or module `hydroflow`

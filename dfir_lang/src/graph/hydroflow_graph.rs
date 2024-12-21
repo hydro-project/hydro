@@ -882,6 +882,16 @@ impl DfirGraph {
                     let (pull_half, push_half) = subgraph_nodes.split_at(pull_to_push_idx);
                     let nodes_iter = pull_half.iter().chain(push_half.iter().rev());
 
+                    // Innermost first, outermost last (root).
+                    let mut loop_stack = Vec::new();
+                    {
+                        let mut loop_id = self.node_loop(subgraph_nodes[0]);
+                        while let Some(lid) = loop_id {
+                            loop_stack.push(lid);
+                            loop_id = self.loop_parent(lid);
+                        }
+                    }
+
                     for (idx, &node_id) in nodes_iter.enumerate() {
                         let node = &self.nodes[node_id];
                         assert!(
@@ -889,6 +899,12 @@ impl DfirGraph {
                             "Handoffs are not part of subgraphs."
                         );
                         let op_inst = &self.operator_instances[node_id];
+
+                        assert_eq!(
+                            loop_stack.first().copied(),
+                            self.node_loop(subgraph_nodes[0]),
+                            "All nodes should be in the same loop."
+                        );
 
                         let op_span = node.span();
                         let op_name = op_inst.op_constraints.name;
@@ -983,6 +999,7 @@ impl DfirGraph {
                                 inputs: &inputs,
                                 outputs: &outputs,
                                 singleton_output_ident,
+                                loop_stack: &loop_stack,
                                 op_name,
                                 op_inst,
                                 arguments,

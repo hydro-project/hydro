@@ -41,7 +41,6 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
                 ::std::cell::RefCell::new(::std::vec::Vec::new())
             );
 
-            // TODO(mingwei): Is this needed?
             // Reset the value to the initializer fn if it is a new tick.
             #hydroflow.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.take(); });
         };
@@ -51,9 +50,7 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let mut vec = #context.state_ref(#singleton_output_ident).borrow_mut();
-                if #context.is_first_run_this_tick() {
-                    *vec = #input.collect::<::std::vec::Vec<_>>();
-                }
+                *vec = #input.collect::<::std::vec::Vec<_>>();
                 let #ident = ::std::iter::once(::std::clone::Clone::clone(&*vec));
             }
         } else if let Some(_output) = outputs.first() {

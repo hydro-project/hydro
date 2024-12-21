@@ -102,6 +102,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
+                   loop_stack,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -134,15 +135,14 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             quote_spanned!(op_span=>)
         };
 
-        let mut make_joindata = |persistence, side| {
+        let mut make_joindata = |persistence, loop_id, side| {
             let joindata_ident = wc.make_ident(format!("joindata_{}", side));
             let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
-            let reset = match persistence {
-                Persistence::Tick => quote_spanned! {op_span=>
+            let reset = match (persistence, loop_id) {
+                (Persistence::Tick, None) => quote_spanned! {op_span=>
                     #hydroflow.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
                 },
-                Persistence::Static => Default::default(),
-                Persistence::Mutable => {
+                (Persistence::Mutable, _maybe_loop) => {
                     diagnostics.push(Diagnostic::spanned(
                         op_span,
                         Level::Error,
@@ -150,14 +150,29 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     ));
                     return Err(());
                 }
+                _other => Default::default(),
             };
-            let init = quote_spanned! {op_span=>
-                let #joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
-                    #join_type::default()
-                ));
-                #reset
+            let (init, borrow_code) = if Persistence::Tick == persistence && loop_id.is_some() {
+                (
+                    Default::default(),
+                    quote_spanned! {op_span=>
+                        let #borrow_ident = &mut #join_type::default();
+                    },
+                )
+            } else {
+                (
+                    quote_spanned! {op_span=>
+                        let #joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                            #join_type::default()
+                        ));
+                        #reset
+                    },
+                    quote_spanned! {op_span=>
+                        let mut #borrow_ident = #context.state_ref(#joindata_ident).borrow_mut();
+                    },
+                )
             };
-            Ok((joindata_ident, borrow_ident, init))
+            Ok((borrow_code, borrow_ident, init))
         };
 
         let persistences = match persistence_args[..] {
@@ -167,10 +182,10 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             _ => panic!(),
         };
 
-        let (lhs_joindata_ident, lhs_borrow_ident, lhs_init) =
-            make_joindata(persistences[0], "lhs")?;
-        let (rhs_joindata_ident, rhs_borrow_ident, rhs_init) =
-            make_joindata(persistences[1], "rhs")?;
+        let (lhs_borrow_code, lhs_borrow_ident, lhs_init) =
+            make_joindata(persistences[0], loop_stack.first(), "lhs")?;
+        let (rhs_borrow_code, rhs_borrow_ident, rhs_init) =
+            make_joindata(persistences[1], loop_stack.first(), "rhs")?;
 
         let write_prologue = quote_spanned! {op_span=>
             #lhs_init
@@ -179,9 +194,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];
+
         let write_iterator = quote_spanned! {op_span=>
-            let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+            #lhs_borrow_code
+            #rhs_borrow_code
+
             let #ident = {
                 // Limit error propagation by bounding locally, erasing output iterator type.
                 #[inline(always)]
@@ -213,7 +230,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     #context.schedule_subgraph(#context.current_subgraph(), false);
                 }
             } else {
-                quote_spanned! {op_span=>}
+                Default::default()
             };
 
         Ok(OperatorWriteOutput {

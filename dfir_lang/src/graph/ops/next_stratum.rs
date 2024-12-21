@@ -1,7 +1,4 @@
-use super::{
-    DelayType, OperatorCategory, OperatorConstraints, IDENTITY_WRITE_FN, RANGE_0,
-    RANGE_1,
-};
+use super::{DelayType, OperatorCategory, OperatorConstraints, IDENTITY_WRITE_FN, RANGE_1};
 
 /// Delays all elements which pass through to the next stratum (in the same
 /// tick).
@@ -17,7 +14,7 @@ pub const NEXT_STRATUM: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: &(0..=1),
-    type_args: RANGE_0,
+    type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: false,
     flo_type: None,

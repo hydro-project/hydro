@@ -34,7 +34,7 @@ linkStyle default stroke:#aaa
 7v1-->14v1
 12v1-->3v1
 13v1-->5v1
-14v1--x8v1; linkStyle 12 stroke:red
+14v1-->8v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     subgraph sg_1v1_var_users ["var <tt>users</tt>"]

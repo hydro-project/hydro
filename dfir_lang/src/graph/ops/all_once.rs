@@ -1,9 +1,8 @@
-use super::{DelayType, OperatorConstraints};
+use super::OperatorConstraints;
 
-// Same as batch, but with a stratum barrier.
+// Is actually the same as batch.
 /// TODO(mingwei): docs
 pub const ALL_ONCE: OperatorConstraints = OperatorConstraints {
     name: "all_once",
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
     ..super::batch::BATCH
 };

@@ -1,8 +1,8 @@
 use quote::{quote_spanned, ToTokens};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -76,12 +76,14 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    hydroflow,
+                   root,
                    context,
                    op_span,
                    ident,
                    inputs,
                    is_pull,
-                   root,
+                   loop_stack,
+                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -96,7 +98,16 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull);
+        // TODO(mingwei): May possibly be push inside of loops?
+        assert!(is_pull || loop_stack.is_empty());
+        if !is_pull {
+            diagnostics.push(Diagnostic::spanned(
+                op_span,
+                Level::Error,
+                format!("TODO: `{}()` does not have a push implementation.", op_name),
+            ));
+            return Err(());
+        }
 
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
@@ -118,11 +129,49 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let aggfn = &arguments[0];
 
-        let (write_prologue, write_iterator, write_iterator_after) = match persistence {
-            Persistence::Tick => {
-                let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
+        let groupbydata_ident = wc.make_ident("groupbydata");
+        let hashtable_ident = wc.make_ident("hashtable");
 
+        let (write_prologue, write_iterator, write_iterator_after) = match (
+            persistence,
+            loop_stack.first(),
+        ) {
+            (Persistence::Tick, Some(_loop_id)) => {
+                (
+                    Default::default(),
+                    quote_spanned! {op_span=>
+                        let #hashtable_ident = &mut #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
+
+                        {
+                            #[inline(always)]
+                            fn check_input<Iter: ::std::iter::Iterator<Item = (A, B)>, A: ::std::clone::Clone, B: ::std::clone::Clone>(iter: Iter)
+                                -> impl ::std::iter::Iterator<Item = (A, B)> { iter }
+
+                            #[inline(always)]
+                            /// A: accumulator type
+                            /// O: output type
+                            fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
+                                f(acc, item)
+                            }
+
+                            for kv in check_input(#input) {
+                                match #hashtable_ident.entry(kv.0) {
+                                    ::std::collections::hash_map::Entry::Vacant(vacant) => {
+                                        vacant.insert(kv.1);
+                                    }
+                                    ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                                        #[allow(clippy::redundant_closure_call)] call_comb_type(occupied.get_mut(), kv.1, #aggfn);
+                                    }
+                                }
+                            }
+                        }
+
+                        let #ident = #hashtable_ident.drain();
+                    },
+                    Default::default(),
+                )
+            }
+            (Persistence::Tick, None) => {
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
@@ -159,10 +208,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                     Default::default(),
                 )
             }
-            Persistence::Static => {
-                let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
-
+            (Persistence::Static, _maybe_loop) => {
+                // TODO(mingwei): think about the semantics when inside a loop.
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
@@ -213,7 +260,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                 )
             }
 
-            Persistence::Mutable => {
+            (Persistence::Mutable, _maybe_loop) => {
                 diagnostics.push(Diagnostic::spanned(
                     op_span,
                     Level::Error,
