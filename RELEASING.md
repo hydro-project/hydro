@@ -179,7 +179,12 @@ crate_old_name = { path = "../crate_old_path", version = "^0.8.0" }
 crate_new_name = { path = "../crate_new_path", version = "^0.9.0" }
 ```
 
-Commit those changes, then continue as normal.
+Commit those changes, then continue as normal. E.g. for a minor version bump, update only the
+renamed crates' versions, then continue with a `minor` release which will bump all the other crates.
+The release run will have log outputs as follows for each renamed crate:
+```log
+[INFO ] Manifest version of dependent package 'dfir_lang' at 0.11.0 is sufficient, creating a new release 🎉, ignoring computed version 0.12.
+```
 
 (There may be other issues with the `git tag`s `cargo-smart-release` uses to track versions if you
 are renaming a crate _back to an old name_).
