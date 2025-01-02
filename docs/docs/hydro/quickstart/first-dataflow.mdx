@@ -24,7 +24,7 @@ cargo generate gh:hydro-project/hydro-template
 :::
 
 ## Writing a Dataflow
-In Hydro, streams are attached to a **location**, which is either a virtual handle to a **single machine** (the **`Process`** type) or **set of machines** (the **`Cluster`** type). A single piece of Hydro code can describe a distributed program that runs across multiple processes and clusters, each with their own local state and data.
+In Hydro, streams are attached to a **location**, which is a virtual handle to either a **single machine** (the **`Process`** type) or **set of machines** (the **`Cluster`** type). A single piece of Hydro code can describe a distributed program that runs across multiple processes and clusters, each with their own local state and data.
 
 We'll write our first dataflow in `src/first_ten.rs`. This program will run on a single machine, so we take a single `&Process` parameter. We can materialize a stream on this machine using `process.source_iter` (which emits values from a static in-memory collection), and then print out the values using `for_each`.
 
@@ -46,13 +46,13 @@ To run a Hydro program, we need to write some deployment configuration in `examp
 
 :::tip
 
-When using Hydro, we will *always* place our deployment scripts in the `examples` directory. This is required because deployment is done via [Hydro Deploy](../../deploy/index.md) which is a _dev dependency_---i.e. not part of the dependencies used for generating binaries (but available to programs in the `examples` directory).
+When using Hydro, we will *always* place our deployment scripts in the `examples` directory. This is required because deployment is done via [Hydro Deploy](../../deploy/index.md) which is a _dev dependency_---i.e. not part of the dependencies used for generating binaries, but available to programs in the `examples` directory.
 
 :::
 
 <CodeBlock language="rust" title="examples/first_ten.rs">{firstTenExampleSrc}</CodeBlock>
 
-First, we initialize a new [Hydro Deploy](../../deploy/index.md) deployment with `Deployment::new()`. Then, we create a `FlowBuilder` which will store the entire dataflow program and manage its compilation.
+First, we initialize a new [Hydro Deploy](../../deploy/index.md) deployment with `Deployment::new()`. Then, we create a `FlowBuilder` that will store the entire dataflow program and manage its compilation.
 
 To create a `Process`, we call `flow.process()`. After the dataflow has been created (by invoking the `hydro_template::first_ten::first_ten` function we created earlier), we must map each instantiated `Process` to a deployment target using `flow.with_process` (in this case we deploy to localhost).
 
