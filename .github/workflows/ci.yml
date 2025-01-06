@@ -370,10 +370,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          toolchain: nightly
 
       - name: Checkout gh-pages
         shell: bash
