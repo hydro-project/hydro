@@ -213,6 +213,13 @@ impl IsBot for Max<char> {
         '\x00' == self.0
     }
 }
+
+impl IsBot for Max<String> {
+    fn is_bot(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl Default for Max<char> {
     fn default() -> Self {
         Self('\x00')

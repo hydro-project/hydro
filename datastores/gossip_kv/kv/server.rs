@@ -14,7 +14,7 @@ use lattices::{IsTop, Max, Pair};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::seq::IteratorRandom;
-use rand::thread_rng;
+use rand::{thread_rng, Rng};
 use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -85,12 +85,12 @@ pub fn server<
     seed_node_stream: SeedNodeStream,
 ) -> Dfir<'static>
 where
-    ClientInput: Stream<Item = (ClientRequest, Addr)> + Unpin + 'static,
-    ClientOutput: Sink<(ClientResponse, Addr), Error = ClientOutputError> + Unpin + 'static,
-    GossipInput: Stream<Item = (GossipMessage, Addr)> + Unpin + 'static,
-    GossipOutput: Sink<(GossipMessage, Addr), Error = GossipOutputError> + Unpin + 'static,
-    GossipTrigger: Stream<Item = ()> + Unpin + 'static,
-    SeedNodeStream: Stream<Item = Vec<SeedNode<Addr>>> + Unpin + 'static,
+    ClientInput: Stream<Item=(ClientRequest, Addr)> + Unpin + 'static,
+    ClientOutput: Sink<(ClientResponse, Addr), Error=ClientOutputError> + Unpin + 'static,
+    GossipInput: Stream<Item=(GossipMessage, Addr)> + Unpin + 'static,
+    GossipOutput: Sink<(GossipMessage, Addr), Error=GossipOutputError> + Unpin + 'static,
+    GossipTrigger: Stream<Item=()> + Unpin + 'static,
+    SeedNodeStream: Stream<Item=Vec<SeedNode<Addr>>> + Unpin + 'static,
     Addr: Address + DeserializeOwned + 'static,
     ClientOutputError: Debug + 'static,
     GossipOutputError: Debug + 'static,
@@ -105,10 +105,23 @@ where
 
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
-    let pre_generated_random_idx : Vec<u64>= (0..128*1024).map(|_| zipf.sample(&mut rng) as u64).collect();
+    let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
+        .map(|_| zipf.sample(&mut rng) as u64)
+        .collect();
     let mut pre_gen_index = 0;
 
-    let pre_gen_values : Vec<_> = (0..128*1024).map(|i| upsert_row(Clock::new(100), pre_generated_random_idx[i], "value".to_string())).collect();
+    let pre_gen_values: Vec<_> = (0..128 * 1024)
+        .map(|i| {
+            upsert_row(
+                Clock::new(100),
+                pre_generated_random_idx[i],
+                    thread_rng().sample_iter(rand::distributions::Alphanumeric)
+                    .take(1024)
+                    .map(char::from)
+                    .collect()
+            )
+        })
+        .collect();
 
     dfir_syntax! {
 
