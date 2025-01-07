@@ -54,10 +54,11 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, TickCycleMarker>
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         let location_id = location.id();
         Optional::new(
-            location,
+            location.clone(),
             HydroNode::CycleSource {
                 ident,
                 location_kind: location_id,
+                metadata: location.new_node_metadata::<T>(),
             },
         )
     }
@@ -92,10 +93,11 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         let location_id = location.id();
         Optional::new(
-            location,
+            location.clone(),
             HydroNode::CycleSource {
                 ident,
                 location_kind: location_id,
+                metadata: location.new_node_metadata::<T>(),
             },
         )
     }
@@ -130,11 +132,15 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
     fn create_source(ident: syn::Ident, location: L) -> Self {
         let location_id = location.id();
         Optional::new(
-            location,
-            HydroNode::Persist(Box::new(HydroNode::CycleSource {
-                ident,
-                location_kind: location_id,
-            })),
+            location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::CycleSource {
+                    ident,
+                    location_kind: location_id,
+                    metadata: location.new_node_metadata::<T>(),
+                }),
+                metadata: location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -155,7 +161,10 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker> for
             .push(HydroLeaf::CycleSink {
                 ident,
                 location_kind: self.location_kind(),
-                input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
+                input: Box::new(HydroNode::Unpersist {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<T>(),
+                }),
             });
     }
 }
@@ -178,14 +187,16 @@ impl<'a, T: Clone, L: Location<'a>, B> Clone for Optional<T, L, B> {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                metadata: self.location.new_node_metadata::<T>(),
             };
         }
 
-        if let HydroNode::Tee { inner } = self.ir_node.borrow().deref() {
+        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
             Optional {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
                     inner: TeeNode(inner.0.clone()),
+                    metadata: metadata.clone(),
                 }
                 .into(),
                 _phantom: PhantomData,
@@ -200,10 +211,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     pub fn map<U, F: Fn(T) -> U + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -214,10 +226,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     ) -> Stream<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -228,10 +241,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     ) -> Stream<U, L, B, NoOrder> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -256,10 +270,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     ) -> Optional<T, L, B> {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
         Optional::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             },
         )
     }
@@ -270,10 +285,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     ) -> Optional<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -283,19 +299,30 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
 
         if L::is_top_level() {
             Optional::new(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::Chain(
-                    Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                    Box::new(HydroNode::Unpersist(Box::new(other.ir_node.into_inner()))),
-                ))),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Chain {
+                        first: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        second: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(other.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<T>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<T>(),
+                },
             )
         } else {
             Optional::new(
-                self.location,
-                HydroNode::Chain(
-                    Box::new(self.ir_node.into_inner()),
-                    Box::new(other.ir_node.into_inner()),
-                ),
+                self.location.clone(),
+                HydroNode::Chain {
+                    first: Box::new(self.ir_node.into_inner()),
+                    second: Box::new(other.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<T>(),
+                },
             )
         }
     }
@@ -309,19 +336,30 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
 
         if L::is_top_level() {
             Optional::new(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::CrossSingleton(
-                    Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                    Box::new(HydroNode::Unpersist(Box::new(other.ir_node.into_inner()))),
-                ))),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::CrossSingleton {
+                        left: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        right: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(other.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<O>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<(T, O)>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                },
             )
         } else {
             Optional::new(
-                self.location,
-                HydroNode::CrossSingleton(
-                    Box::new(self.ir_node.into_inner()),
-                    Box::new(other.ir_node.into_inner()),
-                ),
+                self.location.clone(),
+                HydroNode::CrossSingleton {
+                    left: Box::new(self.ir_node.into_inner()),
+                    right: Box::new(other.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<(T, O)>(),
+                },
             )
         }
     }
@@ -331,19 +369,30 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
 
         if L::is_top_level() {
             Singleton::new(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::Chain(
-                    Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                    Box::new(HydroNode::Unpersist(Box::new(other.ir_node.into_inner()))),
-                ))),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Chain {
+                        first: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        second: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(other.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<T>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<T>(),
+                },
             )
         } else {
             Singleton::new(
-                self.location,
-                HydroNode::Chain(
-                    Box::new(self.ir_node.into_inner()),
-                    Box::new(other.ir_node.into_inner()),
-                ),
+                self.location.clone(),
+                HydroNode::Chain {
+                    first: Box::new(self.ir_node.into_inner()),
+                    second: Box::new(other.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<T>(),
+                },
             )
         }
     }
@@ -353,13 +402,23 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
         T: Clone,
     {
         let none: syn::Expr = parse_quote!([::std::option::Option::None]);
-        let core_ir = HydroNode::Persist(Box::new(HydroNode::Source {
-            source: HydroSource::Iter(none.into()),
-            location_kind: self.location.id().root().clone(),
-        }));
+        let core_ir = HydroNode::Persist {
+            inner: Box::new(HydroNode::Source {
+                source: HydroSource::Iter(none.into()),
+                location_kind: self.location.id().root().clone(),
+                metadata: self.location.new_node_metadata::<Option<T>>(),
+            }),
+            metadata: self.location.new_node_metadata::<Option<T>>(),
+        };
 
         let none_singleton = if L::is_top_level() {
-            Singleton::new(self.location.clone(), HydroNode::Persist(Box::new(core_ir)))
+            Singleton::new(
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(core_ir),
+                    metadata: self.location.new_node_metadata::<Option<T>>(),
+                },
+            )
         } else {
             Singleton::new(self.location.clone(), core_ir)
         };
@@ -409,8 +468,11 @@ impl<'a, T, L: Location<'a> + NoTick, B> Optional<T, Timestamped<L>, B> {
     /// arbitrary point in time.
     pub unsafe fn latest_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
-            self.location.tick,
-            HydroNode::Unpersist(Box::new(self.ir_node.into_inner())),
+            self.location.clone().tick,
+            HydroNode::Unpersist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -483,39 +545,54 @@ impl<'a, T, L: Location<'a>> Optional<T, Tick<L>, Bounded> {
     pub fn all_ticks(self) -> Stream<T, Timestamped<L>, Unbounded> {
         Stream::new(
             Timestamped {
-                tick: self.location,
+                tick: self.location.clone(),
             },
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn latest(self) -> Optional<T, Timestamped<L>, Unbounded> {
         Optional::new(
             Timestamped {
-                tick: self.location,
+                tick: self.location.clone(),
             },
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn defer_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
-            self.location,
-            HydroNode::DeferTick(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded> {
         Stream::new(
-            self.location,
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
-            self.location,
-            HydroNode::Delta(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Delta {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 }
