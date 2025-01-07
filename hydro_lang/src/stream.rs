@@ -211,6 +211,34 @@ impl<'a, T: Clone, L: Location<'a>, B, Order> Clone for Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
+    /// Transforms the stream by applying a function (`f`) to each element,
+    /// emitting the output elements in the same order as the input.
+    /// 
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(async {
+    /// # let mut deployment = hydro_deploy::Deployment::new();
+    /// # let flow = FlowBuilder::new();
+    /// # let process = flow.process::<()>();
+    /// # let external = flow.external_process::<()>();
+    /// let numbers = process.source_iter(q!(0..10));
+    /// let mapped = numbers.map(q!(|n| n * 2));
+    /// # let out_port = mapped.send_bincode_external(&external);
+    /// # let nodes = flow
+    /// #     .with_process(&process, deployment.Localhost())
+    /// #     .with_external(&external, deployment.Localhost())
+    /// #     .deploy(&mut deployment);
+    /// # deployment.deploy().await.unwrap();
+    /// # let mut external_out = nodes.connect_source_bincode(out_port).await;
+    /// # deployment.start().await.unwrap();
+    /// // 2, 4, 6, 8, ...
+    /// # for i in 0..10 {
+    /// #     assert_eq!(external_out.next().await.unwrap(), i * 2);
+    /// # }
+    /// # });
+    /// ```
     pub fn map<U, F: Fn(T) -> U + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
