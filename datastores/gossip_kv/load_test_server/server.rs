@@ -27,7 +27,7 @@ const UNKNOWN_ADDRESS: LoadTestAddress = 9999999999;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Parser)]
 struct Opts {
-    /// Number of threads to run. Each thread will run an instance of the gossip-kv server transducer.
+    /// Number of threads to run. Each thread will run an instance of the gossip-kv server process.
     #[clap(short, long, default_value = "5")]
     thread_count: usize,
 

@@ -10,7 +10,7 @@ Hydro Deploy is currently in alpha. Although it has already been used for large-
 
 :::
 
-Hydro comes equipped with a built-in deployment system, **Hydro Deploy**, which allows you to deploy your Hydro app to a variety of platforms. With Hydro Deploy, you can spin up complex services with just a few lines of Python! This guide will walk you through the process of deploying your Hydro app in a variety of scenarios.
+Hydro comes equipped with a built-in deployment system, **Hydro Deploy**, which allows you to deploy your Hydro app to a variety of platforms. With Hydro Deploy, you can spin up complex services with just a few lines of Python. This guide will walk you through the process of deploying your Hydro app in a variety of scenarios.
 
 Hydro Deploy focuses on managing the end-to-end lifecycle of networked services in the cloud. It is not a general-purpose deployment tool, and is not intended to replace systems like Docker Compose or Kubernetes. Instead, Hydro Deploy is designed to be used in conjunction with these tools to manage the lifecycle of your Hydro app.
 

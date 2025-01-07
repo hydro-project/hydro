@@ -1,16 +1,16 @@
 //! This module contains types to work with ticks.
 //!
-//! Each iteration of a Hydroflow transducer loop is called a tick. Associated with the transducer
-//! is a clock value, which tells you how many ticks were executed by this transducer prior to the
-//! current tick. Each transducer produces totally ordered, sequentially increasing clock values,
-//! which you can think of as the "local logical time" at the transducer.
+//! Each iteration of a Hydroflow process loop is called a tick. Associated with the process
+//! is a clock value, which tells you how many ticks were executed by this process prior to the
+//! current tick. Each process produces totally ordered, sequentially increasing clock values,
+//! which you can think of as the "local logical time" at the process.
 
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign, Neg, Sub, SubAssign};
 
 use serde::{Deserialize, Serialize};
 
-/// A point in time during execution on transducer.
+/// A point in time during execution on process.
 ///
 /// `TickInstant` instances can be subtracted to calculate the `TickDuration` between them.
 ///
@@ -66,7 +66,7 @@ pub struct TickDuration {
 impl TickInstant {
     /// Create a new TickInstant
     ///
-    /// The specified parameter indicates the number of ticks that have elapsed on the transducer,
+    /// The specified parameter indicates the number of ticks that have elapsed on the process,
     /// prior to this one.
     pub fn new(ticks: u64) -> Self {
         TickInstant(ticks)

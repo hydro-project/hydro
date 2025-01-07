@@ -1,11 +1,11 @@
 //! # Hydroflow Deterministic Simulation Testing Framework
 //!
 //! This module provides a deterministic simulation testing framework for testing Hydroflow
-//! transducers.
+//! processes.
 //!
-//! It can be used to test complex interactions between multiple Hydroflow transducers in a
+//! It can be used to test complex interactions between multiple Hydroflow processes in a
 //! deterministic manner by running them in a single-threaded environment. The framework also
-//! provides a "virtual network" implementation that allows production transducers to exchange
+//! provides a "virtual network" implementation that allows production processes to exchange
 //! messages within the simulation. More importantly, the network is fully under control of the
 //! unit test and the test can introduce faults such as message delays, message drops and
 //! network partitions.
@@ -13,7 +13,7 @@
 //! ## Overview
 //!
 //! Conceptually, the simulation contains a "Fleet", which is a collection of "Hosts". These
-//! aren't real hosts, but rather a collection of individual Hydroflow transducers (one per host)
+//! aren't real hosts, but rather a collection of individual Hydroflow processes (one per host)
 //! that can communicate with each other over a virtual network. Every host has a "hostname"
 //! which uniquely identifies it within the fleet.
 //!
@@ -47,7 +47,7 @@
 //! ## Network Processing
 //!
 //! ### Outboxes & Inboxes
-//! When a transducer wishes to send a message to another transducer, it sends the message to an
+//! When a process wishes to send a message to another process, it sends the message to an
 //! "outbox" on its host. The unit test invokes the simulation's network message processing logic
 //! at some desired cadence to pick up all messages from all outboxes and deliver them to the
 //! corresponding inboxes on the destination hosts. The network message processing logic is the
@@ -55,13 +55,13 @@
 //!
 //! ### Interface Names
 //! Every inbox and outbox is associated with an "interface name". This is a string that uniquely
-//! identifies the interface on the host. When a transducer sends a message, it specifies the
+//! identifies the interface on the host. When a process sends a message, it specifies the
 //! destination hostname and the interface name on that host to which the message should be
 //! delivered.
 //!
 //! ## Progress of Time in the Simulation
 //! The single-threaded unit test can drive time forward on every host by invoking the `run_tick`
-//! method on the host. This ultimately runs a single tick on the transducer. The unit test is
+//! method on the host. This ultimately runs a single tick on the process. The unit test is
 //! also responsible for invoking the network message processing at the time of its choosing and
 //! can interleave the progress of time on various hosts and network processing as it sees fit.
 //!
@@ -85,7 +85,7 @@ use crate::scheduled::graph::Dfir;
 use crate::util::{collect_ready_async, unbounded_channel};
 
 /// A hostname is a unique identifier for a host in the simulation. It is used to address messages
-/// to a specific host (and thus a specific Hydroflow transducer).
+/// to a specific host (and thus a specific Hydroflow process).
 pub type Hostname = String;
 
 /// An interface name is a unique identifier for an inbox or an outbox on host.
@@ -127,45 +127,45 @@ impl<T: 'static> MessageSender for UnboundedSender<(T, Address)> {
 /// A message with an delivery address.
 pub type MessageWithAddress = (Box<dyn Any>, Address);
 
-/// An inbox is used by a host to receive messages for the transducer.
+/// An inbox is used by a host to receive messages for the process.
 pub struct Inbox {
     sender: Box<dyn MessageSender>,
 }
 
-/// Transducers can send messages to other transducers by putting those messages in an outbox
+/// Processes can send messages to other processes by putting those messages in an outbox
 /// on their host.
 pub struct Outbox {
     receiver: Pin<Box<dyn Stream<Item = MessageWithAddress>>>,
 }
 
-/// A host is a single Hydroflow transducer running in the simulation. It has a unique hostname
+/// A host is a single Hydroflow process running in the simulation. It has a unique hostname
 /// and can communicate with other hosts over the virtual network. It has a collection of inboxes
 /// and outboxes.
 pub struct Host {
     name: Hostname,
-    transducer: Dfir<'static>,
+    process: Dfir<'static>,
     inputs: HashMap<InterfaceName, Inbox>,
     output: HashMap<InterfaceName, Outbox>,
 }
 
 impl Host {
-    /// Run a single tick on the host's transducer. Returns true if any work was done by the
-    /// transducer. This effectively "advances" time on the transducer.
+    /// Run a single tick on the host's process. Returns true if any work was done by the
+    /// process. This effectively "advances" time on the process.
     pub fn run_tick(&mut self) -> bool {
-        self.transducer.run_tick()
+        self.process.run_tick()
     }
 }
 
 /// A builder for constructing a host in the simulation.
 pub struct HostBuilder {
     name: Hostname,
-    transducer: Option<Dfir<'static>>,
+    process: Option<Dfir<'static>>,
     inboxes: HashMap<InterfaceName, Inbox>,
     outboxes: HashMap<InterfaceName, Outbox>,
 }
 
 /// Used in conjunction with the `HostBuilder` to construct a host in the simulation.
-pub struct TransducerBuilderContext<'context> {
+pub struct ProcessBuilderContext<'context> {
     inboxes: &'context mut HashMap<InterfaceName, Inbox>,
     outboxes: &'context mut HashMap<InterfaceName, Outbox>,
 }
@@ -177,9 +177,9 @@ fn sink_from_fn<T>(mut f: impl FnMut(T)) -> impl Sink<T, Error = Infallible> {
     })
 }
 
-impl TransducerBuilderContext<'_> {
+impl ProcessBuilderContext<'_> {
     /// Create a new inbox on the host with the given interface name. Returns a stream that can
-    /// be read by the transducer using the source_stream dfir operator.
+    /// be read by the process using the source_stream dfir operator.
     pub fn new_inbox<T: 'static>(
         &mut self,
         interface: InterfaceName,
@@ -195,7 +195,7 @@ impl TransducerBuilderContext<'_> {
     }
 
     /// Creates a new outbox on the host with the given interface name. Returns a sink that can
-    /// be written to by the transducer using the dest_sink dfir operator.
+    /// be written to by the process using the dest_sink dfir operator.
     pub fn new_outbox<T: 'static>(
         &mut self,
         interface: InterfaceName,
@@ -220,35 +220,35 @@ impl HostBuilder {
     pub fn new(name: Hostname) -> Self {
         HostBuilder {
             name,
-            transducer: None,
+            process: None,
             inboxes: Default::default(),
             outboxes: Default::default(),
         }
     }
 
-    /// Supplies the (mandatory) transducer that runs on this host.
-    pub fn with_transducer<F>(mut self, builder: F) -> Self
+    /// Supplies the (mandatory) process that runs on this host.
+    pub fn with_process<F>(mut self, builder: F) -> Self
     where
-        F: FnOnce(&mut TransducerBuilderContext) -> Dfir<'static>,
+        F: FnOnce(&mut ProcessBuilderContext) -> Dfir<'static>,
     {
-        let mut context = TransducerBuilderContext {
+        let mut context = ProcessBuilderContext {
             inboxes: &mut self.inboxes,
             outboxes: &mut self.outboxes,
         };
-        let transducer = builder(&mut context);
-        self.transducer = Some(transducer);
+        let process = builder(&mut context);
+        self.process = Some(process);
         self
     }
 
     /// Builds the host with the supplied configuration.
     pub fn build(self) -> Host {
-        if self.transducer.is_none() {
-            panic!("Transducer is required to build a host");
+        if self.process.is_none() {
+            panic!("Process is required to build a host");
         }
 
         Host {
             name: self.name,
-            transducer: self.transducer.unwrap(),
+            process: self.process.unwrap(),
             inputs: self.inboxes,
             output: self.outboxes,
         }
@@ -269,13 +269,13 @@ impl Fleet {
         }
     }
 
-    /// Adds a new host to the fleet with the given name and transducer.
-    pub fn add_host<F>(&mut self, name: String, transducer_builder: F) -> &Host
+    /// Adds a new host to the fleet with the given name and process.
+    pub fn add_host<F>(&mut self, name: String, process_builder: F) -> &Host
     where
-        F: FnOnce(&mut TransducerBuilderContext) -> Dfir<'static>,
+        F: FnOnce(&mut ProcessBuilderContext) -> Dfir<'static>,
     {
         let host = HostBuilder::new(name.clone())
-            .with_transducer(transducer_builder)
+            .with_process(process_builder)
             .build();
         assert!(
             self.hosts.insert(host.name.clone(), host).is_none(),
