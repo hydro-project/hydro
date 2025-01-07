@@ -83,8 +83,8 @@ pub(crate) async fn run_driver(opts: Opts) {
             let client_out_addr = ipv4_resolve("localhost:23460").unwrap();
             let (client_out, _, _) = dfir_rs::util::bind_udp_bytes(client_out_addr).await;
 
-            // shopping input is handled by the client proxy transducer
-            // so the server transducer should get an empty iterator as its first argument
+            // shopping input is handled by the client proxy process
+            // so the server process should get an empty iterator as its first argument
             let empty_ssiv = std::iter::empty();
 
             // Spawn server
@@ -180,8 +180,8 @@ pub(crate) async fn run_driver(opts: Opts) {
                 let (out, _, _) = dfir_rs::util::bind_udp_bytes(out_addr).await;
                 let gossip_addrs = gossip_addrs.clone();
 
-                // shopping input is handled by the client proxy transducer
-                // so the server transducers should get an empty iterator as first argument
+                // shopping input is handled by the client proxy process
+                // so the server processes should get an empty iterator as first argument
                 let empty_ssiv = std::iter::empty();
 
                 // Spawn server

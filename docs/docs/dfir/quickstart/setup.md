@@ -83,10 +83,10 @@ simply echoes back the messages you sent it; it also implements a client to test
 We will replace the code in that example with our own, but it's a good idea to run it first to make sure everything is working.
 
 :::note
-We call a running DFIR binary a *transducer*.
+We call a running DFIR binary a *process*.
 :::
 
-Start by running a transducer for the server:
+Start by running a process for the server:
 ```console
 #shell-command-next-line
 cargo run -- --role server
@@ -94,7 +94,7 @@ Listening on 127.0.0.1:<port>
 Server live!
 ```
 
-Take note of the server's port number, and in a separate terminal, start a client transducer:
+Take note of the server's port number, and in a separate terminal, start a client process:
 ```console
 #shell-command-next-line
 cd <project name>

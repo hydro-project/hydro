@@ -29,9 +29,9 @@ pub(crate) async fn server_state_flow(
     // Set up the Udp socket for proxy-server communication
     let (reqs_out, reqs_in, _) = dfir_rs::util::bind_udp_bytes(local_addr).await;
 
-    // This is like push_group_flow, but we split it into two transducers that communicate via reqs_out and reqs_in.
-    // The first transducer takes in shopping_ssiv requests, and forwards them via reqs_out to the second transducer.
-    // The second transducer listens on reqs_in and runs the stateful logic of fold_keyed and join.
+    // This is like push_group_flow, but we split it into two processes that communicate via reqs_out and reqs_in.
+    // The first process takes in shopping_ssiv requests, and forwards them via reqs_out to the second process.
+    // The second process listens on reqs_in and runs the stateful logic of fold_keyed and join.
     dfir_syntax! {
         // Networked: Server-Side State
         source_iter(shopping_ssiv)

@@ -23,10 +23,10 @@ cargo run -p hydroflow --example shopping -- --opt 5
 
 Adding the `--graph <graph_type>` flag to the end of the command lines above will print out a node-and-edge diagram of the program. Supported values for `<graph_type>` include [mermaid](https://mermaid-js.github.io/) and [dot](https://graphviz.org/doc/info/lang.html).
 
-For options 1-4, the driver runs a single Hydro transducer (thread) that handles client requests.
+For options 1-4, the driver runs a single Hydro process (thread) that handles client requests.
 
-For options 5-6, the driver runs two Hydro transducers, one for each side of the network communication.
+For options 5-6, the driver runs two Hydro processes, one for each side of the network communication.
 
-For option 7, the driver runs four Hydro transducers: one client proxy and 3 server replicas.
+For option 7, the driver runs four Hydro processes: one client proxy and 3 server replicas.
 
-Under all options, the driver runs an additional independent Hydro transducer (thread) to receive the output of the flow and print it to the console. The code for this transducer is in `flows/listener_flow.rs`.
+Under all options, the driver runs an additional independent Hydro process (thread) to receive the output of the flow and print it to the console. The code for this process is in `flows/listener_flow.rs`.

@@ -25,31 +25,31 @@ DFIR is a library that can be used in any Rust program. It includes two main com
 DFIR's surface syntax must be embedded in a Rust program; the Rust compiler takes that DFIR syntax and
 compiles it into an efficient binary executable.
 
-> We call a running DFIR binary a *transducer*.
+> We call a running DFIR binary a *process*.
 
-In typical usage, a developer writes a transducer as a single-threaded Rust program that is mostly composed of
-DFIR surface syntax. Each transducer is typically responsible for a single
-"node" (a machine, or a core) in a distributed system composed of many such transducers,
+In typical usage, a developer writes a process as a single-threaded Rust program that is mostly composed of
+DFIR surface syntax. Each process is typically responsible for a single
+"node" (a machine, or a core) in a distributed system composed of many such processes,
 which send and receive flows of data to each other.
 
-> DFIR itself does not generate distributed code. It is a library for specifying the transducers (individual nodes) that
+> DFIR itself does not generate distributed code. It is a library for specifying the processes (individual nodes) that
 > participate in a distributed system.
 >
 > In the [Hydro Project](https://hydro.run), higher-level languages are being built on top of DFIR to generate
-> distributed code in the form of multiple transducers.
-> Meanwhile, you can use DFIR to write your own distributed code, by writing individual transducers that work together,
+> distributed code in the form of multiple processes.
+> Meanwhile, you can use DFIR to write your own distributed code, by writing individual processes that work together,
 > and deploying them manually or with a tool like [Hydroplane](https://github.com/hydro-project/hydroplane). See the [Hydro Ecosystem](../ecosystem) for more on this.
 
 ### So how might a human write distributed systems with DFIR?
 As an illustration of how you can work at the DFIR layer, consider the
 [Chat Server example](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples/chat). If you run that binary
-with the command-line argument `--role server` it will start a single transducer that is responsible for a chat server: receiving
+with the command-line argument `--role server` it will start a single process that is responsible for a chat server: receiving
 membership requests and messages from clients, and forwarding messages from individual clients to all other clients.
-If you run that binary with the argument `--role client` it will start a transducer that is responsible for a chat client, which
+If you run that binary with the argument `--role client` it will start a process that is responsible for a chat client, which
 forwards chat messages from stdin to the server, and prints out messages sent by the server. As a distributed system, the chat
-service would typically consist of many client transducers and a single server transducer.
+service would typically consist of many client processes and a single server process.
 
-Note that this is an example of an extremely simple distributed system in a "star" or "hub-and spokes" topology: the multiple client transducers are completely independent of each other, and each talks only with the central server transducer.
+Note that this is an example of an extremely simple distributed system in a "star" or "hub-and spokes" topology: the multiple client processes are completely independent of each other, and each talks only with the central server process.
 
 <div align="center">
 
@@ -65,7 +65,7 @@ graph TD;
 ```
 </div>
 
- If we wanted something more interesting, we could consider deploying a cluster of multiple server transducers, say for fault tolerance or geo-distribution, perhaps like this:
+ If we wanted something more interesting, we could consider deploying a cluster of multiple server processes, say for fault tolerance or geo-distribution, perhaps like this:
 
  <div align="center">
 

@@ -105,7 +105,7 @@ where
     dfir_syntax! {
 
         on_start = initialize() -> tee();
-        on_start -> for_each(|_| info!("{:?}: Transducer {} started.", context.current_tick(), member_id_6));
+        on_start -> for_each(|_| info!("{:?}: Process {} started.", context.current_tick(), member_id_6));
 
         seed_nodes = source_stream(seed_node_stream)
             -> fold::<'static>(|| Box::new(seed_nodes), |last_seed_nodes, new_seed_nodes: Vec<SeedNode<Addr>>| {
