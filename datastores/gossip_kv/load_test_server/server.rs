@@ -2,6 +2,7 @@ use std::convert::Infallible;
 use std::num::{NonZeroU32, ParseFloatError};
 use std::thread::sleep;
 use std::time::Duration;
+
 use clap::Parser;
 use dfir_rs::util::{unbounded_channel, unsync_channel};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
@@ -36,7 +37,6 @@ struct Opts {
     #[clap(short, long, default_value = "10", value_parser = clap_duration_from_secs)]
     gossip_frequency: Duration,
 }
-
 
 lazy_static! {
     pub static ref SETS_SENT: IntCounter =
@@ -94,7 +94,6 @@ fn run_server(
             //         SETS_SENT.inc();
             //     }
             // });
-
 
             // Networking
             local.spawn_local(async move {

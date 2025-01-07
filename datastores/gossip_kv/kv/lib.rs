@@ -7,6 +7,8 @@ pub mod lattices;
 
 pub mod util;
 
+pub mod buffer_pool;
+
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::str::FromStr;

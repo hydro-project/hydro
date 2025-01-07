@@ -11,7 +11,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, WithBot<Max<String>>>;
+pub type RowValue<C> = DomPair<C, WithBot<Point<AutoReturnBuffer<1024>, ()>>>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionHashMap<RowKey, V>;
@@ -40,8 +40,8 @@ pub type Clock = Max<u64>;
 /// - `table_name`: Name of the table.
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
-pub fn upsert_row<C>(row_ts: C, key: u64, val: String) -> Namespaces<C> {
-    let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Max::new(val))));
+pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> Namespaces<C> {
+    let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Point::new(val))));
     Namespaces::new_from([(key, value)])
 }
 // /// TableMap element to delete a row from an existing TableMap.
