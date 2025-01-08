@@ -211,6 +211,24 @@ impl<'a, T: Clone, L: Location<'a>, B, Order> Clone for Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
+    /// Transforms the stream by applying a function (`f`) to each element,
+    /// emitting the output elements in the same order as the input.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(0..10));
+    /// let mapped = numbers.map(q!(|n| n * 2));
+    /// # mapped
+    /// # }, |mut stream| async move {
+    /// // 2, 4, 6, 8, ...
+    /// # for i in 0..10 {
+    /// #     assert_eq!(stream.next().await.unwrap(), i * 2);
+    /// # }
+    /// # }));
+    /// ```
     pub fn map<U, F: Fn(T) -> U + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
