@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
-use dfir_rs::lattices::{DomPair, Max, WithBot};
-use lattices::{Point, WithBot};
+use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
+use lattices::collections::SingletonMap;
+use lattices::map_union::MapUnionSingletonMap;
 use crate::buffer_pool::AutoReturnBuffer;
 use crate::Namespace;
 
@@ -28,6 +29,8 @@ pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
 pub type Namespaces<C> = MapUnionHashMap<u64, RowValue<C>>;
 
+pub type SingleWrite<C> = MapUnionSingletonMap<u64, RowValue<C>>;
+
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
 pub type Clock = Max<u64>;
@@ -42,11 +45,9 @@ pub type Clock = Max<u64>;
 /// - `table_name`: Name of the table.
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
-pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> Namespaces<C> {
+pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> SingleWrite<C> {
     let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Point::new(val))));
-    let mut map = HashMap::with_capacity(1);
-    map.insert(key, value);
-    Namespaces::new(map)
+    MapUnionSingletonMap::new(SingletonMap::from((key, value)))
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///
