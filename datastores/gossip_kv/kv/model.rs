@@ -1,7 +1,9 @@
+use std::collections::HashMap;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot};
-
+use lattices::{Point, WithBot};
+use crate::buffer_pool::AutoReturnBuffer;
 use crate::Namespace;
 
 /// Primary key for entries in a table.
@@ -42,7 +44,9 @@ pub type Clock = Max<u64>;
 /// - `val`: Row value.
 pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> Namespaces<C> {
     let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Point::new(val))));
-    Namespaces::new_from([(key, value)])
+    let mut map = HashMap::with_capacity(1);
+    map.insert(key, value);
+    Namespaces::new(map)
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///
@@ -64,7 +68,7 @@ pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> Namesp
 //     Namespaces::new_from([(ns, table)])
 // }
 
-// #[cfg(test)]
+//#[cfg(test)]
 // mod tests {
 //     use std::collections::HashSet;
 //
