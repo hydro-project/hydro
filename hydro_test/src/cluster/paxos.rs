@@ -471,7 +471,6 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 fn recommit_after_leader_election<'a, P: PaxosPayload>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
     accepted_logs: Stream<
         (Option<usize>, HashMap<usize, LogValue<P>>),
         Tick<Cluster<'a, Proposer>>,
@@ -484,17 +483,20 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
     Stream<P2a<P>, Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
-    let p_p1b_max_checkpoint = accepted_logs
-        .clone()
-        .map(q!(|(checkpoint, _log)| {
+    let p_p1b_max_checkpoint = accepted_logs.clone().fold_commutative(
+        q!(|| None),
+        q!(|curr_max, (checkpoint, _log)| {
             if let Some(checkpoint) = checkpoint {
-                checkpoint as i64
-            } else {
-                -1
+                if let Some(curr_max_val) = *curr_max {
+                    if checkpoint > curr_max_val {
+                        *curr_max = Some(checkpoint);
+                    }
+                } else {
+                    *curr_max = Some(checkpoint);
+                }
             }
-        }))
-        .max()
-        .unwrap_or(proposer_tick.singleton(q!(-1_i64)));
+        }),
+    );
     let p_p1b_highest_entries_and_count = accepted_logs
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
@@ -525,15 +527,18 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .cross_singleton(p_ballot.clone())
         .cross_singleton(p_p1b_max_checkpoint.clone())
         .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
-            if count <= f && slot as i64 > checkpoint {
-                Some(P2a {
-                    ballot,
-                    slot,
-                    value: entry.value,
-                })
-            } else {
-                None
+            if count > f {
+                return None;
+            } else if let Some(checkpoint) = checkpoint {
+                if slot <= checkpoint {
+                    return None;
+                }
             }
+            Some(P2a {
+                ballot,
+                slot,
+                value: entry.value,
+            })
         }));
     let p_max_slot = p_p1b_highest_entries_and_count
         .clone()
@@ -544,11 +549,14 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .map(q!(|(slot, _)| slot));
     let p_log_holes = p_max_slot
         .clone()
-        .into_stream()
-        .cross_singleton(p_p1b_max_checkpoint)
-        .flat_map_ordered(q!(
-            |(max_slot, checkpoint)| (checkpoint + 1) as usize..max_slot
-        ))
+        .zip(p_p1b_max_checkpoint)
+        .flat_map_ordered(q!(|(max_slot, checkpoint)| {
+            if let Some(checkpoint) = checkpoint {
+                (checkpoint + 1)..max_slot
+            } else {
+                0..max_slot
+            }
+        }))
         .filter_not_in(p_proposed_slots)
         .cross_singleton(p_ballot.clone())
         .map(q!(|(slot, ballot)| P2a {
@@ -600,7 +608,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
     let (p_log_to_recommit, p_max_slot) =
-        recommit_after_leader_election(proposer_tick, p_relevant_p1bs, p_ballot.clone(), f);
+        recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), f);
 
     let indexed_payloads = index_payloads(proposer_tick, p_max_slot, unsafe {
         // SAFETY: We batch payloads so that we can compute the correct slot based on
