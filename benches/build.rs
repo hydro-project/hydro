@@ -19,7 +19,7 @@ pub fn fork_join() -> std::io::Result<()> {
     let file = File::create(path)?;
     let mut write = BufWriter::new(file);
 
-    writeln!(write, "hydroflow_syntax! {{")?;
+    writeln!(write, "dfir_syntax! {{")?;
     writeln!(write, "a0 = source_iter(0..NUM_INTS) -> tee();")?;
     for i in 0..NUM_OPS {
         if i > 0 {

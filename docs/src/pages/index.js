@@ -26,7 +26,7 @@ export default function Home() {
               justifyContent: "center",
               flexWrap: "wrap"
             }}>
-              <Link to="/docs/hydroflow_plus/quickstart/" className="button button--primary button--lg" style={{
+              <Link to="/docs/hydro/quickstart/" className="button button--primary button--lg" style={{
                 margin: "10px",
                 marginTop: 0,
                 fontSize: "1.4em",

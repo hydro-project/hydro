@@ -7,7 +7,7 @@ use syn::{AngleBracketedGenericArguments, Token, Type};
 
 mod quote_impl;
 
-/// Creates a quoted expression for Hydroflow+.
+/// Creates a quoted expression for Hydro.
 ///
 /// Creates a quoted expression, which can be typechecked but has its AST serialized
 /// until it is spliced into a staged entrypoint. Returns a value which implements

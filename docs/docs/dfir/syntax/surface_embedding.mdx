@@ -1,0 +1,15 @@
+---
+sidebar_position: 1
+---
+import CodeBlock from '@theme/CodeBlock';
+import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_syntax_empty.rs';
+import { getLines } from '../../../src/util';
+
+# Embedding a Flow in Rust
+DFIR's surface syntax is typically used within a Rust program. (An interactive client and/or external language bindings are TBD.)
+
+The surface syntax is embedded into Rust via a macro as follows
+
+<CodeBlock language="rust" showLineNumbers>{getLines(exampleCode, 3, 10)}</CodeBlock>
+
+The resulting `flow` object is of type [`Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html).

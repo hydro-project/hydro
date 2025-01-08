@@ -2,7 +2,7 @@
 # Visit https://bit.ly/cffinit to generate yours today!
 
 cff-version: 1.2.0
-title: Hydroflow
+title: Hydro
 message: >-
   If you use this software, please cite it using the
   metadata from this file.
@@ -13,10 +13,6 @@ authors:
     email: mingwei@shv.com
     affiliation: Sutter Hill Ventures
     orcid: 'https://orcid.org/0009-0004-9873-6266'
-  - given-names: Justin
-    family-names: Jaffray
-    email: justin@shv.com
-    affiliation: Sutter Hill Ventures
   - given-names: Shadaj
     family-names: Laddad
     email: shadaj@berkeley.edu
@@ -27,17 +23,18 @@ authors:
     email: hellerstein@berkeley.edu
     orcid: 'https://orcid.org/0000-0002-7712-4306'
     affiliation: UC Berkeley
+  - given-names: Rohit
+    family-names: Kulshreshtha
+    email: rohit@shv.com
+    affiliation: Sutter Hill Ventures
   - given-names: Lucky
     family-names: Katahanas
     email: lucky@shv.com
     affiliation: Sutter Hill Ventures
-  - given-names: Tyler
-    family-names: Hou
-    affiliation: UC Berkeley
-  - given-names: Alex
-    family-names: Rasmussen
-    email: alex@bitsondisk.com
-    affiliation: Bits on Disk
+  - given-names: Justin
+    family-names: Jaffray
+    email: justin@shv.com
+    affiliation: Sutter Hill Ventures
   - given-names: David
     family-names: Chu
     affiliation: UC Berkeley
@@ -47,18 +44,11 @@ authors:
     family-names: Power
     orcid: 'https://orcid.org/0000-0002-0660-5110'
     affiliation: UC Berkeley
-  - given-names: Amrita
-    family-names: Rajan
-    affiliation: UC Berkeley
-  - given-names: Rithvik
-    family-names: Panchapakesan
-    email: rithvik@berkeley.edu
-    affiliation: UC Berkeley
-repository-code: 'https://github.com/hydro-project/hydroflow/'
-url: 'https://hydro.run/hydroflow'
+repository-code: 'https://github.com/hydro-project/hydro/'
+url: 'https://hydro.run/'
 abstract: >-
-  Hydroflow is the lattice-based dataflow runtime for the
-  Hydro language stack for programming distributed systems
+  Hydro is a language stack for programming distributed systems,
+  buil on top of DFIR, a lattice-aware dataflow system.
 keywords:
   - dataflow
   - distributed systems

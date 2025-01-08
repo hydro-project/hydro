@@ -1,16 +1,16 @@
-use hydroflow::hydroflow_syntax;
-use hydroflow::util::deploy::{ConnectedDirect, ConnectedSource, ConnectedTagged};
+use dfir_rs::dfir_syntax;
+use dfir_rs::util::deploy::{ConnectedDirect, ConnectedSource, ConnectedTagged};
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
-    let ports = hydroflow::util::deploy::init::<()>().await;
+    let ports = dfir_rs::util::deploy::init::<()>().await;
     let echo_recv = ports
         .port("echo")
         .connect::<ConnectedTagged<ConnectedDirect>>()
         .await
         .into_source();
 
-    let df = hydroflow_syntax! {
+    let df = dfir_syntax! {
         source_stream(echo_recv) ->
             map(|x| {
                 let x = x.unwrap();
@@ -19,5 +19,5 @@ async fn main() {
             for_each(|x| println!("echo {:?}", x));
     };
 
-    hydroflow::util::deploy::launch_flow(df).await;
+    dfir_rs::util::deploy::launch_flow(df).await;
 }

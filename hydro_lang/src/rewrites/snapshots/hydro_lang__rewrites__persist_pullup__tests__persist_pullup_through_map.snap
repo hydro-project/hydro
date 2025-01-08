@@ -1,0 +1,24 @@
+---
+source: hydro_lang/src/rewrites/persist_pullup.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Unpersist(
+            Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | v | v + 1 }),
+                input: Persist(
+                    Source {
+                        source: Iter(
+                            { use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; 0 .. 10 },
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                    },
+                ),
+            },
+        ),
+    },
+]

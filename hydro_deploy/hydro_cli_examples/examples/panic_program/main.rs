@@ -1,8 +1,8 @@
 use std::io::Write;
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
-    let _ = hydroflow::util::deploy::init::<()>().await;
+    let _ = dfir_rs::util::deploy::init::<()>().await;
     println!("hello!");
 
     std::io::stdout().flush().unwrap();

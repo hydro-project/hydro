@@ -1,4 +1,6 @@
 //! Test suite for Node.
+//!
+//! TODO(mingwei): update this test!
 
 #![cfg(target_arch = "wasm32")]
 

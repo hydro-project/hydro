@@ -5,17 +5,17 @@ use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Instant;
 
+use dfir_rs::bytes::Bytes;
+use dfir_rs::util::deploy::{ConnectedDirect, ConnectedSink, ConnectedSource};
+use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
 use futures::{SinkExt, StreamExt};
-use hydroflow::bytes::Bytes;
-use hydroflow::util::deploy::{ConnectedDirect, ConnectedSink, ConnectedSource};
-use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
 
 mod protocol;
 use protocol::*;
 
 #[tokio::main]
 async fn main() {
-    let ports = hydroflow::util::deploy::init::<()>().await;
+    let ports = dfir_rs::util::deploy::init::<()>().await;
     let mut start_node = ports
         .port("increment_start_node")
         .connect::<ConnectedDirect>()

@@ -1,9 +1,9 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph::Hydroflow;
-use hydroflow::scheduled::graph_ext::GraphExt;
-use hydroflow::scheduled::handoff::{Iter, VecHandoff};
-use hydroflow::scheduled::query::Query as Q;
+use dfir_rs::dfir_syntax;
+use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::scheduled::graph_ext::GraphExt;
+use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
+use dfir_rs::scheduled::query::Query as Q;
 use timely::dataflow::operators::{Concatenate, Filter, Inspect, ToStream};
 
 const NUM_OPS: usize = 20;
@@ -11,9 +11,9 @@ const NUM_INTS: usize = 100_000;
 const BRANCH_FACTOR: usize = 2;
 
 fn benchmark_hydroflow(c: &mut Criterion) {
-    c.bench_function("fork_join/hydroflow", |b| {
+    c.bench_function("fork_join/dfir_rs", |b| {
         b.iter(|| {
-            let mut df = Hydroflow::new();
+            let mut df = Dfir::new();
 
             let (start_send, start_recv) = df.make_edge::<_, VecHandoff<usize>>("start");
 
@@ -84,7 +84,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
-    c.bench_function("fork_join/hydroflow/surface", |b| {
+    c.bench_function("fork_join/dfir_rs/surface", |b| {
         b.iter(|| {
             let mut hf = include!("fork_join_20.hf");
             hf.run_available();

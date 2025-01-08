@@ -206,7 +206,7 @@ pub trait DeepReveal {
 ///
 /// Use [`crate::test::check_lattice_morphism`] to spot-test an implementation.
 ///
-/// See the [lattice math doc's lattice morphism section](https://hydro.run/docs/hydroflow/lattices_crate/lattice_math/#lattice-morphism).
+/// See the [lattice math doc's lattice morphism section](https://hydro.run/docs/dfir/lattices_crate/lattice_math/#lattice-morphism).
 pub trait LatticeMorphism<LatIn> {
     /// The output lattice type.
     type Output;
@@ -218,7 +218,7 @@ pub trait LatticeMorphism<LatIn> {
 ///
 /// Use [`crate::test::check_lattice_bimorphism`] to spot-test an implementation.
 ///
-/// See the [lattice math doc's lattice bimorphism section](https://hydro.run/docs/hydroflow/lattices_crate/lattice_math/#lattice-bimorphism).
+/// See the [lattice math doc's lattice bimorphism section](https://hydro.run/docs/dfir/lattices_crate/lattice_math/#lattice-bimorphism).
 pub trait LatticeBimorphism<LatA, LatB> {
     /// The output lattice type.
     type Output;

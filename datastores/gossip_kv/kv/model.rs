@@ -1,6 +1,6 @@
-use hydroflow::lattices::map_union::MapUnionHashMap;
-use hydroflow::lattices::set_union::SetUnionHashSet;
-use hydroflow::lattices::{DomPair, Max};
+use dfir_rs::lattices::map_union::MapUnionHashMap;
+use dfir_rs::lattices::set_union::SetUnionHashSet;
+use dfir_rs::lattices::{DomPair, Max};
 
 use crate::Namespace;
 
@@ -27,7 +27,7 @@ pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 pub type Namespaces<C> = NamespaceMap<RowValue<C>>;
 
 /// Timestamps used in the model.
-// TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydroflow/issues/1207.
+// TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
 pub type Clock = Max<u64>;
 
 /// TableMap element to upsert a row in an existing TableMap.
@@ -77,7 +77,7 @@ pub fn delete_row<C>(
 mod tests {
     use std::collections::HashSet;
 
-    use hydroflow::lattices::Merge;
+    use dfir_rs::lattices::Merge;
 
     use crate::model::{delete_row, upsert_row, Clock, Namespaces, RowKey, TableName};
     use crate::Namespace::System;

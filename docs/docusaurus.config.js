@@ -67,7 +67,7 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
-            'https://github.com/hydro-project/hydroflow/tree/main/docs/',
+            'https://github.com/hydro-project/hydro/tree/main/docs/',
           remarkPlugins: [math],
           rehypePlugins: [katex],
         },
@@ -76,7 +76,7 @@ const config = {
         //   // Please change this to your repo.
         //   // Remove this to remove the "edit this page" links.
         //   editUrl:
-        //     'https://github.com/hydro-project/hydroflow/tree/main/docs/',
+        //     'https://github.com/hydro-project/hydro/tree/main/docs/',
         // },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -120,13 +120,8 @@ const config = {
             items: [
               {
                 type: 'docSidebar',
-                sidebarId: 'hydroflowSidebar',
-                label: 'Hydroflow',
-              },
-              {
-                type: 'docSidebar',
-                sidebarId: 'hydroflowPlusSidebar',
-                label: 'Hydroflow+',
+                sidebarId: 'hydroSidebar',
+                label: 'Hydro',
               },
               {
                 type: 'docSidebar',
@@ -134,9 +129,14 @@ const config = {
                 label: 'Hydro Deploy',
               },
               {
-                href: 'pathname:///rustdoc/hydroflow/',
+                href: 'pathname:///rustdoc/hydro_lang/',
                 label: 'Rustdoc',
-              }
+              },
+              {
+                type: 'docSidebar',
+                sidebarId: 'dfirSidebar',
+                label: 'DFIR',
+              },
             ]
           },
           {
@@ -156,7 +156,7 @@ const config = {
           },
           // {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/hydro-project/hydroflow',
+            href: 'https://github.com/hydro-project/hydro',
             label: 'GitHub',
             position: 'right',
           },
@@ -169,12 +169,12 @@ const config = {
             title: 'Docs',
             items: [
               {
-                label: 'Hydroflow',
-                to: '/docs/hydroflow/',
+                label: 'DFIR',
+                to: '/docs/dfir/',
               },
               {
-                label: 'Hydroflow+',
-                to: '/docs/hydroflow_plus/',
+                label: 'Hydro',
+                to: '/docs/hydro/',
               },
               {
                 label: 'Hydro Deploy',
@@ -204,7 +204,7 @@ const config = {
               // },
               {
                 label: 'GitHub',
-                href: 'https://github.com/hydro-project/hydroflow',
+                href: 'https://github.com/hydro-project/hydro',
               },
             ],
           },

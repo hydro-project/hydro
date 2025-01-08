@@ -1,10 +1,10 @@
-use hydroflow::util::deploy::{ConnectedDirect, ConnectedSource};
-use hydroflow::util::deserialize_from_bytes;
-use hydroflow_datalog::datalog;
+use dfir_datalog::datalog;
+use dfir_rs::util::deploy::{ConnectedDirect, ConnectedSource};
+use dfir_rs::util::deserialize_from_bytes;
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
-    let ports = hydroflow::util::deploy::init::<()>().await;
+    let ports = dfir_rs::util::deploy::init::<()>().await;
     let broadcast_recv = ports
         .port("broadcast")
         .connect::<ConnectedDirect>()
@@ -20,5 +20,5 @@ async fn main() {
     "#
     );
 
-    hydroflow::util::deploy::launch_flow(df).await;
+    dfir_rs::util::deploy::launch_flow(df).await;
 }

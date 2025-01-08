@@ -1,6 +1,6 @@
 # Microbenchmarks
 
-Of Hydroflow and other crates.
+Of Hydro and other crates.
 
 Run all benchmarks:
 ```

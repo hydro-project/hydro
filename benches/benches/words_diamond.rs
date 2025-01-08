@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
-use hydroflow::itertools::Itertools;
+use dfir_rs::dfir_syntax;
+use dfir_rs::itertools::Itertools;
 use nameof::name_of;
 
 const OUTPUT: usize = 5_123_595;
@@ -35,7 +35,7 @@ fn hydroflow_diamond(c: &mut Criterion) {
     c.bench_function(name_of!(hydroflow_diamond), |b| {
         b.iter(|| {
             let words = words();
-            let mut df = hydroflow_syntax! {
+            let mut df = dfir_syntax! {
                 my_tee = source_iter(words) -> tee();
                 my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
                 my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;

@@ -116,11 +116,11 @@ jobs:
           target: wasm32-unknown-unknown
           override: ${{ matrix.rust_release == 'latest-stable' }}
 
-      - name: Check hydroflow_lang
+      - name: Check dfir_lang
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p hydroflow_lang --target wasm32-unknown-unknown
+          args: -p dfir_lang --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
@@ -275,7 +275,7 @@ jobs:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         with:
           command: test
-          args: -p hydroflow --target wasm32-unknown-unknown --tests --no-fail-fast
+          args: -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
   build-website:
     name: Build Website
@@ -370,10 +370,11 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install toolchain
+      - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
+          toolchain: nightly
 
       - name: Checkout gh-pages
         shell: bash

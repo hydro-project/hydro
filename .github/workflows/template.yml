@@ -18,11 +18,11 @@ jobs:
         with:
           cancel_others: "true"
 
-  test_hydroflow:
-    name: Test hydroflow
+  test_dfir:
+    name: Test dfir
+    needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     timeout-minutes: 10
-    needs: pre_job
     runs-on: ubuntu-latest
 
     steps:
@@ -40,8 +40,8 @@ jobs:
         uses: cargo-generate/cargo-generate-action@v0.20.0
         with:
           name: generated
-          template: template/hydroflow
-          arguments: "-d hydroflow_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydroflow_branch=${{ github.event.pull_request.head.ref }}"
+          template: template/dfir
+          arguments: "-d hydro_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydro_branch=${{ github.event.pull_request.head.ref }}"
       - name: Move generated project
         run: |
           mv generated ${{ runner.temp }}/
@@ -84,8 +84,8 @@ jobs:
 
           echo "$ECHO_STRING" >client-input
 
-          "${{ runner.temp }}/generated/target/debug/hydroflow-template" --role server --address 127.0.0.100:2048 &
-          "${{ runner.temp }}/generated/target/debug/hydroflow-template" --role client --address 127.0.0.100:2048 <client-input >client-output &
+          "${{ runner.temp }}/generated/target/debug/dfir-template" --role server --address 127.0.0.100:2048 &
+          "${{ runner.temp }}/generated/target/debug/dfir-template" --role client --address 127.0.0.100:2048 <client-input >client-output &
 
           sleep 1
 
@@ -95,11 +95,11 @@ jobs:
               exit -1
           fi
 
-  test_hydroflow_plus:
-    name: Test hydroflow_plus
+  test_hydro_lang:
+    name: Test hydro_lang
+    needs: pre_job
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}
     timeout-minutes: 10
-    needs: pre_job
     runs-on: ubuntu-latest
 
     steps:
@@ -117,8 +117,8 @@ jobs:
         uses: cargo-generate/cargo-generate-action@v0.20.0
         with:
           name: generated
-          template: template/hydroflow_plus
-          arguments: "-d hydroflow_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydroflow_branch=${{ github.event.pull_request.head.ref }}"
+          template: template/hydro
+          arguments: "-d hydro_git=${{ github.event.pull_request.head.repo.clone_url }} -d hydro_branch=${{ github.event.pull_request.head.ref }}"
       - name: Move generated project
         run: |
           mv generated ${{ runner.temp }}/
@@ -152,3 +152,89 @@ jobs:
         with:
           command: build
           args: --manifest-path "${{ runner.temp }}/generated/Cargo.toml"  --all-targets
+
+  push_dfir:
+    name: Push to dfir template repo
+    needs: test_dfir
+    if: ${{ needs.test_dfir.result == 'success' && github.event_name != 'pull_request' }}
+    env:
+      DIR: template/dfir
+      REPO: dfir-template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            ${{ env.REPO }}
+
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Push to template repo
+        shell: bash
+        run: |
+          git -C "$DIR" init -q
+          git -C "$DIR" remote add origin "https://github.com/${{ github.repository_owner }}/${{ env.REPO }}.git"
+          git -C "$DIR" config credential.helper "$(git config credential.helper)"
+          git -C "$DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
+          git -C "$DIR" config core.autocrlf input
+          git -C "$DIR" config core.safecrlf false
+          git -C "$DIR" config user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git -C "$DIR" config user.email "$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          git -C "$DIR" add -A
+          git -C "$DIR" commit -m "Update template $(date -I) $(git rev-parse HEAD)"
+          git -C "$DIR" push -f -u origin HEAD:main --quiet
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+  push_hydro_lang:
+    name: Push to hydro template repo
+    needs: test_hydro_lang
+    if: ${{ needs.test_hydro_lang.result == 'success' && github.event_name != 'pull_request' }}
+    env:
+      DIR: template/hydro
+      REPO: hydro-template
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            ${{ env.REPO }}
+
+      - name: Checkout main repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Push to template repo
+        shell: bash
+        run: |
+          git -C "$DIR" init -q
+          git -C "$DIR" remote add origin "https://github.com/${{ github.repository_owner }}/${{ env.REPO }}.git"
+          git -C "$DIR" config credential.helper "$(git config credential.helper)"
+          git -C "$DIR" config 'http.https://github.com/.extraheader' "$(git config 'http.https://github.com/.extraheader')"
+          git -C "$DIR" config core.autocrlf input
+          git -C "$DIR" config core.safecrlf false
+          git -C "$DIR" config user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git -C "$DIR" config user.email "$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          git -C "$DIR" add -A
+          git -C "$DIR" commit -m "Update template $(date -I) $(git rev-parse HEAD)"
+          git -C "$DIR" push -f -u origin HEAD:main --quiet
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}

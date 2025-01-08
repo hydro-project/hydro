@@ -1,6 +1,6 @@
 ---
 source: lattices_macro/src/lib.rs
-expression: "prettyplease::unparse(&parse_quote! { # derive_lattice })"
+expression: "prettyplease :: unparse(& parse_quote! { # derive_lattice })"
 ---
 impl<
     KeySet,
@@ -150,4 +150,3 @@ where
         }
     }
 }
-

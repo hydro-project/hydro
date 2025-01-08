@@ -1,0 +1,13 @@
+---
+sidebar_position: 1
+---
+
+# Dataflow Programming
+Hydro uses a dataflow programming model, which will be familiar if you have used APIs like Rust iterators. Instead of using RPCs or async/await to describe distributed computation, Hydro instead uses **asynchronous streams**, which represent data arriving over time. Streams can represent a series of asynchronous events (e.g. inbound network requests) or a sequence of data items.
+
+Programs in Hydro describe how to **transform** entire collections of data using operators such as `map` (transforming elements one by one), `fold` (aggregating elements into a single value), or `join` (combining elements from multiple streams on matching keys).
+
+If you are familiar with Spark, Flink or Pandas, you will find Hydro syntax familiar. However, note well that the semantics for asynchronous streams in Hydro differ significantly from bulk analytics systems like those above. In particular, Hydro uses the type system to distinguish between bounded streams (originating from finite data) and unbounded streams (originated from asynchronous input). Moreover, Hydro is designed to handle asynchronous streams of small, independent events very efficiently.
+
+<!-- TODO(shadaj): link to collections section -->
+<!-- TODO(shadaj): show example of mermaid graph -->

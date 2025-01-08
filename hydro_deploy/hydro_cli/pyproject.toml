@@ -5,6 +5,7 @@ description = "A toolkit for deploying Hydro services to cloud platforms."
 readme = "README.md"
 dependencies = []
 requires-python = ">=3.7"
+dynamic = ["version"]
 
 [build-system]
 requires = ["maturin>=1.0.0"]
