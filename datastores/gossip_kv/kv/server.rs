@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::Zip;
+use std::sync::Arc;
 use dfir_rs::dfir_syntax;
 use dfir_rs::futures::{Sink, Stream};
 use dfir_rs::itertools::Itertools;
@@ -117,7 +118,7 @@ where
             //BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
             let mut rng = thread_rng();
-            (0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>()
+            Arc::new((0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>())
         })
         .collect();
 

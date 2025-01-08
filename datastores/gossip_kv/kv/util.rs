@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use dfir_rs::DemuxEnum;
 
 use crate::model::{Clock, Namespaces};
@@ -11,7 +12,7 @@ pub enum ClientRequestWithAddress<A> {
     /// A get request with the key and the address of the client.
     Get { key: Key, addr: A },
     /// A set request with the key, value and the address of the client.
-    Set { key: u64, value: String, addr: A },
+    Set { key: u64, value: Arc<String>, addr: A },
     /// A delete request with the key and the address of the client.
     Delete { key: Key, addr: A },
 }
@@ -21,7 +22,7 @@ impl<A> ClientRequestWithAddress<A> {
     pub fn from_request_and_address(request: ClientRequest, addr: A) -> Self {
         match request {
             ClientRequest::Get { key } => Self::Get { key, addr },
-            ClientRequest::Set { key, value } => Self::Set { key, value, addr },
+            ClientRequest::Set { key, value } => Self::Set { key, value:  Arc::new(value), addr },
             ClientRequest::Delete { key } => Self::Delete { key, addr },
         }
     }

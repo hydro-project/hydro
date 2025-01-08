@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
@@ -14,7 +15,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, WithBot<Max<String>>>;
+pub type RowValue<C> = DomPair<C, WithBot<Max<Arc<String>>>>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionHashMap<RowKey, V>;
@@ -45,7 +46,7 @@ pub type Clock = Max<u64>;
 /// - `table_name`: Name of the table.
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
-pub fn upsert_row<C>(row_ts: C, key: u64, val: String) -> SingleWrite<C> {
+pub fn upsert_row<C>(row_ts: C, key: u64, val: Arc<String>) -> SingleWrite<C> {
     let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Max::new(val))));
     MapUnionSingletonMap::new(SingletonMap::from((key, value)))
 }

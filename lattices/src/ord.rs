@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-
+use std::sync::Arc;
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// A totally ordered max lattice. Merging returns the larger value.
@@ -215,6 +215,13 @@ impl IsBot for Max<char> {
 }
 
 impl IsBot for Max<String> {
+    fn is_bot(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl IsBot for Max<Arc<String>>
+{
     fn is_bot(&self) -> bool {
         self.0.is_empty()
     }
