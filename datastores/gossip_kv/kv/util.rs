@@ -2,6 +2,7 @@ use dfir_rs::DemuxEnum;
 
 use crate::model::{Clock, Namespaces};
 use crate::{ClientRequest, GossipMessage, Key};
+use crate::buffer_pool::AutoReturnBuffer;
 
 /// Convenience enum to represent a client request with the address of the client. Makes it
 /// possible to use `demux_enum` in the surface syntax.
@@ -10,7 +11,7 @@ pub enum ClientRequestWithAddress<A> {
     /// A get request with the key and the address of the client.
     Get { key: Key, addr: A },
     /// A set request with the key, value and the address of the client.
-    Set { key: u64, value: String, addr: A },
+    Set { key: u64, value: AutoReturnBuffer<1024>, addr: A },
     /// A delete request with the key and the address of the client.
     Delete { key: Key, addr: A },
 }
@@ -34,7 +35,7 @@ pub enum GossipRequestWithAddress<A> {
     Gossip {
         message_id: String,
         member_id: String,
-        writes: Namespaces<Clock>,
+        // writes: Namespaces<Clock>,
         addr: A,
     },
     /// An ack request with the message id and the address of the client.
@@ -58,11 +59,11 @@ impl<A> GossipRequestWithAddress<A> {
             GossipMessage::Gossip {
                 message_id,
                 member_id,
-                writes,
+//                writes,
             } => Self::Gossip {
                 message_id,
                 member_id,
-                writes,
+//                writes,
                 addr,
             },
 

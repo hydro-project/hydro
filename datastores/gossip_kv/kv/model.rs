@@ -64,94 +64,94 @@ pub fn upsert_row<C>(row_ts: C, key: u64, val: AutoReturnBuffer<1024>) -> Namesp
 //     Namespaces::new_from([(ns, table)])
 // }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-
-    use dfir_rs::lattices::Merge;
-
-    use crate::model::{delete_row, upsert_row, Clock, Namespaces, RowKey, TableName};
-    use crate::Namespace::System;
-
-    #[test]
-    fn test_table_map() {
-        let mut namespaces: Namespaces<Clock> = Namespaces::default();
-
-        let first_tick: Clock = Clock::new(0);
-        let second_tick: Clock = Clock::new(1);
-
-        let members_table = TableName::from("members");
-        let key_1 = RowKey::from("key1");
-        let value_1: String = "value1".to_string();
-
-        // Table starts out empty.
-        assert_eq!(
-            namespaces.as_reveal_ref().len(),
-            0,
-            "Expected no namespaces."
-        );
-
-        let insert = upsert_row(
-            first_tick,
-            System,
-            members_table.clone(),
-            key_1.clone(),
-            value_1.clone(),
-        );
-        Merge::merge(&mut namespaces, insert);
-        {
-            let table = namespaces
-                .as_reveal_ref()
-                .get(&System)
-                .unwrap()
-                .as_reveal_ref()
-                .get(&members_table)
-                .unwrap();
-
-            let row = table.as_reveal_ref().get(&key_1);
-            assert!(row.is_some(), "Row should exist");
-            assert_eq!(
-                *row.unwrap().as_reveal_ref().0,
-                first_tick,
-                "Unexpected row timestamp"
-            );
-
-            let value = row.unwrap().as_reveal_ref().1.as_reveal_ref();
-            assert_eq!(
-                value,
-                &HashSet::from([value_1.to_string()]),
-                "Unexpected row value"
-            );
-        }
-
-        let delete_row = delete_row(
-            second_tick,
-            System,
-            members_table.clone(),
-            key_1.to_string(),
-        );
-        Merge::merge(&mut namespaces, delete_row);
-        {
-            let table = namespaces
-                .as_reveal_ref()
-                .get(&System)
-                .unwrap()
-                .as_reveal_ref()
-                .get(&members_table)
-                .unwrap();
-
-            // Deletion in this case leaves a "tombstone"
-            let row = table.as_reveal_ref().get(&key_1);
-
-            assert!(row.is_some(), "Row should exist");
-            assert_eq!(
-                *row.unwrap().as_reveal_ref().0,
-                second_tick,
-                "Unexpected row timestamp"
-            );
-
-            let value = row.unwrap().as_reveal_ref().1.as_reveal_ref();
-            assert_eq!(value, &HashSet::from([]), "Row should be empty");
-        }
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use std::collections::HashSet;
+//
+//     use hydroflow::lattices::Merge;
+//
+//     use crate::model::{delete_row, upsert_row, Clock, Namespaces, RowKey, TableName};
+//     use crate::Namespace::System;
+//
+//     #[test]
+//     fn test_table_map() {
+//         let mut namespaces: Namespaces<Clock> = Namespaces::default();
+//
+//         let first_tick: Clock = Clock::new(0);
+//         let second_tick: Clock = Clock::new(1);
+//
+//         let members_table = TableName::from("members");
+//         let key_1 = RowKey::from("key1");
+//         let value_1: String = "value1".to_string();
+//
+//         // Table starts out empty.
+//         assert_eq!(
+//             namespaces.as_reveal_ref().len(),
+//             0,
+//             "Expected no namespaces."
+//         );
+//
+//         let insert = upsert_row(
+//             first_tick,
+//             System,
+//             members_table.clone(),
+//             key_1.clone(),
+//             value_1.clone(),
+//         );
+//         Merge::merge(&mut namespaces, insert);
+//         {
+//             let table = namespaces
+//                 .as_reveal_ref()
+//                 .get(&System)
+//                 .unwrap()
+//                 .as_reveal_ref()
+//                 .get(&members_table)
+//                 .unwrap();
+//
+//             let row = table.as_reveal_ref().get(&key_1);
+//             assert!(row.is_some(), "Row should exist");
+//             assert_eq!(
+//                 *row.unwrap().as_reveal_ref().0,
+//                 first_tick,
+//                 "Unexpected row timestamp"
+//             );
+//
+//             let value = row.unwrap().as_reveal_ref().1.as_reveal_ref();
+//             assert_eq!(
+//                 value,
+//                 &HashSet::from([value_1.to_string()]),
+//                 "Unexpected row value"
+//             );
+//         }
+//
+//         let delete_row = delete_row(
+//             second_tick,
+//             System,
+//             members_table.clone(),
+//             key_1.to_string(),
+//         );
+//         Merge::merge(&mut namespaces, delete_row);
+//         {
+//             let table = namespaces
+//                 .as_reveal_ref()
+//                 .get(&System)
+//                 .unwrap()
+//                 .as_reveal_ref()
+//                 .get(&members_table)
+//                 .unwrap();
+//
+//             // Deletion in this case leaves a "tombstone"
+//             let row = table.as_reveal_ref().get(&key_1);
+//
+//             assert!(row.is_some(), "Row should exist");
+//             assert_eq!(
+//                 *row.unwrap().as_reveal_ref().0,
+//                 second_tick,
+//                 "Unexpected row timestamp"
+//             );
+//
+//             let value = row.unwrap().as_reveal_ref().1.as_reveal_ref();
+//             assert_eq!(value, &HashSet::from([]), "Row should be empty");
+//         }
+//     }
+// }

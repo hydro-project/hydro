@@ -14,7 +14,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-
+use crate::buffer_pool::AutoReturnBuffer;
 use crate::model::{Clock, Namespaces};
 use crate::KeyParseError::InvalidNamespace;
 
@@ -136,17 +136,17 @@ impl FromStr for Key {
 }
 
 /// A request from a client to the key-value store.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ClientRequest {
     /// A request to get the value of a key.
     Get { key: Key },
     /// A request to set the value of a key.
-    Set { key: u64, value: String },
+    Set { key: u64, value: AutoReturnBuffer<1024> },
     /// A request to delete the value of a key.
     Delete { key: Key },
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum ClientResponse {
     /// A response for a get request. The key is echoed back along with the value, if it exists.
     /// Multiple values are returned if there were concurrent writes to the key.
@@ -157,13 +157,13 @@ pub enum ClientResponse {
     Delete { success: bool },
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum GossipMessage {
     /// An "infecting message" to share updates with a peer.
     Gossip {
         message_id: String,
         member_id: String,
-        writes: Namespaces<Clock>,
+        //writes: Namespaces<Clock>,
     },
     /// An acknowledgement message sent by a peer in response to a Gossip message, to indicate
     /// that it hasn't seen some of the writes in the Gossip message before.

@@ -27,7 +27,8 @@ use crate::model::{
 };
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
-use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
+use crate::{buffer_pool, ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
+use crate::buffer_pool::BufferPool;
 
 /// A trait that represents an abstract network address. In production, this will typically be
 /// SocketAddr.
@@ -43,7 +44,7 @@ where
     pub address: A,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Lattice)]
+#[derive(Debug, Clone, Lattice)]
 pub struct InfectingWrite {
     write: Namespaces<Clock>,
     members: BoundedSetLattice<MemberId, 2>,
@@ -103,6 +104,8 @@ where
     let member_id_5 = my_member_id.clone();
     let member_id_6 = my_member_id.clone();
 
+    let buffer_pool = BufferPool::create_buffer_pool();
+
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
     let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
@@ -115,10 +118,7 @@ where
             upsert_row(
                 Clock::new(100),
                 pre_generated_random_idx[i],
-                    thread_rng().sample_iter(rand::distributions::Alphanumeric)
-                    .take(1024)
-                    .map(char::from)
-                    .collect()
+                BufferPool::get_from_buffer_pool(&buffer_pool),
             )
         })
         .collect();
@@ -163,7 +163,7 @@ where
 
         client_in[Set]
             -> inspect(|request| trace!("{:?}: Received Set request: {:?}.", context.current_tick(), request))
-            -> map(|(key, value, _addr) : (u64, String, Addr)| upsert_row(Clock::new(context.current_tick().0), key, value))
+            -> map(|(key, value, _addr) : (u64, _, Addr)| upsert_row(Clock::new(context.current_tick().0), key, value))
             -> inspect(|_| {
                 SETS_COUNTER.inc(); // Bump SET metrics
             })
