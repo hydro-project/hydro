@@ -15,6 +15,7 @@ use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::seq::IteratorRandom;
 use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -104,8 +105,6 @@ where
     let member_id_5 = my_member_id.clone();
     let member_id_6 = my_member_id.clone();
 
-    let buffer_pool = BufferPool::create_buffer_pool();
-
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
     let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
@@ -115,7 +114,10 @@ where
 
     let pre_gen_values: Vec<_> = (0..128 * 1024)
         .map(|_| {
-            BufferPool::get_from_buffer_pool(&buffer_pool)
+            //BufferPool::get_from_buffer_pool(&buffer_pool)
+            // Generate random 1024 byte String
+            let mut rng = thread_rng();
+            (0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>()
         })
         .collect();
 

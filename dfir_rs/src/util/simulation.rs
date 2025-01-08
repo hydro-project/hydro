@@ -376,7 +376,21 @@ mod tests {
     use crate::util::simulation::{Address, Fleet, Hostname};
     use crate::util::unbounded_channel;
 
-    /// A simple test to demonstrate use of the simulation framework. Implements an echo server
+    #[dfir_test]
+    async fn test_repeat_fn() {
+        let dfir = dfir_syntax! {
+            repeat_fn(|| 1)
+                -> take(5)
+                -> collect::<Vec<_>>();
+                -> inspect(|v| println!("{:?}", v));
+        };
+
+        dfir.run().await;
+
+    }
+
+
+/// A simple test to demonstrate use of the simulation framework. Implements an echo server
     /// and client.
     #[dfir_test]
     async fn test_echo() {
