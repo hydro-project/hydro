@@ -19,7 +19,7 @@ use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
-
+use warp::hyper::body::HttpBody;
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
 use crate::model::{
@@ -114,12 +114,8 @@ where
     let mut pre_gen_index = 0;
 
     let pre_gen_values: Vec<_> = (0..128 * 1024)
-        .map(|i| {
-            upsert_row(
-                Clock::new(100),
-                pre_generated_random_idx[i],
-                BufferPool::get_from_buffer_pool(&buffer_pool),
-            )
+        .map(|_| {
+            BufferPool::get_from_buffer_pool(&buffer_pool)
         })
         .collect();
 
@@ -172,7 +168,7 @@ where
         simulated_puts = repeat_fn(20000, move || {
             let key = pre_generated_random_idx[pre_gen_index % pre_generated_random_idx.len()];
             pre_gen_index += 1;
-            pre_gen_values[key as usize].clone()
+            upsert_row(Clock::new(pre_gen_index as u64), key, pre_gen_values[key as usize].clone())
         })
             -> inspect (|_| {
                 SETS_COUNTER.inc();
