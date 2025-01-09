@@ -108,17 +108,24 @@ where
 
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
+
+    let keys = (0..1_000_000).map(|i| Key {
+        namespace: Namespace::User,
+        table: "table".to_string(),
+        row_key: i.to_string(),
+    }).collect::<Vec<_>>();
+
     let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
         .map(|_| zipf.sample(&mut rng) as u64)
         .collect();
     let mut pre_gen_index = 0;
 
-    let pre_gen_values: Vec<_> = (0..128 * 1024)
+    let pre_gen_values: Vec<_> = (0..1_000_000)
         .map(|_| {
             //BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
             let mut rng = thread_rng();
-            Arc::new((0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>())
+            (0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>()
         })
         .collect();
 
@@ -162,16 +169,16 @@ where
 
         client_in[Set]
             -> inspect(|request| trace!("{:?}: Received Set request: {:?}.", context.current_tick(), request))
-            -> map(|(key, value, _addr) : (u64, _, Addr)| upsert_row(Clock::new(context.current_tick().0), key, value))
+            -> map(|(key, value, _addr) : (_, _, Addr)| upsert_row(Clock::new(context.current_tick().0), key, value))
             -> inspect(|_| {
                 SETS_COUNTER.inc(); // Bump SET metrics
             })
             -> writes;
 
         simulated_puts = repeat_fn(20000, move || {
-            let key = pre_generated_random_idx[pre_gen_index % pre_generated_random_idx.len()];
+            let next_index = pre_gen_index % pre_generated_random_idx.len();
             pre_gen_index += 1;
-            upsert_row(Clock::new(pre_gen_index as u64), key, pre_gen_values[key as usize].clone())
+            upsert_row(Clock::new(pre_gen_index as u64), keys[next_index].clone(), pre_gen_values[next_index].clone())
         })
             -> inspect (|_| {
                 SETS_COUNTER.inc();

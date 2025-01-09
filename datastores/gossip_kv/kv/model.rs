@@ -1,12 +1,12 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
-use lattices::collections::SingletonMap;
+use lattices::collections::{SingletonMap, SingletonSet};
 use lattices::map_union::MapUnionSingletonMap;
 use crate::buffer_pool::AutoReturnBuffer;
-use crate::Namespace;
+use crate::{Key, Namespace};
 
 /// Primary key for entries in a table.
 pub type RowKey = String;
@@ -15,7 +15,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, WithBot<Max<Arc<String>>>>;
+pub type RowValue<C> = DomPair<C, SetUnionHashSet<String>>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionHashMap<RowKey, V>;
@@ -28,9 +28,9 @@ pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
 
 pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
-pub type Namespaces<C> = MapUnionHashMap<u64, RowValue<C>>;
+pub type Namespaces<C> = MapUnionHashMap<Key, RowValue<C>>;
 
-pub type SingleWrite<C> = MapUnionSingletonMap<u64, RowValue<C>>;
+pub type SingleWrite<C> = MapUnionSingletonMap<Key, RowValue<C>>;
 
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
@@ -46,8 +46,12 @@ pub type Clock = Max<u64>;
 /// - `table_name`: Name of the table.
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
-pub fn upsert_row<C>(row_ts: C, key: u64, val: Arc<String>) -> SingleWrite<C> {
-    let value: RowValue<C> = RowValue::new_from(row_ts, WithBot::new(Some(Max::new(val))));
+pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
+
+    let mut all_vals = HashSet::with_capacity(1);
+    all_vals.insert(val);
+
+    let value: RowValue<C> = RowValue::new_from(row_ts, SetUnionHashSet::new(all_vals));
     MapUnionSingletonMap::new(SingletonMap::from((key, value)))
 }
 // /// TableMap element to delete a row from an existing TableMap.
