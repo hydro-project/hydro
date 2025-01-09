@@ -483,20 +483,9 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
     Stream<P2a<P>, Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
-    let p_p1b_max_checkpoint = accepted_logs.clone().fold_commutative(
-        q!(|| None),
-        q!(|curr_max, (checkpoint, _log)| {
-            if let Some(checkpoint) = checkpoint {
-                if let Some(curr_max_val) = *curr_max {
-                    if checkpoint > curr_max_val {
-                        *curr_max = Some(checkpoint);
-                    }
-                } else {
-                    *curr_max = Some(checkpoint);
-                }
-            }
-        }),
-    );
+    let p_p1b_max_checkpoint = accepted_logs.clone()
+        .map(q!(|(checkpoint, _log)| checkpoint))
+        .max();
     let p_p1b_highest_entries_and_count = accepted_logs
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
