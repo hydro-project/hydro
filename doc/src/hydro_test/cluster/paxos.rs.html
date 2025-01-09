@@ -805,6 +805,26 @@
 <a href="#805" id="805">805</a>
 <a href="#806" id="806">806</a>
 <a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -987,11 +1007,11 @@
     i_am_leader_check_timeout: u64,
     i_am_leader_check_timeout_delay_multiplier: usize,
     p_received_p2b_ballots: Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
-    a_log: Singleton&lt;L, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
+    a_log: Singleton&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, L), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
 ) -&gt; (
     Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
     Optional&lt;(), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-    Stream&lt;L, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded, NoOrder&gt;,
+    Stream&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, L), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded, NoOrder&gt;,
     Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
 ) {
     <span class="kw">let </span>(p1b_fail_complete, p1b_fail) =
@@ -1179,11 +1199,11 @@
 </span><span class="kw">fn </span>acceptor_p1&lt;<span class="lifetime">'a</span>, L: Serialize + DeserializeOwned + Clone&gt;(
     acceptor_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
     p_to_acceptors_p1a: Stream&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded, NoOrder&gt;,
-    a_log: Singleton&lt;L, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
+    a_log: Singleton&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, L), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
     proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
 ) -&gt; (
     Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
-    Stream&lt;(Ballot, <span class="prelude-ty">Result</span>&lt;L, Ballot&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
+    Stream&lt;(Ballot, <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, L), Ballot&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
 ) {
     <span class="kw">let </span>a_max_ballot = p_to_acceptors_p1a
         .clone()
@@ -1221,7 +1241,7 @@
 </span><span class="kw">fn </span>p_p1b&lt;<span class="lifetime">'a</span>, P: Clone + Serialize + DeserializeOwned&gt;(
     proposer_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
     a_to_proposers_p1b: Stream&lt;
-        (Ballot, <span class="prelude-ty">Result</span>&lt;P, Ballot&gt;),
+        (Ballot, <span class="prelude-ty">Result</span>&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, P), Ballot&gt;),
         Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
         Unbounded,
         NoOrder,
@@ -1231,7 +1251,7 @@
     f: usize,
 ) -&gt; (
     Optional&lt;(), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-    Stream&lt;P, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded, NoOrder&gt;,
+    Stream&lt;(<span class="prelude-ty">Option</span>&lt;usize&gt;, P), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded, NoOrder&gt;,
     Stream&lt;Ballot, Timestamped&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Unbounded, NoOrder&gt;,
 ) {
     <span class="kw">let </span>(quorums, fails) = collect_quorum_with_response(
@@ -1279,7 +1299,7 @@
 <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
 </span><span class="kw">fn </span>recommit_after_leader_election&lt;<span class="lifetime">'a</span>, P: PaxosPayload&gt;(
     accepted_logs: Stream&lt;
-        HashMap&lt;usize, LogValue&lt;P&gt;&gt;,
+        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
         Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
         Bounded,
         NoOrder,
@@ -1290,7 +1310,12 @@
     Stream&lt;P2a&lt;P&gt;, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded, NoOrder&gt;,
     Optional&lt;usize, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
 ) {
+    <span class="kw">let </span>p_p1b_max_checkpoint = accepted_logs
+        .clone()
+        .map(<span class="macro">q!</span>(|(checkpoint, _log)| checkpoint))
+        .max();
     <span class="kw">let </span>p_p1b_highest_entries_and_count = accepted_logs
+        .map(<span class="macro">q!</span>(|(_checkpoint, log)| log))
         .flatten_unordered() <span class="comment">// Convert HashMap log back to stream
         </span>.fold_keyed_commutative::&lt;(usize, <span class="prelude-ty">Option</span>&lt;LogValue&lt;P&gt;&gt;), <span class="kw">_</span>, <span class="kw">_</span>&gt;(<span class="macro">q!</span>(|| (<span class="number">0</span>, <span class="prelude-val">None</span>)), <span class="macro">q!</span>(|curr_entry, new_entry| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(curr_entry_payload) = <span class="kw-2">&amp;mut </span>curr_entry.<span class="number">1 </span>{
@@ -1317,16 +1342,20 @@
     <span class="kw">let </span>p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
         .cross_singleton(p_ballot.clone())
-        .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, (count, entry)), ballot)| {
-            <span class="kw">if </span>count &lt;= f {
-                <span class="prelude-val">Some</span>(P2a {
-                    ballot,
-                    slot,
-                    value: entry.value,
-                })
-            } <span class="kw">else </span>{
-                <span class="prelude-val">None
-            </span>}
+        .cross_singleton(p_p1b_max_checkpoint.clone())
+        .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(((slot, (count, entry)), ballot), checkpoint)| {
+            <span class="kw">if </span>count &gt; f {
+                <span class="kw">return </span><span class="prelude-val">None</span>;
+            } <span class="kw">else if let </span><span class="prelude-val">Some</span>(checkpoint) = checkpoint {
+                <span class="kw">if </span>slot &lt;= checkpoint {
+                    <span class="kw">return </span><span class="prelude-val">None</span>;
+                }
+            }
+            <span class="prelude-val">Some</span>(P2a {
+                ballot,
+                slot,
+                value: entry.value,
+            })
         }));
     <span class="kw">let </span>p_max_slot = p_p1b_highest_entries_and_count
         .clone()
@@ -1337,7 +1366,14 @@
         .map(<span class="macro">q!</span>(|(slot, <span class="kw">_</span>)| slot));
     <span class="kw">let </span>p_log_holes = p_max_slot
         .clone()
-        .flat_map_ordered(<span class="macro">q!</span>(|max_slot| <span class="number">0</span>..max_slot))
+        .zip(p_p1b_max_checkpoint)
+        .flat_map_ordered(<span class="macro">q!</span>(|(max_slot, checkpoint)| {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(checkpoint) = checkpoint {
+                (checkpoint + <span class="number">1</span>)..max_slot
+            } <span class="kw">else </span>{
+                <span class="number">0</span>..max_slot
+            }
+        }))
         .filter_not_in(p_proposed_slots)
         .cross_singleton(p_ballot.clone())
         .map(<span class="macro">q!</span>(|(slot, ballot)| P2a {
@@ -1371,7 +1407,7 @@
     p_is_leader: Optional&lt;(), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
 
     p_relevant_p1bs: Stream&lt;
-        HashMap&lt;usize, LogValue&lt;P&gt;&gt;,
+        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
         Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
         Bounded,
         NoOrder,
@@ -1381,7 +1417,11 @@
     a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
 ) -&gt; (
     Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
-    Singleton&lt;HashMap&lt;usize, LogValue&lt;P&gt;&gt;, Timestamped&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Unbounded&gt;,
+    Singleton&lt;
+        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
+        Timestamped&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
+        Unbounded,
+    &gt;,
     Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
 ) {
     <span class="kw">let </span>(p_log_to_recommit, p_max_slot) =
@@ -1442,7 +1482,7 @@
         p_to_replicas
             .map(<span class="macro">q!</span>(|((slot, _ballot), (value, <span class="kw">_</span>))| (slot, value)))
             .drop_timestamp(),
-        a_log.map(<span class="macro">q!</span>(|(_ckpnt, log)| log)),
+        a_log,
         fails.map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| ballot)).drop_timestamp(),
     )
 }
