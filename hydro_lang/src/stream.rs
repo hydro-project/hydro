@@ -229,6 +229,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// ```
     pub fn map<U, F: Fn(T) -> U + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -245,9 +246,19 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
 
     /// For each item passed in, return a clone of the item; akin to `map(q!(|d| d.clone()))`.
     ///
-    /// /// ```rust,norun
-    /// // should output "hello" and "world"
-    /// source_iter(q!(vec!["hello", "world"])).cloned();
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let cloned = process.source_iter(q!(vec![1..3])).cloned();
+    /// # cloned
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1..3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     /// ```
     pub fn cloned(self) -> Stream<T, L, B, Order>
     where
@@ -259,9 +270,20 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// Given an ordered input stream, for each item `i` passed in, treat `i` as an iterator and map the closure to that
     /// iterator to produce items one by one. The type of the input items must be iterable.
     ///
-    /// /// ```rust,norun
-    /// // should print out each character of each word on a separate line, in order
-    /// source_iter(vec!["hello", "world"]).flat_map_ordered(|x| x.chars())
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
+    ///     .flat_map_ordered(q!(|x| x.into_iter()))
+    /// # }, |mut stream| async move {
+    /// # // 1, 2, 3, 4
+    /// # for w in (1..4) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     /// ```
     pub fn flat_map_ordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
@@ -277,12 +299,23 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Given an unordered input stream, for each item `i` passed in, treat `i` as an iterator and map the closure to that
-    /// iterator to produce items one by one. The type of the input items must be iterable.
+    /// Like [`flat_map_ordered`](#flat_map_ordered), but allows the closure to return items in any order.
     ///
-    /// /// ```rust,norun
-    /// // should print out each character of each word on a separate line, in no particular order
-    /// source_iter(q!(HashSet::from_iter(vec!["hello", "world"]))).flat_map_unordered(|x| x.chars())
+    /// # Example
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
+    /// process
+    ///     .source_iter(q!(vec![HashSet::from([1, 2]), HashSet::from([3, 4])]))
+    ///     .flat_map_unordered(q!(|x| x.into_iter()))
+    /// # }, |mut stream| async move {
+    /// # // 1, 2, 3, 4
+    /// # for w in (1..4) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     /// ```
     pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
