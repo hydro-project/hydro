@@ -25,7 +25,7 @@ use warp::hyper::body::HttpBody;
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
 use crate::model::{
-    upsert_row, Clock, NamespaceMap, Namespaces, RowKey, RowValue, TableMap, TableName,
+    upsert_row, Clock, Namespaces, RowKey, RowValue
 };
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};

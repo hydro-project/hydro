@@ -16,19 +16,19 @@ pub type RowKey = String;
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
 pub type RowValue<C> = DomPair<C, SetUnionBTreeSet<String>>;
+//
+// /// A map from row keys to values in a table.
+// pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
+//
+// /// Name of a table in the data store.
+// pub type TableName = String;
+//
+// /// A map from table names to tables.
+// pub type TableMap<V> = MapUnionBTreeMap<TableName, Table<V>>;
+//
+// pub type NamespaceMap<V> = MapUnionBTreeMap<Namespace, TableMap<V>>;
 
-/// A map from row keys to values in a table.
-pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
-
-/// Name of a table in the data store.
-pub type TableName = String;
-
-/// A map from table names to tables.
-pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
-
-pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
-
-pub type Namespaces<C> = MapUnionHashMap<Key, RowValue<C>>;
+pub type Namespaces<C> = MapUnionBTreeMap<Key, RowValue<C>>;
 
 pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnionSingletonSet<String>>>;
 

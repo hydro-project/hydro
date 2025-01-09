@@ -19,7 +19,7 @@ use crate::model::{Clock, Namespaces};
 use crate::KeyParseError::InvalidNamespace;
 
 /// The namespace of the key of an entry in the key-value store.
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 pub enum Namespace {
     /// User namespace is for use by the user of the key-value store.
     User,
@@ -69,7 +69,7 @@ pub type RowKey = String;
 /// Data in the key-value store is organized into namespaces, tables, and rows. Namespaces are
 /// either `usr` for user data or `sys` for system data. Namespaces contain tables, which contain
 /// rows. Each row has a row key and a row value.
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 pub struct Key {
     /// The namespace of the key.
     pub namespace: Namespace,
