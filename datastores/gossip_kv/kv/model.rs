@@ -24,9 +24,9 @@ pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
 pub type TableName = String;
 
 /// A map from table names to tables.
-pub type TableMap<V> = MapUnionBTreeMap<TableName, Table<V>>;
+pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
 
-pub type NamespaceMap<V> = MapUnionBTreeMap<Namespace, TableMap<V>>;
+pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
 pub type Namespaces<C> = NamespaceMap<RowValue<C>>;
 
