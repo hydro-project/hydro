@@ -211,24 +211,24 @@ impl<'a, T: Clone, L: Location<'a>, B, Order> Clone for Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
-    /// Transforms the stream by applying a function (`f`) to each element,
-    /// emitting the output elements in the same order as the input.
+    /// Takes a closure and produces a stream based on invoking that closure on each element in order.
+    /// If you do not want to modify the stream and instead only want to view
+    /// each item use the [`inspect`](#inspect) operator instead.
     ///
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
     /// # use dfir_rs::futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// let numbers = process.source_iter(q!(0..10));
-    /// let mapped = numbers.map(q!(|n| n * 2));
+    /// let words = process.source_iter(q!(vec!["hello", "world"]));
+    /// let mapped = words.map(q!(|x| x.to_uppercase()));
     /// # mapped
     /// # }, |mut stream| async move {
-    /// // 2, 4, 6, 8, ...
-    /// # for i in 0..10 {
-    /// #     assert_eq!(stream.next().await.unwrap(), i * 2);
+    /// // HELLO, WORLD
+    /// # for w in vec!["HELLO", "WORLD"] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
-    /// ```
     pub fn map<U, F: Fn(T) -> U + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -243,6 +243,12 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// For each item passed in, return a clone of the item; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// /// ```rust,norun
+    /// // should output "hello" and "world"
+    /// source_iter(q!(vec!["hello", "world"])).cloned();
+    /// ```
     pub fn cloned(self) -> Stream<T, L, B, Order>
     where
         T: Clone,
@@ -250,6 +256,13 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.map(q!(|d| d.clone()))
     }
 
+    /// Given an ordered input stream, for each item `i` passed in, treat `i` as an iterator and map the closure to that
+    /// iterator to produce items one by one. The type of the input items must be iterable.
+    ///
+    /// /// ```rust,norun
+    /// // should print out each character of each word on a separate line, in order
+    /// source_iter(vec!["hello", "world"]).flat_map_ordered(|x| x.chars())
+    /// ```
     pub fn flat_map_ordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -264,6 +277,13 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Given an unordered input stream, for each item `i` passed in, treat `i` as an iterator and map the closure to that
+    /// iterator to produce items one by one. The type of the input items must be iterable.
+    ///
+    /// /// ```rust,norun
+    /// // should print out each character of each word on a separate line, in no particular order
+    /// source_iter(q!(HashSet::from_iter(vec!["hello", "world"]))).flat_map_unordered(|x| x.chars())
+    /// ```
     pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -278,6 +298,13 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Given an ordered input stream,
+    /// for each item `i` passed in, treat `i` as an iterator and produce its items one by one.
+    /// The type of the input items must be iterable.
+    ///
+    /// /// /// ```rust,norun
+    /// // should print out each character of each word on a separate line, in order
+    /// source_iter(q!(vec!["hello", "world"])).flatten_ordered(|x| x.chars())
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, Order>
     where
         T: IntoIterator<Item = U>,
@@ -285,6 +312,14 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.flat_map_ordered(q!(|d| d))
     }
 
+    /// Given an unordered input stream,
+    /// for each item `i` passed in, treat `i` as an iterator and produce its items one by one.
+    /// The type of the input items must be iterable.
+    ///
+    /// /// ```rust,norun
+    /// // should print out each character of each word on a separate line, in no particular order
+    /// source_iter(q!(HashSet::from_iter(vec!["hello", "world"]))).flat_map_unordered(|x| x.chars())
+    /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder>
     where
         T: IntoIterator<Item = U>,
@@ -292,6 +327,17 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.flat_map_unordered(q!(|d| d))
     }
 
+    /// Filter outputs a subsequence of the items it receives at its input, according to a
+    /// Rust boolean closure passed in as an argument.
+    ///
+    /// The closure receives a reference `&T` rather than an owned value `T` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`filter_map`](#filter_map) instead.
+    ///
+    /// /// ```rust,norun
+    /// // should output "world"
+    /// source_iter(q!(vec!["hello", "world"])).filter(|x| x.starts_with('w'));
+    /// ```
     pub fn filter<F: Fn(&T) -> bool + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -306,6 +352,14 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// An operator that both filters and maps. It yields only the items for which the supplied closure returns `Some(value)`.
+    ///
+    /// /// ```rust,norun
+    /// // should output [1, 2]
+    /// source_iter(q!(vec!["1", "hello", "world", "2"]))
+    ///     .filter_map(|s| s.parse::<usize>().ok())
+    ///     .assert_eq([1, 2]);
+    /// ```
     pub fn filter_map<U, F: Fn(T) -> Option<U> + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -320,6 +374,13 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// combine each element of type `T` from the stream with a singleton value of type `O`
+    /// to produce a stream of pairs `(T, O)`
+    ///
+    /// /// ```rust,norun
+    /// // should output ("hello", "champ") and ("world", "champ")
+    /// source_iter(q!(vec!["hello", "world"])).cross_singleton("champ");
+    /// ```
     pub fn cross_singleton<O>(
         self,
         other: impl Into<Optional<O, L, Bounded>>,
@@ -350,6 +411,8 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
     }
 
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
+    /// tupled pairs.
     pub fn cross_product<O>(self, other: Stream<O, L, B, Order>) -> Stream<(T, O), L, B, Order>
     where
         T: Clone,
@@ -366,6 +429,8 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Takes one stream as input and filters out any duplicate occurrences. The output
+    /// contains all unique values from the input.
     pub fn unique(self) -> Stream<T, L, B, Order>
     where
         T: Eq + Hash,
@@ -376,6 +441,8 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// outputs everything in this stream that is *not*
+    /// contained in the other (bounded) stream.
     pub fn filter_not_in<O2>(self, other: Stream<T, L, Bounded, O2>) -> Stream<T, L, Bounded, Order>
     where
         T: Eq + Hash,
@@ -391,6 +458,10 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// An operator which allows you to "inspect" each element of a stream without
+    /// modifying it. The closure is called on a reference to each item. This is
+    /// mainly useful for debugging as in the example below, and it is generally an
+    /// anti-pattern to provide a closure with side effects.
     pub fn inspect<F: Fn(&T) + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -433,6 +504,16 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order>
 where
     Order: MinOrder<NoOrder, Min = NoOrder>,
 {
+    /// > Arguments: two arguments, both closures. The first closure is used to create the initial
+    /// > value for the accumulator, and the second is used to combine new items with the existing
+    /// > accumulator value. The second closure takes two two arguments: an `&mut Accum` accumulated
+    /// > value, and an `Item`.
+    ///
+    /// > Note: The second (combining) closure must be commutative, as the order of input items is not guaranteed.
+    ///
+    /// Akin to Rust's built-in [`fold`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold)
+    /// operator, except that it takes the accumulator by `&mut` instead of by value. Folds every item
+    /// into an accumulator by applying a closure, returning the final result.
     pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, T)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
@@ -457,6 +538,15 @@ where
         Singleton::new(self.location, core)
     }
 
+    /// > Arguments: a closure which itself takes two arguments:
+    /// > an `&mut Accum` accumulator mutable reference, and an `Item`. The closure should merge the item
+    /// > into the accumulator.
+    ///
+    /// > Note: The closure must be commutative, as the order of input items is not guaranteed.
+    ///
+    /// Akin to Rust's built-in [`reduce`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.reduce)
+    /// operator, except that it takes the accumulator by `&mut` instead of by value. Reduces every
+    /// item into an accumulator by applying a closure, returning the final result.
     pub fn reduce_commutative<F: Fn(&mut T, T) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -474,6 +564,7 @@ where
         Optional::new(self.location, core)
     }
 
+    /// produces a singleton, namely the maximum value in the stream.
     pub fn max(self) -> Optional<T, L, B>
     where
         T: Ord,
@@ -485,6 +576,11 @@ where
         }))
     }
 
+    /// given a closure that produces a "key" from each item in the stream, produces a singleton,
+    /// namely that value in the stream with the maximum value produced by the key closure.
+    ///
+    /// Typical usage:
+    /// `max_by_key(q!(|t| t.0))`
     pub fn max_by_key<K: Ord, F: Fn(&T) -> K + 'a>(
         self,
         key: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -512,6 +608,7 @@ where
         Optional::new(self.location, core)
     }
 
+    /// produces a singleton, namely the minimum value in the stream.
     pub fn min(self) -> Optional<T, L, B>
     where
         T: Ord,
@@ -523,6 +620,7 @@ where
         }))
     }
 
+    /// produces a singleton, namely the count of elements in the stream.
     pub fn count(self) -> Singleton<usize, L, B> {
         self.fold_commutative(q!(|| 0usize), q!(|count, _| *count += 1))
     }
@@ -549,14 +647,24 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
         }
     }
 
+    /// produces a singleton, namely the first value in the stream.
     pub fn first(self) -> Optional<T, L, B> {
         Optional::new(self.location, self.ir_node.into_inner())
     }
 
+    /// produces a singleton, namely the last value in the stream.
     pub fn last(self) -> Optional<T, L, B> {
         self.reduce(q!(|curr, new| *curr = new))
     }
 
+    /// > Arguments: two arguments, both closures. The first closure is used to create the initial
+    /// > value for the accumulator, and the second is used to combine new items with the existing
+    /// > accumulator value. The second closure takes two two arguments: an `&mut Accum` accumulated
+    /// > value, and an `Item`.
+    ///
+    /// Akin to Rust's built-in [`fold`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold)
+    /// operator, except that it takes the accumulator by `&mut` instead of by value. Folds every item
+    /// into an accumulator by applying a closure, returning the final result.
     pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, T)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
@@ -581,6 +689,13 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
         Singleton::new(self.location, core)
     }
 
+    /// > Arguments: a closure which itself takes two arguments:
+    /// > an `&mut Accum` accumulator mutable reference, and an `Item`. The closure should merge the item
+    /// > into the accumulator.
+    ///
+    /// Akin to Rust's built-in [`reduce`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.reduce)
+    /// operator, except that it takes the accumulator by `&mut` instead of by value. Reduces every
+    /// item into an accumulator by applying a closure, returning the final result.
     pub fn reduce<F: Fn(&mut T, T) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -599,6 +714,8 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     }
 }
 
+/// Akin to Rust's built-in [`chain`](https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.chain)
+/// operator, takes two Bounded streams, and creates a new stream over both in sequence.
 impl<'a, T, L: Location<'a>> Stream<T, L, Bounded, TotalOrder> {
     pub fn chain(
         self,
@@ -616,6 +733,8 @@ impl<'a, T, L: Location<'a>> Stream<T, L, Bounded, TotalOrder> {
     }
 }
 
+/// Produces a new stream that interleaves the elements of the two input streams.
+/// The result has NoOrder because the order of interleaving is not guaranteed.
 impl<'a, T, L: Location<'a> + NoTick + NoTimestamp> Stream<T, L, Unbounded, NoOrder> {
     pub fn union(
         self,
@@ -635,6 +754,8 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp> Stream<T, L, Unbounded, NoOr
 }
 
 impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
+    /// takes a Bounded stream of elements with an Ord implementation
+    /// and produces a new stream with the elements sorted in ascending order.
     pub fn sort(self) -> Stream<T, L, Bounded, TotalOrder>
     where
         T: Ord,
@@ -645,6 +766,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
         )
     }
 
+    /// given a bounded input stream and another ordered input stream, produces a new stream
+    /// with the elements of the first stream followed by the elements of the second stream in order
     pub fn union<B2, O2>(self, other: Stream<T, L, B2, O2>) -> Stream<T, L, B2, Order::Min>
     where
         Order: MinOrder<O2>,
@@ -661,6 +784,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     }
 }
 
+/// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
+/// by equi-joining the two streams on the key attribute `K`.
 impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
     pub fn join<V2, O2>(self, n: Stream<(K, V2), L, B, O2>) -> Stream<(K, (V1, V2)), L, B, NoOrder>
     where
@@ -677,6 +802,10 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
         )
     }
 
+    /// Given two streams of pairs `(K, V1)` and `(K, V2)`,
+    /// computes the anti-join of the items in the input -- i.e. returns
+    /// unique items in the first input that do not have a matching key
+    /// in the second input.
     pub fn anti_join<O2>(self, n: Stream<K, L, Bounded, O2>) -> Stream<(K, V1), L, B, Order>
     where
         K: Eq + Hash,
@@ -694,6 +823,16 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
 }
 
 impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
+    /// A special case of `fold`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// is partitioned into groups by the first field ("keys"), and for each group the values in the second
+    /// field are accumulated via the closures in the arguments.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`reduce_keyed`](#reduce_keyed).
+    ///
+    /// > Arguments: two Rust closures. The first generates an initial value per group. The second
+    /// > itself takes two arguments: an 'accumulator', and an element. The second closure returns the
+    /// > value that the accumulator should have for the next iteration.
     pub fn fold_keyed<A, I: Fn() -> A + 'a, F: Fn(&mut A, V) + 'a>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
@@ -712,6 +851,14 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
         )
     }
 
+    /// A special case of `reduce`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// is partitioned into groups by the first field, and for each group the values in the second
+    /// field are accumulated via the closures in the arguments.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`fold_keyed`](#keyed_fold).
+    ///
+    /// > Arguments: one Rust closures. The closure takes two arguments: an `&mut` 'accumulator', and
+    /// > an element. Accumulator should be updated based on the element.
     pub fn reduce_keyed<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
@@ -729,6 +876,18 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
 }
 
 impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounded, Order> {
+    /// A special case of `fold`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// is partitioned into groups by the first field ("keys"), and for each group the values in the second
+    /// field are accumulated via the closures in the arguments.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`reduce_keyed`](#reduce_keyed).
+    ///
+    /// > Arguments: two Rust closures. The first generates an initial value per group. The second
+    /// > itself takes two arguments: an 'accumulator', and an element. The second closure returns the
+    /// > value that the accumulator should have for the next iteration.
+    ///
+    /// > Note: The second (combining) closure must be commutative, as the order of input items is not guaranteed.
     pub fn fold_keyed_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V) + 'a>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
@@ -747,11 +906,22 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
         )
     }
 
+    /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, Order> {
         self.fold_keyed_commutative(q!(|| ()), q!(|_, _| {}))
             .map(q!(|(k, _)| k))
     }
 
+    /// A special case of `reduce`, in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// is partitioned into groups by the first field, and for each group the values in the second
+    /// field are accumulated via the closures in the arguments.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`fold_keyed`](#keyed_fold).
+    ///
+    /// > Arguments: one Rust closures. The closure takes two arguments: an `&mut` 'accumulator', and
+    /// > an element. Accumulator should be updated based on the element.
+    ///
+    /// > Note: The closure must be commutative, as the order of input items is not guaranteed.
     pub fn reduce_keyed_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
