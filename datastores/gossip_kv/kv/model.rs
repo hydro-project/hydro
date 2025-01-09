@@ -1,11 +1,10 @@
-use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
 use lattices::collections::{SingletonMap, SingletonSet};
-use lattices::map_union::MapUnionSingletonMap;
-use lattices::set_union::{SetUnionBTreeSet, SetUnionSingletonSet};
+use lattices::map_union::{MapUnionBTreeMap, MapUnionSingletonMap};
+use lattices::set_union::{SetUnion, SetUnionArray, SetUnionBTreeSet, SetUnionSingletonSet, SetUnionVec};
 use crate::buffer_pool::AutoReturnBuffer;
 use crate::{Key, Namespace};
 
@@ -19,7 +18,7 @@ pub type RowKey = String;
 pub type RowValue<C> = DomPair<C, SetUnionBTreeSet<String>>;
 
 /// A map from row keys to values in a table.
-pub type Table<V> = MapUnionHashMap<RowKey, V>;
+pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
 
 /// Name of a table in the data store.
 pub type TableName = String;
