@@ -51,6 +51,9 @@
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="macro">stageleft::stageleft_no_entry_crate!</span>();
 
 <span class="kw">pub use </span>dfir_rs;
@@ -95,6 +98,9 @@
 <span class="kw">pub mod </span>rewrites;
 
 <span class="kw">mod </span>staging_util;
+
+<span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+</span><span class="kw">pub mod </span>test_util;
 
 <span class="attr">#[stageleft::runtime]
 #[cfg(test)]

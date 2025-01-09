@@ -1376,6 +1376,24 @@
 <a href="#1376" id="1376">1376</a>
 <a href="#1377" id="1377">1377</a>
 <a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -1589,7 +1607,25 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;, B, Order&gt; Stream&lt;T, L, B, Order&gt; {
-    <span class="kw">pub fn </span>map&lt;U, F: Fn(T) -&gt; U + <span class="lifetime">'a</span>&gt;(
+    <span class="doccomment">/// Transforms the stream by applying a function (`f`) to each element,
+    /// emitting the output elements in the same order as the input.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(0..10));
+    /// let mapped = numbers.map(q!(|n| n * 2));
+    /// # mapped
+    /// # }, |mut stream| async move {
+    /// // 2, 4, 6, 8, ...
+    /// # for i in 0..10 {
+    /// #     assert_eq!(stream.next().await.unwrap(), i * 2);
+    /// # }
+    /// # }));
+    /// ```
+    </span><span class="kw">pub fn </span>map&lt;U, F: Fn(T) -&gt; U + <span class="lifetime">'a</span>&gt;(
         <span class="self">self</span>,
         f: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, L&gt;,
     ) -&gt; Stream&lt;U, L, B, Order&gt; {
