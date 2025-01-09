@@ -212,7 +212,14 @@ impl VisitMut for GenFinalPubVistor {
             }
         }
 
-        i.vis = parse_quote!(pub);
+        let is_ctor = i
+            .attrs
+            .iter()
+            .any(|a| a.path().to_token_stream().to_string() == "ctor :: ctor");
+
+        if !is_ctor {
+            i.vis = parse_quote!(pub);
+        }
 
         syn::visit_mut::visit_item_fn_mut(self, i);
     }
