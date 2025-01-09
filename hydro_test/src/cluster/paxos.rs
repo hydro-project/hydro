@@ -485,8 +485,9 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
 ) {
     let p_p1b_max_checkpoint = accepted_logs
         .clone()
-        .map(q!(|(checkpoint, _log)| checkpoint))
-        .max();
+        .filter_map(q!(|(checkpoint, _log)| checkpoint))
+        .max()
+        .into_singleton();
     let p_p1b_highest_entries_and_count = accepted_logs
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
