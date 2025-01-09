@@ -5,7 +5,7 @@ use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
 use lattices::collections::{SingletonMap, SingletonSet};
 use lattices::map_union::MapUnionSingletonMap;
-use lattices::set_union::SetUnionSingletonSet;
+use lattices::set_union::{SetUnionBTreeSet, SetUnionSingletonSet};
 use crate::buffer_pool::AutoReturnBuffer;
 use crate::{Key, Namespace};
 
@@ -16,7 +16,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, SetUnionHashSet<String>>;
+pub type RowValue<C> = DomPair<C, SetUnionBTreeSet<String>>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionHashMap<RowKey, V>;
