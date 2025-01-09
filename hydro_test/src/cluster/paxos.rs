@@ -483,7 +483,8 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
     Stream<P2a<P>, Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
-    let p_p1b_max_checkpoint = accepted_logs.clone()
+    let p_p1b_max_checkpoint = accepted_logs
+        .clone()
         .map(q!(|(checkpoint, _log)| checkpoint))
         .max();
     let p_p1b_highest_entries_and_count = accepted_logs
