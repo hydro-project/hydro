@@ -16,21 +16,21 @@ pub type RowKey = String;
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
 pub type RowValue<C> = DomPair<C, SetUnionBTreeSet<String>>;
-//
-// /// A map from row keys to values in a table.
-// pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
-//
-// /// Name of a table in the data store.
-// pub type TableName = String;
-//
-// /// A map from table names to tables.
-// pub type TableMap<V> = MapUnionBTreeMap<TableName, Table<V>>;
-//
-// pub type NamespaceMap<V> = MapUnionBTreeMap<Namespace, TableMap<V>>;
 
-pub type Namespaces<C> = MapUnionBTreeMap<Key, RowValue<C>>;
+/// A map from row keys to values in a table.
+pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
 
-pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnionSingletonSet<String>>>;
+/// Name of a table in the data store.
+pub type TableName = String;
+
+/// A map from table names to tables.
+pub type TableMap<V> = MapUnionBTreeMap<TableName, Table<V>>;
+
+pub type NamespaceMap<V> = MapUnionBTreeMap<Namespace, TableMap<V>>;
+
+pub type Namespaces<C> = NamespaceMap<RowValue<C>>;
+
+pub type SingleWrite<C> = MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
 
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
@@ -47,7 +47,9 @@ pub type Clock = Max<u64>;
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
 pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
-    MapUnionSingletonMap::new(SingletonMap::from((key, DomPair::new(row_ts, SetUnionSingletonSet::new(SingletonSet::from(val))))))
+    let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
+
+    MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///
