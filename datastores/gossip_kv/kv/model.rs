@@ -15,7 +15,7 @@ pub type RowKey = String;
 ///
 /// Each value is timestamped with the time at which it was last updated. Concurrent updates at
 /// the same timestamp are stored as a set.
-pub type RowValue<C> = DomPair<C, SetUnionHashSet<String>>;
+pub type RowValue<C> = DomPair<C, SetUnionBTreeSet<String>>;
 
 /// A map from row keys to values in a table.
 pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
