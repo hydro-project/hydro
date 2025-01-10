@@ -23,13 +23,14 @@ use super::state::StateHandle;
 use super::subgraph::Subgraph;
 use super::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 #[derive(Default)]
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
+    pub(super) subgraph_loop: SecondarySlotVec<SubgraphTag, LoopId>,
     pub(super) context: Context,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
