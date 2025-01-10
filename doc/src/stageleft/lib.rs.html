@@ -517,7 +517,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::runtime_support::get_final_crate_name;
 
 <span class="kw">mod </span>type_name;
-<span class="kw">pub use </span>type_name::quote_type;
+<span class="kw">pub use </span>type_name::{add_private_reexport, quote_type};
 
 <span class="attr">#[cfg(windows)]
 #[macro_export]

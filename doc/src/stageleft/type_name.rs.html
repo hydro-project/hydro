@@ -132,229 +132,85 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Span;
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{LazyLock, RwLock};
+
+<span class="kw">use </span>proc_macro2::Span;
 <span class="kw">use </span>syn::visit_mut::VisitMut;
 <span class="kw">use </span>syn::{parse_quote, TypeInfer};
 
 <span class="kw">use </span><span class="kw">crate</span>::runtime_support::get_final_crate_name;
 
-<span class="doccomment">/// Rewrites use of alloc::string::* to use std::string::*
-</span><span class="kw">struct </span>RewriteAlloc {
+<span class="kw">type </span>ReexportsSet = LazyLock&lt;RwLock&lt;Vec&lt;(Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;, Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;)&gt;&gt;&gt;;
+<span class="kw">static </span>PRIVATE_REEXPORTS: ReexportsSet = LazyLock::new(|| {
+    RwLock::new(<span class="macro">vec!</span>[
+        (<span class="macro">vec!</span>[<span class="string">"alloc"</span>], <span class="macro">vec!</span>[<span class="string">"std"</span>]),
+        (<span class="macro">vec!</span>[<span class="string">"core"</span>, <span class="string">"ops"</span>, <span class="string">"range"</span>], <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"ops"</span>]),
+        (<span class="macro">vec!</span>[<span class="string">"core"</span>, <span class="string">"slice"</span>, <span class="string">"iter"</span>], <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"slice"</span>]),
+        (<span class="macro">vec!</span>[<span class="string">"core"</span>, <span class="string">"iter"</span>, <span class="string">"adapters"</span>, <span class="string">"*"</span>], <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"iter"</span>]),
+        (
+            <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"collections"</span>, <span class="string">"hash"</span>, <span class="string">"map"</span>],
+            <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"collections"</span>, <span class="string">"hash_map"</span>],
+        ),
+        (<span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"vec"</span>, <span class="string">"into_iter"</span>], <span class="macro">vec!</span>[<span class="string">"std"</span>, <span class="string">"vec"</span>]),
+    ])
+});
+
+<span class="doccomment">/// Adds a private module re-export transformation to the type quoting system.
+///
+/// Sometimes, the [`quote_type`] function may produce an uncompilable reference to a
+/// type inside a private module if the type is re-exported from a public module
+/// (because Rust's `type_name` only gives the path to the original definition).
+///
+/// This function adds a rewrite rule for such cases, where the `from` path is
+/// replaced with the `to` path. The paths are given as a list of strings, where
+/// each string is a segment of the path. The `from` path is matched against the
+/// beginning of the type path, and if it matches, the `to` path is substituted
+/// in its place. The `from` path may contain a wildcard `*` to glob a segment.
+///
+/// # Example
+/// ```rust
+/// stageleft::add_private_reexport(
+///     vec!["std", "collections", "hash", "map"],
+///     vec!["std", "collections", "hash_map"],
+/// );
+/// ```
+</span><span class="kw">pub fn </span>add_private_reexport(from: Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;, to: Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;) {
+    <span class="kw">let </span><span class="kw-2">mut </span>transformations = PRIVATE_REEXPORTS.write().unwrap();
+    transformations.push((from, to));
+}
+
+<span class="kw">struct </span>RewritePrivateReexports {
     mapping: <span class="prelude-ty">Option</span>&lt;(String, String)&gt;,
 }
 
-<span class="kw">impl </span>VisitMut <span class="kw">for </span>RewriteAlloc {
+<span class="kw">impl </span>VisitMut <span class="kw">for </span>RewritePrivateReexports {
     <span class="kw">fn </span>visit_path_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: <span class="kw-2">&amp;mut </span>syn::Path) {
-        <span class="kw">if </span>i.segments.iter().take(<span class="number">1</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(
-                <span class="string">"alloc"</span>,
-                Span::call_site(),
-            ))]
-        {
-            <span class="kw-2">*</span>i.segments.first_mut().unwrap() =
-                syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site()));
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">3</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"core"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"ops"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"range"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"ops"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">3</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">3</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"core"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"slice"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"iter"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"slice"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">3</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">3</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"core"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"iter"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"adapters"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"iter"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">4</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">4</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"collections"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"hash"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"map"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"collections"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"hash_map"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">4</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">3</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"vec"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"into_iter"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"std"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"vec"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">3</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">3</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"tokio"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"time"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"instant"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"tokio"</span>, Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new(<span class="string">"time"</span>, Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">3</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if </span>i.segments.iter().take(<span class="number">2</span>).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-            == <span class="macro">vec!</span>[
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"bytes"</span>, Span::call_site())),
-                <span class="kw-2">&amp;</span>syn::PathSegment::from(syn::Ident::new(<span class="string">"bytes"</span>, Span::call_site())),
-            ]
-        {
-            <span class="kw-2">*</span>i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    <span class="macro">vec!</span>[syn::PathSegment::from(syn::Ident::new(
-                        <span class="string">"bytes"</span>,
-                        Span::call_site(),
-                    ))]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(<span class="number">2</span>).cloned()),
-                ),
-            };
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>((macro_name, final_name)) = <span class="kw-2">&amp;</span><span class="self">self</span>.mapping {
+        <span class="kw">let </span>transformations = PRIVATE_REEXPORTS.read().unwrap();
+        <span class="kw">for </span>(from, to) <span class="kw">in </span>transformations.iter() {
+            <span class="attr">#[expect(clippy::cmp_owned, reason = <span class="string">"buggy lint for syn::Ident::to_string"</span>)]
+            </span><span class="kw">if </span>i.segments.len() &gt;= from.len()
+                &amp;&amp; from
+                    .iter()
+                    .zip(i.segments.iter())
+                    .all(|(f, s)| <span class="kw-2">*</span>f == <span class="string">"*" </span>|| <span class="kw-2">*</span>f == s.ident.to_string())
+            {
+                <span class="kw-2">*</span>i = syn::Path {
+                    leading_colon: i.leading_colon,
+                    segments: syn::punctuated::Punctuated::from_iter(
+                        to.iter()
+                            .map(|s| syn::PathSegment::from(syn::Ident::new(s, Span::call_site())))
+                            .chain(i.segments.iter().skip(from.len()).cloned()),
+                    ),
+                };
+
+                drop(transformations);
+                <span class="self">self</span>.visit_path_mut(i);
+                <span class="kw">return</span>;
+            }
+        }
+        drop(transformations);
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>((macro_name, final_name)) = <span class="kw-2">&amp;</span><span class="self">self</span>.mapping {
             <span class="kw">if </span>i.segments.first().unwrap().ident == macro_name {
                 <span class="kw-2">*</span>i.segments.first_mut().unwrap() =
                     syn::parse2(get_final_crate_name(final_name)).unwrap();
@@ -362,14 +218,10 @@
                 i.segments.insert(<span class="number">1</span>, <span class="macro">parse_quote!</span>(__staged));
             } <span class="kw">else </span>{
                 syn::visit_mut::visit_path_mut(<span class="self">self</span>, i);
-                <span class="kw">return</span>;
             }
         } <span class="kw">else </span>{
             syn::visit_mut::visit_path_mut(<span class="self">self</span>, i);
-            <span class="kw">return</span>;
         }
-
-        <span class="self">self</span>.visit_path_mut(i);
     }
 }
 
@@ -410,7 +262,7 @@
     });
     <span class="kw">let </span>mapping = <span class="kw">super</span>::runtime_support::MACRO_TO_CRATE.with(|m| m.borrow().clone());
     ElimClosureToInfer.visit_type_mut(<span class="kw-2">&amp;mut </span>t_type);
-    RewriteAlloc { mapping }.visit_type_mut(<span class="kw-2">&amp;mut </span>t_type);
+    RewritePrivateReexports { mapping }.visit_type_mut(<span class="kw-2">&amp;mut </span>t_type);
 
     t_type
 }
