@@ -18,7 +18,7 @@ pub type RowKey = String;
 pub type RowValue<C> = DomPair<C, SetUnionHashSet<String>>;
 
 /// A map from row keys to values in a table.
-pub type Table<V> = MapUnionHashMap<RowKey, V>;
+pub type Table<V> = MapUnionBTreeMap<RowKey, V>;
 
 /// Name of a table in the data store.
 pub type TableName = String;
