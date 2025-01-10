@@ -1,5 +1,21 @@
 use hydro_lang::*;
 
+pub fn partition<'a, C2, T, F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a>
+    (flow: &FlowBuilder<'a>,
+    dist_policy: F) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
+    let cluster1 = flow.cluster();
+    let cluster2 = flow.cluster();
+    cluster1
+        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .map(q!(|id| (id, format!("Hello from {}", id))))
+        .send_partitioned(&cluster2, q!(dist_policy))
+        .for_each(q!(move |message| println!(
+            "My self id is {}, my message is {}",
+            CLUSTER_SELF_ID, message
+        )));
+    (cluster1, cluster2)
+}
+
 pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
@@ -47,6 +63,8 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 
 #[cfg(test)]
 mod tests {
+    use core::num;
+
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
 
@@ -140,6 +158,45 @@ mod tests {
         let nodes = built
             .with_cluster(&cluster1, (0..3).map(|_| deployment.Localhost()))
             .with_cluster(&cluster2, (0..3).map(|_| deployment.Localhost()))
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let cluster2_stdouts = futures::future::join_all(
+            nodes
+                .get_cluster(&cluster2)
+                .members()
+                .iter()
+                .map(|node| node.stdout()),
+        )
+        .await;
+
+        deployment.start().await.unwrap();
+
+        for (i, mut stdout) in cluster2_stdouts.into_iter().enumerate() {
+            for _j in 0..1 {
+                let expected_message = format!(
+                    "My self id is ClusterId::<()>({}), my message is ClusterId::<()>({})",
+                    i, i
+                );
+                assert_eq!(stdout.recv().await.unwrap(), expected_message);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn partition() {
+        let mut deployment = Deployment::new();
+
+        let num_nodes = 3;
+        let num_partitions = 2;
+        let builder = hydro_lang::FlowBuilder::new();
+        let (cluster1, cluster2) = super::partition(&builder, |(id, msg)| (id, msg));
+        let built = builder.with_default_optimize();
+        
+        let nodes = built
+            .with_cluster(&cluster1, (0..num_nodes).map(|_| deployment.Localhost()))
+            .with_cluster(&cluster2, (0..num_nodes*num_partitions).map(|_| deployment.Localhost()))
             .deploy(&mut deployment);
 
         deployment.deploy().await.unwrap();
