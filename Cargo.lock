@@ -1951,6 +1951,8 @@ version = "0.5.9"
 dependencies = [
  "cc-traits",
  "lattices_macro",
+ "lazy_static",
+ "prometheus",
  "ref-cast",
  "sealed 0.5.0",
  "serde",
