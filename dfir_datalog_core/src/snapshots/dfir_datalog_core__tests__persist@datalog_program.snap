@@ -307,6 +307,7 @@ fn main() {
                 var_expr!(),
                 var_expr!(hoff_14v3_send),
                 false,
+                None,
                 move |context, var_args!(), var_args!(hoff_14v3_send)| {
                     let hoff_14v3_send = hydroflow::pusherator::for_each::ForEach::new(|
                         v|
@@ -371,6 +372,7 @@ fn main() {
                 var_expr!(),
                 var_expr!(hoff_11v3_send),
                 false,
+                None,
                 move |context, var_args!(), var_args!(hoff_11v3_send)| {
                     let hoff_11v3_send = hydroflow::pusherator::for_each::ForEach::new(|
                         v|
@@ -435,6 +437,7 @@ fn main() {
                 var_expr!(),
                 var_expr!(hoff_6v3_send),
                 false,
+                None,
                 move |context, var_args!(), var_args!(hoff_6v3_send)| {
                     let hoff_6v3_send = hydroflow::pusherator::for_each::ForEach::new(|
                         v|
@@ -499,6 +502,7 @@ fn main() {
                 var_expr!(hoff_25v3_recv),
                 var_expr!(hoff_28v3_send),
                 false,
+                None,
                 move |context, var_args!(hoff_25v3_recv), var_args!(hoff_28v3_send)| {
                     let mut hoff_25v3_recv = hoff_25v3_recv.borrow_mut_swap();
                     let hoff_25v3_recv = hoff_25v3_recv.drain(..);
@@ -564,6 +568,7 @@ fn main() {
                 var_expr!(hoff_19v3_recv),
                 var_expr!(hoff_22v3_send),
                 false,
+                None,
                 move |context, var_args!(hoff_19v3_recv), var_args!(hoff_22v3_send)| {
                     let mut hoff_19v3_recv = hoff_19v3_recv.borrow_mut_swap();
                     let hoff_19v3_recv = hoff_19v3_recv.drain(..);
@@ -629,6 +634,7 @@ fn main() {
                 var_expr!(hoff_13v3_recv),
                 var_expr!(hoff_16v3_send),
                 false,
+                None,
                 move |context, var_args!(hoff_13v3_recv), var_args!(hoff_16v3_send)| {
                     let mut hoff_13v3_recv = hoff_13v3_recv.borrow_mut_swap();
                     let hoff_13v3_recv = hoff_13v3_recv.drain(..);
@@ -694,6 +700,7 @@ fn main() {
                 var_expr!(hoff_6v3_recv, hoff_26v3_recv, hoff_29v3_recv),
                 var_expr!(),
                 false,
+                None,
                 move |
                     context,
                     var_args!(hoff_6v3_recv, hoff_26v3_recv, hoff_29v3_recv),
@@ -1310,6 +1317,7 @@ fn main() {
                 var_expr!(hoff_20v3_recv, hoff_23v3_recv),
                 var_expr!(),
                 false,
+                None,
                 move |context, var_args!(hoff_20v3_recv, hoff_23v3_recv), var_args!()| {
                     let mut hoff_20v3_recv = hoff_20v3_recv.borrow_mut_swap();
                     let hoff_20v3_recv = hoff_20v3_recv.drain(..);
@@ -1682,6 +1690,7 @@ fn main() {
                     hoff_17v3_send, hoff_23v3_send, hoff_25v3_send, hoff_29v3_send
                 ),
                 false,
+                None,
                 move |
                     context,
                     var_args!(hoff_14v3_recv, hoff_28v3_recv),
@@ -2261,6 +2270,7 @@ fn main() {
                 var_expr!(hoff_16v3_recv, hoff_17v3_recv),
                 var_expr!(hoff_13v3_send),
                 false,
+                None,
                 move |
                     context,
                     var_args!(hoff_16v3_recv, hoff_17v3_recv),
@@ -2700,6 +2710,7 @@ fn main() {
                 var_expr!(hoff_11v3_recv, hoff_22v3_recv),
                 var_expr!(hoff_19v3_send, hoff_20v3_send, hoff_26v3_send),
                 false,
+                None,
                 move |
                     context,
                     var_args!(hoff_11v3_recv, hoff_22v3_recv),

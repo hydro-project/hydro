@@ -1168,6 +1168,7 @@ impl DfirGraph {
                         var_expr!( #( #recv_ports ),* ),
                         var_expr!( #( #send_ports ),* ),
                         #laziness,
+                        None, // `LoopId`
                         move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
                             #( #recv_port_code )*
                             #( #send_port_code )*

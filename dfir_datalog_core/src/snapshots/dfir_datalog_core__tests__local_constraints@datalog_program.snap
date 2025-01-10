@@ -51,6 +51,7 @@ fn main() {
                 var_expr!(),
                 var_expr!(),
                 false,
+                None,
                 move |context, var_args!(), var_args!()| {
                     let op_7v1 = std::iter::from_fn(|| {
                         match hydroflow::futures::stream::Stream::poll_next(
