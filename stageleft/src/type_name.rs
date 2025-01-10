@@ -1,152 +1,82 @@
+use std::sync::{LazyLock, RwLock};
+
 use proc_macro2::Span;
 use syn::visit_mut::VisitMut;
 use syn::{parse_quote, TypeInfer};
 
 use crate::runtime_support::get_final_crate_name;
 
-/// Rewrites use of alloc::string::* to use std::string::*
-struct RewriteAlloc {
+type ReexportsSet = LazyLock<RwLock<Vec<(Vec<&'static str>, Vec<&'static str>)>>>;
+static PRIVATE_REEXPORTS: ReexportsSet = LazyLock::new(|| {
+    RwLock::new(vec![
+        (vec!["alloc"], vec!["std"]),
+        (vec!["core", "ops", "range"], vec!["std", "ops"]),
+        (vec!["core", "slice", "iter"], vec!["std", "slice"]),
+        (vec!["core", "iter", "adapters", "*"], vec!["std", "iter"]),
+        (
+            vec!["std", "collections", "hash", "map"],
+            vec!["std", "collections", "hash_map"],
+        ),
+        (vec!["std", "vec", "into_iter"], vec!["std", "vec"]),
+    ])
+});
+
+/// Adds a private module re-export transformation to the type quoting system.
+///
+/// Sometimes, the [`quote_type`] function may produce an uncompilable reference to a
+/// type inside a private module if the type is re-exported from a public module
+/// (because Rust's `type_name` only gives the path to the original definition).
+///
+/// This function adds a rewrite rule for such cases, where the `from` path is
+/// replaced with the `to` path. The paths are given as a list of strings, where
+/// each string is a segment of the path. The `from` path is matched against the
+/// beginning of the type path, and if it matches, the `to` path is substituted
+/// in its place. The `from` path may contain a wildcard `*` to glob a segment.
+///
+/// # Example
+/// ```rust
+/// stageleft::add_private_reexport(
+///     vec!["std", "collections", "hash", "map"],
+///     vec!["std", "collections", "hash_map"],
+/// );
+/// ```
+pub fn add_private_reexport(from: Vec<&'static str>, to: Vec<&'static str>) {
+    let mut transformations = PRIVATE_REEXPORTS.write().unwrap();
+    transformations.push((from, to));
+}
+
+struct RewritePrivateReexports {
     mapping: Option<(String, String)>,
 }
 
-impl VisitMut for RewriteAlloc {
+impl VisitMut for RewritePrivateReexports {
     fn visit_path_mut(&mut self, i: &mut syn::Path) {
-        if i.segments.iter().take(1).collect::<Vec<_>>()
-            == vec![&syn::PathSegment::from(syn::Ident::new(
-                "alloc",
-                Span::call_site(),
-            ))]
-        {
-            *i.segments.first_mut().unwrap() =
-                syn::PathSegment::from(syn::Ident::new("std", Span::call_site()));
-        } else if i.segments.iter().take(3).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("core", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("ops", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("range", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("ops", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(3).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(3).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("core", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("slice", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("iter", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("slice", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(3).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(3).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("core", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("iter", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("adapters", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("iter", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(4).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(4).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("collections", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("hash", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("map", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("collections", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("hash_map", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(4).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(3).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("vec", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("into_iter", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("std", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("vec", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(3).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(3).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("tokio", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("time", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("instant", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![
-                        syn::PathSegment::from(syn::Ident::new("tokio", Span::call_site())),
-                        syn::PathSegment::from(syn::Ident::new("time", Span::call_site())),
-                    ]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(3).cloned()),
-                ),
-            };
-        } else if i.segments.iter().take(2).collect::<Vec<_>>()
-            == vec![
-                &syn::PathSegment::from(syn::Ident::new("bytes", Span::call_site())),
-                &syn::PathSegment::from(syn::Ident::new("bytes", Span::call_site())),
-            ]
-        {
-            *i = syn::Path {
-                leading_colon: i.leading_colon,
-                segments: syn::punctuated::Punctuated::from_iter(
-                    vec![syn::PathSegment::from(syn::Ident::new(
-                        "bytes",
-                        Span::call_site(),
-                    ))]
-                    .into_iter()
-                    .chain(i.segments.iter().skip(2).cloned()),
-                ),
-            };
-        } else if let Some((macro_name, final_name)) = &self.mapping {
+        let transformations = PRIVATE_REEXPORTS.read().unwrap();
+        for (from, to) in transformations.iter() {
+            #[expect(clippy::cmp_owned, reason = "buggy lint for syn::Ident::to_string")]
+            if i.segments.len() >= from.len()
+                && from
+                    .iter()
+                    .zip(i.segments.iter())
+                    .all(|(f, s)| *f == "*" || *f == s.ident.to_string())
+            {
+                *i = syn::Path {
+                    leading_colon: i.leading_colon,
+                    segments: syn::punctuated::Punctuated::from_iter(
+                        to.iter()
+                            .map(|s| syn::PathSegment::from(syn::Ident::new(s, Span::call_site())))
+                            .chain(i.segments.iter().skip(from.len()).cloned()),
+                    ),
+                };
+
+                drop(transformations);
+                self.visit_path_mut(i);
+                return;
+            }
+        }
+        drop(transformations);
+
+        if let Some((macro_name, final_name)) = &self.mapping {
             if i.segments.first().unwrap().ident == macro_name {
                 *i.segments.first_mut().unwrap() =
                     syn::parse2(get_final_crate_name(final_name)).unwrap();
@@ -154,14 +84,10 @@ impl VisitMut for RewriteAlloc {
                 i.segments.insert(1, parse_quote!(__staged));
             } else {
                 syn::visit_mut::visit_path_mut(self, i);
-                return;
             }
         } else {
             syn::visit_mut::visit_path_mut(self, i);
-            return;
         }
-
-        self.visit_path_mut(i);
     }
 }
 
@@ -202,7 +128,7 @@ pub fn quote_type<T>() -> syn::Type {
     });
     let mapping = super::runtime_support::MACRO_TO_CRATE.with(|m| m.borrow().clone());
     ElimClosureToInfer.visit_type_mut(&mut t_type);
-    RewriteAlloc { mapping }.visit_type_mut(&mut t_type);
+    RewritePrivateReexports { mapping }.visit_type_mut(&mut t_type);
 
     t_type
 }
