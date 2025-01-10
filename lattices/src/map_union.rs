@@ -60,8 +60,8 @@ where
 }
 
 lazy_static! {
-    pub static ref MERGE_COUNTER: IntCounter =
-        register_int_counter!("merges", "Counts the number of MapUnion Merges").unwrap();
+    pub static ref MAP_MERGE_COUNTER: IntCounter =
+        register_int_counter!("map_merges", "Counts the number of MapUnion Merges").unwrap();
 }
 
 
@@ -75,7 +75,7 @@ where
     ValOther: IsBot,
 {
     fn merge(&mut self, other: MapUnion<MapOther>) -> bool {
-        MERGE_COUNTER.inc();
+        MAP_MERGE_COUNTER.inc();
         let mut changed = false;
         // This vec collect is needed to prevent simultaneous mut references `self.0.extend` and
         // `self.0.get_mut`.

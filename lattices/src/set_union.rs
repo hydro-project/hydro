@@ -5,7 +5,8 @@ use std::collections::{BTreeSet, HashSet};
 use std::marker::PhantomData;
 
 use cc_traits::SimpleCollectionRef;
-
+use lazy_static::lazy_static;
+use prometheus::{register_int_counter, IntCounter};
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, OptionSet, SingletonSet};
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
@@ -52,12 +53,19 @@ impl<Set> DeepReveal for SetUnion<Set> {
     }
 }
 
+
+lazy_static! {
+    pub static ref SET_MERGE_COUNTER: IntCounter =
+        register_int_counter!("set_merges", "Counts the number of SetUnion Merges").unwrap();
+}
+
 impl<SetSelf, SetOther, Item> Merge<SetUnion<SetOther>> for SetUnion<SetSelf>
 where
     SetSelf: Extend<Item> + Len,
     SetOther: IntoIterator<Item = Item>,
 {
     fn merge(&mut self, other: SetUnion<SetOther>) -> bool {
+        SET_MERGE_COUNTER.inc();
         let old_len = self.0.len();
         self.0.extend(other.0);
         self.0.len() > old_len
