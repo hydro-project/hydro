@@ -825,6 +825,7 @@
 <a href="#825" id="825">825</a>
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -1312,8 +1313,9 @@
 ) {
     <span class="kw">let </span>p_p1b_max_checkpoint = accepted_logs
         .clone()
-        .map(<span class="macro">q!</span>(|(checkpoint, _log)| checkpoint))
-        .max();
+        .filter_map(<span class="macro">q!</span>(|(checkpoint, _log)| checkpoint))
+        .max()
+        .into_singleton();
     <span class="kw">let </span>p_p1b_highest_entries_and_count = accepted_logs
         .map(<span class="macro">q!</span>(|(_checkpoint, log)| log))
         .flatten_unordered() <span class="comment">// Convert HashMap log back to stream
