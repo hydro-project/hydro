@@ -124,7 +124,7 @@ where
     Inner: IsBot,
 {
     fn is_bot(&self) -> bool {
-        self.0.as_ref().map_or(false, IsBot::is_bot)
+        self.0.as_ref().is_some_and(IsBot::is_bot)
     }
 }
 
