@@ -986,7 +986,7 @@ impl<'a, T, C1, C2, B, Order> Stream<(ClusterId<C2>, T), Cluster<'a, C1>, B, Ord
         self,
         other: &Cluster<'a, C2>,
         dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
+    ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
         Cluster<'a, C1>: Location<'a, Root = Cluster<'a, C1>>,
         Cluster<'a, C1>:
@@ -994,7 +994,7 @@ impl<'a, T, C1, C2, B, Order> Stream<(ClusterId<C2>, T), Cluster<'a, C1>, B, Ord
         T: Clone + Serialize + DeserializeOwned,
         Order:
             MinOrder<<Cluster<'a, C1> as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>,
-            Min = Order
+            Min = NoOrder
         >,
     {
         self.map(dist_policy).send_bincode_interleaved(other)
