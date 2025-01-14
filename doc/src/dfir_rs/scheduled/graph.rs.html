@@ -908,6 +908,13 @@
 <a href="#908" id="908">908</a>
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
 
 </span><span class="kw">use </span>std::any::Any;
@@ -931,17 +938,18 @@
 <span class="kw">use </span><span class="kw">super</span>::reactor::Reactor;
 <span class="kw">use </span><span class="kw">super</span>::state::StateHandle;
 <span class="kw">use </span><span class="kw">super</span>::subgraph::Subgraph;
-<span class="kw">use super</span>::{HandoffId, SubgraphId};
+<span class="kw">use super</span>::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::ticks::{TickDuration, TickInstant};
+<span class="kw">use </span><span class="kw">crate</span>::util::slot_vec::SlotVec;
 <span class="kw">use </span><span class="kw">crate</span>::Never;
 
 <span class="doccomment">/// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Dfir&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub</span>(<span class="kw">super</span>) subgraphs: Vec&lt;SubgraphData&lt;<span class="lifetime">'a</span>&gt;&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) subgraphs: SlotVec&lt;SubgraphTag, SubgraphData&lt;<span class="lifetime">'a</span>&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) context: Context,
 
-    handoffs: Vec&lt;HandoffData&gt;,
+    handoffs: SlotVec&lt;HandoffTag, HandoffData&gt;,
 
     <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
     </span><span class="doccomment">/// See [`Self::meta_graph()`].
@@ -962,15 +970,32 @@
     <span class="kw">where
         </span>T: Clone,
     {
-        <span class="comment">// Handoff ID of new tee output.
-        </span><span class="kw">let </span>new_hoff_id = HandoffId(<span class="self">self</span>.handoffs.len());
-
         <span class="comment">// If we're teeing from a child make sure to find root.
-        </span><span class="kw">let </span>tee_root = <span class="self">self</span>.handoffs[tee_parent_port.handoff_id.<span class="number">0</span>].pred_handoffs[<span class="number">0</span>];
+        </span><span class="kw">let </span>tee_root = <span class="self">self</span>.handoffs[tee_parent_port.handoff_id].pred_handoffs[<span class="number">0</span>];
 
         <span class="comment">// Set up teeing metadata.
-        // Go to `tee_root`'s successors and insert self (the new tee output).
-        </span><span class="kw">let </span>tee_root_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs[tee_root.<span class="number">0</span>];
+        </span><span class="kw">let </span>tee_root_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs[tee_root];
+        <span class="kw">let </span>tee_root_data_name = tee_root_data.name.clone();
+
+        <span class="comment">// Insert new handoff output.
+        </span><span class="kw">let </span>teeing_handoff = tee_root_data
+            .handoff
+            .any_ref()
+            .downcast_ref::&lt;TeeingHandoff&lt;T&gt;&gt;()
+            .unwrap();
+        <span class="kw">let </span>new_handoff = teeing_handoff.tee();
+
+        <span class="comment">// Handoff ID of new tee output.
+        </span><span class="kw">let </span>new_hoff_id = <span class="self">self</span>.handoffs.insert_with_key(|new_hoff_id| {
+            <span class="kw">let </span>new_name = Cow::Owned(<span class="macro">format!</span>(<span class="string">"{} tee {:?}"</span>, tee_root_data_name, new_hoff_id));
+            <span class="kw">let </span><span class="kw-2">mut </span>new_handoff_data = HandoffData::new(new_name, new_handoff, new_hoff_id);
+            <span class="comment">// Set self's predecessor as `tee_root`.
+            </span>new_handoff_data.pred_handoffs = <span class="macro">vec!</span>[tee_root];
+            new_handoff_data
+        });
+
+        <span class="comment">// Go to `tee_root`'s successors and insert self (the new tee output).
+        </span><span class="kw">let </span>tee_root_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs[tee_root];
         tee_root_data.succ_handoffs.push(new_hoff_id);
 
         <span class="comment">// Add our new handoff id into the subgraph data if the send `tee_root` has already been
@@ -980,21 +1005,8 @@
             <span class="string">"Tee send side should only have one sender (or none set yet)."
         </span>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pred_sg_id) = tee_root_data.preds.first() {
-            <span class="self">self</span>.subgraphs[pred_sg_id.<span class="number">0</span>].succs.push(new_hoff_id);
+            <span class="self">self</span>.subgraphs[pred_sg_id].succs.push(new_hoff_id);
         }
-
-        <span class="comment">// Insert new handoff output.
-        </span><span class="kw">let </span>teeing_handoff = tee_root_data
-            .handoff
-            .any_ref()
-            .downcast_ref::&lt;TeeingHandoff&lt;T&gt;&gt;()
-            .unwrap();
-        <span class="kw">let </span>new_handoff = teeing_handoff.tee();
-        <span class="kw">let </span>new_name = Cow::Owned(<span class="macro">format!</span>(<span class="string">"{} tee {:?}"</span>, tee_root_data.name, new_hoff_id));
-        <span class="kw">let </span><span class="kw-2">mut </span>new_handoff_data = HandoffData::new(new_name, new_handoff, new_hoff_id);
-        <span class="comment">// Set self's predecessor as `tee_root`.
-        </span>new_handoff_data.pred_handoffs = <span class="macro">vec!</span>[tee_root];
-        <span class="self">self</span>.handoffs.push(new_handoff_data);
 
         <span class="kw">let </span>output_port = RecvPort {
             handoff_id: new_hoff_id,
@@ -1011,7 +1023,7 @@
     <span class="kw">where
         </span>T: Clone,
     {
-        <span class="kw">let </span>data = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[tee_port.handoff_id.<span class="number">0</span>];
+        <span class="kw">let </span>data = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[tee_port.handoff_id];
         <span class="kw">let </span>teeing_handoff = data
             .handoff
             .any_ref()
@@ -1020,7 +1032,7 @@
         teeing_handoff.drop();
 
         <span class="kw">let </span>tee_root = data.pred_handoffs[<span class="number">0</span>];
-        <span class="kw">let </span>tee_root_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs[tee_root.<span class="number">0</span>];
+        <span class="kw">let </span>tee_root_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs[tee_root];
         <span class="comment">// Remove this output from the send succ handoff list.
         </span>tee_root_data
             .succ_handoffs
@@ -1031,7 +1043,7 @@
             <span class="string">"Tee send side should only have one sender (or none set yet)."
         </span>);
         <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>pred_sg_id) = tee_root_data.preds.first() {
-            <span class="self">self</span>.subgraphs[pred_sg_id.<span class="number">0</span>]
+            <span class="self">self</span>.subgraphs[pred_sg_id]
                 .succs
                 .retain(|<span class="kw-2">&amp;</span>succ_hoff| succ_hoff != tee_port.handoff_id);
         }
@@ -1176,11 +1188,11 @@
         {
             work_done = <span class="bool-val">true</span>;
             {
-                <span class="kw">let </span>sg_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+                <span class="kw">let </span>sg_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.subgraphs[sg_id];
                 <span class="comment">// This must be true for the subgraph to be enqueued.
                 </span><span class="macro">assert!</span>(sg_data.is_scheduled.take());
                 <span class="macro">tracing::trace!</span>(
-                    sg_id = sg_id.<span class="number">0</span>,
+                    sg_id = sg_id.to_string(),
                     sg_name = <span class="kw-2">&amp;*</span>sg_data.name,
                     <span class="string">"Running subgraph."
                 </span>);
@@ -1191,12 +1203,12 @@
                 sg_data.last_tick_run_in = <span class="prelude-val">Some</span>(current_tick);
             }
 
-            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
             <span class="kw">for </span><span class="kw-2">&amp;</span>handoff_id <span class="kw">in </span>sg_data.succs.iter() {
-                <span class="kw">let </span>handoff = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[handoff_id.<span class="number">0</span>];
+                <span class="kw">let </span>handoff = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[handoff_id];
                 <span class="kw">if </span>!handoff.handoff.is_bottom() {
                     <span class="kw">for </span><span class="kw-2">&amp;</span>succ_id <span class="kw">in </span>handoff.succs.iter() {
-                        <span class="kw">let </span>succ_sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[succ_id.<span class="number">0</span>];
+                        <span class="kw">let </span>succ_sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[succ_id];
                         <span class="comment">// If we have sent data to the next tick, then we can start the next tick.
                         </span><span class="kw">if </span>succ_sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum &amp;&amp; !sg_data.is_lazy {
                             <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
@@ -1348,9 +1360,9 @@
     </span><span class="kw">pub fn </span>try_recv_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
         <span class="kw">let </span><span class="kw-2">mut </span>enqueued_count = <span class="number">0</span>;
         <span class="kw">while let </span><span class="prelude-val">Ok</span>((sg_id, is_external)) = <span class="self">self</span>.context.event_queue_recv.try_recv() {
-            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
             <span class="macro">tracing::trace!</span>(
-                sg_id = sg_id.<span class="number">0</span>,
+                sg_id = sg_id.to_string(),
                 is_external = is_external,
                 sg_stratum = sg_data.stratum,
                 <span class="string">"Event received."
@@ -1386,9 +1398,9 @@
         <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
         <span class="kw">loop </span>{
             <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.blocking_recv()<span class="question-mark">?</span>;
-            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
             <span class="macro">tracing::trace!</span>(
-                sg_id = sg_id.<span class="number">0</span>,
+                sg_id = sg_id.to_string(),
                 is_external = is_external,
                 sg_stratum = sg_data.stratum,
                 <span class="string">"Event received."
@@ -1431,9 +1443,9 @@
         <span class="kw">loop </span>{
             <span class="macro">tracing::trace!</span>(<span class="string">"Awaiting events (`event_queue_recv`)."</span>);
             <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.recv().<span class="kw">await</span><span class="question-mark">?</span>;
-            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
             <span class="macro">tracing::trace!</span>(
-                sg_id = sg_id.<span class="number">0</span>,
+                sg_id = sg_id.to_string(),
                 is_external = is_external,
                 sg_stratum = sg_data.stratum,
                 <span class="string">"Event received."
@@ -1467,7 +1479,7 @@
 
     <span class="doccomment">/// Schedules a subgraph to be run. See also: [`Context::schedule_subgraph`].
     </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sg_id: SubgraphId) -&gt; bool {
-        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id.<span class="number">0</span>];
+        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
         <span class="kw">let </span>already_scheduled = sg_data.is_scheduled.replace(<span class="bool-val">true</span>);
         <span class="kw">if </span>!already_scheduled {
             <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
@@ -1512,26 +1524,27 @@
         W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
         F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
     {
-        <span class="kw">let </span>sg_id = SubgraphId(<span class="self">self</span>.subgraphs.len());
+        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
+            <span class="kw">let </span>(<span class="kw-2">mut </span>subgraph_preds, <span class="kw-2">mut </span>subgraph_succs) = Default::default();
+            recv_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_preds, sg_id, <span class="bool-val">true</span>);
+            send_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_succs, sg_id, <span class="bool-val">false</span>);
 
-        <span class="kw">let </span>(<span class="kw-2">mut </span>subgraph_preds, <span class="kw-2">mut </span>subgraph_succs) = Default::default();
-        recv_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_preds, sg_id, <span class="bool-val">true</span>);
-        send_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_succs, sg_id, <span class="bool-val">false</span>);
-
-        <span class="kw">let </span>subgraph = <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffData&gt;| {
-            <span class="kw">let </span>recv = recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
-            <span class="kw">let </span>send = send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
-            (subgraph)(context, recv, send);
-        };
-        <span class="self">self</span>.subgraphs.push(SubgraphData::new(
-            name.into(),
-            stratum,
-            subgraph,
-            subgraph_preds,
-            subgraph_succs,
-            <span class="bool-val">true</span>,
-            laziness,
-        ));
+            <span class="kw">let </span>subgraph =
+                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
+                    <span class="kw">let </span>recv = recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
+                    <span class="kw">let </span>send = send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
+                    (subgraph)(context, recv, send);
+                };
+            SubgraphData::new(
+                name.into(),
+                stratum,
+                subgraph,
+                subgraph_preds,
+                subgraph_succs,
+                <span class="bool-val">true</span>,
+                laziness,
+            )
+        });
         <span class="self">self</span>.context.init_stratum(stratum);
         <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
 
@@ -1572,58 +1585,60 @@
         F: <span class="lifetime">'static
             </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>RecvCtx&lt;R&gt;], <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>SendCtx&lt;W&gt;]),
     {
-        <span class="kw">let </span>sg_id = SubgraphId(<span class="self">self</span>.subgraphs.len());
+        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
+            <span class="kw">let </span>subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
+            <span class="kw">let </span>subgraph_succs = send_ports.iter().map(|port| port.handoff_id).collect();
 
-        <span class="kw">let </span>subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
-        <span class="kw">let </span>subgraph_succs = send_ports.iter().map(|port| port.handoff_id).collect();
+            <span class="kw">for </span>recv_port <span class="kw">in </span>recv_ports.iter() {
+                <span class="self">self</span>.handoffs[recv_port.handoff_id].succs.push(sg_id);
+            }
+            <span class="kw">for </span>send_port <span class="kw">in </span>send_ports.iter() {
+                <span class="self">self</span>.handoffs[send_port.handoff_id].preds.push(sg_id);
+            }
 
-        <span class="kw">for </span>recv_port <span class="kw">in </span>recv_ports.iter() {
-            <span class="self">self</span>.handoffs[recv_port.handoff_id.<span class="number">0</span>].succs.push(sg_id);
-        }
-        <span class="kw">for </span>send_port <span class="kw">in </span>send_ports.iter() {
-            <span class="self">self</span>.handoffs[send_port.handoff_id.<span class="number">0</span>].preds.push(sg_id);
-        }
+            <span class="kw">let </span>subgraph =
+                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
+                    <span class="kw">let </span>recvs: Vec&lt;<span class="kw-2">&amp;</span>RecvCtx&lt;R&gt;&gt; = recv_ports
+                        .iter()
+                        .map(|hid| hid.handoff_id)
+                        .map(|hid| handoffs.get(hid).unwrap())
+                        .map(|h_data| {
+                            h_data
+                                .handoff
+                                .any_ref()
+                                .downcast_ref()
+                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
+                        })
+                        .map(RefCast::ref_cast)
+                        .collect();
 
-        <span class="kw">let </span>subgraph = <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffData&gt;| {
-            <span class="kw">let </span>recvs: Vec&lt;<span class="kw-2">&amp;</span>RecvCtx&lt;R&gt;&gt; = recv_ports
-                .iter()
-                .map(|hid| hid.handoff_id)
-                .map(|hid| handoffs.get(hid.<span class="number">0</span>).unwrap())
-                .map(|h_data| {
-                    h_data
-                        .handoff
-                        .any_ref()
-                        .downcast_ref()
-                        .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
-                })
-                .map(RefCast::ref_cast)
-                .collect();
+                    <span class="kw">let </span>sends: Vec&lt;<span class="kw-2">&amp;</span>SendCtx&lt;W&gt;&gt; = send_ports
+                        .iter()
+                        .map(|hid| hid.handoff_id)
+                        .map(|hid| handoffs.get(hid).unwrap())
+                        .map(|h_data| {
+                            h_data
+                                .handoff
+                                .any_ref()
+                                .downcast_ref()
+                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
+                        })
+                        .map(RefCast::ref_cast)
+                        .collect();
 
-            <span class="kw">let </span>sends: Vec&lt;<span class="kw-2">&amp;</span>SendCtx&lt;W&gt;&gt; = send_ports
-                .iter()
-                .map(|hid| hid.handoff_id)
-                .map(|hid| handoffs.get(hid.<span class="number">0</span>).unwrap())
-                .map(|h_data| {
-                    h_data
-                        .handoff
-                        .any_ref()
-                        .downcast_ref()
-                        .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
-                })
-                .map(RefCast::ref_cast)
-                .collect();
+                    (subgraph)(context, <span class="kw-2">&amp;</span>recvs, <span class="kw-2">&amp;</span>sends)
+                };
+            SubgraphData::new(
+                name.into(),
+                stratum,
+                subgraph,
+                subgraph_preds,
+                subgraph_succs,
+                <span class="bool-val">true</span>,
+                <span class="bool-val">false</span>,
+            )
+        });
 
-            (subgraph)(context, <span class="kw-2">&amp;</span>recvs, <span class="kw-2">&amp;</span>sends)
-        };
-        <span class="self">self</span>.subgraphs.push(SubgraphData::new(
-            name.into(),
-            stratum,
-            subgraph,
-            subgraph_preds,
-            subgraph_succs,
-            <span class="bool-val">true</span>,
-            <span class="bool-val">false</span>,
-        ));
         <span class="self">self</span>.context.init_stratum(stratum);
         <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
 
@@ -1636,12 +1651,11 @@
         </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
         H: <span class="lifetime">'static </span>+ Handoff,
     {
-        <span class="kw">let </span>handoff_id = HandoffId(<span class="self">self</span>.handoffs.len());
-
         <span class="comment">// Create and insert handoff.
         </span><span class="kw">let </span>handoff = H::default();
-        <span class="self">self</span>.handoffs
-            .push(HandoffData::new(name.into(), handoff, handoff_id));
+        <span class="kw">let </span>handoff_id = <span class="self">self
+            </span>.handoffs
+            .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
 
         <span class="comment">// Make ports.
         </span><span class="kw">let </span>input_port = SendPort {

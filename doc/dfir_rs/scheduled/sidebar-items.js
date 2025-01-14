@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["context","graph","graph_ext","handoff","input","net","port","query","reactor","state","ticks"],"struct":["HandoffId","StateId","SubgraphId"]};
+window.SIDEBAR_ITEMS = {"enum":["HandoffTag","SubgraphTag"],"mod":["context","graph","graph_ext","handoff","input","net","port","query","reactor","state","ticks"],"struct":["StateId"],"type":["HandoffId","SubgraphId"]};

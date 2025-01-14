@@ -177,6 +177,7 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for variadic handoff port lists, [`PortList`].
 
 </span><span class="kw">use </span>ref_cast::RefCast;
@@ -186,7 +187,8 @@
 <span class="kw">use </span><span class="kw">super</span>::Handoff;
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::graph::HandoffData;
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::port::{Polarity, Port, PortCtx};
-<span class="kw">use </span><span class="kw">crate</span>::scheduled::{HandoffId, SubgraphId};
+<span class="kw">use </span><span class="kw">crate</span>::scheduled::{HandoffId, HandoffTag, SubgraphId};
+<span class="kw">use </span><span class="kw">crate</span>::util::slot_vec::SlotVec;
 
 <span class="doccomment">/// Sealed trait for variadic lists of ports.
 ///
@@ -208,7 +210,7 @@
     /// - `false`: Handoffs are successors (outputs) from subgraph `sg_id`.
     </span><span class="kw">fn </span>set_graph_meta(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        handoffs: <span class="kw-2">&amp;mut </span>[HandoffData],
+        handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;,
         out_handoff_ids: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffId&gt;,
         sg_id: SubgraphId,
         handoffs_are_preds: bool,
@@ -220,7 +222,7 @@
     ///
     /// (Note that unlike [`Self::set_graph_meta`], this does not mess with pred/succ handoffs for
     /// teeing).
-    </span><span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[HandoffData]) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt;;
+    </span><span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt;;
 }
 <span class="attr">#[sealed]
 </span><span class="kw">impl</span>&lt;S, Rest, H&gt; PortList&lt;S&gt; <span class="kw">for </span>(Port&lt;S, H&gt;, Rest)
@@ -231,13 +233,13 @@
 {
     <span class="kw">fn </span>set_graph_meta(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        handoffs: <span class="kw-2">&amp;mut </span>[HandoffData],
+        handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;,
         out_handoff_ids: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffId&gt;,
         sg_id: SubgraphId,
         handoffs_are_preds: bool,
     ) {
         <span class="kw">let </span>(this, rest) = <span class="self">self</span>;
-        <span class="kw">let </span>this_handoff = <span class="kw-2">&amp;mut </span>handoffs[this.handoff_id.<span class="number">0</span>];
+        <span class="kw">let </span>this_handoff = <span class="kw-2">&amp;mut </span>handoffs[this.handoff_id];
 
         <span class="comment">// Set subgraph's info (`out_handoff_ids`) about neighbor handoffs.
         // Use the "representative" handoff (pred or succ) for teeing handoffs, for the subgraph metadata.
@@ -251,21 +253,21 @@
         <span class="comment">// Set handoff's info (`preds`/`succs`) about neighbor subgraph (`sg_id`).
         </span><span class="kw">if </span>handoffs_are_preds {
             <span class="kw">for </span>succ_hoff <span class="kw">in </span>this_handoff.succ_handoffs.clone() {
-                handoffs[succ_hoff.<span class="number">0</span>].succs.push(sg_id);
+                handoffs[succ_hoff].succs.push(sg_id);
             }
         } <span class="kw">else </span>{
             <span class="kw">for </span>pred_hoff <span class="kw">in </span>this_handoff.pred_handoffs.clone() {
-                handoffs[pred_hoff.<span class="number">0</span>].preds.push(sg_id);
+                handoffs[pred_hoff].preds.push(sg_id);
             }
         }
         rest.set_graph_meta(handoffs, out_handoff_ids, sg_id, handoffs_are_preds);
     }
 
     <span class="kw">type </span>Ctx&lt;<span class="lifetime">'a</span>&gt; = (<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PortCtx&lt;S, H&gt;, Rest::Ctx&lt;<span class="lifetime">'a</span>&gt;);
-    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[HandoffData]) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {
         <span class="kw">let </span>(this, rest) = <span class="self">self</span>;
         <span class="kw">let </span>handoff = handoffs
-            .get(this.handoff_id.<span class="number">0</span>)
+            .get(this.handoff_id)
             .unwrap()
             .handoff
             .any_ref()
@@ -284,7 +286,7 @@
 {
     <span class="kw">fn </span>set_graph_meta(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        _handoffs: <span class="kw-2">&amp;mut </span>[HandoffData],
+        _handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;,
         _out_handoff_ids: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffId&gt;,
         _sg_id: SubgraphId,
         _handoffs_are_preds: bool,
@@ -292,7 +294,7 @@
     }
 
     <span class="kw">type </span>Ctx&lt;<span class="lifetime">'a</span>&gt; = ();
-    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[HandoffData]) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {}
+    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {}
 }
 
 <span class="doccomment">/// Trait for splitting a list of ports into two.

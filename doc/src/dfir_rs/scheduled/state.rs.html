@@ -100,7 +100,7 @@
 /// If you need to store state handles in a data structure see [`StateHandleErased`] which hides
 /// the generic type parameter.
 </span><span class="attr">#[must_use]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub struct </span>StateHandle&lt;T&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) state_id: StateId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: PhantomData&lt;<span class="kw-2">*mut </span>T&gt;,
@@ -121,7 +121,7 @@
 /// Use [`StateHandle::&lt;T&gt;::try_from()`](StateHandle::try_from) to convert the `StateHandleErased`
 /// back into a `StateHandle&lt;T&gt;` of the given type `T`. If `T` is the wrong type then the original
 /// `StateHandleErased` will be returned as the `Err`.
-</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 </span><span class="kw">pub struct </span>StateHandleErased {
     state_id: StateId,
     type_id: TypeId,

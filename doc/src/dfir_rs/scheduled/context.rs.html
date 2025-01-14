@@ -271,6 +271,7 @@
 <a href="#271" id="271">271</a>
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
 //!
 //! Provides APIs for state and scheduling.
@@ -511,7 +512,8 @@
             current_tick_start: SystemTime::now(),
             subgraph_last_tick_run_in: <span class="prelude-val">None</span>,
 
-            subgraph_id: SubgraphId(<span class="number">0</span>),
+            <span class="comment">// Will be re-set before use.
+            </span>subgraph_id: SubgraphId::from_raw(<span class="number">0</span>),
 
             tasks_to_spawn: Vec::new(),
             task_join_handles: Vec::new(),

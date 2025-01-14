@@ -14,19 +14,23 @@
 <a href="#14" id="14">14</a>
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::context::Context;
 <span class="kw">use </span><span class="kw">super</span>::graph::HandoffData;
+<span class="kw">use </span><span class="kw">super</span>::HandoffTag;
+<span class="kw">use </span><span class="kw">crate</span>::util::slot_vec::SlotVec;
 
 <span class="doccomment">/// Represents a compiled subgraph. Used internally by [Dataflow] to erase the input/output [Handoff] types.
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait </span>Subgraph {
     <span class="comment">// TODO: pass in some scheduling info?
-    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffData&gt;);
+    </span><span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;);
 }
 <span class="kw">impl</span>&lt;F&gt; Subgraph <span class="kw">for </span>F
 <span class="kw">where
-    </span>F: FnMut(<span class="kw-2">&amp;mut </span>Context, <span class="kw-2">&amp;mut </span>Vec&lt;HandoffData&gt;),
+    </span>F: FnMut(<span class="kw-2">&amp;mut </span>Context, <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;),
 {
-    <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>Vec&lt;HandoffData&gt;) {
+    <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;) {
         (<span class="self">self</span>)(context, handoffs);
     }
 }
