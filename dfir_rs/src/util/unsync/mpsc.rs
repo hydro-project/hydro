@@ -25,7 +25,7 @@ impl<T> Sender<T> {
                 let mut shared = strong.borrow_mut();
                 if shared
                     .capacity
-                    .map_or(false, |cap| cap.get() <= shared.buffer.len())
+                    .is_some_and(|cap| cap.get() <= shared.buffer.len())
                 {
                     // Full.
                     shared.send_wakers.push(ctx.waker().clone());
@@ -53,7 +53,7 @@ impl<T> Sender<T> {
             let mut shared = strong.borrow_mut();
             if shared
                 .capacity
-                .map_or(false, |cap| cap.get() <= shared.buffer.len())
+                .is_some_and(|cap| cap.get() <= shared.buffer.len())
             {
                 Err(TrySendError::Full(item))
             } else {
@@ -104,7 +104,7 @@ impl<T> Sink<T> for Sender<T> {
             let mut shared = strong.borrow_mut();
             if shared
                 .capacity
-                .map_or(false, |cap| cap.get() <= shared.buffer.len())
+                .is_some_and(|cap| cap.get() <= shared.buffer.len())
             {
                 // Full.
                 shared.send_wakers.push(ctx.waker().clone());
