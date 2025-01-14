@@ -17,6 +17,10 @@ static PRIVATE_REEXPORTS: ReexportsSet = LazyLock::new(|| {
             vec!["std", "collections", "hash", "map"],
             vec!["std", "collections", "hash_map"],
         ),
+        (
+            vec!["std", "collections", "hash", "set"],
+            vec!["std", "collections", "hash_set"],
+        ),
         (vec!["std", "vec", "into_iter"], vec!["std", "vec"]),
     ])
 });

@@ -267,7 +267,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.map(q!(|d| d.clone()))
     }
 
-    /// Given an ordered input stream, for each item `i` passed in, treat `i` as an iterator and map the closure to that
+    /// For each item `i` in the input stream, treat `i` as an iterator and map the closure to that
     /// iterator to produce items one by one. The type of the input items must be iterable.
     ///
     /// # Example
@@ -280,7 +280,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ///     .flat_map_ordered(q!(|x| x.into_iter()))
     /// # }, |mut stream| async move {
     /// # // 1, 2, 3, 4
-    /// # for w in (1..4) {
+    /// # for w in (1..5) {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
@@ -299,22 +299,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Like [`flat_map_ordered`](#flat_map_ordered), but allows the closure to return items in any order.
+    /// Like [`flat_map_ordered`](#flat_map_ordered), but allows the closure to return items in any order -- even
+    /// non-deterministic order.
     ///
     /// # Example
     /// ```rust
-    /// # use std::collections::HashSet;
     /// # use hydro_lang::*;
     /// # use dfir_rs::futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
     /// process
-    ///     .source_iter(q!(vec![HashSet::from([1, 2]), HashSet::from([3, 4])]))
+    ///     .source_iter(q!(if std::process::id() % 2 == 0 {
+    ///         vec![vec![1, 2], vec![3, 4]]
+    ///     } else {
+    ///         vec![vec![3, 4], vec![1, 2]]
+    ///     }))
     ///     .flat_map_unordered(q!(|x| x.into_iter()))
     /// # }, |mut stream| async move {
-    /// # // 1, 2, 3, 4
-    /// # for w in (1..4) {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # // 1, 2, 3, 4, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for w in (1..5) {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
     /// # }));
     /// ```
     pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
@@ -331,13 +338,22 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Given an ordered input stream,
-    /// for each item `i` passed in, treat `i` as an iterator and produce its items one by one.
+    /// For each item `i` in the input stream, treat `i` as an iterator and produce its items one by one.
     /// The type of the input items must be iterable.
-    ///
-    /// /// /// ```rust,norun
-    /// // should print out each character of each word on a separate line, in order
-    /// source_iter(q!(vec!["hello", "world"])).flatten_ordered(|x| x.chars())
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
+    ///     .flatten_ordered()
+    /// # }, |mut stream| async move {
+    /// # // 1, 2, 3, 4
+    /// # for w in (1..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, Order>
     where
         T: IntoIterator<Item = U>,
@@ -345,14 +361,25 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.flat_map_ordered(q!(|d| d))
     }
 
-    /// Given an unordered input stream,
-    /// for each item `i` passed in, treat `i` as an iterator and produce its items one by one.
-    /// The type of the input items must be iterable.
+    /// Like [`flatten_ordered`](#flatten_ordered), but allows the `IntoIter` implementation of (either outer or inner) collections to return things in any order.
     ///
-    /// /// ```rust,norun
-    /// // should print out each character of each word on a separate line, in no particular order
-    /// source_iter(q!(HashSet::from_iter(vec!["hello", "world"]))).flat_map_unordered(|x| x.chars())
-    /// ```
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
+    /// process
+    ///     .source_iter(q!(std::collections::HashSet::<Vec<u16>>::from_iter([vec![1, 2], vec![3, 4]])))
+    ///     .flatten_unordered()
+    /// # }, |mut stream| async move {
+    /// # // 1, 2, 3, 4, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for w in (1..5) {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # }));
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder>
     where
         T: IntoIterator<Item = U>,
@@ -367,9 +394,20 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// not modify or take ownership of the values. If you need to modify the values while filtering
     /// use [`filter_map`](#filter_map) instead.
     ///
-    /// /// ```rust,norun
-    /// // should output "world"
-    /// source_iter(q!(vec!["hello", "world"])).filter(|x| x.starts_with('w'));
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .filter(q!(|&x| x > 2))
+    /// # }, |mut stream| async move {
+    /// # // 3, 4
+    /// # for w in (3..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     /// ```
     pub fn filter<F: Fn(&T) -> bool + 'a>(
         self,
@@ -387,12 +425,20 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
 
     /// An operator that both filters and maps. It yields only the items for which the supplied closure returns `Some(value)`.
     ///
-    /// /// ```rust,norun
-    /// // should output [1, 2]
-    /// source_iter(q!(vec!["1", "hello", "world", "2"]))
-    ///     .filter_map(|s| s.parse::<usize>().ok())
-    ///     .assert_eq([1, 2]);
-    /// ```
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec!["1", "hello", "world", "2"]))
+    ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
+    /// # }, |mut stream| async move {
+    /// # // 1, 2
+    /// # for w in (1..3) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn filter_map<U, F: Fn(T) -> Option<U> + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -408,12 +454,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     }
 
     /// combine each element of type `T` from the stream with a singleton value of type `O`
-    /// to produce a stream of pairs `(T, O)`
+    /// to produce a stream of pairs `(T, O)`. Both the stream and the singleton need to be `Bounded`.
     ///
-    /// /// ```rust,norun
-    /// // should output ("hello", "champ") and ("world", "champ")
-    /// source_iter(q!(vec!["hello", "world"])).cross_singleton("champ");
-    /// ```
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = unsafe {
+    ///     process
+    ///         .source_iter(q!(vec![1, 2, 3, 4]))
+    ///         .timestamped(&tick)
+    ///         .tick_batch()
+    /// };
+    /// let count = batch.clone().count();
+    /// batch.cross_singleton(count).all_ticks().drop_timestamp()
+    ///
+    /// # }, |mut stream| async move {
+    /// # // (1, 4) and (2, 4)
+    /// # for w in vec![(1, 4), (2, 4), (3, 4), (4, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn cross_singleton<O>(
         self,
         other: impl Into<Optional<O, L, Bounded>>,
@@ -433,7 +496,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Allow this stream through if the other stream has elements, otherwise the output is empty.
+    /// Allow this stream through if the argument (a Bounded Optional) is non-empty, otherwise the output is empty.
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let count = unsafe {
+    ///    process
+    ///        .source_iter(q!(vec![1, 2, 3, 4]))
+    ///        .filter(q!(|&x| x % 3 == 0))
+    ///        .timestamped(&tick)
+    ///        .tick_batch()
+    ///        .count()
+    /// };
+    /// let stream = process.source_iter(q!(vec![10, 20, 30, 40]));
+    /// stream.continue_if(count).all_ticks()
+    /// # }, |mut stream| async move {
+    /// # // (10, 20, 30, 40)
+    /// # for w in (10, 20, 30, 40) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, Order> {
         self.cross_singleton(signal.map(q!(|_u| ())))
             .map(q!(|(d, _signal)| d))
