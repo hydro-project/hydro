@@ -982,7 +982,7 @@ pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>
 }
 
 impl<'a, T, C1, C2, B, Order> Stream<(ClusterId<C2>, T), Cluster<'a, C1>, B, Order> {
-    pub fn send_partitioned<Tag, F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a, D>(
+    pub fn send_partitioned<Tag, F: Fn((ClusterId<C2>, T)) -> (ClusterId<C2>, T) + 'a>(
         self,
         other: &Cluster<'a, C2>,
         dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
