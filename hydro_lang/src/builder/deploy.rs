@@ -116,8 +116,6 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 
     fn extra_stmts(&self, env: &<D as Deploy<'a>>::CompileEnv) -> BTreeMap<usize, Vec<syn::Stmt>> {
-        let all_locations_count = self.nodes.len() + self.clusters.len();
-
         let mut extra_stmts: BTreeMap<usize, Vec<syn::Stmt>> = BTreeMap::new();
         for &c_id in self.clusters.keys() {
             let self_id_ident = syn::Ident::new(
@@ -132,14 +130,14 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     let #self_id_ident = #self_id_expr;
                 });
 
-            for other_location in 0..all_locations_count {
+            for other_location in self.nodes.keys().chain(self.clusters.keys()) {
                 let other_id_ident = syn::Ident::new(
                     &format!("__hydro_lang_cluster_ids_{}", c_id),
                     Span::call_site(),
                 );
                 let other_id_expr = D::cluster_ids(env, c_id).splice_untyped();
                 extra_stmts
-                    .entry(other_location)
+                    .entry(*other_location)
                     .or_default()
                     .push(syn::parse_quote! {
                         let #other_id_ident = #other_id_expr;
@@ -176,26 +174,34 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         let (mut processes, mut clusters, mut externals) = (
             std::mem::take(&mut self.nodes)
                 .into_iter()
-                .map(|(node_id, node)| {
-                    node.instantiate(
-                        env,
-                        &mut meta,
-                        compiled.remove(&node_id).unwrap(),
-                        extra_stmts.remove(&node_id).unwrap_or_default(),
-                    );
-                    (node_id, node)
+                .filter_map(|(node_id, node)| {
+                    if let Some(ir) = compiled.remove(&node_id) {
+                        node.instantiate(
+                            env,
+                            &mut meta,
+                            ir,
+                            extra_stmts.remove(&node_id).unwrap_or_default(),
+                        );
+                        Some((node_id, node))
+                    } else {
+                        None
+                    }
                 })
                 .collect::<HashMap<_, _>>(),
             std::mem::take(&mut self.clusters)
                 .into_iter()
-                .map(|(cluster_id, cluster)| {
-                    cluster.instantiate(
-                        env,
-                        &mut meta,
-                        compiled.remove(&cluster_id).unwrap(),
-                        extra_stmts.remove(&cluster_id).unwrap_or_default(),
-                    );
-                    (cluster_id, cluster)
+                .filter_map(|(cluster_id, cluster)| {
+                    if let Some(ir) = compiled.remove(&cluster_id) {
+                        cluster.instantiate(
+                            env,
+                            &mut meta,
+                            ir,
+                            extra_stmts.remove(&cluster_id).unwrap_or_default(),
+                        );
+                        Some((cluster_id, cluster))
+                    } else {
+                        None
+                    }
                 })
                 .collect::<HashMap<_, _>>(),
             std::mem::take(&mut self.externals)
