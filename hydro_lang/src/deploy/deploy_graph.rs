@@ -370,7 +370,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn cluster_ids(
         _env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a Vec<u32>, ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
         cluster_members(RuntimeData::new("__hydro_lang_trybuild_cli"), of_cluster)
     }
 
