@@ -51,9 +51,7 @@ impl Platform {
             Platform::Tokio => quote! { #[tokio::test ] },
             Platform::AsyncStd => quote! { #[async_std::test] },
             Platform::Dfir => quote! { #[dfir_rs::test] },
-            Platform::Wasm => {
-                quote! { #[wasm_bindgen_test::wasm_bindgen_test] }
-            }
+            Platform::Wasm => quote! { #[wasm_bindgen_test::wasm_bindgen_test] },
             Platform::EnvLogging | Platform::EnvTracing => Default::default(),
         }
     }

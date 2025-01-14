@@ -11,11 +11,7 @@ fn test_all() {
     let examples_files = read_dir("examples/")
         .unwrap()
         .flat_map(Result::ok)
-        .filter(|entry| {
-            entry
-                .file_type()
-                .map_or(false, |file_type| file_type.is_file())
-        })
+        .filter(|entry| entry.file_type().is_ok_and(|file_type| file_type.is_file()))
         .map(|entry| entry.file_name())
         .map(|filename| filename.into_string().unwrap())
         .filter(|filename| filename.starts_with("example_") && filename.ends_with(".rs"))
