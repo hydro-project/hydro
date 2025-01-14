@@ -321,7 +321,6 @@ pub fn gen_final_helper() {
     )
     .unwrap();
 
-    println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-changed=src");
 }
@@ -329,8 +328,13 @@ pub fn gen_final_helper() {
 #[macro_export]
 macro_rules! gen_final {
     () => {
-        #[allow(unexpected_cfgs)]
+        #[allow(
+            unexpected_cfgs,
+            reason = "Consumer crates may optionally add the `stageleft_devel` feature."
+        )]
         {
+            println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
+
             #[cfg(not(feature = "stageleft_devel"))]
             $crate::gen_final_helper()
         }
