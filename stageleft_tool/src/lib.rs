@@ -330,7 +330,9 @@ pub fn gen_final_helper() {
 macro_rules! gen_final {
     () => {
         #[allow(unexpected_cfgs)]
-        #[cfg(not(feature = "stageleft_devel"))]
-        $crate::gen_final_helper()
+        {
+            #[cfg(not(feature = "stageleft_devel"))]
+            $crate::gen_final_helper()
+        }
     };
 }
