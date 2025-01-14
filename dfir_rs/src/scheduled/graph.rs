@@ -23,7 +23,7 @@ use super::state::StateHandle;
 use super::subgraph::Subgraph;
 use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
@@ -31,8 +31,11 @@ use crate::Never;
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
     pub(super) context: Context,
+
+    // Depth of loop (zero for top-level).
+    loop_depth: SlotVec<LoopTag, usize>,
     // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
-    pub(super) loop_parent: SlotVec<LoopTag, Option<LoopId>>,
+    loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
 
@@ -588,14 +591,32 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'static + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
-        self.add_subgraph_stratified(name, 0, recv_ports, send_ports, false, None, subgraph)
+        self.add_subgraph_stratified(name, 0, recv_ports, send_ports, false, subgraph)
     }
 
     /// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
-    ///
-    /// TODO(mingwei): add example in doc.
-    #[expect(clippy::too_many_arguments, reason = "TODO(mingwei)")]
     pub fn add_subgraph_stratified<Name, R, W, F>(
+        &mut self,
+        name: Name,
+        stratum: usize,
+        recv_ports: R,
+        send_ports: W,
+        laziness: bool,
+        subgraph: F,
+    ) -> SubgraphId
+    where
+        Name: Into<Cow<'static, str>>,
+        R: 'static + PortList<RECV>,
+        W: 'static + PortList<SEND>,
+        F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
+    {
+        self.add_subgraph_full(
+            name, stratum, recv_ports, send_ports, laziness, None, subgraph,
+        )
+    }
+
+    /// Adds a new compiled subgraph with all options.
+    pub fn add_subgraph_full<Name, R, W, F>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -790,8 +811,13 @@ impl<'a> Dfir<'a> {
 
     /// Adds a new loop with the given parent (or `None` for top-level). Returns a loop ID which
     /// is used in [`Self::add_subgraph_stratified`] or for nested loops.
+    ///
+    /// TODO(mingwei): add loop names to ensure traceability while debugging?
     pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
-        self.loop_parent.insert(parent)
+        let depth = parent.map_or(0, |p| self.loop_depth[p] + 1);
+        let loop_id = self.loop_depth.insert(depth);
+        self.loop_parent.insert(loop_id, parent);
+        loop_id
     }
 }
 
