@@ -28,9 +28,9 @@ pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
 
 pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
-pub type Namespaces<C> = NamespaceMap<RowValue<C>>;
+pub type Namespaces<C> = MapUnionHashMap<Key, DomPair<C, SetUnion<VecSet<String>>>>; // NamespaceMap<RowValue<C>>;
 
-pub type SingleWrite<C> = MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
+pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnionSingletonSet<String>>>; // MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
 
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
@@ -47,9 +47,9 @@ pub type Clock = Max<u64>;
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
 pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
-    let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
-
-    MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
+    MapUnionSingletonMap::new(SingletonMap::from((key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))
+    //let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
+    //MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///
