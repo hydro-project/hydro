@@ -94,7 +94,7 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
         (
             None,
             Some(
-                quote! { unsafe { ::std::mem::transmute::<_, &::std::vec::Vec<#root::ClusterId<#c_type>>>(#ident) } },
+                quote! { unsafe { ::std::mem::transmute::<_, &[#root::ClusterId<#c_type>]>(#ident) } },
             ),
         )
     }
