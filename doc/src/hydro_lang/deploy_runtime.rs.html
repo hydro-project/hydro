@@ -154,6 +154,11 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>dfir_rs::util::deploy::{
@@ -172,9 +177,14 @@
 <span class="kw">pub fn </span>cluster_members(
     cli: RuntimeData&lt;<span class="kw-2">&amp;</span>DeployPorts&lt;HydroflowPlusMeta&gt;&gt;,
     of_cluster: usize,
-) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="kw-2">&amp;</span>Vec&lt;u32&gt;, ()&gt; + Copy {
-    <span class="macro">q!</span>(cli.meta.clusters.get(<span class="kw-2">&amp;</span>of_cluster).unwrap())
-}
+) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="kw-2">&amp;</span>[u32], ()&gt; + Copy {
+    <span class="macro">q!</span>(cli
+        .meta
+        .clusters
+        .get(<span class="kw-2">&amp;</span>of_cluster)
+        .map(|v| v.as_slice())
+        .unwrap_or(<span class="kw-2">&amp;</span>[])) <span class="comment">// we default to empty slice because this is the scenario where the cluster is unused in the graph
+</span>}
 
 <span class="kw">pub fn </span>cluster_self_id(
     cli: RuntimeData&lt;<span class="kw-2">&amp;</span>DeployPorts&lt;HydroflowPlusMeta&gt;&gt;,

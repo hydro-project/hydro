@@ -45,7 +45,7 @@
         .filter(<span class="kw">move </span>|<span class="kw-2">&amp;</span>node_id| {
             graph
                 .node_op_inst(node_id)
-                .map_or(<span class="bool-val">false</span>, |op_inst| op_name == op_inst.op_constraints.name)
+                .is_some_and(|op_inst| op_name == op_inst.op_constraints.name)
         })
         .filter(|<span class="kw-2">&amp;</span>node_id| {
             <span class="number">1 </span>== graph.node_degree_in(node_id) &amp;&amp; <span class="number">1 </span>== graph.node_degree_out(node_id)

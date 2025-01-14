@@ -413,7 +413,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>shared = strong.borrow_mut();
                 <span class="kw">if </span>shared
                     .capacity
-                    .map_or(<span class="bool-val">false</span>, |cap| cap.get() &lt;= shared.buffer.len())
+                    .is_some_and(|cap| cap.get() &lt;= shared.buffer.len())
                 {
                     <span class="comment">// Full.
                     </span>shared.send_wakers.push(ctx.waker().clone());
@@ -441,7 +441,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>shared = strong.borrow_mut();
             <span class="kw">if </span>shared
                 .capacity
-                .map_or(<span class="bool-val">false</span>, |cap| cap.get() &lt;= shared.buffer.len())
+                .is_some_and(|cap| cap.get() &lt;= shared.buffer.len())
             {
                 <span class="prelude-val">Err</span>(TrySendError::Full(item))
             } <span class="kw">else </span>{
@@ -492,7 +492,7 @@
             <span class="kw">let </span><span class="kw-2">mut </span>shared = strong.borrow_mut();
             <span class="kw">if </span>shared
                 .capacity
-                .map_or(<span class="bool-val">false</span>, |cap| cap.get() &lt;= shared.buffer.len())
+                .is_some_and(|cap| cap.get() &lt;= shared.buffer.len())
             {
                 <span class="comment">// Full.
                 </span>shared.send_wakers.push(ctx.waker().clone());

@@ -484,7 +484,7 @@
     <span class="kw">fn </span>cluster_ids(
         env: <span class="kw-2">&amp;</span><span class="self">Self</span>::CompileEnv,
         of_cluster: usize,
-    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;u32&gt;, ()&gt; + Copy + <span class="lifetime">'a </span>{
+    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[u32], ()&gt; + Copy + <span class="lifetime">'a </span>{
         <span class="kw">crate</span>::deploy_runtime::cluster_members(<span class="kw-2">*</span>env, of_cluster)
     }
 

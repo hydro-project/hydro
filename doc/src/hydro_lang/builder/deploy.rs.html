@@ -317,6 +317,12 @@
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
 <a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -435,8 +441,6 @@
     }
 
     <span class="kw">fn </span>extra_stmts(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>&lt;D <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::CompileEnv) -&gt; BTreeMap&lt;usize, Vec&lt;syn::Stmt&gt;&gt; {
-        <span class="kw">let </span>all_locations_count = <span class="self">self</span>.nodes.len() + <span class="self">self</span>.clusters.len();
-
         <span class="kw">let </span><span class="kw-2">mut </span>extra_stmts: BTreeMap&lt;usize, Vec&lt;syn::Stmt&gt;&gt; = BTreeMap::new();
         <span class="kw">for </span><span class="kw-2">&amp;</span>c_id <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
             <span class="kw">let </span>self_id_ident = syn::Ident::new(
@@ -451,14 +455,14 @@
                     <span class="kw">let </span>#self_id_ident = #self_id_expr;
                 });
 
-            <span class="kw">for </span>other_location <span class="kw">in </span><span class="number">0</span>..all_locations_count {
+            <span class="kw">for </span>other_location <span class="kw">in </span><span class="self">self</span>.nodes.keys().chain(<span class="self">self</span>.clusters.keys()) {
                 <span class="kw">let </span>other_id_ident = syn::Ident::new(
                     <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_lang_cluster_ids_{}"</span>, c_id),
                     Span::call_site(),
                 );
                 <span class="kw">let </span>other_id_expr = D::cluster_ids(env, c_id).splice_untyped();
                 extra_stmts
-                    .entry(other_location)
+                    .entry(<span class="kw-2">*</span>other_location)
                     .or_default()
                     .push(<span class="macro">syn::parse_quote!</span> {
                         <span class="kw">let </span>#other_id_ident = #other_id_expr;
@@ -495,26 +499,34 @@
         <span class="kw">let </span>(<span class="kw-2">mut </span>processes, <span class="kw-2">mut </span>clusters, <span class="kw-2">mut </span>externals) = (
             std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.nodes)
                 .into_iter()
-                .map(|(node_id, node)| {
-                    node.instantiate(
-                        env,
-                        <span class="kw-2">&amp;mut </span>meta,
-                        compiled.remove(<span class="kw-2">&amp;</span>node_id).unwrap(),
-                        extra_stmts.remove(<span class="kw-2">&amp;</span>node_id).unwrap_or_default(),
-                    );
-                    (node_id, node)
+                .filter_map(|(node_id, node)| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ir) = compiled.remove(<span class="kw-2">&amp;</span>node_id) {
+                        node.instantiate(
+                            env,
+                            <span class="kw-2">&amp;mut </span>meta,
+                            ir,
+                            extra_stmts.remove(<span class="kw-2">&amp;</span>node_id).unwrap_or_default(),
+                        );
+                        <span class="prelude-val">Some</span>((node_id, node))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
                 })
                 .collect::&lt;HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
             std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.clusters)
                 .into_iter()
-                .map(|(cluster_id, cluster)| {
-                    cluster.instantiate(
-                        env,
-                        <span class="kw-2">&amp;mut </span>meta,
-                        compiled.remove(<span class="kw-2">&amp;</span>cluster_id).unwrap(),
-                        extra_stmts.remove(<span class="kw-2">&amp;</span>cluster_id).unwrap_or_default(),
-                    );
-                    (cluster_id, cluster)
+                .filter_map(|(cluster_id, cluster)| {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ir) = compiled.remove(<span class="kw-2">&amp;</span>cluster_id) {
+                        cluster.instantiate(
+                            env,
+                            <span class="kw-2">&amp;mut </span>meta,
+                            ir,
+                            extra_stmts.remove(<span class="kw-2">&amp;</span>cluster_id).unwrap_or_default(),
+                        );
+                        <span class="prelude-val">Some</span>((cluster_id, cluster))
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}
                 })
                 .collect::&lt;HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
             std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.externals)
