@@ -15,7 +15,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 use crate::buffer_pool::AutoReturnBuffer;
-use crate::model::{Clock, Namespaces};
+use crate::model::{Clock, Namespaces, SingleWrite};
 use crate::KeyParseError::InvalidNamespace;
 
 /// The namespace of the key of an entry in the key-value store.
@@ -77,6 +77,17 @@ pub struct Key {
     pub table: TableName,
     /// The key of the row in the table.
     pub row_key: RowKey,
+}
+
+
+impl Key {
+    pub fn new(namespace: Namespace, table: TableName, row_key: RowKey) -> Self {
+        Key {
+            namespace,
+            table,
+            row_key,
+        }
+    }
 }
 
 impl FromStr for Key {
@@ -163,7 +174,7 @@ pub enum GossipMessage {
     Gossip {
         message_id: String,
         member_id: String,
-        //writes: Namespaces<Clock>,
+        writes: Vec<SingleWrite<Clock>>,
     },
     /// An acknowledgement message sent by a peer in response to a Gossip message, to indicate
     /// that it hasn't seen some of the writes in the Gossip message before.

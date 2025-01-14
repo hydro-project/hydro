@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use dfir_rs::DemuxEnum;
 
-use crate::model::{Clock, Namespaces};
+use crate::model::{Clock, Namespaces, SingleWrite};
 use crate::{ClientRequest, GossipMessage, Key};
 use crate::buffer_pool::AutoReturnBuffer;
 
@@ -36,7 +36,7 @@ pub enum GossipRequestWithAddress<A> {
     Gossip {
         message_id: String,
         member_id: String,
-        // writes: Namespaces<Clock>,
+        writes: Vec<SingleWrite<Clock>>,
         addr: A,
     },
     /// An ack request with the message id and the address of the client.
@@ -60,11 +60,11 @@ impl<A> GossipRequestWithAddress<A> {
             GossipMessage::Gossip {
                 message_id,
                 member_id,
-//                writes,
+                writes,
             } => Self::Gossip {
                 message_id,
                 member_id,
-//                writes,
+                writes,
                 addr,
             },
 

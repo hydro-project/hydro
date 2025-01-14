@@ -11,7 +11,7 @@ use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{Lattice, PairBimorphism};
 use dfir_rs::scheduled::graph::Dfir;
 use lattices::set_union::SetUnion;
-use lattices::{IsTop, Max, Pair};
+use lattices::{IsTop, Max, Pair, Point, WithBot};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::seq::IteratorRandom;
@@ -24,9 +24,7 @@ use tracing::{info, trace};
 use warp::hyper::body::HttpBody;
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
-use crate::model::{
-    upsert_row, Clock, Namespaces, RowKey, RowValue
-};
+use crate::model::{upsert_row, Clock, Namespaces, RowKey, RowValue, SingleWrite, TableMap};
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
 use crate::{buffer_pool, ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
@@ -48,7 +46,7 @@ where
 
 #[derive(Debug, Clone, Lattice)]
 pub struct InfectingWrite {
-    write: Namespaces<Clock>,
+    write: WithBot<Point<SingleWrite<Clock>, ()>>,
     members: BoundedSetLattice<MemberId, 2>,
 }
 
@@ -141,8 +139,8 @@ where
             });
 
         // Setup member metadata for this process.
-        // on_start -> map(|_| upsert_row(Clock::new(0), Namespace::System, "members".to_string(), my_member_id.clone(), serde_json::to_string(&member_info).unwrap()))
-        //     -> writes;
+        on_start -> map(|_| upsert_row(Clock::new(0), Key::new(Namespace::System, "members".to_string(), my_member_id.clone()), serde_json::to_string(&member_info).unwrap()))
+            -> writes;
 
         // client_out =
         //     inspect(|(resp, addr)| trace!("{:?}: Sending response: {:?} to {:?}.", context.current_tick(), resp, addr))
@@ -197,7 +195,7 @@ where
 
         incoming_gossip_messages = gossip_in[Gossip]
             -> inspect(|request| trace!("{:?}: Received gossip request: {:?}.", context.current_tick(), request))
-            -> null();
+            -> tee();
 
         gossip_in[Ack]
             -> inspect(|request| trace!("{:?}: Received gossip ack: {:?}.", context.current_tick(), request))
@@ -212,58 +210,52 @@ where
 
         gossip_out = union() -> dest_sink(gossip_outputs);
 
-        // incoming_gossip_messages
-        //     -> map(|(_msg_id, _member_id, writes, _addr)| writes )
-        //     -> writes;
-        //
-        // gossip_processing_pipeline = incoming_gossip_messages
-        //     -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, Namespaces<Max<u64>>, Addr)| {
-        //         let namespaces = &#namespaces;
-        //         let all_data: &HashMap<Namespace, TableMap<RowValue<Clock>>> = namespaces.as_reveal_ref();
-        //         let possible_new_data: &HashMap<Namespace, TableMap<RowValue<Max<u64>>>>= writes.as_reveal_ref();
-        //
-        //         // Check if any of the data is new
-        //         /* TODO: This logic is duplicated in MapUnion::Merge and ideally should be accessed
-        //            from the pass-through streaming output from `state`. See
-        //            https://www.notion.so/hydro-project/Proposal-for-State-API-10a2a586262f8080b981d1a2948a69ac
-        //            for more. */
-        //         let gossip_has_new_data = possible_new_data.iter()
-        //             .flat_map(|(namespace, tables)| {
-        //                 tables.as_reveal_ref().iter().flat_map(move |(table, rows)|{
-        //                     rows.as_reveal_ref().iter().map(move |(row_key, row_value)| (namespace, table, row_key, row_value.as_reveal_ref().0.as_reveal_ref()))
-        //                 })
-        //             })
-        //             .any(|(ns,table, row_key, new_ts)| {
-        //                 let existing_tables = all_data.get(ns);
-        //                 let existing_rows = existing_tables.and_then(|tables| tables.as_reveal_ref().get(table));
-        //                 let existing_row = existing_rows.and_then(|rows| rows.as_reveal_ref().get(row_key));
-        //                 let existing_ts = existing_row.map(|row| row.as_reveal_ref().0.as_reveal_ref());
-        //
-        //                 if let Some(existing_ts) = existing_ts {
-        //                     trace!("Comparing timestamps: {:?} vs {:?}", new_ts, existing_ts);
-        //                     new_ts > existing_ts
-        //                 } else {
-        //                     true
-        //                 }
-        //             });
-        //
-        //         if gossip_has_new_data {
-        //             (Ack { message_id: msg_id, member_id: member_id_2.clone()}, sender_address, Some(writes))
-        //         } else {
-        //             (Nack { message_id: msg_id, member_id: member_id_3.clone()}, sender_address, None)
-        //         }
-        //      })
-        //     -> tee();
+        incoming_gossip_messages
+            -> flat_map(|(_msg_id, _member_id, writes, _addr) : (_, _, Vec<SingleWrite<Clock>>,_)| writes.into_iter() )
+            -> writes;
 
-        // gossip_processing_pipeline
-        //     -> map(|(response, address, _writes)| (response, address))
-        //     -> inspect( |(msg, addr)| trace!("{:?}: Sending gossip response: {:?} to {:?}.", context.current_tick(), msg, addr))
-        //     -> gossip_out;
-        //
-        // gossip_processing_pipeline
-        //     -> filter(|(_, _, writes)| writes.is_some())
-        //     -> map(|(_, _, writes)| writes.unwrap())
-        //     -> writes;
+        gossip_processing_pipeline = incoming_gossip_messages
+            -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, Vec<SingleWrite<Clock>>, Addr)| {
+                let namespaces = &#namespaces;
+                let all_data = namespaces.as_reveal_ref();
+
+                // Check if any of the data is new
+                /* TODO: This logic is duplicated in MapUnion::Merge and ideally should be accessed
+                   from the pass-through streaming output from `state`. See
+                   https://www.notion.so/hydro-project/Proposal-for-State-API-10a2a586262f8080b981d1a2948a69ac
+                   for more. */
+                let gossip_has_new_data = writes.iter()
+                    .any(|single_write| {
+
+                        let single_write_inner = single_write.as_reveal_ref();
+                        let new_ts = single_write_inner.1.as_reveal_ref().0;
+                        let existing_ts = &all_data.get(&single_write_inner.0).map(|it| it.key);
+
+                        if let Some(existing_ts) = existing_ts {
+                            trace!("Comparing timestamps: {:?} vs {:?}", new_ts, existing_ts);
+                            new_ts > existing_ts
+                        } else {
+                            true
+                        }
+                    });
+
+                if gossip_has_new_data {
+                    (Ack { message_id: msg_id, member_id: member_id_2.clone()}, sender_address, Some(writes))
+                } else {
+                    (Nack { message_id: msg_id, member_id: member_id_3.clone()}, sender_address, None)
+                }
+             })
+            -> tee();
+
+        gossip_processing_pipeline
+            -> map(|(response, address, _writes)| (response, address))
+            -> inspect( |(msg, addr)| trace!("{:?}: Sending gossip response: {:?} to {:?}.", context.current_tick(), msg, addr))
+            -> gossip_out;
+
+        gossip_processing_pipeline
+            -> filter_map(|(_, _, writes)| writes)
+            -> flat_map(|writes : Vec<SingleWrite<Clock>>| writes.into_iter())
+            -> writes;
 
         writes = union();
 
@@ -310,18 +302,18 @@ where
         //         response
         //     }) -> client_out;
 
-        // new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
+        new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
         // Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
         infecting_writes = union() -> state::<'static, MapUnionHashMap<MessageId, InfectingWrite>>();
-        //
-        // new_writes -> map(|write| {
-        //     // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
-        //     // have a hash implementation. So we just generate a GUID identifier for the write
-        //     // for now.
-        //     let id = uuid::Uuid::new_v4().to_string();
-        //     MapUnionSingletonMap::new_from((id, InfectingWrite { write, members: BoundedSetLattice::new() }))
-        // }) -> infecting_writes;
+
+        new_writes -> map(|write| {
+            // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
+            // have a hash implementation. So we just generate a GUID identifier for the write
+            // for now.
+            let id = uuid::Uuid::new_v4().to_string();
+            MapUnionSingletonMap::new_from((id, InfectingWrite { write: WithBot::new(Some(Point::new(write))), members: BoundedSetLattice::new() }))
+        }) -> infecting_writes;
 
         // gossip_trigger = source_stream(gossip_trigger);
 

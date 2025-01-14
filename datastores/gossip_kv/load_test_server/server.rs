@@ -74,15 +74,6 @@ fn run_server(
             .build();
 
         rt.block_on(async {
-            // Disabled gossip for now
-            // let gossip_frequency = opts.gossip_frequency;
-            // local.spawn_local(async move {
-            //     loop {
-            //         tokio::time::sleep(gossip_frequency).await;
-            //         gossip_trigger_tx.send(()).unwrap();
-            //     }
-            // });
-
             let local = task::LocalSet::new();
             // local.spawn_local(async move {
             //     // let key_master: Key = "/usr/table/key".parse().unwrap();
@@ -95,6 +86,15 @@ fn run_server(
             //         SETS_SENT.inc();
             //     }
             // });
+
+            // Gossip trigger
+            let gossip_frequency = opts.gossip_frequency;
+            local.spawn_local(async move {
+                loop {
+                    tokio::time::sleep(gossip_frequency).await;
+                    gossip_trigger_tx.send(()).unwrap();
+                }
+            });
 
             // Networking
             local.spawn_local(async move {
