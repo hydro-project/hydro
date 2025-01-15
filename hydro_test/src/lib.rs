@@ -5,9 +5,9 @@ pub mod distributed;
 
 #[doc(hidden)]
 #[stageleft::runtime]
+#[cfg(doctest)]
 mod docs {
-    #[doc = include_str!("../../docs/docs/hydro/consistency.md")]
-    mod consistency {}
+    dfir_macro::doctest_markdown_glob!("docs/docs/hydro/**/*.md*");
 }
 
 #[stageleft::runtime]
