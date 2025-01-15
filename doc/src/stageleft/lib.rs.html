@@ -493,6 +493,8 @@
 <a href="#493" id="493">493</a>
 <a href="#494" id="494">494</a>
 <a href="#495" id="495">495</a>
+<a href="#496" id="496">496</a>
+<a href="#497" id="497">497</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 <span class="kw">use </span>std::marker::PhantomData;
 
@@ -549,17 +551,18 @@
             <span class="string">"lib_macro.rs"
         </span>));
 
-        <span class="attr">#[<span class="macro-nonterminal">cfg</span>(not(feature = <span class="string">"stageleft_devel"</span>))]
-        #[cfg(not(stageleft_macro))]
+        <span class="attr">#[<span class="macro-nonterminal">cfg</span>(not(stageleft_macro))]
         #[doc(hidden)]
         #[allow(
             unused,
             ambiguous_glob_reexports,
+            unexpected_cfgs,
             clippy::suspicious_else_formatting,
             reason = <span class="string">"generated code"
         </span>)]
         </span><span class="kw">pub mod </span>__staged {
-            <span class="macro">include!</span>(<span class="macro">concat!</span>(
+            <span class="attr">#[cfg(not(feature = <span class="string">"stageleft_devel"</span>))]
+            </span><span class="macro">include!</span>(<span class="macro">concat!</span>(
                 <span class="macro">env!</span>(<span class="string">"OUT_DIR"</span>),
                 <span class="macro-nonterminal">$</span><span class="macro">crate::PATH_SEPARATOR!</span>(),
                 <span class="string">"lib_pub.rs"
@@ -571,17 +574,18 @@
 <span class="attr">#[<span class="macro-nonterminal">macro_export</span>]
 </span><span class="macro">macro_rules!</span> stageleft_no_entry_crate {
     () =&gt; {
-        <span class="attr">#[cfg(not(feature = <span class="string">"stageleft_devel"</span>))]
-        #[doc(hidden)]
+        <span class="attr">#[doc(hidden)]
         #[allow(
             unused,
             ambiguous_glob_reexports,
+            unexpected_cfgs,
             clippy::suspicious_else_formatting,
             clippy::type_complexity,
             reason = <span class="string">"generated code"
         </span>)]
         </span><span class="kw">pub mod </span>__staged {
-            <span class="macro">include!</span>(<span class="macro">concat!</span>(
+            <span class="attr">#[cfg(not(feature = <span class="string">"stageleft_devel"</span>))]
+            </span><span class="macro">include!</span>(<span class="macro">concat!</span>(
                 <span class="macro">env!</span>(<span class="string">"OUT_DIR"</span>),
                 <span class="macro-nonterminal">$</span><span class="macro">crate::PATH_SEPARATOR!</span>(),
                 <span class="string">"lib_pub.rs"
