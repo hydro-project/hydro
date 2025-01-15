@@ -300,10 +300,10 @@ impl<'a> Dfir<'a> {
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
                 self.context.is_first_loop_iteration = self.context.is_first_run_this_tick
                     || (sg_data.last_loop_counter < loop_counter);
-                sg_data.last_loop_counter = loop_counter;
 
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
                 sg_data.last_tick_run_in = Some(current_tick);
+                sg_data.last_loop_counter = loop_counter;
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -319,7 +319,7 @@ impl<'a> Dfir<'a> {
                         // Add subgraph to stratum queue if it is not already scheduled.
                         if !succ_sg_data.is_scheduled.replace(true) {
                             self.context.stratum_queues[succ_sg_data.stratum]
-                                .push((succ_sg_data.loop_depth, succ_id));
+                                .push(succ_sg_data.loop_depth, succ_id);
                         }
                     }
                 }
@@ -472,7 +472,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 enqueued_count += 1;
             }
             if is_external {
@@ -510,7 +510,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 count += 1;
             }
             if is_external {
@@ -555,7 +555,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 count += 1;
             }
             if is_external {
@@ -586,7 +586,7 @@ impl<'a> Dfir<'a> {
         let sg_data = &self.subgraphs[sg_id];
         let already_scheduled = sg_data.is_scheduled.replace(true);
         if !already_scheduled {
-            self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
+            self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
             true
         } else {
             false
@@ -674,7 +674,7 @@ impl<'a> Dfir<'a> {
             )
         });
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push((loop_depth, sg_id));
+        self.context.stratum_queues[stratum].push(loop_depth, sg_id);
 
         sg_id
     }
@@ -770,7 +770,7 @@ impl<'a> Dfir<'a> {
         });
 
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push((0, sg_id));
+        self.context.stratum_queues[stratum].push(0, sg_id);
 
         sg_id
     }

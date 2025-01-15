@@ -3,7 +3,6 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
-use std::collections::BinaryHeap;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
@@ -16,6 +15,7 @@ use web_time::SystemTime;
 use super::state::StateHandle;
 use super::{StateId, SubgraphId};
 use crate::scheduled::ticks::TickInstant;
+use crate::util::indexed_queue::IndexedQueue;
 
 /// The main state and scheduler of the Hydroflow instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
@@ -29,7 +29,7 @@ pub struct Context {
     /// TODO(mingwei): separate scheduler into its own struct/trait?
     /// Index is stratum, value is FIFO queue for that stratum.
     /// PriorityQueue, usize is depth. Larger/deeper is higher priority.
-    pub(super) stratum_queues: Vec<BinaryHeap<(usize, SubgraphId)>>,
+    pub(super) stratum_queues: Vec<IndexedQueue<SubgraphId>>,
     /// Receive events, if second arg indicates if it is an external "important" event (true).
     pub(super) event_queue_recv: UnboundedReceiver<(SubgraphId, bool)>,
     /// If external events or data can justify starting the next tick.

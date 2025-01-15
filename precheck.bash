@@ -16,7 +16,7 @@ cargo clippy --all-targets --features python -- -D warnings
 [ "$FULL" = false ] || cargo check --all-targets --no-default-features
 
 INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test --all-targets --no-fail-fast --workspace --exclude 'hydro_*' --features python
-[ "$FULL" = false ] || INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test --all-targets --no-fail-fast -p 'hydro_*' --features python
+[ "$FULL" = false ] || INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test --all-targets --no-fail-fast -p 'hydro_*'
 cargo test --doc
 [ "$FULL" = false ] || RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps
 
