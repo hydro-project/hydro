@@ -35,7 +35,7 @@ We'll write our first dataflow in `src/first_ten.rs`. This program will run on a
 You'll notice that the arguments to `source_iter` and `for_each` are wrapped in `q!` macros. The top-level Hydro program (`first_ten`) is responsible for setting up the dataflow structure, whereas the `q!` macro is used to mark the Rust code that will be executed at **runtime**. Generally, runtime code in a `q!` macro is a snippet of Rust code that defines a static source of data or a closure.
 
 If you forget to wrap a block in `q!` when that is required, you'll see an error like:
-```
+```text
 closure is expected to take 5 arguments, but it takes X arguments
 ```
 
