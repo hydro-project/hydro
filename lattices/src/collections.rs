@@ -72,17 +72,16 @@ impl<T> From<Vec<T>> for VecSet<T> {
     }
 }
 
-impl <T> FromIterator<T> for VecSet<T> {
+impl<T> FromIterator<T> for VecSet<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
-impl <T> Extend<T> for VecSet<T> {
+impl<T> Extend<T> for VecSet<T> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.0.extend(iter)
     }
-
 }
 
 impl<T> Collection for VecSet<T> {

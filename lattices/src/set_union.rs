@@ -7,6 +7,7 @@ use std::marker::PhantomData;
 use cc_traits::SimpleCollectionRef;
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
+
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, OptionSet, SingletonSet};
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
@@ -53,8 +54,8 @@ impl<Set> DeepReveal for SetUnion<Set> {
     }
 }
 
-
 lazy_static! {
+    #[allow(missing_docs)]
     pub static ref SET_MERGE_COUNTER: IntCounter =
         register_int_counter!("set_merges", "Counts the number of SetUnion Merges").unwrap();
 }

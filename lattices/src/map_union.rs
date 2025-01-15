@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use cc_traits::{Collection, GetKeyValue, Iter, MapInsert, SimpleCollectionRef};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
+
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{ArrayMap, MapMapValues, OptionMap, SingletonMap, VecMap};
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
@@ -60,10 +61,10 @@ where
 }
 
 lazy_static! {
+    #[allow(missing_docs)]
     pub static ref MAP_MERGE_COUNTER: IntCounter =
         register_int_counter!("map_merges", "Counts the number of MapUnion Merges").unwrap();
 }
-
 
 impl<MapSelf, MapOther, K, ValSelf, ValOther> Merge<MapUnion<MapOther>> for MapUnion<MapSelf>
 where

@@ -1,17 +1,15 @@
 use std::convert::Infallible;
-use std::num::{NonZeroU32, ParseFloatError};
+use std::num::ParseFloatError;
 use std::thread::sleep;
 use std::time::Duration;
 
 use clap::Parser;
 use dfir_rs::util::{unbounded_channel, unsync_channel};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
-use gossip_kv::{ClientRequest, GossipMessage, Key};
-use governor::{Quota, RateLimiter};
+use gossip_kv::GossipMessage;
 use lazy_static::lazy_static;
 use prometheus::{gather, register_int_counter, Encoder, IntCounter, TextEncoder};
-use tokio::sync::mpsc::{Sender, UnboundedSender};
-use tokio::sync::watch::Receiver;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::task;
 use tracing::{error, info, trace};
 use warp::Filter;
@@ -25,8 +23,6 @@ use dfir_rs::tokio_stream::StreamExt;
 use dfir_rs::util::unsync::mpsc::bounded;
 use gossip_kv::server::{server, SeedNode};
 use lattices::cc_traits::Iter;
-
-const UNKNOWN_ADDRESS: LoadTestAddress = 9999999999;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Parser)]
 struct Opts {
@@ -63,7 +59,7 @@ fn run_server(
             .build()
             .unwrap();
 
-        let (client_input_tx, client_input_rx) = bounded(1000);
+        let (_client_input_tx, client_input_rx) = bounded(1000);
 
         let (gossip_output_tx, mut gossip_output_rx) = unsync_channel(None);
 
@@ -75,17 +71,6 @@ fn run_server(
 
         rt.block_on(async {
             let local = task::LocalSet::new();
-            // local.spawn_local(async move {
-            //     // let key_master: Key = "/usr/table/key".parse().unwrap();
-            //     loop {
-            //         let request = ClientRequest::Set {
-            //             key: 100,
-            //             value: "FOOBAR".to_string(),
-            //         };
-            //         client_input_tx.send((request, UNKNOWN_ADDRESS)).await.unwrap();
-            //         SETS_SENT.inc();
-            //     }
-            // });
 
             // Gossip trigger
             let gossip_frequency = opts.gossip_frequency;

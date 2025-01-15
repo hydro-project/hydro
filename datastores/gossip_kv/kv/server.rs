@@ -1,35 +1,30 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::{Zip};
-use std::sync::Arc;
-use either::Either;
+
 use dfir_rs::dfir_syntax;
 use dfir_rs::futures::{Sink, Stream};
-use dfir_rs::itertools::{chain, Itertools};
-use dfir_rs::lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
-use dfir_rs::lattices::set_union::SetUnionHashSet;
-use dfir_rs::lattices::{Lattice, PairBimorphism};
+use dfir_rs::itertools::chain;
+use dfir_rs::lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
+use dfir_rs::lattices::Lattice;
 use dfir_rs::scheduled::graph::Dfir;
-use lattices::set_union::SetUnion;
-use lattices::{IsTop, Max, Pair, Point, WithBot};
+use either::Either;
+use lattices::{IsTop, Point, WithBot};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
+use rand::distributions::Alphanumeric;
 use rand::seq::IteratorRandom;
 use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
 use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
-use warp::hyper::body::HttpBody;
+
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
-use crate::model::{all_rows, upsert_row, Clock, Namespaces, RowKey, RowValue, SingleWrite, TableMap};
+use crate::model::{all_rows, upsert_row, Clock, Namespaces, SingleWrite};
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
-use crate::{buffer_pool, ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
-use crate::buffer_pool::BufferPool;
+use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
 
 /// A trait that represents an abstract network address. In production, this will typically be
 /// SocketAddr.
@@ -78,7 +73,7 @@ pub fn server<
     Addr,
 >(
     client_inputs: ClientInput,
-    client_outputs: ClientOutput,
+    _client_outputs: ClientOutput,
     gossip_inputs: GossipInput,
     gossip_outputs: GossipOutput,
     gossip_trigger: GossipTrigger,
@@ -87,12 +82,12 @@ pub fn server<
     seed_node_stream: SeedNodeStream,
 ) -> Dfir<'static>
 where
-    ClientInput: Stream<Item=(ClientRequest, Addr)> + Unpin + 'static,
-    ClientOutput: Sink<(ClientResponse, Addr), Error=ClientOutputError> + Unpin + 'static,
-    GossipInput: Stream<Item=(GossipMessage, Addr)> + Unpin + 'static,
-    GossipOutput: Sink<(GossipMessage, Addr), Error=GossipOutputError> + Unpin + 'static,
-    GossipTrigger: Stream<Item=()> + Unpin + 'static,
-    SeedNodeStream: Stream<Item=Vec<SeedNode<Addr>>> + Unpin + 'static,
+    ClientInput: Stream<Item = (ClientRequest, Addr)> + Unpin + 'static,
+    ClientOutput: Sink<(ClientResponse, Addr), Error = ClientOutputError> + Unpin + 'static,
+    GossipInput: Stream<Item = (GossipMessage, Addr)> + Unpin + 'static,
+    GossipOutput: Sink<(GossipMessage, Addr), Error = GossipOutputError> + Unpin + 'static,
+    GossipTrigger: Stream<Item = ()> + Unpin + 'static,
+    SeedNodeStream: Stream<Item = Vec<SeedNode<Addr>>> + Unpin + 'static,
     Addr: Address + DeserializeOwned + 'static,
     ClientOutputError: Debug + 'static,
     GossipOutputError: Debug + 'static,
@@ -108,11 +103,13 @@ where
     let zipf = Zipf::new(1_000_000, 4.0).unwrap();
     let mut rng = thread_rng();
 
-    let keys = (0..1_000_000).map(|i| Key {
-        namespace: Namespace::User,
-        table: "table".to_string(),
-        row_key: i.to_string(),
-    }).collect::<Vec<_>>();
+    let keys = (0..1_000_000)
+        .map(|i| Key {
+            namespace: Namespace::User,
+            table: "table".to_string(),
+            row_key: i.to_string(),
+        })
+        .collect::<Vec<_>>();
 
     let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
         .map(|_| zipf.sample(&mut rng) as u64)
@@ -121,10 +118,13 @@ where
 
     let pre_gen_values: Vec<_> = (0..1_000_000)
         .map(|_| {
-            //BufferPool::get_from_buffer_pool(&buffer_pool)
+            // BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
             let mut rng = thread_rng();
-            (0..1024).map(|_| rng.sample(Alphanumeric)).map(char::from).collect::<String>()
+            (0..1024)
+                .map(|_| rng.sample(Alphanumeric))
+                .map(char::from)
+                .collect::<String>()
         })
         .collect();
 
@@ -342,7 +342,7 @@ where
 
             let rights = seed_nodes.iter()
                 .filter(|seed_node| seed_node.id != member_id_5)
-                .map(|seed_node| Either::Right(seed_node));
+                .map(Either::Right);
 
 
             let combined = chain!(lefts, rights);
@@ -352,8 +352,8 @@ where
             let (chosen_peer_name, chosen_peer_address) = match chosen_peer {
                 Either::Left((key, value)) => {
                     // TODO: We could be reading multiple values here.
-                    let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.iter().next().unwrap();
-                    let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(&peer_info_value).unwrap();
+                    let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.first().unwrap();
+                    let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(peer_info_value).unwrap();
                     let peer_endpoint = peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint;
                     (key.row_key.clone(), peer_endpoint)
                 },

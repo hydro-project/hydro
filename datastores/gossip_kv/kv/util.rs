@@ -1,9 +1,7 @@
-use std::sync::Arc;
 use dfir_rs::DemuxEnum;
 
-use crate::model::{Clock, Namespaces, SingleWrite};
+use crate::model::{Clock, SingleWrite};
 use crate::{ClientRequest, GossipMessage, Key};
-use crate::buffer_pool::AutoReturnBuffer;
 
 /// Convenience enum to represent a client request with the address of the client. Makes it
 /// possible to use `demux_enum` in the surface syntax.

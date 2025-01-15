@@ -14,8 +14,8 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
-use crate::buffer_pool::AutoReturnBuffer;
-use crate::model::{Clock, Namespaces, SingleWrite};
+
+use crate::model::{Clock, SingleWrite};
 use crate::KeyParseError::InvalidNamespace;
 
 /// The namespace of the key of an entry in the key-value store.
@@ -78,7 +78,6 @@ pub struct Key {
     /// The key of the row in the table.
     pub row_key: RowKey,
 }
-
 
 impl Key {
     pub fn new(namespace: Namespace, table: TableName, row_key: RowKey) -> Self {
@@ -147,7 +146,7 @@ impl FromStr for Key {
 }
 
 /// A request from a client to the key-value store.
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum ClientRequest {
     /// A request to get the value of a key.
     Get { key: Key },
@@ -157,7 +156,7 @@ pub enum ClientRequest {
     Delete { key: Key },
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum ClientResponse {
     /// A response for a get request. The key is echoed back along with the value, if it exists.
     /// Multiple values are returned if there were concurrent writes to the key.
@@ -168,7 +167,7 @@ pub enum ClientResponse {
     Delete { success: bool },
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub enum GossipMessage {
     /// An "infecting message" to share updates with a peer.
     Gossip {

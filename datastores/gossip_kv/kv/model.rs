@@ -1,14 +1,11 @@
-use std::collections::{BTreeMap, Bound};
-use std::collections::btree_set::Range;
-use std::sync::Arc;
-use hashbrown::HashSet;
+use std::collections::Bound;
+
 use dfir_rs::lattices::map_union::MapUnionHashMap;
-use dfir_rs::lattices::set_union::SetUnionHashSet;
-use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
-use lattices::collections::{SingletonMap, SingletonSet, VecSet};
+use dfir_rs::lattices::{DomPair, Max};
+use lattices::collections::{SingletonMap, VecSet};
 use lattices::map_union::{MapUnionBTreeMap, MapUnionSingletonMap};
-use lattices::set_union::{SetUnion, SetUnionArray, SetUnionBTreeSet, SetUnionSingletonSet, SetUnionVec};
-use crate::buffer_pool::AutoReturnBuffer;
+use lattices::set_union::{SetUnion, SetUnionSingletonSet};
+
 use crate::{Key, Namespace};
 
 /// Primary key for entries in a table.
@@ -50,14 +47,20 @@ pub type Clock = Max<u64>;
 /// - `key`: Primary key of the row.
 /// - `val`: Row value.
 pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
-    MapUnionSingletonMap::new(SingletonMap::from((key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))
-    //let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
-    //MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
+    MapUnionSingletonMap::new(SingletonMap::from((
+        key,
+        DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)),
+    )))
+    // let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
+    // MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
 }
 
 /// Returns a range that should allow range queries to retrieve all rows in a particular table.
 pub fn all_rows(namespace: Namespace, table_name: TableName) -> (Bound<Key>, Bound<Key>) {
-    (Bound::Excluded(Key::new(namespace, table_name.clone(), "".to_string())), Bound::Excluded(Key::new(namespace, table_name, "\u{10FFFF}".to_string())))
+    (
+        Bound::Excluded(Key::new(namespace, table_name.clone(), "".to_string())),
+        Bound::Excluded(Key::new(namespace, table_name, "\u{10FFFF}".to_string())),
+    )
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///

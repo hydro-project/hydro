@@ -4,14 +4,13 @@ use super::{
 };
 use crate::{
     diagnostic::{Diagnostic, Level},
-    graph::OperatorInstance,
 };
 use quote::quote_spanned;
 use syn::Expr;
 /// > 0 input streams, 1 output stream
 ///
 /// > Arguments: A batch size per tick, and a zero argument closure to produce each item in the stream.
-/// Similar to `repeat_iter`, but generates the items by calling the supplied closure instead of cloning them from an input iter
+/// > Similar to `repeat_iter`, but generates the items by calling the supplied closure instead of cloning them from an input iter
 ///
 /// ```hydroflow
 ///     repeat_fn(10, || 7) -> for_each(|x| println!("{}", x));

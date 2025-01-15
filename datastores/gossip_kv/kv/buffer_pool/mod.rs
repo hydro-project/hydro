@@ -6,6 +6,7 @@ use std::rc::{Rc, Weak};
 pub use serialization::AutoReturnBufferDeserializer;
 
 /// It is slow to allocate and, in particular, free blocks of memory.
+///
 /// If we know ahead of time what size buffers we will need then we can pre-allocate a bunch of them and
 /// reuse those allocations.
 /// To comply with rust's type system, these buffers have shared owernship and interior mutability, so Rc<RefCell>
@@ -17,6 +18,7 @@ pub struct BufferPool<const SIZE: usize> {
 }
 
 /// This buffer will be returned to it's owning buffer pool when it is dropped.
+///
 /// In order to return it, it has to know where it is being returned to, this is the [collector] member.
 /// The collector pointer is weak because otherwise there would be a cycle between BufferPool and AutoReturnBufferInner
 /// and an AutoReturnBufferInner does not logically have any kind of ownership over the BufferPool shared pool.

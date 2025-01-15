@@ -1,6 +1,5 @@
 //! Hydroflow's operators
 
-
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::ops::{Bound, RangeBounds};
