@@ -556,7 +556,7 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
             value: None
         }));
 
-    (p_log_to_try_commit.union(p_log_holes), p_max_slot)
+    (p_log_to_try_commit.chain(p_log_holes), p_max_slot)
 }
 
 #[expect(
@@ -619,7 +619,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
             (slot, ballot),
             Some(payload)
         )))
-        .union(p_log_to_recommit.map(q!(|p2a| ((p2a.slot, p2a.ballot), p2a.value))))
+        .chain(p_log_to_recommit.map(q!(|p2a| ((p2a.slot, p2a.ballot), p2a.value))))
         .continue_if(p_is_leader)
         .all_ticks();
 
@@ -770,7 +770,7 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
             }
         ));
     let a_log = a_p2as_to_place_in_log
-        .union(a_new_checkpoint.into_stream())
+        .chain(a_new_checkpoint.into_stream())
         .all_ticks()
         .fold_commutative(
             q!(|| (None, HashMap::new())),

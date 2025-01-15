@@ -19,7 +19,7 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
     let (remaining_to_join_complete_cycle, remaining_to_join) =
         tick.cycle::<Stream<_, _, _, NoOrder>>();
 
-    let remaining_and_new: Stream<(K, M), Tick<L>, Bounded, _> = remaining_to_join.union(metadata);
+    let remaining_and_new: Stream<(K, M), Tick<L>, Bounded, _> = remaining_to_join.chain(metadata);
 
     let responses = unsafe {
         // SAFETY: because we persist the metadata, delays resulting from
