@@ -187,7 +187,7 @@ fn bench_client<'a>(
                 // SAFETY: we don't send a new write for the same key until the previous one is committed,
                 // so this contains only a single write per key, and we don't care about order
                 // across keys
-                c_new_payloads_when_committed.assume_ordering()
+                c_new_payloads_when_committed.assume_ordering::<TotalOrder>()
             })
             .all_ticks()
             .drop_timestamp(),
@@ -206,8 +206,8 @@ fn bench_client<'a>(
         .map(q!(|(key, _prev_count)| (key as usize, Instant::now())));
     let c_new_timers = c_timers
         .clone() // Update c_timers in tick+1 so we can record differences during this tick (to track latency)
-        .union(c_new_timers_when_leader_elected)
-        .union(c_updated_timers.clone())
+        .chain(c_new_timers_when_leader_elected)
+        .chain(c_updated_timers.clone())
         .reduce_keyed_commutative(q!(|curr_time, new_time| {
             if new_time > *curr_time {
                 *curr_time = new_time;
@@ -231,7 +231,7 @@ fn bench_client<'a>(
         .map(q!(|(_virtual_id, (prev_time, curr_time))| Some(
             curr_time.duration_since(prev_time)
         )))
-        .union(c_latency_reset.into_stream())
+        .chain(c_latency_reset.into_stream())
         .all_ticks()
         .flatten_ordered()
         .fold_commutative(

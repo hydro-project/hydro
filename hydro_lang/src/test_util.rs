@@ -10,8 +10,9 @@ pub async fn stream_transform_test<
     'a,
     O: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
+    OutOrder,
 >(
-    thunk: impl FnOnce(&Process<'a>) -> Stream<O, Process<'a>, Unbounded>,
+    thunk: impl FnOnce(&Process<'a>) -> Stream<O, Process<'a>, Unbounded, OutOrder>,
     check: impl FnOnce(Pin<Box<dyn dfir_rs::futures::Stream<Item = O>>>) -> C,
 ) {
     let mut deployment = hydro_deploy::Deployment::new();
