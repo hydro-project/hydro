@@ -1,14 +1,15 @@
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
 use dfir_rs::dfir_syntax;
 use dfir_rs::futures::{Sink, Stream};
-use dfir_rs::itertools::chain;
+use dfir_rs::itertools::{chain, Itertools};
 use dfir_rs::lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use dfir_rs::lattices::Lattice;
 use dfir_rs::scheduled::graph::Dfir;
 use either::Either;
-use lattices::{IsTop, Point, WithBot};
+use lattices::{IsTop, Pair, PairBimorphism, Point, WithBot};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::distributions::Alphanumeric;
@@ -18,13 +19,15 @@ use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
-
+use lattices::cc_traits::Iter;
+use lattices::map_union::KeyedBimorphism;
+use lattices::set_union::{SetUnion, SetUnionHashSet};
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
-use crate::model::{all_rows, upsert_row, Clock, Namespaces, SingleWrite};
+use crate::model::{all_rows, upsert_row, Clock, NamespaceMap, Namespaces, RowValue, SingleWrite};
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
-use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
+use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace, RowKey, TableName};
 
 /// A trait that represents an abstract network address. In production, this will typically be
 /// SocketAddr.
@@ -73,7 +76,7 @@ pub fn server<
     Addr,
 >(
     client_inputs: ClientInput,
-    _client_outputs: ClientOutput,
+    client_outputs: ClientOutput,
     gossip_inputs: GossipInput,
     gossip_outputs: GossipOutput,
     gossip_trigger: GossipTrigger,
@@ -143,9 +146,9 @@ where
         on_start -> map(|_| upsert_row(Clock::new(0), Key::new(Namespace::System, "members".to_string(), my_member_id.clone()), serde_json::to_string(&member_info).unwrap()))
             -> writes;
 
-        // client_out =
-        //     inspect(|(resp, addr)| trace!("{:?}: Sending response: {:?} to {:?}.", context.current_tick(), resp, addr))
-        //     -> dest_sink(client_outputs);
+        client_out =
+            inspect(|(resp, addr)| trace!("{:?}: Sending response: {:?} to {:?}.", context.current_tick(), resp, addr))
+            -> dest_sink(client_outputs);
 
         client_in = source_stream(client_inputs)
             -> map(|(msg, addr)| ClientRequestWithAddress::from_request_and_address(msg, addr))
@@ -153,18 +156,17 @@ where
 
         client_in[Get]
             -> inspect(|req| trace!("{:?}: Received Get request: {:?}.", context.current_tick(), req))
-            -> null();
-            // -> map(|(key, addr) : (Key, Addr)| {
-            //     let row = MapUnionHashMap::new_from([
-            //             (
-            //                 key.row_key,
-            //                 SetUnionHashSet::new_from([addr /* to respond with the result later*/])
-            //             ),
-            //     ]);
-            //     let table = MapUnionHashMap::new_from([(key.table, row)]);
-            //     MapUnionHashMap::new_from([(key.namespace, table)])
-            // })
-            // -> reads;
+            -> map(|(key, addr) : (Key, Addr)| {
+                let row = MapUnionHashMap::new_from([
+                        (
+                            key.row_key,
+                            SetUnionHashSet::new_from([addr /* to respond with the result later*/])
+                        ),
+                ]);
+                let table = MapUnionHashMap::new_from([(key.table, row)]);
+                MapUnionHashMap::new_from([(key.namespace, table)])
+            })
+            -> reads;
 
         client_in[Set]
             -> inspect(|request| trace!("{:?}: Received Set request: {:?}.", context.current_tick(), request))
@@ -265,43 +267,43 @@ where
         namespaces = state::<'static, Namespaces::<Clock>>();
         new_writes = namespaces -> tee(); // TODO: Use the output from here to generate NACKs / ACKs
 
-        // reads = state::<'tick, MapUnionHashMap<Namespace, MapUnionHashMap<TableName, MapUnionHashMap<RowKey, SetUnionHashSet<Addr>>>>>();
+        reads = state::<'tick, MapUnionHashMap<Namespace, MapUnionHashMap<TableName, MapUnionHashMap<RowKey, SetUnionHashSet<Addr>>>>>();
 
-        // new_writes -> [0]process_system_table_reads;
-        // reads -> [1]process_system_table_reads;
-        //
-        // process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism))), #namespaces, #reads)
-        //     -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydroflow/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
-        //     -> flat_map(|result: NamespaceMap<Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
-        //
-        //         let mut response: Vec<(ClientResponse, Addr)> = vec![];
-        //
-        //             let result = result.as_reveal_ref();
-        //
-        //             for (namespace, tables) in result.iter() {
-        //                 for (table_name, table) in tables.as_reveal_ref().iter() {
-        //                     for (row_key, join_results) in table.as_reveal_ref().iter() {
-        //                         let key = Key {
-        //                             namespace: *namespace,
-        //                             table: table_name.clone(),
-        //                             row_key: row_key.clone(),
-        //                         };
-        //
-        //                         let timestamped_values = join_results.as_reveal_ref().0;
-        //                         let all_values = timestamped_values.as_reveal_ref().1.as_reveal_ref();
-        //
-        //                         let all_addresses = join_results.as_reveal_ref().1.as_reveal_ref();
-        //                         let socket_addr = all_addresses.iter().find_or_first(|_| true).unwrap();
-        //
-        //                         response.push((
-        //                             ClientResponse::Get {key, value: all_values.clone()},
-        //                             socket_addr.clone(),
-        //                     ));
-        //                 }
-        //             }
-        //         }
-        //         response
-        //     }) -> client_out;
+        new_writes -> [0]process_system_table_reads;
+        reads -> [1]process_system_table_reads;
+
+        process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism))), #namespaces, #reads)
+            -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydroflow/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
+            -> flat_map(|result: NamespaceMap<Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
+
+                let mut response: Vec<(ClientResponse, Addr)> = vec![];
+
+                    let result = result.as_reveal_ref();
+
+                    for (namespace, tables) in result.iter() {
+                        for (table_name, table) in tables.as_reveal_ref().iter() {
+                            for (row_key, join_results) in table.as_reveal_ref().iter() {
+                                let key = Key {
+                                    namespace: *namespace,
+                                    table: table_name.clone(),
+                                    row_key: row_key.clone(),
+                                };
+
+                                let timestamped_values = join_results.as_reveal_ref().0;
+                                let all_values = timestamped_values.as_reveal_ref().1.as_reveal_ref();
+
+                                let all_addresses = join_results.as_reveal_ref().1.as_reveal_ref();
+                                let socket_addr = all_addresses.iter().find_or_first(|_| true).unwrap();
+
+                                response.push((
+                                    ClientResponse::Get {key, value: all_values.iter().map(ToOwned::to_owned).collect()},
+                                    socket_addr.clone(),
+                            ));
+                        }
+                    }
+                }
+                response
+            }) -> client_out;
 
         new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
