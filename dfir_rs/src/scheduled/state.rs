@@ -11,7 +11,7 @@ use super::StateId;
 /// If you need to store state handles in a data structure see [`StateHandleErased`] which hides
 /// the generic type parameter.
 #[must_use]
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct StateHandle<T> {
     pub(crate) state_id: StateId,
     pub(crate) _phantom: PhantomData<*mut T>,
@@ -32,7 +32,7 @@ impl<T> Clone for StateHandle<T> {
 /// Use [`StateHandle::<T>::try_from()`](StateHandle::try_from) to convert the `StateHandleErased`
 /// back into a `StateHandle<T>` of the given type `T`. If `T` is the wrong type then the original
 /// `StateHandleErased` will be returned as the `Err`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct StateHandleErased {
     state_id: StateId,
     type_id: TypeId,

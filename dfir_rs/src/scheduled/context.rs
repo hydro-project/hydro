@@ -238,7 +238,8 @@ impl Default for Context {
             current_tick_start: SystemTime::now(),
             subgraph_last_tick_run_in: None,
 
-            subgraph_id: SubgraphId(0),
+            // Will be re-set before use.
+            subgraph_id: SubgraphId::from_raw(0),
 
             tasks_to_spawn: Vec::new(),
             task_join_handles: Vec::new(),
