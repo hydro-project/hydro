@@ -1,3 +1,8 @@
+#![allow(
+    unexpected_cfgs,
+    reason = "https://github.com/BrynCooke/buildstructor/issues/192"
+)]
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::{Arc, Weak};

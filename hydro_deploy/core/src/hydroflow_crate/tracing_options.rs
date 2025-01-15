@@ -1,4 +1,8 @@
 #![allow(clippy::too_many_arguments, reason = "buildstructor")]
+#![allow(
+    unexpected_cfgs,
+    reason = "https://github.com/BrynCooke/buildstructor/issues/192"
+)]
 
 use std::path::PathBuf;
 
