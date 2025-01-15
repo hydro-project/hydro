@@ -718,7 +718,7 @@ impl DfirGraph {
             .iter()
             .position(|&node_id| {
                 self.node_color(node_id)
-                    .map_or(false, |color| Color::Pull != color)
+                    .is_some_and(|color| Color::Pull != color)
             })
             .unwrap_or(subgraph_nodes.len())
     }
