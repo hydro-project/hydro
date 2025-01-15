@@ -26,6 +26,16 @@ impl<Tag: ?Sized> Clone for Key<Tag> {
     }
 }
 impl<Tag: ?Sized> Copy for Key<Tag> {}
+impl<Tag: ?Sized> PartialOrd for Key<Tag> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl<Tag: ?Sized> Ord for Key<Tag> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.index.cmp(&other.index)
+    }
+}
 impl<Tag: ?Sized> PartialEq for Key<Tag> {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index

@@ -271,8 +271,8 @@ impl<'a> Dfir<'a> {
 
         let mut work_done = false;
 
-        while let Some(sg_id) =
-            self.context.stratum_queues[self.context.current_stratum].pop_front()
+        while let Some((_depth, sg_id)) =
+            self.context.stratum_queues[self.context.current_stratum].pop()
         {
             work_done = true;
             {
@@ -303,7 +303,8 @@ impl<'a> Dfir<'a> {
                         }
                         // Add subgraph to stratum queue if it is not already scheduled.
                         if !succ_sg_data.is_scheduled.replace(true) {
-                            self.context.stratum_queues[succ_sg_data.stratum].push_back(succ_id);
+                            self.context.stratum_queues[succ_sg_data.stratum]
+                                .push((succ_sg_data.loop_depth, succ_id));
                         }
                     }
                 }
@@ -456,7 +457,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
                 enqueued_count += 1;
             }
             if is_external {
@@ -494,7 +495,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
                 count += 1;
             }
             if is_external {
@@ -539,7 +540,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
                 count += 1;
             }
             if is_external {
@@ -570,7 +571,7 @@ impl<'a> Dfir<'a> {
         let sg_data = &self.subgraphs[sg_id];
         let already_scheduled = sg_data.is_scheduled.replace(true);
         if !already_scheduled {
-            self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+            self.context.stratum_queues[sg_data.stratum].push((sg_data.loop_depth, sg_id));
             true
         } else {
             false
@@ -632,6 +633,8 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
+        let loop_depth = loop_id.map_or(0, |loop_id| self.loop_depth[loop_id]);
+
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let (mut subgraph_preds, mut subgraph_succs) = Default::default();
             recv_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_preds, sg_id, true);
@@ -652,10 +655,11 @@ impl<'a> Dfir<'a> {
                 true,
                 laziness,
                 loop_id,
+                loop_depth,
             )
         });
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push_back(sg_id);
+        self.context.stratum_queues[stratum].push((loop_depth, sg_id));
 
         sg_id
     }
@@ -746,11 +750,12 @@ impl<'a> Dfir<'a> {
                 true,
                 false,
                 None,
+                0,
             )
         });
 
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push_back(sg_id);
+        self.context.stratum_queues[stratum].push((0, sg_id));
 
         sg_id
     }
@@ -934,6 +939,8 @@ pub(super) struct SubgraphData<'a> {
     /// The subgraph's loop ID, or `None` for the top level.
     #[expect(dead_code, reason = "TODO(mingwei): WIP")]
     loop_id: Option<LoopId>,
+    /// The subgraph's loop depth.
+    loop_depth: usize,
 }
 impl<'a> SubgraphData<'a> {
     #[expect(clippy::too_many_arguments, reason = "internal use")]
@@ -944,8 +951,9 @@ impl<'a> SubgraphData<'a> {
         preds: Vec<HandoffId>,
         succs: Vec<HandoffId>,
         is_scheduled: bool,
-        laziness: bool,
+        is_lazy: bool,
         loop_id: Option<LoopId>,
+        loop_depth: usize,
     ) -> Self {
         Self {
             name,
@@ -953,10 +961,11 @@ impl<'a> SubgraphData<'a> {
             subgraph: Box::new(subgraph),
             preds,
             succs,
-            loop_id,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            is_lazy: laziness,
+            is_lazy,
+            loop_id,
+            loop_depth,
         }
     }
 }

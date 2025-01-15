@@ -3,7 +3,7 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
-use std::collections::VecDeque;
+use std::collections::BinaryHeap;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
@@ -28,7 +28,8 @@ pub struct Context {
 
     /// TODO(mingwei): separate scheduler into its own struct/trait?
     /// Index is stratum, value is FIFO queue for that stratum.
-    pub(super) stratum_queues: Vec<VecDeque<SubgraphId>>,
+    /// PriorityQueue, usize is depth. Larger/deeper is higher priority.
+    pub(super) stratum_queues: Vec<BinaryHeap<(usize, SubgraphId)>>,
     /// Receive events, if second arg indicates if it is an external "important" event (true).
     pub(super) event_queue_recv: UnboundedReceiver<(SubgraphId, bool)>,
     /// If external events or data can justify starting the next tick.
