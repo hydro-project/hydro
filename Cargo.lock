@@ -1322,6 +1322,7 @@ dependencies = [
  "clap",
  "config",
  "dfir_rs",
+ "either",
  "governor",
  "hashbrown 0.15.2",
  "hostname",

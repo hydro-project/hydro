@@ -9,6 +9,7 @@ publish = false
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "env"] }
 config = "0.14.0"
+either = "1.13.0"
 governor = "0.7.0"
 hashbrown = "0.15.2"
 hostname = "0.4.0"

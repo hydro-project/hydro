@@ -1,4 +1,7 @@
+use std::collections::{BTreeMap, Bound};
+use std::collections::btree_set::Range;
 use std::sync::Arc;
+use hashbrown::HashSet;
 use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{DomPair, Max, WithBot, Point};
@@ -28,7 +31,7 @@ pub type TableMap<V> = MapUnionHashMap<TableName, Table<V>>;
 
 pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
-pub type Namespaces<C> = MapUnionHashMap<Key, DomPair<C, SetUnion<VecSet<String>>>>; // NamespaceMap<RowValue<C>>;
+pub type Namespaces<C> = MapUnionBTreeMap<Key, RowValue<C>>; // NamespaceMap<RowValue<C>>;
 
 pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnionSingletonSet<String>>>; // MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
 
@@ -50,6 +53,11 @@ pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
     MapUnionSingletonMap::new(SingletonMap::from((key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))
     //let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
     //MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))
+}
+
+/// Returns a range that should allow range queries to retrieve all rows in a particular table.
+pub fn all_rows(namespace: Namespace, table_name: TableName) -> (Bound<Key>, Bound<Key>) {
+    (Bound::Excluded(Key::new(namespace, table_name.clone(), "".to_string())), Bound::Excluded(Key::new(namespace, table_name, "\u{10FFFF}".to_string())))
 }
 // /// TableMap element to delete a row from an existing TableMap.
 // ///

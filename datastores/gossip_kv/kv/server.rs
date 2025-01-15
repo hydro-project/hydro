@@ -1,11 +1,12 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::Zip;
+use std::iter::{Zip};
 use std::sync::Arc;
+use either::Either;
 use dfir_rs::dfir_syntax;
 use dfir_rs::futures::{Sink, Stream};
-use dfir_rs::itertools::Itertools;
+use dfir_rs::itertools::{chain, Itertools};
 use dfir_rs::lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{Lattice, PairBimorphism};
@@ -24,7 +25,7 @@ use tracing::{info, trace};
 use warp::hyper::body::HttpBody;
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
-use crate::model::{upsert_row, Clock, Namespaces, RowKey, RowValue, SingleWrite, TableMap};
+use crate::model::{all_rows, upsert_row, Clock, Namespaces, RowKey, RowValue, SingleWrite, TableMap};
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
 use crate::{buffer_pool, ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
@@ -315,66 +316,64 @@ where
             MapUnionSingletonMap::new_from((id, InfectingWrite { write: WithBot::new(Some(Point::new(write))), members: BoundedSetLattice::new() }))
         }) -> infecting_writes;
 
-        // gossip_trigger = source_stream(gossip_trigger);
+        gossip_trigger = source_stream(gossip_trigger);
 
-        // gossip_messages = gossip_trigger
-        // -> flat_map( |_|
-        //     {
-        //         let infecting_writes = #infecting_writes.as_reveal_ref().clone();
-        //         trace!("{:?}: Currently gossipping {} infecting writes.", context.current_tick(), infecting_writes.iter().filter(|(_, write)| !write.members.is_top()).count());
-        //         infecting_writes
-        //     }
-        // )
-        // -> filter(|(_id, infecting_write)| !infecting_write.members.is_top())
-        // -> map(|(id, infecting_write)| {
-        //     trace!("{:?}: Choosing a peer to gossip to. {:?}:{:?}", context.current_tick(), id, infecting_write);
-        //     let peers = #namespaces.as_reveal_ref().get(&Namespace::System).unwrap().as_reveal_ref().get("members").unwrap().as_reveal_ref().clone();
-        //
-        //     let mut peer_names = HashSet::new();
-        //     peers.iter().for_each(|(row_key, _)| {
-        //         peer_names.insert(row_key.clone());
-        //     });
-        //
-        //     let seed_nodes = &#seed_nodes;
-        //     seed_nodes.iter().for_each(|seed_node| {
-        //         peer_names.insert(seed_node.id.clone());
-        //     });
-        //
-        //     // Exclude self from the list of peers.
-        //     peer_names.remove(&member_id_5);
-        //
-        //     trace!("{:?}: Peers: {:?}", context.current_tick(), peer_names);
-        //
-        //     let chosen_peer_name = peer_names.iter().choose(&mut thread_rng());
-        //
-        //     if chosen_peer_name.is_none() {
-        //         trace!("{:?}: No peers to gossip to.", context.current_tick());
-        //         return None;
-        //     }
-        //
-        //     let chosen_peer_name = chosen_peer_name.unwrap();
-        //     let gossip_address = if peers.contains_key(chosen_peer_name) {
-        //         let peer_info_value = peers.get(chosen_peer_name).unwrap().as_reveal_ref().1.as_reveal_ref().iter().next().unwrap().clone();
-        //         let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(&peer_info_value).unwrap();
-        //         peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint
-        //     } else {
-        //         seed_nodes.iter().find(|seed_node| seed_node.id == *chosen_peer_name).unwrap().address.clone()
-        //     };
-        //
-        //     trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, gossip_address);
-        //     Some((id, infecting_write, gossip_address))
-        // })
-        // -> flatten()
-        // -> inspect(|(message_id, infecting_write, peer_gossip_address)| trace!("{:?}: Sending write:\nMessageId:{:?}\nWrite:{:?}\nPeer Address:{:?}", context.current_tick(), message_id, infecting_write, peer_gossip_address))
-        // -> map(|(message_id, infecting_write, peer_gossip_address): (String, InfectingWrite, Addr)| {
-        //     let gossip_request = GossipMessage::Gossip {
-        //         message_id: message_id.clone(),
-        //         member_id: member_id_4.clone(),
-        //         writes: infecting_write.write.clone(),
-        //     };
-        //     (gossip_request, peer_gossip_address)
-        // })
-        // -> gossip_out;
+        gossip_messages = gossip_trigger
+        -> flat_map( |_|
+            {
+                let infecting_writes = #infecting_writes.as_reveal_ref().clone();
+                trace!("{:?}: Currently gossipping {} infecting writes.", context.current_tick(), infecting_writes.iter().filter(|(_, write)| !write.members.is_top()).count());
+                infecting_writes
+            }
+        )
+        -> filter(|(_id, infecting_write)| !infecting_write.members.is_top())
+        -> map(|(id, infecting_write)| {
+            trace!("{:?}: Choosing a peer to gossip to. {:?}:{:?}", context.current_tick(), id, infecting_write);
+
+            let ns = &#namespaces;
+            let namespaces_inner_tree = ns.as_reveal_ref();
+
+            let lefts = namespaces_inner_tree
+                .range(all_rows(Namespace::System, "members".to_string()))
+                .filter(|(key, _value)| key.row_key != member_id_5)
+                .map(|(key, value)| Either::Left((key, value)));
+
+            let seed_nodes = &#seed_nodes;
+
+            let rights = seed_nodes.iter()
+                .filter(|seed_node| seed_node.id != member_id_5)
+                .map(|seed_node| Either::Right(seed_node));
+
+
+            let combined = chain!(lefts, rights);
+
+            let chosen_peer = combined.choose(&mut thread_rng()).unwrap();
+
+            let (chosen_peer_name, chosen_peer_address) = match chosen_peer {
+                Either::Left((key, value)) => {
+                    // TODO: We could be reading multiple values here.
+                    let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.iter().next().unwrap();
+                    let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(&peer_info_value).unwrap();
+                    let peer_endpoint = peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint;
+                    (key.row_key.clone(), peer_endpoint)
+                },
+                Either::Right(seed_node) => (seed_node.id.clone(), seed_node.address.clone())
+            };
+
+            trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, chosen_peer_address);
+            Some((id, infecting_write, chosen_peer_address))
+        })
+        -> flatten()
+        -> inspect(|(message_id, infecting_write, peer_gossip_address)| trace!("{:?}: Sending write:\nMessageId:{:?}\nWrite:{:?}\nPeer Address:{:?}", context.current_tick(), message_id, infecting_write, peer_gossip_address))
+        -> map(|(message_id, infecting_write, peer_gossip_address): (String, InfectingWrite, Addr)| {
+            let gossip_request = GossipMessage::Gossip {
+                message_id: message_id.clone(),
+                member_id: member_id_4.clone(),
+                writes: vec![infecting_write.write.as_reveal_ref().unwrap().val.clone()]// [infecting_write.write.clone(),
+            };
+            (gossip_request, peer_gossip_address)
+        })
+        -> gossip_out;
     }
 }
 
