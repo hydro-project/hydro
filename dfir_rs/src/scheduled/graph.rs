@@ -270,11 +270,20 @@ impl<'a> Dfir<'a> {
         let current_tick = self.context.current_tick;
 
         let mut work_done = false;
-
-        while let Some((_depth, sg_id)) =
+        let mut prev_depth = 0;
+        // How many times we have entered a loop.
+        let mut loop_counter = 1;
+        while let Some((curr_depth, sg_id)) =
             self.context.stratum_queues[self.context.current_stratum].pop()
         {
             work_done = true;
+
+            let entered_loop = curr_depth > prev_depth;
+            if entered_loop {
+                loop_counter += 1;
+                prev_depth = curr_depth;
+            }
+
             {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
@@ -286,7 +295,13 @@ impl<'a> Dfir<'a> {
                 );
 
                 self.context.subgraph_id = sg_id;
-                self.context.subgraph_last_tick_run_in = sg_data.last_tick_run_in;
+                self.context.is_first_run_this_tick = sg_data
+                    .last_tick_run_in
+                    .is_none_or(|last_tick| last_tick < self.context.current_tick);
+                self.context.is_first_loop_iteration = self.context.is_first_run_this_tick
+                    || (sg_data.last_loop_counter < loop_counter);
+                sg_data.last_loop_counter = loop_counter;
+
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
                 sg_data.last_tick_run_in = Some(current_tick);
             }
@@ -932,6 +947,8 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
+    /// Used to track the first iteration in each loop execution.
+    last_loop_counter: usize,
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
@@ -963,6 +980,7 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
+            last_loop_counter: 0,
             is_lazy,
             loop_id,
             loop_depth,

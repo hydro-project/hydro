@@ -45,7 +45,8 @@ pub struct Context {
     pub(super) current_stratum: usize,
 
     pub(super) current_tick_start: SystemTime,
-    pub(super) subgraph_last_tick_run_in: Option<TickInstant>,
+    pub(super) is_first_run_this_tick: bool,
+    pub(super) is_first_loop_iteration: bool,
 
     /// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is meaningless.
@@ -70,10 +71,15 @@ impl Context {
 
     /// Gets whether this is the first time this subgraph is being scheduled for this tick
     pub fn is_first_run_this_tick(&self) -> bool {
-        self.subgraph_last_tick_run_in
-            .map_or(true, |tick_last_run_in| {
-                self.current_tick > tick_last_run_in
-            })
+        self.is_first_run_this_tick
+    }
+
+    /// Gets whether this run is the first iteration of a loop.
+    ///
+    /// This is only meaningful if the subgraph is in a loop, otherwise this will always return
+    /// `false`.
+    pub fn is_first_loop_iteration(&self) -> bool {
+        self.is_first_loop_iteration
     }
 
     /// Gets the current stratum nubmer.
@@ -237,7 +243,8 @@ impl Default for Context {
             current_tick: TickInstant::default(),
 
             current_tick_start: SystemTime::now(),
-            subgraph_last_tick_run_in: None,
+            is_first_run_this_tick: true,
+            is_first_loop_iteration: true,
 
             // Will be re-set before use.
             subgraph_id: SubgraphId::from_raw(0),
