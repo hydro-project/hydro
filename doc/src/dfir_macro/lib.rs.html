@@ -495,15 +495,15 @@
             <span class="kw">let </span>path_abs_str = path_abs.to_str().expect(<span class="string">"Failed to convert path to string"</span>);
             <span class="kw">let </span>file_name_without_extension = path.to_str().expect(<span class="string">"Failed to get file stem"</span>);
             <span class="kw">let </span>lit = LitStr::new(path_abs_str, Span::call_site());
-            <span class="kw">let </span>file_name_ident = Ident::new(
-                <span class="kw-2">&amp;</span>file_name_without_extension
-                    .to_string()
-                    .to_string()
-                    .replace(<span class="string">"/"</span>, <span class="string">"_"</span>)
-                    .replace(<span class="string">"-"</span>, <span class="string">"_"</span>)
-                    .replace(<span class="string">"."</span>, <span class="string">"_"</span>),
-                Span::call_site(),
-            );
+            <span class="kw">let </span><span class="kw-2">mut </span>ident_string = file_name_without_extension
+                .chars()
+                .map(|c| <span class="kw">if </span>c.is_ascii_alphanumeric() { c } <span class="kw">else </span>{ <span class="string">'_' </span>})
+                .collect::&lt;String&gt;();
+            <span class="kw">if </span>ident_string.chars().next().unwrap().is_ascii_digit() {
+                <span class="comment">// Identifiers cannot start with a digit, prepend an underscore.
+                </span>ident_string.insert(<span class="number">0</span>, <span class="string">'_'</span>);
+            }
+            <span class="kw">let </span>file_name_ident = Ident::new(<span class="kw-2">&amp;</span>ident_string, Span::call_site());
             <span class="macro">quote!</span> {
                 <span class="attr">#[doc = <span class="macro">include_str!</span>(#lit)]
                 </span><span class="kw">mod </span>#file_name_ident {}
