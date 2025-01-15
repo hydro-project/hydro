@@ -992,9 +992,9 @@ impl<'a, T, C1, C2, B, Order> Stream<(ClusterId<C2>, T), Cluster<'a, C1>, B, Ord
         Cluster<'a, C1>:
             CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)>,
         T: Clone + Serialize + DeserializeOwned,
-        Order:
-            MinOrder<<Cluster<'a, C1> as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>,
-            Min = NoOrder
+        Order: MinOrder<
+            <Cluster<'a, C1> as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>,
+            Min = NoOrder,
         >,
     {
         self.map(dist_policy).send_bincode_interleaved(other)
