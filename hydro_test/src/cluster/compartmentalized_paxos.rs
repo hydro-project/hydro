@@ -9,56 +9,7 @@ use hydro_std::request_response::join_responses;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-pub struct Proposer {}
-pub struct Acceptor {}
-
-#[derive(Clone, Copy)]
-pub struct PaxosConfig {
-    /// Maximum number of faulty nodes
-    pub f: usize,
-    /// How often to send "I am leader" heartbeats
-    pub i_am_leader_send_timeout: u64,
-    /// How often to check if the leader has expired
-    pub i_am_leader_check_timeout: u64,
-    /// Initial delay, multiplied by proposer pid, to stagger proposers checking for timeouts
-    pub i_am_leader_check_timeout_delay_multiplier: usize,
-}
-
-pub trait PaxosPayload: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug {}
-impl<T: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug> PaxosPayload for T {}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Hash)]
-pub struct Ballot {
-    pub num: u32,
-    pub proposer_id: ClusterId<Proposer>,
-}
-
-impl Ord for Ballot {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.num
-            .cmp(&other.num)
-            .then_with(|| self.proposer_id.raw_id.cmp(&other.proposer_id.raw_id))
-    }
-}
-
-impl PartialOrd for Ballot {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct LogValue<P> {
-    pub ballot: Ballot,
-    pub value: Option<P>, // might be a hole
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
-pub struct P2a<P> {
-    pub ballot: Ballot,
-    pub slot: usize,
-    pub value: Option<P>, // might be a re-committed hole
-}
+use super::paxos::{Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload, Proposer};
 
 /// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors
 /// to sequence payloads being sent to the proposers.
