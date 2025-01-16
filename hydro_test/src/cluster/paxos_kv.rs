@@ -116,7 +116,7 @@ pub fn replica<'a, K: KvKey, V: KvValue>(
         .timestamped(&replica_tick)
         .tick_batch()
     }
-        .union(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
+        .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
         .sort();
     // Create a cycle since we'll use this seq before we define it
     let (r_highest_seq_complete_cycle, r_highest_seq) =

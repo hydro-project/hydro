@@ -13,6 +13,7 @@
             }
         }
     ],
+    "rust-analyzer.cargo.features": ["deploy"],
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {
