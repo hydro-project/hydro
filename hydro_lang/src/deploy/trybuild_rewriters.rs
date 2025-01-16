@@ -16,20 +16,3 @@ impl VisitMut for ReplaceCrateNameWithStaged {
         syn::visit_mut::visit_type_path_mut(self, i);
     }
 }
-
-pub struct ReplaceCrateWithOrig {
-    pub crate_name: String,
-}
-
-impl VisitMut for ReplaceCrateWithOrig {
-    fn visit_item_use_mut(&mut self, i: &mut syn::ItemUse) {
-        if let syn::UseTree::Path(p) = &mut i.tree {
-            if p.ident == "crate" {
-                p.ident = syn::Ident::new(&self.crate_name, p.ident.span());
-                i.leading_colon = Some(Default::default());
-            }
-        }
-
-        syn::visit_mut::visit_item_use_mut(self, i);
-    }
-}
