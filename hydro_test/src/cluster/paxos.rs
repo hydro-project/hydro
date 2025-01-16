@@ -78,7 +78,9 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
         Unbounded,
         NoOrder,
     >,
-    c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
+    c_to_proposers: impl FnOnce(
+        Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
+    ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
     f: usize,
     i_am_leader_send_timeout: u64,
     i_am_leader_check_timeout: u64,
@@ -126,6 +128,14 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
     let just_became_leader = p_is_leader
         .clone()
         .continue_unless(p_is_leader.clone().defer_tick());
+
+    let c_to_proposers = c_to_proposers(
+        just_became_leader
+            .clone()
+            .then(p_ballot.clone())
+            .all_ticks()
+            .drop_timestamp(),
+    );
 
     let (p_to_replicas, a_log, sequencing_max_ballots) = unsafe {
         // SAFETY: The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
