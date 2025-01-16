@@ -51,7 +51,7 @@ jobs:
       - name: "Upload wheels"
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   linux:
@@ -94,7 +94,7 @@ jobs:
       - name: "Upload wheels"
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   linux-cross:
@@ -123,7 +123,7 @@ jobs:
       - name: "Upload wheels"
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   windows:
@@ -160,7 +160,7 @@ jobs:
       - name: "Upload wheels"
         uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   release:
@@ -175,7 +175,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: wheels
+          pattern: wheels-*
+          path: wheels
+          merge-multiple: true
       - uses: actions/setup-python@v5
       - name: "Publish to PyPi"
         env:
