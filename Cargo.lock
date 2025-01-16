@@ -1636,6 +1636,7 @@ name = "hydro_test"
 version = "0.0.0"
 dependencies = [
  "async-ssh2-lite",
+ "ctor",
  "dfir_macro",
  "futures",
  "hydro_deploy",
