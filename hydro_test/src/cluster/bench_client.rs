@@ -19,7 +19,7 @@ pub fn bench_client<'a>(
     // r_to_clients_payload_applied.clone().inspect(q!(|payload: &(u32, ReplicaPayload)| println!("Client received payload: {:?}", payload)));
 
     // Set up an initial set of payloads on the first tick
-    let start_this_tick = client_tick.singleton_first_tick(q!(()));
+    let start_this_tick = client_tick.optional_first_tick(q!(()));
 
     let c_new_payloads_on_start = start_this_tick.clone().flat_map_ordered(q!(move |_| (0
         ..num_clients_per_node)
