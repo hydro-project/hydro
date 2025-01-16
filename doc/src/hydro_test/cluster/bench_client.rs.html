@@ -183,7 +183,7 @@
     <span class="comment">// r_to_clients_payload_applied.clone().inspect(q!(|payload: &amp;(u32, ReplicaPayload)| println!("Client received payload: {:?}", payload)));
 
     // Set up an initial set of payloads on the first tick
-    </span><span class="kw">let </span>start_this_tick = client_tick.singleton_first_tick(<span class="macro">q!</span>(()));
+    </span><span class="kw">let </span>start_this_tick = client_tick.optional_first_tick(<span class="macro">q!</span>(()));
 
     <span class="kw">let </span>c_new_payloads_on_start = start_this_tick.clone().flat_map_ordered(<span class="macro">q!</span>(<span class="kw">move </span>|<span class="kw">_</span>| (<span class="number">0
         </span>..num_clients_per_node)

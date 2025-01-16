@@ -519,6 +519,24 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::ops::Deref;
@@ -718,7 +736,25 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;, B&gt; Optional&lt;T, L, B&gt; {
-    <span class="kw">pub fn </span>map&lt;U, F: Fn(T) -&gt; U + <span class="lifetime">'a</span>&gt;(<span class="self">self</span>, f: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, L&gt;) -&gt; Optional&lt;U, L, B&gt; {
+    <span class="doccomment">/// Transforms the optional value by applying a function `f` to it,
+    /// continuously as the input is updated.
+    ///
+    /// Whenever the optional is empty, the output optional is also empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let optional = tick.optional_first_tick(q!(1));
+    /// optional.map(q!(|v| v + 1)).all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 2
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// ```
+    </span><span class="kw">pub fn </span>map&lt;U, F: Fn(T) -&gt; U + <span class="lifetime">'a</span>&gt;(<span class="self">self</span>, f: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, L&gt;) -&gt; Optional&lt;U, L, B&gt; {
         <span class="kw">let </span>f = f.splice_fn1_ctx(<span class="kw-2">&amp;</span><span class="self">self</span>.location).into();
         Optional::new(
             <span class="self">self</span>.location,
