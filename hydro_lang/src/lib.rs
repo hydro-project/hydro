@@ -54,7 +54,7 @@ fn add_private_reexports() {
 
 #[stageleft::runtime]
 #[cfg(test)]
-mod tests {
+mod test_init {
     #[ctor::ctor]
     fn init() {
         crate::deploy::init_test();
