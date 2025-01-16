@@ -10,7 +10,7 @@ use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{dependencies, features, path, Runner};
 
-use super::trybuild_rewriters::{ReplaceCrateNameWithStaged, ReplaceCrateWithOrig};
+use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -44,19 +44,19 @@ pub fn create_graph_trybuild(
 
     ReplaceCrateNameWithStaged {
         crate_name: crate_name.clone(),
+        is_test,
     }
     .visit_file_mut(&mut generated_code);
 
-    let mut inlined_staged = stageleft_tool::gen_staged_trybuild(
-        &path!(source_dir / "src" / "lib.rs"),
-        crate_name.clone(),
-        is_test,
-    );
-
-    ReplaceCrateWithOrig {
-        crate_name: crate_name.clone(),
-    }
-    .visit_file_mut(&mut inlined_staged);
+    let inlined_staged = if is_test {
+        stageleft_tool::gen_staged_trybuild(
+            &path!(source_dir / "src" / "lib.rs"),
+            crate_name.clone(),
+            is_test,
+        )
+    } else {
+        syn::parse_quote!()
+    };
 
     let source = prettyplease::unparse(&syn::parse_quote! {
         #generated_code
