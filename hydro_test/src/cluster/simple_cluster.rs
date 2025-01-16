@@ -1,5 +1,6 @@
 use hydro_lang::*;
 use stageleft::IntoQuotedMut;
+use hydro_std::compartmentalize::{PartitionStream, DecoupleClusterStream, DecoupleProcessStream};
 
 pub fn partition<'a, F: Fn((ClusterId<()>, String)) -> (ClusterId<()>, String) + 'a>(
     cluster1: Cluster<'a, ()>,
