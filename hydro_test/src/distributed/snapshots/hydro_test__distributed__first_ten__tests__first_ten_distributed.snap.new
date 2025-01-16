@@ -1,0 +1,267 @@
+---
+source: hydro_test/src/distributed/first_ten.rs
+assertion_line: 48
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
+        input: Network {
+            from_location: ExternalProcess(
+                0,
+            ),
+            from_key: Some(
+                0,
+            ),
+            to_location: Process(
+                1,
+            ),
+            to_key: None,
+            serialize_fn: None,
+            instantiate_fn: <network instantiate>,
+            deserialize_fn: Some(
+                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
+            ),
+            input: Source {
+                source: ExternalNetwork,
+                location_kind: ExternalProcess(
+                    0,
+                ),
+                metadata: HydroNodeMetadata {
+                    id: Some(
+                        0,
+                    ),
+                    location_kind: ExternalProcess(
+                        0,
+                    ),
+                    output_type: Some(
+                        Type::Path {
+                            qself: None,
+                            path: Path {
+                                leading_colon: None,
+                                segments: [
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: std,
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                    PathSep,
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: string,
+                                            span: bytes(30..36),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                    PathSep,
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: String,
+                                            span: bytes(38..44),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                ],
+                            },
+                        },
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                id: Some(
+                    1,
+                ),
+                location_kind: Process(
+                    1,
+                ),
+                output_type: Some(
+                    Type::Path {
+                        qself: None,
+                        path: Path {
+                            leading_colon: None,
+                            segments: [
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: std,
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                                PathSep,
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: string,
+                                        span: bytes(52..58),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                                PathSep,
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: String,
+                                        span: bytes(60..66),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                            ],
+                        },
+                    },
+                ),
+            },
+        },
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
+        input: Network {
+            from_location: Process(
+                1,
+            ),
+            from_key: None,
+            to_location: Process(
+                2,
+            ),
+            to_key: None,
+            serialize_fn: Some(
+                | data | { hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: distributed :: first_ten :: SendOverNetwork > (& data) . unwrap () . into () },
+            ),
+            instantiate_fn: <network instantiate>,
+            deserialize_fn: Some(
+                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
+            ),
+            input: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
+                input: Source {
+                    source: Iter(
+                        { use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 },
+                    ),
+                    location_kind: Process(
+                        1,
+                    ),
+                    metadata: HydroNodeMetadata {
+                        id: Some(
+                            4,
+                        ),
+                        location_kind: Process(
+                            1,
+                        ),
+                        output_type: Some(
+                            Type::Path {
+                                qself: None,
+                                path: Path {
+                                    leading_colon: None,
+                                    segments: [
+                                        PathSegment {
+                                            ident: Ident {
+                                                sym: u32,
+                                                span: bytes(222..225),
+                                            },
+                                            arguments: PathArguments::None,
+                                        },
+                                    ],
+                                },
+                            },
+                        ),
+                    },
+                },
+                metadata: HydroNodeMetadata {
+                    id: Some(
+                        6,
+                    ),
+                    location_kind: Process(
+                        1,
+                    ),
+                    output_type: Some(
+                        Type::Path {
+                            qself: None,
+                            path: Path {
+                                leading_colon: None,
+                                segments: [
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: hydro_test,
+                                            span: bytes(321..331),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                    PathSep,
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: distributed,
+                                            span: bytes(333..344),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                    PathSep,
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: first_ten,
+                                            span: bytes(346..355),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                    PathSep,
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: SendOverNetwork,
+                                            span: bytes(357..372),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                ],
+                            },
+                        },
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                id: Some(
+                    7,
+                ),
+                location_kind: Process(
+                    2,
+                ),
+                output_type: Some(
+                    Type::Path {
+                        qself: None,
+                        path: Path {
+                            leading_colon: None,
+                            segments: [
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: hydro_test,
+                                        span: bytes(477..487),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                                PathSep,
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: distributed,
+                                        span: bytes(489..500),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                                PathSep,
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: first_ten,
+                                        span: bytes(502..511),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                                PathSep,
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: SendOverNetwork,
+                                        span: bytes(513..528),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                            ],
+                        },
+                    },
+                ),
+            },
+        },
+    },
+]

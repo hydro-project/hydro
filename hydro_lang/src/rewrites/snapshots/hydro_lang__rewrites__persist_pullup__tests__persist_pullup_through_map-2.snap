@@ -14,6 +14,56 @@ expression: optimized.ir()
                 location_kind: Process(
                     0,
                 ),
+                metadata: HydroNodeMetadata {
+                    id: Some(
+                        0,
+                    ),
+                    location_kind: Process(
+                        0,
+                    ),
+                    output_type: Some(
+                        Type::Path {
+                            qself: None,
+                            path: Path {
+                                leading_colon: None,
+                                segments: [
+                                    PathSegment {
+                                        ident: Ident {
+                                            sym: i32,
+                                            span: bytes(50..53),
+                                        },
+                                        arguments: PathArguments::None,
+                                    },
+                                ],
+                            },
+                        },
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                id: Some(
+                    2,
+                ),
+                location_kind: Process(
+                    0,
+                ),
+                output_type: Some(
+                    Type::Path {
+                        qself: None,
+                        path: Path {
+                            leading_colon: None,
+                            segments: [
+                                PathSegment {
+                                    ident: Ident {
+                                        sym: i32,
+                                        span: bytes(112..115),
+                                    },
+                                    arguments: PathArguments::None,
+                                },
+                            ],
+                        },
+                    },
+                ),
             },
         },
     },
