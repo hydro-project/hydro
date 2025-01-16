@@ -15,14 +15,13 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
-use crate::location::cluster::CLUSTER_SELF_ID;
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{NoTimestamp, Timestamped};
 use crate::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
 use crate::staging_util::get_this_crate;
-use crate::{Bounded, Cluster, ClusterId, Optional, Process, Singleton, Unbounded};
+use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
 
 /// Marks the stream as being totally ordered, which means that there are
 /// no sources of non-determinism (other than intentional ones) that will
@@ -1536,49 +1535,7 @@ pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>
     }
 }
 
-impl<'a, T, C1, B, Order> Stream<T, Cluster<'a, C1>, B, Order> {
-    pub fn decouple_cluster<C2: 'a, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
-    where
-        Cluster<'a, C1>: Location<'a, Root = Cluster<'a, C1>>,
-        Cluster<'a, C1>:
-            CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)>,
-        T: Clone + Serialize + DeserializeOwned,
-        Order:
-            MinOrder<<Cluster<'a, C1> as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>>,
-    {
-        let sent = self
-            .map(q!(move |b| (
-                ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
-                b.clone()
-            )))
-            .send_bincode_interleaved(other);
-
-        unsafe {
-            // SAFETY: this is safe because we are mapping clusters 1:1
-            sent.assume_ordering()
-        }
-    }
-}
-
 impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
-    pub fn decouple_process<P2>(
-        self,
-        other: &Process<'a, P2>,
-    ) -> Stream<T, Process<'a, P2>, Unbounded, Order>
-    where
-        L::Root: CanSend<'a, Process<'a, P2>, In<T> = T, Out<T> = T>,
-        T: Clone + Serialize + DeserializeOwned,
-        Order: MinOrder<
-            <L::Root as CanSend<'a, Process<'a, P2>>>::OutStrongestOrder<Order>,
-            Min = Order,
-        >,
-    {
-        self.send_bincode::<Process<'a, P2>, T>(other)
-    }
-
     pub fn send_bincode<L2: Location<'a>, CoreType>(
         self,
         other: &L2,
