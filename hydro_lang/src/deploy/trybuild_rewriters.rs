@@ -2,6 +2,7 @@ use syn::visit_mut::VisitMut;
 
 pub struct ReplaceCrateNameWithStaged {
     pub crate_name: String,
+    pub is_test: bool,
 }
 
 impl VisitMut for ReplaceCrateNameWithStaged {
@@ -9,27 +10,22 @@ impl VisitMut for ReplaceCrateNameWithStaged {
         if let Some(first) = i.path.segments.first() {
             if first.ident == self.crate_name {
                 let tail = i.path.segments.iter().skip(1).collect::<Vec<_>>();
-                *i = syn::parse_quote!(crate::__staged #(::#tail)*);
+
+                if self.is_test {
+                    *i = syn::parse_quote!(crate::__staged #(::#tail)*);
+                } else {
+                    let crate_ident = syn::Ident::new(&self.crate_name, first.ident.span());
+                    *i = syn::parse_quote!(#crate_ident::__staged #(::#tail)*);
+                }
             }
         }
 
         syn::visit_mut::visit_type_path_mut(self, i);
     }
-}
 
-pub struct ReplaceCrateWithOrig {
-    pub crate_name: String,
-}
-
-impl VisitMut for ReplaceCrateWithOrig {
-    fn visit_item_use_mut(&mut self, i: &mut syn::ItemUse) {
-        if let syn::UseTree::Path(p) = &mut i.tree {
-            if p.ident == "crate" {
-                p.ident = syn::Ident::new(&self.crate_name, p.ident.span());
-                i.leading_colon = Some(Default::default());
-            }
+    fn visit_use_path_mut(&mut self, i: &mut syn::UsePath) {
+        if i.ident == "crate" && !self.is_test {
+            i.ident = syn::Ident::new(&self.crate_name, i.ident.span());
         }
-
-        syn::visit_mut::visit_item_use_mut(self, i);
     }
 }
