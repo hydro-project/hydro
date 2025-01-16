@@ -157,14 +157,12 @@ where
         client_in[Get]
             -> inspect(|req| trace!("{:?}: Received Get request: {:?}.", context.current_tick(), req))
             -> map(|(key, addr) : (Key, Addr)| {
-                let row = MapUnionHashMap::new_from([
+                MapUnionHashMap::new_from([
                         (
-                            key.row_key,
+                            key,
                             SetUnionHashSet::new_from([addr /* to respond with the result later*/])
                         ),
-                ]);
-                let table = MapUnionHashMap::new_from([(key.table, row)]);
-                MapUnionHashMap::new_from([(key.namespace, table)])
+                ])
             })
             -> reads;
 
@@ -267,12 +265,12 @@ where
         namespaces = state::<'static, Namespaces::<Clock>>();
         new_writes = namespaces -> tee(); // TODO: Use the output from here to generate NACKs / ACKs
 
-        reads = state::<'tick, MapUnionHashMap<Namespace, MapUnionHashMap<TableName, MapUnionHashMap<RowKey, SetUnionHashSet<Addr>>>>>();
+        reads = state::<'tick, MapUnionHashMap<Key, SetUnionHashSet<Addr>>>();
 
         new_writes -> [0]process_system_table_reads;
         reads -> [1]process_system_table_reads;
 
-        process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism))), #namespaces, #reads)
+        process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism), #namespaces, #reads)
             -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydroflow/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
             -> flat_map(|result: NamespaceMap<Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
 
