@@ -1707,6 +1707,8 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     {
         let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::is_demux()));
 
+        let metadata = other.new_node_metadata::<CoreType>();
+
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
         let external_key = flow_state_borrow.next_external_out;
@@ -1727,7 +1729,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<CoreType>(),
+                metadata,
             }),
         });
 
@@ -1773,6 +1775,8 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     where
         L::Root: CanSend<'a, ExternalProcess<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
     {
+        let metadata = other.new_node_metadata::<Bytes>();
+        
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
         let external_key = flow_state_borrow.next_external_out;
         flow_state_borrow.next_external_out += 1;
@@ -1792,7 +1796,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<Bytes>(),
+                metadata,
             }),
         });
 
