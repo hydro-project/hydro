@@ -18,6 +18,7 @@ tokio = { version = "1.29.0", features = [ "full" ] }
 stageleft = { path = "../stageleft", version = "^0.6.0" }
 rand = "0.8.0"
 serde = { version = "1.0.197", features = [ "derive" ] }
+ctor = "0.2.9"
 
 [build-dependencies]
 stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
