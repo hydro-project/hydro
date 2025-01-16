@@ -4,7 +4,7 @@ use dfir_rs::lattices::map_union::MapUnionHashMap;
 use dfir_rs::lattices::{DomPair, Max};
 use lattices::collections::{SingletonMap, VecSet};
 use lattices::map_union::{MapUnionBTreeMap, MapUnionSingletonMap};
-use lattices::set_union::{SetUnion, SetUnionSingletonSet};
+use lattices::set_union::SetUnion;
 
 use crate::{Key, Namespace};
 
@@ -30,7 +30,7 @@ pub type NamespaceMap<V> = MapUnionHashMap<Namespace, TableMap<V>>;
 
 pub type Namespaces<C> = MapUnionBTreeMap<Key, RowValue<C>>; // NamespaceMap<RowValue<C>>;
 
-pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnionSingletonSet<String>>>; // MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
+pub type SingleWrite<C> = MapUnionSingletonMap<Key, DomPair<C, SetUnion<VecSet<String>>>>; // MapUnionSingletonMap<Namespace, MapUnionSingletonMap<TableName, MapUnionSingletonMap<RowKey, DomPair<C, SetUnionSingletonSet<String>>>>>;
 
 /// Timestamps used in the model.
 // TODO: This will be updated to use a more sophisticated clock type with https://github.com/hydro-project/hydro/issues/1207.
@@ -49,7 +49,7 @@ pub type Clock = Max<u64>;
 pub fn upsert_row<C>(row_ts: C, key: Key, val: String) -> SingleWrite<C> {
     MapUnionSingletonMap::new(SingletonMap::from((
         key,
-        DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)),
+        DomPair::new(row_ts, SetUnion::new(VecSet::from(vec![val]))),
     )))
     // let (ns, table_name, row_key) = (key.namespace, key.table, key.row_key);
     // MapUnionSingletonMap::new(SingletonMap::from((ns, MapUnionSingletonMap::new(SingletonMap::from((table_name, MapUnionSingletonMap::new(SingletonMap::from((row_key, DomPair::new(row_ts, SetUnionSingletonSet::new_from(val)))))))))))

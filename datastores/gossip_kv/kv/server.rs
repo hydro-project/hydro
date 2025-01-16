@@ -9,6 +9,9 @@ use dfir_rs::lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use dfir_rs::lattices::Lattice;
 use dfir_rs::scheduled::graph::Dfir;
 use either::Either;
+use lattices::cc_traits::Iter;
+use lattices::map_union::KeyedBimorphism;
+use lattices::set_union::{SetUnion, SetUnionHashSet};
 use lattices::{IsTop, Pair, PairBimorphism, Point, WithBot};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
@@ -19,15 +22,13 @@ use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
-use lattices::cc_traits::Iter;
-use lattices::map_union::KeyedBimorphism;
-use lattices::set_union::{SetUnion, SetUnionHashSet};
+
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
-use crate::model::{all_rows, upsert_row, Clock, NamespaceMap, Namespaces, RowValue, SingleWrite};
+use crate::model::{all_rows, upsert_row, Clock, Namespaces, RowValue, SingleWrite};
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
 use crate::GossipMessage::{Ack, Nack};
-use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace, RowKey, TableName};
+use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
 
 /// A trait that represents an abstract network address. In production, this will typically be
 /// SocketAddr.
@@ -272,34 +273,20 @@ where
 
         process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism), #namespaces, #reads)
             -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydroflow/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
-            -> flat_map(|result: NamespaceMap<Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
+            -> flat_map(|result: MapUnionHashMap<Key, Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
 
                 let mut response: Vec<(ClientResponse, Addr)> = vec![];
 
                     let result = result.as_reveal_ref();
 
-                    for (namespace, tables) in result.iter() {
-                        for (table_name, table) in tables.as_reveal_ref().iter() {
-                            for (row_key, join_results) in table.as_reveal_ref().iter() {
-                                let key = Key {
-                                    namespace: *namespace,
-                                    table: table_name.clone(),
-                                    row_key: row_key.clone(),
-                                };
+                    for(key, results) in result.iter() {
 
-                                let timestamped_values = join_results.as_reveal_ref().0;
-                                let all_values = timestamped_values.as_reveal_ref().1.as_reveal_ref();
 
-                                let all_addresses = join_results.as_reveal_ref().1.as_reveal_ref();
-                                let socket_addr = all_addresses.iter().find_or_first(|_| true).unwrap();
-
-                                response.push((
-                                    ClientResponse::Get {key, value: all_values.iter().map(ToOwned::to_owned).collect()},
-                                    socket_addr.clone(),
-                            ));
-                        }
+                        let (value, addresses) = results.as_reveal_ref();
+                        let all_values = value.as_reveal_ref().1.as_reveal_ref();
+                        let socket_addr = addresses.as_reveal_ref().iter().find_or_first(|_| true).unwrap();
+                        response.push((ClientResponse::Get {key: key.clone(), value: all_values.iter().map(ToOwned::to_owned).collect()}, socket_addr.clone()));
                     }
-                }
                 response
             }) -> client_out;
 
