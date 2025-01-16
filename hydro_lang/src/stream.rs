@@ -210,21 +210,21 @@ impl<'a, T: Clone, L: Location<'a>, B, Order> Clone for Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
-    /// Transforms the stream by applying a function (`f`) to each element,
-    /// emitting the output elements in the same order as the input.
+    /// Produces a stream based on invoking `f` on each element in order.
+    /// If you do not want to modify the stream and instead only want to view
+    /// each item use [`Stream::inspect`] instead.
     ///
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
     /// # use dfir_rs::futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// let numbers = process.source_iter(q!(0..10));
-    /// let mapped = numbers.map(q!(|n| n * 2));
-    /// # mapped
+    /// let words = process.source_iter(q!(vec!["hello", "world"]));
+    /// words.map(q!(|x| x.to_uppercase()))
     /// # }, |mut stream| async move {
-    /// // 2, 4, 6, 8, ...
-    /// # for i in 0..10 {
-    /// #     assert_eq!(stream.next().await.unwrap(), i * 2);
+    /// // HELLO, WORLD
+    /// # for w in vec!["HELLO", "WORLD"] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
     /// ```
@@ -242,6 +242,21 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1..3])).cloned()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1..3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn cloned(self) -> Stream<T, L, B, Order>
     where
         T: Clone,
@@ -249,6 +264,28 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.map(q!(|d| d.clone()))
     }
 
+    /// For each item `i` in the input stream, transform `i` using `f` and then treat the
+    /// result as an [`Iterator`] to produce items one by one. The implementation for [`Iterator`]
+    /// for the output type `U` must produce items in a **deterministic** order.
+    ///
+    /// For example, `U` could be a `Vec`, but not a `HashSet`. If the order of the items in `U` is
+    /// not deterministic, use [`Stream::flat_map_unordered`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
+    ///     .flat_map_ordered(q!(|x| x))
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4
+    /// # for w in (1..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn flat_map_ordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -263,6 +300,30 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Like [`Stream::flat_map_ordered`], but allows the implementation of [`Iterator`]
+    /// for the output type `U` to produce items in any order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
+    /// process
+    ///     .source_iter(q!(vec![
+    ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
+    ///         std::collections::HashSet::from_iter(vec![3, 4]),
+    ///     ]))
+    ///     .flat_map_unordered(q!(|x| x))
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for w in (1..5) {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # }));
+    /// ```
     pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -277,6 +338,26 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// For each item `i` in the input stream, treat `i` as an [`Iterator`] and produce its items one by one.
+    /// The implementation for [`Iterator`] for the element type `T` must produce items in a **deterministic** order.
+    ///
+    /// For example, `T` could be a `Vec`, but not a `HashSet`. If the order of the items in `T` is
+    /// not deterministic, use [`Stream::flatten_unordered`] instead.
+    ///
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
+    ///     .flatten_ordered()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4
+    /// # for w in (1..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, Order>
     where
         T: IntoIterator<Item = U>,
@@ -284,6 +365,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.flat_map_ordered(q!(|d| d))
     }
 
+    /// Like [`Stream::flatten_ordered`], but allows the implementation of [`Iterator`]
+    /// for the element type `T` to produce items in any order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
+    /// process
+    ///     .source_iter(q!(vec![
+    ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
+    ///         std::collections::HashSet::from_iter(vec![3, 4]),
+    ///     ]))
+    ///     .flatten_unordered()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4, but in no particular order
+    /// # let mut results = Vec::new();
+    /// # for w in (1..5) {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # }));
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder>
     where
         T: IntoIterator<Item = U>,
@@ -291,6 +395,28 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.flat_map_unordered(q!(|d| d))
     }
 
+    /// Creates a stream containing only the elements of the input stream that satisfy a predicate
+    /// `f`, preserving the order of the elements.
+    ///
+    /// The closure `f` receives a reference `&T` rather than an owned value `T` because filtering does
+    /// not modify or take ownership of the values. If you need to modify the values while filtering
+    /// use [`Stream::filter_map`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .filter(q!(|&x| x > 2))
+    /// # }, |mut stream| async move {
+    /// // 3, 4
+    /// # for w in (3..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn filter<F: Fn(&T) -> bool + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -305,6 +431,22 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// An operator that both filters and maps. It yields only the items for which the supplied closure `f` returns `Some(value)`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec!["1", "hello", "world", "2"]))
+    ///     .filter_map(q!(|s| s.parse::<usize>().ok()))
+    /// # }, |mut stream| async move {
+    /// // 1, 2
+    /// # for w in (1..3) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn filter_map<U, F: Fn(T) -> Option<U> + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -319,6 +461,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Generates a stream that maps each input element `i` to a tuple `(i, x)`,
+    /// where `x` is the final value of `other`, a bounded [`Singleton`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = unsafe {
+    ///     process
+    ///         .source_iter(q!(vec![1, 2, 3, 4]))
+    ///         .timestamped(&tick)
+    ///         .tick_batch()
+    /// };
+    /// let count = batch.clone().count();
+    /// batch.cross_singleton(count).all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // (1, 4), (2, 4), (3, 4), (4, 4)
+    /// # for w in vec![(1, 4), (2, 4), (3, 4), (4, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn cross_singleton<O>(
         self,
         other: impl Into<Optional<O, L, Bounded>>,
@@ -338,7 +503,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Allow this stream through if the other stream has elements, otherwise the output is empty.
+    /// Allow this stream through if the argument (a Bounded Optional) is non-empty, otherwise the output is empty.
     pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, Order> {
         self.cross_singleton(signal.map(q!(|_u| ())))
             .map(q!(|(d, _signal)| d))
@@ -349,6 +514,8 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
     }
 
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
+    /// tupled pairs.
     pub fn cross_product<O>(self, other: Stream<O, L, B, Order>) -> Stream<(T, O), L, B, Order>
     where
         T: Clone,
@@ -365,6 +532,8 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Takes one stream as input and filters out any duplicate occurrences. The output
+    /// contains all unique values from the input.
     pub fn unique(self) -> Stream<T, L, B, Order>
     where
         T: Eq + Hash,
@@ -375,6 +544,10 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// Outputs everything in this stream that is *not* contained in the `other` stream.
+    ///
+    /// The `other` stream must be [`Bounded`], since this function will wait until
+    /// all its elements are available before producing any output.
     pub fn filter_not_in<O2>(self, other: Stream<T, L, Bounded, O2>) -> Stream<T, L, Bounded, Order>
     where
         T: Eq + Hash,
@@ -390,6 +563,9 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
+    /// An operator which allows you to "inspect" each element of a stream without
+    /// modifying it. The closure `f` is called on a reference to each item. This is
+    /// mainly useful for debugging, and should not be used to generate side-effects.
     pub fn inspect<F: Fn(&T) + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -421,7 +597,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ///
     /// # Safety
     /// This function is used as an escape hatch, and any mistakes in the
-    /// provided ordering guarantee will propogate into the guarantees
+    /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub unsafe fn assume_ordering<O>(self) -> Stream<T, L, B, O> {
         Stream::new(self.location, self.ir_node.into_inner())
@@ -432,6 +608,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order>
 where
     Order: MinOrder<NoOrder, Min = NoOrder>,
 {
+    /// Combines elements of the stream into a [`Singleton`], by starting with an intitial value,
+    /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
+    /// Unlike iterators, `comb` takes the accumulator by `&mut` reference, so that it can be modified in place.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 10
+    /// # assert_eq!(stream.next().await.unwrap(), 10);
+    /// # }));
+    /// ```
     pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, T)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
@@ -456,6 +655,30 @@ where
         Singleton::new(self.location, core)
     }
 
+    /// Combines elements of the stream into a [`Optional`], by starting with the first element in the stream,
+    /// and then applying the `comb` closure to each element in the stream. The [`Optional`] will be empty
+    /// until the first element in the input arrives. Unlike iterators, `comb` takes the accumulator by `&mut`
+    /// reference, so that it can be modified in place.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .reduce_commutative(q!(|curr, new| *curr += new))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 10
+    /// # assert_eq!(stream.next().await.unwrap(), 10);
+    /// # }));
+    /// ```
     pub fn reduce_commutative<F: Fn(&mut T, T) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -473,6 +696,23 @@ where
         Optional::new(self.location, core)
     }
 
+    /// Computes the maximum element in the stream as an [`Optional`], which
+    /// will be empty until the first element in the input arrives.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.max().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// ```
     pub fn max(self) -> Optional<T, L, B>
     where
         T: Ord,
@@ -484,6 +724,24 @@ where
         }))
     }
 
+    /// Computes the maximum element in the stream as an [`Optional`], where the
+    /// maximum is determined according to the `key` function. The [`Optional`] will
+    /// be empty until the first element in the input arrives.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.max_by_key(q!(|x| -x)).all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 1
+    /// # assert_eq!(stream.next().await.unwrap(), 1);
+    /// # }));
+    /// ```
     pub fn max_by_key<K: Ord, F: Fn(&T) -> K + 'a>(
         self,
         key: impl IntoQuotedMut<'a, F, L> + Copy,
@@ -511,6 +769,23 @@ where
         Optional::new(self.location, core)
     }
 
+    /// Computes the minimum element in the stream as an [`Optional`], which
+    /// will be empty until the first element in the input arrives.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.min().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 1
+    /// # assert_eq!(stream.next().await.unwrap(), 1);
+    /// # }));
+    /// ```
     pub fn min(self) -> Optional<T, L, B>
     where
         T: Ord,
@@ -522,6 +797,22 @@ where
         }))
     }
 
+    /// Computes the number of elements in the stream as a [`Singleton`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.count().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// ```
     pub fn count(self) -> Singleton<usize, L, B> {
         self.fold_commutative(q!(|| 0usize), q!(|count, _| *count += 1))
     }
@@ -548,14 +839,78 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
         }
     }
 
+    /// Computes the first element in the stream as an [`Optional`], which
+    /// will be empty until the first element in the input arrives.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee, otherwise
+    /// re-ordering of elements may cause the first element to change.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.first().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 1
+    /// # assert_eq!(stream.next().await.unwrap(), 1);
+    /// # }));
+    /// ```
     pub fn first(self) -> Optional<T, L, B> {
         Optional::new(self.location, self.ir_node.into_inner())
     }
 
+    /// Computes the last element in the stream as an [`Optional`], which
+    /// will be empty until an element in the input arrives.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee, otherwise
+    /// re-ordering of elements may cause the last element to change.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.last().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// ```
     pub fn last(self) -> Optional<T, L, B> {
         self.reduce(q!(|curr, new| *curr = new))
     }
 
+    /// Combines elements of the stream into a [`Singleton`], by starting with an intitial value,
+    /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
+    /// Unlike iterators, `comb` takes the accumulator by `&mut` reference, so that it can be modified in place.
+    ///
+    /// The input stream must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
+    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .fold(q!(|| String::new()), q!(|acc, x| acc.push_str(x)))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // "HELLOWORLD"
+    /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
+    /// # }));
+    /// ```
     pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, T)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
@@ -580,6 +935,31 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
         Singleton::new(self.location, core)
     }
 
+    /// Combines elements of the stream into a [`Optional`], by starting with the first element in the stream,
+    /// and then applying the `comb` closure to each element in the stream. The [`Optional`] will be empty
+    /// until the first element in the input arrives.
+    ///
+    /// The input stream must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
+    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .map(q!(|x| x.to_string()))
+    ///     .reduce(q!(|curr, new| curr.push_str(&new)))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // "HELLOWORLD"
+    /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
+    /// # }));
+    /// ```
     pub fn reduce<F: Fn(&mut T, T) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
@@ -598,42 +978,72 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     }
 }
 
-impl<'a, T, L: Location<'a>> Stream<T, L, Bounded, TotalOrder> {
-    pub fn chain(
-        self,
-        other: Stream<T, L, Bounded, TotalOrder>,
-    ) -> Stream<T, L, Bounded, TotalOrder> {
-        check_matching_location(&self.location, &other.location);
-
-        Stream::new(
-            self.location,
-            HydroNode::Chain(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(other.ir_node.into_inner()),
-            ),
-        )
-    }
-}
-
-impl<'a, T, L: Location<'a> + NoTick + NoTimestamp> Stream<T, L, Unbounded, NoOrder> {
-    pub fn union(
-        self,
-        other: Stream<T, L, Unbounded, NoOrder>,
-    ) -> Stream<T, L, Unbounded, NoOrder> {
+impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, O> Stream<T, L, Unbounded, O> {
+    /// Produces a new stream that interleaves the elements of the two input streams.
+    /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
+    ///
+    /// Currently, both input streams must be [`Unbounded`]. When the streams are
+    /// [`Bounded`], you can use [`Stream::chain`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// numbers.clone().map(q!(|x| x + 1)).union(numbers)
+    /// # }, |mut stream| async move {
+    /// // 2, 3, 4, 5, and 1, 2, 3, 4 interleaved in unknown order
+    /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn union<O2>(self, other: Stream<T, L, Unbounded, O2>) -> Stream<T, L, Unbounded, NoOrder> {
         let tick = self.location.tick();
         unsafe {
-            // SAFETY: Because the inputs and outputs are unordered,
+            // SAFETY: Because the outputs are unordered,
             // we can interleave batches from both streams.
             self.timestamped(&tick)
                 .tick_batch()
-                .union(other.timestamped(&tick).tick_batch())
+                .assume_ordering::<NoOrder>()
+                .chain(
+                    other
+                        .timestamped(&tick)
+                        .tick_batch()
+                        .assume_ordering::<NoOrder>(),
+                )
                 .all_ticks()
                 .drop_timestamp()
+                .assume_ordering()
         }
     }
 }
 
 impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
+    /// Produces a new stream that emits the input elements in sorted order.
+    ///
+    /// The input stream can have any ordering guarantee, but the output stream
+    /// will have a [`TotalOrder`] guarantee. This operator will block until all
+    /// elements in the input stream are available, so it requires the input stream
+    /// to be [`Bounded`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch.sort().all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4
+    /// # for w in (1..5) {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn sort(self) -> Stream<T, L, Bounded, TotalOrder>
     where
         T: Ord,
@@ -644,7 +1054,37 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
         )
     }
 
-    pub fn union<B2, O2>(self, other: Stream<T, L, B2, O2>) -> Stream<T, L, B2, Order::Min>
+    /// Produces a new stream that first emits the elements of the `self` stream,
+    /// and then emits the elements of the `other` stream. The output stream has
+    /// a [`TotalOrder`] guarantee if and only if both input streams have a
+    /// [`TotalOrder`] guarantee.
+    ///
+    /// Currently, both input streams must be [`Bounded`]. This operator will block
+    /// on the first stream until all its elements are available. In a future version,
+    /// we will relax the requirement on the `other` stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .clone()
+    ///     .map(q!(|x| x + 1))
+    ///     .chain(batch)
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 2, 3, 4, 5, 1, 2, 3, 4
+    /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn chain<O2>(self, other: Stream<T, L, Bounded, O2>) -> Stream<T, L, Bounded, Order::Min>
     where
         Order: MinOrder<O2>,
     {
@@ -661,6 +1101,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
 }
 
 impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
+    /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
+    /// by equi-joining the two streams on the key attribute `K`.
     pub fn join<V2, O2>(self, n: Stream<(K, V2), L, B, O2>) -> Stream<(K, (V1, V2)), L, B, NoOrder>
     where
         K: Eq + Hash,
@@ -676,6 +1118,10 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
         )
     }
 
+    /// Given two streams of pairs `(K, V1)` and `(K, V2)`,
+    /// computes the anti-join of the items in the input -- i.e. returns
+    /// unique items in the first input that do not have a matching key
+    /// in the second input.
     pub fn anti_join<O2>(self, n: Stream<K, L, Bounded, O2>) -> Stream<(K, V1), L, B, Order>
     where
         K: Eq + Hash,
@@ -693,6 +1139,34 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
 }
 
 impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
+    /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The input stream must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`Stream::reduce_keyed`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .fold_keyed(q!(|| 0), q!(|acc, x| *acc += x))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn fold_keyed<A, I: Fn() -> A + 'a, F: Fn(&mut A, V) + 'a>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
@@ -711,6 +1185,33 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
         )
     }
 
+    /// A special case of [`Stream::reduce`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The input stream must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
+    /// to depend on the order of elements in the stream.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`Stream::fold_keyed`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .reduce_keyed(q!(|acc, x| *acc += x))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn reduce_keyed<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
@@ -728,6 +1229,33 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
 }
 
 impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounded, Order> {
+    /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`Stream::reduce_keyed_commutative`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .fold_keyed_commutative(q!(|| 0), q!(|acc, x| *acc += x))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn fold_keyed_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V) + 'a>(
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
@@ -746,11 +1274,38 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
         )
     }
 
+    /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, Order> {
         self.fold_keyed_commutative(q!(|| ()), q!(|_, _| {}))
             .map(q!(|(k, _)| k))
     }
 
+    /// A special case of [`Stream::reduce_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`Stream::fold_keyed_commutative`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// batch
+    ///     .reduce_keyed_commutative(q!(|acc, x| *acc += x))
+    ///     .all_ticks()
+    ///     .drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // (1, 5), (2, 7)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
+    /// # }));
+    /// ```
     pub fn reduce_keyed_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,

@@ -133,15 +133,15 @@ pub fn doctest_markdown_glob(input: proc_macro::TokenStream) -> proc_macro::Toke
             let path_abs_str = path_abs.to_str().expect("Failed to convert path to string");
             let file_name_without_extension = path.to_str().expect("Failed to get file stem");
             let lit = LitStr::new(path_abs_str, Span::call_site());
-            let file_name_ident = Ident::new(
-                &file_name_without_extension
-                    .to_string()
-                    .to_string()
-                    .replace("/", "_")
-                    .replace("-", "_")
-                    .replace(".", "_"),
-                Span::call_site(),
-            );
+            let mut ident_string = file_name_without_extension
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect::<String>();
+            if ident_string.chars().next().unwrap().is_ascii_digit() {
+                // Identifiers cannot start with a digit, prepend an underscore.
+                ident_string.insert(0, '_');
+            }
+            let file_name_ident = Ident::new(&ident_string, Span::call_site());
             quote! {
                 #[doc = include_str!(#lit)]
                 mod #file_name_ident {}

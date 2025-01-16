@@ -22,7 +22,7 @@ pub fn collect_quorum_with_response<
     let tick = responses.timestamp_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.union(unsafe {
+    let current_responses = not_all.chain(unsafe {
         // SAFETY: we always persist values that have not reached quorum, so even
         // with arbitrary batching we always produce deterministic quorum results
         responses.clone().tick_batch()
@@ -111,7 +111,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
     let tick = responses.timestamp_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
-    let current_responses = not_all.union(unsafe {
+    let current_responses = not_all.chain(unsafe {
         // SAFETY: we always persist values that have not reached quorum, so even
         // with arbitrary batching we always produce deterministic quorum results
         responses.clone().tick_batch()

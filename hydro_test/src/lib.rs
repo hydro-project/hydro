@@ -12,7 +12,7 @@ mod docs {
 
 #[stageleft::runtime]
 #[cfg(test)]
-mod tests {
+mod test_init {
     #[ctor::ctor]
     fn init() {
         hydro_lang::deploy::init_test();

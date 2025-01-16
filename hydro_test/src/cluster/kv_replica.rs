@@ -6,8 +6,6 @@ use hydro_lang::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use super::paxos::{paxos_core, Acceptor, Ballot, Proposer};
-
 pub struct Replica {}
 
 pub trait KvKey: Serialize + DeserializeOwned + Hash + Eq + Clone + Debug {}
@@ -41,70 +39,22 @@ impl<K: KvKey, V: KvValue> PartialOrd for SequencedKv<K, V> {
     }
 }
 
-/// Sets up a linearizable key-value store using Paxos.
-///
-/// # Safety
-/// Notifications for leader election are non-deterministic. When the leader is changing,
-/// writes may be dropped by the old leader.
-#[expect(
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    reason = "internal paxos code // TODO"
-)]
-pub unsafe fn paxos_kv<'a, K: KvKey, V: KvValue>(
-    proposers: &Cluster<'a, Proposer>,
-    acceptors: &Cluster<'a, Acceptor>,
-    replicas: &Cluster<'a, Replica>,
-    c_to_proposers: Stream<KvPayload<K, V>, Cluster<'a, Proposer>, Unbounded>,
-    f: usize,
-    i_am_leader_send_timeout: u64,
-    i_am_leader_check_timeout: u64,
-    i_am_leader_check_timeout_delay_multiplier: usize,
-    checkpoint_frequency: usize,
-) -> (
-    Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
-    Stream<KvPayload<K, V>, Cluster<'a, Replica>, Unbounded>,
-) {
-    let (r_to_acceptors_checkpoint_complete_cycle, r_to_acceptors_checkpoint) =
-        replicas.forward_ref::<Stream<_, _, _>>();
-
-    let (p_to_clients_new_leader_elected, p_to_replicas) = unsafe {
-        // SAFETY: Leader election non-determinism and non-deterministic dropping of writes is documented.
-        paxos_core(
-            proposers,
-            acceptors,
-            r_to_acceptors_checkpoint.broadcast_bincode(acceptors),
-            c_to_proposers,
-            f,
-            i_am_leader_send_timeout,
-            i_am_leader_check_timeout,
-            i_am_leader_check_timeout_delay_multiplier,
-        )
-    };
-
-    let (r_to_acceptors_checkpoint_new, r_new_processed_payloads) = replica(
-        replicas,
-        p_to_replicas
-            .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }))
-            .broadcast_bincode_interleaved(replicas),
-        checkpoint_frequency,
-    );
-
-    r_to_acceptors_checkpoint_complete_cycle.complete(r_to_acceptors_checkpoint_new);
-
-    (p_to_clients_new_leader_elected, r_new_processed_payloads)
-}
-
 // Replicas. All relations for replicas will be prefixed with r. Expects ReplicaPayload on p_to_replicas, outputs a stream of (client address, ReplicaPayload) after processing.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub fn replica<'a, K: KvKey, V: KvValue>(
+pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     replicas: &Cluster<'a, Replica>,
-    p_to_replicas: Stream<SequencedKv<K, V>, Cluster<'a, Replica>, Unbounded, NoOrder>,
+    p_to_replicas: impl Into<
+        Stream<(usize, Option<KvPayload<K, V>>), Cluster<'a, Replica>, Unbounded, NoOrder>,
+    >,
     checkpoint_frequency: usize,
 ) -> (
     Stream<usize, Cluster<'a, Replica>, Unbounded>,
     Stream<KvPayload<K, V>, Cluster<'a, Replica>, Unbounded>,
 ) {
+    let p_to_replicas = p_to_replicas
+        .into()
+        .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }));
+
     let replica_tick = replicas.tick();
 
     let (r_buffered_payloads_complete_cycle, r_buffered_payloads) = replica_tick.cycle();
@@ -116,7 +66,7 @@ pub fn replica<'a, K: KvKey, V: KvValue>(
         .timestamped(&replica_tick)
         .tick_batch()
     }
-        .union(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
+        .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
         .sort();
     // Create a cycle since we'll use this seq before we define it
     let (r_highest_seq_complete_cycle, r_highest_seq) =
