@@ -105,7 +105,7 @@
         </span>roots
             .timestamped(<span class="kw-2">&amp;</span>reachability_tick)
             .tick_batch()
-            .union(reached_cycle)
+            .chain(reached_cycle)
     };
     <span class="kw">let </span>reachable = reached
         .clone()
@@ -115,7 +115,7 @@
             </span>edges.timestamped(<span class="kw-2">&amp;</span>reachability_tick).tick_batch().persist()
         })
         .map(<span class="macro">q!</span>(|(_from, (<span class="kw">_</span>, to))| to));
-    set_reached_cycle.complete_next_tick(reached.clone().union(reachable));
+    set_reached_cycle.complete_next_tick(reached.clone().chain(reachable));
 
     reached.all_ticks().unique().for_each(<span class="macro">q!</span>(|v| {
         reached_out.send(v).unwrap();

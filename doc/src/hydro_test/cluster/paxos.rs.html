@@ -1384,7 +1384,7 @@
             value: <span class="prelude-val">None
         </span>}));
 
-    (p_log_to_try_commit.union(p_log_holes), p_max_slot)
+    (p_log_to_try_commit.chain(p_log_holes), p_max_slot)
 }
 
 <span class="attr">#[expect(
@@ -1447,7 +1447,7 @@
             (slot, ballot),
             <span class="prelude-val">Some</span>(payload)
         )))
-        .union(p_log_to_recommit.map(<span class="macro">q!</span>(|p2a| ((p2a.slot, p2a.ballot), p2a.value))))
+        .chain(p_log_to_recommit.map(<span class="macro">q!</span>(|p2a| ((p2a.slot, p2a.ballot), p2a.value))))
         .continue_if(p_is_leader)
         .all_ticks();
 
@@ -1598,7 +1598,7 @@
             </span>}
         ));
     <span class="kw">let </span>a_log = a_p2as_to_place_in_log
-        .union(a_new_checkpoint.into_stream())
+        .chain(a_new_checkpoint.into_stream())
         .all_ticks()
         .fold_commutative(
             <span class="macro">q!</span>(|| (<span class="prelude-val">None</span>, HashMap::new())),

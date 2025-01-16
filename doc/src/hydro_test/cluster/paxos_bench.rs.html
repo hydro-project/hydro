@@ -507,7 +507,7 @@
                 <span class="comment">// SAFETY: we don't send a new write for the same key until the previous one is committed,
                 // so this contains only a single write per key, and we don't care about order
                 // across keys
-                </span>c_new_payloads_when_committed.assume_ordering()
+                </span>c_new_payloads_when_committed.assume_ordering::&lt;TotalOrder&gt;()
             })
             .all_ticks()
             .drop_timestamp(),
@@ -526,8 +526,8 @@
         .map(<span class="macro">q!</span>(|(key, _prev_count)| (key <span class="kw">as </span>usize, Instant::now())));
     <span class="kw">let </span>c_new_timers = c_timers
         .clone() <span class="comment">// Update c_timers in tick+1 so we can record differences during this tick (to track latency)
-        </span>.union(c_new_timers_when_leader_elected)
-        .union(c_updated_timers.clone())
+        </span>.chain(c_new_timers_when_leader_elected)
+        .chain(c_updated_timers.clone())
         .reduce_keyed_commutative(<span class="macro">q!</span>(|curr_time, new_time| {
             <span class="kw">if </span>new_time &gt; <span class="kw-2">*</span>curr_time {
                 <span class="kw-2">*</span>curr_time = new_time;
@@ -551,7 +551,7 @@
         .map(<span class="macro">q!</span>(|(_virtual_id, (prev_time, curr_time))| <span class="prelude-val">Some</span>(
             curr_time.duration_since(prev_time)
         )))
-        .union(c_latency_reset.into_stream())
+        .chain(c_latency_reset.into_stream())
         .all_ticks()
         .flatten_ordered()
         .fold_commutative(

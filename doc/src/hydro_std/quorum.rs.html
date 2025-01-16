@@ -200,7 +200,7 @@
     <span class="kw">let </span>tick = responses.timestamp_source();
     <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 
-    <span class="kw">let </span>current_responses = not_all.union(<span class="kw">unsafe </span>{
+    <span class="kw">let </span>current_responses = not_all.chain(<span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: we always persist values that have not reached quorum, so even
         // with arbitrary batching we always produce deterministic quorum results
         </span>responses.clone().tick_batch()
@@ -289,7 +289,7 @@
     <span class="kw">let </span>tick = responses.timestamp_source();
     <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 
-    <span class="kw">let </span>current_responses = not_all.union(<span class="kw">unsafe </span>{
+    <span class="kw">let </span>current_responses = not_all.chain(<span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: we always persist values that have not reached quorum, so even
         // with arbitrary batching we always produce deterministic quorum results
         </span>responses.clone().tick_batch()

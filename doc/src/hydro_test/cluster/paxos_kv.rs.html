@@ -318,7 +318,7 @@
         .timestamped(<span class="kw-2">&amp;</span>replica_tick)
         .tick_batch()
     }
-        .union(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
+        .chain(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
         </span>.sort();
     <span class="comment">// Create a cycle since we'll use this seq before we define it
     </span><span class="kw">let </span>(r_highest_seq_complete_cycle, r_highest_seq) =

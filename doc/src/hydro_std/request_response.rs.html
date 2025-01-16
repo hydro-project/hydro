@@ -61,7 +61,7 @@
     <span class="kw">let </span>(remaining_to_join_complete_cycle, remaining_to_join) =
         tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt;&gt;();
 
-    <span class="kw">let </span>remaining_and_new: Stream&lt;(K, M), Tick&lt;L&gt;, Bounded, <span class="kw">_</span>&gt; = remaining_to_join.union(metadata);
+    <span class="kw">let </span>remaining_and_new: Stream&lt;(K, M), Tick&lt;L&gt;, Bounded, <span class="kw">_</span>&gt; = remaining_to_join.chain(metadata);
 
     <span class="kw">let </span>responses = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: because we persist the metadata, delays resulting from
