@@ -41,20 +41,25 @@ async fn main() {
     let i_am_leader_check_timeout = 10; // Sec
     let i_am_leader_check_timeout_delay_multiplier = 15;
 
-    let (proposers, acceptors, clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
-        &builder,
-        f,
-        num_clients_per_node,
-        median_latency_window_size,
-        checkpoint_frequency,
-        i_am_leader_send_timeout,
-        i_am_leader_check_timeout,
-        i_am_leader_check_timeout_delay_multiplier,
-    );
+    let (sequencer, proposers, acceptors, clients, replicas) =
+        hydro_test::cluster::paxos_bench::paxos_bench(
+            &builder,
+            f,
+            num_clients_per_node,
+            median_latency_window_size,
+            checkpoint_frequency,
+            i_am_leader_send_timeout,
+            i_am_leader_check_timeout,
+            i_am_leader_check_timeout_delay_multiplier,
+        );
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
     let _nodes = builder
+        .with_process(
+            &sequencer,
+            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+        )
         .with_cluster(
             &proposers,
             (0..f + 1)
