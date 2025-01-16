@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["kv_replica"],"struct":["KvPayload","Replica","SequencedKv"],"trait":["KvKey","KvValue"]};

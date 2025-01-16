@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["paxos_kv","replica"],"struct":["KvPayload","Replica","SequencedKv"],"trait":["KvKey","KvValue"]};

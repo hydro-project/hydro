@@ -826,6 +826,27 @@
 <a href="#826" id="826">826</a>
 <a href="#827" id="827">827</a>
 <a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -839,6 +860,18 @@
 
 <span class="kw">pub struct </span>Proposer {}
 <span class="kw">pub struct </span>Acceptor {}
+
+<span class="attr">#[derive(Clone, Copy)]
+</span><span class="kw">pub struct </span>PaxosConfig {
+    <span class="doccomment">/// Maximum number of faulty nodes
+    </span><span class="kw">pub </span>f: usize,
+    <span class="doccomment">/// How often to send "I am leader" heartbeats
+    </span><span class="kw">pub </span>i_am_leader_send_timeout: u64,
+    <span class="doccomment">/// How often to check if the leader has expired
+    </span><span class="kw">pub </span>i_am_leader_check_timeout: u64,
+    <span class="doccomment">/// Initial delay, multiplied by proposer pid, to stagger proposers checking for timeouts
+    </span><span class="kw">pub </span>i_am_leader_check_timeout_delay_multiplier: usize,
+}
 
 <span class="kw">pub trait </span>PaxosPayload: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug {}
 <span class="kw">impl</span>&lt;T: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug&gt; PaxosPayload <span class="kw">for </span>T {}
@@ -892,11 +925,7 @@
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-</span><span class="attr">#[expect(
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    reason = <span class="string">"internal paxos code // TODO"
-</span>)]
+</span><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
 </span><span class="kw">pub unsafe fn </span>paxos_core&lt;<span class="lifetime">'a</span>, P: PaxosPayload, R&gt;(
     proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
     acceptors: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
@@ -906,15 +935,20 @@
         Unbounded,
         NoOrder,
     &gt;,
-    c_to_proposers: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
-    f: usize,
-    i_am_leader_send_timeout: u64,
-    i_am_leader_check_timeout: u64,
-    i_am_leader_check_timeout_delay_multiplier: usize,
+    c_to_proposers: <span class="kw">impl </span>FnOnce(
+        Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
+    ) -&gt; Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
+    config: PaxosConfig,
 ) -&gt; (
     Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
     Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
 ) {
+    <span class="kw">let </span>f = config.f;
+    <span class="kw">let </span>i_am_leader_send_timeout = config.i_am_leader_send_timeout;
+    <span class="kw">let </span>i_am_leader_check_timeout = config.i_am_leader_check_timeout;
+    <span class="kw">let </span>i_am_leader_check_timeout_delay_multiplier =
+        config.i_am_leader_check_timeout_delay_multiplier;
+
     proposers
         .source_iter(<span class="macro">q!</span>([<span class="string">"Proposers say hello"</span>]))
         .for_each(<span class="macro">q!</span>(|s| <span class="macro">println!</span>(<span class="string">"{}"</span>, s)));
@@ -954,6 +988,14 @@
     <span class="kw">let </span>just_became_leader = p_is_leader
         .clone()
         .continue_unless(p_is_leader.clone().defer_tick());
+
+    <span class="kw">let </span>c_to_proposers = c_to_proposers(
+        just_became_leader
+            .clone()
+            .then(p_ballot.clone())
+            .all_ticks()
+            .drop_timestamp(),
+    );
 
     <span class="kw">let </span>(p_to_replicas, a_log, sequencing_max_ballots) = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because

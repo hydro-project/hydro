@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/paxos_kv.rs`."><title>paxos_kv.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fecee23daa4e8a6d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (4ac7bcbaa 2024-09-04)" data-channel="nightly" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/kv_replica.rs`."><title>kv_replica.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fecee23daa4e8a6d.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0-nightly (4ac7bcbaa 2024-09-04)" data-channel="nightly" data-search-js="search-a99f1315e7cc5121.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-921df33f47b8780c.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -150,56 +150,6 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -207,8 +157,6 @@
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-
-<span class="kw">use </span><span class="kw">super</span>::paxos::{paxos_core, Acceptor, Ballot, Proposer};
 
 <span class="kw">pub struct </span>Replica {}
 
@@ -243,70 +191,22 @@
     }
 }
 
-<span class="doccomment">/// Sets up a linearizable key-value store using Paxos.
-///
-/// # Safety
-/// Notifications for leader election are non-deterministic. When the leader is changing,
-/// writes may be dropped by the old leader.
-</span><span class="attr">#[expect(
-    clippy::type_complexity,
-    clippy::too_many_arguments,
-    reason = <span class="string">"internal paxos code // TODO"
-</span>)]
-</span><span class="kw">pub unsafe fn </span>paxos_kv&lt;<span class="lifetime">'a</span>, K: KvKey, V: KvValue&gt;(
-    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
-    acceptors: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
-    replicas: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;,
-    c_to_proposers: Stream&lt;KvPayload&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
-    f: usize,
-    i_am_leader_send_timeout: u64,
-    i_am_leader_check_timeout: u64,
-    i_am_leader_check_timeout_delay_multiplier: usize,
-    checkpoint_frequency: usize,
-) -&gt; (
-    Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
-    Stream&lt;KvPayload&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;,
-) {
-    <span class="kw">let </span>(r_to_acceptors_checkpoint_complete_cycle, r_to_acceptors_checkpoint) =
-        replicas.forward_ref::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
-
-    <span class="kw">let </span>(p_to_clients_new_leader_elected, p_to_replicas) = <span class="kw">unsafe </span>{
-        <span class="comment">// SAFETY: Leader election non-determinism and non-deterministic dropping of writes is documented.
-        </span>paxos_core(
-            proposers,
-            acceptors,
-            r_to_acceptors_checkpoint.broadcast_bincode(acceptors),
-            c_to_proposers,
-            f,
-            i_am_leader_send_timeout,
-            i_am_leader_check_timeout,
-            i_am_leader_check_timeout_delay_multiplier,
-        )
-    };
-
-    <span class="kw">let </span>(r_to_acceptors_checkpoint_new, r_new_processed_payloads) = replica(
-        replicas,
-        p_to_replicas
-            .map(<span class="macro">q!</span>(|(slot, kv)| SequencedKv { seq: slot, kv }))
-            .broadcast_bincode_interleaved(replicas),
-        checkpoint_frequency,
-    );
-
-    r_to_acceptors_checkpoint_complete_cycle.complete(r_to_acceptors_checkpoint_new);
-
-    (p_to_clients_new_leader_elected, r_new_processed_payloads)
-}
-
 <span class="comment">// Replicas. All relations for replicas will be prefixed with r. Expects ReplicaPayload on p_to_replicas, outputs a stream of (client address, ReplicaPayload) after processing.
 </span><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
-</span><span class="kw">pub fn </span>replica&lt;<span class="lifetime">'a</span>, K: KvKey, V: KvValue&gt;(
+</span><span class="kw">pub fn </span>kv_replica&lt;<span class="lifetime">'a</span>, K: KvKey, V: KvValue&gt;(
     replicas: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;,
-    p_to_replicas: Stream&lt;SequencedKv&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded, NoOrder&gt;,
+    p_to_replicas: <span class="kw">impl </span>Into&lt;
+        Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;KvPayload&lt;K, V&gt;&gt;), Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded, NoOrder&gt;,
+    &gt;,
     checkpoint_frequency: usize,
 ) -&gt; (
     Stream&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;,
     Stream&lt;KvPayload&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;,
 ) {
+    <span class="kw">let </span>p_to_replicas = p_to_replicas
+        .into()
+        .map(<span class="macro">q!</span>(|(slot, kv)| SequencedKv { seq: slot, kv }));
+
     <span class="kw">let </span>replica_tick = replicas.tick();
 
     <span class="kw">let </span>(r_buffered_payloads_complete_cycle, r_buffered_payloads) = replica_tick.cycle();

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["paxos_bench"],"struct":["Client"]};
+window.SIDEBAR_ITEMS = {"fn":["paxos_bench"]};
