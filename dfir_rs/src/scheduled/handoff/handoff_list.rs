@@ -7,7 +7,8 @@ use variadics::{variadic_trait, Variadic};
 use super::Handoff;
 use crate::scheduled::graph::HandoffData;
 use crate::scheduled::port::{Polarity, Port, PortCtx};
-use crate::scheduled::{HandoffId, SubgraphId};
+use crate::scheduled::{HandoffId, HandoffTag, SubgraphId};
+use crate::util::slot_vec::SlotVec;
 
 /// Sealed trait for variadic lists of ports.
 ///
@@ -29,7 +30,7 @@ where
     /// - `false`: Handoffs are successors (outputs) from subgraph `sg_id`.
     fn set_graph_meta(
         &self,
-        handoffs: &mut [HandoffData],
+        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
         out_handoff_ids: &mut Vec<HandoffId>,
         sg_id: SubgraphId,
         handoffs_are_preds: bool,
@@ -41,7 +42,7 @@ where
     ///
     /// (Note that unlike [`Self::set_graph_meta`], this does not mess with pred/succ handoffs for
     /// teeing).
-    fn make_ctx<'a>(&self, handoffs: &'a [HandoffData]) -> Self::Ctx<'a>;
+    fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a>;
 }
 #[sealed]
 impl<S, Rest, H> PortList<S> for (Port<S, H>, Rest)
@@ -52,13 +53,13 @@ where
 {
     fn set_graph_meta(
         &self,
-        handoffs: &mut [HandoffData],
+        handoffs: &mut SlotVec<HandoffTag, HandoffData>,
         out_handoff_ids: &mut Vec<HandoffId>,
         sg_id: SubgraphId,
         handoffs_are_preds: bool,
     ) {
         let (this, rest) = self;
-        let this_handoff = &mut handoffs[this.handoff_id.0];
+        let this_handoff = &mut handoffs[this.handoff_id];
 
         // Set subgraph's info (`out_handoff_ids`) about neighbor handoffs.
         // Use the "representative" handoff (pred or succ) for teeing handoffs, for the subgraph metadata.
@@ -72,21 +73,21 @@ where
         // Set handoff's info (`preds`/`succs`) about neighbor subgraph (`sg_id`).
         if handoffs_are_preds {
             for succ_hoff in this_handoff.succ_handoffs.clone() {
-                handoffs[succ_hoff.0].succs.push(sg_id);
+                handoffs[succ_hoff].succs.push(sg_id);
             }
         } else {
             for pred_hoff in this_handoff.pred_handoffs.clone() {
-                handoffs[pred_hoff.0].preds.push(sg_id);
+                handoffs[pred_hoff].preds.push(sg_id);
             }
         }
         rest.set_graph_meta(handoffs, out_handoff_ids, sg_id, handoffs_are_preds);
     }
 
     type Ctx<'a> = (&'a PortCtx<S, H>, Rest::Ctx<'a>);
-    fn make_ctx<'a>(&self, handoffs: &'a [HandoffData]) -> Self::Ctx<'a> {
+    fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {
         let (this, rest) = self;
         let handoff = handoffs
-            .get(this.handoff_id.0)
+            .get(this.handoff_id)
             .unwrap()
             .handoff
             .any_ref()
@@ -105,7 +106,7 @@ where
 {
     fn set_graph_meta(
         &self,
-        _handoffs: &mut [HandoffData],
+        _handoffs: &mut SlotVec<HandoffTag, HandoffData>,
         _out_handoff_ids: &mut Vec<HandoffId>,
         _sg_id: SubgraphId,
         _handoffs_are_preds: bool,
@@ -113,7 +114,7 @@ where
     }
 
     type Ctx<'a> = ();
-    fn make_ctx<'a>(&self, _handoffs: &'a [HandoffData]) -> Self::Ctx<'a> {}
+    fn make_ctx<'a>(&self, _handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {}
 }
 
 /// Trait for splitting a list of ports into two.

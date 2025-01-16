@@ -157,6 +157,22 @@ impl VisitMut for GenFinalPubVistor {
         syn::visit_mut::visit_use_path_mut(self, i);
     }
 
+    fn visit_vis_restricted_mut(&mut self, _i: &mut syn::VisRestricted) {
+        // don't treat the restriction as a path, we don't want to rewrite that to `__staged`
+    }
+
+    fn visit_path_mut(&mut self, i: &mut syn::Path) {
+        if !i.segments.is_empty() && i.segments[0].ident == "crate" {
+            i.segments.insert(
+                1,
+                syn::PathSegment {
+                    ident: parse_quote!(__staged),
+                    arguments: Default::default(),
+                },
+            );
+        }
+    }
+
     fn visit_item_mod_mut(&mut self, i: &mut syn::ItemMod) {
         let is_runtime_or_test = i.attrs.iter().any(|a| {
             a.path().to_token_stream().to_string() == "stageleft :: runtime"
@@ -321,7 +337,6 @@ pub fn gen_final_helper() {
     )
     .unwrap();
 
-    println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
     println!("cargo::rerun-if-changed=build.rs");
     println!("cargo::rerun-if-changed=src");
 }
@@ -329,7 +344,15 @@ pub fn gen_final_helper() {
 #[macro_export]
 macro_rules! gen_final {
     () => {
-        #[cfg(not(feature = "stageleft_devel"))]
-        $crate::gen_final_helper()
+        #[allow(
+            unexpected_cfgs,
+            reason = "Consumer crates may optionally add the `stageleft_devel` feature."
+        )]
+        {
+            println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
+
+            #[cfg(not(feature = "stageleft_devel"))]
+            $crate::gen_final_helper()
+        }
     };
 }

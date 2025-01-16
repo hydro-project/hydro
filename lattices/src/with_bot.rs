@@ -138,7 +138,7 @@ where
     Inner: IsTop,
 {
     fn is_top(&self) -> bool {
-        self.0.as_ref().map_or(false, IsTop::is_top)
+        self.0.as_ref().is_some_and(IsTop::is_top)
     }
 }
 
