@@ -12,6 +12,18 @@ use serde::{Deserialize, Serialize};
 pub struct Proposer {}
 pub struct Acceptor {}
 
+#[derive(Clone, Copy)]
+pub struct PaxosConfig {
+    /// Maximum number of faulty nodes
+    pub f: usize,
+    /// How often to send "I am leader" heartbeats
+    pub i_am_leader_send_timeout: u64,
+    /// How often to check if the leader has expired
+    pub i_am_leader_check_timeout: u64,
+    /// Initial delay, multiplied by proposer pid, to stagger proposers checking for timeouts
+    pub i_am_leader_check_timeout_delay_multiplier: usize,
+}
+
 pub trait PaxosPayload: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug {}
 impl<T: Serialize + DeserializeOwned + PartialEq + Eq + Clone + Debug> PaxosPayload for T {}
 
@@ -64,11 +76,7 @@ struct P2a<P> {
 /// in deterministic order. However, when the leader is changing, payloads may be
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
-#[expect(
-    clippy::too_many_arguments,
-    clippy::type_complexity,
-    reason = "internal paxos code // TODO"
-)]
+#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -78,15 +86,20 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
         Unbounded,
         NoOrder,
     >,
-    c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
-    f: usize,
-    i_am_leader_send_timeout: u64,
-    i_am_leader_check_timeout: u64,
-    i_am_leader_check_timeout_delay_multiplier: usize,
+    c_to_proposers: impl FnOnce(
+        Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
+    ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
+    config: PaxosConfig,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
+    let f = config.f;
+    let i_am_leader_send_timeout = config.i_am_leader_send_timeout;
+    let i_am_leader_check_timeout = config.i_am_leader_check_timeout;
+    let i_am_leader_check_timeout_delay_multiplier =
+        config.i_am_leader_check_timeout_delay_multiplier;
+
     proposers
         .source_iter(q!(["Proposers say hello"]))
         .for_each(q!(|s| println!("{}", s)));
@@ -126,6 +139,14 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
     let just_became_leader = p_is_leader
         .clone()
         .continue_unless(p_is_leader.clone().defer_tick());
+
+    let c_to_proposers = c_to_proposers(
+        just_became_leader
+            .clone()
+            .then(p_ballot.clone())
+            .all_ticks()
+            .drop_timestamp(),
+    );
 
     let (p_to_replicas, a_log, sequencing_max_ballots) = unsafe {
         // SAFETY: The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
