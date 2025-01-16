@@ -1906,49 +1906,6 @@
 <a href="#1906" id="1906">1906</a>
 <a href="#1907" id="1907">1907</a>
 <a href="#1908" id="1908">1908</a>
-<a href="#1909" id="1909">1909</a>
-<a href="#1910" id="1910">1910</a>
-<a href="#1911" id="1911">1911</a>
-<a href="#1912" id="1912">1912</a>
-<a href="#1913" id="1913">1913</a>
-<a href="#1914" id="1914">1914</a>
-<a href="#1915" id="1915">1915</a>
-<a href="#1916" id="1916">1916</a>
-<a href="#1917" id="1917">1917</a>
-<a href="#1918" id="1918">1918</a>
-<a href="#1919" id="1919">1919</a>
-<a href="#1920" id="1920">1920</a>
-<a href="#1921" id="1921">1921</a>
-<a href="#1922" id="1922">1922</a>
-<a href="#1923" id="1923">1923</a>
-<a href="#1924" id="1924">1924</a>
-<a href="#1925" id="1925">1925</a>
-<a href="#1926" id="1926">1926</a>
-<a href="#1927" id="1927">1927</a>
-<a href="#1928" id="1928">1928</a>
-<a href="#1929" id="1929">1929</a>
-<a href="#1930" id="1930">1930</a>
-<a href="#1931" id="1931">1931</a>
-<a href="#1932" id="1932">1932</a>
-<a href="#1933" id="1933">1933</a>
-<a href="#1934" id="1934">1934</a>
-<a href="#1935" id="1935">1935</a>
-<a href="#1936" id="1936">1936</a>
-<a href="#1937" id="1937">1937</a>
-<a href="#1938" id="1938">1938</a>
-<a href="#1939" id="1939">1939</a>
-<a href="#1940" id="1940">1940</a>
-<a href="#1941" id="1941">1941</a>
-<a href="#1942" id="1942">1942</a>
-<a href="#1943" id="1943">1943</a>
-<a href="#1944" id="1944">1944</a>
-<a href="#1945" id="1945">1945</a>
-<a href="#1946" id="1946">1946</a>
-<a href="#1947" id="1947">1947</a>
-<a href="#1948" id="1948">1948</a>
-<a href="#1949" id="1949">1949</a>
-<a href="#1950" id="1950">1950</a>
-<a href="#1951" id="1951">1951</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -1966,14 +1923,13 @@
 <span class="kw">use </span><span class="kw">crate</span>::builder::FLOW_USED_MESSAGE;
 <span class="kw">use </span><span class="kw">crate</span>::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 <span class="kw">use </span><span class="kw">crate</span>::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
-<span class="kw">use </span><span class="kw">crate</span>::location::cluster::CLUSTER_SELF_ID;
 <span class="kw">use </span><span class="kw">crate</span>::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 <span class="kw">use </span><span class="kw">crate</span>::location::tick::{NoTimestamp, Timestamped};
 <span class="kw">use </span><span class="kw">crate</span>::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::get_this_crate;
-<span class="kw">use crate</span>::{Bounded, Cluster, ClusterId, Optional, Process, Singleton, Unbounded};
+<span class="kw">use crate</span>::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
 
 <span class="doccomment">/// Marks the stream as being totally ordered, which means that there are
 /// no sources of non-determinism (other than intentional ones) that will
@@ -3487,49 +3443,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, C1, B, Order&gt; Stream&lt;T, Cluster&lt;<span class="lifetime">'a</span>, C1&gt;, B, Order&gt; {
-    <span class="kw">pub fn </span>decouple_cluster&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
-        <span class="self">self</span>,
-        other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C2&gt;,
-    ) -&gt; Stream&lt;T, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, Unbounded, Order&gt;
-    <span class="kw">where
-        </span>Cluster&lt;<span class="lifetime">'a</span>, C1&gt;: Location&lt;<span class="lifetime">'a</span>, Root = Cluster&lt;<span class="lifetime">'a</span>, C1&gt;&gt;,
-        Cluster&lt;<span class="lifetime">'a</span>, C1&gt;:
-            CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, In&lt;T&gt; = (ClusterId&lt;C2&gt;, T), Out&lt;T&gt; = (Tag, T)&gt;,
-        T: Clone + Serialize + DeserializeOwned,
-        Order:
-            MinOrder&lt;&lt;Cluster&lt;<span class="lifetime">'a</span>, C1&gt; <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;&gt;,
-    {
-        <span class="kw">let </span>sent = <span class="self">self
-            </span>.map(<span class="macro">q!</span>(<span class="kw">move </span>|b| (
-                ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
-                b.clone()
-            )))
-            .send_bincode_interleaved(other);
-
-        <span class="kw">unsafe </span>{
-            <span class="comment">// SAFETY: this is safe because we are mapping clusters 1:1
-            </span>sent.assume_ordering()
-        }
-    }
-}
-
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B, Order&gt; Stream&lt;T, L, B, Order&gt; {
-    <span class="kw">pub fn </span>decouple_process&lt;P2&gt;(
-        <span class="self">self</span>,
-        other: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, P2&gt;,
-    ) -&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>, P2&gt;, Unbounded, Order&gt;
-    <span class="kw">where
-        </span>L::Root: CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;, In&lt;T&gt; = T, Out&lt;T&gt; = T&gt;,
-        T: Clone + Serialize + DeserializeOwned,
-        Order: MinOrder&lt;
-            &lt;L::Root <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
-            Min = Order,
-        &gt;,
-    {
-        <span class="self">self</span>.send_bincode::&lt;Process&lt;<span class="lifetime">'a</span>, P2&gt;, T&gt;(other)
-    }
-
     <span class="kw">pub fn </span>send_bincode&lt;L2: Location&lt;<span class="lifetime">'a</span>&gt;, CoreType&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>L2,

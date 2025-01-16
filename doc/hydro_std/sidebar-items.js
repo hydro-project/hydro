@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["quorum","request_response"]};
+window.SIDEBAR_ITEMS = {"mod":["compartmentalize","quorum","request_response"]};
