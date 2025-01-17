@@ -18,7 +18,7 @@ pub fn test_flo_syntax() {
     df.run_available();
 }
 
-#[multiplatform_test]
+#[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_flo_nested() {
     let mut df = dfir_syntax! {
         users = source_iter(["alice", "bob"]);
