@@ -451,10 +451,24 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree excluding ref-edges.
-        let inn_degree = self.node_predecessor_edges(node_id).count();
-        // Out-degree excluding ref-edges.
-        let out_degree = self.node_successor_edges(node_id).count();
+        // In-degree excluding ref-edges and loop-crossing edges.
+        let inn_degree = self
+            .node_predecessor_edges(node_id)
+            .filter(|&edge_id| {
+                // Filter out loop-crossing edges.
+                let pred_id = self.edge(edge_id).0;
+                self.node_loop(pred_id) == self.node_loop(node_id)
+            })
+            .count();
+        // Out-degree excluding ref-edges and loop-crossing edges.
+        let out_degree = self
+            .node_successor_edges(node_id)
+            .filter(|&edge_id| {
+                // Filter out loop-crossing edges.
+                let pred_id = self.edge(edge_id).0;
+                self.node_loop(pred_id) == self.node_loop(node_id)
+            })
+            .count();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -1414,7 +1428,7 @@ impl DfirGraph {
                     }
                     output.into()
                 } else {
-                    node.to_pretty_string()
+                    format!("{:?} {}", self.node_loop(node_id), node.to_pretty_string()).into()
                 },
                 if write_config.no_pull_push {
                     None
