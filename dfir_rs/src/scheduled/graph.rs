@@ -632,6 +632,7 @@ impl<'a> Dfir<'a> {
     }
 
     /// Adds a new compiled subgraph with all options.
+    #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
     pub fn add_subgraph_full<Name, R, W, F>(
         &mut self,
         name: Name,
