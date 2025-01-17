@@ -59,7 +59,7 @@ fn main() {
                         >::default(),
                     ),
                 );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(2v1)",
                 0,
                 var_expr!(),
@@ -210,7 +210,7 @@ fn main() {
                     pivot_run_sg_2v1(op_9v1, hoff_6v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(1v1)",
                 1,
                 var_expr!(hoff_6v3_recv),

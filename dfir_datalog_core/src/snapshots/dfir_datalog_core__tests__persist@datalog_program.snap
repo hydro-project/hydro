@@ -301,7 +301,7 @@ fn main() {
                 );
             let singleton_op_55v1 = df
                 .add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(9v1)",
                 0,
                 var_expr!(),
@@ -366,7 +366,7 @@ fn main() {
                     pivot_run_sg_9v1(op_34v1, hoff_14v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(10v1)",
                 0,
                 var_expr!(),
@@ -431,7 +431,7 @@ fn main() {
                     pivot_run_sg_10v1(op_35v1, hoff_11v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(11v1)",
                 0,
                 var_expr!(),
@@ -496,7 +496,7 @@ fn main() {
                     pivot_run_sg_11v1(op_36v1, hoff_6v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(1v1)",
                 0,
                 var_expr!(hoff_25v3_recv),
@@ -562,7 +562,7 @@ fn main() {
                     pivot_run_sg_1v1(op_5v1, hoff_28v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(2v1)",
                 0,
                 var_expr!(hoff_19v3_recv),
@@ -628,7 +628,7 @@ fn main() {
                     pivot_run_sg_2v1(op_10v1, hoff_22v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(3v1)",
                 0,
                 var_expr!(hoff_13v3_recv),
@@ -694,7 +694,7 @@ fn main() {
                     pivot_run_sg_3v1(op_33v1, hoff_16v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(4v1)",
                 1,
                 var_expr!(hoff_6v3_recv, hoff_26v3_recv, hoff_29v3_recv),
@@ -1311,7 +1311,7 @@ fn main() {
                     context.schedule_subgraph(context.current_subgraph(), false);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(5v1)",
                 2,
                 var_expr!(hoff_20v3_recv, hoff_23v3_recv),
@@ -1682,7 +1682,7 @@ fn main() {
                     context.schedule_subgraph(context.current_subgraph(), false);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(6v1)",
                 1,
                 var_expr!(hoff_14v3_recv, hoff_28v3_recv),
@@ -2264,7 +2264,7 @@ fn main() {
                     context.schedule_subgraph(context.current_subgraph(), false);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(7v1)",
                 1,
                 var_expr!(hoff_16v3_recv, hoff_17v3_recv),
@@ -2704,7 +2704,7 @@ fn main() {
                     context.schedule_subgraph(context.current_subgraph(), false);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(8v1)",
                 1,
                 var_expr!(hoff_11v3_recv, hoff_22v3_recv),

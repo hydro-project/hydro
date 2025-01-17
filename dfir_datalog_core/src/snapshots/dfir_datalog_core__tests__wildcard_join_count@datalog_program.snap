@@ -160,7 +160,7 @@ fn main() {
                 sg_6v1_node_24v1_joindata_rhs,
                 |rcell| hydroflow::util::clear::Clear::clear(rcell.get_mut()),
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(1v1)",
                 0,
                 var_expr!(),
@@ -313,7 +313,7 @@ fn main() {
                     pivot_run_sg_1v1(op_2v1, op_3v1);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(2v1)",
                 0,
                 var_expr!(),
@@ -466,7 +466,7 @@ fn main() {
                     pivot_run_sg_2v1(op_5v1, op_6v1);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(3v1)",
                 1,
                 var_expr!(hoff_10v3_recv),
@@ -684,7 +684,7 @@ fn main() {
                     pivot_run_sg_3v1(op_8v1, op_15v1);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(4v1)",
                 1,
                 var_expr!(hoff_1v3_recv),
@@ -916,7 +916,7 @@ fn main() {
                     pivot_run_sg_4v1(op_11v1, op_16v1);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(5v1)",
                 0,
                 var_expr!(hoff_9v3_recv, hoff_12v3_recv),
@@ -1175,7 +1175,7 @@ fn main() {
                     pivot_run_sg_5v1(op_21v1, hoff_10v3_send);
                 },
             );
-            df.add_subgraph_stratified(
+            df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(6v1)",
                 0,
                 var_expr!(hoff_4v3_recv, hoff_7v3_recv),
