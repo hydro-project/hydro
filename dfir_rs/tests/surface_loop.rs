@@ -2,7 +2,7 @@ use dfir_rs::util::iter_batches_stream;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
-#[multiplatform_test]
+#[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_flo_syntax() {
     let mut df = dfir_syntax! {
         users = source_iter(["alice", "bob"]);

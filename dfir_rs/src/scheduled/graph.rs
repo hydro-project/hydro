@@ -674,7 +674,9 @@ impl<'a> Dfir<'a> {
             )
         });
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push(loop_depth, sg_id);
+        if loop_id.is_none() {
+            self.context.stratum_queues[stratum].push(loop_depth, sg_id);
+        }
 
         sg_id
     }
