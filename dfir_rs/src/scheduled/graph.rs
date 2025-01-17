@@ -649,6 +649,7 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
+        let is_scheduled = loop_id.is_none();
         let loop_depth = loop_id.map_or(0, |loop_id| self.loop_depth[loop_id]);
 
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
@@ -668,14 +669,14 @@ impl<'a> Dfir<'a> {
                 subgraph,
                 subgraph_preds,
                 subgraph_succs,
-                true,
+                is_scheduled,
                 laziness,
                 loop_id,
                 loop_depth,
             )
         });
         self.context.init_stratum(stratum);
-        if loop_id.is_none() {
+        if is_scheduled {
             self.context.stratum_queues[stratum].push(loop_depth, sg_id);
         }
 
