@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::future::Future;
 use std::marker::PhantomData;
 
@@ -36,6 +37,8 @@ pub struct Dfir<'a> {
     loop_depth: SlotVec<LoopTag, usize>,
     // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
     loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
+
+    loop_nonce: usize,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
 
@@ -270,22 +273,32 @@ impl<'a> Dfir<'a> {
         let current_tick = self.context.current_tick;
 
         let mut work_done = false;
-        let mut prev_depth = 0;
-        // How many times we have entered a loop.
-        let mut loop_counter = 1;
-        while let Some((curr_depth, sg_id)) =
+
+        // Stack of loop nonces.
+        let mut loop_nonce_stack = Vec::new();
+
+        while let Some((new_depth, sg_id)) =
             self.context.stratum_queues[self.context.current_stratum].pop()
         {
             work_done = true;
 
-            let entered_loop = curr_depth > prev_depth;
-            if entered_loop {
-                loop_counter += 1;
-                prev_depth = curr_depth;
+            match new_depth.cmp(&loop_nonce_stack.len()) {
+                Ordering::Greater => {
+                    // We have entered a loop.
+                    self.loop_nonce += 1;
+                    loop_nonce_stack.push(self.loop_nonce);
+                }
+                Ordering::Less => {
+                    // We have exited a loop.
+                    loop_nonce_stack.pop();
+                }
+                Ordering::Equal => {}
             }
 
             {
                 let sg_data = &mut self.subgraphs[sg_id];
+                debug_assert_eq!(self.context.current_stratum, sg_data.stratum);
+
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
                 tracing::trace!(
@@ -298,12 +311,13 @@ impl<'a> Dfir<'a> {
                 self.context.is_first_run_this_tick = sg_data
                     .last_tick_run_in
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
-                self.context.is_first_loop_iteration = self.context.is_first_run_this_tick
-                    || (sg_data.last_loop_counter < loop_counter);
+                self.context.is_first_loop_iteration = loop_nonce_stack
+                    .last()
+                    .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
 
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
                 sg_data.last_tick_run_in = Some(current_tick);
-                sg_data.last_loop_counter = loop_counter;
+                sg_data.last_loop_nonce = loop_nonce_stack.last().copied().unwrap_or_default();
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -322,6 +336,14 @@ impl<'a> Dfir<'a> {
                                 .push(succ_sg_data.loop_depth, succ_id);
                         }
                     }
+                }
+            }
+
+            // Check if subgraph wants rescheduling
+            if self.context.reschedule_current_subgraph.take() {
+                // Add subgraph to stratum queue if it is not already scheduled.
+                if !sg_data.is_scheduled.replace(true) {
+                    self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 }
             }
         }
@@ -951,8 +973,8 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
-    /// Used to track the first iteration in each loop execution.
-    last_loop_counter: usize,
+    /// A meaningless ID to track the last loop iteration this subgraph was run in.
+    last_loop_nonce: usize,
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
@@ -984,7 +1006,7 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            last_loop_counter: 0,
+            last_loop_nonce: 0,
             is_lazy,
             loop_id,
             loop_depth,

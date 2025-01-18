@@ -3,6 +3,7 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
+use std::cell::Cell;
 use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
@@ -40,6 +41,9 @@ pub struct Context {
     // TODO(mingwei): as long as this is here, it's impossible to know when all work is done.
     // Second field (bool) is for if the event is an external "important" event (true).
     pub(super) event_queue_send: UnboundedSender<(SubgraphId, bool)>,
+
+    /// If the current subgraph wants to reschedule in the current tick+stratum.
+    pub(super) reschedule_current_subgraph: Cell<bool>,
 
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
@@ -92,9 +96,18 @@ impl Context {
         self.subgraph_id
     }
 
-    /// Schedules a subgraph.
+    /// Schedules a subgraph for the next tick.
+    ///
+    /// If `is_external` is `true`, the scheduling will trigger the next tick to begin. If it is
+    /// `false` then scheduling will be lazy and the next tick will not begin unless there is other
+    /// reason to.
     pub fn schedule_subgraph(&self, sg_id: SubgraphId, is_external: bool) {
         self.event_queue_send.send((sg_id, is_external)).unwrap()
+    }
+
+    /// Schedules the current subgraph to run again _this tick_.
+    pub fn reschedule_current_subgraph(&self) {
+        self.reschedule_current_subgraph.set(true);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -238,6 +251,7 @@ impl Default for Context {
             events_received_tick: false,
 
             event_queue_send,
+            reschedule_current_subgraph: Cell::new(false),
 
             current_stratum: 0,
             current_tick: TickInstant::default(),

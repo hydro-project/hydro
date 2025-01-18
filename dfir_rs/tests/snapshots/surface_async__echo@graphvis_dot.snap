@@ -5,8 +5,8 @@ expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) source_stream(lines_recv)", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) dest_sink(stdout_lines)", shape=house, fillcolor="#ffff88"]
+    n1v1 [label="(n1v1) None source_stream(lines_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) None dest_sink(stdout_lines)", shape=house, fillcolor="#ffff88"]
     n1v1 -> n2v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"

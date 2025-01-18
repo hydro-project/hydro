@@ -8,11 +8,11 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>source_stream(items_recv)</code>"/]:::pullClass
-2v1[\"(2v1) <code>fold::&lt;'tick&gt;(Vec::new, Vec::push)</code>"/]:::pullClass
-3v1[\"<div style=text-align:center>(3v1)</div> <code>flat_map(|mut vec| {<br>    vec.sort();<br>    vec<br>})</code>"/]:::pullClass
-4v1[/"(4v1) <code>for_each(|v| print!(&quot;{:?}, &quot;, v))</code>"\]:::pushClass
-5v1["(5v1) <code>handoff</code>"]:::otherClass
+1v1[\"(1v1) <code>None source_stream(items_recv)</code>"/]:::pullClass
+2v1[\"(2v1) <code>None fold::&lt;'tick&gt;(Vec::new, Vec::push)</code>"/]:::pullClass
+3v1[\"<div style=text-align:center>(3v1)</div> <code>None flat_map(|mut vec| {<br>    vec.sort();<br>    vec<br>})</code>"/]:::pullClass
+4v1[/"(4v1) <code>None for_each(|v| print!(&quot;{:?}, &quot;, v))</code>"\]:::pushClass
+5v1["(5v1) <code>None handoff</code>"]:::otherClass
 3v1-->4v1
 2v1-->3v1
 1v1-->5v1

@@ -15,18 +15,20 @@ linkStyle default stroke:#aaa
 5v1[\"(5v1) <code>Some(GraphLoopId(1v1)) batch()</code>"/]:::pullClass
 6v1[\"(6v1) <code>Some(GraphLoopId(1v1)) flatten()</code>"/]:::pullClass
 7v1[\"(7v1) <code>Some(GraphLoopId(1v1)) cross_join::&lt;'static, 'tick&gt;()</code>"/]:::pullClass
-8v1[/"<div style=text-align:center>(8v1)</div> <code>Some(GraphLoopId(1v1)) for_each(|(user, message)| {<br>    println!(&quot;{}: notify {} of {}&quot;, context.current_tick(), user, message)<br>})</code>"\]:::pushClass
-9v1["(9v1) <code>None handoff</code>"]:::otherClass
+8v1[\"(8v1) <code>Some(GraphLoopId(1v1)) map(|item| (context.current_tick().0, item))</code>"/]:::pullClass
+9v1[/"<div style=text-align:center>(9v1)</div> <code>Some(GraphLoopId(1v1)) assert_eq([<br>    (0, (&quot;alice&quot;, 0)),<br>    (0, (&quot;alice&quot;, 1)),<br>    (0, (&quot;alice&quot;, 2)),<br>    (0, (&quot;bob&quot;, 0)),<br>    (0, (&quot;bob&quot;, 1)),<br>    (0, (&quot;bob&quot;, 2)),<br>    (1, (&quot;alice&quot;, 3)),<br>    (1, (&quot;alice&quot;, 4)),<br>    (1, (&quot;alice&quot;, 5)),<br>    (1, (&quot;bob&quot;, 3)),<br>    (1, (&quot;bob&quot;, 4)),<br>    (1, (&quot;bob&quot;, 5)),<br>    (2, (&quot;alice&quot;, 6)),<br>    (2, (&quot;alice&quot;, 7)),<br>    (2, (&quot;alice&quot;, 8)),<br>    (2, (&quot;bob&quot;, 6)),<br>    (2, (&quot;bob&quot;, 7)),<br>    (2, (&quot;bob&quot;, 8)),<br>    (3, (&quot;alice&quot;, 9)),<br>    (3, (&quot;alice&quot;, 10)),<br>    (3, (&quot;alice&quot;, 11)),<br>    (3, (&quot;bob&quot;, 9)),<br>    (3, (&quot;bob&quot;, 10)),<br>    (3, (&quot;bob&quot;, 11)),<br>])</code>"\]:::pushClass
 10v1["(10v1) <code>None handoff</code>"]:::otherClass
+11v1["(11v1) <code>None handoff</code>"]:::otherClass
 4v1-->|0|7v1
 3v1-->4v1
-1v1-->9v1
+1v1-->10v1
 6v1-->|1|7v1
 5v1-->6v1
-2v1-->10v1
+2v1-->11v1
+8v1-->9v1
 7v1-->8v1
-9v1-->3v1
-10v1-->5v1
+10v1-->3v1
+11v1-->5v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     subgraph sg_1v1_var_users ["var <tt>users</tt>"]
@@ -46,8 +48,10 @@ subgraph sg_3v1 ["sg_3v1 stratum 0"]
     6v1
     7v1
     8v1
+    9v1
     subgraph sg_3v1_var_cp ["var <tt>cp</tt>"]
         7v1
         8v1
+        9v1
     end
 end
