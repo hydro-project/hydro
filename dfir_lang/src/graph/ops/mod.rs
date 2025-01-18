@@ -295,6 +295,7 @@ declare_ops![
     persist_mut_keyed::PERSIST_MUT_KEYED,
     py_udf::PY_UDF,
     reduce::REDUCE,
+    repeat_n::REPEAT_N,
     spin::SPIN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,

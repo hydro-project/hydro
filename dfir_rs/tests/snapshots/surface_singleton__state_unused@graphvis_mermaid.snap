@@ -8,9 +8,9 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>source_iter(15..=25)</code>"/]:::pullClass
-2v1[\"(2v1) <code>map(Max::new)</code>"/]:::pullClass
-3v1[/"(3v1) <code>state::&lt;'static, Max&lt;_&gt;&gt;()</code>"\]:::pushClass
+1v1[\"(1v1) <code>None source_iter(15..=25)</code>"/]:::pullClass
+2v1[\"(2v1) <code>None map(Max::new)</code>"/]:::pullClass
+3v1[/"(3v1) <code>None state::&lt;'static, Max&lt;_&gt;&gt;()</code>"\]:::pushClass
 1v1-->2v1
 2v1-->3v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]

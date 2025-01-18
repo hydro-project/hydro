@@ -5,17 +5,17 @@ expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) source_iter([TickInstant::new(0)])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) union()", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
-    n4v1 [label="(n4v1) map(|n| n + TickDuration::SINGLE_TICK)", shape=house, fillcolor="#ffff88"]
-    n5v1 [label="(n5v1) filter(|&n| n < TickInstant::new(10))", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) defer_tick()", shape=invhouse, fillcolor="#88aaff"]
-    n7v1 [label="(n7v1) for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
-    n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n10v1 [label="(n10v1) identity()", shape=invhouse, fillcolor="#88aaff"]
-    n11v1 [label="(n11v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 [label="(n1v1) None source_iter([TickInstant::new(0)])", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) None union()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) None tee()", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) None map(|n| n + TickDuration::SINGLE_TICK)", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) None filter(|&n| n < TickInstant::new(10))", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) None defer_tick()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) None for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
+    n8v1 [label="(n8v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n9v1 [label="(n9v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n10v1 [label="(n10v1) None identity()", shape=invhouse, fillcolor="#88aaff"]
+    n11v1 [label="(n11v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
     n1v1 -> n2v1
     n2v1 -> n3v1
     n6v1 -> n2v1

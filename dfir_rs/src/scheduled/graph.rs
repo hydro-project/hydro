@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::future::Future;
 use std::marker::PhantomData;
 
@@ -21,9 +22,9 @@ use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
-use super::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
+use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
@@ -31,6 +32,13 @@ use crate::Never;
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
     pub(super) context: Context,
+
+    // Depth of loop (zero for top-level).
+    loop_depth: SlotVec<LoopTag, usize>,
+    // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
+    loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
+
+    loop_nonce: usize,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
 
@@ -266,12 +274,31 @@ impl<'a> Dfir<'a> {
 
         let mut work_done = false;
 
-        while let Some(sg_id) =
-            self.context.stratum_queues[self.context.current_stratum].pop_front()
+        // Stack of loop nonces.
+        let mut loop_nonce_stack = Vec::new();
+
+        while let Some((new_depth, sg_id)) =
+            self.context.stratum_queues[self.context.current_stratum].pop()
         {
             work_done = true;
+
+            match new_depth.cmp(&loop_nonce_stack.len()) {
+                Ordering::Greater => {
+                    // We have entered a loop.
+                    self.loop_nonce += 1;
+                    loop_nonce_stack.push(self.loop_nonce);
+                }
+                Ordering::Less => {
+                    // We have exited a loop.
+                    loop_nonce_stack.pop();
+                }
+                Ordering::Equal => {}
+            }
+
             {
                 let sg_data = &mut self.subgraphs[sg_id];
+                debug_assert_eq!(self.context.current_stratum, sg_data.stratum);
+
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
                 tracing::trace!(
@@ -281,9 +308,16 @@ impl<'a> Dfir<'a> {
                 );
 
                 self.context.subgraph_id = sg_id;
-                self.context.subgraph_last_tick_run_in = sg_data.last_tick_run_in;
+                self.context.is_first_run_this_tick = sg_data
+                    .last_tick_run_in
+                    .is_none_or(|last_tick| last_tick < self.context.current_tick);
+                self.context.is_first_loop_iteration = loop_nonce_stack
+                    .last()
+                    .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
+
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
                 sg_data.last_tick_run_in = Some(current_tick);
+                sg_data.last_loop_nonce = loop_nonce_stack.last().copied().unwrap_or_default();
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -298,9 +332,18 @@ impl<'a> Dfir<'a> {
                         }
                         // Add subgraph to stratum queue if it is not already scheduled.
                         if !succ_sg_data.is_scheduled.replace(true) {
-                            self.context.stratum_queues[succ_sg_data.stratum].push_back(succ_id);
+                            self.context.stratum_queues[succ_sg_data.stratum]
+                                .push(succ_sg_data.loop_depth, succ_id);
                         }
                     }
+                }
+            }
+
+            // Check if subgraph wants rescheduling
+            if self.context.reschedule_current_subgraph.take() {
+                // Add subgraph to stratum queue if it is not already scheduled.
+                if !sg_data.is_scheduled.replace(true) {
+                    self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 }
             }
         }
@@ -451,7 +494,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 enqueued_count += 1;
             }
             if is_external {
@@ -489,7 +532,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 count += 1;
             }
             if is_external {
@@ -534,7 +577,7 @@ impl<'a> Dfir<'a> {
                 "Event received."
             );
             if !sg_data.is_scheduled.replace(true) {
-                self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
                 count += 1;
             }
             if is_external {
@@ -565,7 +608,7 @@ impl<'a> Dfir<'a> {
         let sg_data = &self.subgraphs[sg_id];
         let already_scheduled = sg_data.is_scheduled.replace(true);
         if !already_scheduled {
-            self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+            self.context.stratum_queues[sg_data.stratum].push(sg_data.loop_depth, sg_id);
             true
         } else {
             false
@@ -590,8 +633,6 @@ impl<'a> Dfir<'a> {
     }
 
     /// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
-    ///
-    /// TODO(mingwei): add example in doc.
     pub fn add_subgraph_stratified<Name, R, W, F>(
         &mut self,
         name: Name,
@@ -599,6 +640,29 @@ impl<'a> Dfir<'a> {
         recv_ports: R,
         send_ports: W,
         laziness: bool,
+        subgraph: F,
+    ) -> SubgraphId
+    where
+        Name: Into<Cow<'static, str>>,
+        R: 'static + PortList<RECV>,
+        W: 'static + PortList<SEND>,
+        F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
+    {
+        self.add_subgraph_full(
+            name, stratum, recv_ports, send_ports, laziness, None, subgraph,
+        )
+    }
+
+    /// Adds a new compiled subgraph with all options.
+    #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
+    pub fn add_subgraph_full<Name, R, W, F>(
+        &mut self,
+        name: Name,
+        stratum: usize,
+        recv_ports: R,
+        send_ports: W,
+        laziness: bool,
+        loop_id: Option<LoopId>,
         mut subgraph: F,
     ) -> SubgraphId
     where
@@ -607,6 +671,9 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
+        let is_scheduled = loop_id.is_none();
+        let loop_depth = loop_id.map_or(0, |loop_id| self.loop_depth[loop_id]);
+
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let (mut subgraph_preds, mut subgraph_succs) = Default::default();
             recv_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_preds, sg_id, true);
@@ -624,12 +691,16 @@ impl<'a> Dfir<'a> {
                 subgraph,
                 subgraph_preds,
                 subgraph_succs,
-                true,
+                is_scheduled,
                 laziness,
+                loop_id,
+                loop_depth,
             )
         });
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push_back(sg_id);
+        if is_scheduled {
+            self.context.stratum_queues[stratum].push(loop_depth, sg_id);
+        }
 
         sg_id
     }
@@ -719,11 +790,13 @@ impl<'a> Dfir<'a> {
                 subgraph_succs,
                 true,
                 false,
+                None,
+                0,
             )
         });
 
         self.context.init_stratum(stratum);
-        self.context.stratum_queues[stratum].push_back(sg_id);
+        self.context.stratum_queues[stratum].push(0, sg_id);
 
         sg_id
     }
@@ -780,6 +853,17 @@ impl<'a> Dfir<'a> {
     pub fn context_mut(&mut self, sg_id: SubgraphId) -> &mut Context {
         self.context.subgraph_id = sg_id;
         &mut self.context
+    }
+
+    /// Adds a new loop with the given parent (or `None` for top-level). Returns a loop ID which
+    /// is used in [`Self::add_subgraph_stratified`] or for nested loops.
+    ///
+    /// TODO(mingwei): add loop names to ensure traceability while debugging?
+    pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
+        let depth = parent.map_or(0, |p| self.loop_depth[p] + 1);
+        let loop_id = self.loop_depth.insert(depth);
+        self.loop_parent.insert(loop_id, parent);
+        loop_id
     }
 }
 
@@ -889,19 +973,30 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
+    /// A meaningless ID to track the last loop iteration this subgraph was run in.
+    last_loop_nonce: usize,
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
+
+    /// The subgraph's loop ID, or `None` for the top level.
+    #[expect(dead_code, reason = "TODO(mingwei): WIP")]
+    loop_id: Option<LoopId>,
+    /// The subgraph's loop depth.
+    loop_depth: usize,
 }
 impl<'a> SubgraphData<'a> {
-    pub fn new(
+    #[expect(clippy::too_many_arguments, reason = "internal use")]
+    fn new(
         name: Cow<'static, str>,
         stratum: usize,
         subgraph: impl Subgraph + 'a,
         preds: Vec<HandoffId>,
         succs: Vec<HandoffId>,
         is_scheduled: bool,
-        laziness: bool,
+        is_lazy: bool,
+        loop_id: Option<LoopId>,
+        loop_depth: usize,
     ) -> Self {
         Self {
             name,
@@ -911,7 +1006,10 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            is_lazy: laziness,
+            last_loop_nonce: 0,
+            is_lazy,
+            loop_id,
+            loop_depth,
         }
     }
 }

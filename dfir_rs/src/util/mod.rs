@@ -4,6 +4,7 @@
 pub mod clear;
 #[cfg(feature = "dfir_macro")]
 pub mod demux_enum;
+pub mod indexed_queue;
 pub mod monotonic_map;
 pub mod multiset;
 pub mod slot_vec;

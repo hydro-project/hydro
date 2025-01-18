@@ -53,7 +53,9 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
-                *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
+                if #context.is_first_run_this_tick() {
+                    *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
+                }
                 let #ident = ::std::iter::once(::std::clone::Clone::clone(&*#vec_ident));
             }
         } else if let Some(_output) = outputs.first() {
