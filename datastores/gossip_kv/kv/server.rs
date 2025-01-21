@@ -10,9 +10,10 @@ use dfir_rs::lattices::Lattice;
 use dfir_rs::scheduled::graph::Dfir;
 use either::Either;
 use lattices::cc_traits::Iter;
+use lattices::collections::VecSet;
 use lattices::map_union::KeyedBimorphism;
 use lattices::set_union::{SetUnion, SetUnionHashSet};
-use lattices::{IsTop, Pair, PairBimorphism, Point, WithBot};
+use lattices::{IsTop, Pair, PairBimorphism};
 use lazy_static::lazy_static;
 use prometheus::{register_int_counter, IntCounter};
 use rand::distributions::Alphanumeric;
@@ -46,7 +47,7 @@ where
 
 #[derive(Debug, Clone, Lattice)]
 pub struct InfectingWrite {
-    write: WithBot<Point<SingleWrite<Clock>, ()>>,
+    write: SetUnion<VecSet<SingleWrite<Clock>>>,
     members: BoundedSetLattice<MemberId, 2>,
 }
 
@@ -115,12 +116,11 @@ where
         })
         .collect::<Vec<_>>();
 
-    let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
-        .map(|_| zipf.sample(&mut rng) as u64)
-        .collect();
+    let pre_generated_random_idx: Vec<u64> =
+        (0..1_000).map(|_| zipf.sample(&mut rng) as u64).collect();
     let mut pre_gen_index = 0;
 
-    let pre_gen_values: Vec<_> = (0..1_000_000)
+    let pre_gen_values: Vec<_> = (0..1_000)
         .map(|_| {
             // BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
@@ -206,7 +206,7 @@ where
         gossip_in[Nack]
             -> inspect(|request| trace!("{:?}: Received gossip nack: {:?}.", context.current_tick(), request))
             -> map( |(message_id, member_id, _addr)| {
-                MapUnionSingletonMap::new_from((message_id, InfectingWrite { write: Default::default(), members: BoundedSetLattice::new_from([member_id]) }))
+                MapUnionSingletonMap::new_from((message_id, InfectingWrite { write: SetUnion::new(VecSet::from(vec![])), members: BoundedSetLattice::new_from([member_id]) }))
             })
             -> infecting_writes;
 
@@ -300,7 +300,7 @@ where
             // have a hash implementation. So we just generate a GUID identifier for the write
             // for now.
             let id = uuid::Uuid::new_v4().to_string();
-            MapUnionSingletonMap::new_from((id, InfectingWrite { write: WithBot::new(Some(Point::new(write))), members: BoundedSetLattice::new() }))
+            MapUnionSingletonMap::new_from((id, InfectingWrite { write: SetUnion::new(VecSet::from(vec![write])), members: BoundedSetLattice::new() }))
         }) -> infecting_writes;
 
         gossip_trigger = source_stream(gossip_trigger);
@@ -356,7 +356,7 @@ where
             let gossip_request = GossipMessage::Gossip {
                 message_id: message_id.clone(),
                 member_id: member_id_4.clone(),
-                writes: vec![infecting_write.write.as_reveal_ref().unwrap().val.clone()]// [infecting_write.write.clone(),
+                writes: infecting_write.write.as_reveal_ref().0.clone(),
             };
             (gossip_request, peer_gossip_address)
         })
@@ -370,9 +370,11 @@ mod tests {
 
     use dfir_rs::tokio_stream::empty;
     use dfir_rs::util::simulation::{Address, Fleet, Hostname};
+    use lattices::{IsBot, Max};
 
     use super::*;
     use crate::membership::{MemberDataBuilder, Protocol};
+    use crate::Namespace::System;
 
     #[dfir_rs::test]
     async fn test_member_init() {
@@ -773,5 +775,21 @@ mod tests {
 
             gossip_trigger_tx_a.send(()).unwrap();
         }
+    }
+
+    #[test]
+    pub fn test_bottom() {
+        let iw = InfectingWrite {
+            write: SetUnion::new(VecSet::from(vec![upsert_row(
+                Max::new(0),
+                Key::new(System, "FOOBAR".to_string(), "BAZ".to_string()),
+                "val".to_string(),
+            )])),
+            members: Default::default(),
+        };
+
+        let is_bot = iw.write.is_bot();
+
+        println!("is_bot: {:?}", is_bot);
     }
 }
