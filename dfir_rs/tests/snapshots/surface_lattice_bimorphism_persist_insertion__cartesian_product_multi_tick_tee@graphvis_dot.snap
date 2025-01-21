@@ -5,20 +5,20 @@ expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) None source_stream(lhs_recv)", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) None map(SetUnionSingletonSet::new_from)", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) None state::<'static, SetUnionHashSet<u32>>()", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) None source_stream(rhs_recv)", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) None map(SetUnionSingletonSet::new_from)", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) None state::<'static, SetUnionHashSet<u32>>()", shape=invhouse, fillcolor="#88aaff"]
-    n7v1 [label="(n7v1) None tee()", shape=house, fillcolor="#ffff88"]
-    n8v1 [label="(n8v1) None for_each(|x| println!(\"tee: {:?}\", x))", shape=house, fillcolor="#ffff88"]
-    n9v1 [label="(n9v1) None lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), lhs, rhs)", shape=invhouse, fillcolor="#88aaff"]
-    n10v1 [label="(n10v1) None lattice_reduce()", shape=invhouse, fillcolor="#88aaff"]
-    n11v1 [label="(n11v1) None for_each(|x| out_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
-    n12v1 [label="(n12v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n13v1 [label="(n13v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n14v1 [label="(n14v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 [label="(n1v1) source_stream(lhs_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) map(SetUnionSingletonSet::new_from)", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) state::<'static, SetUnionHashSet<u32>>()", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) source_stream(rhs_recv)", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) map(SetUnionSingletonSet::new_from)", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) state::<'static, SetUnionHashSet<u32>>()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) tee()", shape=house, fillcolor="#ffff88"]
+    n8v1 [label="(n8v1) for_each(|x| println!(\"tee: {:?}\", x))", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), lhs, rhs)", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) lattice_reduce()", shape=invhouse, fillcolor="#88aaff"]
+    n11v1 [label="(n11v1) for_each(|x| out_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
+    n12v1 [label="(n12v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n13v1 [label="(n13v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n14v1 [label="(n14v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n2v1 -> n3v1
     n1v1 -> n2v1
     n5v1 -> n6v1

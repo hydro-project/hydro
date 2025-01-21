@@ -1428,7 +1428,7 @@ impl DfirGraph {
                     }
                     output.into()
                 } else {
-                    node.to_pretty_string().into()
+                    node.to_pretty_string()
                 },
                 if write_config.no_pull_push {
                     None

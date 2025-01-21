@@ -5,10 +5,10 @@ expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) None union()", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) None for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
-    n3v1 [label="(n3v1) None source_iter([1])", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) None source_iter([2])", shape=invhouse, fillcolor="#88aaff"]
+    n1v1 [label="(n1v1) union()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
+    n3v1 [label="(n3v1) source_iter([1])", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) source_iter([2])", shape=invhouse, fillcolor="#88aaff"]
     n1v1 -> n2v1
     n3v1 -> n1v1 [label="0"]
     n4v1 -> n1v1 [label="1"]

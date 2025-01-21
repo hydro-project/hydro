@@ -8,9 +8,9 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>None source_stream(input_recv)</code>"/]:::pullClass
-2v1[\"(2v1) <code>None multiset_delta()</code>"/]:::pullClass
-3v1[/"(3v1) <code>None for_each(|x| result_send.send(x).unwrap())</code>"\]:::pushClass
+1v1[\"(1v1) <code>source_stream(input_recv)</code>"/]:::pullClass
+2v1[\"(2v1) <code>multiset_delta()</code>"/]:::pullClass
+3v1[/"(3v1) <code>for_each(|x| result_send.send(x).unwrap())</code>"\]:::pushClass
 2v1-->3v1
 1v1-->2v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]

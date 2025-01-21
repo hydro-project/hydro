@@ -8,10 +8,10 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>None source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])</code>"/]:::pullClass
-2v1[\"(2v1) <code>None sort_by_key(|(k, _v)| k)</code>"/]:::pullClass
-3v1[/"(3v1) <code>None for_each(|v| println!(&quot;{:?}&quot;, v))</code>"\]:::pushClass
-4v1["(4v1) <code>None handoff</code>"]:::otherClass
+1v1[\"(1v1) <code>source_iter(vec![(2, 'y'), (3, 'x'), (1, 'z')])</code>"/]:::pullClass
+2v1[\"(2v1) <code>sort_by_key(|(k, _v)| k)</code>"/]:::pullClass
+3v1[/"(3v1) <code>for_each(|v| println!(&quot;{:?}&quot;, v))</code>"\]:::pushClass
+4v1["(4v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->4v1
 4v1--x2v1; linkStyle 2 stroke:red

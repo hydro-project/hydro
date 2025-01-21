@@ -5,17 +5,17 @@ expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) None source_iter([\"alice\", \"bob\"])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) None source_stream(iter_batches_stream(0..12, 3))", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) Some(GraphLoopId(1v1)) batch()", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) Some(GraphLoopId(1v1)) flatten()", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) Some(GraphLoopId(1v1)) batch()", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) Some(GraphLoopId(1v1)) flatten()", shape=invhouse, fillcolor="#88aaff"]
-    n7v1 [label="(n7v1) Some(GraphLoopId(1v1)) cross_join::<'static, 'tick>()", shape=invhouse, fillcolor="#88aaff"]
-    n8v1 [label="(n8v1) Some(GraphLoopId(1v1)) map(|item| (context.current_tick().0, item))", shape=invhouse, fillcolor="#88aaff"]
-    n9v1 [label="(n9v1) Some(GraphLoopId(1v1)) assert_eq([\l    (0, (\"alice\", 0)),\l    (0, (\"alice\", 1)),\l    (0, (\"alice\", 2)),\l    (0, (\"bob\", 0)),\l    (0, (\"bob\", 1)),\l    (0, (\"bob\", 2)),\l    (1, (\"alice\", 3)),\l    (1, (\"alice\", 4)),\l    (1, (\"alice\", 5)),\l    (1, (\"bob\", 3)),\l    (1, (\"bob\", 4)),\l    (1, (\"bob\", 5)),\l    (2, (\"alice\", 6)),\l    (2, (\"alice\", 7)),\l    (2, (\"alice\", 8)),\l    (2, (\"bob\", 6)),\l    (2, (\"bob\", 7)),\l    (2, (\"bob\", 8)),\l    (3, (\"alice\", 9)),\l    (3, (\"alice\", 10)),\l    (3, (\"alice\", 11)),\l    (3, (\"bob\", 9)),\l    (3, (\"bob\", 10)),\l    (3, (\"bob\", 11)),\l])\l", shape=house, fillcolor="#ffff88"]
-    n10v1 [label="(n10v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n11v1 [label="(n11v1) None handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n1v1 [label="(n1v1) source_iter([\"alice\", \"bob\"])", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) source_stream(iter_batches_stream(0..12, 3))", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) flatten()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) cross_join::<'static, 'tick>()", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) map(|item| (context.current_tick().0, item))", shape=invhouse, fillcolor="#88aaff"]
+    n9v1 [label="(n9v1) assert_eq([\l    (0, (\"alice\", 0)),\l    (0, (\"alice\", 1)),\l    (0, (\"alice\", 2)),\l    (0, (\"bob\", 0)),\l    (0, (\"bob\", 1)),\l    (0, (\"bob\", 2)),\l    (1, (\"alice\", 3)),\l    (1, (\"alice\", 4)),\l    (1, (\"alice\", 5)),\l    (1, (\"bob\", 3)),\l    (1, (\"bob\", 4)),\l    (1, (\"bob\", 5)),\l    (2, (\"alice\", 6)),\l    (2, (\"alice\", 7)),\l    (2, (\"alice\", 8)),\l    (2, (\"bob\", 6)),\l    (2, (\"bob\", 7)),\l    (2, (\"bob\", 8)),\l    (3, (\"alice\", 9)),\l    (3, (\"alice\", 10)),\l    (3, (\"alice\", 11)),\l    (3, (\"bob\", 9)),\l    (3, (\"bob\", 10)),\l    (3, (\"bob\", 11)),\l])\l", shape=house, fillcolor="#ffff88"]
+    n10v1 [label="(n10v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n11v1 [label="(n11v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n4v1 -> n7v1 [label="0"]
     n3v1 -> n4v1
     n1v1 -> n10v1

@@ -5,11 +5,11 @@ expression: "hf.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) None source_iter([(5,)])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) None py_udf(\"\ldef add(a, b):\lreturn a + b\l\", \"add\")\l", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) None map(PyResult::<Py<PyAny>>::unwrap_err)", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) None map(|py_err| py_err.to_string())", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) None assert_eq([\"TypeError: add() missing 1 required positional argument: 'b'\"])", shape=house, fillcolor="#ffff88"]
+    n1v1 [label="(n1v1) source_iter([(5,)])", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) py_udf(\"\ldef add(a, b):\lreturn a + b\l\", \"add\")\l", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) map(PyResult::<Py<PyAny>>::unwrap_err)", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) map(|py_err| py_err.to_string())", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) assert_eq([\"TypeError: add() missing 1 required positional argument: 'b'\"])", shape=house, fillcolor="#ffff88"]
     n4v1 -> n5v1
     n3v1 -> n4v1
     n2v1 -> n3v1
