@@ -334,21 +334,31 @@ where
 
             let combined = chain!(lefts, rights);
 
-            let chosen_peer = combined.choose(&mut thread_rng()).unwrap();
+            let chosen_peer = combined.choose(&mut thread_rng());
 
-            let (chosen_peer_name, chosen_peer_address) = match chosen_peer {
-                Either::Left((key, value)) => {
-                    // TODO: We could be reading multiple values here.
-                    let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.first().unwrap();
-                    let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(peer_info_value).unwrap();
-                    let peer_endpoint = peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint;
-                    (key.row_key.clone(), peer_endpoint)
+            match chosen_peer {
+                None => {
+                    trace!("No peer was chosen for Gossip.");
+                    None
                 },
-                Either::Right(seed_node) => (seed_node.id.clone(), seed_node.address.clone())
-            };
+                Some(chosen_peer) => {
+                    let (chosen_peer_name, chosen_peer_address) = match chosen_peer {
+                        Either::Left((key, value)) => {
+                            // TODO: We could be reading multiple values here.
+                            let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.first().unwrap();
+                            let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(peer_info_value).unwrap();
+                            let peer_endpoint = peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint;
+                            (key.row_key.clone(), peer_endpoint)
+                        },
+                        Either::Right(seed_node) => (seed_node.id.clone(), seed_node.address.clone())
+                    };
 
-            trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, chosen_peer_address);
-            Some((id, infecting_write, chosen_peer_address))
+                    trace!("Chosen peer: {:?}:{:?}", chosen_peer_name, chosen_peer_address);
+                    Some((id, infecting_write, chosen_peer_address))
+                }
+            }
+
+
         })
         -> flatten()
         -> inspect(|(message_id, infecting_write, peer_gossip_address)| trace!("{:?}: Sending write:\nMessageId:{:?}\nWrite:{:?}\nPeer Address:{:?}", context.current_tick(), message_id, infecting_write, peer_gossip_address))
