@@ -117,10 +117,10 @@ where
         .collect::<Vec<_>>();
 
     let pre_generated_random_idx: Vec<u64> =
-        (0..1_000).map(|_| zipf.sample(&mut rng) as u64).collect();
+        (0..128*1024).map(|_| zipf.sample(&mut rng) as u64).collect();
     let mut pre_gen_index = 0;
 
-    let pre_gen_values: Vec<_> = (0..1_000)
+    let pre_gen_values: Vec<_> = (0..128*1024)
         .map(|_| {
             // BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
