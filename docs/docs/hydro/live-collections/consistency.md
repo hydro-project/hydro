@@ -1,5 +1,5 @@
 ---
-sidebar_position: 3
+sidebar_position: 1
 ---
 
 # Consistency and Safety
@@ -54,9 +54,9 @@ use std::fmt::Debug;
 use std::time::Duration;
 
 /// ...
-/// 
+///
 /// # Safety
-/// This function will non-deterministically print elements 
+/// This function will non-deterministically print elements
 /// from the stream according to a timer.
 unsafe fn print_samples<T: Debug, L>(
   stream: Stream<T, Process<L>, Unbounded>
