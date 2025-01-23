@@ -73,6 +73,16 @@ pub struct Stream<T, L, B, Order = TotalOrder> {
     _phantom: PhantomData<(T, L, B, Order)>,
 }
 
+impl<'a, T, L: Location<'a>, O> From<Stream<T, L, Bounded, O>> for Stream<T, L, Unbounded, O> {
+    fn from(stream: Stream<T, L, Bounded, O>) -> Stream<T, L, Unbounded, O> {
+        Stream {
+            location: stream.location,
+            ir_node: stream.ir_node,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, T, L: Location<'a>, B> From<Stream<T, L, B, TotalOrder>> for Stream<T, L, B, NoOrder> {
     fn from(stream: Stream<T, L, B, TotalOrder>) -> Stream<T, L, B, NoOrder> {
         Stream {

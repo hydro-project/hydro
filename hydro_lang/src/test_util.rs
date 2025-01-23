@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::pin::Pin;
 
 use serde::de::DeserializeOwned;
@@ -32,4 +33,23 @@ pub async fn stream_transform_test<
     deployment.start().await.unwrap();
 
     check(external_out).await;
+}
+
+// from https://users.rust-lang.org/t/how-to-write-doctest-that-panic-with-an-expected-message/58650
+pub fn assert_panics_with_message(func: impl FnOnce(), msg: &'static str) {
+    let err = catch_unwind(AssertUnwindSafe(func)).expect_err("Didn't panic!");
+
+    let chk = |panic_msg: &'_ str| {
+        if !panic_msg.contains(msg) {
+            panic!(
+                "Expected a panic message containing `{}`; got: `{}`.",
+                msg, panic_msg
+            );
+        }
+    };
+
+    err.downcast::<String>()
+        .map(|s| chk(&s))
+        .or_else(|err| err.downcast::<&'static str>().map(|s| chk(*s)))
+        .expect("Unexpected panic type!");
 }
