@@ -147,7 +147,22 @@
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::{Debug, Formatter};
+<span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>proc_macro2::{Span, TokenStream};
 <span class="kw">use </span>quote::quote;
@@ -167,12 +182,17 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, C&gt;,
 }
 
-<span class="kw">pub trait </span>IsCluster {
-    <span class="kw">type </span>Tag;
+<span class="kw">impl</span>&lt;C&gt; Debug <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, C&gt; {
+    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="macro">write!</span>(f, <span class="string">"Cluster({})"</span>, <span class="self">self</span>.id)
+    }
 }
 
-<span class="kw">impl</span>&lt;C&gt; IsCluster <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, C&gt; {
-    <span class="kw">type </span>Tag = C;
+<span class="kw">impl</span>&lt;C&gt; Eq <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, C&gt; {}
+<span class="kw">impl</span>&lt;C&gt; PartialEq <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, C&gt; {
+    <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+        <span class="self">self</span>.id == other.id &amp;&amp; <span class="self">self</span>.flow_state.as_ptr() == other.flow_state.as_ptr()
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C&gt; Cluster&lt;<span class="lifetime">'a</span>, C&gt; {
@@ -250,6 +270,14 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, C, Ctx&gt; QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Vec&lt;ClusterId&lt;C&gt;&gt;, Ctx&gt; <span class="kw">for </span>ClusterIds&lt;<span class="lifetime">'a</span>, C&gt; {}
+
+<span class="kw">pub trait </span>IsCluster {
+    <span class="kw">type </span>Tag;
+}
+
+<span class="kw">impl</span>&lt;C&gt; IsCluster <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, C&gt; {
+    <span class="kw">type </span>Tag = C;
+}
 
 <span class="doccomment">/// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`ClusterId`].

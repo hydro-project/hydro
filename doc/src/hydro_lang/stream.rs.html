@@ -1906,6 +1906,16 @@
 <a href="#1906" id="1906">1906</a>
 <a href="#1907" id="1907">1907</a>
 <a href="#1908" id="1908">1908</a>
+<a href="#1909" id="1909">1909</a>
+<a href="#1910" id="1910">1910</a>
+<a href="#1911" id="1911">1911</a>
+<a href="#1912" id="1912">1912</a>
+<a href="#1913" id="1913">1913</a>
+<a href="#1914" id="1914">1914</a>
+<a href="#1915" id="1915">1915</a>
+<a href="#1916" id="1916">1916</a>
+<a href="#1917" id="1917">1917</a>
+<a href="#1918" id="1918">1918</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -1979,6 +1989,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) ir_node: RefCell&lt;HydroNode&gt;,
 
     _phantom: PhantomData&lt;(T, L, B, Order)&gt;,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;, O&gt; From&lt;Stream&lt;T, L, Bounded, O&gt;&gt; <span class="kw">for </span>Stream&lt;T, L, Unbounded, O&gt; {
+    <span class="kw">fn </span>from(stream: Stream&lt;T, L, Bounded, O&gt;) -&gt; Stream&lt;T, L, Unbounded, O&gt; {
+        Stream {
+            location: stream.location,
+            ir_node: stream.ir_node,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;, B&gt; From&lt;Stream&lt;T, L, B, TotalOrder&gt;&gt; <span class="kw">for </span>Stream&lt;T, L, B, NoOrder&gt; {
