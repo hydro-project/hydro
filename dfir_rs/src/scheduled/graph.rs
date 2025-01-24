@@ -613,7 +613,7 @@ impl<'a> Dfir<'a> {
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         self.add_subgraph_full(
-            name, stratum, recv_ports, send_ports, laziness, None, None, subgraph,
+            name, stratum, recv_ports, send_ports, laziness, None, subgraph,
         )
     }
 
@@ -627,7 +627,6 @@ impl<'a> Dfir<'a> {
         send_ports: W,
         laziness: bool,
         loop_id: Option<LoopId>,
-        topo_sort_index: Option<usize>,
         mut subgraph: F,
     ) -> SubgraphId
     where
@@ -656,7 +655,6 @@ impl<'a> Dfir<'a> {
                 true,
                 laziness,
                 loop_id,
-                topo_sort_index,
             )
         });
         self.context.init_stratum(stratum);
@@ -750,7 +748,6 @@ impl<'a> Dfir<'a> {
                 subgraph_succs,
                 true,
                 false,
-                None,
                 None,
             )
         });
@@ -917,6 +914,8 @@ pub(super) struct SubgraphData<'a> {
     /// A friendly name for diagnostics.
     pub(super) name: Cow<'static, str>,
     /// This subgraph's stratum number.
+    ///
+    /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
     pub(super) stratum: usize,
     /// The actual execution code of the subgraph.
     subgraph: Box<dyn Subgraph + 'a>,
@@ -940,10 +939,6 @@ pub(super) struct SubgraphData<'a> {
     /// The subgraph's loop ID, or `None` for the top level.
     #[expect(dead_code, reason = "TODO(mingwei): WIP")]
     loop_id: Option<LoopId>,
-
-    /// Which position this subgraph is in for the topological sort of the DAG created when
-    /// `next_loop()/next_tick()` are removed.
-    topo_sort_index: Option<usize>,
 }
 impl<'a> SubgraphData<'a> {
     #[expect(clippy::too_many_arguments, reason = "internal use")]
@@ -956,7 +951,6 @@ impl<'a> SubgraphData<'a> {
         is_scheduled: bool,
         is_lazy: bool,
         loop_id: Option<LoopId>,
-        topo_sort_index: Option<usize>,
     ) -> Self {
         Self {
             name,
@@ -968,7 +962,6 @@ impl<'a> SubgraphData<'a> {
             last_tick_run_in: None,
             is_lazy,
             loop_id,
-            topo_sort_index,
         }
     }
 }
