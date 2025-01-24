@@ -16,21 +16,23 @@ linkStyle default stroke:#aaa
 6v1[\"(6v1) <code>flatten()</code>"/]:::pullClass
 7v1[\"(7v1) <code>cross_join::&lt;'static, 'tick&gt;()</code>"/]:::pullClass
 8v1[\"(8v1) <code>all_once()</code>"/]:::pullClass
-9v1[/"(9v1) <code>for_each(|all| println!(&quot;{}: {:?}&quot;, context.current_tick(), all))</code>"\]:::pushClass
-10v1["(10v1) <code>handoff</code>"]:::otherClass
+9v1[\"(9v1) <code>map(|vec| (context.current_tick().0, vec))</code>"/]:::pullClass
+10v1[/"<div style=text-align:center>(10v1)</div> <code>assert_eq([<br>    (<br>        0,<br>        vec![<br>            (&quot;alice&quot;, 0),<br>            (&quot;alice&quot;, 1),<br>            (&quot;alice&quot;, 2),<br>            (&quot;bob&quot;, 0),<br>            (&quot;bob&quot;, 1),<br>            (&quot;bob&quot;, 2),<br>        ],<br>    ),<br>    (<br>        1,<br>        vec![<br>            (&quot;alice&quot;, 3),<br>            (&quot;alice&quot;, 4),<br>            (&quot;alice&quot;, 5),<br>            (&quot;bob&quot;, 3),<br>            (&quot;bob&quot;, 4),<br>            (&quot;bob&quot;, 5),<br>        ],<br>    ),<br>    (<br>        2,<br>        vec![<br>            (&quot;alice&quot;, 6),<br>            (&quot;alice&quot;, 7),<br>            (&quot;alice&quot;, 8),<br>            (&quot;bob&quot;, 6),<br>            (&quot;bob&quot;, 7),<br>            (&quot;bob&quot;, 8),<br>        ],<br>    ),<br>    (<br>        3,<br>        vec![<br>            (&quot;alice&quot;, 9),<br>            (&quot;alice&quot;, 10),<br>            (&quot;alice&quot;, 11),<br>            (&quot;bob&quot;, 9),<br>            (&quot;bob&quot;, 10),<br>            (&quot;bob&quot;, 11),<br>        ],<br>    ),<br>])</code>"\]:::pushClass
 11v1["(11v1) <code>handoff</code>"]:::otherClass
 12v1["(12v1) <code>handoff</code>"]:::otherClass
+13v1["(13v1) <code>handoff</code>"]:::otherClass
 4v1-->|0|7v1
 3v1-->4v1
-1v1-->10v1
+1v1-->11v1
 6v1-->|1|7v1
 5v1-->6v1
-2v1-->11v1
+2v1-->12v1
+9v1-->10v1
 8v1-->9v1
-7v1-->12v1
-10v1-->3v1
-11v1-->5v1
-12v1--x8v1; linkStyle 10 stroke:red
+7v1-->13v1
+11v1-->3v1
+12v1-->5v1
+13v1--x8v1; linkStyle 11 stroke:red
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     subgraph sg_1v1_var_users ["var <tt>users</tt>"]
@@ -43,7 +45,7 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
         2v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
+subgraph sg_3v1 ["sg_3v1 stratum 1"]
     3v1
     4v1
     5v1
@@ -53,7 +55,8 @@ subgraph sg_3v1 ["sg_3v1 stratum 0"]
         7v1
     end
 end
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
+subgraph sg_4v1 ["sg_4v1 stratum 2"]
     8v1
     9v1
+    10v1
 end
