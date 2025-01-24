@@ -1648,6 +1648,7 @@ dependencies = [
  "stageleft",
  "stageleft_tool",
  "tokio",
+ "tokio-test",
 ]
 
 [[package]]
