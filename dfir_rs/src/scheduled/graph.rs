@@ -655,6 +655,16 @@ impl<'a> Dfir<'a> {
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
 
+        if let Some(loop_id) = loop_id {
+            // Update `loop_start_stratum`.
+            let min_stratum = self
+                .context
+                .loop_start_stratum
+                .get(loop_id)
+                .map_or(stratum, |&x| std::cmp::min(x, stratum));
+            self.context.loop_start_stratum.insert(loop_id, min_stratum);
+        }
+
         sg_id
     }
 

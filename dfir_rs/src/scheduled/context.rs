@@ -51,8 +51,15 @@ pub struct Context {
     pub(super) current_tick_start: SystemTime,
     pub(super) subgraph_last_tick_run_in: Option<TickInstant>,
 
+    // The current stack of loop blocks.
+    //
+    // Note that this setup means only one loop block may run at a time.
+    pub(super) loop_stack: Vec<LoopId>,
+
     // Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
+    // Map from `LoopId` to the lowest/first stratum number of the loop.
+    pub(super) loop_start_stratum: SecondarySlotVec<LoopTag, usize>,
     // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
     pub(super) loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
 
@@ -240,7 +247,7 @@ impl Default for Context {
     fn default() -> Self {
         let stratum_queues = vec![Default::default()]; // Always initialize stratum #0.
         let (event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
-        let (loop_depth, loop_parent) = Default::default();
+        let (loop_stack, loop_depth, loop_parent, loop_start_stratum) = Default::default();
         Self {
             states: Vec::new(),
 
@@ -258,7 +265,9 @@ impl Default for Context {
             current_tick_start: SystemTime::now(),
             subgraph_last_tick_run_in: None,
 
+            loop_stack,
             loop_depth,
+            loop_start_stratum,
             loop_parent,
 
             // Will be re-set before use.
