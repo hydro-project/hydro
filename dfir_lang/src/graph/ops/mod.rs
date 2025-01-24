@@ -276,6 +276,7 @@ declare_ops![
     join_multiset::JOIN_MULTISET,
     fold_keyed::FOLD_KEYED,
     reduce_keyed::REDUCE_KEYED,
+    repeat_n::REPEAT_N,
     lattice_bimorphism::LATTICE_BIMORPHISM,
     _lattice_fold_batch::_LATTICE_FOLD_BATCH,
     lattice_fold::LATTICE_FOLD,

@@ -21,9 +21,9 @@ use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
-use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
+use super::{HandoffId, HandoffTag, LoopId, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
+use crate::util::slot_vec::SlotVec;
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
@@ -31,11 +31,6 @@ use crate::Never;
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
     pub(super) context: Context,
-
-    // Depth of loop (zero for top-level).
-    loop_depth: SlotVec<LoopTag, usize>,
-    // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
-    loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
 
@@ -817,9 +812,9 @@ impl<'a> Dfir<'a> {
     ///
     /// TODO(mingwei): add loop names to ensure traceability while debugging?
     pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
-        let depth = parent.map_or(0, |p| self.loop_depth[p] + 1);
-        let loop_id = self.loop_depth.insert(depth);
-        self.loop_parent.insert(loop_id, parent);
+        let depth = parent.map_or(0, |p| self.context.loop_depth[p] + 1);
+        let loop_id = self.context.loop_depth.insert(depth);
+        self.context.loop_parent.insert(loop_id, parent);
         loop_id
     }
 }
