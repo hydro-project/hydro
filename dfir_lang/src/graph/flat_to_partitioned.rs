@@ -375,9 +375,20 @@ fn find_subgraph_strata(
         |u| subgraph_graph.succs.get(&u).into_iter().flatten().cloned(),
     );
 
-    // Each subgraph's stratum number is the same as it's predecessors. Unless there is a negative
-    // edge, then we increment.
+    // Each subgraph's stratum number is the same as it's predecessors.
+    //
+    // Unless:
+    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
+    // - Within a loop: always, for topo sort.
     for sg_id in topo_sort_order {
+        let is_in_loop = {
+            let &node_in_subgraph = partitioned_graph
+                .subgraph(sg_id)
+                .first()
+                .expect("Subgraph must have at least one node.");
+            partitioned_graph.node_loop(node_in_subgraph).is_some()
+        };
+
         let stratum = subgraph_graph
             .preds
             .get(&sg_id)
@@ -387,8 +398,13 @@ fn find_subgraph_strata(
                 partitioned_graph
                     .subgraph_stratum(pred_sg_id)
                     .map(|stratum| {
-                        stratum
-                            + (subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id)) as usize)
+                        if is_in_loop {
+                            stratum + 1
+                        } else {
+                            let has_negative_edge =
+                                subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id));
+                            stratum + (has_negative_edge as usize)
+                        }
                     })
             })
             .max()
