@@ -36,3 +36,8 @@ pub type HandoffId = Key<HandoffTag>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct StateId(pub(crate) usize);
+
+/// Tag for [`LoopId`].
+pub enum LoopTag {}
+/// A loop's ID.
+pub type LoopId = Key<LoopTag>;

@@ -51,6 +51,10 @@ impl BarrierCrossers {
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
         .edges()
+        .filter(|&(_, (_src, dst))| {
+            // Ignore barriers within `loop {` blocks.
+            partitioned_graph.node_loop(dst).is_none()
+        })
         .filter_map(|(edge_id, (_src, dst))| {
             let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
@@ -396,6 +400,10 @@ fn find_subgraph_strata(
     let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
     for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
+        // Ignore barriers within `loop {` blocks.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
         let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());
