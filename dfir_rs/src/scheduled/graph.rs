@@ -656,13 +656,11 @@ impl<'a> Dfir<'a> {
         self.context.stratum_queues[stratum].push_back(sg_id);
 
         if let Some(loop_id) = loop_id {
-            // Update `loop_start_stratum`.
-            let min_stratum = self
-                .context
-                .loop_start_stratum
-                .get(loop_id)
-                .map_or(stratum, |&x| std::cmp::min(x, stratum));
-            self.context.loop_start_stratum.insert(loop_id, min_stratum);
+            let strata = &mut self.context.loop_strata[loop_id];
+            // If the stratum is not yet in the vec, add it, in the correct order.
+            if let Err(idx) = strata.binary_search(&stratum) {
+                strata.insert(idx, stratum);
+            }
         }
 
         sg_id

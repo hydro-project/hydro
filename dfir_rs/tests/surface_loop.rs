@@ -138,50 +138,50 @@ pub fn test_flo_repeat_n() {
 // assert_graphvis_snapshots!(df);
 // df.run_available();
 // }
-//
-// #[multiplatform_test]
-// pub fn test_flo_repeat_n_multiple_nested() {
-// let mut df = dfir_syntax! {
-// usrs1 = source_iter(["alice", "bob"]);
-// loop {
-// usrs2 = usrs1 -> batch() -> flatten();
-// loop {
-// usrs3 = usrs2 -> repeat_n(3) -> flatten()
-// -> inspect(|x| println!("{:?} {}", x, context.is_first_loop_iteration()))
-// -> tee();
-// loop {
-// usrs3 -> repeat_n(3)
-// -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
-// -> assert_eq([
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// ]);
-// }
-// loop {
-// usrs3 -> repeat_n(3)
-// -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
-// -> assert_eq([
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// ]);
-// }
-// }
-// }
-// };
-// assert_graphvis_snapshots!(df);
-// df.run_available();
-// }
+
+#[multiplatform_test]
+pub fn test_flo_repeat_n_multiple_nested() {
+    let mut df = dfir_syntax! {
+        usrs1 = source_iter(["alice", "bob"]);
+        loop {
+            usrs2 = usrs1 -> batch() -> flatten();
+            loop {
+                usrs3 = usrs2 -> repeat_n(3) -> flatten()
+                    -> inspect(|x| println!("{:?} {}", x, context.is_first_loop_iteration()))
+                    -> tee();
+                loop {
+                    usrs3 -> repeat_n(3)
+                        -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                        -> assert_eq([
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                            vec!["alice", "bob"],
+                        ]);
+                }
+                loop {
+                    usrs3 -> repeat_n(3)
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                    -> assert_eq([
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                        vec!["alice", "bob"],
+                    ]);
+                }
+            }
+        }
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+}

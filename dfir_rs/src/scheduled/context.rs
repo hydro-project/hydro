@@ -58,8 +58,8 @@ pub struct Context {
 
     // Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
-    // Map from `LoopId` to the lowest/first stratum number of the loop.
-    pub(super) loop_start_stratum: SecondarySlotVec<LoopTag, usize>,
+    // The strata within the loop block.
+    pub(super) loop_strata: SecondarySlotVec<LoopTag, Vec<usize>>,
     // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
     pub(super) loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
 
@@ -267,7 +267,7 @@ impl Default for Context {
 
             loop_stack,
             loop_depth,
-            loop_start_stratum,
+            loop_strata: loop_start_stratum,
             loop_parent,
 
             // Will be re-set before use.
