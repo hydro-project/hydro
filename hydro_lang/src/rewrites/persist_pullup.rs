@@ -3,14 +3,6 @@ use std::collections::HashSet;
 
 use crate::ir::*;
 
-fn copy_metadata_without_id(metadata: &HydroNodeMetadata) -> HydroNodeMetadata {
-    HydroNodeMetadata {
-        id: None,
-        location_kind: metadata.location_kind.clone(),
-        output_type: metadata.output_type.clone(),
-    }
-}
-
 fn persist_pullup_node(
     node: &mut HydroNode,
     persist_pulled_tees: &mut HashSet<*const RefCell<HydroNode>>,
@@ -29,7 +21,7 @@ fn persist_pullup_node(
                             inner: TeeNode(inner.0.clone()),
                             metadata: metadata.clone(),
                         }),
-                        metadata: copy_metadata_without_id(&metadata),
+                        metadata: metadata.clone(),
                     }
                 } else if matches!(*inner.0.borrow(), HydroNode::Persist { .. }) {
                     persist_pulled_tees.insert(inner.0.as_ref() as *const RefCell<HydroNode>);
@@ -46,7 +38,7 @@ fn persist_pullup_node(
                             inner: TeeNode(inner.0.clone()),
                             metadata: metadata.clone(),
                         }),
-                        metadata: copy_metadata_without_id(&metadata),
+                        metadata: metadata.clone(),
                     }
                 } else {
                     HydroNode::Tee { inner, metadata }
@@ -63,7 +55,7 @@ fn persist_pullup_node(
                     input: behind_persist,
                     metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata),
+                metadata: metadata.clone(),
             },
 
             HydroNode::FilterMap {
@@ -76,7 +68,7 @@ fn persist_pullup_node(
                     input: behind_persist,
                     metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata)
+                metadata: metadata.clone()
             },
 
             HydroNode::FlatMap {
@@ -89,7 +81,7 @@ fn persist_pullup_node(
                     input: behind_persist,
                     metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata)
+                metadata: metadata.clone()
             },
 
             HydroNode::Filter {
@@ -102,7 +94,7 @@ fn persist_pullup_node(
                     input: behind_persist,
                     metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata)
+                metadata: metadata.clone()
             },
 
             HydroNode::Network {
@@ -127,7 +119,7 @@ fn persist_pullup_node(
                     input: behind_persist,
                     metadata: metadata.clone()
                 }),
-                metadata: copy_metadata_without_id(&metadata),
+                metadata: metadata.clone(),
             },
 
             HydroNode::Chain {
@@ -150,9 +142,9 @@ fn persist_pullup_node(
                         right: Box::new(HydroNode::Persist { inner: right, metadata: right_metadata }),
                         metadata: metadata.clone()
                     }),
-                    metadata: copy_metadata_without_id(&metadata),
+                    metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata),
+                metadata: metadata.clone(),
             },
             HydroNode::Join {
                 left: mb!(* HydroNode::Persist { inner: left, metadata: left_metadata }),
@@ -165,9 +157,9 @@ fn persist_pullup_node(
                         right: Box::new(HydroNode::Persist { inner: right, metadata: right_metadata }),
                         metadata: metadata.clone()
                     }),
-                    metadata: copy_metadata_without_id(&metadata),
+                    metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata),
+                metadata: metadata.clone(),
             },
 
             HydroNode::Unique { input: mb!(* HydroNode::Persist {inner, metadata: persist_metadata } ), metadata } => HydroNode::Persist {
@@ -176,9 +168,9 @@ fn persist_pullup_node(
                         input: Box::new(HydroNode::Persist { inner, metadata: persist_metadata }),
                         metadata: metadata.clone()
                     }),
-                    metadata: copy_metadata_without_id(&metadata),
+                    metadata: metadata.clone(),
                 }),
-                metadata: copy_metadata_without_id(&metadata)
+                metadata: metadata.clone()
             },
 
             node => node,

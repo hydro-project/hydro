@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -20,7 +21,7 @@ use syn::parse_quote;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct DebugExpr(pub syn::Expr);
 
 impl From<syn::Expr> for DebugExpr {
@@ -49,6 +50,35 @@ impl Debug for DebugExpr {
     }
 }
 
+#[derive(Clone, Hash)]
+pub struct DebugType(pub syn::Type);
+
+impl From<syn::Type> for DebugType {
+    fn from(t: syn::Type) -> DebugType {
+        DebugType(t)
+    }
+}
+
+impl Deref for DebugType {
+    type Target = syn::Type;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ToTokens for DebugType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
+    }
+}
+
+impl Debug for DebugType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
+    }
+}
+
 pub enum DebugInstantiate {
     Building(),
     Finalized(syn::Expr, syn::Expr, Option<Box<dyn FnOnce()>>),
@@ -60,8 +90,14 @@ impl Debug for DebugInstantiate {
     }
 }
 
+impl Hash for DebugInstantiate {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        // Do nothing
+    }
+}
+
 /// A source in a Hydro graph, where data enters the graph.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroSource {
     Stream(DebugExpr),
     ExternalNetwork(),
@@ -72,7 +108,7 @@ pub enum HydroSource {
 /// An leaf in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
 /// generating Hydroflow IR start from leaves.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroLeaf {
     ForEach {
         f: DebugExpr,
@@ -261,16 +297,21 @@ impl Debug for TeeNode {
     }
 }
 
-#[derive(Debug, Clone)]
+impl Hash for TeeNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.borrow_mut().hash(state);
+    }
+}
+
+#[derive(Debug, Clone, Hash)]
 pub struct HydroNodeMetadata {
-    pub id: Option<usize>,
     pub location_kind: LocationId,
-    pub output_type: Option<syn::Type>,
+    pub output_type: Option<DebugType>,
 }
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
 

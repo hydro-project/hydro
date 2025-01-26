@@ -17,104 +17,38 @@ expression: optimized.ir()
                             0,
                         ),
                         metadata: HydroNodeMetadata {
-                            id: Some(
-                                0,
-                            ),
                             location_kind: Process(
                                 0,
                             ),
                             output_type: Some(
-                                Type::Path {
-                                    qself: None,
-                                    path: Path {
-                                        leading_colon: None,
-                                        segments: [
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: i32,
-                                                    span: bytes(50..53),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                        ],
-                                    },
-                                },
+                                i32,
                             ),
                         },
                     },
                     metadata: HydroNodeMetadata {
-                        id: Some(
-                            4,
-                        ),
                         location_kind: Process(
                             0,
                         ),
                         output_type: Some(
-                            Type::Path {
-                                qself: None,
-                                path: Path {
-                                    leading_colon: None,
-                                    segments: [
-                                        PathSegment {
-                                            ident: Ident {
-                                                sym: i32,
-                                                span: bytes(66..69),
-                                            },
-                                            arguments: PathArguments::None,
-                                        },
-                                    ],
-                                },
-                            },
+                            i32,
                         ),
                     },
                 },
                 metadata: HydroNodeMetadata {
-                    id: Some(
-                        5,
-                    ),
                     location_kind: Process(
                         0,
                     ),
                     output_type: Some(
-                        Type::Path {
-                            qself: None,
-                            path: Path {
-                                leading_colon: None,
-                                segments: [
-                                    PathSegment {
-                                        ident: Ident {
-                                            sym: i32,
-                                            span: bytes(124..127),
-                                        },
-                                        arguments: PathArguments::None,
-                                    },
-                                ],
-                            },
-                        },
+                        i32,
                     ),
                 },
             },
             metadata: HydroNodeMetadata {
-                id: None,
                 location_kind: Process(
                     0,
                 ),
                 output_type: Some(
-                    Type::Path {
-                        qself: None,
-                        path: Path {
-                            leading_colon: None,
-                            segments: [
-                                PathSegment {
-                                    ident: Ident {
-                                        sym: i32,
-                                        span: bytes(124..127),
-                                    },
-                                    arguments: PathArguments::None,
-                                },
-                            ],
-                        },
-                    },
+                    i32,
                 ),
             },
         },
@@ -133,104 +67,38 @@ expression: optimized.ir()
                             0,
                         ),
                         metadata: HydroNodeMetadata {
-                            id: Some(
-                                0,
-                            ),
                             location_kind: Process(
                                 0,
                             ),
                             output_type: Some(
-                                Type::Path {
-                                    qself: None,
-                                    path: Path {
-                                        leading_colon: None,
-                                        segments: [
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: i32,
-                                                    span: bytes(50..53),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                        ],
-                                    },
-                                },
+                                i32,
                             ),
                         },
                     },
                     metadata: HydroNodeMetadata {
-                        id: Some(
-                            4,
-                        ),
                         location_kind: Process(
                             0,
                         ),
                         output_type: Some(
-                            Type::Path {
-                                qself: None,
-                                path: Path {
-                                    leading_colon: None,
-                                    segments: [
-                                        PathSegment {
-                                            ident: Ident {
-                                                sym: i32,
-                                                span: bytes(66..69),
-                                            },
-                                            arguments: PathArguments::None,
-                                        },
-                                    ],
-                                },
-                            },
+                            i32,
                         ),
                     },
                 },
                 metadata: HydroNodeMetadata {
-                    id: Some(
-                        8,
-                    ),
                     location_kind: Process(
                         0,
                     ),
                     output_type: Some(
-                        Type::Path {
-                            qself: None,
-                            path: Path {
-                                leading_colon: None,
-                                segments: [
-                                    PathSegment {
-                                        ident: Ident {
-                                            sym: i32,
-                                            span: bytes(246..249),
-                                        },
-                                        arguments: PathArguments::None,
-                                    },
-                                ],
-                            },
-                        },
+                        i32,
                     ),
                 },
             },
             metadata: HydroNodeMetadata {
-                id: None,
                 location_kind: Process(
                     0,
                 ),
                 output_type: Some(
-                    Type::Path {
-                        qself: None,
-                        path: Path {
-                            leading_colon: None,
-                            segments: [
-                                PathSegment {
-                                    ident: Ident {
-                                        sym: i32,
-                                        span: bytes(246..249),
-                                    },
-                                    arguments: PathArguments::None,
-                                },
-                            ],
-                        },
-                    },
+                    i32,
                 ),
             },
         },

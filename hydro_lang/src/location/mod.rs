@@ -9,7 +9,7 @@ use stageleft::{q, QuotedWithContext};
 
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{HydroNode, HydroNodeMetadata, HydroSource};
+use crate::ir::{DebugType, HydroNode, HydroNodeMetadata, HydroSource};
 use crate::{Singleton, Stream, Unbounded};
 
 pub mod external_process;
@@ -27,7 +27,7 @@ pub use can_send::CanSend;
 pub mod tick;
 pub use tick::{NoTick, Tick, Timestamped};
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum LocationId {
     Process(usize),
     Cluster(usize),
@@ -90,9 +90,8 @@ pub trait Location<'a>: Clone {
 
     fn new_node_metadata<T>(&self) -> HydroNodeMetadata {
         HydroNodeMetadata {
-            id: Some(self.next_node_id()),
             location_kind: self.id(),
-            output_type: Some(stageleft::quote_type::<T>()),
+            output_type: Some(DebugType(stageleft::quote_type::<T>())),
         }
     }
 

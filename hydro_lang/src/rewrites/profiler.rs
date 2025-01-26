@@ -30,11 +30,7 @@ fn add_profiling_node<'a>(
         seen_tees,
     );
     let orig_node = std::mem::replace(node, HydroNode::Placeholder);
-    let new_metadata = HydroNodeMetadata {
-        id: None,
-        location_kind: orig_node.metadata().location_kind.clone(),
-        output_type: orig_node.metadata().output_type.clone(),
-    };
+    let new_metadata = orig_node.metadata().clone();
     *node = HydroNode::Inspect {
         f: quoted_any_fn(q!({
             // Put counters on queue

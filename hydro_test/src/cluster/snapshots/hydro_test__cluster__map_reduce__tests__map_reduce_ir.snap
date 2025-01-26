@@ -7,8 +7,8 @@ expression: built.ir()
         f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
         input: ReduceKeyed {
             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | total , count | * total += count }),
-            input: Persist(
-                Map {
+            input: Persist {
+                inner: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                     input: Network {
                         from_location: Cluster(
@@ -62,17 +62,744 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
+                                                        metadata: HydroNodeMetadata {
+                                                            id: Some(
+                                                                0,
+                                                            ),
+                                                            location_kind: Process(
+                                                                0,
+                                                            ),
+                                                            output_type: Some(
+                                                                Type::Reference {
+                                                                    and_token: And,
+                                                                    lifetime: None,
+                                                                    mutability: None,
+                                                                    elem: Type::Path {
+                                                                        qself: None,
+                                                                        path: Path {
+                                                                            leading_colon: None,
+                                                                            segments: [
+                                                                                PathSegment {
+                                                                                    ident: Ident {
+                                                                                        sym: str,
+                                                                                        span: bytes(58..61),
+                                                                                    },
+                                                                                    arguments: PathArguments::None,
+                                                                                },
+                                                                            ],
+                                                                        },
+                                                                    },
+                                                                },
+                                                            ),
+                                                        },
+                                                    },
+                                                    metadata: HydroNodeMetadata {
+                                                        id: Some(
+                                                            2,
+                                                        ),
+                                                        location_kind: Process(
+                                                            0,
+                                                        ),
+                                                        output_type: Some(
+                                                            Type::Path {
+                                                                qself: None,
+                                                                path: Path {
+                                                                    leading_colon: None,
+                                                                    segments: [
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: std,
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: string,
+                                                                                span: bytes(133..139),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: String,
+                                                                                span: bytes(141..147),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                    ],
+                                                                },
+                                                            },
+                                                        ),
                                                     },
                                                 },
+                                                metadata: HydroNodeMetadata {
+                                                    id: Some(
+                                                        4,
+                                                    ),
+                                                    location_kind: Process(
+                                                        0,
+                                                    ),
+                                                    output_type: Some(
+                                                        Type::Tuple {
+                                                            paren_token: Paren,
+                                                            elems: [
+                                                                Type::Path {
+                                                                    qself: None,
+                                                                    path: Path {
+                                                                        leading_colon: None,
+                                                                        segments: [
+                                                                            PathSegment {
+                                                                                ident: Ident {
+                                                                                    sym: usize,
+                                                                                    span: bytes(171..176),
+                                                                                },
+                                                                                arguments: PathArguments::None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                                Comma,
+                                                                Type::Path {
+                                                                    qself: None,
+                                                                    path: Path {
+                                                                        leading_colon: None,
+                                                                        segments: [
+                                                                            PathSegment {
+                                                                                ident: Ident {
+                                                                                    sym: std,
+                                                                                },
+                                                                                arguments: PathArguments::None,
+                                                                            },
+                                                                            PathSep,
+                                                                            PathSegment {
+                                                                                ident: Ident {
+                                                                                    sym: string,
+                                                                                    span: bytes(185..191),
+                                                                                },
+                                                                                arguments: PathArguments::None,
+                                                                            },
+                                                                            PathSep,
+                                                                            PathSegment {
+                                                                                ident: Ident {
+                                                                                    sym: String,
+                                                                                    span: bytes(193..199),
+                                                                                },
+                                                                                arguments: PathArguments::None,
+                                                                            },
+                                                                        ],
+                                                                    },
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                },
+                                            },
+                                            metadata: HydroNodeMetadata {
+                                                id: Some(
+                                                    6,
+                                                ),
+                                                location_kind: Process(
+                                                    0,
+                                                ),
+                                                output_type: Some(
+                                                    Type::Tuple {
+                                                        paren_token: Paren,
+                                                        elems: [
+                                                            Type::Path {
+                                                                qself: None,
+                                                                path: Path {
+                                                                    leading_colon: None,
+                                                                    segments: [
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: hydro_lang,
+                                                                                span: bytes(442..452),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: location,
+                                                                                span: bytes(454..462),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: cluster,
+                                                                                span: bytes(464..471),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: cluster_id,
+                                                                                span: bytes(473..483),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: ClusterId,
+                                                                                span: bytes(485..494),
+                                                                            },
+                                                                            arguments: PathArguments::AngleBracketed {
+                                                                                colon2_token: None,
+                                                                                lt_token: Lt,
+                                                                                args: [
+                                                                                    GenericArgument::Type(
+                                                                                        Type::Path {
+                                                                                            qself: None,
+                                                                                            path: Path {
+                                                                                                leading_colon: None,
+                                                                                                segments: [
+                                                                                                    PathSegment {
+                                                                                                        ident: Ident {
+                                                                                                            sym: hydro_test,
+                                                                                                            span: bytes(495..505),
+                                                                                                        },
+                                                                                                        arguments: PathArguments::None,
+                                                                                                    },
+                                                                                                    PathSep,
+                                                                                                    PathSegment {
+                                                                                                        ident: Ident {
+                                                                                                            sym: cluster,
+                                                                                                            span: bytes(507..514),
+                                                                                                        },
+                                                                                                        arguments: PathArguments::None,
+                                                                                                    },
+                                                                                                    PathSep,
+                                                                                                    PathSegment {
+                                                                                                        ident: Ident {
+                                                                                                            sym: map_reduce,
+                                                                                                            span: bytes(516..526),
+                                                                                                        },
+                                                                                                        arguments: PathArguments::None,
+                                                                                                    },
+                                                                                                    PathSep,
+                                                                                                    PathSegment {
+                                                                                                        ident: Ident {
+                                                                                                            sym: Worker,
+                                                                                                            span: bytes(528..534),
+                                                                                                        },
+                                                                                                        arguments: PathArguments::None,
+                                                                                                    },
+                                                                                                ],
+                                                                                            },
+                                                                                        },
+                                                                                    ),
+                                                                                ],
+                                                                                gt_token: Gt,
+                                                                            },
+                                                                        },
+                                                                    ],
+                                                                },
+                                                            },
+                                                            Comma,
+                                                            Type::Path {
+                                                                qself: None,
+                                                                path: Path {
+                                                                    leading_colon: None,
+                                                                    segments: [
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: std,
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: string,
+                                                                                span: bytes(544..550),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                        PathSep,
+                                                                        PathSegment {
+                                                                            ident: Ident {
+                                                                                sym: String,
+                                                                                span: bytes(552..558),
+                                                                            },
+                                                                            arguments: PathArguments::None,
+                                                                        },
+                                                                    ],
+                                                                },
+                                                            },
+                                                        ],
+                                                    },
+                                                ),
                                             },
                                         },
+                                        metadata: HydroNodeMetadata {
+                                            id: Some(
+                                                7,
+                                            ),
+                                            location_kind: Cluster(
+                                                1,
+                                            ),
+                                            output_type: Some(
+                                                Type::Path {
+                                                    qself: None,
+                                                    path: Path {
+                                                        leading_colon: None,
+                                                        segments: [
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: std,
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                            PathSep,
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: string,
+                                                                    span: bytes(611..617),
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                            PathSep,
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: String,
+                                                                    span: bytes(619..625),
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    },
+                                    metadata: HydroNodeMetadata {
+                                        id: Some(
+                                            8,
+                                        ),
+                                        location_kind: Cluster(
+                                            1,
+                                        ),
+                                        output_type: Some(
+                                            Type::Tuple {
+                                                paren_token: Paren,
+                                                elems: [
+                                                    Type::Path {
+                                                        qself: None,
+                                                        path: Path {
+                                                            leading_colon: None,
+                                                            segments: [
+                                                                PathSegment {
+                                                                    ident: Ident {
+                                                                        sym: std,
+                                                                    },
+                                                                    arguments: PathArguments::None,
+                                                                },
+                                                                PathSep,
+                                                                PathSegment {
+                                                                    ident: Ident {
+                                                                        sym: string,
+                                                                        span: bytes(716..722),
+                                                                    },
+                                                                    arguments: PathArguments::None,
+                                                                },
+                                                                PathSep,
+                                                                PathSegment {
+                                                                    ident: Ident {
+                                                                        sym: String,
+                                                                        span: bytes(724..730),
+                                                                    },
+                                                                    arguments: PathArguments::None,
+                                                                },
+                                                            ],
+                                                        },
+                                                    },
+                                                    Comma,
+                                                    Type::Tuple {
+                                                        paren_token: Paren,
+                                                        elems: [],
+                                                    },
+                                                ],
+                                            },
+                                        ),
                                     },
                                 },
+                                metadata: HydroNodeMetadata {
+                                    id: Some(
+                                        10,
+                                    ),
+                                    location_kind: Cluster(
+                                        1,
+                                    ),
+                                    output_type: Some(
+                                        Type::Tuple {
+                                            paren_token: Paren,
+                                            elems: [
+                                                Type::Path {
+                                                    qself: None,
+                                                    path: Path {
+                                                        leading_colon: None,
+                                                        segments: [
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: std,
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                            PathSep,
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: string,
+                                                                    span: bytes(854..860),
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                            PathSep,
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: String,
+                                                                    span: bytes(862..868),
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                        ],
+                                                    },
+                                                },
+                                                Comma,
+                                                Type::Path {
+                                                    qself: None,
+                                                    path: Path {
+                                                        leading_colon: None,
+                                                        segments: [
+                                                            PathSegment {
+                                                                ident: Ident {
+                                                                    sym: i32,
+                                                                    span: bytes(870..873),
+                                                                },
+                                                                arguments: PathArguments::None,
+                                                            },
+                                                        ],
+                                                    },
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                },
+                            },
+                            metadata: HydroNodeMetadata {
+                                id: Some(
+                                    11,
+                                ),
+                                location_kind: Cluster(
+                                    1,
+                                ),
+                                output_type: Some(
+                                    Type::Tuple {
+                                        paren_token: Paren,
+                                        elems: [
+                                            Type::Path {
+                                                qself: None,
+                                                path: Path {
+                                                    leading_colon: None,
+                                                    segments: [
+                                                        PathSegment {
+                                                            ident: Ident {
+                                                                sym: std,
+                                                            },
+                                                            arguments: PathArguments::None,
+                                                        },
+                                                        PathSep,
+                                                        PathSegment {
+                                                            ident: Ident {
+                                                                sym: string,
+                                                                span: bytes(974..980),
+                                                            },
+                                                            arguments: PathArguments::None,
+                                                        },
+                                                        PathSep,
+                                                        PathSegment {
+                                                            ident: Ident {
+                                                                sym: String,
+                                                                span: bytes(982..988),
+                                                            },
+                                                            arguments: PathArguments::None,
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                            Comma,
+                                            Type::Path {
+                                                qself: None,
+                                                path: Path {
+                                                    leading_colon: None,
+                                                    segments: [
+                                                        PathSegment {
+                                                            ident: Ident {
+                                                                sym: i32,
+                                                                span: bytes(990..993),
+                                                            },
+                                                            arguments: PathArguments::None,
+                                                        },
+                                                    ],
+                                                },
+                                            },
+                                        ],
+                                    },
+                                ),
                             },
                         },
+                        metadata: HydroNodeMetadata {
+                            id: Some(
+                                13,
+                            ),
+                            location_kind: Process(
+                                0,
+                            ),
+                            output_type: Some(
+                                Type::Tuple {
+                                    paren_token: Paren,
+                                    elems: [
+                                        Type::Path {
+                                            qself: None,
+                                            path: Path {
+                                                leading_colon: None,
+                                                segments: [
+                                                    PathSegment {
+                                                        ident: Ident {
+                                                            sym: std,
+                                                        },
+                                                        arguments: PathArguments::None,
+                                                    },
+                                                    PathSep,
+                                                    PathSegment {
+                                                        ident: Ident {
+                                                            sym: string,
+                                                            span: bytes(1130..1136),
+                                                        },
+                                                        arguments: PathArguments::None,
+                                                    },
+                                                    PathSep,
+                                                    PathSegment {
+                                                        ident: Ident {
+                                                            sym: String,
+                                                            span: bytes(1138..1144),
+                                                        },
+                                                        arguments: PathArguments::None,
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                        Comma,
+                                        Type::Path {
+                                            qself: None,
+                                            path: Path {
+                                                leading_colon: None,
+                                                segments: [
+                                                    PathSegment {
+                                                        ident: Ident {
+                                                            sym: i32,
+                                                            span: bytes(1146..1149),
+                                                        },
+                                                        arguments: PathArguments::None,
+                                                    },
+                                                ],
+                                            },
+                                        },
+                                    ],
+                                },
+                            ),
+                        },
+                    },
+                    metadata: HydroNodeMetadata {
+                        id: Some(
+                            14,
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                        output_type: Some(
+                            Type::Tuple {
+                                paren_token: Paren,
+                                elems: [
+                                    Type::Path {
+                                        qself: None,
+                                        path: Path {
+                                            leading_colon: None,
+                                            segments: [
+                                                PathSegment {
+                                                    ident: Ident {
+                                                        sym: std,
+                                                    },
+                                                    arguments: PathArguments::None,
+                                                },
+                                                PathSep,
+                                                PathSegment {
+                                                    ident: Ident {
+                                                        sym: string,
+                                                        span: bytes(1333..1339),
+                                                    },
+                                                    arguments: PathArguments::None,
+                                                },
+                                                PathSep,
+                                                PathSegment {
+                                                    ident: Ident {
+                                                        sym: String,
+                                                        span: bytes(1341..1347),
+                                                    },
+                                                    arguments: PathArguments::None,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                    Comma,
+                                    Type::Path {
+                                        qself: None,
+                                        path: Path {
+                                            leading_colon: None,
+                                            segments: [
+                                                PathSegment {
+                                                    ident: Ident {
+                                                        sym: i32,
+                                                        span: bytes(1349..1352),
+                                                    },
+                                                    arguments: PathArguments::None,
+                                                },
+                                            ],
+                                        },
+                                    },
+                                ],
+                            },
+                        ),
                     },
                 },
-            ),
+                metadata: HydroNodeMetadata {
+                    id: Some(
+                        16,
+                    ),
+                    location_kind: Process(
+                        0,
+                    ),
+                    output_type: Some(
+                        Type::Tuple {
+                            paren_token: Paren,
+                            elems: [
+                                Type::Path {
+                                    qself: None,
+                                    path: Path {
+                                        leading_colon: None,
+                                        segments: [
+                                            PathSegment {
+                                                ident: Ident {
+                                                    sym: std,
+                                                },
+                                                arguments: PathArguments::None,
+                                            },
+                                            PathSep,
+                                            PathSegment {
+                                                ident: Ident {
+                                                    sym: string,
+                                                    span: bytes(1391..1397),
+                                                },
+                                                arguments: PathArguments::None,
+                                            },
+                                            PathSep,
+                                            PathSegment {
+                                                ident: Ident {
+                                                    sym: String,
+                                                    span: bytes(1399..1405),
+                                                },
+                                                arguments: PathArguments::None,
+                                            },
+                                        ],
+                                    },
+                                },
+                                Comma,
+                                Type::Path {
+                                    qself: None,
+                                    path: Path {
+                                        leading_colon: None,
+                                        segments: [
+                                            PathSegment {
+                                                ident: Ident {
+                                                    sym: i32,
+                                                    span: bytes(1407..1410),
+                                                },
+                                                arguments: PathArguments::None,
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                id: Some(
+                    17,
+                ),
+                location_kind: Process(
+                    0,
+                ),
+                output_type: Some(
+                    Type::Tuple {
+                        paren_token: Paren,
+                        elems: [
+                            Type::Path {
+                                qself: None,
+                                path: Path {
+                                    leading_colon: None,
+                                    segments: [
+                                        PathSegment {
+                                            ident: Ident {
+                                                sym: std,
+                                            },
+                                            arguments: PathArguments::None,
+                                        },
+                                        PathSep,
+                                        PathSegment {
+                                            ident: Ident {
+                                                sym: string,
+                                                span: bytes(1463..1469),
+                                            },
+                                            arguments: PathArguments::None,
+                                        },
+                                        PathSep,
+                                        PathSegment {
+                                            ident: Ident {
+                                                sym: String,
+                                                span: bytes(1471..1477),
+                                            },
+                                            arguments: PathArguments::None,
+                                        },
+                                    ],
+                                },
+                            },
+                            Comma,
+                            Type::Path {
+                                qself: None,
+                                path: Path {
+                                    leading_colon: None,
+                                    segments: [
+                                        PathSegment {
+                                            ident: Ident {
+                                                sym: i32,
+                                                span: bytes(1479..1482),
+                                            },
+                                            arguments: PathArguments::None,
+                                        },
+                                    ],
+                                },
+                            },
+                        ],
+                    },
+                ),
+            },
         },
     },
 ]
