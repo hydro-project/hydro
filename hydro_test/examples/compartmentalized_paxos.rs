@@ -42,16 +42,27 @@ async fn main() {
     let i_am_leader_check_timeout = 10; // Sec
     let i_am_leader_check_timeout_delay_multiplier = 15;
 
-    let (proposers, acceptors, clients, replicas) = hydro_test::cluster::compartmentalized_paxos_bench::compartmentalized_paxos_bench(
+    let num_proxy_leaders = 10;
+    let acceptor_grid_rows = 2;
+    let acceptor_grid_cols = 2;
+    let num_replicas = 4;
+    let acceptor_retry_timeout = 10; // Sec
+
+    let (proposers, proxy_leaders, acceptors, clients, replicas) = hydro_test::cluster::compartmentalized_paxos_bench::compartmentalized_paxos_bench(
         &builder,
         num_clients_per_node,
         median_latency_window_size,
         checkpoint_frequency,
-        PaxosConfig {
+        CompartmentalizedPaxosConfig {
             f,
             i_am_leader_send_timeout,
             i_am_leader_check_timeout,
             i_am_leader_check_timeout_delay_multiplier,
+            num_proxy_leaders,
+            acceptor_grid_rows,
+            acceptor_grid_cols,
+            num_replicas,
+            acceptor_retry_timeout,
         },
     );
 
@@ -64,8 +75,13 @@ async fn main() {
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .with_cluster(
+            &proxy_leaders,
+            (0..num_proxy_leaders)
+                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+        )
+        .with_cluster(
             &acceptors,
-            (0..2 * f + 1)
+            (0..acceptor_grid_rows * acceptor_grid_cols)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .with_cluster(
@@ -75,7 +91,7 @@ async fn main() {
         )
         .with_cluster(
             &replicas,
-            (0..f + 1)
+            (0..num_replicas)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .deploy(&mut deployment);

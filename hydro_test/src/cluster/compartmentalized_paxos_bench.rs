@@ -2,23 +2,26 @@ use hydro_lang::*;
 use hydro_std::quorum::collect_quorum;
 
 use super::bench_client::{bench_client, Client};
+use super::compartmentalized_paxos_with_client::compartmentalized_paxos_with_client;
 use super::kv_replica::{kv_replica, KvPayload, Replica};
-use super::paxos::{Acceptor, PaxosConfig, Proposer};
-use super::paxos_with_client::paxos_with_client;
+use super::paxos::{Acceptor, Proposer};
+use super::compartmentalized_paxos::{CompartmentalizedPaxosConfig, ProxyLeader};
 
 pub fn compartmentalized_paxos_bench<'a>(
     flow: &FlowBuilder<'a>,
     num_clients_per_node: usize,
     median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
-    paxos_config: PaxosConfig,
+    paxos_config: CompartmentalizedPaxosConfig,
 ) -> (
     Cluster<'a, Proposer>,
+    Cluster<'a, ProxyLeader>,
     Cluster<'a, Acceptor>,
     Cluster<'a, Client>,
     Cluster<'a, Replica>,
 ) {
     let proposers = flow.cluster::<Proposer>();
+    let proxy_leaders = flow.cluster::<ProxyLeader>();
     let acceptors = flow.cluster::<Acceptor>();
     let clients = flow.cluster::<Client>();
     let replicas = flow.cluster::<Replica>();
@@ -40,8 +43,9 @@ pub fn compartmentalized_paxos_bench<'a>(
                 // the order of writes to the same key
 
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                paxos_with_client(
+                compartmentalized_paxos_with_client(
                     &proposers,
+                    &proxy_leaders,
                     &acceptors,
                     &clients,
                     payloads,
@@ -78,7 +82,7 @@ pub fn compartmentalized_paxos_bench<'a>(
         median_latency_window_size,
     );
 
-    (proposers, acceptors, clients, replicas)
+    (proposers, proxy_leaders, acceptors, clients, replicas)
 }
 
 #[cfg(test)]
@@ -86,7 +90,7 @@ mod tests {
     use hydro_lang::deploy::DeployRuntime;
     use stageleft::RuntimeData;
 
-    use crate::cluster::paxos::PaxosConfig;
+    use crate::cluster::compartmentalized_paxos::CompartmentalizedPaxosConfig;
 
     #[test]
     fn paxos_ir() {
@@ -96,11 +100,16 @@ mod tests {
             1,
             1,
             1,
-            PaxosConfig {
+            CompartmentalizedPaxosConfig {
                 f: 1,
                 i_am_leader_send_timeout: 1,
                 i_am_leader_check_timeout: 1,
                 i_am_leader_check_timeout_delay_multiplier: 1,
+                num_proxy_leaders: 1,
+                acceptor_grid_rows: 1,
+                acceptor_grid_cols: 1,
+                num_replicas: 1,
+                acceptor_retry_timeout: 1,
             },
         );
         let built = builder.with_default_optimize::<DeployRuntime>();

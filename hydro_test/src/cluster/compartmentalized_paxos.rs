@@ -9,7 +9,29 @@ use hydro_std::request_response::join_responses;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use super::paxos::{Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload, Proposer};
+use super::paxos::{Acceptor, Ballot, LogValue, P2a, PaxosPayload, Proposer};
+
+pub struct ProxyLeader {}
+
+#[derive(Clone, Copy)]
+pub struct CompartmentalizedPaxosConfig {
+    /// Maximum number of faulty nodes
+    pub f: usize,
+    /// How often to send "I am leader" heartbeats
+    pub i_am_leader_send_timeout: u64,
+    /// How often to check if the leader has expired
+    pub i_am_leader_check_timeout: u64,
+    /// Initial delay, multiplied by proposer pid, to stagger proposers checking for timeouts
+    pub i_am_leader_check_timeout_delay_multiplier: usize,
+    pub num_proxy_leaders: usize,
+    /// Number of rows in the acceptor grid. Each row represents a write quorum (for sending p2as).
+    pub acceptor_grid_rows: usize,
+    /// Number of columns in the acceptor grid. Each column represents a read quorum (for waiting for p1bs).
+    pub acceptor_grid_cols: usize,
+    pub num_replicas: usize,
+    /// How long to wait before resending message to a different write quorum
+    pub acceptor_retry_timeout: u64,
+}
 
 /// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors
 /// to sequence payloads being sent to the proposers.
@@ -28,8 +50,9 @@ use super::paxos::{Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload, P
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
+pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
     proposers: &Cluster<'a, Proposer>,
+    proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
     r_to_acceptors_checkpoint: Stream<
         (ClusterId<R>, usize),
@@ -40,7 +63,7 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
     c_to_proposers: impl FnOnce(
         Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
-    config: PaxosConfig,
+    config: CompartmentalizedPaxosConfig,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder>,
