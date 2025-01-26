@@ -31,145 +31,29 @@ expression: built.ir()
                         0,
                     ),
                     metadata: HydroNodeMetadata {
-                        id: Some(
-                            0,
-                        ),
                         location_kind: Cluster(
                             0,
                         ),
                         output_type: Some(
-                            Type::Path {
-                                qself: None,
-                                path: Path {
-                                    leading_colon: None,
-                                    segments: [
-                                        PathSegment {
-                                            ident: Ident {
-                                                sym: i32,
-                                                span: bytes(39..42),
-                                            },
-                                            arguments: PathArguments::None,
-                                        },
-                                    ],
-                                },
-                            },
+                            i32,
                         ),
                     },
                 },
                 metadata: HydroNodeMetadata {
-                    id: Some(
-                        2,
-                    ),
                     location_kind: Cluster(
                         0,
                     ),
                     output_type: Some(
-                        Type::Tuple {
-                            paren_token: Paren,
-                            elems: [
-                                Type::Path {
-                                    qself: None,
-                                    path: Path {
-                                        leading_colon: None,
-                                        segments: [
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: hydro_lang,
-                                                    span: bytes(378..388),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                            PathSep,
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: location,
-                                                    span: bytes(390..398),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                            PathSep,
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: cluster,
-                                                    span: bytes(400..407),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                            PathSep,
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: cluster_id,
-                                                    span: bytes(409..419),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                            PathSep,
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: ClusterId,
-                                                    span: bytes(421..430),
-                                                },
-                                                arguments: PathArguments::AngleBracketed {
-                                                    colon2_token: None,
-                                                    lt_token: Lt,
-                                                    args: [
-                                                        GenericArgument::Type(
-                                                            Type::Tuple {
-                                                                paren_token: Paren,
-                                                                elems: [],
-                                                            },
-                                                        ),
-                                                    ],
-                                                    gt_token: Gt,
-                                                },
-                                            },
-                                        ],
-                                    },
-                                },
-                                Comma,
-                                Type::Path {
-                                    qself: None,
-                                    path: Path {
-                                        leading_colon: None,
-                                        segments: [
-                                            PathSegment {
-                                                ident: Ident {
-                                                    sym: i32,
-                                                    span: bytes(436..439),
-                                                },
-                                                arguments: PathArguments::None,
-                                            },
-                                        ],
-                                    },
-                                },
-                            ],
-                        },
+                        (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
                 },
             },
             metadata: HydroNodeMetadata {
-                id: Some(
-                    3,
-                ),
                 location_kind: Cluster(
                     0,
                 ),
                 output_type: Some(
-                    Type::Path {
-                        qself: None,
-                        path: Path {
-                            leading_colon: None,
-                            segments: [
-                                PathSegment {
-                                    ident: Ident {
-                                        sym: i32,
-                                        span: bytes(452..455),
-                                    },
-                                    arguments: PathArguments::None,
-                                },
-                            ],
-                        },
-                    },
+                    i32,
                 ),
             },
         },
