@@ -53,17 +53,17 @@ pub struct InfectingWrite {
 }
 
 #[repr(transparent)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SmallVecSet<T: Array>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     inner: SmallVec<T>,
 }
 
 impl<T: Array> SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     pub fn new() -> Self {
         SmallVecSet {
@@ -78,7 +78,7 @@ where
 
 impl<T: Array> Default for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     fn default() -> Self {
         SmallVecSet {
@@ -89,7 +89,7 @@ where
 
 impl<T: Array> Extend<T::Item> for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     fn extend<I: IntoIterator<Item = T::Item>>(&mut self, iter: I) {
         self.inner.extend(iter)
@@ -98,7 +98,7 @@ where
 
 impl<T: Array> Len for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     fn len(&self) -> usize {
         self.inner.len()
@@ -111,7 +111,7 @@ where
 
 impl<T: Array> CollectionRef for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     type ItemRef<'a>
         = &'a Self::Item
@@ -123,13 +123,13 @@ where
 
 impl<T: Array> Collection for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     type Item = T::Item;
 }
 impl<T: Array> Iter for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     type Iter<'a>
         = std::slice::Iter<'a, T::Item>
@@ -143,7 +143,7 @@ where
 
 impl<T: Array> IntoIterator for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     type Item = T::Item;
     type IntoIter = smallvec::IntoIter<T>;
@@ -155,17 +155,17 @@ where
 
 impl<'a, Q, T: Array> Get<&'a Q> for SmallVecSet<T>
 where
-    T::Item: Borrow<Q> + Clone + Debug + Eq,
-    Q: Eq + ?Sized,
+    T::Item: Clone + Debug + Eq + Serialize + for <'b> Deserialize<'b>,
+    Q: Eq + ?Sized  + PartialEq<<T as Array>::Item>,
 {
     fn get(&self, key: &'a Q) -> Option<Self::ItemRef<'_>> {
-        self.inner.iter().find(|&k| key == k.borrow())
+        self.inner.iter().find(|&k| key == k)
     }
 }
 
 impl<T: Array> FromIterator<T::Item> for SmallVecSet<T>
 where
-    T::Item: Clone + Debug + Eq,
+    T::Item: Clone + Debug + Eq + Serialize + for <'a> Deserialize<'a>,
 {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T::Item>>(iterable: I) -> SmallVecSet<T> {
@@ -470,7 +470,7 @@ where
                     let (chosen_peer_name, chosen_peer_address) = match chosen_peer {
                         Either::Left((key, value)) => {
                             // TODO: We could be reading multiple values here.
-                            let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().0.first().unwrap();
+                            let peer_info_value = value.as_reveal_ref().1.as_reveal_ref().inner.first().unwrap();
                             let peer_info_deserialized = serde_json::from_str::<MemberData<Addr>>(peer_info_value).unwrap();
                             let peer_endpoint = peer_info_deserialized.protocols.iter().find(|protocol| protocol.name == "gossip").unwrap().clone().endpoint;
                             (key.row_key.clone(), peer_endpoint)
