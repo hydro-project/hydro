@@ -1,4 +1,5 @@
 use dfir_rs::DemuxEnum;
+use smallvec::SmallVec;
 
 use crate::model::{Clock, SingleWrite};
 use crate::{ClientRequest, GossipMessage, Key};
@@ -29,12 +30,13 @@ impl<A> ClientRequestWithAddress<A> {
 /// Convenience enum to represent a gossip request with the address of the client. Makes it
 /// possible to use `demux_enum` in the surface syntax.
 #[derive(Debug, DemuxEnum)]
+#[allow(clippy::large_enum_variant)]
 pub enum GossipRequestWithAddress<A> {
     /// A gossip request with the message id, writes and the address of the client.
     Gossip {
         message_id: String,
         member_id: String,
-        writes: Vec<SingleWrite<Clock>>,
+        writes: SmallVec<[SingleWrite<Clock>; 4]>,
         addr: A,
     },
     /// An ack request with the message id and the address of the client.

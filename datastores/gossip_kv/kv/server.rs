@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -9,8 +10,7 @@ use dfir_rs::lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use dfir_rs::lattices::Lattice;
 use dfir_rs::scheduled::graph::Dfir;
 use either::Either;
-use lattices::cc_traits::Iter;
-use lattices::collections::VecSet;
+use lattices::cc_traits::{covariant_item_ref, Collection, CollectionRef, Get, Iter, Len};
 use lattices::map_union::KeyedBimorphism;
 use lattices::set_union::{SetUnion, SetUnionHashSet};
 use lattices::{IsTop, Pair, PairBimorphism};
@@ -22,6 +22,7 @@ use rand::{thread_rng, Rng};
 use rand_distr::{Distribution, Zipf};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use smallvec::{smallvec, Array, SmallVec};
 use tracing::{info, trace};
 
 use crate::lattices::BoundedSetLattice;
@@ -47,8 +48,131 @@ where
 
 #[derive(Debug, Clone, Lattice)]
 pub struct InfectingWrite {
-    write: SetUnion<VecSet<SingleWrite<Clock>>>,
+    write: SetUnion<SmallVecSet<[SingleWrite<Clock>; 4]>>,
     members: BoundedSetLattice<MemberId, 2>,
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SmallVecSet<T: Array>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    inner: SmallVec<T>,
+}
+
+impl<T: Array> SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    pub fn new() -> Self {
+        SmallVecSet {
+            inner: SmallVec::new(),
+        }
+    }
+
+    pub fn from(inner: SmallVec<T>) -> Self {
+        SmallVecSet { inner }
+    }
+}
+
+impl<T: Array> Default for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    fn default() -> Self {
+        SmallVecSet {
+            inner: SmallVec::new(),
+        }
+    }
+}
+
+impl<T: Array> Extend<T::Item> for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    fn extend<I: IntoIterator<Item = T::Item>>(&mut self, iter: I) {
+        self.inner.extend(iter)
+    }
+}
+
+impl<T: Array> Len for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+}
+
+impl<T: Array> CollectionRef for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    type ItemRef<'a>
+        = &'a Self::Item
+    where
+        Self: 'a;
+
+    covariant_item_ref!();
+}
+
+impl<T: Array> Collection for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    type Item = T::Item;
+}
+impl<T: Array> Iter for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    type Iter<'a>
+        = std::slice::Iter<'a, T::Item>
+    where
+        Self: 'a;
+
+    fn iter(&self) -> Self::Iter<'_> {
+        self.inner.iter()
+    }
+}
+
+impl<T: Array> IntoIterator for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    type Item = T::Item;
+    type IntoIter = smallvec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
+impl<'a, Q, T: Array> Get<&'a Q> for SmallVecSet<T>
+where
+    T::Item: Borrow<Q> + Clone + Debug + Eq,
+    Q: Eq + ?Sized,
+{
+    fn get(&self, key: &'a Q) -> Option<Self::ItemRef<'_>> {
+        self.inner.iter().find(|&k| key == k.borrow())
+    }
+}
+
+impl<T: Array> FromIterator<T::Item> for SmallVecSet<T>
+where
+    T::Item: Clone + Debug + Eq,
+{
+    #[inline]
+    fn from_iter<I: IntoIterator<Item = T::Item>>(iterable: I) -> SmallVecSet<T> {
+        let mut v = SmallVecSet::new();
+        v.extend(iterable);
+        v
+    }
 }
 
 pub type MessageId = String;
@@ -116,11 +240,12 @@ where
         })
         .collect::<Vec<_>>();
 
-    let pre_generated_random_idx: Vec<u64> =
-        (0..128*1024).map(|_| zipf.sample(&mut rng) as u64).collect();
+    let pre_generated_random_idx: Vec<u64> = (0..128 * 1024)
+        .map(|_| zipf.sample(&mut rng) as u64)
+        .collect();
     let mut pre_gen_index = 0;
 
-    let pre_gen_values: Vec<_> = (0..128*1024)
+    let pre_gen_values: Vec<_> = (0..128 * 1024)
         .map(|_| {
             // BufferPool::get_from_buffer_pool(&buffer_pool)
             // Generate random 1024 byte String
@@ -206,18 +331,18 @@ where
         gossip_in[Nack]
             -> inspect(|request| trace!("{:?}: Received gossip nack: {:?}.", context.current_tick(), request))
             -> map( |(message_id, member_id, _addr)| {
-                MapUnionSingletonMap::new_from((message_id, InfectingWrite { write: SetUnion::new(VecSet::from(vec![])), members: BoundedSetLattice::new_from([member_id]) }))
+                MapUnionSingletonMap::new_from((message_id, InfectingWrite { write: SetUnion::new(SmallVecSet::new()), members: BoundedSetLattice::new_from([member_id]) }))
             })
             -> infecting_writes;
 
         gossip_out = union() -> dest_sink(gossip_outputs);
 
         incoming_gossip_messages
-            -> flat_map(|(_msg_id, _member_id, writes, _addr) : (_, _, Vec<SingleWrite<Clock>>,_)| writes.into_iter() )
+            -> flat_map(|(_msg_id, _member_id, writes, _addr) : (_, _, SmallVec<[SingleWrite<Clock>; 4]>, _)| writes.into_iter() )
             -> writes;
 
         gossip_processing_pipeline = incoming_gossip_messages
-            -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, Vec<SingleWrite<Clock>>, Addr)| {
+            -> map(|(msg_id, _member_id, writes, sender_address) : (String, MemberId, SmallVec<[SingleWrite<Clock>; 4]>, Addr)| {
                 let namespaces = &#namespaces;
                 let all_data = namespaces.as_reveal_ref();
 
@@ -256,7 +381,7 @@ where
 
         gossip_processing_pipeline
             -> filter_map(|(_, _, writes)| writes)
-            -> flat_map(|writes : Vec<SingleWrite<Clock>>| writes.into_iter())
+            -> flat_map(|writes : SmallVec<[SingleWrite<Clock>; 4]>| writes.into_iter())
             -> writes;
 
         writes = union();
@@ -300,7 +425,7 @@ where
             // have a hash implementation. So we just generate a GUID identifier for the write
             // for now.
             let id = uuid::Uuid::new_v4().to_string();
-            MapUnionSingletonMap::new_from((id, InfectingWrite { write: SetUnion::new(VecSet::from(vec![write])), members: BoundedSetLattice::new() }))
+            MapUnionSingletonMap::new_from((id, InfectingWrite { write: SetUnion::new(SmallVecSet::from(smallvec![write])), members: BoundedSetLattice::new() }))
         }) -> infecting_writes;
 
         gossip_trigger = source_stream(gossip_trigger);
@@ -366,7 +491,7 @@ where
             let gossip_request = GossipMessage::Gossip {
                 message_id: message_id.clone(),
                 member_id: member_id_4.clone(),
-                writes: infecting_write.write.as_reveal_ref().0.clone(),
+                writes: infecting_write.write.as_reveal_ref().inner.clone(),
             };
             (gossip_request, peer_gossip_address)
         })
@@ -380,11 +505,9 @@ mod tests {
 
     use dfir_rs::tokio_stream::empty;
     use dfir_rs::util::simulation::{Address, Fleet, Hostname};
-    use lattices::{IsBot, Max};
 
     use super::*;
     use crate::membership::{MemberDataBuilder, Protocol};
-    use crate::Namespace::System;
 
     #[dfir_rs::test]
     async fn test_member_init() {
@@ -785,21 +908,5 @@ mod tests {
 
             gossip_trigger_tx_a.send(()).unwrap();
         }
-    }
-
-    #[test]
-    pub fn test_bottom() {
-        let iw = InfectingWrite {
-            write: SetUnion::new(VecSet::from(vec![upsert_row(
-                Max::new(0),
-                Key::new(System, "FOOBAR".to_string(), "BAZ".to_string()),
-                "val".to_string(),
-            )])),
-            members: Default::default(),
-        };
-
-        let is_bot = iw.write.is_bot();
-
-        println!("is_bot: {:?}", is_bot);
     }
 }

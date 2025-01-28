@@ -14,6 +14,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use smallvec::SmallVec;
 
 use crate::model::{Clock, SingleWrite};
 use crate::KeyParseError::InvalidNamespace;
@@ -168,12 +169,13 @@ pub enum ClientResponse {
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(clippy::large_enum_variant)]
 pub enum GossipMessage {
     /// An "infecting message" to share updates with a peer.
     Gossip {
         message_id: String,
         member_id: String,
-        writes: Vec<SingleWrite<Clock>>,
+        writes: SmallVec<[SingleWrite<Clock>; 4]>,
     },
     /// An acknowledgement message sent by a peer in response to a Gossip message, to indicate
     /// that it hasn't seen some of the writes in the Gossip message before.

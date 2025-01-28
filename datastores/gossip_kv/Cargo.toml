@@ -25,7 +25,7 @@ rand_distr = "0.4.3"
 serde = "1.0.203"
 serde_json = "1.0.117"
 shlex = "1.3.0"
-string-interner = "0.18.0"
+smallvec = { version = "1.13.2" , features = ["serde"]}
 tokio = { version = "1.0.0", features = ["rt", "rt-multi-thread", "macros"] }
 tracing = "0.1.40"
 tracing-subscriber = {version = "0.3.18", features = ["env-filter"]}
