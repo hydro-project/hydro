@@ -22,6 +22,10 @@ impl LocalDeploy<'_> for SingleProcessGraph {
     fn trivial_cluster(_id: usize) -> Self::Cluster {
         SingleNode {}
     }
+
+    fn trivial_external(_id: usize) -> Self::ExternalProcess {
+        SingleNode {}
+    }
 }
 
 impl ProcessSpec<'_, SingleProcessGraph> for () {
@@ -72,6 +76,10 @@ impl LocalDeploy<'_> for MultiGraph {
     }
 
     fn trivial_cluster(_id: usize) -> Self::Cluster {
+        MultiNode {}
+    }
+
+    fn trivial_external(_id: usize) -> Self::ExternalProcess {
         MultiNode {}
     }
 }

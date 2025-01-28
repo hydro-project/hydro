@@ -50,6 +50,10 @@ pub trait LocalDeploy<'a> {
     fn trivial_cluster(_id: usize) -> Self::Cluster {
         panic!("No trivial cluster")
     }
+
+    fn trivial_external(_id: usize) -> Self::ExternalProcess {
+        panic!("No trivial external")
+    }
 }
 
 pub trait Deploy<'a> {
