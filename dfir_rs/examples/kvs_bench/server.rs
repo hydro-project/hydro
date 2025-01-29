@@ -46,12 +46,12 @@ pub fn run_server<RX>(
 
             let buffer_pool = BufferPool::<BUFFER_SIZE>::create_buffer_pool();
 
-            let (transducer_to_peers_tx, mut transducer_to_peers_rx) =
+            let (process_to_peers_tx, mut process_to_peers_rx) =
                 dfir_rs::util::unsync_channel::<(Bytes, NodeId)>(None);
 
-            let (client_to_transducer_tx, client_to_transducer_rx) =
+            let (client_to_process_tx, client_to_process_rx) =
                 dfir_rs::util::unsync_channel::<(KvsRequest<BUFFER_SIZE>, NodeId)>(None);
-            let (transducer_to_client_tx, mut _transducer_to_client_rx) =
+            let (process_to_client_tx, mut _process_to_client_rx) =
                 dfir_rs::util::unsync_channel::<(KvsResponse<BUFFER_SIZE>, NodeId)>(None);
 
             let localset = task::LocalSet::new();
@@ -71,7 +71,7 @@ pub fn run_server<RX>(
                                     collector: Rc::clone(&buffer_pool),
                                 }.deserialize(&mut deserializer).unwrap();
 
-                                client_to_transducer_tx.try_send((req, node_id)).unwrap();
+                                client_to_process_tx.try_send((req, node_id)).unwrap();
                             }
                         }
                     })
@@ -86,7 +86,7 @@ pub fn run_server<RX>(
                 // TODO: Eventually this would get moved into a dfir operator that would return a Bytes struct and be efficient and zero copy and etc.
                 async move {
                     loop {
-                        while let Some((serialized_req, node_id)) = transducer_to_peers_rx.next().await {
+                        while let Some((serialized_req, node_id)) = process_to_peers_rx.next().await {
                             let index = lookup.binary_search(&node_id).unwrap();
                             topology.tx[index].send(serialized_req).unwrap();
                         }
@@ -170,7 +170,7 @@ pub fn run_server<RX>(
                 union_puts_and_gossip_requests = union();
 
                 simulated_put_requests -> union_puts_and_gossip_requests;
-                source_stream(client_to_transducer_rx)
+                source_stream(client_to_process_rx)
                     // -> inspect(|x| println!("{server_id}:{:5}: from peers: {x:?}", context.current_tick()))
                     -> union_puts_and_gossip_requests;
 
@@ -244,7 +244,7 @@ pub fn run_server<RX>(
 
                 peers
                     // -> inspect(|x| println!("{server_id}:{:5}: sending to peers: {x:?}", context.current_tick()))
-                    -> for_each(|(node_id, serialized_req)| transducer_to_peers_tx.try_send((serialized_req, node_id)).unwrap());
+                    -> for_each(|(node_id, serialized_req)| process_to_peers_tx.try_send((serialized_req, node_id)).unwrap());
 
                 // join for lookups
                 lookup = _lattice_join_fused_join::<'static, 'tick, MyLastWriteWins<BUFFER_SIZE>, MySetUnion>();
@@ -275,7 +275,7 @@ pub fn run_server<RX>(
                     })
                     -> flatten()
                     // -> inspect(|x| println!("{gossip_addr}:{:5}: Response to client: {x:?}", context.current_tick()))
-                    -> for_each(|x| transducer_to_client_tx.try_send(x).unwrap());
+                    -> for_each(|x| process_to_client_tx.try_send(x).unwrap());
 
             };
 

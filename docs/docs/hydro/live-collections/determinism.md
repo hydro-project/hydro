@@ -20,7 +20,7 @@ Much existing literature in distributed systems focuses on consistency levels su
 :::
 
 ## Unsafe Operations in Hydro
-All **safe** APIs in Hydro (the ones you can call regularly in Rust), guarantee determinism. But oftentimes it is necessary to do something non-deterministic, like generate events at a fixed time interval or split an input into arbitrarily sized batches.
+All **safe** APIs in Hydro (the ones you can call regularly in Rust) guarantee determinism. But often it is necessary to do something non-deterministic, like generate events at a fixed wall-clock-time interval, or split an input into arbitrarily sized batches.
 
 Hydro offers APIs for such concepts behind an **`unsafe`** guard. This keyword is typically used to mark Rust functions that may not be memory-safe, but we reuse this in Hydro to mark non-deterministic APIs.
 
@@ -41,7 +41,7 @@ unsafe {
 
 When writing a function with Hydro that involves `unsafe` code, it is important to be extra careful about whether the non-determinism is exposed externally. In some applications, a utility function may involve local non-determinism (such as sending retries), but not expose it outside the function (via deduplication).
 
-But other utilities may expose the non-determinism, in which case they should be marked `unsafe` as well. If the function is public, Rust will require you to put a `# Safety` section in its documentation explain the non-determinism.
+But other utilities may expose the non-determinism, in which case they should be marked `unsafe` as well. If the function is public, Rust will require you to put a `# Safety` section in its documentation to explain the non-determinism.
 
 ```rust
 # use hydro_lang::*;
@@ -65,12 +65,12 @@ unsafe fn print_samples<T: Debug, L>(
 ```
 
 ## User-Defined Functions
-Another source of potential non-determinism is user-defined functions, such as those provided to `map` or `filter`. Hydro allows for arbitrary Rust functions to be called inside these closures, so it is possible to introduce non-determinism which will not be checked by the compiler.
+Another source of potential non-determinism is user-defined functions, such as those provided to `map` or `filter`. Hydro allows for arbitrary Rust functions to be called inside these closures, so it is possible to introduce non-determinism that will not be checked by the compiler.
 
 In general, avoid using APIs like random number generators inside transformation functions unless that non-determinism is explicitly documented somewhere.
 
 :::info
 
-To help avoid such bugs, we are working on ways to use formal verification tools (such as [Kani](https://model-checking.github.io/kani/)) to check arbitrary Rust code for properties such as determinism and more. But this remains active research for now and is not yet available.
+To help avoid such bugs, we are working on ways to use formal verification tools (such as [Kani](https://model-checking.github.io/kani/)) to check arbitrary Rust code for properties such as determinism and more. This remains active research for now and is not yet available.
 
 :::

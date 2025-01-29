@@ -19,7 +19,7 @@ The way that Lamport clocks jump ahead provides a desirable property: the timest
 Lamport timestamps track not only the order of events on a single node, they also ensure that the timestamps on events reflect distributed ordering. Suppose that node `source` wants to send a message to node `dest`, and node source has current clock value *T_source*. The events that precede that message on node `source` have smaller timestamps. In addition, consider an event at node `dest` that follows the receipt of that message. That event must have a timestamp greater than *T_source* by Lamport's advancing rule above. Hence all the events on node `source` that preceded the sending of the message have lower timestamps than the events on node `dest` following the receipt of the message. This is Lamport's distributed "happens-before" relation, and the Lamport clock capture that relation.
 
 ## DFIR Time
-As a built-in primitive, DFIR defines time only for a single transducer, as a sequence of consecutive ticks without any gaps. 
+As a built-in primitive, DFIR defines time only for a single process, as a sequence of consecutive ticks without any gaps. 
 
 Thus the main difference between DFIR events and Lamport events are:
 

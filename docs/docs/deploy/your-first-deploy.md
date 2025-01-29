@@ -5,7 +5,7 @@ sidebar_position: 3
 # Your First Deploy
 Now that we have Hydro Deploy installed, let's deploy our first app. We'll start with a simple app that echoes packets.
 
-First, we need to write the DFIR application, which will intergrate with Hydro Deploy to initialize connections to other services. We can create a project using the Cargo template:
+First, we need to write the DFIR application, which will integrate with Hydro Deploy to initialize connections to other services. We can create a project using the Cargo template:
 
 ```bash
 # if you don't already have cargo-generate installed
