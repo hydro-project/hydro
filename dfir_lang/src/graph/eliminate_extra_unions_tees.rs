@@ -13,7 +13,7 @@ fn find_unary_ops<'a>(
         .filter(move |&node_id| {
             graph
                 .node_op_inst(node_id)
-                .map_or(false, |op_inst| op_name == op_inst.op_constraints.name)
+                .is_some_and(|op_inst| op_name == op_inst.op_constraints.name)
         })
         .filter(|&node_id| {
             1 == graph.node_degree_in(node_id) && 1 == graph.node_degree_out(node_id)

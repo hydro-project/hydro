@@ -5,7 +5,16 @@ pub mod distributed;
 
 #[doc(hidden)]
 #[stageleft::runtime]
+#[cfg(doctest)]
 mod docs {
-    #[doc = include_str!("../../docs/docs/hydro/consistency.md")]
-    mod consistency {}
+    dfir_macro::doctest_markdown_glob!("docs/docs/hydro/**/*.md*");
+}
+
+#[stageleft::runtime]
+#[cfg(test)]
+mod test_init {
+    #[ctor::ctor]
+    fn init() {
+        hydro_lang::deploy::init_test();
+    }
 }

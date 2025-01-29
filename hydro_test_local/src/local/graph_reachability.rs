@@ -25,7 +25,7 @@ pub fn graph_reachability<'a>(
         roots
             .timestamped(&reachability_tick)
             .tick_batch()
-            .union(reached_cycle)
+            .chain(reached_cycle)
     };
     let reachable = reached
         .clone()
@@ -35,7 +35,7 @@ pub fn graph_reachability<'a>(
             edges.timestamped(&reachability_tick).tick_batch().persist()
         })
         .map(q!(|(_from, (_, to))| to));
-    set_reached_cycle.complete_next_tick(reached.clone().union(reachable));
+    set_reached_cycle.complete_next_tick(reached.clone().chain(reachable));
 
     reached.all_ticks().unique().for_each(q!(|v| {
         reached_out.send(v).unwrap();

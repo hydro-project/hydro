@@ -170,7 +170,7 @@ impl<'a> Deploy<'a> for DeployRuntime {
     fn cluster_ids(
         env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a Vec<u32>, ()> + Copy + 'a {
+    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a {
         crate::deploy_runtime::cluster_members(*env, of_cluster)
     }
 

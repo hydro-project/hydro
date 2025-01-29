@@ -49,9 +49,9 @@ jobs:
         run: |
           pip install hydro_deploy/hydro_cli/dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
       - name: "Upload wheels"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   linux:
@@ -92,9 +92,9 @@ jobs:
         run: |
           pip install hydro_deploy/hydro_cli/dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
       - name: "Upload wheels"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.target }}
           path: hydro_deploy/hydro_cli/dist
 
   linux-cross:
@@ -121,9 +121,9 @@ jobs:
           manylinux: auto
           args: --release --out dist
       - name: "Upload wheels"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.platform.target }}
           path: hydro_deploy/hydro_cli/dist
 
   windows:
@@ -158,9 +158,9 @@ jobs:
         run: |
           python -m pip install hydro_deploy/hydro_cli/dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
       - name: "Upload wheels"
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: wheels
+          name: wheels-${{ matrix.platform.target }}
           path: hydro_deploy/hydro_cli/dist
 
   release:
@@ -175,7 +175,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v3
         with:
-          name: wheels
+          pattern: wheels-*
+          path: wheels
+          merge-multiple: true
       - uses: actions/setup-python@v5
       - name: "Publish to PyPi"
         env:

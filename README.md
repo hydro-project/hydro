@@ -2,8 +2,8 @@
     <img src="https://raw.githubusercontent.com/hydro-project/hydro/main/docs/static/img/hydro-logo.svg" width="200" alt='"hf"'>
 </h1>
 <p align="center">
-    <a href="https://crates.io/crates/hydroflow"><img src="https://img.shields.io/crates/v/hydroflow?style=flat-square&logo=rust" alt="Crates.io"></a>
-    <a href="https://docs.rs/hydroflow/"><img src="https://img.shields.io/badge/docs.rs-Hydroflow-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
+    <a href="https://crates.io/crates/hydro_lang"><img src="https://img.shields.io/crates/v/hydro_lang?style=flat-square&logo=rust" alt="Crates.io"></a>
+    <a href="https://docs.rs/hydro_lang/"><img src="https://img.shields.io/badge/docs.rs-Hydro-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
 </p>
 
 Hydro is a novel distributed programming library for standard Rust. Hydro allows developers to build distributed systems that are efficient, scalable, and correct.

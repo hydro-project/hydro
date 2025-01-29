@@ -1,4 +1,25 @@
 use hydro_lang::*;
+use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
+use stageleft::IntoQuotedMut;
+
+pub fn partition<'a, F: Fn((ClusterId<()>, String)) -> (ClusterId<()>, String) + 'a>(
+    cluster1: Cluster<'a, ()>,
+    cluster2: Cluster<'a, ()>,
+    dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>>,
+) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
+    cluster1
+        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .map(q!(move |id| (
+            ClusterId::<()>::from_raw(id.raw_id),
+            format!("Hello from {}", id.raw_id)
+        )))
+        .send_partitioned(&cluster2, dist_policy)
+        .for_each(q!(move |message| println!(
+            "My self id is {}, my message is {:?}",
+            CLUSTER_SELF_ID.raw_id, message
+        )));
+    (cluster1, cluster2)
+}
 
 pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     let cluster1 = flow.cluster();
@@ -49,6 +70,8 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
+    use hydro_lang::ClusterId;
+    use stageleft::q;
 
     #[tokio::test]
     async fn simple_cluster() {
@@ -160,6 +183,56 @@ mod tests {
                 let expected_message = format!(
                     "My self id is ClusterId::<()>({}), my message is ClusterId::<()>({})",
                     i, i
+                );
+                assert_eq!(stdout.recv().await.unwrap(), expected_message);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn partition() {
+        let mut deployment = Deployment::new();
+
+        let num_nodes = 3;
+        let num_partitions = 2;
+        let builder = hydro_lang::FlowBuilder::new();
+        let (cluster1, cluster2) = super::partition(
+            builder.cluster::<()>(),
+            builder.cluster::<()>(),
+            q!(move |(id, msg)| (
+                ClusterId::<()>::from_raw(id.raw_id * num_partitions as u32),
+                msg
+            )),
+        );
+        let built = builder.with_default_optimize();
+
+        let nodes = built
+            .with_cluster(&cluster1, (0..num_nodes).map(|_| deployment.Localhost()))
+            .with_cluster(
+                &cluster2,
+                (0..num_nodes * num_partitions).map(|_| deployment.Localhost()),
+            )
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let cluster2_stdouts = futures::future::join_all(
+            nodes
+                .get_cluster(&cluster2)
+                .members()
+                .iter()
+                .map(|node| node.stdout()),
+        )
+        .await;
+
+        deployment.start().await.unwrap();
+
+        for (cluster2_id, mut stdout) in cluster2_stdouts.into_iter().enumerate() {
+            if cluster2_id % num_partitions == 0 {
+                let expected_message = format!(
+                    r#"My self id is {}, my message is "Hello from {}""#,
+                    cluster2_id,
+                    cluster2_id / num_partitions
                 );
                 assert_eq!(stdout.recv().await.unwrap(), expected_message);
             }

@@ -16,8 +16,13 @@ pub struct HydroflowPlusMeta {
 pub fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
     of_cluster: usize,
-) -> impl QuotedWithContext<&Vec<u32>, ()> + Copy {
-    q!(cli.meta.clusters.get(&of_cluster).unwrap())
+) -> impl QuotedWithContext<&[u32], ()> + Copy {
+    q!(cli
+        .meta
+        .clusters
+        .get(&of_cluster)
+        .map(|v| v.as_slice())
+        .unwrap_or(&[])) // we default to empty slice because this is the scenario where the cluster is unused in the graph
 }
 
 pub fn cluster_self_id(

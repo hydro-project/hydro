@@ -29,10 +29,10 @@ fn hash_code(s: &str) -> u32 {
         .fold(0, |n, c| n.wrapping_mul(31).wrapping_add(c as u32))
 }
 
-fn hydroflow_diamond(c: &mut Criterion) {
+fn dfir_rs_diamond(c: &mut Criterion) {
     let _ = *WORDS;
 
-    c.bench_function(name_of!(hydroflow_diamond), |b| {
+    c.bench_function(name_of!(dfir_rs_diamond), |b| {
         b.iter(|| {
             let words = words();
             let mut df = dfir_syntax! {
@@ -173,7 +173,7 @@ fn hydroflo2_diamond_iter_buffer_one(c: &mut Criterion) {
 
 criterion_group!(
     words_diamond,
-    hydroflow_diamond,
+    dfir_rs_diamond,
     hydroflo2_diamond_forloop,
     hydroflo2_diamond_iter_clone_chain,
     hydroflo2_diamond_iter_clone_interleave,

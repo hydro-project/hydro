@@ -48,7 +48,7 @@ expression: built.ir()
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | & id | id }),
                                         input: Source {
                                             source: Iter(
-                                                unsafe { :: std :: mem :: transmute :: < _ , & :: std :: vec :: Vec < hydro_lang :: ClusterId < () > > > (__hydro_lang_cluster_ids_1) },
+                                                unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) },
                                             ),
                                             location_kind: Process(
                                                 0,

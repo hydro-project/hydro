@@ -395,7 +395,7 @@ jobs:
 
       - name: Run benchmark
         run: |
-          time cargo bench -p benches -- hydroflow --output-format bencher | tee output.txt
+          time cargo bench -p benches -- dfir --output-format bencher | tee output.txt
           time cargo bench -p benches -- micro/ops/ --output-format bencher | tee -a output.txt
 
       - name: Generate benchmark page
