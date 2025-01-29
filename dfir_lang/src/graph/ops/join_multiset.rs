@@ -5,7 +5,7 @@ use super::{
     WriteContextArgs, RANGE_0, RANGE_1,
 };
 
-/// > 2 input streams of type <(K, V1)> and <(K, V2)>, 1 output stream of type <(K, (V1, V2))>
+/// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
 /// This operator is equivalent to `join` except that the LHS and RHS are collected into multisets rather than sets before joining.
 ///
