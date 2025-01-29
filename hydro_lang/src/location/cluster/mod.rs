@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
 use proc_macro2::{Span, TokenStream};
@@ -18,12 +19,17 @@ pub struct Cluster<'a, C> {
     pub(crate) _phantom: Invariant<'a, C>,
 }
 
-pub trait IsCluster {
-    type Tag;
+impl<C> Debug for Cluster<'_, C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cluster({})", self.id)
+    }
 }
 
-impl<C> IsCluster for Cluster<'_, C> {
-    type Tag = C;
+impl<C> Eq for Cluster<'_, C> {}
+impl<C> PartialEq for Cluster<'_, C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.flow_state.as_ptr() == other.flow_state.as_ptr()
+    }
 }
 
 impl<'a, C> Cluster<'a, C> {
@@ -101,6 +107,14 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
 }
 
 impl<'a, C, Ctx> QuotedWithContext<'a, &'a Vec<ClusterId<C>>, Ctx> for ClusterIds<'a, C> {}
+
+pub trait IsCluster {
+    type Tag;
+}
+
+impl<C> IsCluster for Cluster<'_, C> {
+    type Tag = C;
+}
 
 /// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`ClusterId`].

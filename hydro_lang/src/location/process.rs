@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
 use super::{Location, LocationId};
@@ -8,6 +9,19 @@ pub struct Process<'a, P = ()> {
     pub(crate) id: usize,
     pub(crate) flow_state: FlowState,
     pub(crate) _phantom: Invariant<'a, P>,
+}
+
+impl<P> Debug for Process<'_, P> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Process({})", self.id)
+    }
+}
+
+impl<P> Eq for Process<'_, P> {}
+impl<P> PartialEq for Process<'_, P> {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.flow_state.as_ptr() == other.flow_state.as_ptr()
+    }
 }
 
 impl<P> Clone for Process<'_, P> {
