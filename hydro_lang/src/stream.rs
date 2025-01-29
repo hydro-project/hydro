@@ -252,28 +252,6 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         )
     }
 
-    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process.source_iter(q!(vec![1..3])).cloned()
-    /// # }, |mut stream| async move {
-    /// // 1, 2, 3
-    /// # for w in vec![1..3] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
-    pub fn cloned(self) -> Stream<T, L, B, Order>
-    where
-        T: Clone,
-    {
-        self.map(q!(|d| d.clone()))
-    }
-
     /// For each item `i` in the input stream, transform `i` using `f` and then treat the
     /// result as an [`Iterator`] to produce items one by one. The implementation for [`Iterator`]
     /// for the output type `U` must produce items in a **deterministic** order.
@@ -611,6 +589,30 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// for the rest of the program.
     pub unsafe fn assume_ordering<O>(self) -> Stream<T, L, B, O> {
         Stream::new(self.location, self.ir_node.into_inner())
+    }
+}
+
+impl<'a, T, L: Location<'a>, B, Order> Stream<&T, L, B, Order> {
+    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(&[1, 2, 3])).cloned()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn cloned(self) -> Stream<T, L, B, Order>
+    where
+        T: Clone,
+    {
+        self.map(q!(|d| d.clone()))
     }
 }
 
