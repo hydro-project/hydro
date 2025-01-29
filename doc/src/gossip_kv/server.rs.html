@@ -1034,7 +1034,7 @@
         new_writes -&gt; for_each(|x| <span class="macro">trace!</span>(<span class="string">"NEW WRITE: {:?}"</span>, x));
 
         <span class="comment">// Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
-        </span>infecting_writes = union() -&gt; state::&lt;<span class="lifetime">'static</span>, MapUnionHashMap&lt;MessageId, InfectingWrite&gt;&gt;();
+        </span>infecting_writes = union() -&gt; state_by::&lt;<span class="lifetime">'static</span>, MapUnionHashMap&lt;MessageId, InfectingWrite&gt;&gt;(std::convert::identity, std::default::Default::default);
 
         new_writes -&gt; map(|write| {
             <span class="comment">// Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
