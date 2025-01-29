@@ -778,11 +778,8 @@ expression: built.ir()
                                                                                         },
                                                                                     },
                                                                                     metadata: HydroNodeMetadata {
-                                                                                        location_kind: Tick(
-                                                                                            1,
-                                                                                            Cluster(
-                                                                                                0,
-                                                                                            ),
+                                                                                        location_kind: Cluster(
+                                                                                            0,
                                                                                         ),
                                                                                         output_type: Some(
                                                                                             hydro_test :: cluster :: paxos :: Ballot,
@@ -790,11 +787,8 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                                 metadata: HydroNodeMetadata {
-                                                                                    location_kind: Tick(
-                                                                                        1,
-                                                                                        Cluster(
-                                                                                            0,
-                                                                                        ),
+                                                                                    location_kind: Cluster(
+                                                                                        0,
                                                                                     ),
                                                                                     output_type: Some(
                                                                                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Acceptor > , hydro_test :: cluster :: paxos :: Ballot),
@@ -1949,11 +1943,8 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                                 metadata: HydroNodeMetadata {
-                                                                    location_kind: Tick(
-                                                                        7,
-                                                                        Cluster(
-                                                                            2,
-                                                                        ),
+                                                                    location_kind: Cluster(
+                                                                        2,
                                                                     ),
                                                                     output_type: Some(
                                                                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) >),
@@ -4727,11 +4718,8 @@ expression: built.ir()
                                         },
                                     },
                                     metadata: HydroNodeMetadata {
-                                        location_kind: Tick(
-                                            0,
-                                            Cluster(
-                                                2,
-                                            ),
+                                        location_kind: Cluster(
+                                            2,
                                         ),
                                         output_type: Some(
                                             core :: time :: Duration,
@@ -4739,11 +4727,8 @@ expression: built.ir()
                                     },
                                 },
                                 metadata: HydroNodeMetadata {
-                                    location_kind: Tick(
-                                        0,
-                                        Cluster(
-                                            2,
-                                        ),
+                                    location_kind: Cluster(
+                                        2,
                                     ),
                                     output_type: Some(
                                         core :: time :: Duration,
@@ -4751,11 +4736,8 @@ expression: built.ir()
                                 },
                             },
                             metadata: HydroNodeMetadata {
-                                location_kind: Tick(
-                                    0,
-                                    Cluster(
-                                        2,
-                                    ),
+                                location_kind: Cluster(
+                                    2,
                                 ),
                                 output_type: Some(
                                     (std :: rc :: Rc < core :: cell :: RefCell < std :: vec :: Vec < core :: time :: Duration > > > , usize),
@@ -4763,11 +4745,8 @@ expression: built.ir()
                             },
                         },
                         metadata: HydroNodeMetadata {
-                            location_kind: Tick(
-                                0,
-                                Cluster(
-                                    2,
-                                ),
+                            location_kind: Cluster(
+                                2,
                             ),
                             output_type: Some(
                                 std :: rc :: Rc < core :: cell :: RefCell < std :: vec :: Vec < core :: time :: Duration > > >,
@@ -4930,11 +4909,8 @@ expression: built.ir()
                             },
                         },
                         metadata: HydroNodeMetadata {
-                            location_kind: Tick(
-                                0,
-                                Cluster(
-                                    2,
-                                ),
+                            location_kind: Cluster(
+                                2,
                             ),
                             output_type: Some(
                                 usize,
@@ -4942,11 +4918,8 @@ expression: built.ir()
                         },
                     },
                     metadata: HydroNodeMetadata {
-                        location_kind: Tick(
-                            0,
-                            Cluster(
-                                2,
-                            ),
+                        location_kind: Cluster(
+                            2,
                         ),
                         output_type: Some(
                             (std :: rc :: Rc < core :: cell :: RefCell < std :: vec :: Vec < core :: time :: Duration > > > , usize),

@@ -121,8 +121,7 @@ mod tests {
             process
                 .source_iter(q!(vec![]))
                 .map(q!(|string: String| (string, ())))
-                .timestamped(&tick)
-                .tick_batch()
+                .tick_batch(&tick)
         }
         .fold_keyed(q!(|| 0), counter_func)
         .all_ticks()

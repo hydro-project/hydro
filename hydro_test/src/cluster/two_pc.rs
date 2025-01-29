@@ -61,7 +61,7 @@ pub fn two_pc<'a>(
                 t,
                 if reply == "commit" { Ok(()) } else { Err(id) }
             )))
-            .timestamped(&coordinator_tick),
+            .atomic(&coordinator_tick),
         num_participants as usize,
         num_participants as usize,
     );
