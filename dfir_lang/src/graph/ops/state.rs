@@ -19,6 +19,8 @@ use super::{
 ///     -> map(SetUnionSingletonSet::new_from)
 ///     -> state::<SetUnionHashSet<usize>>();
 /// ```
+/// The `state` operator is equivalent to `state_by` used with an identity mapping operator with
+/// `Default::default` providing the factory function.
 pub const STATE: OperatorConstraints = OperatorConstraints {
     name: "state",
     categories: &[OperatorCategory::Persistence],
