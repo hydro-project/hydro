@@ -46,12 +46,6 @@ mod staging_util;
 #[cfg(feature = "deploy")]
 pub mod test_util;
 
-#[ctor::ctor]
-fn add_private_reexports() {
-    stageleft::add_private_reexport(vec!["tokio", "time", "instant"], vec!["tokio", "time"]);
-    stageleft::add_private_reexport(vec!["bytes", "bytes"], vec!["bytes"]);
-}
-
 #[stageleft::runtime]
 #[cfg(test)]
 mod test_init {
