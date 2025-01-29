@@ -1323,37 +1323,37 @@ impl<'a> HydroNode {
         }
     }
 
-    pub fn metadata(&self) -> HydroNodeMetadata {
+    pub fn metadata(&self) -> &HydroNodeMetadata {
         match self {
             HydroNode::Placeholder => {
                 panic!()
             }
-            HydroNode::Source { metadata, .. } => metadata.clone(),
-            HydroNode::CycleSource { metadata, .. } => metadata.clone(),
-            HydroNode::Tee { metadata, .. } => metadata.clone(),
-            HydroNode::Persist { metadata, .. } => metadata.clone(),
-            HydroNode::Unpersist { metadata, .. } => metadata.clone(),
-            HydroNode::Delta { metadata, .. } => metadata.clone(),
-            HydroNode::Chain { metadata, .. } => metadata.clone(),
-            HydroNode::CrossProduct { metadata, .. } => metadata.clone(),
-            HydroNode::CrossSingleton { metadata, .. } => metadata.clone(),
-            HydroNode::Join { metadata, .. } => metadata.clone(),
-            HydroNode::Difference { metadata, .. } => metadata.clone(),
-            HydroNode::AntiJoin { metadata, .. } => metadata.clone(),
-            HydroNode::Map { metadata, .. } => metadata.clone(),
-            HydroNode::FlatMap { metadata, .. } => metadata.clone(),
-            HydroNode::Filter { metadata, .. } => metadata.clone(),
-            HydroNode::FilterMap { metadata, .. } => metadata.clone(),
-            HydroNode::DeferTick { metadata, .. } => metadata.clone(),
-            HydroNode::Enumerate { metadata, .. } => metadata.clone(),
-            HydroNode::Inspect { metadata, .. } => metadata.clone(),
-            HydroNode::Unique { metadata, .. } => metadata.clone(),
-            HydroNode::Sort { metadata, .. } => metadata.clone(),
-            HydroNode::Fold { metadata, .. } => metadata.clone(),
-            HydroNode::FoldKeyed { metadata, .. } => metadata.clone(),
-            HydroNode::Reduce { metadata, .. } => metadata.clone(),
-            HydroNode::ReduceKeyed { metadata, .. } => metadata.clone(),
-            HydroNode::Network { metadata, .. } => metadata.clone(),
+            HydroNode::Source { metadata, .. } => metadata,
+            HydroNode::CycleSource { metadata, .. } => metadata,
+            HydroNode::Tee { metadata, .. } => metadata,
+            HydroNode::Persist { metadata, .. } => metadata,
+            HydroNode::Unpersist { metadata, .. } => metadata,
+            HydroNode::Delta { metadata, .. } => metadata,
+            HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::CrossProduct { metadata, .. } => metadata,
+            HydroNode::CrossSingleton { metadata, .. } => metadata,
+            HydroNode::Join { metadata, .. } => metadata,
+            HydroNode::Difference { metadata, .. } => metadata,
+            HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::Map { metadata, .. } => metadata,
+            HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::Filter { metadata, .. } => metadata,
+            HydroNode::FilterMap { metadata, .. } => metadata,
+            HydroNode::DeferTick { metadata, .. } => metadata,
+            HydroNode::Enumerate { metadata, .. } => metadata,
+            HydroNode::Inspect { metadata, .. } => metadata,
+            HydroNode::Unique { metadata, .. } => metadata,
+            HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Fold { metadata, .. } => metadata,
+            HydroNode::FoldKeyed { metadata, .. } => metadata,
+            HydroNode::Reduce { metadata, .. } => metadata,
+            HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::Network { metadata, .. } => metadata,
         }
     }
 }
