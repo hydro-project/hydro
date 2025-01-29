@@ -87,11 +87,8 @@ expression: built.ir()
                 },
             },
             metadata: HydroNodeMetadata {
-                location_kind: Tick(
+                location_kind: Process(
                     0,
-                    Process(
-                        0,
-                    ),
                 ),
                 output_type: Some(
                     i32,
@@ -183,11 +180,8 @@ expression: built.ir()
                 },
             },
             metadata: HydroNodeMetadata {
-                location_kind: Tick(
+                location_kind: Process(
                     0,
-                    Process(
-                        0,
-                    ),
                 ),
                 output_type: Some(
                     i32,

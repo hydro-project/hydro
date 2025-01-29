@@ -43,9 +43,9 @@ pub unsafe fn paxos_with_client<'a, C: 'a, R, P: PaxosPayload>(
                     // is documented non-determinism.
 
                     let client_tick = clients.tick();
-                    let payload_batch = payloads.timestamped(&client_tick).tick_batch();
+                    let payload_batch = payloads.tick_batch(&client_tick);
 
-                    let latest_leader = cur_leader_id.timestamped(&client_tick).latest_tick();
+                    let latest_leader = cur_leader_id.latest_tick(&client_tick);
 
                     let (unsent_payloads_complete, unsent_payloads) =
                         client_tick.cycle::<Stream<_, _, _, TotalOrder>>();

@@ -17,7 +17,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
 
     let batches = unsafe {
         // SAFETY: addition is associative so we can batch reduce
-        partitioned_words.timestamped(&cluster.tick()).tick_batch()
+        partitioned_words.tick_batch(&cluster.tick())
     }
     .fold_keyed(q!(|| 0), q!(|count, _| *count += 1))
     .inspect(q!(|(string, count)| println!(
@@ -30,8 +30,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
     unsafe {
         // SAFETY: addition is associative so we can batch reduce
         batches
-            .timestamped(&process.tick())
-            .tick_batch()
+            .tick_batch(&process.tick())
             .persist()
             .reduce_keyed_commutative(q!(|total, count| *total += count))
     }

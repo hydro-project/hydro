@@ -21,20 +21,20 @@ impl<T> NoTick for Process<'_, T> {}
 impl<T> NoTick for Cluster<'_, T> {}
 
 #[sealed]
-pub trait NoTimestamp {}
+pub trait NoAtomic {}
 #[sealed]
-impl<T> NoTimestamp for Process<'_, T> {}
+impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
-impl<T> NoTimestamp for Cluster<'_, T> {}
+impl<T> NoAtomic for Cluster<'_, T> {}
 #[sealed]
-impl<'a, L: Location<'a>> NoTimestamp for Tick<L> {}
+impl<'a, L: Location<'a>> NoAtomic for Tick<L> {}
 
 #[derive(Clone)]
-pub struct Timestamped<L> {
+pub struct Atomic<L> {
     pub(crate) tick: Tick<L>,
 }
 
-impl<'a, L: Location<'a>> Location<'a> for Timestamped<L> {
+impl<'a, L: Location<'a>> Location<'a> for Atomic<L> {
     type Root = L::Root;
 
     fn root(&self) -> Self::Root {
@@ -55,7 +55,7 @@ impl<'a, L: Location<'a>> Location<'a> for Timestamped<L> {
 }
 
 #[sealed]
-impl<L> NoTick for Timestamped<L> {}
+impl<L> NoTick for Atomic<L> {}
 
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
@@ -102,19 +102,18 @@ impl<'a, L: Location<'a>> Tick<L> {
         batch_size: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
     ) -> Stream<(), Self, Bounded>
     where
-        L: NoTick + NoTimestamp,
+        L: NoTick + NoAtomic,
     {
         let out = self
             .l
             .spin()
             .flat_map_ordered(q!(move |_| 0..batch_size))
-            .map(q!(|_| ()))
-            .timestamped(self);
+            .map(q!(|_| ()));
 
         unsafe {
             // SAFETY: at runtime, `spin` produces a single value per tick,
             // so each batch is guaranteed to be the same size.
-            out.tick_batch()
+            out.tick_batch(self)
         }
     }
 
@@ -123,11 +122,11 @@ impl<'a, L: Location<'a>> Tick<L> {
         e: impl QuotedWithContext<'a, T, L>,
     ) -> Singleton<T, Self, Bounded>
     where
-        L: NoTick,
+        L: NoTick + NoAtomic,
     {
         unsafe {
             // SAFETY: a top-level singleton produces the same value each tick
-            self.outer().singleton(e).timestamped(self).latest_tick()
+            self.outer().singleton(e).latest_tick(self)
         }
     }
 
@@ -136,7 +135,7 @@ impl<'a, L: Location<'a>> Tick<L> {
         e: impl QuotedWithContext<'a, T, Tick<L>>,
     ) -> Optional<T, Self, Bounded>
     where
-        L: NoTick,
+        L: NoTick + NoAtomic,
     {
         let e_arr = q!([e]);
         let e = e_arr.splice_untyped_ctx(self);
@@ -185,9 +184,7 @@ impl<'a, L: Location<'a>> Tick<L> {
         )
     }
 
-    pub fn forward_ref_timestamped<
-        S: CycleCollection<'a, ForwardRefMarker, Location = Timestamped<L>>,
-    >(
+    pub fn forward_ref_atomic<S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>>(
         &self,
     ) -> (ForwardRef<'a, S>, S) {
         let next_id = {
@@ -214,7 +211,7 @@ impl<'a, L: Location<'a>> Tick<L> {
                 expected_location: self.id(),
                 _phantom: PhantomData,
             },
-            S::create_source(ident, Timestamped { tick: self.clone() }),
+            S::create_source(ident, Atomic { tick: self.clone() }),
         )
     }
 
