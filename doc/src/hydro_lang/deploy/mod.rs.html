@@ -269,6 +269,10 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::future::Future;
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::pin::Pin;
@@ -320,6 +324,10 @@
 
     <span class="kw">fn </span>trivial_cluster(_id: usize) -&gt; <span class="self">Self</span>::Cluster {
         <span class="macro">panic!</span>(<span class="string">"No trivial cluster"</span>)
+    }
+
+    <span class="kw">fn </span>trivial_external(_id: usize) -&gt; <span class="self">Self</span>::ExternalProcess {
+        <span class="macro">panic!</span>(<span class="string">"No trivial external"</span>)
     }
 }
 

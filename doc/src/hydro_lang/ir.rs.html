@@ -1469,13 +1469,13 @@
         <span class="self">self</span>,
         compile_env: <span class="kw-2">&amp;</span>D::CompileEnv,
         seen_tees: <span class="kw-2">&amp;mut </span>SeenTees,
-        nodes: <span class="kw-2">&amp;</span>HashMap&lt;usize, D::Process&gt;,
+        processes: <span class="kw-2">&amp;</span>HashMap&lt;usize, D::Process&gt;,
         clusters: <span class="kw-2">&amp;</span>HashMap&lt;usize, D::Cluster&gt;,
         externals: <span class="kw-2">&amp;</span>HashMap&lt;usize, D::ExternalProcess&gt;,
     ) -&gt; HydroLeaf {
         <span class="self">self</span>.transform_children(
             |n, s| {
-                n.compile_network::&lt;D&gt;(compile_env, s, nodes, clusters, externals);
+                n.compile_network::&lt;D&gt;(compile_env, s, processes, clusters, externals);
             },
             seen_tees,
         )

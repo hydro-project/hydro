@@ -323,6 +323,50 @@
 <a href="#323" id="323">323</a>
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -350,9 +394,19 @@
 
 <span class="kw">pub struct </span>DeployFlow&lt;<span class="lifetime">'a</span>, D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) ir: Vec&lt;HydroLeaf&gt;,
-    <span class="kw">pub</span>(<span class="kw">super</span>) nodes: HashMap&lt;usize, D::Process&gt;,
+
+    <span class="doccomment">/// Deployed instances of each process in the flow
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) processes: HashMap&lt;usize, D::Process&gt;,
+
+    <span class="doccomment">/// Lists all the processes that were created in the flow, same ID as `processes`
+    /// but with the type name of the tag.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) process_id_name: Vec&lt;(usize, String)&gt;,
+
     <span class="kw">pub</span>(<span class="kw">super</span>) externals: HashMap&lt;usize, D::ExternalProcess&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) external_id_name: Vec&lt;(usize, String)&gt;,
+
     <span class="kw">pub</span>(<span class="kw">super</span>) clusters: HashMap&lt;usize, D::Cluster&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) cluster_id_name: Vec&lt;(usize, String)&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) used: bool,
 
     <span class="kw">pub</span>(<span class="kw">super</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, D&gt;,
@@ -377,10 +431,22 @@
         spec: <span class="kw">impl </span>IntoProcessSpec&lt;<span class="lifetime">'a</span>, D&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>tag_name = std::any::type_name::&lt;P&gt;().to_string();
-        <span class="self">self</span>.nodes.insert(
+        <span class="self">self</span>.processes.insert(
             process.id,
             spec.into_process_spec().build(process.id, <span class="kw-2">&amp;</span>tag_name),
         );
+        <span class="self">self
+    </span>}
+
+    <span class="kw">pub fn </span>with_remaining_processes&lt;S: IntoProcessSpec&lt;<span class="lifetime">'a</span>, D&gt; + <span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        spec: <span class="kw">impl </span>Fn() -&gt; S,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">for </span>(id, name) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.process_id_name {
+            <span class="self">self</span>.processes
+                .insert(<span class="kw-2">*</span>id, spec().into_process_spec().build(<span class="kw-2">*</span>id, name));
+        }
+
         <span class="self">self
     </span>}
 
@@ -395,10 +461,32 @@
         <span class="self">self
     </span>}
 
+    <span class="kw">pub fn </span>with_remaining_externals&lt;S: ExternalSpec&lt;<span class="lifetime">'a</span>, D&gt; + <span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        spec: <span class="kw">impl </span>Fn() -&gt; S,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">for </span>(id, name) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.external_id_name {
+            <span class="self">self</span>.externals.insert(<span class="kw-2">*</span>id, spec().build(<span class="kw-2">*</span>id, name));
+        }
+
+        <span class="self">self
+    </span>}
+
     <span class="kw">pub fn </span>with_cluster&lt;C&gt;(<span class="kw-2">mut </span><span class="self">self</span>, cluster: <span class="kw-2">&amp;</span>Cluster&lt;C&gt;, spec: <span class="kw">impl </span>ClusterSpec&lt;<span class="lifetime">'a</span>, D&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>tag_name = std::any::type_name::&lt;C&gt;().to_string();
         <span class="self">self</span>.clusters
             .insert(cluster.id, spec.build(cluster.id, <span class="kw-2">&amp;</span>tag_name));
+        <span class="self">self
+    </span>}
+
+    <span class="kw">pub fn </span>with_remaining_clusters&lt;S: ClusterSpec&lt;<span class="lifetime">'a</span>, D&gt; + <span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        spec: <span class="kw">impl </span>Fn() -&gt; S,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="kw">for </span>(id, name) <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.cluster_id_name {
+            <span class="self">self</span>.clusters.insert(<span class="kw-2">*</span>id, spec().build(<span class="kw-2">*</span>id, name));
+        }
+
         <span class="self">self
     </span>}
 
@@ -424,7 +512,7 @@
                 leaf.compile_network::&lt;D&gt;(
                     env,
                     <span class="kw-2">&amp;mut </span>seen_tees,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.nodes,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
                 )
@@ -455,7 +543,7 @@
                     <span class="kw">let </span>#self_id_ident = #self_id_expr;
                 });
 
-            <span class="kw">for </span>other_location <span class="kw">in </span><span class="self">self</span>.nodes.keys().chain(<span class="self">self</span>.clusters.keys()) {
+            <span class="kw">for </span>other_location <span class="kw">in </span><span class="self">self</span>.processes.keys().chain(<span class="self">self</span>.clusters.keys()) {
                 <span class="kw">let </span>other_id_ident = syn::Ident::new(
                     <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_lang_cluster_ids_{}"</span>, c_id),
                     Span::call_site(),
@@ -485,7 +573,7 @@
                 leaf.compile_network::&lt;D&gt;(
                     <span class="kw-2">&amp;</span>(),
                     <span class="kw-2">&amp;mut </span>seen_tees_instantiate,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.nodes,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
                 )
@@ -497,7 +585,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>meta = D::Meta::default();
 
         <span class="kw">let </span>(<span class="kw-2">mut </span>processes, <span class="kw-2">mut </span>clusters, <span class="kw-2">mut </span>externals) = (
-            std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.nodes)
+            std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.processes)
                 .into_iter()
                 .filter_map(|(node_id, node)| {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(ir) = compiled.remove(<span class="kw-2">&amp;</span>node_id) {
