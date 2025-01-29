@@ -9,7 +9,7 @@ use stageleft::{q, QuotedWithContext};
 
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{HydroNode, HydroSource};
+use crate::ir::{DebugType, HydroNode, HydroNodeMetadata, HydroSource};
 use crate::{Singleton, Stream, Unbounded};
 
 pub mod external_process;
@@ -27,7 +27,7 @@ pub use can_send::CanSend;
 pub mod tick;
 pub use tick::{NoTick, Tick, Timestamped};
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
 pub enum LocationId {
     Process(usize),
     Cluster(usize),
@@ -82,16 +82,33 @@ pub trait Location<'a>: Clone {
         }
     }
 
+    fn next_node_id(&self) -> usize {
+        let next_id = self.flow_state().borrow_mut().next_node_id;
+        self.flow_state().borrow_mut().next_node_id += 1;
+        next_id
+    }
+
+    fn new_node_metadata<T>(&self) -> HydroNodeMetadata {
+        HydroNodeMetadata {
+            location_kind: self.id(),
+            output_type: Some(DebugType(stageleft::quote_type::<T>())),
+        }
+    }
+
     fn spin(&self) -> Stream<(), Self, Unbounded>
     where
         Self: Sized + NoTick,
     {
         Stream::new(
             self.clone(),
-            HydroNode::Persist(Box::new(HydroNode::Source {
-                source: HydroSource::Spin(),
-                location_kind: self.id(),
-            })),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::Source {
+                    source: HydroSource::Spin(),
+                    location_kind: self.id(),
+                    metadata: self.new_node_metadata::<()>(),
+                }),
+                metadata: self.new_node_metadata::<()>(),
+            },
         )
     }
 
@@ -106,10 +123,14 @@ pub trait Location<'a>: Clone {
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist(Box::new(HydroNode::Source {
-                source: HydroSource::Stream(e.into()),
-                location_kind: self.id(),
-            })),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::Source {
+                    source: HydroSource::Stream(e.into()),
+                    location_kind: self.id(),
+                    metadata: self.new_node_metadata::<T>(),
+                }),
+                metadata: self.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -126,10 +147,14 @@ pub trait Location<'a>: Clone {
 
         Stream::new(
             self.clone(),
-            HydroNode::Persist(Box::new(HydroNode::Source {
-                source: HydroSource::Iter(e.into()),
-                location_kind: self.id(),
-            })),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::Source {
+                    source: HydroSource::Iter(e.into()),
+                    location_kind: self.id(),
+                    metadata: self.new_node_metadata::<T>(),
+                }),
+                metadata: self.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -151,10 +176,17 @@ pub trait Location<'a>: Clone {
         // so that it grows every tick
         Singleton::new(
             self.clone(),
-            HydroNode::Persist(Box::new(HydroNode::Persist(Box::new(HydroNode::Source {
-                source: HydroSource::Iter(e.into()),
-                location_kind: self.id(),
-            })))),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::Persist {
+                    inner: Box::new(HydroNode::Source {
+                        source: HydroSource::Iter(e.into()),
+                        location_kind: self.id(),
+                        metadata: self.new_node_metadata::<T>(),
+                    }),
+                    metadata: self.new_node_metadata::<T>(),
+                }),
+                metadata: self.new_node_metadata::<T>(),
+            },
         )
     }
 

@@ -37,6 +37,9 @@ pub struct FlowStateInner {
 
     /// Counters for clock IDs.
     pub(crate) next_clock_id: usize,
+
+    /// Counter for unique HydroNode IDs.
+    pub(crate) next_node_id: usize,
 }
 
 pub type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -49,7 +52,7 @@ pub struct FlowBuilder<'a> {
     clusters: RefCell<Vec<(usize, String)>>,
     externals: RefCell<Vec<(usize, String)>>,
 
-    next_node_id: RefCell<usize>,
+    next_location_id: RefCell<usize>,
 
     /// Tracks whether this flow has been finalized; it is an error to
     /// drop without finalizing.
@@ -88,11 +91,12 @@ impl<'a> FlowBuilder<'a> {
                 next_external_out: 0,
                 cycle_counts: HashMap::new(),
                 next_clock_id: 0,
+                next_node_id: 0,
             })),
             processes: RefCell::new(vec![]),
             clusters: RefCell::new(vec![]),
             externals: RefCell::new(vec![]),
-            next_node_id: RefCell::new(0),
+            next_location_id: RefCell::new(0),
             finalized: false,
             _phantom: PhantomData,
         }
@@ -130,9 +134,9 @@ impl<'a> FlowBuilder<'a> {
     }
 
     pub fn process<P>(&self) -> Process<'a, P> {
-        let mut next_node_id = self.next_node_id.borrow_mut();
-        let id = *next_node_id;
-        *next_node_id += 1;
+        let mut next_location_id = self.next_location_id.borrow_mut();
+        let id = *next_location_id;
+        *next_location_id += 1;
 
         self.processes
             .borrow_mut()
@@ -146,9 +150,9 @@ impl<'a> FlowBuilder<'a> {
     }
 
     pub fn external_process<P>(&self) -> ExternalProcess<'a, P> {
-        let mut next_node_id = self.next_node_id.borrow_mut();
-        let id = *next_node_id;
-        *next_node_id += 1;
+        let mut next_location_id = self.next_location_id.borrow_mut();
+        let id = *next_location_id;
+        *next_location_id += 1;
 
         self.externals
             .borrow_mut()
@@ -162,9 +166,9 @@ impl<'a> FlowBuilder<'a> {
     }
 
     pub fn cluster<C>(&self) -> Cluster<'a, C> {
-        let mut next_node_id = self.next_node_id.borrow_mut();
-        let id = *next_node_id;
-        *next_node_id += 1;
+        let mut next_location_id = self.next_location_id.borrow_mut();
+        let id = *next_location_id;
+        *next_location_id += 1;
 
         self.clusters
             .borrow_mut()

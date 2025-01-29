@@ -56,14 +56,16 @@ impl<'a, T, L: Location<'a>> CycleCollectionWithInitial<'a, TickCycleMarker>
     fn create_source(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
         let location_id = location.id();
         Singleton::new(
-            location,
-            HydroNode::Chain(
-                Box::new(HydroNode::CycleSource {
+            location.clone(),
+            HydroNode::Chain {
+                first: Box::new(HydroNode::CycleSource {
                     ident,
                     location_kind: location_id,
+                    metadata: location.new_node_metadata::<T>(),
                 }),
-                initial.ir_node.into_inner().into(),
-            ),
+                second: initial.ir_node.into_inner().into(),
+                metadata: location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -97,10 +99,11 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         let location_id = location.id();
         Singleton::new(
-            location,
+            location.clone(),
             HydroNode::CycleSource {
                 ident,
                 location_kind: location_id,
+                metadata: location.new_node_metadata::<T>(),
             },
         )
     }
@@ -137,11 +140,15 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
     fn create_source(ident: syn::Ident, location: L) -> Self {
         let location_id = location.id();
         Singleton::new(
-            location,
-            HydroNode::Persist(Box::new(HydroNode::CycleSource {
-                ident,
-                location_kind: location_id,
-            })),
+            location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::CycleSource {
+                    ident,
+                    location_kind: location_id,
+                    metadata: location.new_node_metadata::<T>(),
+                }),
+                metadata: location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -164,7 +171,10 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker>
             .push(HydroLeaf::CycleSink {
                 ident,
                 location_kind: self.location_kind(),
-                input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
+                input: Box::new(HydroNode::Unpersist {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<T>(),
+                }),
             });
     }
 }
@@ -175,14 +185,16 @@ impl<'a, T: Clone, L: Location<'a>, B> Clone for Singleton<T, L, B> {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                metadata: self.location.new_node_metadata::<T>(),
             };
         }
 
-        if let HydroNode::Tee { inner } = self.ir_node.borrow().deref() {
+        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
             Singleton {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
                     inner: TeeNode(inner.0.clone()),
+                    metadata: metadata.clone(),
                 }
                 .into(),
                 _phantom: PhantomData,
@@ -197,10 +209,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     pub fn map<U, F: Fn(T) -> U + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Singleton::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -211,10 +224,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     ) -> Stream<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -225,10 +239,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     ) -> Stream<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -239,10 +254,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     ) -> Optional<T, L, B> {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
         Optional::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             },
         )
     }
@@ -253,10 +269,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     ) -> Optional<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -268,20 +285,42 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         check_matching_location(&self.location, &Self::other_location(&other));
 
         if L::is_top_level() {
+            let left_ir_node = self.ir_node.into_inner();
+            let left_ir_node_metadata = left_ir_node.metadata().clone();
+            let right_ir_node = Self::other_ir_node(other);
+            let right_ir_node_metadata = right_ir_node.metadata().clone();
+
             Self::make(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::CrossSingleton(
-                    Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                    Box::new(HydroNode::Unpersist(Box::new(Self::other_ir_node(other)))),
-                ))),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::CrossSingleton {
+                        left: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(left_ir_node),
+                            metadata: left_ir_node_metadata,
+                        }),
+                        right: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(right_ir_node),
+                            metadata: right_ir_node_metadata,
+                        }),
+                        metadata: self
+                            .location
+                            .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                    }),
+                    metadata: self
+                        .location
+                        .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                },
             )
         } else {
             Self::make(
-                self.location,
-                HydroNode::CrossSingleton(
-                    Box::new(self.ir_node.into_inner()),
-                    Box::new(Self::other_ir_node(other)),
-                ),
+                self.location.clone(),
+                HydroNode::CrossSingleton {
+                    left: Box::new(self.ir_node.into_inner()),
+                    right: Box::new(Self::other_ir_node(other)),
+                    metadata: self
+                        .location
+                        .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                },
             )
         }
     }
@@ -322,8 +361,11 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Timestamped<L>, B> {
     /// arbitrary point in time.
     pub unsafe fn latest_tick(self) -> Singleton<T, Tick<L>, Bounded> {
         Singleton::new(
-            self.location.tick,
-            HydroNode::Unpersist(Box::new(self.ir_node.into_inner())),
+            self.location.clone().tick,
+            HydroNode::Unpersist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -396,39 +438,54 @@ impl<'a, T, L: Location<'a>> Singleton<T, Tick<L>, Bounded> {
     pub fn all_ticks(self) -> Stream<T, Timestamped<L>, Unbounded> {
         Stream::new(
             Timestamped {
-                tick: self.location,
+                tick: self.location.clone(),
             },
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn latest(self) -> Singleton<T, Timestamped<L>, Unbounded> {
         Singleton::new(
             Timestamped {
-                tick: self.location,
+                tick: self.location.clone(),
             },
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn defer_tick(self) -> Singleton<T, Tick<L>, Bounded> {
         Singleton::new(
-            self.location,
-            HydroNode::DeferTick(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn persist(self) -> Stream<T, Tick<L>, Bounded> {
         Stream::new(
-            self.location,
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn delta(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
-            self.location,
-            HydroNode::Delta(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Delta {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -439,6 +496,7 @@ impl<'a, T, L: Location<'a>> Singleton<T, Tick<L>, Bounded> {
 
 pub trait ZipResult<'a, Other> {
     type Out;
+    type ElementType;
     type Location;
 
     fn other_location(other: &Other) -> Self::Location;
@@ -451,6 +509,7 @@ impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Timestamped
     for Singleton<T, Timestamped<L>, B>
 {
     type Out = Singleton<(T, U), Timestamped<L>, B>;
+    type ElementType = (T, U);
     type Location = Timestamped<L>;
 
     fn other_location(other: &Singleton<U, Timestamped<L>, B>) -> Timestamped<L> {
@@ -470,6 +529,7 @@ impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Optional<U, Timestamped<
     for Singleton<T, Timestamped<L>, B>
 {
     type Out = Optional<(T, U), Timestamped<L>, B>;
+    type ElementType = (T, U);
     type Location = Timestamped<L>;
 
     fn other_location(other: &Optional<U, Timestamped<L>, B>) -> Timestamped<L> {
@@ -489,6 +549,7 @@ impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Tick<L>, B>
     for Singleton<T, Tick<L>, B>
 {
     type Out = Singleton<(T, U), Tick<L>, B>;
+    type ElementType = (T, U);
     type Location = Tick<L>;
 
     fn other_location(other: &Singleton<U, Tick<L>, B>) -> Tick<L> {
@@ -508,6 +569,7 @@ impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Optional<U, Tick<L>, B>>
     for Singleton<T, Tick<L>, B>
 {
     type Out = Optional<(T, U), Tick<L>, B>;
+    type ElementType = (T, U);
     type Location = Tick<L>;
 
     fn other_location(other: &Optional<U, Tick<L>, B>) -> Tick<L> {

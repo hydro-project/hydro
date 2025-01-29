@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -20,7 +21,7 @@ use syn::parse_quote;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct DebugExpr(pub syn::Expr);
 
 impl From<syn::Expr> for DebugExpr {
@@ -49,6 +50,35 @@ impl Debug for DebugExpr {
     }
 }
 
+#[derive(Clone, Hash)]
+pub struct DebugType(pub syn::Type);
+
+impl From<syn::Type> for DebugType {
+    fn from(t: syn::Type) -> DebugType {
+        DebugType(t)
+    }
+}
+
+impl Deref for DebugType {
+    type Target = syn::Type;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ToTokens for DebugType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
+    }
+}
+
+impl Debug for DebugType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
+    }
+}
+
 pub enum DebugInstantiate {
     Building(),
     Finalized(syn::Expr, syn::Expr, Option<Box<dyn FnOnce()>>),
@@ -60,8 +90,14 @@ impl Debug for DebugInstantiate {
     }
 }
 
+impl Hash for DebugInstantiate {
+    fn hash<H: Hasher>(&self, _state: &mut H) {
+        // Do nothing
+    }
+}
+
 /// A source in a Hydro graph, where data enters the graph.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroSource {
     Stream(DebugExpr),
     ExternalNetwork(),
@@ -72,7 +108,7 @@ pub enum HydroSource {
 /// An leaf in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
 /// generating Hydroflow IR start from leaves.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroLeaf {
     ForEach {
         f: DebugExpr,
@@ -261,85 +297,159 @@ impl Debug for TeeNode {
     }
 }
 
+impl Hash for TeeNode {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.borrow_mut().hash(state);
+    }
+}
+
+#[derive(Debug, Clone, Hash)]
+pub struct HydroNodeMetadata {
+    pub location_kind: LocationId,
+    pub output_type: Option<DebugType>,
+}
+
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[derive(Debug)]
+#[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
 
     Source {
         source: HydroSource,
         location_kind: LocationId,
+        metadata: HydroNodeMetadata,
     },
 
     CycleSource {
         ident: syn::Ident,
         location_kind: LocationId,
+        metadata: HydroNodeMetadata,
     },
 
     Tee {
         inner: TeeNode,
+        metadata: HydroNodeMetadata,
     },
 
-    Persist(Box<HydroNode>),
-    Unpersist(Box<HydroNode>),
-    Delta(Box<HydroNode>),
+    Persist {
+        inner: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
 
-    Chain(Box<HydroNode>, Box<HydroNode>),
-    CrossProduct(Box<HydroNode>, Box<HydroNode>),
-    CrossSingleton(Box<HydroNode>, Box<HydroNode>),
-    Join(Box<HydroNode>, Box<HydroNode>),
-    Difference(Box<HydroNode>, Box<HydroNode>),
-    AntiJoin(Box<HydroNode>, Box<HydroNode>),
+    Unpersist {
+        inner: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    Delta {
+        inner: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    Chain {
+        first: Box<HydroNode>,
+        second: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    CrossProduct {
+        left: Box<HydroNode>,
+        right: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    CrossSingleton {
+        left: Box<HydroNode>,
+        right: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    Join {
+        left: Box<HydroNode>,
+        right: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    Difference {
+        pos: Box<HydroNode>,
+        neg: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
+
+    AntiJoin {
+        pos: Box<HydroNode>,
+        neg: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
 
     Map {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     FlatMap {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     Filter {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     FilterMap {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
 
-    DeferTick(Box<HydroNode>),
+    DeferTick {
+        input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
     Enumerate {
         is_static: bool,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     Inspect {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
 
-    Unique(Box<HydroNode>),
+    Unique {
+        input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
 
-    Sort(Box<HydroNode>),
+    Sort {
+        input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
+    },
     Fold {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     FoldKeyed {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
 
     Reduce {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
     ReduceKeyed {
         f: DebugExpr,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
 
     Network {
@@ -351,6 +461,7 @@ pub enum HydroNode {
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
         input: Box<HydroNode>,
+        metadata: HydroNodeMetadata,
     },
 }
 
@@ -438,7 +549,7 @@ impl<'a> HydroNode {
 
             HydroNode::CycleSource { .. } => {}
 
-            HydroNode::Tee { inner } => {
+            HydroNode::Tee { inner, .. } => {
                 if let Some(transformed) =
                     seen_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                 {
@@ -456,33 +567,33 @@ impl<'a> HydroNode {
                 }
             }
 
-            HydroNode::Persist(inner) => transform(inner.as_mut(), seen_tees),
-            HydroNode::Unpersist(inner) => transform(inner.as_mut(), seen_tees),
-            HydroNode::Delta(inner) => transform(inner.as_mut(), seen_tees),
+            HydroNode::Persist { inner, .. } => transform(inner.as_mut(), seen_tees),
+            HydroNode::Unpersist { inner, .. } => transform(inner.as_mut(), seen_tees),
+            HydroNode::Delta { inner, .. } => transform(inner.as_mut(), seen_tees),
 
-            HydroNode::Chain(left, right) => {
+            HydroNode::Chain { first, second, .. } => {
+                transform(first.as_mut(), seen_tees);
+                transform(second.as_mut(), seen_tees);
+            }
+            HydroNode::CrossProduct { left, right, .. } => {
                 transform(left.as_mut(), seen_tees);
                 transform(right.as_mut(), seen_tees);
             }
-            HydroNode::CrossProduct(left, right) => {
+            HydroNode::CrossSingleton { left, right, .. } => {
                 transform(left.as_mut(), seen_tees);
                 transform(right.as_mut(), seen_tees);
             }
-            HydroNode::CrossSingleton(left, right) => {
+            HydroNode::Join { left, right, .. } => {
                 transform(left.as_mut(), seen_tees);
                 transform(right.as_mut(), seen_tees);
             }
-            HydroNode::Join(left, right) => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
+            HydroNode::Difference { pos, neg, .. } => {
+                transform(pos.as_mut(), seen_tees);
+                transform(neg.as_mut(), seen_tees);
             }
-            HydroNode::Difference(left, right) => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
-            }
-            HydroNode::AntiJoin(left, right) => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
+            HydroNode::AntiJoin { pos, neg, .. } => {
+                transform(pos.as_mut(), seen_tees);
+                transform(neg.as_mut(), seen_tees);
             }
 
             HydroNode::Map { input, .. } => {
@@ -497,10 +608,10 @@ impl<'a> HydroNode {
             HydroNode::FilterMap { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
-            HydroNode::Sort(input) => {
+            HydroNode::Sort { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
-            HydroNode::DeferTick(input) => {
+            HydroNode::DeferTick { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
             HydroNode::Enumerate { input, .. } => {
@@ -510,7 +621,7 @@ impl<'a> HydroNode {
                 transform(input.as_mut(), seen_tees);
             }
 
-            HydroNode::Unique(input) => {
+            HydroNode::Unique { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
 
@@ -546,7 +657,7 @@ impl<'a> HydroNode {
                 panic!()
             }
 
-            HydroNode::Persist(inner) => {
+            HydroNode::Persist { inner, .. } => {
                 let (inner_ident, location) = inner.emit(graph_builders, built_tees, next_stmt_id);
 
                 let persist_id = *next_stmt_id;
@@ -563,11 +674,11 @@ impl<'a> HydroNode {
                 (persist_ident, location)
             }
 
-            HydroNode::Unpersist(_) => {
+            HydroNode::Unpersist { .. } => {
                 panic!("Unpersist is a marker node and should have been optimized away. This is likely a compiler bug.")
             }
 
-            HydroNode::Delta(inner) => {
+            HydroNode::Delta { inner, .. } => {
                 let (inner_ident, location) = inner.emit(graph_builders, built_tees, next_stmt_id);
 
                 let delta_id = *next_stmt_id;
@@ -587,6 +698,7 @@ impl<'a> HydroNode {
             HydroNode::Source {
                 source,
                 location_kind,
+                ..
             } => {
                 let location_id = match location_kind {
                     LocationId::Process(id) => id,
@@ -640,6 +752,7 @@ impl<'a> HydroNode {
             HydroNode::CycleSource {
                 ident,
                 location_kind,
+                ..
             } => {
                 let location_id = match location_kind.root() {
                     LocationId::Process(id) => id,
@@ -651,7 +764,7 @@ impl<'a> HydroNode {
                 (ident.clone(), *location_id)
             }
 
-            HydroNode::Tee { inner } => {
+            HydroNode::Tee { inner, .. } => {
                 if let Some(ret) = built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                 {
                     ret.clone()
@@ -682,14 +795,14 @@ impl<'a> HydroNode {
                 }
             }
 
-            HydroNode::Chain(left, right) => {
-                let (left_ident, left_location_id) =
-                    left.emit(graph_builders, built_tees, next_stmt_id);
-                let (right_ident, right_location_id) =
-                    right.emit(graph_builders, built_tees, next_stmt_id);
+            HydroNode::Chain { first, second, .. } => {
+                let (first_ident, first_location_id) =
+                    first.emit(graph_builders, built_tees, next_stmt_id);
+                let (second_ident, second_location_id) =
+                    second.emit(graph_builders, built_tees, next_stmt_id);
 
                 assert_eq!(
-                    left_location_id, right_location_id,
+                    first_location_id, second_location_id,
                     "chain inputs must be in the same location"
                 );
 
@@ -699,23 +812,23 @@ impl<'a> HydroNode {
                 let chain_ident =
                     syn::Ident::new(&format!("stream_{}", union_id), Span::call_site());
 
-                let builder = graph_builders.entry(left_location_id).or_default();
+                let builder = graph_builders.entry(first_location_id).or_default();
                 builder.add_statement(parse_quote! {
                     #chain_ident = chain();
                 });
 
                 builder.add_statement(parse_quote! {
-                    #left_ident -> [0]#chain_ident;
+                    #first_ident -> [0]#chain_ident;
                 });
 
                 builder.add_statement(parse_quote! {
-                    #right_ident -> [1]#chain_ident;
+                    #second_ident -> [1]#chain_ident;
                 });
 
-                (chain_ident, left_location_id)
+                (chain_ident, first_location_id)
             }
 
-            HydroNode::CrossSingleton(left, right) => {
+            HydroNode::CrossSingleton { left, right, .. } => {
                 let (left_ident, left_location_id) =
                     left.emit(graph_builders, built_tees, next_stmt_id);
                 let (right_ident, right_location_id) =
@@ -748,27 +861,28 @@ impl<'a> HydroNode {
                 (cross_ident, left_location_id)
             }
 
-            HydroNode::CrossProduct(..) | HydroNode::Join(..) => {
-                let operator: syn::Ident = if matches!(self, HydroNode::CrossProduct(..)) {
+            HydroNode::CrossProduct { .. } | HydroNode::Join { .. } => {
+                let operator: syn::Ident = if matches!(self, HydroNode::CrossProduct { .. }) {
                     parse_quote!(cross_join_multiset)
                 } else {
                     parse_quote!(join_multiset)
                 };
 
-                let (HydroNode::CrossProduct(left, right) | HydroNode::Join(left, right)) = self
+                let (HydroNode::CrossProduct { left, right, .. }
+                | HydroNode::Join { left, right, .. }) = self
                 else {
                     unreachable!()
                 };
 
-                let (left_inner, left_was_persist) = if let HydroNode::Persist(left) = left.as_ref()
-                {
-                    (left, true)
-                } else {
-                    (left, false)
-                };
+                let (left_inner, left_was_persist) =
+                    if let HydroNode::Persist { inner: left, .. } = left.as_ref() {
+                        (left, true)
+                    } else {
+                        (left, false)
+                    };
 
                 let (right_inner, right_was_persist) =
-                    if let HydroNode::Persist(right) = right.as_ref() {
+                    if let HydroNode::Persist { inner: right, .. } = right.as_ref() {
                         (right, true)
                     } else {
                         (right, false)
@@ -826,31 +940,33 @@ impl<'a> HydroNode {
                 (stream_ident, left_location_id)
             }
 
-            HydroNode::Difference(..) | HydroNode::AntiJoin(..) => {
-                let operator: syn::Ident = if matches!(self, HydroNode::Difference(..)) {
+            HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } => {
+                let operator: syn::Ident = if matches!(self, HydroNode::Difference { .. }) {
                     parse_quote!(difference_multiset)
                 } else {
                     parse_quote!(anti_join_multiset)
                 };
 
-                let (HydroNode::Difference(left, right) | HydroNode::AntiJoin(left, right)) = self
+                let (HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. }) =
+                    self
                 else {
                     unreachable!()
                 };
 
-                let (right, right_was_persist) = if let HydroNode::Persist(right) = right.as_ref() {
-                    (right, true)
-                } else {
-                    (right, false)
-                };
+                let (neg, neg_was_persist) =
+                    if let HydroNode::Persist { inner: neg, .. } = neg.as_ref() {
+                        (neg, true)
+                    } else {
+                        (neg, false)
+                    };
 
-                let (left_ident, left_location_id) =
-                    left.emit(graph_builders, built_tees, next_stmt_id);
-                let (right_ident, right_location_id) =
-                    right.emit(graph_builders, built_tees, next_stmt_id);
+                let (pos_ident, pos_location_id) =
+                    pos.emit(graph_builders, built_tees, next_stmt_id);
+                let (neg_ident, neg_location_id) =
+                    neg.emit(graph_builders, built_tees, next_stmt_id);
 
                 assert_eq!(
-                    left_location_id, right_location_id,
+                    pos_location_id, neg_location_id,
                     "difference / anti join inputs must be in the same location"
                 );
 
@@ -860,9 +976,9 @@ impl<'a> HydroNode {
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", stream_id), Span::call_site());
 
-                let builder = graph_builders.entry(left_location_id).or_default();
+                let builder = graph_builders.entry(pos_location_id).or_default();
 
-                if right_was_persist {
+                if neg_was_persist {
                     builder.add_statement(parse_quote! {
                         #stream_ident = #operator::<'tick, 'static>();
                     });
@@ -873,17 +989,17 @@ impl<'a> HydroNode {
                 }
 
                 builder.add_statement(parse_quote! {
-                    #left_ident -> [pos]#stream_ident;
+                    #pos_ident -> [pos]#stream_ident;
                 });
 
                 builder.add_statement(parse_quote! {
-                    #right_ident -> [neg]#stream_ident;
+                    #neg_ident -> [neg]#stream_ident;
                 });
 
-                (stream_ident, left_location_id)
+                (stream_ident, pos_location_id)
             }
 
-            HydroNode::Map { f, input } => {
+            HydroNode::Map { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -900,7 +1016,7 @@ impl<'a> HydroNode {
                 (map_ident, input_location_id)
             }
 
-            HydroNode::FlatMap { f, input } => {
+            HydroNode::FlatMap { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -918,7 +1034,7 @@ impl<'a> HydroNode {
                 (flat_map_ident, input_location_id)
             }
 
-            HydroNode::Filter { f, input } => {
+            HydroNode::Filter { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -936,7 +1052,7 @@ impl<'a> HydroNode {
                 (filter_ident, input_location_id)
             }
 
-            HydroNode::FilterMap { f, input } => {
+            HydroNode::FilterMap { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -954,7 +1070,7 @@ impl<'a> HydroNode {
                 (filter_map_ident, input_location_id)
             }
 
-            HydroNode::Sort(input) => {
+            HydroNode::Sort { input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -971,7 +1087,7 @@ impl<'a> HydroNode {
                 (sort_ident, input_location_id)
             }
 
-            HydroNode::DeferTick(input) => {
+            HydroNode::DeferTick { input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -989,7 +1105,9 @@ impl<'a> HydroNode {
                 (defer_tick_ident, input_location_id)
             }
 
-            HydroNode::Enumerate { is_static, input } => {
+            HydroNode::Enumerate {
+                is_static, input, ..
+            } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -1014,7 +1132,7 @@ impl<'a> HydroNode {
                 (enumerate_ident, input_location_id)
             }
 
-            HydroNode::Inspect { f, input } => {
+            HydroNode::Inspect { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -1032,7 +1150,7 @@ impl<'a> HydroNode {
                 (inspect_ident, input_location_id)
             }
 
-            HydroNode::Unique(input) => {
+            HydroNode::Unique { input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
@@ -1057,17 +1175,22 @@ impl<'a> HydroNode {
                     parse_quote!(fold_keyed)
                 };
 
-                let (HydroNode::Fold { init, acc, input }
-                | HydroNode::FoldKeyed { init, acc, input }) = self
+                let (HydroNode::Fold {
+                    init, acc, input, ..
+                }
+                | HydroNode::FoldKeyed {
+                    init, acc, input, ..
+                }) = self
                 else {
                     unreachable!()
                 };
 
-                let (input, input_was_persist) = if let HydroNode::Persist(input) = input.as_ref() {
-                    (input, true)
-                } else {
-                    (input, false)
-                };
+                let (input, input_was_persist) =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_ref() {
+                        (input, true)
+                    } else {
+                        (input, false)
+                    };
 
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
@@ -1099,16 +1222,18 @@ impl<'a> HydroNode {
                     parse_quote!(reduce_keyed)
                 };
 
-                let (HydroNode::Reduce { f, input } | HydroNode::ReduceKeyed { f, input }) = self
+                let (HydroNode::Reduce { f, input, .. } | HydroNode::ReduceKeyed { f, input, .. }) =
+                    self
                 else {
                     unreachable!()
                 };
 
-                let (input, input_was_persist) = if let HydroNode::Persist(input) = input.as_ref() {
-                    (input, true)
-                } else {
-                    (input, false)
-                };
+                let (input, input_was_persist) =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_ref() {
+                        (input, true)
+                    } else {
+                        (input, false)
+                    };
 
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
@@ -1142,6 +1267,7 @@ impl<'a> HydroNode {
                 instantiate_fn,
                 deserialize_fn: deserialize_pipeline,
                 input,
+                ..
             } => {
                 let (sink_expr, source_expr, _connect_fn) = match instantiate_fn {
                     DebugInstantiate::Building() => {
@@ -1194,6 +1320,40 @@ impl<'a> HydroNode {
 
                 (receiver_stream_ident, *to_id)
             }
+        }
+    }
+
+    pub fn metadata(&self) -> &HydroNodeMetadata {
+        match self {
+            HydroNode::Placeholder => {
+                panic!()
+            }
+            HydroNode::Source { metadata, .. } => metadata,
+            HydroNode::CycleSource { metadata, .. } => metadata,
+            HydroNode::Tee { metadata, .. } => metadata,
+            HydroNode::Persist { metadata, .. } => metadata,
+            HydroNode::Unpersist { metadata, .. } => metadata,
+            HydroNode::Delta { metadata, .. } => metadata,
+            HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::CrossProduct { metadata, .. } => metadata,
+            HydroNode::CrossSingleton { metadata, .. } => metadata,
+            HydroNode::Join { metadata, .. } => metadata,
+            HydroNode::Difference { metadata, .. } => metadata,
+            HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::Map { metadata, .. } => metadata,
+            HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::Filter { metadata, .. } => metadata,
+            HydroNode::FilterMap { metadata, .. } => metadata,
+            HydroNode::DeferTick { metadata, .. } => metadata,
+            HydroNode::Enumerate { metadata, .. } => metadata,
+            HydroNode::Inspect { metadata, .. } => metadata,
+            HydroNode::Unique { metadata, .. } => metadata,
+            HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Fold { metadata, .. } => metadata,
+            HydroNode::FoldKeyed { metadata, .. } => metadata,
+            HydroNode::Reduce { metadata, .. } => metadata,
+            HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::Network { metadata, .. } => metadata,
         }
     }
 }
