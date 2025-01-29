@@ -16,6 +16,7 @@ use crate::diagnostic::{Diagnostic, Level};
 /// ```dfir
 /// use std::collections::HashSet;
 ///
+///
 /// use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 ///
 /// my_state = source_iter(0..3)
@@ -30,11 +31,10 @@ use crate::diagnostic::{Diagnostic, Level};
 ///
 ///```dfir
 /// use std::collections::HashSet;
-///
-/// use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
+/// use lattices::set_union::{SetUnion, CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 ///
 /// my_state = source_iter(0..3)
-///     -> state_by::<SetUnionHashSet<usize>>(SetUnionSingletonSet::new_from, {|| SetUnion::new(HashSet::with_capacity(1_000)) });
+///     -> state_by::<SetUnionHashSet<usize>>(SetUnionSingletonSet::new_from, {|| SetUnion::new(HashSet::<usize>::with_capacity(1_000)) });
 ///```
 ///
 /// The `state` operator is equivalent to `state_by` used with an identity mapping operator with
