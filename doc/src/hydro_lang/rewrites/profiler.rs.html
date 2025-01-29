@@ -107,6 +107,8 @@
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 
 <span class="kw">use </span>dfir_rs::futures::channel::mpsc::UnboundedSender;
@@ -139,6 +141,7 @@
         seen_tees,
     );
     <span class="kw">let </span>orig_node = std::mem::replace(node, HydroNode::Placeholder);
+    <span class="kw">let </span>new_metadata = orig_node.metadata().clone();
     <span class="kw-2">*</span>node = HydroNode::Inspect {
         f: quoted_any_fn(<span class="macro">q!</span>({
             <span class="comment">// Put counters on queue
@@ -154,6 +157,7 @@
         .splice_untyped()
         .into(),
         input: Box::new(orig_node),
+        metadata: new_metadata,
     }
 }
 

@@ -865,7 +865,7 @@
     <span class="macro">dfir_syntax!</span> {
 
         on_start = initialize() -&gt; tee();
-        on_start -&gt; for_each(|<span class="kw">_</span>| <span class="macro">info!</span>(<span class="string">"{:?}: Transducer {} started."</span>, context.current_tick(), member_id_6));
+        on_start -&gt; for_each(|<span class="kw">_</span>| <span class="macro">info!</span>(<span class="string">"{:?}: Process {} started."</span>, context.current_tick(), member_id_6));
 
         seed_nodes = source_stream(seed_node_stream)
             -&gt; fold::&lt;<span class="lifetime">'static</span>&gt;(|| Box::new(seed_nodes), |last_seed_nodes, new_seed_nodes: Vec&lt;SeedNode&lt;Addr&gt;&gt;| {
