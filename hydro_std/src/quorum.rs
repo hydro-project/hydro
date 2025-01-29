@@ -12,14 +12,14 @@ pub fn collect_quorum_with_response<
     V: Clone,
     E: Clone,
 >(
-    responses: Stream<(K, Result<V, E>), Timestamped<L>, Unbounded, Order>,
+    responses: Stream<(K, Result<V, E>), Atomic<L>, Unbounded, Order>,
     min: usize,
     max: usize,
 ) -> (
-    Stream<(K, V), Timestamped<L>, Unbounded, Order>,
-    Stream<(K, E), Timestamped<L>, Unbounded, Order>,
+    Stream<(K, V), Atomic<L>, Unbounded, Order>,
+    Stream<(K, E), Atomic<L>, Unbounded, Order>,
 ) {
-    let tick = responses.timestamp_source();
+    let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
     let current_responses = not_all.chain(unsafe {
@@ -91,7 +91,7 @@ pub fn collect_quorum_with_response<
                 Ok(v) => Some((key, v)),
                 Err(_) => None,
             }))
-            .all_ticks(),
+            .all_ticks_atomic(),
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),
@@ -101,14 +101,14 @@ pub fn collect_quorum_with_response<
 
 #[expect(clippy::type_complexity, reason = "stream types with ordering")]
 pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash, E: Clone>(
-    responses: Stream<(K, Result<(), E>), Timestamped<L>, Unbounded, Order>,
+    responses: Stream<(K, Result<(), E>), Atomic<L>, Unbounded, Order>,
     min: usize,
     max: usize,
 ) -> (
-    Stream<K, Timestamped<L>, Unbounded, Order>,
-    Stream<(K, E), Timestamped<L>, Unbounded, Order>,
+    Stream<K, Atomic<L>, Unbounded, Order>,
+    Stream<(K, E), Atomic<L>, Unbounded, Order>,
 ) {
-    let tick = responses.timestamp_source();
+    let tick = responses.atomic_source();
     let (not_all_complete_cycle, not_all) = tick.cycle::<Stream<_, _, _, Order>>();
 
     let current_responses = not_all.chain(unsafe {
@@ -169,7 +169,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
     };
 
     (
-        just_reached_quorum.all_ticks(),
+        just_reached_quorum.all_ticks_atomic(),
         responses.filter_map(q!(move |(key, res)| match res {
             Ok(_) => None,
             Err(e) => Some((key, e)),

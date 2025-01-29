@@ -11,7 +11,7 @@ use crate::cycle::{
     TickCycleMarker,
 };
 use crate::ir::{HydroLeaf, HydroNode, TeeNode};
-use crate::location::tick::{NoTimestamp, Timestamped};
+use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{check_matching_location, Location, LocationId, NoTick, Tick};
 use crate::{Bounded, Optional, Stream, Unbounded};
 
@@ -311,10 +311,10 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Timestamped<L>, B> {
-    /// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
-    /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
-    /// relevant data that contributed to the snapshot at tick `t`.
+impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Atomic<L>, B> {
+    /// Returns a singleton value corresponding to the latest snapshot of the singleton
+    /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
+    /// at least all relevant data that contributed to the snapshot at tick `t`.
     ///
     /// # Safety
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
@@ -327,17 +327,29 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Timestamped<L>, B> {
         )
     }
 
-    pub fn drop_timestamp(self) -> Optional<T, L, B> {
+    pub fn end_atomic(self) -> Optional<T, L, B> {
         Optional::new(self.location.tick.l, self.ir_node.into_inner())
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, L, B> {
-    pub fn timestamped(self, tick: &Tick<L>) -> Singleton<T, Timestamped<L>, B> {
-        Singleton::new(
-            Timestamped { tick: tick.clone() },
-            self.ir_node.into_inner(),
-        )
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Singleton<T, L, B> {
+    pub fn atomic(self, tick: &Tick<L>) -> Singleton<T, Atomic<L>, B> {
+        Singleton::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
+    }
+
+    /// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
+    /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
+    /// relevant data that contributed to the snapshot at tick `t`.
+    ///
+    /// # Safety
+    /// Because this picks a snapshot of a singleton whose value is continuously changing,
+    /// the output singleton has a non-deterministic value since the snapshot can be at an
+    /// arbitrary point in time.
+    pub unsafe fn latest_tick(self, tick: &Tick<L>) -> Singleton<T, Tick<L>, Bounded>
+    where
+        L: NoTick,
+    {
+        unsafe { self.atomic(tick).latest_tick() }
     }
 
     /// Eagerly samples the singleton as fast as possible, returning a stream of snapshots
@@ -352,10 +364,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, L, B> {
 
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.timestamped(&tick)
-                .latest_tick()
-                .all_ticks()
-                .drop_timestamp()
+            self.latest_tick(&tick).all_ticks()
         }
     }
 
@@ -373,7 +382,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, L, B> {
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
     ) -> Stream<T, L, Unbounded>
     where
-        L: NoTimestamp,
+        L: NoAtomic,
     {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
@@ -383,28 +392,33 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, L, B> {
 
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.timestamped(&tick)
-                .latest_tick()
-                .continue_if(samples.timestamped(&tick).tick_batch().first())
+            self.latest_tick(&tick)
+                .continue_if(samples.tick_batch(&tick).first())
                 .all_ticks()
-                .drop_timestamp()
         }
     }
 }
 
 impl<'a, T, L: Location<'a>> Singleton<T, Tick<L>, Bounded> {
-    pub fn all_ticks(self) -> Stream<T, Timestamped<L>, Unbounded> {
+    pub fn all_ticks(self) -> Stream<T, L, Unbounded> {
         Stream::new(
-            Timestamped {
+            self.location.outer().clone(),
+            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+        )
+    }
+
+    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded> {
+        Stream::new(
+            Atomic {
                 tick: self.location,
             },
             HydroNode::Persist(Box::new(self.ir_node.into_inner())),
         )
     }
 
-    pub fn latest(self) -> Singleton<T, Timestamped<L>, Unbounded> {
+    pub fn latest(self) -> Singleton<T, Atomic<L>, Unbounded> {
         Singleton::new(
-            Timestamped {
+            Atomic {
                 tick: self.location,
             },
             HydroNode::Persist(Box::new(self.ir_node.into_inner())),
@@ -447,40 +461,40 @@ pub trait ZipResult<'a, Other> {
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
-impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Timestamped<L>, B>>
-    for Singleton<T, Timestamped<L>, B>
+impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Atomic<L>, B>>
+    for Singleton<T, Atomic<L>, B>
 {
-    type Out = Singleton<(T, U), Timestamped<L>, B>;
-    type Location = Timestamped<L>;
+    type Out = Singleton<(T, U), Atomic<L>, B>;
+    type Location = Atomic<L>;
 
-    fn other_location(other: &Singleton<U, Timestamped<L>, B>) -> Timestamped<L> {
+    fn other_location(other: &Singleton<U, Atomic<L>, B>) -> Atomic<L> {
         other.location.clone()
     }
 
-    fn other_ir_node(other: Singleton<U, Timestamped<L>, B>) -> HydroNode {
+    fn other_ir_node(other: Singleton<U, Atomic<L>, B>) -> HydroNode {
         other.ir_node.into_inner()
     }
 
-    fn make(location: Timestamped<L>, ir_node: HydroNode) -> Self::Out {
+    fn make(location: Atomic<L>, ir_node: HydroNode) -> Self::Out {
         Singleton::new(location, ir_node)
     }
 }
 
-impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Optional<U, Timestamped<L>, B>>
-    for Singleton<T, Timestamped<L>, B>
+impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Optional<U, Atomic<L>, B>>
+    for Singleton<T, Atomic<L>, B>
 {
-    type Out = Optional<(T, U), Timestamped<L>, B>;
-    type Location = Timestamped<L>;
+    type Out = Optional<(T, U), Atomic<L>, B>;
+    type Location = Atomic<L>;
 
-    fn other_location(other: &Optional<U, Timestamped<L>, B>) -> Timestamped<L> {
+    fn other_location(other: &Optional<U, Atomic<L>, B>) -> Atomic<L> {
         other.location.clone()
     }
 
-    fn other_ir_node(other: Optional<U, Timestamped<L>, B>) -> HydroNode {
+    fn other_ir_node(other: Optional<U, Atomic<L>, B>) -> HydroNode {
         other.ir_node.into_inner()
     }
 
-    fn make(location: Timestamped<L>, ir_node: HydroNode) -> Self::Out {
+    fn make(location: Atomic<L>, ir_node: HydroNode) -> Self::Out {
         Optional::new(location, ir_node)
     }
 }

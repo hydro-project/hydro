@@ -3,7 +3,7 @@ use std::hash::Hash;
 use hydro_lang::*;
 use location::NoTick;
 
-type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), Timestamped<L>, Unbounded, NoOrder>;
+type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), Atomic<L>, Unbounded, NoOrder>;
 
 /// Given an incoming stream of request-response responses, joins with metadata generated
 /// at request time that is stored in-memory.
@@ -13,7 +13,7 @@ type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), Timestamped<L>, Unbounded, 
 /// key, same for the metadata stream.
 pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<'a> + NoTick>(
     tick: &Tick<L>,
-    responses: Stream<(K, V), Timestamped<L>, Unbounded, NoOrder>,
+    responses: Stream<(K, V), Atomic<L>, Unbounded, NoOrder>,
     metadata: Stream<(K, M), Tick<L>, Bounded, NoOrder>,
 ) -> JoinResponses<K, M, V, L> {
     let (remaining_to_join_complete_cycle, remaining_to_join) =
@@ -38,5 +38,5 @@ pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<
     remaining_to_join_complete_cycle
         .complete_next_tick(remaining_and_new.anti_join(responses.map(q!(|(key, _)| key))));
 
-    joined_this_tick.all_ticks()
+    joined_this_tick.all_ticks_atomic()
 }
