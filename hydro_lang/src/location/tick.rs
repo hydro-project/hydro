@@ -131,7 +131,7 @@ impl<'a, L: Location<'a>> Tick<L> {
         }
     }
 
-    pub fn singleton_first_tick<T: Clone>(
+    pub fn optional_first_tick<T: Clone>(
         &self,
         e: impl QuotedWithContext<'a, T, Tick<L>>,
     ) -> Optional<T, Self, Bounded>

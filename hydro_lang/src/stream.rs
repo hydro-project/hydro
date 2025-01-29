@@ -15,14 +15,13 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
-use crate::location::cluster::CLUSTER_SELF_ID;
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{NoTimestamp, Timestamped};
 use crate::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
 use crate::staging_util::get_this_crate;
-use crate::{Bounded, Cluster, ClusterId, Optional, Process, Singleton, Unbounded};
+use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
 
 /// Marks the stream as being totally ordered, which means that there are
 /// no sources of non-determinism (other than intentional ones) that will
@@ -72,6 +71,16 @@ pub struct Stream<T, L, B, Order = TotalOrder> {
     pub(crate) ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(T, L, B, Order)>,
+}
+
+impl<'a, T, L: Location<'a>, O> From<Stream<T, L, Bounded, O>> for Stream<T, L, Unbounded, O> {
+    fn from(stream: Stream<T, L, Bounded, O>) -> Stream<T, L, Unbounded, O> {
+        Stream {
+            location: stream.location,
+            ir_node: stream.ir_node,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<'a, T, L: Location<'a>, B> From<Stream<T, L, B, TotalOrder>> for Stream<T, L, B, NoOrder> {
@@ -254,28 +263,6 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
                 metadata: self.location.new_node_metadata::<U>(),
             },
         )
-    }
-
-    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process.source_iter(q!(vec![1..3])).cloned()
-    /// # }, |mut stream| async move {
-    /// // 1, 2, 3
-    /// # for w in vec![1..3] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
-    pub fn cloned(self) -> Stream<T, L, B, Order>
-    where
-        T: Clone,
-    {
-        self.map(q!(|d| d.clone()))
     }
 
     /// For each item `i` in the input stream, transform `i` using `f` and then treat the
@@ -633,6 +620,30 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// for the rest of the program.
     pub unsafe fn assume_ordering<O>(self) -> Stream<T, L, B, O> {
         Stream::new(self.location, self.ir_node.into_inner())
+    }
+}
+
+impl<'a, T, L: Location<'a>, B, Order> Stream<&T, L, B, Order> {
+    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(&[1, 2, 3])).cloned()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn cloned(self) -> Stream<T, L, B, Order>
+    where
+        T: Clone,
+    {
+        self.map(q!(|d| d.clone()))
     }
 }
 
@@ -1624,49 +1635,7 @@ pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>
     }
 }
 
-impl<'a, T, C1, B, Order> Stream<T, Cluster<'a, C1>, B, Order> {
-    pub fn decouple_cluster<C2: 'a, Tag>(
-        self,
-        other: &Cluster<'a, C2>,
-    ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
-    where
-        Cluster<'a, C1>: Location<'a, Root = Cluster<'a, C1>>,
-        Cluster<'a, C1>:
-            CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)>,
-        T: Clone + Serialize + DeserializeOwned,
-        Order:
-            MinOrder<<Cluster<'a, C1> as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>>,
-    {
-        let sent = self
-            .map(q!(move |b| (
-                ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
-                b.clone()
-            )))
-            .send_bincode_interleaved(other);
-
-        unsafe {
-            // SAFETY: this is safe because we are mapping clusters 1:1
-            sent.assume_ordering()
-        }
-    }
-}
-
 impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
-    pub fn decouple_process<P2>(
-        self,
-        other: &Process<'a, P2>,
-    ) -> Stream<T, Process<'a, P2>, Unbounded, Order>
-    where
-        L::Root: CanSend<'a, Process<'a, P2>, In<T> = T, Out<T> = T>,
-        T: Clone + Serialize + DeserializeOwned,
-        Order: MinOrder<
-            <L::Root as CanSend<'a, Process<'a, P2>>>::OutStrongestOrder<Order>,
-            Min = Order,
-        >,
-    {
-        self.send_bincode::<Process<'a, P2>, T>(other)
-    }
-
     pub fn send_bincode<L2: Location<'a>, CoreType>(
         self,
         other: &L2,

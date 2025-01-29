@@ -208,6 +208,24 @@ impl<'a, T: Clone, L: Location<'a>, B> Clone for Optional<T, L, B> {
 }
 
 impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
+    /// Transforms the optional value by applying a function `f` to it,
+    /// continuously as the input is updated.
+    ///
+    /// Whenever the optional is empty, the output optional is also empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let optional = tick.optional_first_tick(q!(1));
+    /// optional.map(q!(|v| v + 1)).all_ticks().drop_timestamp()
+    /// # }, |mut stream| async move {
+    /// // 2
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// ```
     pub fn map<U, F: Fn(T) -> U + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
