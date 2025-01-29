@@ -9,6 +9,7 @@ use dfir_rs::lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSin
 use dfir_rs::lattices::set_union::SetUnionHashSet;
 use dfir_rs::lattices::{Lattice, PairBimorphism};
 use dfir_rs::scheduled::graph::Dfir;
+use lattices::map_union::MapUnion;
 use lattices::set_union::SetUnion;
 use lattices::{IsTop, Max, Pair};
 use lazy_static::lazy_static;
@@ -274,7 +275,7 @@ where
         new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
         // Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
-        infecting_writes = union() -> state::<'static, MapUnionHashMap<MessageId, InfectingWrite>>();
+        infecting_writes = union() -> state_by::<'static, MapUnionHashMap<MessageId, InfectingWrite>>(std::convert::identity, {|| MapUnion::new(HashMap::with_capacity(1_000_000_000)) } );
 
         new_writes -> map(|write| {
             // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
