@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["anti_join_into_iter","symmetric_hash_join_into_iter"],"struct":["AntiJoin","CrossJoin","CrossJoinState","HalfJoinStateFold","HalfJoinStateFoldFrom","HalfJoinStateReduce","HalfMultisetJoinState","HalfSetJoinState","SymmetricHashJoin"],"trait":["HalfJoinState"]};
+window.SIDEBAR_ITEMS = {"fn":["anti_join_into_iter","symmetric_hash_join_into_iter"],"struct":["AntiJoin","HalfJoinStateFold","HalfJoinStateFoldFrom","HalfJoinStateReduce","HalfMultisetJoinState","HalfSetJoinState","SymmetricHashJoin"],"trait":["HalfJoinState"]};

@@ -7,12 +7,12 @@
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
-</pre></div><pre class="rust"><code><span class="doccomment">/// A wrapper christening a closure as a [monotonic function](https://hydro.run/docs/hydroflow/lattices_crate/lattice_math#the-calm-theorem-and-monotonicity)
+</pre></div><pre class="rust"><code><span class="doccomment">/// A wrapper christening a closure as a [monotonic function](https://hydro.run/docs/dfir/lattices_crate/lattice_math#the-calm-theorem-and-monotonicity)
 </span><span class="attr">#[repr(transparent)]
 #[derive(Clone, Copy)]
 </span><span class="kw">pub struct </span>MonotonicFn&lt;F&gt;(<span class="kw">pub </span>F);
 
-<span class="doccomment">/// A wrapper christening a closure as a [lattice morphism](https://hydro.run/docs/hydroflow/lattices_crate/lattice_math#lattice-morphism)
+<span class="doccomment">/// A wrapper christening a closure as a [lattice morphism](https://hydro.run/docs/dfir/lattices_crate/lattice_math#lattice-morphism)
 </span><span class="attr">#[repr(transparent)]
 #[derive(Clone, Copy)]
 </span><span class="kw">pub struct </span>Morphism&lt;F&gt;(<span class="kw">pub </span>F);
