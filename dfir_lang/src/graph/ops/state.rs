@@ -39,7 +39,7 @@ pub const STATE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
 
         let wc = WriteContextArgs {
-            arguments: &parse_quote_spanned!(op_span => ::std::convert::identity),
+            arguments: &parse_quote_spanned!(op_span => ::std::convert::identity, ::std::default::Default::default),
             ..wc.clone()
         };
 
