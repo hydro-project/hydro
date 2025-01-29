@@ -95,13 +95,13 @@ impl HydroLeaf {
         self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
-        nodes: &HashMap<usize, D::Process>,
+        processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) -> HydroLeaf {
         self.transform_children(
             |n, s| {
-                n.compile_network::<D>(compile_env, s, nodes, clusters, externals);
+                n.compile_network::<D>(compile_env, s, processes, clusters, externals);
             },
             seen_tees,
         )

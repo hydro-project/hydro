@@ -1,3 +1,4 @@
+use std::any::type_name;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
@@ -44,8 +45,9 @@ pub const FLOW_USED_MESSAGE: &str = "Attempted to add a leaf to a flow that has 
 
 pub struct FlowBuilder<'a> {
     flow_state: FlowState,
-    nodes: RefCell<Vec<usize>>,
-    clusters: RefCell<Vec<usize>>,
+    processes: RefCell<Vec<(usize, String)>>,
+    clusters: RefCell<Vec<(usize, String)>>,
+    externals: RefCell<Vec<(usize, String)>>,
 
     next_node_id: RefCell<usize>,
 
@@ -87,8 +89,9 @@ impl<'a> FlowBuilder<'a> {
                 cycle_counts: HashMap::new(),
                 next_clock_id: 0,
             })),
-            nodes: RefCell::new(vec![]),
+            processes: RefCell::new(vec![]),
             clusters: RefCell::new(vec![]),
+            externals: RefCell::new(vec![]),
             next_node_id: RefCell::new(0),
             finalized: false,
             _phantom: PhantomData,
@@ -101,8 +104,9 @@ impl<'a> FlowBuilder<'a> {
 
         built::BuiltFlow {
             ir: self.flow_state.borrow_mut().leaves.take().unwrap(),
-            processes: self.nodes.replace(vec![]),
-            clusters: self.clusters.replace(vec![]),
+            process_id_name: self.processes.replace(vec![]),
+            cluster_id_name: self.clusters.replace(vec![]),
+            external_id_name: self.externals.replace(vec![]),
             used: false,
             _phantom: PhantomData,
         }
@@ -130,7 +134,9 @@ impl<'a> FlowBuilder<'a> {
         let id = *next_node_id;
         *next_node_id += 1;
 
-        self.nodes.borrow_mut().push(id);
+        self.processes
+            .borrow_mut()
+            .push((id, type_name::<P>().to_string()));
 
         Process {
             id,
@@ -144,7 +150,9 @@ impl<'a> FlowBuilder<'a> {
         let id = *next_node_id;
         *next_node_id += 1;
 
-        self.nodes.borrow_mut().push(id);
+        self.externals
+            .borrow_mut()
+            .push((id, type_name::<P>().to_string()));
 
         ExternalProcess {
             id,
@@ -158,7 +166,9 @@ impl<'a> FlowBuilder<'a> {
         let id = *next_node_id;
         *next_node_id += 1;
 
-        self.clusters.borrow_mut().push(id);
+        self.clusters
+            .borrow_mut()
+            .push((id, type_name::<C>().to_string()));
 
         Cluster {
             id,
@@ -177,6 +187,14 @@ impl<'a> FlowBuilder<'a> {
     }
 
     #[cfg(feature = "build")]
+    pub fn with_remaining_processes<D: LocalDeploy<'a>, S: IntoProcessSpec<'a, D> + 'a>(
+        self,
+        spec: impl Fn() -> S,
+    ) -> DeployFlow<'a, D> {
+        self.with_default_optimize().with_remaining_processes(spec)
+    }
+
+    #[cfg(feature = "build")]
     pub fn with_external<P, D: LocalDeploy<'a>>(
         self,
         process: &ExternalProcess<P>,
@@ -186,12 +204,28 @@ impl<'a> FlowBuilder<'a> {
     }
 
     #[cfg(feature = "build")]
+    pub fn with_remaining_externals<D: LocalDeploy<'a>, S: ExternalSpec<'a, D> + 'a>(
+        self,
+        spec: impl Fn() -> S,
+    ) -> DeployFlow<'a, D> {
+        self.with_default_optimize().with_remaining_externals(spec)
+    }
+
+    #[cfg(feature = "build")]
     pub fn with_cluster<C, D: LocalDeploy<'a>>(
         self,
         cluster: &Cluster<C>,
         spec: impl ClusterSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_cluster(cluster, spec)
+    }
+
+    #[cfg(feature = "build")]
+    pub fn with_remaining_clusters<D: LocalDeploy<'a>, S: ClusterSpec<'a, D> + 'a>(
+        self,
+        spec: impl Fn() -> S,
+    ) -> DeployFlow<'a, D> {
+        self.with_default_optimize().with_remaining_clusters(spec)
     }
 
     #[cfg(feature = "build")]
