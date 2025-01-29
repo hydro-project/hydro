@@ -226,6 +226,7 @@ fn main() {
 const PREFIX: &str = "\
 ---
 sidebar_position: 4
+custom_edit_url: https://github.com/hydro-project/hydro/tree/main/dfir_lang/src/graph/ops
 ---
 
 # DFIR Operators
