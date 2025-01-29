@@ -25,7 +25,7 @@ pub use optional::Optional;
 
 pub mod location;
 pub use location::cluster::CLUSTER_SELF_ID;
-pub use location::{Cluster, ClusterId, ExternalProcess, Location, Process, Tick, Timestamped};
+pub use location::{Atomic, Cluster, ClusterId, ExternalProcess, Location, Process, Tick};
 
 #[cfg(feature = "build")]
 pub mod deploy;
