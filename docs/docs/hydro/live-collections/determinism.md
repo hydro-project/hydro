@@ -2,8 +2,8 @@
 sidebar_position: 1
 ---
 
-# Consistency and Safety
-A key feature of Hydro is its integration with the Rust type system to highlight possible sources of inconsistent distributed behavior. These are typically due to sources of non-determinism associated with I/O, including batching, timeouts, and message reordering. In this section, we'll walk through the consistency guarantees in Hydro and how to use the **`unsafe`** keyword as an escape hatch when introducing sources of non-determinism.
+# Eventual Determinism
+Most programs are  strong guarantees on **determinism**, the property that when provided the same inputs, the outputs of the program are always the same. Even when the inputs and outputs are live collections, we can focus on the _eventual_ state of the collection (as if we froze the input and waited until the output stops changing).
 
 :::info
 
@@ -11,12 +11,7 @@ Our consistency and safety model is based on the POPL'25 paper [Flo: A Semantic 
 
 :::
 
-## Eventual Determinism
-Hydro provides strong guarantees on **determinism**, the property that when provided the same inputs, the outputs of the program are always the same. Even when the inputs and outputs are streaming, we can use this property by looking at the **aggregate collection** (i.e. the result of collecting the elements of the stream into a finite collection). Determinism makes it easy to build composable blocks of code without having to worry about runtime behavior such as batching or network delays.
-
-Because Hydro programs can involve network delay, we guarantee **eventual determinism**: given a set of streaming inputs that have arrived, the outputs of the program (which continuously change as inputs arrive) will **eventually** have the same _aggregate_ value on every run, regardless of delays.
-
-Again, by focusing on the _aggregate_ value rather than individual outputs, Hydro programs can involve concepts such as retractions (for incremental computation) while still guaranteeing determinism because the _resolved_ output (after processing retractions) will eventually be the same.
+Hydro thus guarantees **eventual determinism**: given a set of streaming inputs which have arrived, the outputs of the program will **eventually** have the same _final_ value. This makes it easy to build composable blocks of code without having to worry about runtime behavior such as batching or network delays.
 
 :::note
 
