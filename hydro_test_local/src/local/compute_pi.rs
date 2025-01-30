@@ -23,8 +23,7 @@ pub fn compute_pi<'a>(flow: &FlowBuilder<'a>, batch_size: RuntimeData<usize>) ->
                 *total += 1;
             }),
         )
-        .all_ticks()
-        .drop_timestamp();
+        .all_ticks();
 
     let estimate = trials.reduce(q!(|(inside, total), (inside_batch, total_batch)| {
         *inside += inside_batch;

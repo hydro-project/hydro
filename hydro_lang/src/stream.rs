@@ -16,7 +16,7 @@ use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
-use crate::location::tick::{NoTimestamp, Timestamped};
+use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
@@ -477,11 +477,10 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2, 3, 4]))
-    ///         .timestamped(&tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&tick)
     /// };
     /// let count = batch.clone().count(); // `count()` returns a singleton
-    /// batch.cross_singleton(count).all_ticks().drop_timestamp()
+    /// batch.cross_singleton(count).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 4), (2, 4), (3, 4), (4, 4)
     /// # for w in vec![(1, 4), (2, 4), (3, 4), (4, 4)] {
@@ -594,16 +593,14 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// let stream = unsafe {
     ///    process
     ///    .source_iter(q!(vec![ 1, 2, 3, 4 ]))
-    ///    .timestamped(&tick)
-    ///    .tick_batch()
+    ///    .tick_batch(&tick)
     /// };
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2]))
-    ///         .timestamped(&tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&tick)
     /// };
-    /// stream.filter_not_in(batch).all_ticks().drop_timestamp()
+    /// stream.filter_not_in(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// # for w in vec![3, 4] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -755,11 +752,10 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -807,11 +803,10 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .reduce_commutative(q!(|curr, new| *curr += new))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -848,8 +843,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.max().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.max().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -877,8 +872,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.max_by_key(q!(|x| -x)).all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.max_by_key(q!(|x| -x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -925,8 +920,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.min().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.min().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -952,8 +947,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.count().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.count().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -1023,8 +1018,8 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.first().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.first().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -1047,8 +1042,8 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.last().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.last().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -1072,11 +1067,10 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&tick) };
     /// batch
     ///     .fold(q!(|| String::new()), q!(|acc, x| acc.push_str(x)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -1124,12 +1118,11 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&tick) };
     /// batch
     ///     .map(q!(|x| x.to_string()))
     ///     .reduce(q!(|curr, new| curr.push_str(&new)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -1157,7 +1150,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, O> Stream<T, L, Unbounded, O> {
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O> Stream<T, L, Unbounded, O> {
     /// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -1183,17 +1176,10 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, O> Stream<T, L, Unbounded, O
         unsafe {
             // SAFETY: Because the outputs are unordered,
             // we can interleave batches from both streams.
-            self.timestamped(&tick)
-                .tick_batch()
+            self.tick_batch(&tick)
                 .assume_ordering::<NoOrder>()
-                .chain(
-                    other
-                        .timestamped(&tick)
-                        .tick_batch()
-                        .assume_ordering::<NoOrder>(),
-                )
+                .chain(other.tick_batch(&tick).assume_ordering::<NoOrder>())
                 .all_ticks()
-                .drop_timestamp()
                 .assume_ordering()
         }
     }
@@ -1214,8 +1200,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.sort().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.sort().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3, 4
     /// # for w in (1..5) {
@@ -1252,13 +1238,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch
-    ///     .clone()
-    ///     .map(q!(|x| x + 1))
-    ///     .chain(batch)
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.clone().map(q!(|x| x + 1)).chain(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// // 2, 3, 4, 5, 1, 2, 3, 4
     /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
@@ -1332,16 +1313,14 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
     /// let stream = unsafe {
     ///    process
     ///    .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
-    ///    .timestamped(&tick)
-    ///    .tick_batch()
+    ///    .tick_batch(&tick)
     /// };
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2]))
-    ///         .timestamped(&tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&tick)
     /// };
-    /// stream.anti_join(batch).all_ticks().drop_timestamp()
+    /// stream.anti_join(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// # for w in vec![(3, 'c'), (4, 'd')] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -1382,11 +1361,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_keyed(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1428,11 +1406,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch
-    ///     .reduce_keyed(q!(|acc, x| *acc += x))
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.reduce_keyed(q!(|acc, x| *acc += x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1473,11 +1448,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_keyed_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1511,8 +1485,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.keys().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.keys().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1, 2
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -1539,11 +1513,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .reduce_keyed_commutative(q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1567,10 +1540,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, Timestamped<L>, B, Order> {
-    /// Given a tick, returns a stream corresponding to a batch of elements for that tick.
-    /// These batches are guaranteed to be contiguous across ticks and preserve the order
-    /// of the input.
+impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, Atomic<L>, B, Order> {
+    /// Returns a stream corresponding to the latest batch of elements being atomically
+    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
     ///
     /// # Safety
     /// The batch boundaries are non-deterministic and may change across executions.
@@ -1584,21 +1557,28 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, Timestamped<L>, B, Ord
         )
     }
 
-    pub fn drop_timestamp(self) -> Stream<T, L, B, Order> {
+    pub fn end_atomic(self) -> Stream<T, L, B, Order> {
         Stream::new(self.location.tick.l, self.ir_node.into_inner())
     }
 
-    pub fn timestamp_source(&self) -> Tick<L> {
+    pub fn atomic_source(&self) -> Tick<L> {
         self.location.tick.clone()
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Order> {
-    pub fn timestamped(self, tick: &Tick<L>) -> Stream<T, Timestamped<L>, B, Order> {
-        Stream::new(
-            Timestamped { tick: tick.clone() },
-            self.ir_node.into_inner(),
-        )
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order> {
+    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, Order> {
+        Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
+    }
+
+    /// Given a tick, returns a stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Safety
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub unsafe fn tick_batch(self, tick: &Tick<L>) -> Stream<T, Tick<L>, Bounded, Order> {
+        unsafe { self.atomic(tick).tick_batch() }
     }
 
     /// Given a time interval, returns a stream corresponding to samples taken from the
@@ -1621,11 +1601,9 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
         let tick = self.location.tick();
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.timestamped(&tick)
-                .tick_batch()
-                .continue_if(samples.timestamped(&tick).tick_batch().first())
+            self.tick_batch(&tick)
+                .continue_if(samples.tick_batch(&tick).first())
                 .all_ticks()
-                .drop_timestamp()
         }
     }
 
@@ -1657,7 +1635,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
 
         unsafe {
             // SAFETY: Non-deterministic delay in detecting a timeout is expected.
-            latest_received.timestamped(&tick).latest_tick()
+            latest_received.latest_tick(&tick)
         }
         .filter_map(q!(move |latest_received| {
             if let Some(latest_received) = latest_received {
@@ -1671,7 +1649,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
             }
         }))
         .latest()
-        .drop_timestamp()
     }
 }
 
@@ -1712,9 +1689,19 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, Order> Stream<T, Tick<L>, Bounded, Order> {
-    pub fn all_ticks(self) -> Stream<T, Timestamped<L>, Unbounded, Order> {
+    pub fn all_ticks(self) -> Stream<T, L, Unbounded, Order> {
         Stream::new(
-            Timestamped {
+            self.location.outer().clone(),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
+        )
+    }
+
+    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, Order> {
+        Stream::new(
+            Atomic {
                 tick: self.location.clone(),
             },
             HydroNode::Persist {
