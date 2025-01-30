@@ -39,7 +39,7 @@ unsafe {
 }.for_each(q!(|v| println!("Sample: {:?}", v)))
 ```
 
-When writing a function with Hydro that involves `unsafe` code, it is important to be extra careful about whether the non-determinism is exposed externally. In some applications, a utility function may involve local non-determinism (such as sending retries), but not expose it outside the function (e.g., via deduplicating received requests).
+When writing a function with Hydro that involves `unsafe` code, it is important to be extra careful about whether the non-determinism is exposed externally. In some applications, a utility function may involve local non-determinism (such as sending retries), but not expose it outside the function (e.g., via deduplicating received responses).
 
 But other functions may expose the non-determinism, in which case they should be marked `unsafe` as well. If the function is public, Rust will require you to put a `# Safety` section in its documentation to explain the non-determinism.
 
