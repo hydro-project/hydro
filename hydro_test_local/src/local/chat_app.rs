@@ -19,23 +19,20 @@ pub fn chat_app<'a>(
     let users = unsafe {
         // SAFETY: intentionally non-deterministic to not send messaged
         // to users that joined after the message was sent
-        process
-            .source_stream(users_stream)
-            .timestamped(&tick)
-            .tick_batch()
+        process.source_stream(users_stream).tick_batch(&tick)
     }
     .persist();
     let messages = process.source_stream(messages);
     let messages = if replay_messages {
         unsafe {
             // SAFETY: see above
-            messages.timestamped(&tick).tick_batch()
+            messages.tick_batch(&tick)
         }
         .persist()
     } else {
         unsafe {
             // SAFETY: see above
-            messages.timestamped(&tick).tick_batch()
+            messages.tick_batch(&tick)
         }
     };
 

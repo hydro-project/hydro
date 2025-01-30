@@ -18,7 +18,7 @@ In some cases, you may need to convert between bounded and unbounded collections
 # let tick = process.tick();
 # let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
 let input: Stream<_, _, Bounded> = // ...
-#   unsafe { numbers.timestamped(&tick).tick_batch() };
+#   unsafe { numbers.tick_batch(&tick) };
 let unbounded: Stream<_, _, Unbounded> = input.into();
 ```
 
@@ -43,6 +43,6 @@ let unbounded_input = // ...
 #   process.source_iter(q!(vec![1, 2, 3, 4]));
 let tick = process.tick();
 let batch: Stream<_, _, Bounded> = unsafe {
-    unbounded_input.timestamped(&tick).tick_batch()
+    unbounded_input.tick_batch(&tick)
 };
 ```

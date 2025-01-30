@@ -67,12 +67,12 @@ pub fn paxos_bench<'a>(
 
             // we only mark a transaction as committed when all replicas have applied it
             collect_quorum::<_, _, _, ()>(
-                c_received_payloads.timestamped(&clients.tick()),
+                c_received_payloads.atomic(&clients.tick()),
                 paxos_config.f + 1,
                 paxos_config.f + 1,
             )
             .0
-            .drop_timestamp()
+            .end_atomic()
         },
         num_clients_per_node,
         median_latency_window_size,
