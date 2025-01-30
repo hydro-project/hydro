@@ -257,12 +257,6 @@
 <a href="#257" id="257">257</a>
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
-<a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashSet;
 
@@ -493,13 +487,7 @@
         <span class="kw">let </span>process = flow.process::&lt;()&gt;();
 
         <span class="kw">let </span>tick = process.tick();
-        <span class="kw">let </span>before_tee = <span class="kw">unsafe </span>{
-            process
-                .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>))
-                .timestamped(<span class="kw-2">&amp;</span>tick)
-                .tick_batch()
-                .persist()
-        };
+        <span class="kw">let </span>before_tee = <span class="kw">unsafe </span>{ process.source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>)).tick_batch(<span class="kw-2">&amp;</span>tick).persist() };
 
         before_tee
             .clone()

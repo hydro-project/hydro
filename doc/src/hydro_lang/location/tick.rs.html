@@ -286,9 +286,6 @@
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
 <a href="#288" id="288">288</a>
-<a href="#289" id="289">289</a>
-<a href="#290" id="290">290</a>
-<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>proc_macro2::Span;
@@ -312,20 +309,20 @@
 </span><span class="kw">impl</span>&lt;T&gt; NoTick <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, T&gt; {}
 
 <span class="attr">#[sealed]
-</span><span class="kw">pub trait </span>NoTimestamp {}
+</span><span class="kw">pub trait </span>NoAtomic {}
 <span class="attr">#[sealed]
-</span><span class="kw">impl</span>&lt;T&gt; NoTimestamp <span class="kw">for </span>Process&lt;<span class="lifetime">'_</span>, T&gt; {}
+</span><span class="kw">impl</span>&lt;T&gt; NoAtomic <span class="kw">for </span>Process&lt;<span class="lifetime">'_</span>, T&gt; {}
 <span class="attr">#[sealed]
-</span><span class="kw">impl</span>&lt;T&gt; NoTimestamp <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, T&gt; {}
+</span><span class="kw">impl</span>&lt;T&gt; NoAtomic <span class="kw">for </span>Cluster&lt;<span class="lifetime">'_</span>, T&gt; {}
 <span class="attr">#[sealed]
-</span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt; NoTimestamp <span class="kw">for </span>Tick&lt;L&gt; {}
+</span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt; NoAtomic <span class="kw">for </span>Tick&lt;L&gt; {}
 
 <span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>Timestamped&lt;L&gt; {
+</span><span class="kw">pub struct </span>Atomic&lt;L&gt; {
     <span class="kw">pub</span>(<span class="kw">crate</span>) tick: Tick&lt;L&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt; Location&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>Timestamped&lt;L&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt; Location&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>Atomic&lt;L&gt; {
     <span class="kw">type </span>Root = L::Root;
 
     <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Root {
@@ -346,7 +343,7 @@
 }
 
 <span class="attr">#[sealed]
-</span><span class="kw">impl</span>&lt;L&gt; NoTick <span class="kw">for </span>Timestamped&lt;L&gt; {}
+</span><span class="kw">impl</span>&lt;L&gt; NoTick <span class="kw">for </span>Atomic&lt;L&gt; {}
 
 <span class="doccomment">/// Marks the stream as being inside the single global clock domain.
 </span><span class="attr">#[derive(Clone)]
@@ -393,19 +390,18 @@
         batch_size: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, usize, L&gt; + Copy + <span class="lifetime">'a</span>,
     ) -&gt; Stream&lt;(), <span class="self">Self</span>, Bounded&gt;
     <span class="kw">where
-        </span>L: NoTick + NoTimestamp,
+        </span>L: NoTick + NoAtomic,
     {
         <span class="kw">let </span>out = <span class="self">self
             </span>.l
             .spin()
             .flat_map_ordered(<span class="macro">q!</span>(<span class="kw">move </span>|<span class="kw">_</span>| <span class="number">0</span>..batch_size))
-            .map(<span class="macro">q!</span>(|<span class="kw">_</span>| ()))
-            .timestamped(<span class="self">self</span>);
+            .map(<span class="macro">q!</span>(|<span class="kw">_</span>| ()));
 
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: at runtime, `spin` produces a single value per tick,
             // so each batch is guaranteed to be the same size.
-            </span>out.tick_batch()
+            </span>out.tick_batch(<span class="self">self</span>)
         }
     }
 
@@ -414,11 +410,11 @@
         e: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, T, L&gt;,
     ) -&gt; Singleton&lt;T, <span class="self">Self</span>, Bounded&gt;
     <span class="kw">where
-        </span>L: NoTick,
+        </span>L: NoTick + NoAtomic,
     {
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: a top-level singleton produces the same value each tick
-            </span><span class="self">self</span>.outer().singleton(e).timestamped(<span class="self">self</span>).latest_tick()
+            </span><span class="self">self</span>.outer().singleton(e).latest_tick(<span class="self">self</span>)
         }
     }
 
@@ -427,7 +423,7 @@
         e: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, T, Tick&lt;L&gt;&gt;,
     ) -&gt; Optional&lt;T, <span class="self">Self</span>, Bounded&gt;
     <span class="kw">where
-        </span>L: NoTick,
+        </span>L: NoTick + NoAtomic,
     {
         <span class="kw">let </span>e_arr = <span class="macro">q!</span>([e]);
         <span class="kw">let </span>e = e_arr.splice_untyped_ctx(<span class="self">self</span>);
@@ -476,9 +472,7 @@
         )
     }
 
-    <span class="kw">pub fn </span>forward_ref_timestamped&lt;
-        S: CycleCollection&lt;<span class="lifetime">'a</span>, ForwardRefMarker, Location = Timestamped&lt;L&gt;&gt;,
-    &gt;(
+    <span class="kw">pub fn </span>forward_ref_atomic&lt;S: CycleCollection&lt;<span class="lifetime">'a</span>, ForwardRefMarker, Location = Atomic&lt;L&gt;&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; (ForwardRef&lt;<span class="lifetime">'a</span>, S&gt;, S) {
         <span class="kw">let </span>next_id = {
@@ -505,7 +499,7 @@
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,
             },
-            S::create_source(ident, Timestamped { tick: <span class="self">self</span>.clone() }),
+            S::create_source(ident, Atomic { tick: <span class="self">self</span>.clone() }),
         )
     }
 

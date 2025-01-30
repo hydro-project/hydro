@@ -45,7 +45,7 @@
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>location::NoTick;
 
-<span class="kw">type </span>JoinResponses&lt;K, M, V, L&gt; = Stream&lt;(K, (M, V)), Timestamped&lt;L&gt;, Unbounded, NoOrder&gt;;
+<span class="kw">type </span>JoinResponses&lt;K, M, V, L&gt; = Stream&lt;(K, (M, V)), Atomic&lt;L&gt;, Unbounded, NoOrder&gt;;
 
 <span class="doccomment">/// Given an incoming stream of request-response responses, joins with metadata generated
 /// at request time that is stored in-memory.
@@ -55,7 +55,7 @@
 /// key, same for the metadata stream.
 </span><span class="kw">pub fn </span>join_responses&lt;<span class="lifetime">'a</span>, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick&gt;(
     tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;,
-    responses: Stream&lt;(K, V), Timestamped&lt;L&gt;, Unbounded, NoOrder&gt;,
+    responses: Stream&lt;(K, V), Atomic&lt;L&gt;, Unbounded, NoOrder&gt;,
     metadata: Stream&lt;(K, M), Tick&lt;L&gt;, Bounded, NoOrder&gt;,
 ) -&gt; JoinResponses&lt;K, M, V, L&gt; {
     <span class="kw">let </span>(remaining_to_join_complete_cycle, remaining_to_join) =
@@ -80,6 +80,6 @@
     remaining_to_join_complete_cycle
         .complete_next_tick(remaining_and_new.anti_join(responses.map(<span class="macro">q!</span>(|(key, <span class="kw">_</span>)| key))));
 
-    joined_this_tick.all_ticks()
+    joined_this_tick.all_ticks_atomic()
 }
 </code></pre></div></section></main></body></html>

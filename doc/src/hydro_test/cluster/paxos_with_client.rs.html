@@ -118,9 +118,9 @@
                     // is documented non-determinism.
 
                     </span><span class="kw">let </span>client_tick = clients.tick();
-                    <span class="kw">let </span>payload_batch = payloads.timestamped(<span class="kw-2">&amp;</span>client_tick).tick_batch();
+                    <span class="kw">let </span>payload_batch = payloads.tick_batch(<span class="kw-2">&amp;</span>client_tick);
 
-                    <span class="kw">let </span>latest_leader = cur_leader_id.timestamped(<span class="kw-2">&amp;</span>client_tick).latest_tick();
+                    <span class="kw">let </span>latest_leader = cur_leader_id.latest_tick(<span class="kw-2">&amp;</span>client_tick);
 
                     <span class="kw">let </span>(unsent_payloads_complete, unsent_payloads) =
                         client_tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();

@@ -181,12 +181,12 @@
 
             <span class="comment">// we only mark a transaction as committed when all replicas have applied it
             </span>collect_quorum::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, ()&gt;(
-                c_received_payloads.timestamped(<span class="kw-2">&amp;</span>clients.tick()),
+                c_received_payloads.atomic(<span class="kw-2">&amp;</span>clients.tick()),
                 paxos_config.f + <span class="number">1</span>,
                 paxos_config.f + <span class="number">1</span>,
             )
             .<span class="number">0
-            </span>.drop_timestamp()
+            </span>.end_atomic()
         },
         num_clients_per_node,
         median_latency_window_size,

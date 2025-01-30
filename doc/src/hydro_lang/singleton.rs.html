@@ -571,19 +571,6 @@
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
 <a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::ops::Deref;
@@ -597,7 +584,7 @@
     TickCycleMarker,
 };
 <span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, TeeNode};
-<span class="kw">use </span><span class="kw">crate</span>::location::tick::{NoTimestamp, Timestamped};
+<span class="kw">use </span><span class="kw">crate</span>::location::tick::{Atomic, NoAtomic};
 <span class="kw">use </span><span class="kw">crate</span>::location::{check_matching_location, Location, LocationId, NoTick, Tick};
 <span class="kw">use crate</span>::{Bounded, Optional, Stream, Unbounded};
 
@@ -936,10 +923,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B&gt; Singleton&lt;T, Timestamped&lt;L&gt;, B&gt; {
-    <span class="doccomment">/// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
-    /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
-    /// relevant data that contributed to the snapshot at tick `t`.
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B&gt; Singleton&lt;T, Atomic&lt;L&gt;, B&gt; {
+    <span class="doccomment">/// Returns a singleton value corresponding to the latest snapshot of the singleton
+    /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
+    /// at least all relevant data that contributed to the snapshot at tick `t`.
     ///
     /// # Safety
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
@@ -955,17 +942,29 @@
         )
     }
 
-    <span class="kw">pub fn </span>drop_timestamp(<span class="self">self</span>) -&gt; Optional&lt;T, L, B&gt; {
+    <span class="kw">pub fn </span>end_atomic(<span class="self">self</span>) -&gt; Optional&lt;T, L, B&gt; {
         Optional::new(<span class="self">self</span>.location.tick.l, <span class="self">self</span>.ir_node.into_inner())
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B&gt; Singleton&lt;T, L, B&gt; {
-    <span class="kw">pub fn </span>timestamped(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Singleton&lt;T, Timestamped&lt;L&gt;, B&gt; {
-        Singleton::new(
-            Timestamped { tick: tick.clone() },
-            <span class="self">self</span>.ir_node.into_inner(),
-        )
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoAtomic, B&gt; Singleton&lt;T, L, B&gt; {
+    <span class="kw">pub fn </span>atomic(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Singleton&lt;T, Atomic&lt;L&gt;, B&gt; {
+        Singleton::new(Atomic { tick: tick.clone() }, <span class="self">self</span>.ir_node.into_inner())
+    }
+
+    <span class="doccomment">/// Given a tick, returns a singleton value corresponding to a snapshot of the singleton
+    /// as of that tick. The snapshot at tick `t + 1` is guaranteed to include at least all
+    /// relevant data that contributed to the snapshot at tick `t`.
+    ///
+    /// # Safety
+    /// Because this picks a snapshot of a singleton whose value is continuously changing,
+    /// the output singleton has a non-deterministic value since the snapshot can be at an
+    /// arbitrary point in time.
+    </span><span class="kw">pub unsafe fn </span>latest_tick(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Singleton&lt;T, Tick&lt;L&gt;, Bounded&gt;
+    <span class="kw">where
+        </span>L: NoTick,
+    {
+        <span class="kw">unsafe </span>{ <span class="self">self</span>.atomic(tick).latest_tick() }
     }
 
     <span class="doccomment">/// Eagerly samples the singleton as fast as possible, returning a stream of snapshots
@@ -980,10 +979,7 @@
 
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: source of intentional non-determinism
-            </span><span class="self">self</span>.timestamped(<span class="kw-2">&amp;</span>tick)
-                .latest_tick()
-                .all_ticks()
-                .drop_timestamp()
+            </span><span class="self">self</span>.latest_tick(<span class="kw-2">&amp;</span>tick).all_ticks()
         }
     }
 
@@ -1001,7 +997,7 @@
         interval: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, std::time::Duration, L&gt; + Copy + <span class="lifetime">'a</span>,
     ) -&gt; Stream&lt;T, L, Unbounded&gt;
     <span class="kw">where
-        </span>L: NoTimestamp,
+        </span>L: NoAtomic,
     {
         <span class="kw">let </span>samples = <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: source of intentional non-determinism
@@ -1011,19 +1007,27 @@
 
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: source of intentional non-determinism
-            </span><span class="self">self</span>.timestamped(<span class="kw-2">&amp;</span>tick)
-                .latest_tick()
-                .continue_if(samples.timestamped(<span class="kw-2">&amp;</span>tick).tick_batch().first())
+            </span><span class="self">self</span>.latest_tick(<span class="kw-2">&amp;</span>tick)
+                .continue_if(samples.tick_batch(<span class="kw-2">&amp;</span>tick).first())
                 .all_ticks()
-                .drop_timestamp()
         }
     }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;&gt; Singleton&lt;T, Tick&lt;L&gt;, Bounded&gt; {
-    <span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, Timestamped&lt;L&gt;, Unbounded&gt; {
+    <span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded&gt; {
         Stream::new(
-            Timestamped {
+            <span class="self">self</span>.location.outer().clone(),
+            HydroNode::Persist {
+                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+            },
+        )
+    }
+
+    <span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
+        Stream::new(
+            Atomic {
                 tick: <span class="self">self</span>.location.clone(),
             },
             HydroNode::Persist {
@@ -1033,9 +1037,19 @@
         )
     }
 
-    <span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Singleton&lt;T, Timestamped&lt;L&gt;, Unbounded&gt; {
+    <span class="kw">pub fn </span>latest(<span class="self">self</span>) -&gt; Singleton&lt;T, L, Unbounded&gt; {
         Singleton::new(
-            Timestamped {
+            <span class="self">self</span>.location.outer().clone(),
+            HydroNode::Persist {
+                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+            },
+        )
+    }
+
+    <span class="kw">pub fn </span>latest_atomic(<span class="self">self</span>) -&gt; Singleton&lt;T, Atomic&lt;L&gt;, Unbounded&gt; {
+        Singleton::new(
+            Atomic {
                 tick: <span class="self">self</span>.location.clone(),
             },
             HydroNode::Persist {
@@ -1089,46 +1103,6 @@
     <span class="kw">fn </span>other_ir_node(other: Other) -&gt; HydroNode;
 
     <span class="kw">fn </span>make(location: <span class="self">Self</span>::Location, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out;
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U: Clone, L: Location&lt;<span class="lifetime">'a</span>&gt;, B&gt; ZipResult&lt;<span class="lifetime">'a</span>, Singleton&lt;U, Timestamped&lt;L&gt;, B&gt;&gt;
-    <span class="kw">for </span>Singleton&lt;T, Timestamped&lt;L&gt;, B&gt;
-{
-    <span class="kw">type </span>Out = Singleton&lt;(T, U), Timestamped&lt;L&gt;, B&gt;;
-    <span class="kw">type </span>ElementType = (T, U);
-    <span class="kw">type </span>Location = Timestamped&lt;L&gt;;
-
-    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Singleton&lt;U, Timestamped&lt;L&gt;, B&gt;) -&gt; Timestamped&lt;L&gt; {
-        other.location.clone()
-    }
-
-    <span class="kw">fn </span>other_ir_node(other: Singleton&lt;U, Timestamped&lt;L&gt;, B&gt;) -&gt; HydroNode {
-        other.ir_node.into_inner()
-    }
-
-    <span class="kw">fn </span>make(location: Timestamped&lt;L&gt;, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out {
-        Singleton::new(location, ir_node)
-    }
-}
-
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U: Clone, L: Location&lt;<span class="lifetime">'a</span>&gt;, B&gt; ZipResult&lt;<span class="lifetime">'a</span>, Optional&lt;U, Timestamped&lt;L&gt;, B&gt;&gt;
-    <span class="kw">for </span>Singleton&lt;T, Timestamped&lt;L&gt;, B&gt;
-{
-    <span class="kw">type </span>Out = Optional&lt;(T, U), Timestamped&lt;L&gt;, B&gt;;
-    <span class="kw">type </span>ElementType = (T, U);
-    <span class="kw">type </span>Location = Timestamped&lt;L&gt;;
-
-    <span class="kw">fn </span>other_location(other: <span class="kw-2">&amp;</span>Optional&lt;U, Timestamped&lt;L&gt;, B&gt;) -&gt; Timestamped&lt;L&gt; {
-        other.location.clone()
-    }
-
-    <span class="kw">fn </span>other_ir_node(other: Optional&lt;U, Timestamped&lt;L&gt;, B&gt;) -&gt; HydroNode {
-        other.ir_node.into_inner()
-    }
-
-    <span class="kw">fn </span>make(location: Timestamped&lt;L&gt;, ir_node: HydroNode) -&gt; <span class="self">Self</span>::Out {
-        Optional::new(location, ir_node)
-    }
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, U: Clone, L: Location&lt;<span class="lifetime">'a</span>&gt;, B&gt; ZipResult&lt;<span class="lifetime">'a</span>, Singleton&lt;U, Tick&lt;L&gt;, B&gt;&gt;

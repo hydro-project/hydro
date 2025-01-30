@@ -75,9 +75,6 @@
 <a href="#75" id="75">75</a>
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>dfir_rs::tokio::sync::mpsc::UnboundedSender;
 <span class="kw">use </span>dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
 <span class="kw">use </span>hydro_lang::deploy::SingleProcessGraph;
@@ -102,17 +99,14 @@
 
     <span class="kw">let </span>reached = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: roots can be inserted on any tick because we are fixpointing
-        </span>roots
-            .timestamped(<span class="kw-2">&amp;</span>reachability_tick)
-            .tick_batch()
-            .chain(reached_cycle)
+        </span>roots.tick_batch(<span class="kw-2">&amp;</span>reachability_tick).chain(reached_cycle)
     };
     <span class="kw">let </span>reachable = reached
         .clone()
         .map(<span class="macro">q!</span>(|r| (r, ())))
         .join(<span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: edges can be inserted on any tick because we are fixpointing
-            </span>edges.timestamped(<span class="kw-2">&amp;</span>reachability_tick).tick_batch().persist()
+            </span>edges.tick_batch(<span class="kw-2">&amp;</span>reachability_tick).persist()
         })
         .map(<span class="macro">q!</span>(|(_from, (<span class="kw">_</span>, to))| to));
     set_reached_cycle.complete_next_tick(reached.clone().chain(reachable));

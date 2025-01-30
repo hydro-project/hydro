@@ -153,7 +153,7 @@
                 t,
                 <span class="kw">if </span>reply == <span class="string">"commit" </span>{ <span class="prelude-val">Ok</span>(()) } <span class="kw">else </span>{ <span class="prelude-val">Err</span>(id) }
             )))
-            .timestamped(<span class="kw-2">&amp;</span>coordinator_tick),
+            .atomic(<span class="kw-2">&amp;</span>coordinator_tick),
         num_participants <span class="kw">as </span>usize,
         num_participants <span class="kw">as </span>usize,
     );

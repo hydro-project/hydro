@@ -190,14 +190,14 @@
     V: Clone,
     E: Clone,
 &gt;(
-    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;V, E&gt;), Timestamped&lt;L&gt;, Unbounded, Order&gt;,
+    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;V, E&gt;), Atomic&lt;L&gt;, Unbounded, Order&gt;,
     min: usize,
     max: usize,
 ) -&gt; (
-    Stream&lt;(K, V), Timestamped&lt;L&gt;, Unbounded, Order&gt;,
-    Stream&lt;(K, E), Timestamped&lt;L&gt;, Unbounded, Order&gt;,
+    Stream&lt;(K, V), Atomic&lt;L&gt;, Unbounded, Order&gt;,
+    Stream&lt;(K, E), Atomic&lt;L&gt;, Unbounded, Order&gt;,
 ) {
-    <span class="kw">let </span>tick = responses.timestamp_source();
+    <span class="kw">let </span>tick = responses.atomic_source();
     <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 
     <span class="kw">let </span>current_responses = not_all.chain(<span class="kw">unsafe </span>{
@@ -269,7 +269,7 @@
                 <span class="prelude-val">Ok</span>(v) =&gt; <span class="prelude-val">Some</span>((key, v)),
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
             }))
-            .all_ticks(),
+            .all_ticks_atomic(),
         responses.filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, res)| <span class="kw">match </span>res {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>((key, e)),
@@ -279,14 +279,14 @@
 
 <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"stream types with ordering"</span>)]
 </span><span class="kw">pub fn </span>collect_quorum&lt;<span class="lifetime">'a</span>, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, Order, K: Clone + Eq + Hash, E: Clone&gt;(
-    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;(), E&gt;), Timestamped&lt;L&gt;, Unbounded, Order&gt;,
+    responses: Stream&lt;(K, <span class="prelude-ty">Result</span>&lt;(), E&gt;), Atomic&lt;L&gt;, Unbounded, Order&gt;,
     min: usize,
     max: usize,
 ) -&gt; (
-    Stream&lt;K, Timestamped&lt;L&gt;, Unbounded, Order&gt;,
-    Stream&lt;(K, E), Timestamped&lt;L&gt;, Unbounded, Order&gt;,
+    Stream&lt;K, Atomic&lt;L&gt;, Unbounded, Order&gt;,
+    Stream&lt;(K, E), Atomic&lt;L&gt;, Unbounded, Order&gt;,
 ) {
-    <span class="kw">let </span>tick = responses.timestamp_source();
+    <span class="kw">let </span>tick = responses.atomic_source();
     <span class="kw">let </span>(not_all_complete_cycle, not_all) = tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, Order&gt;&gt;();
 
     <span class="kw">let </span>current_responses = not_all.chain(<span class="kw">unsafe </span>{
@@ -347,7 +347,7 @@
     };
 
     (
-        just_reached_quorum.all_ticks(),
+        just_reached_quorum.all_ticks_atomic(),
         responses.filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|(key, res)| <span class="kw">match </span>res {
             <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
             <span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Some</span>((key, e)),

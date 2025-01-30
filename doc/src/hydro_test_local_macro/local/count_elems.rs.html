@@ -78,7 +78,7 @@
     <span class="kw">let </span>source = process.source_stream(input_stream);
     <span class="kw">let </span>count = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: intentionally using ticks
-        </span>source.map(<span class="macro">q!</span>(|<span class="kw">_</span>| <span class="number">1</span>)).timestamped(<span class="kw-2">&amp;</span>tick).tick_batch()
+        </span>source.map(<span class="macro">q!</span>(|<span class="kw">_</span>| <span class="number">1</span>)).tick_batch(<span class="kw-2">&amp;</span>tick)
     }
     .fold(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|a, b| <span class="kw-2">*</span>a += b))
     .all_ticks();

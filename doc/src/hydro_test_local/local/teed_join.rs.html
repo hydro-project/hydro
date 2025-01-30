@@ -107,9 +107,6 @@
 <a href="#107" id="107">107</a>
 <a href="#108" id="108">108</a>
 <a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>dfir_rs::futures::stream::Stream;
 <span class="kw">use </span>dfir_rs::tokio::sync::mpsc::UnboundedSender;
 <span class="kw">use </span>dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
@@ -135,10 +132,7 @@
 
     <span class="kw">let </span>source = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: intentionally using ticks
-        </span>node_zero
-            .source_stream(input_stream)
-            .timestamped(<span class="kw-2">&amp;</span>n0_tick)
-            .tick_batch()
+        </span>node_zero.source_stream(input_stream).tick_batch(<span class="kw-2">&amp;</span>n0_tick)
     };
     <span class="kw">let </span>map1 = source.clone().map(<span class="macro">q!</span>(|v| (v + <span class="number">1</span>, ())));
     <span class="kw">let </span>map2 = source.map(<span class="macro">q!</span>(|v| (v - <span class="number">1</span>, ())));

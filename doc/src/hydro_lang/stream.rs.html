@@ -2165,19 +2165,6 @@
 <a href="#2165" id="2165">2165</a>
 <a href="#2166" id="2166">2166</a>
 <a href="#2167" id="2167">2167</a>
-<a href="#2168" id="2168">2168</a>
-<a href="#2169" id="2169">2169</a>
-<a href="#2170" id="2170">2170</a>
-<a href="#2171" id="2171">2171</a>
-<a href="#2172" id="2172">2172</a>
-<a href="#2173" id="2173">2173</a>
-<a href="#2174" id="2174">2174</a>
-<a href="#2175" id="2175">2175</a>
-<a href="#2176" id="2176">2176</a>
-<a href="#2177" id="2177">2177</a>
-<a href="#2178" id="2178">2178</a>
-<a href="#2179" id="2179">2179</a>
-<a href="#2180" id="2180">2180</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -2196,7 +2183,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 <span class="kw">use </span><span class="kw">crate</span>::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 <span class="kw">use </span><span class="kw">crate</span>::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
-<span class="kw">use </span><span class="kw">crate</span>::location::tick::{NoTimestamp, Timestamped};
+<span class="kw">use </span><span class="kw">crate</span>::location::tick::{Atomic, NoAtomic};
 <span class="kw">use </span><span class="kw">crate</span>::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
@@ -2657,11 +2644,10 @@
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2, 3, 4]))
-    ///         .timestamped(&amp;tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&amp;tick)
     /// };
     /// let count = batch.clone().count(); // `count()` returns a singleton
-    /// batch.cross_singleton(count).all_ticks().drop_timestamp()
+    /// batch.cross_singleton(count).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 4), (2, 4), (3, 4), (4, 4)
     /// # for w in vec![(1, 4), (2, 4), (3, 4), (4, 4)] {
@@ -2774,16 +2760,14 @@
     /// let stream = unsafe {
     ///    process
     ///    .source_iter(q!(vec![ 1, 2, 3, 4 ]))
-    ///    .timestamped(&amp;tick)
-    ///    .tick_batch()
+    ///    .tick_batch(&amp;tick)
     /// };
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2]))
-    ///         .timestamped(&amp;tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&amp;tick)
     /// };
-    /// stream.filter_not_in(batch).all_ticks().drop_timestamp()
+    /// stream.filter_not_in(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// # for w in vec![3, 4] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -2935,11 +2919,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
     /// batch
     ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -2987,11 +2970,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
     /// batch
     ///     .reduce_commutative(q!(|curr, new| *curr += new))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -3028,8 +3010,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.max().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.max().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -3057,8 +3039,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.max_by_key(q!(|x| -x)).all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.max_by_key(q!(|x| -x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -3105,8 +3087,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.min().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.min().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -3132,8 +3114,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.count().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.count().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -3203,8 +3185,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.first().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.first().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -3227,8 +3209,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.last().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.last().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -3252,11 +3234,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&amp;tick) };
     /// batch
     ///     .fold(q!(|| String::new()), q!(|acc, x| acc.push_str(x)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -3304,12 +3285,11 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&amp;tick) };
     /// batch
     ///     .map(q!(|x| x.to_string()))
     ///     .reduce(q!(|curr, new| curr.push_str(&amp;new)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -3337,7 +3317,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoTimestamp, O&gt; Stream&lt;T, L, Unbounded, O&gt; {
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoAtomic, O&gt; Stream&lt;T, L, Unbounded, O&gt; {
     <span class="doccomment">/// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -3363,17 +3343,10 @@
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: Because the outputs are unordered,
             // we can interleave batches from both streams.
-            </span><span class="self">self</span>.timestamped(<span class="kw-2">&amp;</span>tick)
-                .tick_batch()
+            </span><span class="self">self</span>.tick_batch(<span class="kw-2">&amp;</span>tick)
                 .assume_ordering::&lt;NoOrder&gt;()
-                .chain(
-                    other
-                        .timestamped(<span class="kw-2">&amp;</span>tick)
-                        .tick_batch()
-                        .assume_ordering::&lt;NoOrder&gt;(),
-                )
+                .chain(other.tick_batch(<span class="kw-2">&amp;</span>tick).assume_ordering::&lt;NoOrder&gt;())
                 .all_ticks()
-                .drop_timestamp()
                 .assume_ordering()
         }
     }
@@ -3394,8 +3367,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.sort().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.sort().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3, 4
     /// # for w in (1..5) {
@@ -3432,13 +3405,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch
-    ///     .clone()
-    ///     .map(q!(|x| x + 1))
-    ///     .chain(batch)
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.clone().map(q!(|x| x + 1)).chain(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// // 2, 3, 4, 5, 1, 2, 3, 4
     /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
@@ -3512,16 +3480,14 @@
     /// let stream = unsafe {
     ///    process
     ///    .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
-    ///    .timestamped(&amp;tick)
-    ///    .tick_batch()
+    ///    .tick_batch(&amp;tick)
     /// };
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2]))
-    ///         .timestamped(&amp;tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&amp;tick)
     /// };
-    /// stream.anti_join(batch).all_ticks().drop_timestamp()
+    /// stream.anti_join(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// # for w in vec![(3, 'c'), (4, 'd')] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -3562,11 +3528,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
     /// batch
     ///     .fold_keyed(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -3608,11 +3573,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch
-    ///     .reduce_keyed(q!(|acc, x| *acc += x))
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.reduce_keyed(q!(|acc, x| *acc += x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -3653,11 +3615,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
     /// batch
     ///     .fold_keyed_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -3691,8 +3652,8 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
-    /// batch.keys().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
+    /// batch.keys().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1, 2
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -3719,11 +3680,10 @@
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&amp;tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&amp;tick) };
     /// batch
     ///     .reduce_keyed_commutative(q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -3747,10 +3707,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B, Order&gt; Stream&lt;T, Timestamped&lt;L&gt;, B, Order&gt; {
-    <span class="doccomment">/// Given a tick, returns a stream corresponding to a batch of elements for that tick.
-    /// These batches are guaranteed to be contiguous across ticks and preserve the order
-    /// of the input.
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B, Order&gt; Stream&lt;T, Atomic&lt;L&gt;, B, Order&gt; {
+    <span class="doccomment">/// Returns a stream corresponding to the latest batch of elements being atomically
+    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
     ///
     /// # Safety
     /// The batch boundaries are non-deterministic and may change across executions.
@@ -3764,21 +3724,28 @@
         )
     }
 
-    <span class="kw">pub fn </span>drop_timestamp(<span class="self">self</span>) -&gt; Stream&lt;T, L, B, Order&gt; {
+    <span class="kw">pub fn </span>end_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, L, B, Order&gt; {
         Stream::new(<span class="self">self</span>.location.tick.l, <span class="self">self</span>.ir_node.into_inner())
     }
 
-    <span class="kw">pub fn </span>timestamp_source(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Tick&lt;L&gt; {
+    <span class="kw">pub fn </span>atomic_source(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Tick&lt;L&gt; {
         <span class="self">self</span>.location.tick.clone()
     }
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoTimestamp, B, Order&gt; Stream&lt;T, L, B, Order&gt; {
-    <span class="kw">pub fn </span>timestamped(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Stream&lt;T, Timestamped&lt;L&gt;, B, Order&gt; {
-        Stream::new(
-            Timestamped { tick: tick.clone() },
-            <span class="self">self</span>.ir_node.into_inner(),
-        )
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick + NoAtomic, B, Order&gt; Stream&lt;T, L, B, Order&gt; {
+    <span class="kw">pub fn </span>atomic(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Stream&lt;T, Atomic&lt;L&gt;, B, Order&gt; {
+        Stream::new(Atomic { tick: tick.clone() }, <span class="self">self</span>.ir_node.into_inner())
+    }
+
+    <span class="doccomment">/// Given a tick, returns a stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Safety
+    /// The batch boundaries are non-deterministic and may change across executions.
+    </span><span class="kw">pub unsafe fn </span>tick_batch(<span class="self">self</span>, tick: <span class="kw-2">&amp;</span>Tick&lt;L&gt;) -&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, Order&gt; {
+        <span class="kw">unsafe </span>{ <span class="self">self</span>.atomic(tick).tick_batch() }
     }
 
     <span class="doccomment">/// Given a time interval, returns a stream corresponding to samples taken from the
@@ -3801,11 +3768,9 @@
         <span class="kw">let </span>tick = <span class="self">self</span>.location.tick();
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: source of intentional non-determinism
-            </span><span class="self">self</span>.timestamped(<span class="kw-2">&amp;</span>tick)
-                .tick_batch()
-                .continue_if(samples.timestamped(<span class="kw-2">&amp;</span>tick).tick_batch().first())
+            </span><span class="self">self</span>.tick_batch(<span class="kw-2">&amp;</span>tick)
+                .continue_if(samples.tick_batch(<span class="kw-2">&amp;</span>tick).first())
                 .all_ticks()
-                .drop_timestamp()
         }
     }
 
@@ -3837,7 +3802,7 @@
 
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: Non-deterministic delay in detecting a timeout is expected.
-            </span>latest_received.timestamped(<span class="kw-2">&amp;</span>tick).latest_tick()
+            </span>latest_received.latest_tick(<span class="kw-2">&amp;</span>tick)
         }
         .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|latest_received| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(latest_received) = latest_received {
@@ -3851,7 +3816,6 @@
             }
         }))
         .latest()
-        .drop_timestamp()
     }
 }
 
@@ -3892,9 +3856,19 @@
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt;, Order&gt; Stream&lt;T, Tick&lt;L&gt;, Bounded, Order&gt; {
-    <span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, Timestamped&lt;L&gt;, Unbounded, Order&gt; {
+    <span class="kw">pub fn </span>all_ticks(<span class="self">self</span>) -&gt; Stream&lt;T, L, Unbounded, Order&gt; {
         Stream::new(
-            Timestamped {
+            <span class="self">self</span>.location.outer().clone(),
+            HydroNode::Persist {
+                inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+            },
+        )
+    }
+
+    <span class="kw">pub fn </span>all_ticks_atomic(<span class="self">self</span>) -&gt; Stream&lt;T, Atomic&lt;L&gt;, Unbounded, Order&gt; {
+        Stream::new(
+            Atomic {
                 tick: <span class="self">self</span>.location.clone(),
             },
             HydroNode::Persist {

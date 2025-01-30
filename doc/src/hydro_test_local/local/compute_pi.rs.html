@@ -53,7 +53,6 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>hydro_lang::deploy::SingleProcessGraph;
@@ -79,8 +78,7 @@
                 <span class="kw-2">*</span>total += <span class="number">1</span>;
             }),
         )
-        .all_ticks()
-        .drop_timestamp();
+        .all_ticks();
 
     <span class="kw">let </span>estimate = trials.reduce(<span class="macro">q!</span>(|(inside, total), (inside_batch, total_batch)| {
         <span class="kw-2">*</span>inside += inside_batch;

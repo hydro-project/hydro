@@ -60,7 +60,6 @@
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
 <a href="#62" id="62">62</a>
-<a href="#63" id="63">63</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 
 <span class="kw">pub struct </span>Leader {}
@@ -80,7 +79,7 @@
 
     <span class="kw">let </span>batches = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: addition is associative so we can batch reduce
-        </span>partitioned_words.timestamped(<span class="kw-2">&amp;</span>cluster.tick()).tick_batch()
+        </span>partitioned_words.tick_batch(<span class="kw-2">&amp;</span>cluster.tick())
     }
     .fold_keyed(<span class="macro">q!</span>(|| <span class="number">0</span>), <span class="macro">q!</span>(|count, <span class="kw">_</span>| <span class="kw-2">*</span>count += <span class="number">1</span>))
     .inspect(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(
@@ -93,8 +92,7 @@
     <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: addition is associative so we can batch reduce
         </span>batches
-            .timestamped(<span class="kw-2">&amp;</span>process.tick())
-            .tick_batch()
+            .tick_batch(<span class="kw-2">&amp;</span>process.tick())
             .persist()
             .reduce_keyed_commutative(<span class="macro">q!</span>(|total, count| <span class="kw-2">*</span>total += count))
     }

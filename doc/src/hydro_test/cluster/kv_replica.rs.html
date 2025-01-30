@@ -146,10 +146,6 @@
 <a href="#146" id="146">146</a>
 <a href="#147" id="147">147</a>
 <a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -203,9 +199,10 @@
     Stream&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;,
     Stream&lt;KvPayload&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;,
 ) {
-    <span class="kw">let </span>p_to_replicas = p_to_replicas
-        .into()
-        .map(<span class="macro">q!</span>(|(slot, kv)| SequencedKv { seq: slot, kv }));
+    <span class="kw">let </span>p_to_replicas: Stream&lt;SequencedKv&lt;K, V&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded, NoOrder&gt; =
+        p_to_replicas
+            .into()
+            .map(<span class="macro">q!</span>(|(slot, kv)| SequencedKv { seq: slot, kv }));
 
     <span class="kw">let </span>replica_tick = replicas.tick();
 
@@ -214,9 +211,7 @@
     </span><span class="kw">let </span>r_sorted_payloads = <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: because we fill slots one-by-one, we can safely batch
         // because non-determinism is resolved when we sort by slots
-        </span>p_to_replicas
-        .timestamped(<span class="kw-2">&amp;</span>replica_tick)
-        .tick_batch()
+        </span>p_to_replicas.tick_batch(<span class="kw-2">&amp;</span>replica_tick)
     }
         .chain(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
         </span>.sort();
@@ -297,9 +292,6 @@
     </span><span class="kw">let </span>r_to_clients = r_processable_payloads
         .filter_map(<span class="macro">q!</span>(|payload| payload.kv))
         .all_ticks();
-    (
-        r_checkpoint_seq_new.all_ticks().drop_timestamp(),
-        r_to_clients.drop_timestamp(),
-    )
+    (r_checkpoint_seq_new.all_ticks(), r_to_clients)
 }
 </code></pre></div></section></main></body></html>
