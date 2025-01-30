@@ -3,8 +3,8 @@ sidebar_position: 3
 ---
 
 # Safety and Correctness
-Just like Rust's type system helps you avoid memory safety bugs, Hydro helps you ensure **distributed safety**. Hydro's type systems helps you avoid many kinds of distributed systems bugs, including:
-- Non-determinism due to message delays (which reorder arrival) or retries (which result in duplicates)
+Much like Rust's type system helps ensure memory safety, Hydro helps ensure **distributed safety**. Hydro's type system helps you avoid many kinds of distributed systems bugs, including:
+- Non-determinism due to message delays (which affect arrival order), interleaving across streams (which affect order of handling) or retries (which result in duplicates)
   - See [Live Collections / Eventual Determinism](./live-collections/determinism.md)
 - Using mismatched serialization and deserialization formats across services
   - See [Locations and Networking](./locations/index.md)
