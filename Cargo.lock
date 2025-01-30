@@ -1605,7 +1605,6 @@ dependencies = [
  "proc-macro-crate",
  "proc-macro2",
  "quote",
- "rand",
  "sealed 0.6.0",
  "serde",
  "sha2",
