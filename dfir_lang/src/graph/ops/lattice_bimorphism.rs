@@ -6,7 +6,7 @@ use super::{
     RANGE_0, RANGE_1,
 };
 
-/// An operator representing a [lattice bimorphism](https://hydro.run/docs/hydroflow/lattices_crate/lattice_math#lattice-bimorphism).
+/// An operator representing a [lattice bimorphism](https://hydro.run/docs/dfir/lattices_crate/lattice_math#lattice-bimorphism).
 ///
 /// > 2 input streams, of type `LhsItem` and `RhsItem`.
 ///

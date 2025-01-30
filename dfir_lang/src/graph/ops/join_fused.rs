@@ -9,7 +9,7 @@ use super::{
 };
 use crate::diagnostic::{Diagnostic, Level};
 
-/// > 2 input streams of type <(K, V1)> and <(K, V2)>, 1 output stream of type <(K, (V1, V2))>
+/// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
 /// `join_fused` takes two arguments, they are the configuration options for the left hand side and right hand side inputs respectively.
 /// There are three available configuration options, they are `Reduce`: if the input type is the same as the accumulator type,

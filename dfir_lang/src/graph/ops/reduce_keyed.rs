@@ -10,7 +10,7 @@ use crate::diagnostic::{Diagnostic, Level};
 /// > The output will have one tuple for each distinct `K`, with an accumulated (reduced) value of
 /// > type `V`.
 ///
-/// If you need the accumulated value to have a different type than the input, use [`fold_keyed`](#keyed_fold).
+/// If you need the accumulated value to have a different type than the input, use [`fold_keyed`](#fold_keyed).
 ///
 /// > Arguments: one Rust closures. The closure takes two arguments: an `&mut` 'accumulator', and
 /// > an element. Accumulator should be updated based on the element.

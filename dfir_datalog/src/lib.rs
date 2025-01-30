@@ -7,7 +7,7 @@ use quote::{quote, ToTokens};
 ///
 /// This uses a variant of Datalog that is similar to [Dedalus](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2009/EECS-2009-173.pdf).
 ///
-/// For examples, see [the datalog tests in the Hydroflow repo](https://github.com/hydro-project/hydro/blob/main/hydroflow/tests/datalog_frontend.rs).
+/// For examples, see [the datalog tests in the Hydroflow repo](https://github.com/hydro-project/hydro/blob/main/dfir_rs/tests/datalog_frontend.rs).
 // TODO(mingwei): rustdoc examples inline.
 #[proc_macro]
 pub fn datalog(item: proc_macro::TokenStream) -> proc_macro::TokenStream {
