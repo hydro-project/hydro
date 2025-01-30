@@ -51,9 +51,10 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     Stream<usize, Cluster<'a, Replica>, Unbounded>,
     Stream<KvPayload<K, V>, Cluster<'a, Replica>, Unbounded>,
 ) {
-    let p_to_replicas = p_to_replicas
-        .into()
-        .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }));
+    let p_to_replicas: Stream<SequencedKv<K, V>, Cluster<'a, Replica>, Unbounded, NoOrder> =
+        p_to_replicas
+            .into()
+            .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }));
 
     let replica_tick = replicas.tick();
 
@@ -62,9 +63,7 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let r_sorted_payloads = unsafe {
         // SAFETY: because we fill slots one-by-one, we can safely batch
         // because non-determinism is resolved when we sort by slots
-        p_to_replicas
-        .timestamped(&replica_tick)
-        .tick_batch()
+        p_to_replicas.tick_batch(&replica_tick)
     }
         .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
         .sort();
@@ -145,8 +144,5 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let r_to_clients = r_processable_payloads
         .filter_map(q!(|payload| payload.kv))
         .all_ticks();
-    (
-        r_checkpoint_seq_new.all_ticks().drop_timestamp(),
-        r_to_clients.drop_timestamp(),
-    )
+    (r_checkpoint_seq_new.all_ticks(), r_to_clients)
 }

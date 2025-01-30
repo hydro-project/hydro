@@ -16,10 +16,7 @@ pub fn test_difference<'a>(
 
     let mut source = unsafe {
         // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(0..5))
-            .timestamped(&tick)
-            .tick_batch()
+        process.source_iter(q!(0..5)).tick_batch(&tick)
     };
     if persist1 {
         source = source.persist();
@@ -27,10 +24,7 @@ pub fn test_difference<'a>(
 
     let mut source2 = unsafe {
         // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(3..6))
-            .timestamped(&tick)
-            .tick_batch()
+        process.source_iter(q!(3..6)).tick_batch(&tick)
     };
     if persist2 {
         source2 = source2.persist();
@@ -58,8 +52,7 @@ pub fn test_anti_join<'a>(
         process
             .source_iter(q!(0..5))
             .map(q!(|v| (v, v)))
-            .timestamped(&tick)
-            .tick_batch()
+            .tick_batch(&tick)
     };
     if persist1 {
         source = source.persist();
@@ -67,10 +60,7 @@ pub fn test_anti_join<'a>(
 
     let mut source2 = unsafe {
         // SAFETY: intentionally using ticks
-        process
-            .source_iter(q!(3..6))
-            .timestamped(&tick)
-            .tick_batch()
+        process.source_iter(q!(3..6)).tick_batch(&tick)
     };
     if persist2 {
         source2 = source2.persist();
