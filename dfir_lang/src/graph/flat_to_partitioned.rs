@@ -379,15 +379,9 @@ fn find_subgraph_strata(
     //
     // Unless:
     // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
-    // - Within a loop: always, for topo sort.
+    // - Entering or exiting a loop.
     for sg_id in topo_sort_order {
-        let is_in_loop = {
-            let &node_in_subgraph = partitioned_graph
-                .subgraph(sg_id)
-                .first()
-                .expect("Subgraph must have at least one node.");
-            partitioned_graph.node_loop(node_in_subgraph).is_some()
-        };
+        let curr_loop = partitioned_graph.subgraph_loop(sg_id);
 
         let stratum = subgraph_graph
             .preds
@@ -398,12 +392,15 @@ fn find_subgraph_strata(
                 partitioned_graph
                     .subgraph_stratum(pred_sg_id)
                     .map(|stratum| {
-                        if is_in_loop {
+                        let pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
+                        if curr_loop != pred_loop {
+                            // Entering or exiting a loop.
+                            stratum + 1
+                        } else if curr_loop.is_some() && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id)) {
+                            // Top level && negative edge.
                             stratum + 1
                         } else {
-                            let has_negative_edge =
-                                subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id));
-                            stratum + (has_negative_edge as usize)
+                            stratum
                         }
                     })
             })

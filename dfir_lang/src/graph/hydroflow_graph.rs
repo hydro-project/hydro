@@ -1634,6 +1634,19 @@ impl DfirGraph {
         self.node_loops.get(node_id).copied()
     }
 
+    /// Get a subgraph's loop context (or `None` for root).
+    pub fn subgraph_loop(&self, subgraph_id: GraphSubgraphId) -> Option<GraphLoopId> {
+        let &node_id = self.subgraph(subgraph_id).first().unwrap();
+        let out = self.node_loop(node_id);
+        debug_assert!(
+            self.subgraph(subgraph_id)
+                .iter()
+                .all(|&node_id| self.node_loop(node_id) == out),
+            "Subgraph nodes should all have the same loop context."
+        );
+        out
+    }
+
     /// Get a loop context's parent loop context (or `None` for root).
     pub fn loop_parent(&self, loop_id: GraphLoopId) -> Option<GraphLoopId> {
         self.loop_parent.get(loop_id).copied()
