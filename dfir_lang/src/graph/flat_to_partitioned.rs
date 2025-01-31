@@ -396,7 +396,9 @@ fn find_subgraph_strata(
                         if curr_loop != pred_loop {
                             // Entering or exiting a loop.
                             stratum + 1
-                        } else if curr_loop.is_some() && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id)) {
+                        } else if curr_loop.is_none()
+                            && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id))
+                        {
                             // Top level && negative edge.
                             stratum + 1
                         } else {

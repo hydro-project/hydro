@@ -6,6 +6,7 @@ pub mod clear;
 pub mod demux_enum;
 pub mod monotonic_map;
 pub mod multiset;
+pub mod priority_stack;
 pub mod slot_vec;
 pub mod sparse_vec;
 pub mod unsync;
