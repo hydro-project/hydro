@@ -3,7 +3,7 @@ sidebar_position: 0
 ---
 
 # Bounded and Unbounded Types
-Although live collections can be continually updated, some collection types also support **termination**, after which no additional changes can be made. For example, a live collection created by reading integers from an in-memory `Vec` will become terminated once all the elements of the `Vec` have been loaded. But other live collections, such as one being updated by the network, may never become terminated.
+Although live collections can be continually updated, some collection types also support **termination**, after which no additional changes can be made. For example, a live collection created by reading integers from an in-memory `Vec` will become terminated once all the elements of the `Vec` have been loaded. But other live collections, such as events streaming into a service from a network, may never become terminated.
 
 In Hydro, certain APIs are restricted to only work on collections that are **guaranteed to terminate** (**bounded** collections). All live collections in Hydro have a type parameter (typically named `B`), which tracks whether the collection is bounded (has the type `Bounded`) or unbounded (has the type `Unbounded`). These types are used in the signature of many Hydro APIs to ensure that the API is only called on the appropriate type of collection.
 
@@ -32,7 +32,7 @@ let input: Singleton<_, _, Bounded> = tick.singleton(q!(0));
 let unbounded: Singleton<_, _, Unbounded> = input.into();
 ```
 
-Converting from an unbounded collection **to a bounded collection**, however is more complex. This requires cutting off the unbounded collection at a specific point in time, which may not be possible to do deterministically. For example, the most common way to convert an unbounded `Stream` to a bounded one is to batch its elements non-deterministically using `.tick_batch()`.
+Converting from an unbounded collection **to a bounded collection**, however is more complex. This requires cutting off the unbounded collection at a specific point in time, which may not be possible to do deterministically. For example, the most common way to convert an unbounded `Stream` to a bounded one is to batch its elements non-deterministically using `.tick_batch()`. Because this is non-deterministic, we require that it be placed in an `unsafe` block.
 
 ```rust,no_run
 # use hydro_lang::*;
