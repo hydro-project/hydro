@@ -86,7 +86,7 @@ pub fn test_flo_repeat_n() {
             cp
                 -> repeat_n(3)
                 -> map(|vec| (context.current_tick().0, vec))
-                -> inspect(|x| println!("{:?}", x))
+                -> inspect(|x| println!("{} {} {:?}", line!(), context.is_first_loop_iteration(), x))
                 -> assert_eq([
                     (0, vec![("alice", 0), ("alice", 1), ("alice", 2), ("bob", 0), ("bob", 1), ("bob", 2)]),
                     (0, vec![("alice", 0), ("alice", 1), ("alice", 2), ("bob", 0), ("bob", 1), ("bob", 2)]),
