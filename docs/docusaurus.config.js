@@ -1,73 +1,70 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require('prism-react-renderer').themes.github;
-const darkCodeTheme = require('prism-react-renderer').themes.dracula;
+const lightCodeTheme = require("prism-react-renderer").themes.github;
+const darkCodeTheme = require("prism-react-renderer").themes.dracula;
 
-const math = require('remark-math');
-const katex = require('rehype-katex');
+const math = require("remark-math");
+const katex = require("rehype-katex");
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Hydro - Build for Every Scale',
-  tagline: 'Dinosaurs are cool',
-  favicon: 'img/favicon.ico',
+  title: "Hydro - Build for Every Scale",
+  tagline: "Dinosaurs are cool",
+  favicon: "img/favicon.ico",
 
   // Set the production url of your site here
-  url: 'https://hydro.run',
+  url: "https://hydro.run",
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  baseUrl: "/",
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'hydro-project', // Usually your GitHub org/user name.
-  projectName: 'hydroflow', // Usually your repo name.
+  organizationName: "hydro-project", // Usually your GitHub org/user name.
+  projectName: "hydroflow", // Usually your repo name.
 
-  onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'throw',
+  onBrokenLinks: "throw",
+  onBrokenMarkdownLinks: "throw",
 
   customFields: {
-    'LOAD_PLAYGROUND': process.env.LOAD_PLAYGROUND || false,
+    LOAD_PLAYGROUND: process.env.LOAD_PLAYGROUND || false,
   },
 
   markdown: {
-    mermaid: true
+    mermaid: true,
   },
 
-  themes: [
-    '@docusaurus/theme-mermaid'
-  ],
+  themes: ["@docusaurus/theme-mermaid"],
 
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
   // to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: "en",
+    locales: ["en"],
   },
 
   stylesheets: [
     {
-      href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
-      type: 'text/css',
+      href: "https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css",
+      type: "text/css",
       integrity:
-        'sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM',
-      crossorigin: 'anonymous',
+        "sha384-odtC+0UGzzFL/6PNoE8rX/SPcQDXBJ+uRepguP4QkPCm2LBxH3FA3y+fKSiJ+AmM",
+      crossorigin: "anonymous",
     },
   ],
 
   presets: [
     [
-      'classic',
+      "classic",
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarPath: require.resolve('./sidebars.js'),
+          sidebarPath: require.resolve("./sidebars.js"),
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/hydro-project/hydro/tree/main/docs/',
+          editUrl: "https://github.com/hydro-project/hydro/tree/main/docs/",
           remarkPlugins: [math],
           rehypePlugins: [katex],
         },
@@ -79,7 +76,7 @@ const config = {
         //     'https://github.com/hydro-project/hydro/tree/main/docs/',
         // },
         theme: {
-          customCss: require.resolve('./src/css/custom.css'),
+          customCss: require.resolve("./src/css/custom.css"),
         },
       }),
     ],
@@ -87,7 +84,7 @@ const config = {
 
   plugins: [
     [
-      '@docusaurus/plugin-ideal-image',
+      "@docusaurus/plugin-ideal-image",
       {
         quality: 75,
         max: 1080,
@@ -96,115 +93,115 @@ const config = {
         disableInDev: false,
       },
     ],
-    require.resolve("./wasm-plugin.js")
+    require.resolve("./wasm-plugin.js"),
   ],
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       // Replace with your project's social card
-      image: 'img/social-card.png',
+      image: "img/social-card.png",
       colorMode: {
         respectPrefersColorScheme: true,
       },
       navbar: {
-        title: 'Hydro',
+        title: "Hydro",
         logo: {
-          alt: 'Hydro',
-          src: 'img/hydro-logo.svg',
+          alt: "Hydro",
+          src: "img/hydro-logo.svg",
         },
         items: [
           {
-            type: 'dropdown',
-            label: 'Docs',
+            type: "dropdown",
+            label: "Docs",
             items: [
               {
-                type: 'docSidebar',
-                sidebarId: 'hydroSidebar',
-                label: 'Hydro',
+                type: "docSidebar",
+                sidebarId: "hydroSidebar",
+                label: "Hydro",
               },
               {
-                type: 'docSidebar',
-                sidebarId: 'deploySidebar',
-                label: 'Hydro Deploy',
+                type: "docSidebar",
+                sidebarId: "deploySidebar",
+                label: "Hydro Deploy",
               },
               {
-                href: 'pathname:///rustdoc/hydro_lang/',
-                label: 'Rustdoc',
+                href: "pathname:///rustdoc/hydro_lang/",
+                label: "Rustdoc",
               },
               {
-                type: 'docSidebar',
-                sidebarId: 'dfirSidebar',
-                label: 'DFIR',
+                type: "docSidebar",
+                sidebarId: "dfirSidebar",
+                label: "DFIR",
               },
-            ]
+            ],
           },
           {
-            to: '/playground',
-            position: 'left',
-            label: 'Playground',
+            to: "/playground",
+            position: "left",
+            label: "Playground",
           },
           {
-            to: '/research',
-            position: 'left',
-            label: 'Publications',
+            to: "/research",
+            position: "left",
+            label: "Publications",
           },
           {
-            to: '/people',
-            position: 'left',
-            label: 'People',
+            to: "/people",
+            position: "left",
+            label: "People",
           },
           // {to: '/blog', label: 'Blog', position: 'left'},
           {
-            href: 'https://github.com/hydro-project/hydro',
-            label: 'GitHub',
-            position: 'right',
+            href: "https://github.com/hydro-project/hydro",
+            label: "GitHub",
+            position: "right",
           },
         ],
       },
       footer: {
-        style: 'dark',
+        style: "dark",
         links: [
           {
-            title: 'Docs',
+            title: "Docs",
             items: [
               {
-                label: 'DFIR',
-                to: '/docs/dfir/',
+                label: "Hydro",
+                to: "/docs/hydro/",
               },
               {
-                label: 'Hydro',
-                to: '/docs/hydro/',
+                label: "DFIR",
+                to: "/docs/dfir/",
               },
               {
-                label: 'Hydro Deploy',
-                to: '/docs/deploy/',
-              }
+                label: "Hydro Deploy",
+                to: "/docs/deploy/",
+              },
             ],
           },
           {
-            title: 'Research Group',
+            title: "Research Group",
             items: [
               {
-                label: 'Publications',
-                to: '/research',
+                label: "Publications",
+                to: "/research",
               },
               {
-                label: 'People',
-                to: '/people',
-              }
+                label: "People",
+                to: "/people",
+              },
             ],
           },
           {
-            title: 'More',
+            title: "More",
             items: [
               // {
               //   label: 'Blog',
               //   to: '/blog',
               // },
               {
-                label: 'GitHub',
-                href: 'https://github.com/hydro-project/hydro',
+                label: "GitHub",
+                href: "https://github.com/hydro-project/hydro",
               },
             ],
           },
@@ -214,41 +211,41 @@ const config = {
       prism: {
         theme: lightCodeTheme,
         darkTheme: darkCodeTheme,
-        additionalLanguages: ['rust', 'bash'],
+        additionalLanguages: ["rust", "bash"],
         magicComments: [
           {
-            className: 'theme-code-block-highlighted-line',
-            line: 'highlight-next-line',
-            block: {start: 'highlight-start', end: 'highlight-end'},
+            className: "theme-code-block-highlighted-line",
+            line: "highlight-next-line",
+            block: { start: "highlight-start", end: "highlight-end" },
           },
           {
-            className: 'shell-command-line',
-            line: 'shell-command-next-line',
-          }
-        ]
+            className: "shell-command-line",
+            line: "shell-command-next-line",
+          },
+        ],
       },
       algolia: {
-        appId: 'C2TSTQAKIC',
-        apiKey: '38cef87035f42759bc1dd871e91e06ba',
-        indexName: 'hydro'
+        appId: "C2TSTQAKIC",
+        apiKey: "38cef87035f42759bc1dd871e91e06ba",
+        indexName: "hydro",
       },
     }),
-    scripts: [
-      {
-        id: "runllm-widget-script",
-        type: "module",
-        src: "https://widget.runllm.com",
-        "runllm-server-address": "https://api.runllm.com",
-        "runllm-assistant-id": "136",
-        "runllm-position": "BOTTOM_RIGHT",
-        "runllm-keyboard-shortcut": "Mod+j",
-        "runllm-preset": "docusaurus",
-        "runllm-slack-community-url": "",
-        "runllm-name": "Hydro",
-        "runllm-theme-color": "#005EEC",
-        async: true,
-      },
-    ],
+  scripts: [
+    {
+      id: "runllm-widget-script",
+      type: "module",
+      src: "https://widget.runllm.com",
+      "runllm-server-address": "https://api.runllm.com",
+      "runllm-assistant-id": "136",
+      "runllm-position": "BOTTOM_RIGHT",
+      "runllm-keyboard-shortcut": "Mod+j",
+      "runllm-preset": "docusaurus",
+      "runllm-slack-community-url": "",
+      "runllm-name": "Hydro",
+      "runllm-theme-color": "#005EEC",
+      async: true,
+    },
+  ],
 };
 
 module.exports = config;
