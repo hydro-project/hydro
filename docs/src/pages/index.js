@@ -70,12 +70,14 @@ export default function Home() {
 
             <div style={{ marginBottom: "20px" }}>
               <iframe
-                width="560"
-                height="315"
                 style={{
                   display: "block",
                   marginLeft: "auto",
                   marginRight: "auto",
+                  marginBottom: "15px",
+                  width: "100%",
+                  maxWidth: "560px",
+                  aspectRatio: "16 / 9",
                 }}
                 src="https://www.youtube.com/embed/LdZ94m7anTw?si=5duyR1MjSRRdPJId"
                 title="YouTube video player"
