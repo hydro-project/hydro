@@ -196,49 +196,48 @@ pub fn test_flo_repeat_n_nested() {
     );
 }
 
-// #[multiplatform_test]
-// pub fn test_flo_repeat_n_multiple_nested() {
-// let mut df = dfir_syntax! {
-// usrs1 = source_iter(["alice", "bob"]);
-// loop {
-// usrs2 = usrs1 -> batch() -> flatten();
-// loop {
-// usrs3 = usrs2 -> repeat_n(3) -> flatten()
-// -> inspect(|x| println!("{:?} {}", x, context.is_first_loop_iteration()))
-// -> tee();
-// loop {
-// usrs3 -> repeat_n(3)
-// -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
-// -> assert_eq([
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// ]);
-// }
-// loop {
-// usrs3 -> repeat_n(3)
-// -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
-// -> assert_eq([
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// vec!["alice", "bob"],
-// ]);
-// }
-// }
-// }
-// };
-// assert_graphvis_snapshots!(df);
-// df.run_available();
-// }
+#[multiplatform_test]
+pub fn test_flo_repeat_n_multiple_nested() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        usrs1 = source_iter(["alice", "bob"]);
+        loop {
+            usrs2 = usrs1 -> batch();
+            loop {
+                usrs3 = usrs2 -> repeat_n(3)
+                    -> inspect(|x| println!("{:?} {}", x, context.is_first_loop_iteration()))
+                    -> tee();
+                loop {
+                    usrs3 -> repeat_n(3)
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                    -> for_each(|x| result1_send.send(x).unwrap());
+            }
+            loop {
+                usrs3 -> repeat_n(3)
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                    -> for_each(|x| result2_send.send(x).unwrap());
+                }
+            }
+        }
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+
+    assert_eq!(
+        &[
+            "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
+            "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+
+    assert_eq!(
+        &[
+            "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
+            "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+}
