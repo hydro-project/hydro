@@ -40,7 +40,7 @@ impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
             Min = NoOrder,
         >,
     {
-        self.map(dist_policy).send_bincode_interleaved(other)
+        self.map(dist_policy).send_bincode_anonymous(other)
     }
 }
 
@@ -78,7 +78,7 @@ impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
                 ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
                 b.clone()
             )))
-            .send_bincode_interleaved(other);
+            .send_bincode_anonymous(other);
 
         unsafe {
             // SAFETY: this is safe because we are mapping clusters 1:1
