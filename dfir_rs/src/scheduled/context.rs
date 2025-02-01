@@ -32,6 +32,12 @@ pub struct Context {
     /// Priority stack for handling strata within loops. Prioritized by loop depth.
     pub(super) stratum_stack: PriorityStack<usize>,
 
+    pub(super) loop_nonce_stack: Vec<usize>,
+
+    /// TODO(mingwei):
+    /// used for loop iteration scheduling.
+    pub(super) schedule_deferred: Vec<SubgraphId>,
+
     /// TODO(mingwei): separate scheduler into its own struct/trait?
     /// Index is stratum, value is FIFO queue for that stratum.
     pub(super) stratum_queues: Vec<VecDeque<SubgraphId>>,
@@ -258,6 +264,10 @@ impl Default for Context {
             states: Vec::new(),
 
             stratum_stack,
+
+            loop_nonce_stack: Vec::new(),
+
+            schedule_deferred: Vec::new(),
 
             stratum_queues,
             event_queue_recv,

@@ -294,6 +294,7 @@ declare_ops![
     persist::PERSIST,
     persist_mut::PERSIST_MUT,
     persist_mut_keyed::PERSIST_MUT_KEYED,
+    prefix::PREFIX,
     py_udf::PY_UDF,
     reduce::REDUCE,
     spin::SPIN,

@@ -263,9 +263,6 @@ impl<'a> Dfir<'a> {
         // This drains the task buffer, so becomes a no-op after first call.
         self.context.spawn_tasks();
 
-        // Stack of loop nonces.
-        let mut loop_nonce_stack = Vec::new();
-
         let mut work_done = false;
 
         while let Some(sg_id) =
@@ -277,37 +274,52 @@ impl<'a> Dfir<'a> {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
-                tracing::trace!(
+                tracing::info!(
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
+                    sg_depth = sg_data.loop_depth,
                     "Running subgraph."
                 );
 
-                match sg_data.loop_depth.cmp(&loop_nonce_stack.len()) {
+                match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
                         // We have entered a loop.
                         self.context.loop_nonce += 1;
-                        loop_nonce_stack.push(self.context.loop_nonce);
+                        self.context.loop_nonce_stack.push(self.context.loop_nonce);
+                        tracing::warn!(loop_nonce = self.context.loop_nonce, "Entered loop.");
                     }
                     Ordering::Less => {
                         // We have exited a loop.
-                        loop_nonce_stack.pop();
+                        self.context.loop_nonce_stack.pop();
+                        tracing::warn!("Exited loop.");
                     }
                     Ordering::Equal => {}
                 }
+
+                tracing::warn!(
+                    loop_nonce = self.context.loop_nonce,
+                    stack_len = self.context.loop_nonce_stack.len()
+                );
 
                 self.context.subgraph_id = sg_id;
                 self.context.is_first_run_this_tick = sg_data
                     .last_tick_run_in
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
-                self.context.is_first_loop_iteration = loop_nonce_stack
+                self.context.is_first_loop_iteration = self
+                    .context
+                    .loop_nonce_stack
                     .last()
                     .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
 
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
 
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                sg_data.last_loop_nonce = loop_nonce_stack.last().copied().unwrap_or_default()
+                sg_data.last_loop_nonce = self
+                    .context
+                    .loop_nonce_stack
+                    .last()
+                    .copied()
+                    .unwrap_or_default()
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -337,9 +349,10 @@ impl<'a> Dfir<'a> {
 
             if self.context.reschedule_loop_block.take() {
                 // Re-enqueue the subgraph.
-                if !sg_data.is_scheduled.replace(true) {
-                    self.context.stratum_queues[self.context.current_stratum].push_back(sg_id);
-                }
+                self.context.schedule_deferred.push(sg_id);
+                self.context
+                    .stratum_stack
+                    .push(sg_data.loop_depth, sg_data.stratum);
             }
         }
         work_done
@@ -384,12 +397,12 @@ impl<'a> Dfir<'a> {
         }
 
         loop {
+            // TODO(mingwei): logged stratum off by 1?
             tracing::trace!(
                 tick = u64::from(self.context.current_tick),
                 stratum = self.context.current_stratum,
                 "Looking for work on stratum."
             );
-
             // If current stratum has work, return true.
             if !self.context.stratum_queues[self.context.current_stratum].is_empty() {
                 tracing::trace!(
@@ -402,9 +415,28 @@ impl<'a> Dfir<'a> {
 
             if let Some(next_stratum) = self.context.stratum_stack.pop() {
                 self.context.current_stratum = next_stratum;
+
+                // Now schedule deferred subgraphs.
+                {
+                    for sg_id in self.context.schedule_deferred.drain(..) {
+                        let sg_data = &self.subgraphs[sg_id];
+                        tracing::info!(
+                            tick = u64::from(self.context.current_tick),
+                            stratum = self.context.current_stratum,
+                            sg_id = sg_id.to_string(),
+                            sg_name = &*sg_data.name,
+                            is_scheduled = sg_data.is_scheduled.get(),
+                            "Rescheduling deferred subgraph."
+                        );
+                        if !sg_data.is_scheduled.replace(true) {
+                            self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                        }
+                    }
+                }
             } else {
                 // Increment stratum counter.
                 self.context.current_stratum += 1;
+
                 if self.context.current_stratum >= self.context.stratum_queues.len() {
                     new_tick_started = true;
 

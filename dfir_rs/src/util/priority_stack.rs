@@ -28,6 +28,35 @@ impl<T> PriorityStack<T> {
         self.stacks.iter_mut().rev().filter_map(Vec::pop).next()
     }
 
+    /// Pops an element from the stack and return `(priority, item)`.
+    pub fn pop_prio(&mut self) -> Option<(usize, T)> {
+        self.stacks
+            .iter_mut()
+            .enumerate()
+            .rev()
+            .filter_map(|(i, stack)| stack.pop().map(|x| (i, x)))
+            .next()
+    }
+
+    /// Returns the item with the highest priority without removing it.
+    pub fn peek(&self) -> Option<&T> {
+        self.stacks
+            .iter()
+            .rev()
+            .filter_map(|stack| stack.last())
+            .next()
+    }
+
+    /// Returns the item with the highest priority and its priority without removing it.
+    pub fn peek_prio(&self) -> Option<(usize, &T)> {
+        self.stacks
+            .iter()
+            .enumerate()
+            .rev()
+            .filter_map(|(i, stack)| stack.last().map(|x| (i, x)))
+            .next()
+    }
+
     /// Returns the number of elements in the `PriorityStack`.
     pub fn len(&self) -> usize {
         self.stacks.iter().map(Vec::len).sum()
@@ -42,5 +71,13 @@ impl<T> PriorityStack<T> {
 impl<T> Default for PriorityStack<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Extend<(usize, T)> for PriorityStack<T> {
+    fn extend<I: IntoIterator<Item = (usize, T)>>(&mut self, iter: I) {
+        for (priority, item) in iter {
+            self.push(priority, item);
+        }
     }
 }
