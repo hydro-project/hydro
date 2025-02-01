@@ -417,7 +417,7 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
                 )
             )))
             .all_ticks()
-            .send_bincode_interleaved(proposers),
+            .send_bincode_anonymous(proposers),
     )
 }
 
@@ -826,6 +826,6 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
             )
         )))
         .all_ticks()
-        .send_bincode_interleaved(proposers);
+        .send_bincode_anonymous(proposers);
     (a_log, a_to_proposers_p2b)
 }

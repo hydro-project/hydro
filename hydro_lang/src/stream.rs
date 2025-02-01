@@ -1926,7 +1926,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         }
     }
 
-    pub fn send_bincode_interleaved<L2: Location<'a>, Tag, CoreType>(
+    pub fn send_bincode_anonymous<L2: Location<'a>, Tag, CoreType>(
         self,
         other: &L2,
     ) -> Stream<CoreType, L2, Unbounded, Order::Min>

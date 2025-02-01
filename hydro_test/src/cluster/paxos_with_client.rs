@@ -59,7 +59,7 @@ pub unsafe fn paxos_with_client<'a, C: 'a, R, P: PaxosPayload>(
                     all_payloads.cross_singleton(latest_leader).all_ticks()
                 }
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
-                .send_bincode_interleaved(proposers);
+                .send_bincode_anonymous(proposers);
 
                 let payloads_at_proposer = {
                     // SAFETY: documented non-determinism in interleaving of client payloads

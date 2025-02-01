@@ -63,7 +63,7 @@ pub fn paxos_bench<'a>(
                     payload.value.0,
                     ((payload.key, payload.value.1), Ok(()))
                 )))
-                .send_bincode_interleaved(&clients);
+                .send_bincode_anonymous(&clients);
 
             // we only mark a transaction as committed when all replicas have applied it
             collect_quorum::<_, _, _, ()>(
