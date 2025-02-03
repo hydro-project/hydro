@@ -5,7 +5,9 @@ use super::{
     RANGE_1,
 };
 
-/// TODO(mingwei): docs
+/// Given an _unbounded_ input stream, emits full prefixes of the input, of arbitrarily increasing length, in the same order.
+///
+/// Will cause additional loop iterations as long as new values arrive.
 pub const PREFIX: OperatorConstraints = OperatorConstraints {
     name: "prefix",
     categories: &[OperatorCategory::Fold, OperatorCategory::Windowing],

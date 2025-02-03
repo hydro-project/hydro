@@ -1,11 +1,29 @@
 use quote::quote_spanned;
 
-use super::{OperatorConstraints, OperatorWriteOutput, WriteContextArgs};
+use super::{
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
+    RANGE_1,
+};
 
-/// TODO(mingwei): docs
+/// Given a _bounded_ input stream, emits all values repeatedly over `N` iterations, in the same order.
+///
+/// Will cause `N` loop iterations.
 pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     name: "repeat_n",
+    categories: &[OperatorCategory::Windowing],
+    hard_range_inn: RANGE_1,
+    soft_range_inn: RANGE_1,
+    hard_range_out: RANGE_1,
+    soft_range_out: RANGE_1,
     num_args: 1,
+    persistence_args: RANGE_0,
+    type_args: RANGE_0,
+    is_external_input: false,
+    has_singleton_output: true,
+    flo_type: Some(FloType::Windowing),
+    ports_inn: None,
+    ports_out: None,
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
@@ -90,5 +108,4 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             write_iterator_after,
         })
     },
-    ..super::all_once::ALL_ONCE
 };

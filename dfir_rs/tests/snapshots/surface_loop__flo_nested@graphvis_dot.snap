@@ -25,7 +25,7 @@ digraph {
     n5v1 -> n11v1
     n9v1 -> n3v1
     n10v1 -> n4v1
-    n11v1 -> n6v1 [color=red]
+    n11v1 -> n6v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"
         style=filled
