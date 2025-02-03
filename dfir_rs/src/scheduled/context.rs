@@ -15,10 +15,10 @@ use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::state::StateHandle;
-use super::{LoopId, LoopTag, StateId, SubgraphId};
+use super::{LoopTag, StateId, SubgraphId};
 use crate::scheduled::ticks::TickInstant;
 use crate::util::priority_stack::PriorityStack;
-use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
+use crate::util::slot_vec::SlotVec;
 
 /// The main state and scheduler of the Hydroflow instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
@@ -65,8 +65,6 @@ pub struct Context {
 
     // Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
-    // Map from `LoopId` to parent `LoopId` (or `None` for top-level).
-    pub(super) loop_parent: SecondarySlotVec<LoopTag, Option<LoopId>>,
 
     pub(super) loop_nonce: usize,
 
@@ -259,7 +257,7 @@ impl Default for Context {
     fn default() -> Self {
         let stratum_queues = vec![Default::default()]; // Always initialize stratum #0.
         let (event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
-        let (stratum_stack, loop_depth, loop_parent) = Default::default();
+        let (stratum_stack, loop_depth) = Default::default();
         Self {
             states: Vec::new(),
 
@@ -285,8 +283,6 @@ impl Default for Context {
             is_first_loop_iteration: false,
 
             loop_depth,
-            loop_parent,
-
             loop_nonce: 0,
 
             // Will be re-set before use.

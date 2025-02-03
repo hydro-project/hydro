@@ -900,7 +900,6 @@ impl<'a> Dfir<'a> {
     pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
         let depth = parent.map_or(0, |p| self.context.loop_depth[p] + 1);
         let loop_id = self.context.loop_depth.insert(depth);
-        self.context.loop_parent.insert(loop_id, parent);
         loop_id
     }
 }
