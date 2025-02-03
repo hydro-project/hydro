@@ -177,7 +177,7 @@
                     payload.value.<span class="number">0</span>,
                     ((payload.key, payload.value.<span class="number">1</span>), <span class="prelude-val">Ok</span>(()))
                 )))
-                .send_bincode_interleaved(<span class="kw-2">&amp;</span>clients);
+                .send_bincode_anonymous(<span class="kw-2">&amp;</span>clients);
 
             <span class="comment">// we only mark a transaction as committed when all replicas have applied it
             </span>collect_quorum::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, ()&gt;(

@@ -161,7 +161,7 @@
             Min = NoOrder,
         &gt;,
     {
-        <span class="self">self</span>.map(dist_policy).send_bincode_interleaved(other)
+        <span class="self">self</span>.map(dist_policy).send_bincode_anonymous(other)
     }
 }
 
@@ -199,7 +199,7 @@
                 ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
                 b.clone()
             )))
-            .send_bincode_interleaved(other);
+            .send_bincode_anonymous(other);
 
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: this is safe because we are mapping clusters 1:1

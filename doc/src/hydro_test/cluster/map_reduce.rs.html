@@ -87,7 +87,7 @@
         string, count
     )))
     .all_ticks()
-    .send_bincode_interleaved(<span class="kw-2">&amp;</span>process);
+    .send_bincode_anonymous(<span class="kw-2">&amp;</span>process);
 
     <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: addition is associative so we can batch reduce

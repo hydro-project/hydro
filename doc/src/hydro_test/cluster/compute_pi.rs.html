@@ -103,7 +103,7 @@
         .all_ticks();
 
     <span class="kw">let </span>estimate = trials
-        .send_bincode_interleaved(<span class="kw-2">&amp;</span>process)
+        .send_bincode_anonymous(<span class="kw-2">&amp;</span>process)
         .reduce_commutative(<span class="macro">q!</span>(|(inside, total), (inside_batch, total_batch)| {
             <span class="kw-2">*</span>inside += inside_batch;
             <span class="kw-2">*</span>total += total_batch;

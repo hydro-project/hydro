@@ -1248,7 +1248,7 @@
                 )
             )))
             .all_ticks()
-            .send_bincode_interleaved(proposers),
+            .send_bincode_anonymous(proposers),
     )
 }
 
@@ -1657,7 +1657,7 @@
             )
         )))
         .all_ticks()
-        .send_bincode_interleaved(proposers);
+        .send_bincode_anonymous(proposers);
     (a_log, a_to_proposers_p2b)
 }
 </code></pre></div></section></main></body></html>
