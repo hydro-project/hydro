@@ -49,7 +49,7 @@ numbers.send_bincode(&process)
 
 :::tip
 
-If you do not need to know _which_ member of the cluster the data came from, you can use the `send_bincode_interleaved` method instead, which will drop the IDs at the receiver:
+If you do not need to know _which_ member of the cluster the data came from, you can use the `send_bincode_anonymous` method instead, which will drop the IDs at the receiver:
 
 ```rust
 # use hydro_lang::*;
@@ -57,7 +57,7 @@ If you do not need to know _which_ member of the cluster the data came from, you
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send_bincode_interleaved(&process)
+numbers.send_bincode_anonymous(&process)
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
 // 1, 1, 1, 1
@@ -166,7 +166,7 @@ let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
     .filter(q!(|x| x.raw_id % 2 == 0))
     .map(q!(|x| format!("hello from {}", x.raw_id)))
-    .send_bincode_interleaved(&process)
+    .send_bincode_anonymous(&process)
 // if there are 4 members in the cluster, we should receive 2 elements
 // "hello from 0", "hello from 2"
 # }, |mut stream| async move {
