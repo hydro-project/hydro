@@ -235,6 +235,8 @@ where
     }
 
     /// Return an iterator of all successor vertex IDs of `v`.
+    ///
+    /// If there are multiple edges from `v` to the same vertex, that vertex will appear multiple times in the iterator.
     pub fn successor_vertices(
         &self,
         v: V,
@@ -244,6 +246,8 @@ where
     }
 
     /// Return an iterator of all predecessor vertex IDs of `v`.
+    ///
+    /// If there are multiple edges from a vertex to `v`, that vertex will appear multiple times in the iterator.
     pub fn predecessor_vertices(
         &self,
         v: V,

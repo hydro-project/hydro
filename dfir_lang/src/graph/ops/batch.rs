@@ -19,5 +19,6 @@ pub const BATCH: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
+    // Scheduler automatically handles the batching of values as this is a `OperatorCategory::Windowing` operator.
     write_fn: IDENTITY_WRITE_FN,
 };

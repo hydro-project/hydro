@@ -59,6 +59,8 @@ impl<Tag: ?Sized> Display for Key<Tag> {
 }
 
 /// A Vec-based SlotMap-esque datastructure without removes.
+///
+/// Analogous to [`slotmap::SlotMap`], but avoids the overhead of tracking removed keys.
 #[repr(transparent)]
 pub struct SlotVec<Tag: ?Sized, Val> {
     slots: Vec<Val>,
@@ -129,6 +131,8 @@ impl<Key: ?Sized, Val> Default for SlotVec<Key, Val> {
 }
 
 /// A secondary map used to associated data with keys from elements in an existing [`SlotVec`].
+///
+/// Analogous to [`slotmap::SecondaryMap`].
 pub struct SecondarySlotVec<Tag: ?Sized, Val> {
     slots: Vec<Option<Val>>,
     _phantom: PhantomData<Tag>,

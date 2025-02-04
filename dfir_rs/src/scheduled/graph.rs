@@ -397,7 +397,6 @@ impl<'a> Dfir<'a> {
         }
 
         loop {
-            // TODO(mingwei): logged stratum off by 1?
             tracing::trace!(
                 tick = u64::from(self.context.current_tick),
                 stratum = self.context.current_stratum,

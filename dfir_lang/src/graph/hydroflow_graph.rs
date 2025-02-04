@@ -453,21 +453,19 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree excluding ref-edges and loop-crossing edges.
+        // In-degree, excluding ref-edges and edges which enter/exit loops.
         let inn_degree = self
-            .node_predecessor_edges(node_id)
-            .filter(|&edge_id| {
-                // Filter out loop-crossing edges.
-                let pred_id = self.edge(edge_id).0;
+            .node_predecessor_nodes(node_id)
+            .filter(|&pred_id| {
+                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
                 self.node_loop(pred_id) == self.node_loop(node_id)
             })
             .count();
         // Out-degree excluding ref-edges and loop-crossing edges.
         let out_degree = self
-            .node_successor_edges(node_id)
-            .filter(|&edge_id| {
-                // Filter out loop-crossing edges.
-                let pred_id = self.edge(edge_id).0;
+            .node_successor_nodes(node_id)
+            .filter(|&pred_id| {
+                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
                 self.node_loop(pred_id) == self.node_loop(node_id)
             })
             .count();
@@ -832,7 +830,7 @@ impl DfirGraph {
     }
 
     /// Code for adding all nested loops.
-    fn helper_loop_code(&self, hf: &Ident) -> TokenStream {
+    fn codegen_nested_loops(&self, hf: &Ident) -> TokenStream {
         // Breadth-first iteration from outermost (root) loops to deepest nested loops.
         let mut out = TokenStream::new();
         let mut queue = VecDeque::from_iter(self.root_loops.iter().copied());
@@ -1211,22 +1209,22 @@ impl DfirGraph {
                     }
                 };
 
-                let hoff_name = Literal::string(&format!("Subgraph {:?}", subgraph_id));
+                let subgraph_name = Literal::string(&format!("Subgraph {:?}", subgraph_id));
                 let stratum = Literal::usize_unsuffixed(
                     self.subgraph_stratum.get(subgraph_id).cloned().unwrap_or(0),
                 );
                 let laziness = self.subgraph_laziness(subgraph_id);
 
-                let loop_id_opt =
-                    self.node_loop(subgraph_nodes[0])
-                        .map_or(quote! { None }, |loop_id| {
-                            let loop_ident = Self::loop_as_ident(loop_id);
-                            quote! { Some(#loop_ident) }
-                        });
+                // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
+                let loop_id_opt = self
+                    .node_loop(subgraph_nodes[0])
+                    .map(|loop_id| Self::loop_as_ident(loop_id))
+                    .map(|ident| quote! { Some(#ident) })
+                    .unwrap_or_else(|| quote! { None });
 
                 subgraphs.push(quote! {
                     #hf.add_subgraph_full(
-                        #hoff_name,
+                        #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),
                         var_expr!( #( #send_ports ),* ),
@@ -1243,7 +1241,7 @@ impl DfirGraph {
             }
         }
 
-        let loop_code = self.helper_loop_code(&hf);
+        let loop_code = self.codegen_nested_loops(&hf);
 
         // These two are quoted separately here because iterators are lazily evaluated, so this
         // forces them to do their work. This work includes populating some data, namely

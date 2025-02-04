@@ -1,10 +1,13 @@
 //! A priority queue in which elements of the same priority are popped in a LIFO order.
 
+use smallvec::SmallVec;
+
 /// A priority stack in which elements of the same priority are popped in a LIFO order.
+// TODO(mingwei): Keep an upper bound on current priority to avoid scanning all stacks?
 #[derive(Debug, Clone)]
 pub struct PriorityStack<T> {
     /// Note: inner stack `Vec`s may be empty.
-    stacks: Vec<Vec<T>>,
+    stacks: Vec<SmallVec<[T; 1]>>,
 }
 
 impl<T> PriorityStack<T> {
@@ -12,6 +15,13 @@ impl<T> PriorityStack<T> {
     pub fn new() -> Self {
         Self {
             stacks: Vec::default(),
+        }
+    }
+
+    /// Creates a new, empty `PriorityStack` with pre-allocated capacity up to the given priority.
+    pub fn with_priority_capacity(priority: usize) -> Self {
+        Self {
+            stacks: Vec::with_capacity(priority),
         }
     }
 
@@ -25,7 +35,7 @@ impl<T> PriorityStack<T> {
 
     /// Pops an element from the stack with the highest priority.
     pub fn pop(&mut self) -> Option<T> {
-        self.stacks.iter_mut().rev().filter_map(Vec::pop).next()
+        self.stacks.iter_mut().rev().filter_map(SmallVec::pop).next()
     }
 
     /// Pops an element from the stack and return `(priority, item)`.
@@ -59,7 +69,7 @@ impl<T> PriorityStack<T> {
 
     /// Returns the number of elements in the `PriorityStack`.
     pub fn len(&self) -> usize {
-        self.stacks.iter().map(Vec::len).sum()
+        self.stacks.iter().map(SmallVec::len).sum()
     }
 
     /// Returns true if the `PriorityStack` is empty.
