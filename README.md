@@ -59,4 +59,4 @@ The Hydro project's main website is at [https://hydro.run](https://hydro.run).
 
 # Contributing
 
-For Hydro development setup and contributing info, see [CONTRIBUTING.md](CONTRIBUTING.md).
+For Hydro development setup and contribution info, see [CONTRIBUTING.md](CONTRIBUTING.md).
