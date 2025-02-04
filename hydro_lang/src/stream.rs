@@ -1402,7 +1402,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
         let latest_received = self.fold_commutative(
             q!(|| None),
             q!(|latest, _| {
-                // Note: May want to check received ballot against our own?
                 *latest = Some(Instant::now());
             }),
         );

@@ -110,6 +110,7 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let r_kv_store = r_processable_payloads
         .clone()
         .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
+        .inspect(q!(|payload| println!("Replica processing payload: {:?}", payload)))
         .fold(q!(|| (HashMap::new(), None)), q!(|(kv_store, last_seq), payload| {
             if let Some(kv) = payload.kv {
                 kv_store.insert(kv.key, kv.value);

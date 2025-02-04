@@ -17,7 +17,7 @@ pub unsafe fn compartmentalized_paxos_with_client<'a, C: 'a, R, P: PaxosPayload>
     payloads: Stream<P, Cluster<'a, C>, Unbounded>,
     replica_checkpoint: Stream<(ClusterId<R>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
     paxos_config: CompartmentalizedPaxosConfig,
-) -> Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder> {
+) -> Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder> {
     unsafe {
         // SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
         // care about the order in which key writes are processed, which is the non-determinism in
@@ -60,6 +60,10 @@ pub unsafe fn compartmentalized_paxos_with_client<'a, C: 'a, R, P: PaxosPayload>
 
                     all_payloads.cross_singleton(latest_leader).all_ticks()
                 }
+                // .inspect(q!(|(payload, leader_id)| println!(
+                //     "Sending payload {:?} to leader {:?}",
+                //     payload, leader_id
+                // )))
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
                 .send_bincode_interleaved(proposers);
 
