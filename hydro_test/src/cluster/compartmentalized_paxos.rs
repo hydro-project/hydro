@@ -758,7 +758,7 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
     }));
     let f = paxos_config.f;
     let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs.clone().count().filter_map(q!(
-        move |num_received| if num_received == f + 1 {
+        move |num_received| if num_received >= f + 1 {
             Some(true)
         } else {
             None
