@@ -25,7 +25,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
-                   root,
                    context,
                    hydroflow,
                    op_span,
@@ -33,11 +32,12 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                    ident,
                    is_pull,
                    inputs,
-                   outputs,
                    singleton_output_ident,
                    ..
                },
                _diagnostics| {
+        assert!(is_pull);
+
         let count_ident = wc.make_ident("count");
 
         let write_prologue = quote_spanned! {op_span=>
@@ -56,33 +56,13 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
 
         let vec_ident = wc.make_ident("vec");
 
-        let write_iterator = if is_pull {
-            // Pull.
-            let input = &inputs[0];
-            quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
-                if #context.is_first_run_this_tick() {
-                    *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
-                }
-                let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
+        let input = &inputs[0];
+        let write_iterator = quote_spanned! {op_span=>
+            let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+            if #context.is_first_run_this_tick() {
+                *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
             }
-        } else if let Some(_output) = outputs.first() {
-            // Push with output.
-            // TODO(mingwei): Not supported - cannot tell EOS for pusherators.
-            panic!("Should not happen - batch must be at ingress to a loop, therefore ingress to a subgraph, so would be pull-based.");
-        } else {
-            // Push with no output.
-            quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
-                let #ident = #root::pusherator::for_each::ForEach::new(|item| {
-                    ::std::vec::Vec::push(#vec_ident, item);
-                });
-            }
-        };
-
-        let write_prologue = quote_spanned! {op_span=>
-            #write_prologue
-
+            let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.

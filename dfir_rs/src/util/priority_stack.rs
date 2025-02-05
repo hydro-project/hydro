@@ -35,7 +35,11 @@ impl<T> PriorityStack<T> {
 
     /// Pops an element from the stack with the highest priority.
     pub fn pop(&mut self) -> Option<T> {
-        self.stacks.iter_mut().rev().filter_map(SmallVec::pop).next()
+        self.stacks
+            .iter_mut()
+            .rev()
+            .filter_map(SmallVec::pop)
+            .next()
     }
 
     /// Pops an element from the stack and return `(priority, item)`.
