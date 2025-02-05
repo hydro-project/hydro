@@ -132,8 +132,6 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.env("CARGO_TARGET_DIR", target_dir);
                     }
 
-                    ProgressTracker::println(&format!("Command to be executed: {:?}", command));
-
                     let mut spawned = command
                         .current_dir(&params.src)
                         .stdout(Stdio::piped())

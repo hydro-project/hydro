@@ -267,9 +267,6 @@ impl Service for HydroflowCrateService {
                     *self.server_defns.try_write().unwrap() =
                         serde_json::from_str(ready_line.trim_start_matches("ready: ")).unwrap();
                 } else {
-                    ProgressTracker::println(
-                        format!("Did not find ready. Instead found: {:?}", ready_line).as_str(),
-                    );
                     bail!("expected ready");
                 }
 

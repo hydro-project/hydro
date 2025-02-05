@@ -80,7 +80,7 @@ impl Host for PodHost {
     async fn provision(&self, _resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
         if self.launched.get().is_none() {
             let client = Client::try_default().await.unwrap();
-            let pod_id = nanoid!(10, &ALPHABET); // pod names can only contain alphanumeric characters
+            let pod_id = nanoid!(10, &ALPHABET); // randomly create a pod name, kubernetes restricts names to alphanumeric characters
             let pod_name = format!("hydro-{}", pod_id);
 
             // Blank template for a new pod
@@ -123,7 +123,6 @@ impl Host for PodHost {
                 }
             }
             if !found_existing_pod {
-                ProgressTracker::println(format!("Creating new pod {:?}", pod_name).as_str());
                 let res = pods.create(&PostParams::default(), &p).await;
                 match res {
                     Err(e) => ProgressTracker::println(format!("{:?}", e).as_str()),
@@ -143,10 +142,6 @@ impl Host for PodHost {
                         WatchEvent::Added(o) | WatchEvent::Modified(o) => {
                             let s = o.status.as_ref().expect("status exists on pod");
                             if s.phase.clone().unwrap_or_default() == "Running" {
-                                ProgressTracker::println(&format!(
-                                    "Ready to attach to {}",
-                                    o.name_any()
-                                ));
                                 break;
                             }
                         }
@@ -163,6 +158,7 @@ impl Host for PodHost {
                 }
             }
 
+            // Use the internal IP for communication between pods
             let internal_ip = pods
                 .get_status(pod_name.clone().as_str())
                 .await
@@ -179,7 +175,8 @@ impl Host for PodHost {
                 }))
                 .unwrap();
 
-            // Update apt-get in the pod
+            // We use lsof later in order to verify that the hydroflow binary has been written successfully to the pod.
+            // First, update apt-get in the pod
             let ap = AttachParams::default()
                 .stdin(false)
                 .stdout(false)
@@ -194,6 +191,7 @@ impl Host for PodHost {
                 .unwrap();
             let update_apt_status = update_apt.take_status().unwrap();
 
+            // Verify that no errors occurred with command
             match update_apt_status.await {
                 None => {
                     ProgressTracker::println("Warning: Command 'apt-get update' failed in pod");
@@ -220,7 +218,6 @@ impl Host for PodHost {
                 }
                 _ => {}
             }
-            ProgressTracker::println("Finished apt install");
         }
 
         self.launched.get().unwrap().clone()
@@ -266,7 +263,6 @@ impl Host for PodHost {
                     false
                 }
             }
-            // target_host.as_any().downcast_ref::<PodHost>()
             ClientStrategy::InternalTcpPort(_target_host) => true, /* TODO: if I'm on the same cluster, can just return true first */
             ClientStrategy::ForwardedTcpPort(_) => true,
         }
@@ -284,7 +280,7 @@ impl LaunchedHost for LaunchedPod {
     fn server_config(&self, bind_type: &ServerStrategy) -> ServerBindConfig {
         match bind_type {
             ServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
-            ServerStrategy::InternalTcpPort => ServerBindConfig::TcpPort(self.internal_ip.clone()), /* TODO: change to pod's internal port */
+            ServerStrategy::InternalTcpPort => ServerBindConfig::TcpPort(self.internal_ip.clone()),
             ServerStrategy::ExternalTcpPort(_) => panic!("Cannot bind to external port"),
             ServerStrategy::Demux(demux) => {
                 let mut config_map = HashMap::new();
@@ -311,7 +307,6 @@ impl LaunchedHost for LaunchedPod {
 
     async fn copy_binary(&self, binary: &BuildOutput) -> Result<()> {
         // Create a new pod in the running kubernetes cluster (we assume the user already has one up)
-        ProgressTracker::println(&format!("Copying binary to pod: {:?}", binary.unique_id));
         let client = Client::try_default().await?;
         let pods: Api<Pod> = Api::default_namespaced(client);
 
@@ -400,7 +395,6 @@ impl LaunchedHost for LaunchedPod {
         args: &[String],
         _perf: Option<TracingOptions>,
     ) -> Result<Box<dyn LaunchedBinary>> {
-        ProgressTracker::println("Launching binary in Pod");
 
         let client = Client::try_default().await?;
         let pods: Api<Pod> = Api::default_namespaced(client);
@@ -416,8 +410,8 @@ impl LaunchedHost for LaunchedPod {
             .stdin(true)
             .stdout(true)
             .stderr(true);
+
         // Execute binary inside the new pod
-        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
         let launch_binary = match pods.exec(pod_name, args_list, &ap).await {
             Ok(exec) => exec,
             Err(e) => {

@@ -404,8 +404,8 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         });
 
         let id_clone = id.clone();
-        // Pull away the first stdout stream into a different "prioritized" channel,
-        // and send everything else to stdout
+        // Pull away the first stdout stream (which contains setup info for communication between binaries) into a different "prioritized" channel,
+        // and send everything else to normal stdout
         let (stdout_deploy_receivers, stdout_receivers) =
             prioritized_broadcast(FuturesBufReader::new(channel.stream(0)).lines(), move |s| {
                 ProgressTracker::println(format!("[{id_clone}] {s}"));

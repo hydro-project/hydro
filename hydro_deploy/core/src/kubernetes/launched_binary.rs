@@ -14,13 +14,6 @@ use tokio::sync::{mpsc, oneshot};
 use crate::util::prioritized_broadcast;
 use crate::LaunchedBinary;
 
-// pub struct LaunchedPodBinary {
-//     stdin_sender: Sender<String>,
-//     stdout_cli_receivers: Arc<RwLock<Option<tokio::sync::oneshot::Sender<String>>>>,
-//     stdout_receivers: Arc<RwLock<Vec<Sender<String>>>>,
-//     stderr_receivers: Arc<RwLock<Vec<Sender<String>>>>,
-// }
-
 pub struct LaunchedPodBinary {
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
@@ -33,8 +26,6 @@ pub struct LaunchedPodBinary {
 impl LaunchedPodBinary {
     pub fn new(mut launched_pod_binary: AttachedProcess, id: String, pod_name: String) -> Self {
         // Create streams for stdout and stdin for the running binary in the pod
-        // let launched_pod_binary_mut = &mut launched_pod_binary;
-
         let launch_binary_out =
             tokio_util::io::ReaderStream::new(launched_pod_binary.stdout().unwrap());
         let launch_binary_err =
