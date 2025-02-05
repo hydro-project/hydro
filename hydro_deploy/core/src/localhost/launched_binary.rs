@@ -1,4 +1,5 @@
 #[cfg(unix)]
+use std::fs::File;
 use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
@@ -186,12 +187,11 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     .spawn()?;
 
                 // Run perf report
+                let outfile = File::create(perf_machine_readable_outfile)?;
                 let mut perf_report = Command::new("perf")
                     .args(["report", "--symfs=/", "-n", "--stdio", "-i"])
                     .arg(perf_raw_outfile)
-                    .arg(">")
-                    .arg(perf_machine_readable_outfile)
-                    .stdout(Stdio::piped())
+                    .stdout(outfile)
                     .stderr(Stdio::piped())
                     .spawn()?;
 
