@@ -25,7 +25,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         string, count
     )))
     .all_ticks()
-    .send_bincode_interleaved(&process);
+    .send_bincode_anonymous(&process);
 
     unsafe {
         // SAFETY: addition is associative so we can batch reduce
