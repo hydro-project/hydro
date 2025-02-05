@@ -8,12 +8,12 @@ use std::num::ParseFloatError;
 use std::time::Duration;
 
 use clap::Parser;
+use dfir_rs::futures::{Sink, SinkExt, StreamExt};
+use dfir_rs::tokio_stream::wrappers::IntervalStream;
+use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
+use dfir_rs::{bincode, bytes, tokio};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
 use gossip_kv::server::{server, SeedNode};
-use hydroflow::futures::{Sink, SinkExt, StreamExt};
-use hydroflow::tokio_stream::wrappers::IntervalStream;
-use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
-use hydroflow::{bincode, bytes, tokio};
 use prometheus::{gather, Encoder, TextEncoder};
 use serde::Serialize;
 use tracing::{error, info, trace};
@@ -82,7 +82,7 @@ where
 {
     outbound.with(|(msg, addr): (Message, SocketAddr)| {
         ready(Ok::<(bytes::Bytes, SocketAddr), Error>((
-            hydroflow::util::serialize_to_bytes(msg),
+            dfir_rs::util::serialize_to_bytes(msg),
             addr,
         )))
     })
@@ -91,15 +91,15 @@ where
 /// Setup deserialization for inbound networking messages.
 fn setup_inbound_deserialization<Inbound, Message>(
     inbound: Inbound,
-) -> impl hydroflow::futures::Stream<Item = (Message, SocketAddr)>
+) -> impl dfir_rs::futures::Stream<Item = (Message, SocketAddr)>
 where
-    Inbound: hydroflow::futures::Stream<Item = Result<(bytes::BytesMut, SocketAddr), Error>>,
+    Inbound: dfir_rs::futures::Stream<Item = Result<(bytes::BytesMut, SocketAddr), Error>>,
     Message: for<'de> serde::Deserialize<'de> + Debug + Send + 'static,
 {
     inbound.filter_map(|input| {
         let mapped = match input {
             Ok((bytes, addr)) => {
-                let msg: bincode::Result<Message> = hydroflow::util::deserialize_from_bytes(&bytes);
+                let msg: bincode::Result<Message> = dfir_rs::util::deserialize_from_bytes(&bytes);
                 match msg {
                     Ok(msg) => Some((msg, addr)),
                     Err(e) => {
@@ -117,7 +117,7 @@ where
     })
 }
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 

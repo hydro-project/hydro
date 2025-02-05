@@ -1,9 +1,9 @@
 use std::net::SocketAddr;
 
 use clap::{CommandFactory, Parser, Subcommand};
+use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
+use dfir_rs::{dfir_syntax, tokio, DemuxEnum};
 use gossip_kv::{ClientRequest, ClientResponse, Key};
-use hydroflow::util::{bind_udp_bytes, ipv4_resolve};
-use hydroflow::{hydroflow_syntax, tokio, DemuxEnum};
 use tracing::error;
 
 /// CLI program to interact with Layer 0 gossip store.
@@ -80,7 +80,7 @@ fn parse_command(line: String) -> Option<InteractiveCommands> {
     }
 }
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
@@ -98,7 +98,7 @@ async fn main() {
     // Setup UDP sockets for communication.
     let (outbound, inbound, _) = bind_udp_bytes(address).await;
 
-    let mut cli = hydroflow_syntax! {
+    let mut cli = dfir_syntax! {
         inbound_messages = source_stream_serde(inbound) -> map(Result::unwrap) -> for_each(|(response, _addr): (ClientResponse, SocketAddr)| println!("{:?}", response));
 
         outbound_messages = union() -> dest_sink_serde(outbound);
@@ -111,7 +111,7 @@ async fn main() {
         commands[Get] -> map(|(key,)| (ClientRequest::Get {key}, server_address)) -> outbound_messages;
         commands[Set] -> map(|(key, value)| (ClientRequest::Set {key, value}, server_address)) -> outbound_messages;
         commands[Delete] -> map(|(key,)| (ClientRequest::Delete {key}, server_address)) -> outbound_messages;
-        commands[Exit] -> for_each(|()| std::process::exit(0)); // TODO: Graceful shutdown https://github.com/hydro-project/hydroflow/issues/1253
+        commands[Exit] -> for_each(|()| std::process::exit(0)); // TODO: Graceful shutdown https://github.com/hydro-project/hydro/issues/1253
 
     };
 

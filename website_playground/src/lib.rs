@@ -1,15 +1,14 @@
 mod utils;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::task::{Context, Poll};
 use std::thread_local;
 
-use hydroflow::datalog;
-use hydroflow::scheduled::graph::Hydroflow;
-use hydroflow_datalog_core::gen_hydroflow_graph;
-use hydroflow_lang::diagnostic::{Diagnostic, Level};
-use hydroflow_lang::graph::{build_hfcode, partition_graph, WriteConfig};
+use dfir_datalog_core::gen_hydroflow_graph;
+use dfir_lang::diagnostic::{Diagnostic, Level};
+use dfir_lang::graph::{build_hfcode, partition_graph, WriteConfig};
+use dfir_rs::datalog;
+use dfir_rs::scheduled::graph::Dfir;
 use proc_macro2::{LineColumn, Span};
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -88,18 +87,18 @@ impl From<Diagnostic> for JsDiagnostic {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct HydroflowResult {
-    pub output: Option<HydroflowOutput>,
+pub struct DfirResult {
+    pub output: Option<DfirOutput>,
     pub diagnostics: Vec<JsDiagnostic>,
 }
 #[derive(Serialize, Deserialize)]
-pub struct HydroflowOutput {
+pub struct DfirOutput {
     pub compiled: String,
     pub mermaid: String,
 }
 
 #[wasm_bindgen]
-pub fn compile_hydroflow(
+pub fn compile_dfir(
     program: String,
     no_subgraphs: bool,
     no_varnames: bool,
@@ -120,8 +119,7 @@ pub fn compile_hydroflow(
 
     let out = match syn::parse_str(&program) {
         Ok(input) => {
-            let (graph_code_opt, diagnostics) =
-                build_hfcode(input, &quote!(hydroflow), PathBuf::default());
+            let (graph_code_opt, diagnostics) = build_hfcode(input, &quote!(hydroflow));
             let output = graph_code_opt.map(|(graph, code)| {
                 let mermaid = graph.to_mermaid(&write_config);
                 let file = syn::parse_quote! {
@@ -131,14 +129,14 @@ pub fn compile_hydroflow(
                     }
                 };
                 let compiled = prettyplease::unparse(&file);
-                HydroflowOutput { mermaid, compiled }
+                DfirOutput { mermaid, compiled }
             });
-            HydroflowResult {
+            DfirResult {
                 output,
                 diagnostics: diagnostics.into_iter().map(Into::into).collect(),
             }
         }
-        Err(errors) => HydroflowResult {
+        Err(errors) => DfirResult {
             output: None,
             diagnostics: errors
                 .into_iter()
@@ -193,7 +191,7 @@ pub fn compile_datalog(
                             }
                         };
 
-                        Some(HydroflowOutput {
+                        Some(DfirOutput {
                             compiled: prettyplease::unparse(&file),
                             mermaid: part_graph.to_mermaid(&write_config),
                         })
@@ -203,17 +201,17 @@ pub fn compile_datalog(
                         None
                     }
                 };
-                HydroflowResult {
+                DfirResult {
                     output,
                     diagnostics: diagnostics.into_iter().map(Into::into).collect(),
                 }
             }
-            Err(diagnostics) => HydroflowResult {
+            Err(diagnostics) => DfirResult {
                 output: None,
                 diagnostics: diagnostics.into_iter().map(Into::into).collect(),
             },
         },
-        Err(err) => HydroflowResult {
+        Err(err) => DfirResult {
             output: None,
             diagnostics: vec![Diagnostic {
                 span: Span::call_site(),
@@ -227,13 +225,13 @@ pub fn compile_datalog(
     serde_wasm_bindgen::to_value(&out).unwrap()
 }
 
-struct HydroflowInstance<'a, In, Out> {
-    hydroflow: Hydroflow<'a>,
+struct DfirInstance<'a, In, Out> {
+    dfir: Dfir<'a>,
     input: tokio::sync::mpsc::UnboundedSender<In>,
     output: tokio::sync::mpsc::UnboundedReceiver<Out>,
 }
 
-type DatalogBooleanDemoInstance = HydroflowInstance<'static, (i32,), (i32,)>;
+type DatalogBooleanDemoInstance = DfirInstance<'static, (i32,), (i32,)>;
 
 thread_local! {
     static DATALOG_BOOLEAN_DEMO_INSTANCES: RefCell<HashMap<String, DatalogBooleanDemoInstance>> =
@@ -243,9 +241,9 @@ thread_local! {
 #[wasm_bindgen]
 pub fn init_datalog_boolean_demo(instance_name: &str) {
     DATALOG_BOOLEAN_DEMO_INSTANCES.with(|map| {
-        let (in_send, input) = hydroflow::util::unbounded_channel::<(i32,)>();
-        let (out, out_recv) = hydroflow::util::unbounded_channel::<(i32,)>();
-        let hydroflow = datalog!(
+        let (in_send, input) = dfir_rs::util::unbounded_channel::<(i32,)>();
+        let (out, out_recv) = dfir_rs::util::unbounded_channel::<(i32,)>();
+        let dfir = datalog!(
             r#"
               .input ints `source_stream(input)`
               .output result `for_each(|v| out.send(v).unwrap())`
@@ -257,7 +255,7 @@ pub fn init_datalog_boolean_demo(instance_name: &str) {
         map.borrow_mut().insert(
             instance_name.into(),
             DatalogBooleanDemoInstance {
-                hydroflow,
+                dfir,
                 input: in_send,
                 output: out_recv.into_inner(),
             },
@@ -271,7 +269,7 @@ pub fn send_datalog_boolean_demo(instance_name: &str, input: i32) -> Option<i32>
         let mut map = map.borrow_mut();
         let instance = map.get_mut(instance_name)?;
         instance.input.send((input,)).unwrap();
-        instance.hydroflow.run_tick();
+        instance.dfir.run_tick();
         match instance
             .output
             .poll_recv(&mut Context::from_waker(futures::task::noop_waker_ref()))

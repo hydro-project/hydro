@@ -2,7 +2,7 @@ use std::sync::mpsc::channel;
 use std::thread;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
+use dfir_rs::dfir_syntax;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Inspect, Map, ToStream};
 
@@ -94,9 +94,9 @@ fn benchmark_iter_collect(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled(c: &mut Criterion) {
-    use hydroflow::pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::pusherator::{InputBuild, Pusherator, PusheratorBuild};
 
-    c.bench_function("arithmetic/hydroflow/compiled", |b| {
+    c.bench_function("arithmetic/dfir_rs/compiled", |b| {
         b.iter(|| {
             let mut pusherator = InputBuild::<usize>::new()
                 .map(|x| x + 1)
@@ -131,9 +131,9 @@ fn benchmark_hydroflow_compiled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled_no_cheating(c: &mut Criterion) {
-    use hydroflow::pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::pusherator::{InputBuild, Pusherator, PusheratorBuild};
 
-    c.bench_function("arithmetic/hydroflow/compiled_no_cheating", |b| {
+    c.bench_function("arithmetic/dfir_rs/compiled_no_cheating", |b| {
         b.iter(|| {
             let mut pusherator = InputBuild::<usize>::new()
                 .map(|x| black_box(x + 1))
@@ -169,10 +169,10 @@ fn benchmark_hydroflow_compiled_no_cheating(c: &mut Criterion) {
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
     const_assert!(NUM_OPS == 20); // This benchmark is hardcoded for 20 ops, so assert that NUM_OPS is 20.
-    c.bench_function("arithmetic/hydroflow/surface", |b| {
+    c.bench_function("arithmetic/dfir_rs/surface", |b| {
         b.iter_batched(
             || {
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(0..NUM_INTS))
 
                     -> map(|x| black_box(x + 1))

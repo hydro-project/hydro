@@ -12,6 +12,7 @@ import mingwei from "./people-img/mingwei.jpeg"
 import natacha from "./people-img/natacha.jpeg"
 import shadaj from "./people-img/shadaj.png"
 import lucky from "./people-img/lucky.jpeg"
+import rohit from "./people-img/rohit.jpg"
 import hydroTurtle from "./people-img/hydro-turtle.png"
 
 import styles from './people.module.css';
@@ -73,12 +74,7 @@ export default function Home() {
               <PersonCard name={"Alvin Cheung"} role={"Faculty"} url={"https://people.eecs.berkeley.edu/~akcheung"} img={akcheung}></PersonCard>
               <PersonCard name={"Natacha Crooks"} role={"Faculty"} url={"https://nacrooks.github.io"} img={natacha}></PersonCard>
               <PersonCard name={"Joe Hellerstein"} role={"Faculty"} url={"https://dsf.berkeley.edu/jmh"} img={jmh}></PersonCard>
-            </div>
-
-            <div className={styles["subtitle"]}>Postdocs</div>
-            <div className={styles["personGroup"]}>
-              <PersonCard name={"Tiemo Bang"} role={"Postdoc"} url={"https://scholar.google.com/citations?user=HDK0KRYAAAAJ&hl=en"} img={hydroTurtle}></PersonCard>
-              <PersonCard name={"Mae Milano"} role={"Postdoc"} url={"http://www.languagesforsyste.ms"} img={mae}></PersonCard>
+              <PersonCard name={"Mae Milano"} role={"Faculty"} url={"http://www.languagesforsyste.ms"} img={mae}></PersonCard>
             </div>
 
             <div className={styles["subtitle"]}>Graduate Students & Research Engineers</div>
@@ -88,7 +84,14 @@ export default function Home() {
               <PersonCard name={"Shadaj Laddad"} role={"PhD Student"} url={"https://www.shadaj.me"} img={shadaj}></PersonCard>
               <PersonCard name={"Conor Power"} role={"PhD Student"} url={"https://www.linkedin.com/in/conorpower23"} img={conor}></PersonCard>
               <PersonCard name={"Mingwei Samuel"} role={"Research Engineer"} url={"https://github.com/MingweiSamuel"} img={mingwei}></PersonCard>
+              <PersonCard name={"Rohit Kulshreshtha"} role={"Research Engineer"} url={"https://www.linkedin.com/in/lucky-k-59020457/"} img={rohit}></PersonCard>
+            </div>
+
+            <div className={styles["subtitle"]}>Alumni</div>
+            <div className={styles["personGroup"]}>
+              <PersonCard name={"Tiemo Bang"} role={"Postdoc"} url={"https://scholar.google.com/citations?user=HDK0KRYAAAAJ&hl=en"} img={hydroTurtle}></PersonCard>
               <PersonCard name={"Lucky Katahanas"} role={"Research Engineer"} url={"https://www.linkedin.com/in/lucky-k-59020457/"} img={lucky}></PersonCard>
+              <PersonCard name={"Justin Jaffray"} role={"Research Engineer"} url={"https://www.linkedin.com/in/justinjaffray/"} img={hydroTurtle}></PersonCard>
             </div>
           </div>
         </div>

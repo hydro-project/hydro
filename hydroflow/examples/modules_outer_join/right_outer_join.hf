@@ -1,6 +1,0 @@
-// flip the lhs and rhs
-mod[0] -> [1]left_outer_join;
-mod[1] -> [0]left_outer_join;
-
-// flip them back
-left_outer_join = import!("left_outer_join.hf") -> map(|(k, (v1, v2))| (k, (v2, v1))) -> mod;

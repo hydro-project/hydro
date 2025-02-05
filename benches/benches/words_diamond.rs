@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
-use hydroflow::itertools::Itertools;
+use dfir_rs::dfir_syntax;
+use dfir_rs::itertools::Itertools;
 use nameof::name_of;
 
 const OUTPUT: usize = 5_123_595;
@@ -29,13 +29,13 @@ fn hash_code(s: &str) -> u32 {
         .fold(0, |n, c| n.wrapping_mul(31).wrapping_add(c as u32))
 }
 
-fn hydroflow_diamond(c: &mut Criterion) {
+fn dfir_rs_diamond(c: &mut Criterion) {
     let _ = *WORDS;
 
-    c.bench_function(name_of!(hydroflow_diamond), |b| {
+    c.bench_function(name_of!(dfir_rs_diamond), |b| {
         b.iter(|| {
             let words = words();
-            let mut df = hydroflow_syntax! {
+            let mut df = dfir_syntax! {
                 my_tee = source_iter(words) -> tee();
                 my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
                 my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;
@@ -173,7 +173,7 @@ fn hydroflo2_diamond_iter_buffer_one(c: &mut Criterion) {
 
 criterion_group!(
     words_diamond,
-    hydroflow_diamond,
+    dfir_rs_diamond,
     hydroflo2_diamond_forloop,
     hydroflo2_diamond_iter_clone_chain,
     hydroflo2_diamond_iter_clone_interleave,

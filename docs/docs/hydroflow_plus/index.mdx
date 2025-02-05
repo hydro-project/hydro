@@ -1,16 +1,3 @@
----
-sidebar_position: 0
----
+import {Redirect} from '@docusaurus/router';
 
-# Introduction
-Hydroflow+ is a high-level distributed programming framework for Rust powered by the [Hydroflow runtime](../hydroflow/index.mdx). Unlike traditional architectures such as actors or RPCs, Hydroflow+ offers _choreographic_ APIs, where expressions and functions can describe computation that takes place across many locations. It also integrates with [Hydro Deploy](../deploy/index.md) to make it easy to deploy and run Hydroflow+ programs to the cloud.
-
-Hydroflow+ uses a two-stage compilation approach. HF+ programs are standard Rust programs, which first run on the developer's laptop to generate a _deployment plan_. This plan is then compiled to individual binaries for each machine in the distributed system (enabling zero-overhead abstractions), and are then deployed to the cloud using the generated plan along with specifications of cloud resources.
-
-Hydroflow+ has been used to write a variety of high-performance distributed systems, including implementations of classic distributed protocols such as two-phase commit and Paxos. Work is ongoing to develop a distributed systems standard library that will offer these protocols and more as reusable components.
-
-:::caution
-
-The docs for Hydroflow+ are still a work in progress. If you have any questions or run into bugs, please file an issue on the [Hydroflow GitHub repository](https://github.com/hydro-project/hydroflow).
-
-:::
+<Redirect to="/docs/hydro" />

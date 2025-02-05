@@ -11,7 +11,7 @@ clap = { version = "4.5.4", features = ["derive", "env"] }
 config = "0.14.0"
 governor = "0.7.0"
 hostname = "0.4.0"
-hydroflow = { path="../../hydroflow" }
+dfir_rs = { path= "../../dfir_rs" }
 lattices = { path = '../../lattices'}
 lazy_static = "1.5.0"
 # The specific set of features for Notify are picked to disable the default cross-beam channels (cause problems with

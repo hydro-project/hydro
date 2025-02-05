@@ -1,4 +1,4 @@
-use hydroflow::DemuxEnum;
+use dfir_rs::DemuxEnum;
 
 use crate::model::{Clock, Namespaces};
 use crate::{ClientRequest, GossipMessage, Key};

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
 use futures::channel::mpsc::UnboundedSender;
 use futures::stream::SplitSink;
 use futures::{SinkExt, StreamExt};
-use hydroflow::tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio::net::TcpListener;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -16,11 +16,11 @@ pub(crate) async fn ws_server(
     UnboundedReceiverStream<(usize, String)>,
     UnboundedSender<(usize, String)>,
 ) {
-    let (clients_send, clients_connect) = hydroflow::util::unbounded_channel();
-    let (client_disconnect_send, clients_disconnect) = hydroflow::util::unbounded_channel();
+    let (clients_send, clients_connect) = dfir_rs::util::unbounded_channel();
+    let (client_disconnect_send, clients_disconnect) = dfir_rs::util::unbounded_channel();
 
     let (received_messages_send, from_client) =
-        hydroflow::util::unbounded_channel::<(usize, String)>();
+        dfir_rs::util::unbounded_channel::<(usize, String)>();
     let recipients = Arc::new(tokio::sync::Mutex::new(HashMap::<
         usize,
         SplitSink<_, Message>,

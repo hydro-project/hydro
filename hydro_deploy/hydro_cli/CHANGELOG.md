@@ -5,7 +5,80 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.11.0 (2024-12-23)
+
+### Documentation
+
+ - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
+   #1452 
+   
+   Will trigger new releases of the following:
+   `unchanged = 'hydroflow_deploy_integration', 'variadics',
+   'variadics_macro', 'pusherator'`
+   
+   (All other crates already have changes, so would be released anyway)
+
+### New Features (BREAKING)
+
+ - <csr-id-939389953875bf5f94ea84503a7a35efd7342282/> mark non-deterministic operators as unsafe and introduce timestamped streams
+   Big PR.
+   
+   First big change is we introduce a `Timestamped` location. This is a bit
+   of a hybrid between top-level locations and `Tick` locations. The idea
+   is that you choose where timestamps are generated, and then have a
+   guarantee that everything after that will be atomically computed (useful
+   for making sure we add payloads to the log before ack-ing).
+   
+   The contract is that an operator or module that takes a `Timestamped`
+   input must still be deterministic regardless of the stamps on messages
+   (which are hidden unless you `tick_batch`). But unlike a top-level
+   stream (which has the same constraints), you have the atomicity
+   guarantee. Right now the guarantee is trivial since we have one global
+   tick for everything. But in the future when we want to apply
+   @davidchuyaya's optimizations this will be helpful to know when there
+   are causal dependencies on when data can be sent to others.
+   
+   Second change is we mark every non-deterministic operator (modulo
+   explicit annotations such as `NoOrder`) with Rust's `unsafe` keyword.
+   This makes it super clear where non-determinism is taking place.
+   
+   I've used this to put `unsafe` blocks throughout our example code and
+   add `SAFETY` annotations that argue why the non-determinism is safe (or
+   point out that we've explicitly documented / expect non-determinism). I
+   also added `#![warn(unsafe_op_in_unsafe_fn)]` to the examples and the
+   template, since this forces good hygiene of annotating sources of
+   non-determinism even inside a module that is intentionally
+   non-deterministic.
+   
+   Paxos changes are mostly refactors, and I verified that the performance
+   is the same as before.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 45 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1584](https://github.com/hydro-project/hydro/issues/1584)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1501](https://github.com/hydro-project/hydro/issues/1501)**
+    - Add `repository` field to `Cargo.toml`s, fix #1452 ([`28cd220`](https://github.com/hydro-project/hydro/commit/28cd220c68e3660d9ebade113949a2346720cd04))
+ * **[#1584](https://github.com/hydro-project/hydro/issues/1584)**
+    - Mark non-deterministic operators as unsafe and introduce timestamped streams ([`9393899`](https://github.com/hydro-project/hydro/commit/939389953875bf5f94ea84503a7a35efd7342282))
+ * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
+</details>
+
 ## 0.10.0 (2024-11-08)
+
+<csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
 
 ### Chore
 
@@ -15,10 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 69 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
- - 1 unique issue was worked on: [#1444](https://github.com/hydro-project/hydroflow/issues/1444)
+ - 1 unique issue was worked on: [#1444](https://github.com/hydro-project/hydro/issues/1444)
 
 ### Commit Details
 
@@ -26,8 +99,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1444](https://github.com/hydro-project/hydroflow/issues/1444)**
-    - Update pinned rust version, clippy lints, remove some dead code ([`d567760`](https://github.com/hydro-project/hydroflow/commit/d5677604e93c07a5392f4229af94a0b736eca382))
+ * **[#1444](https://github.com/hydro-project/hydro/issues/1444)**
+    - Update pinned rust version, clippy lints, remove some dead code ([`d567760`](https://github.com/hydro-project/hydro/commit/d5677604e93c07a5392f4229af94a0b736eca382))
+ * **Uncategorized**
+    - Release hydroflow_lang v0.10.0, hydroflow_datalog_core v0.10.0, hydroflow_datalog v0.10.0, hydroflow_deploy_integration v0.10.0, hydroflow_macro v0.10.0, lattices_macro v0.5.7, variadics v0.0.7, variadics_macro v0.5.5, lattices v0.5.8, multiplatform_test v0.3.0, pusherator v0.0.9, hydroflow v0.10.0, hydro_deploy v0.10.0, stageleft_macro v0.4.0, stageleft v0.5.0, stageleft_tool v0.4.0, hydroflow_plus v0.10.0, hydro_cli v0.10.0, safety bump 8 crates ([`dcd48fc`](https://github.com/hydro-project/hydro/commit/dcd48fc7ee805898d9b5ef0d082870e30615e95b))
 </details>
 
 ## 0.9.0 (2024-08-30)
@@ -80,7 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 9 commits contributed to the release.
  - 38 days passed between releases.
  - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 7 unique issues were worked on: [#1313](https://github.com/hydro-project/hydroflow/issues/1313), [#1366](https://github.com/hydro-project/hydroflow/issues/1366), [#1370](https://github.com/hydro-project/hydroflow/issues/1370), [#1398](https://github.com/hydro-project/hydroflow/issues/1398), [#1403](https://github.com/hydro-project/hydroflow/issues/1403), [#1413](https://github.com/hydro-project/hydroflow/issues/1413), [#1423](https://github.com/hydro-project/hydroflow/issues/1423)
+ - 7 unique issues were worked on: [#1313](https://github.com/hydro-project/hydro/issues/1313), [#1366](https://github.com/hydro-project/hydro/issues/1366), [#1370](https://github.com/hydro-project/hydro/issues/1370), [#1398](https://github.com/hydro-project/hydro/issues/1398), [#1403](https://github.com/hydro-project/hydro/issues/1403), [#1413](https://github.com/hydro-project/hydro/issues/1413), [#1423](https://github.com/hydro-project/hydro/issues/1423)
 
 ### Commit Details
 
@@ -88,23 +163,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1313](https://github.com/hydro-project/hydroflow/issues/1313)**
-    - Perf works over SSH ([`749a103`](https://github.com/hydro-project/hydroflow/commit/749a10307f4eff2a46a1056735e84ed94d44b39e))
- * **[#1366](https://github.com/hydro-project/hydroflow/issues/1366)**
-    - Use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364 ([`8856c85`](https://github.com/hydro-project/hydroflow/commit/8856c8596d5ad9d5f24a46467690bfac1549fae2))
- * **[#1370](https://github.com/hydro-project/hydroflow/issues/1370)**
-    - `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading ([`a214786`](https://github.com/hydro-project/hydroflow/commit/a2147864b24110c9ae2c1553e9e8b55bd5065f15))
- * **[#1398](https://github.com/hydro-project/hydroflow/issues/1398)**
-    - Use trybuild to compile subgraph binaries ([`46a8a2c`](https://github.com/hydro-project/hydroflow/commit/46a8a2cb08732bb21096e824bc4542d208c68fb2))
- * **[#1403](https://github.com/hydro-project/hydroflow/issues/1403)**
-    - Only instantiate `Localhost` once ([`63b528f`](https://github.com/hydro-project/hydroflow/commit/63b528feeb2e6dac2ed12c02b2e39e0d42133a74))
- * **[#1413](https://github.com/hydro-project/hydroflow/issues/1413)**
-    - Rename integration crates to drop CLI references ([`0a465e5`](https://github.com/hydro-project/hydroflow/commit/0a465e55dd39c76bc1aefb020460a639d792fe87))
- * **[#1423](https://github.com/hydro-project/hydroflow/issues/1423)**
-    - Lower min dependency versions where possible, update `Cargo.lock` ([`11af328`](https://github.com/hydro-project/hydroflow/commit/11af32828bab6e4a4264d2635ff71a12bb0bb778))
+ * **[#1313](https://github.com/hydro-project/hydro/issues/1313)**
+    - Perf works over SSH ([`749a103`](https://github.com/hydro-project/hydro/commit/749a10307f4eff2a46a1056735e84ed94d44b39e))
+ * **[#1366](https://github.com/hydro-project/hydro/issues/1366)**
+    - Use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364 ([`8856c85`](https://github.com/hydro-project/hydro/commit/8856c8596d5ad9d5f24a46467690bfac1549fae2))
+ * **[#1370](https://github.com/hydro-project/hydro/issues/1370)**
+    - `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading ([`a214786`](https://github.com/hydro-project/hydro/commit/a2147864b24110c9ae2c1553e9e8b55bd5065f15))
+ * **[#1398](https://github.com/hydro-project/hydro/issues/1398)**
+    - Use trybuild to compile subgraph binaries ([`46a8a2c`](https://github.com/hydro-project/hydro/commit/46a8a2cb08732bb21096e824bc4542d208c68fb2))
+ * **[#1403](https://github.com/hydro-project/hydro/issues/1403)**
+    - Only instantiate `Localhost` once ([`63b528f`](https://github.com/hydro-project/hydro/commit/63b528feeb2e6dac2ed12c02b2e39e0d42133a74))
+ * **[#1413](https://github.com/hydro-project/hydro/issues/1413)**
+    - Rename integration crates to drop CLI references ([`0a465e5`](https://github.com/hydro-project/hydro/commit/0a465e55dd39c76bc1aefb020460a639d792fe87))
+ * **[#1423](https://github.com/hydro-project/hydro/issues/1423)**
+    - Lower min dependency versions where possible, update `Cargo.lock` ([`11af328`](https://github.com/hydro-project/hydro/commit/11af32828bab6e4a4264d2635ff71a12bb0bb778))
  * **Uncategorized**
-    - Release hydroflow_lang v0.9.0, hydroflow_datalog_core v0.9.0, hydroflow_datalog v0.9.0, hydroflow_deploy_integration v0.9.0, hydroflow_macro v0.9.0, lattices_macro v0.5.6, lattices v0.5.7, multiplatform_test v0.2.0, variadics v0.0.6, pusherator v0.0.8, hydroflow v0.9.0, stageleft_macro v0.3.0, stageleft v0.4.0, stageleft_tool v0.3.0, hydroflow_plus v0.9.0, hydro_deploy v0.9.0, hydro_cli v0.9.0, hydroflow_plus_deploy v0.9.0, safety bump 8 crates ([`0750117`](https://github.com/hydro-project/hydroflow/commit/0750117de7088c01a439b102adeb4c832889f171))
-    - Manually set versions for crates renamed in #1413 ([`a2ec110`](https://github.com/hydro-project/hydroflow/commit/a2ec110ccadb97e293b19d83a155d98d94224bba))
+    - Release hydroflow_lang v0.9.0, hydroflow_datalog_core v0.9.0, hydroflow_datalog v0.9.0, hydroflow_deploy_integration v0.9.0, hydroflow_macro v0.9.0, lattices_macro v0.5.6, lattices v0.5.7, multiplatform_test v0.2.0, variadics v0.0.6, pusherator v0.0.8, hydroflow v0.9.0, stageleft_macro v0.3.0, stageleft v0.4.0, stageleft_tool v0.3.0, hydroflow_plus v0.9.0, hydro_deploy v0.9.0, hydro_cli v0.9.0, hydroflow_plus_deploy v0.9.0, safety bump 8 crates ([`0750117`](https://github.com/hydro-project/hydro/commit/0750117de7088c01a439b102adeb4c832889f171))
+    - Manually set versions for crates renamed in #1413 ([`a2ec110`](https://github.com/hydro-project/hydro/commit/a2ec110ccadb97e293b19d83a155d98d94224bba))
 </details>
 
 ## 0.8.0 (2024-07-23)
@@ -165,7 +240,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 9 commits contributed to the release.
  - 59 days passed between releases.
  - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 8 unique issues were worked on: [#1309](https://github.com/hydro-project/hydroflow/issues/1309), [#1334](https://github.com/hydro-project/hydroflow/issues/1334), [#1339](https://github.com/hydro-project/hydroflow/issues/1339), [#1340](https://github.com/hydro-project/hydroflow/issues/1340), [#1345](https://github.com/hydro-project/hydroflow/issues/1345), [#1346](https://github.com/hydro-project/hydroflow/issues/1346), [#1347](https://github.com/hydro-project/hydroflow/issues/1347), [#1356](https://github.com/hydro-project/hydroflow/issues/1356)
+ - 8 unique issues were worked on: [#1309](https://github.com/hydro-project/hydro/issues/1309), [#1334](https://github.com/hydro-project/hydro/issues/1334), [#1339](https://github.com/hydro-project/hydro/issues/1339), [#1340](https://github.com/hydro-project/hydro/issues/1340), [#1345](https://github.com/hydro-project/hydro/issues/1345), [#1346](https://github.com/hydro-project/hydro/issues/1346), [#1347](https://github.com/hydro-project/hydro/issues/1347), [#1356](https://github.com/hydro-project/hydro/issues/1356)
 
 ### Commit Details
 
@@ -173,24 +248,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1309](https://github.com/hydro-project/hydroflow/issues/1309)**
-    - Update pinned rust version to 2024-06-17 ([`3098f77`](https://github.com/hydro-project/hydroflow/commit/3098f77fd99882aae23c4b31017aa4b761306197))
- * **[#1334](https://github.com/hydro-project/hydroflow/issues/1334)**
-    - Build cache cleanup ([`0feae74`](https://github.com/hydro-project/hydroflow/commit/0feae7454e4674eea1f3308b3d6d4e9d459cda67))
- * **[#1339](https://github.com/hydro-project/hydroflow/issues/1339)**
-    - Replace some uses of `tokio::sync::RwLock` with `std::sync::Mutex` #430 (3/3) ([`141eae1`](https://github.com/hydro-project/hydroflow/commit/141eae1c3a1869fa42756250618a21ea2a2c7e34))
- * **[#1340](https://github.com/hydro-project/hydroflow/issues/1340)**
-    - Rename `SSH` -> `Ssh` ([`947ebc1`](https://github.com/hydro-project/hydroflow/commit/947ebc1cb21a07fbfacae4ac956dbd0015a8a418))
- * **[#1345](https://github.com/hydro-project/hydroflow/issues/1345)**
-    - Enable clippy `upper-case-acronyms-aggressive` ([`12b8ba5`](https://github.com/hydro-project/hydroflow/commit/12b8ba53f28eb9de1318b41cdf1e23282f6f0eb6))
- * **[#1346](https://github.com/hydro-project/hydroflow/issues/1346)**
-    - Make `HydroflowSource`, `HydroflowSink` traits use `&self` interior mutability to remove `RwLock` wrappings #430 ([`057a0a5`](https://github.com/hydro-project/hydroflow/commit/057a0a510568cf81932368c8c65e056f91af7202))
- * **[#1347](https://github.com/hydro-project/hydroflow/issues/1347)**
-    - Make `Host` trait use `&self` interior mutability to remove `RwLock` wrappings #430 ([`c5a8de2`](https://github.com/hydro-project/hydroflow/commit/c5a8de28e7844b3c29d58116d8340967f2e6bcc4))
- * **[#1356](https://github.com/hydro-project/hydroflow/issues/1356)**
-    - Replace `async-channel` with `tokio::sync::mpsc::unbounded_channel` ([`6039078`](https://github.com/hydro-project/hydroflow/commit/60390782dd7dcec18d193c800af716843a944dba))
+ * **[#1309](https://github.com/hydro-project/hydro/issues/1309)**
+    - Update pinned rust version to 2024-06-17 ([`3098f77`](https://github.com/hydro-project/hydro/commit/3098f77fd99882aae23c4b31017aa4b761306197))
+ * **[#1334](https://github.com/hydro-project/hydro/issues/1334)**
+    - Build cache cleanup ([`0feae74`](https://github.com/hydro-project/hydro/commit/0feae7454e4674eea1f3308b3d6d4e9d459cda67))
+ * **[#1339](https://github.com/hydro-project/hydro/issues/1339)**
+    - Replace some uses of `tokio::sync::RwLock` with `std::sync::Mutex` #430 (3/3) ([`141eae1`](https://github.com/hydro-project/hydro/commit/141eae1c3a1869fa42756250618a21ea2a2c7e34))
+ * **[#1340](https://github.com/hydro-project/hydro/issues/1340)**
+    - Rename `SSH` -> `Ssh` ([`947ebc1`](https://github.com/hydro-project/hydro/commit/947ebc1cb21a07fbfacae4ac956dbd0015a8a418))
+ * **[#1345](https://github.com/hydro-project/hydro/issues/1345)**
+    - Enable clippy `upper-case-acronyms-aggressive` ([`12b8ba5`](https://github.com/hydro-project/hydro/commit/12b8ba53f28eb9de1318b41cdf1e23282f6f0eb6))
+ * **[#1346](https://github.com/hydro-project/hydro/issues/1346)**
+    - Make `HydroflowSource`, `HydroflowSink` traits use `&self` interior mutability to remove `RwLock` wrappings #430 ([`057a0a5`](https://github.com/hydro-project/hydro/commit/057a0a510568cf81932368c8c65e056f91af7202))
+ * **[#1347](https://github.com/hydro-project/hydro/issues/1347)**
+    - Make `Host` trait use `&self` interior mutability to remove `RwLock` wrappings #430 ([`c5a8de2`](https://github.com/hydro-project/hydro/commit/c5a8de28e7844b3c29d58116d8340967f2e6bcc4))
+ * **[#1356](https://github.com/hydro-project/hydro/issues/1356)**
+    - Replace `async-channel` with `tokio::sync::mpsc::unbounded_channel` ([`6039078`](https://github.com/hydro-project/hydro/commit/60390782dd7dcec18d193c800af716843a944dba))
  * **Uncategorized**
-    - Release hydroflow_lang v0.8.0, hydroflow_datalog_core v0.8.0, hydroflow_datalog v0.8.0, hydroflow_macro v0.8.0, lattices_macro v0.5.5, lattices v0.5.6, variadics v0.0.5, pusherator v0.0.7, hydroflow v0.8.0, hydroflow_plus v0.8.0, hydro_deploy v0.8.0, hydro_cli v0.8.0, hydroflow_plus_cli_integration v0.8.0, safety bump 7 crates ([`ca6c16b`](https://github.com/hydro-project/hydroflow/commit/ca6c16b4a7ce35e155fe7fc6c7d1676c37c9e4de))
+    - Release hydroflow_lang v0.8.0, hydroflow_datalog_core v0.8.0, hydroflow_datalog v0.8.0, hydroflow_macro v0.8.0, lattices_macro v0.5.5, lattices v0.5.6, variadics v0.0.5, pusherator v0.0.7, hydroflow v0.8.0, hydroflow_plus v0.8.0, hydro_deploy v0.8.0, hydro_cli v0.8.0, hydroflow_plus_cli_integration v0.8.0, safety bump 7 crates ([`ca6c16b`](https://github.com/hydro-project/hydro/commit/ca6c16b4a7ce35e155fe7fc6c7d1676c37c9e4de))
 </details>
 
 ## 0.7.0 (2024-05-24)
@@ -212,7 +287,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 3 commits contributed to the release.
  - 44 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 2 unique issues were worked on: [#1152](https://github.com/hydro-project/hydroflow/issues/1152), [#1157](https://github.com/hydro-project/hydroflow/issues/1157)
+ - 2 unique issues were worked on: [#1152](https://github.com/hydro-project/hydro/issues/1152), [#1157](https://github.com/hydro-project/hydro/issues/1157)
 
 ### Commit Details
 
@@ -220,12 +295,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1152](https://github.com/hydro-project/hydroflow/issues/1152)**
-    - Update pyo3, silence warnings in generated code ([`1801502`](https://github.com/hydro-project/hydroflow/commit/18015029a725b068696ed9edefd1097583c858a6))
- * **[#1157](https://github.com/hydro-project/hydroflow/issues/1157)**
-    - Add support for collecting counts and running perf ([`29a263f`](https://github.com/hydro-project/hydroflow/commit/29a263fb564c5ce4bc495ea4e9d20b8b2621b645))
+ * **[#1152](https://github.com/hydro-project/hydro/issues/1152)**
+    - Update pyo3, silence warnings in generated code ([`1801502`](https://github.com/hydro-project/hydro/commit/18015029a725b068696ed9edefd1097583c858a6))
+ * **[#1157](https://github.com/hydro-project/hydro/issues/1157)**
+    - Add support for collecting counts and running perf ([`29a263f`](https://github.com/hydro-project/hydro/commit/29a263fb564c5ce4bc495ea4e9d20b8b2621b645))
  * **Uncategorized**
-    - Release hydroflow_lang v0.7.0, hydroflow_datalog_core v0.7.0, hydroflow_datalog v0.7.0, hydroflow_macro v0.7.0, lattices v0.5.5, multiplatform_test v0.1.0, pusherator v0.0.6, hydroflow v0.7.0, stageleft_macro v0.2.0, stageleft v0.3.0, stageleft_tool v0.2.0, hydroflow_plus v0.7.0, hydro_deploy v0.7.0, hydro_cli v0.7.0, hydroflow_plus_cli_integration v0.7.0, safety bump 8 crates ([`2852147`](https://github.com/hydro-project/hydroflow/commit/285214740627685e911781793e05d234ab2ad2bd))
+    - Release hydroflow_lang v0.7.0, hydroflow_datalog_core v0.7.0, hydroflow_datalog v0.7.0, hydroflow_macro v0.7.0, lattices v0.5.5, multiplatform_test v0.1.0, pusherator v0.0.6, hydroflow v0.7.0, stageleft_macro v0.2.0, stageleft v0.3.0, stageleft_tool v0.2.0, hydroflow_plus v0.7.0, hydro_deploy v0.7.0, hydro_cli v0.7.0, hydroflow_plus_cli_integration v0.7.0, safety bump 8 crates ([`2852147`](https://github.com/hydro-project/hydro/commit/285214740627685e911781793e05d234ab2ad2bd))
 </details>
 
 ## 0.6.1 (2024-04-09)
@@ -243,7 +318,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 4 commits contributed to the release.
  - 38 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
- - 1 unique issue was worked on: [#1090](https://github.com/hydro-project/hydroflow/issues/1090)
+ - 1 unique issue was worked on: [#1090](https://github.com/hydro-project/hydro/issues/1090)
 
 ### Commit Details
 
@@ -251,12 +326,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1090](https://github.com/hydro-project/hydroflow/issues/1090)**
-    - Qualified path cleanups for clippy ([`7958fb0`](https://github.com/hydro-project/hydroflow/commit/7958fb0d900be8fe7359326abfa11dcb8fb35e8a))
+ * **[#1090](https://github.com/hydro-project/hydro/issues/1090)**
+    - Qualified path cleanups for clippy ([`7958fb0`](https://github.com/hydro-project/hydro/commit/7958fb0d900be8fe7359326abfa11dcb8fb35e8a))
  * **Uncategorized**
-    - Release hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1 ([`c385c13`](https://github.com/hydro-project/hydroflow/commit/c385c132c9733d1bace82156aa14216b8e7fef9f))
-    - Release hydroflow_lang v0.6.2, hydroflow v0.6.2, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`23cfe08`](https://github.com/hydro-project/hydroflow/commit/23cfe0839079aa17d042bbd3976f6d188689d290))
-    - Release hydroflow_cli_integration v0.5.2, hydroflow_lang v0.6.1, hydroflow_datalog_core v0.6.1, lattices v0.5.4, hydroflow v0.6.1, stageleft_macro v0.1.1, stageleft v0.2.1, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`cd63f22`](https://github.com/hydro-project/hydroflow/commit/cd63f2258c961a40f0e5dbef20ac329a2d570ad0))
+    - Release hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1 ([`c385c13`](https://github.com/hydro-project/hydro/commit/c385c132c9733d1bace82156aa14216b8e7fef9f))
+    - Release hydroflow_lang v0.6.2, hydroflow v0.6.2, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`23cfe08`](https://github.com/hydro-project/hydro/commit/23cfe0839079aa17d042bbd3976f6d188689d290))
+    - Release hydroflow_cli_integration v0.5.2, hydroflow_lang v0.6.1, hydroflow_datalog_core v0.6.1, lattices v0.5.4, hydroflow v0.6.1, stageleft_macro v0.1.1, stageleft v0.2.1, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`cd63f22`](https://github.com/hydro-project/hydro/commit/cd63f2258c961a40f0e5dbef20ac329a2d570ad0))
 </details>
 
 ## 0.6.0 (2024-03-02)
@@ -280,7 +355,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 3 commits contributed to the release.
  - 28 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 2 unique issues were worked on: [#1015](https://github.com/hydro-project/hydroflow/issues/1015), [#1043](https://github.com/hydro-project/hydroflow/issues/1043)
+ - 2 unique issues were worked on: [#1015](https://github.com/hydro-project/hydro/issues/1015), [#1043](https://github.com/hydro-project/hydro/issues/1043)
 
 ### Commit Details
 
@@ -288,12 +363,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1015](https://github.com/hydro-project/hydroflow/issues/1015)**
-    - Consolidate tasks and use sccache and nextest ([`e9639f6`](https://github.com/hydro-project/hydroflow/commit/e9639f608f8dafd3f384837067800a66951b25df))
- * **[#1043](https://github.com/hydro-project/hydroflow/issues/1043)**
-    - Add support for azure ([`fcf43bf`](https://github.com/hydro-project/hydroflow/commit/fcf43bf86fe550247dffa4641a9ce3aff3b9afc3))
+ * **[#1015](https://github.com/hydro-project/hydro/issues/1015)**
+    - Consolidate tasks and use sccache and nextest ([`e9639f6`](https://github.com/hydro-project/hydro/commit/e9639f608f8dafd3f384837067800a66951b25df))
+ * **[#1043](https://github.com/hydro-project/hydro/issues/1043)**
+    - Add support for azure ([`fcf43bf`](https://github.com/hydro-project/hydro/commit/fcf43bf86fe550247dffa4641a9ce3aff3b9afc3))
  * **Uncategorized**
-    - Release hydroflow_lang v0.6.0, hydroflow_datalog_core v0.6.0, hydroflow_datalog v0.6.0, hydroflow_macro v0.6.0, lattices v0.5.3, variadics v0.0.4, pusherator v0.0.5, hydroflow v0.6.0, stageleft v0.2.0, hydroflow_plus v0.6.0, hydro_deploy v0.6.0, hydro_cli v0.6.0, hydroflow_plus_cli_integration v0.6.0, safety bump 7 crates ([`09ea65f`](https://github.com/hydro-project/hydroflow/commit/09ea65fe9cd45c357c43bffca30e60243fa45cc8))
+    - Release hydroflow_lang v0.6.0, hydroflow_datalog_core v0.6.0, hydroflow_datalog v0.6.0, hydroflow_macro v0.6.0, lattices v0.5.3, variadics v0.0.4, pusherator v0.0.5, hydroflow v0.6.0, stageleft v0.2.0, hydroflow_plus v0.6.0, hydro_deploy v0.6.0, hydro_cli v0.6.0, hydroflow_plus_cli_integration v0.6.0, safety bump 7 crates ([`09ea65f`](https://github.com/hydro-project/hydro/commit/09ea65fe9cd45c357c43bffca30e60243fa45cc8))
 </details>
 
 ## 0.5.1 (2024-02-02)
@@ -365,7 +440,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - 7 commits contributed to the release.
  - 114 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
- - 4 unique issues were worked on: [#1046](https://github.com/hydro-project/hydroflow/issues/1046), [#986](https://github.com/hydro-project/hydroflow/issues/986), [#987](https://github.com/hydro-project/hydroflow/issues/987), [#994](https://github.com/hydro-project/hydroflow/issues/994)
+ - 4 unique issues were worked on: [#1046](https://github.com/hydro-project/hydro/issues/1046), [#986](https://github.com/hydro-project/hydro/issues/986), [#987](https://github.com/hydro-project/hydro/issues/987), [#994](https://github.com/hydro-project/hydro/issues/994)
 
 ### Commit Details
 
@@ -373,18 +448,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <details><summary>view details</summary>
 
- * **[#1046](https://github.com/hydro-project/hydroflow/issues/1046)**
-    - Generate pre-move changelogs for `hydro_cli` and `hydroflow_cli_integration` ([`69e0416`](https://github.com/hydro-project/hydroflow/commit/69e04167f4774cf1ca3351e7ac34d15cfa83362b))
- * **[#986](https://github.com/hydro-project/hydroflow/issues/986)**
-    - Split Rust core from Python bindings ([`c50ca12`](https://github.com/hydro-project/hydroflow/commit/c50ca121b6d5e30dc07843f82caa135b68626301))
- * **[#987](https://github.com/hydro-project/hydroflow/issues/987)**
-    - Improve Rust API for defining services ([`53d7aee`](https://github.com/hydro-project/hydroflow/commit/53d7aee8dcc574d47864ec89bfea30a82eab0ee7))
- * **[#994](https://github.com/hydro-project/hydroflow/issues/994)**
-    - Don't vendor openssl and fix docker build ([`1ae27de`](https://github.com/hydro-project/hydroflow/commit/1ae27de6aafb72cee5da0cce6cf52748161d0f33))
+ * **[#1046](https://github.com/hydro-project/hydro/issues/1046)**
+    - Generate pre-move changelogs for `hydro_cli` and `hydroflow_cli_integration` ([`69e0416`](https://github.com/hydro-project/hydro/commit/69e04167f4774cf1ca3351e7ac34d15cfa83362b))
+ * **[#986](https://github.com/hydro-project/hydro/issues/986)**
+    - Split Rust core from Python bindings ([`c50ca12`](https://github.com/hydro-project/hydro/commit/c50ca121b6d5e30dc07843f82caa135b68626301))
+ * **[#987](https://github.com/hydro-project/hydro/issues/987)**
+    - Improve Rust API for defining services ([`53d7aee`](https://github.com/hydro-project/hydro/commit/53d7aee8dcc574d47864ec89bfea30a82eab0ee7))
+ * **[#994](https://github.com/hydro-project/hydro/issues/994)**
+    - Don't vendor openssl and fix docker build ([`1ae27de`](https://github.com/hydro-project/hydro/commit/1ae27de6aafb72cee5da0cce6cf52748161d0f33))
  * **Uncategorized**
-    - Release hydroflow_lang v0.5.2, hydroflow_datalog_core v0.5.2, hydroflow_macro v0.5.2, lattices v0.5.2, hydroflow v0.5.2, hydro_cli v0.5.1, hydroflow_plus_cli_integration v0.5.1 ([`6ac8720`](https://github.com/hydro-project/hydroflow/commit/6ac872081753548ebb8ec95549b4d820dc050d3e))
-    - Release hydroflow_cli_integration v0.5.1, hydroflow_lang v0.5.1, hydroflow_datalog_core v0.5.1, hydroflow_datalog v0.5.1, hydroflow_macro v0.5.1, lattices v0.5.1, variadics v0.0.3, pusherator v0.0.4, hydroflow v0.5.1, stageleft_macro v0.1.0, stageleft v0.1.0, hydroflow_plus v0.5.1, hydro_deploy v0.5.1, hydro_cli v0.5.1 ([`478aebc`](https://github.com/hydro-project/hydroflow/commit/478aebc8fee2aa78eab86bd386322db1c70bde6a))
-    - Manually set lockstep-versioned crates (and `lattices`) to version `0.5.1` ([`1b555e5`](https://github.com/hydro-project/hydroflow/commit/1b555e57c8c812bed4d6495d2960cbf77fb0b3ef))
+    - Release hydroflow_lang v0.5.2, hydroflow_datalog_core v0.5.2, hydroflow_macro v0.5.2, lattices v0.5.2, hydroflow v0.5.2, hydro_cli v0.5.1, hydroflow_plus_cli_integration v0.5.1 ([`6ac8720`](https://github.com/hydro-project/hydro/commit/6ac872081753548ebb8ec95549b4d820dc050d3e))
+    - Release hydroflow_cli_integration v0.5.1, hydroflow_lang v0.5.1, hydroflow_datalog_core v0.5.1, hydroflow_datalog v0.5.1, hydroflow_macro v0.5.1, lattices v0.5.1, variadics v0.0.3, pusherator v0.0.4, hydroflow v0.5.1, stageleft_macro v0.1.0, stageleft v0.1.0, hydroflow_plus v0.5.1, hydro_deploy v0.5.1, hydro_cli v0.5.1 ([`478aebc`](https://github.com/hydro-project/hydro/commit/478aebc8fee2aa78eab86bd386322db1c70bde6a))
+    - Manually set lockstep-versioned crates (and `lattices`) to version `0.5.1` ([`1b555e5`](https://github.com/hydro-project/hydro/commit/1b555e57c8c812bed4d6495d2960cbf77fb0b3ef))
 </details>
 
 ## 0.5.0 (2023-10-11)

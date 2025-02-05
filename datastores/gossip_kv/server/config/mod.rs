@@ -1,8 +1,8 @@
 use std::path::PathBuf;
 
 use config::{Config, ConfigError, File};
-use hydroflow::futures::future::ready;
-use hydroflow::futures::{Stream, StreamExt};
+use dfir_rs::futures::future::ready;
+use dfir_rs::futures::{Stream, StreamExt};
 use notify::{Event, EventHandler, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
@@ -76,7 +76,7 @@ pub fn setup_settings_watch() -> (
     ServerSettings,
     impl Stream<Item = ServerSettings>,
 ) {
-    let (tx, rx) = hydroflow::util::unbounded_channel();
+    let (tx, rx) = dfir_rs::util::unbounded_channel();
 
     // Setup the watcher
     let mut watcher = notify::RecommendedWatcher::new(

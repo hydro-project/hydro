@@ -2,8 +2,8 @@ use std::sync::mpsc::channel;
 use std::thread;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph_ext::GraphExt;
+use dfir_rs::dfir_syntax;
+use dfir_rs::scheduled::graph_ext::GraphExt;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Inspect, Map, ToStream};
 
@@ -112,9 +112,9 @@ fn benchmark_timely(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_compiled(c: &mut Criterion) {
-    use hydroflow::pusherator::{InputBuild, Pusherator, PusheratorBuild};
+    use dfir_rs::pusherator::{InputBuild, Pusherator, PusheratorBuild};
 
-    c.bench_function("identity/hydroflow/compiled", |b| {
+    c.bench_function("identity/dfir_rs/compiled", |b| {
         b.iter(|| {
             let mut pusherator = InputBuild::<usize>::new()
                 .map(black_box)
@@ -149,12 +149,12 @@ fn benchmark_hydroflow_compiled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow(c: &mut Criterion) {
-    use hydroflow::scheduled::graph::Hydroflow;
-    use hydroflow::scheduled::handoff::{Iter, VecHandoff};
+    use dfir_rs::scheduled::graph::Dfir;
+    use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
 
-    c.bench_function("identity/hydroflow", |b| {
+    c.bench_function("identity/dfir_rs", |b| {
         b.iter(|| {
-            let mut df = Hydroflow::new();
+            let mut df = Dfir::new();
 
             let (next_send, mut next_recv) = df.make_edge::<_, VecHandoff<usize>>("end");
 
@@ -188,9 +188,9 @@ fn benchmark_hydroflow(c: &mut Criterion) {
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
     const_assert!(NUM_OPS == 20); // This benchmark is hardcoded for 20 ops, so assert that NUM_OPS is 20.
-    c.bench_function("identity/hydroflow/surface", |b| {
+    c.bench_function("identity/dfir_rs/surface", |b| {
         b.iter(|| {
-            let mut df = hydroflow_syntax! {
+            let mut df = dfir_syntax! {
                 source_iter(black_box(0..NUM_INTS))
 
                 -> map(black_box)

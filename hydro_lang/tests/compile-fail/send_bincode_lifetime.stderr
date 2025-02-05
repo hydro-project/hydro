@@ -1,0 +1,55 @@
+error: cannot find macro `q` in this scope
+ --> tests/compile-fail/send_bincode_lifetime.rs:7:20
+  |
+7 |     p1.source_iter(q!(0..10)).send_bincode(p2).for_each(q!(|n| println!("{}", n)));
+  |                    ^
+  |
+help: consider importing one of these macros
+  |
+1 + use hydro_lang::q;
+  |
+1 + use stageleft::q;
+  |
+
+error: cannot find macro `q` in this scope
+ --> tests/compile-fail/send_bincode_lifetime.rs:7:57
+  |
+7 |     p1.source_iter(q!(0..10)).send_bincode(p2).for_each(q!(|n| println!("{}", n)));
+  |                                                         ^
+  |
+help: consider importing one of these macros
+  |
+1 + use hydro_lang::q;
+  |
+1 + use stageleft::q;
+  |
+
+error[E0412]: cannot find type `Process` in this scope
+ --> tests/compile-fail/send_bincode_lifetime.rs:6:22
+  |
+6 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
+  |                      ^^^^^^^ not found in this scope
+  |
+help: consider importing this struct
+  |
+1 + use hydro_lang::Process;
+  |
+
+error[E0412]: cannot find type `Process` in this scope
+ --> tests/compile-fail/send_bincode_lifetime.rs:6:44
+  |
+6 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
+  |                                            ^^^^^^^ not found in this scope
+  |
+help: consider importing this struct
+  |
+1 + use hydro_lang::Process;
+  |
+
+warning: unused import: `dfir_lang::*`
+ --> tests/compile-fail/send_bincode_lifetime.rs:1:5
+  |
+1 | use dfir_lang::*;
+  |     ^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default

@@ -2,13 +2,13 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use hydroflow::futures::{Sink, Stream};
-use hydroflow::hydroflow_syntax;
-use hydroflow::itertools::Itertools;
-use hydroflow::lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
-use hydroflow::lattices::set_union::SetUnionHashSet;
-use hydroflow::lattices::{Lattice, PairBimorphism};
-use hydroflow::scheduled::graph::Hydroflow;
+use dfir_rs::dfir_syntax;
+use dfir_rs::futures::{Sink, Stream};
+use dfir_rs::itertools::Itertools;
+use dfir_rs::lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
+use dfir_rs::lattices::set_union::SetUnionHashSet;
+use dfir_rs::lattices::{Lattice, PairBimorphism};
+use dfir_rs::scheduled::graph::Dfir;
 use lattices::set_union::SetUnion;
 use lattices::{IsTop, Max, Pair};
 use lazy_static::lazy_static;
@@ -82,7 +82,7 @@ pub fn server<
     member_info: MemberData<Addr>,
     seed_nodes: Vec<SeedNode<Addr>>,
     seed_node_stream: SeedNodeStream,
-) -> Hydroflow<'static>
+) -> Dfir<'static>
 where
     ClientInput: Stream<Item = (ClientRequest, Addr)> + Unpin + 'static,
     ClientOutput: Sink<(ClientResponse, Addr), Error = ClientOutputError> + Unpin + 'static,
@@ -102,10 +102,10 @@ where
     let member_id_5 = my_member_id.clone();
     let member_id_6 = my_member_id.clone();
 
-    hydroflow_syntax! {
+    dfir_syntax! {
 
         on_start = initialize() -> tee();
-        on_start -> for_each(|_| info!("{:?}: Transducer {} started.", context.current_tick(), member_id_6));
+        on_start -> for_each(|_| info!("{:?}: Process {} started.", context.current_tick(), member_id_6));
 
         seed_nodes = source_stream(seed_node_stream)
             -> fold::<'static>(|| Box::new(seed_nodes), |last_seed_nodes, new_seed_nodes: Vec<SeedNode<Addr>>| {
@@ -239,7 +239,7 @@ where
         reads -> [1]process_system_table_reads;
 
         process_system_table_reads = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(KeyedBimorphism::<HashMap<_, _>, _>::new(PairBimorphism))), #namespaces, #reads)
-            -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydroflow/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
+            -> lattice_reduce::<'tick>() // TODO: This can be removed if we fix https://github.com/hydro-project/hydro/issues/1401. Otherwise the result can be returned twice if get & gossip arrive in the same tick.
             -> flat_map(|result: NamespaceMap<Pair<RowValue<Clock>, SetUnion<HashSet<Addr>>>>| {
 
                 let mut response: Vec<(ClientResponse, Addr)> = vec![];
@@ -274,7 +274,7 @@ where
         new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
         // Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
-        infecting_writes = union() -> state::<'static, MapUnionHashMap<MessageId, InfectingWrite>>();
+        infecting_writes = union() -> state_by::<'static, MapUnionHashMap<MessageId, InfectingWrite>>(std::convert::identity, std::default::Default::default);
 
         new_writes -> map(|write| {
             // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't
@@ -351,13 +351,13 @@ where
 mod tests {
     use std::collections::HashSet;
 
-    use hydroflow::tokio_stream::empty;
-    use hydroflow::util::simulation::{Address, Fleet, Hostname};
+    use dfir_rs::tokio_stream::empty;
+    use dfir_rs::util::simulation::{Address, Fleet, Hostname};
 
     use super::*;
     use crate::membership::{MemberDataBuilder, Protocol};
 
-    #[hydroflow::test]
+    #[dfir_rs::test]
     async fn test_member_init() {
         let mut fleet = Fleet::new();
 
@@ -366,7 +366,7 @@ mod tests {
         let server_client_address = Address::new(server_name.clone(), "client".to_string());
         let server_gossip_address = Address::new(server_name.clone(), "gossip".to_string());
 
-        let (_, gossip_trigger_rx) = hydroflow::util::unbounded_channel::<()>();
+        let (_, gossip_trigger_rx) = dfir_rs::util::unbounded_channel::<()>();
 
         // Create the kv server
         fleet.add_host(server_name.clone(), |ctx| {
@@ -403,8 +403,8 @@ mod tests {
 
         let key = "/sys/members/server".parse::<Key>().unwrap();
 
-        let (trigger_tx, trigger_rx) = hydroflow::util::unbounded_channel::<()>();
-        let (response_tx, mut response_rx) = hydroflow::util::unbounded_channel::<ClientResponse>();
+        let (trigger_tx, trigger_rx) = dfir_rs::util::unbounded_channel::<()>();
+        let (response_tx, mut response_rx) = dfir_rs::util::unbounded_channel::<ClientResponse>();
 
         let key_clone = key.clone();
         let server_client_address_clone = server_client_address.clone();
@@ -413,7 +413,7 @@ mod tests {
             let client_tx = ctx.new_outbox::<ClientRequest>("client".to_string());
             let client_rx = ctx.new_inbox::<ClientResponse>("client".to_string());
 
-            hydroflow_syntax! {
+            dfir_syntax! {
 
                 client_output = dest_sink(client_tx);
 
@@ -444,8 +444,7 @@ mod tests {
         loop {
             fleet.run_single_tick_all_hosts().await;
 
-            let responses =
-                hydroflow::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
+            let responses = dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
 
             if !responses.is_empty() {
                 assert_eq!(
@@ -462,7 +461,7 @@ mod tests {
         }
     }
 
-    #[hydroflow::test]
+    #[dfir_rs::test]
     async fn test_multiple_values_same_tick() {
         let mut fleet = Fleet::new();
 
@@ -470,7 +469,7 @@ mod tests {
 
         let server_client_address = Address::new(server_name.clone(), "client".to_string());
 
-        let (_, gossip_trigger_rx) = hydroflow::util::unbounded_channel::<()>();
+        let (_, gossip_trigger_rx) = dfir_rs::util::unbounded_channel::<()>();
 
         // Create the kv server
         fleet.add_host(server_name.clone(), |ctx| {
@@ -514,13 +513,13 @@ mod tests {
 
         let writer_name: Hostname = "writer".to_string();
 
-        let (writer_trigger_tx, writer_trigger_rx) = hydroflow::util::unbounded_channel::<String>();
+        let (writer_trigger_tx, writer_trigger_rx) = dfir_rs::util::unbounded_channel::<String>();
         let key_clone = key.clone();
         let server_client_address_clone = server_client_address.clone();
 
         fleet.add_host(writer_name.clone(), |ctx| {
             let client_tx = ctx.new_outbox::<ClientRequest>("client".to_string());
-            hydroflow_syntax! {
+            dfir_syntax! {
                 client_output = dest_sink(client_tx);
 
                 source_stream(writer_trigger_rx)
@@ -547,8 +546,8 @@ mod tests {
         // Read the value back.
         let reader_name: Hostname = "reader".to_string();
 
-        let (reader_trigger_tx, reader_trigger_rx) = hydroflow::util::unbounded_channel::<()>();
-        let (response_tx, mut response_rx) = hydroflow::util::unbounded_channel::<ClientResponse>();
+        let (reader_trigger_tx, reader_trigger_rx) = dfir_rs::util::unbounded_channel::<()>();
+        let (response_tx, mut response_rx) = dfir_rs::util::unbounded_channel::<ClientResponse>();
 
         let key_clone = key.clone();
         let server_client_address_clone = server_client_address.clone();
@@ -557,7 +556,7 @@ mod tests {
             let client_tx = ctx.new_outbox::<ClientRequest>("client".to_string());
             let client_rx = ctx.new_inbox::<ClientResponse>("client".to_string());
 
-            hydroflow_syntax! {
+            dfir_syntax! {
                 client_output = dest_sink(client_tx);
 
                 source_stream(reader_trigger_rx)
@@ -575,8 +574,7 @@ mod tests {
         loop {
             fleet.run_single_tick_all_hosts().await;
 
-            let responses =
-                hydroflow::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
+            let responses = dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
 
             if !responses.is_empty() {
                 assert_eq!(
@@ -591,7 +589,7 @@ mod tests {
         }
     }
 
-    #[hydroflow::test]
+    #[dfir_rs::test]
     async fn test_gossip() {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -622,7 +620,7 @@ mod tests {
             },
         ];
 
-        let (gossip_trigger_tx_a, gossip_trigger_rx_a) = hydroflow::util::unbounded_channel::<()>();
+        let (gossip_trigger_tx_a, gossip_trigger_rx_a) = dfir_rs::util::unbounded_channel::<()>();
 
         let seed_nodes_clone = seed_nodes.clone();
         fleet.add_host(server_a.clone(), |ctx| {
@@ -655,7 +653,7 @@ mod tests {
             )
         });
 
-        let (_, gossip_trigger_rx_b) = hydroflow::util::unbounded_channel::<()>();
+        let (_, gossip_trigger_rx_b) = dfir_rs::util::unbounded_channel::<()>();
 
         let seed_nodes_clone = seed_nodes.clone();
         fleet.add_host(server_b.clone(), |ctx| {
@@ -696,14 +694,14 @@ mod tests {
 
         let writer_name: Hostname = "writer".to_string();
 
-        let (writer_trigger_tx, writer_trigger_rx) = hydroflow::util::unbounded_channel::<String>();
+        let (writer_trigger_tx, writer_trigger_rx) = dfir_rs::util::unbounded_channel::<String>();
 
         let key_clone = key.clone();
         let server_a_client_address_clone = server_a_client_address.clone();
 
         fleet.add_host(writer_name.clone(), |ctx| {
             let client_tx = ctx.new_outbox::<ClientRequest>("client".to_string());
-            hydroflow_syntax! {
+            dfir_syntax! {
                 client_output = dest_sink(client_tx);
 
                 source_stream(writer_trigger_rx)
@@ -714,8 +712,8 @@ mod tests {
 
         let reader_name: Hostname = "reader".to_string();
 
-        let (reader_trigger_tx, reader_trigger_rx) = hydroflow::util::unbounded_channel::<()>();
-        let (response_tx, mut response_rx) = hydroflow::util::unbounded_channel::<ClientResponse>();
+        let (reader_trigger_tx, reader_trigger_rx) = dfir_rs::util::unbounded_channel::<()>();
+        let (response_tx, mut response_rx) = dfir_rs::util::unbounded_channel::<ClientResponse>();
 
         let key_clone = key.clone();
         let server_b_client_address_clone = server_b_client_address.clone();
@@ -724,7 +722,7 @@ mod tests {
             let client_tx = ctx.new_outbox::<ClientRequest>("client".to_string());
             let client_rx = ctx.new_inbox::<ClientResponse>("client".to_string());
 
-            hydroflow_syntax! {
+            dfir_syntax! {
                 client_output = dest_sink(client_tx);
 
                 source_stream(reader_trigger_rx)
@@ -743,8 +741,7 @@ mod tests {
         loop {
             reader_trigger_tx.send(()).unwrap();
             fleet.run_single_tick_all_hosts().await;
-            let responses =
-                hydroflow::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
+            let responses = dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut response_rx).await;
 
             if !responses.is_empty() {
                 assert_eq!(

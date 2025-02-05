@@ -8,7 +8,7 @@ enum Platform {
     Default,
     Tokio,
     AsyncStd,
-    Hydroflow,
+    Dfir,
     Wasm,
     EnvLogging,
     EnvTracing,
@@ -19,7 +19,7 @@ impl Platform {
         Self::Default,
         Self::Tokio,
         Self::AsyncStd,
-        Self::Hydroflow,
+        Self::Dfir,
         Self::Wasm,
         Self::EnvLogging,
         Self::EnvTracing,
@@ -33,7 +33,7 @@ impl Platform {
             Self::Default => "test",
             Self::Tokio => "tokio",
             Self::AsyncStd => "async_std",
-            Self::Hydroflow => "hydroflow",
+            Self::Dfir => "dfir",
             Self::Wasm => "wasm",
             Self::EnvLogging => "env_logging",
             Self::EnvTracing => "env_tracing",
@@ -50,10 +50,8 @@ impl Platform {
             Platform::Default => quote! { #[test] },
             Platform::Tokio => quote! { #[tokio::test ] },
             Platform::AsyncStd => quote! { #[async_std::test] },
-            Platform::Hydroflow => quote! { #[hydroflow::test] },
-            Platform::Wasm => {
-                quote! { #[wasm_bindgen_test::wasm_bindgen_test] }
-            }
+            Platform::Dfir => quote! { #[dfir_rs::test] },
+            Platform::Wasm => quote! { #[wasm_bindgen_test::wasm_bindgen_test] },
             Platform::EnvLogging | Platform::EnvTracing => Default::default(),
         }
     }

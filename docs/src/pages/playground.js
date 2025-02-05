@@ -10,11 +10,11 @@ import siteConfig from '@generated/docusaurus.config';
 import * as wasm from "website_playground/website_playground_bg.wasm";
 import * as playgroundJS from "website_playground/website_playground_bg.js";
 
-let compile_hydroflow = null;
+let compile_DFIR = null;
 let compile_datalog = null;
 
 if (siteConfig.customFields.LOAD_PLAYGROUND === '1') {
-  compile_hydroflow = playgroundJS.compile_hydroflow;
+  compile_DFIR = playgroundJS.compile_dfir;
   compile_datalog = playgroundJS.compile_datalog;
 
   if (ExecutionEnvironment.canUseDOM) {
@@ -51,13 +51,13 @@ function MermaidGraph({ id, source }) {
   }} dangerouslySetInnerHTML={svg}></div>;
 }
 
-const hydroflowExamples = {
+const DfirExamples = {
   "Simplest": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_1_simplest
+// https://hydro.run/docs/dfir/quickstart/example_1_simplest
 source_iter(0..10) -> for_each(|n| println!("Hello {}", n));`,
 
   "Simple": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_2_simple
+// https://hydro.run/docs/dfir/quickstart/example_2_simple
 source_iter(0..10)
   -> map(|n| n * n)
   -> filter(|n| *n > 10)
@@ -66,7 +66,7 @@ source_iter(0..10)
   -> for_each(|n| println!("Howdy {}", n));`,
 
   "Chat Server": `\
-// https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/server.rs
+// https://github.com/hydro-project/hydro/blob/main/template/dfir/src/server.rs
 // Define shared inbound and outbound channels
 outbound_chan = union() -> dest_sink_serde(outbound);
 inbound_chan = source_stream_serde(inbound)
@@ -87,7 +87,7 @@ inbound_chan[msgs] -> [0]broadcast;
       clients[1] -> [1]broadcast;`,
 
   "Chat Client": `\
-// https://github.com/hydro-project/hydroflow/blob/main/template/hydroflow/src/client.rs
+// https://github.com/hydro-project/hydro/blob/main/template/dfir/src/client.rs
 // set up channels
 outbound_chan = union() -> dest_sink_serde(outbound);
 inbound_chan = source_stream_serde(inbound) -> map(|(m, _)| m)
@@ -115,7 +115,7 @@ inbound_chan[acks] -> [1]msg_send;
 inbound_chan[msgs] -> for_each(pretty_print_msg);`,
 
   "Graph Neighbors": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_4_neighbors
+// https://hydro.run/docs/dfir/quickstart/example_4_neighbors
 // inputs: the origin vertex (vertex 0) and stream of input edges
 origin = source_iter(vec![0]);
 stream_of_edges = source_stream(edges_recv);
@@ -127,7 +127,7 @@ stream_of_edges -> [1]my_join;
 my_join -> unique() -> for_each(|n| println!("Reached: {}", n));`,
 
   "Graph Reachability": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_5_reachability
+// https://hydro.run/docs/dfir/quickstart/example_5_reachability
 // inputs: the origin vertex (vertex 0) and stream of input edges
 origin = source_iter(vec![0]);
 stream_of_edges = source_stream(edges_recv);
@@ -142,7 +142,7 @@ my_join_tee[0] -> [1]reached_vertices;
 my_join_tee[1] -> unique() -> for_each(|x| println!("Reached: {}", x));`,
 
   "Graph Un-Reachability": `\
-// https://hydro.run/docs/hydroflow/quickstart/example_6_unreachability
+// https://hydro.run/docs/dfir/quickstart/example_6_unreachability
 origin = source_iter(vec![0]);
 stream_of_edges = source_stream(pairs_recv) -> tee();
 reached_vertices = union()->tee();
@@ -177,8 +177,8 @@ reachable(x) :- seed_reachable(x)
 reachable(y) :- reachable(x), edges(x, y)`
 };
 
-export function HydroflowSurfaceDemo() {
-  return <EditorDemo compileFn={compile_hydroflow} examples={hydroflowExamples} mermaidId="mermaid-hydroflow"></EditorDemo>
+export function DfirSurfaceDemo() {
+  return <EditorDemo compileFn={compile_DFIR} examples={DfirExamples} mermaidId="mermaid-dfir"></EditorDemo>
 }
 export function DatalogDemo() {
   return <EditorDemo compileFn={compile_datalog} examples={datalogExamples} mermaidId="mermaid-datalog"></EditorDemo>
@@ -216,7 +216,7 @@ export function EditorDemo({ compileFn, examples, mermaidId }) {
   useEffect(() => {
     if (editorAndMonaco) {
       const { editor, monaco } = editorAndMonaco;
-      monaco.editor.setModelMarkers(editor.getModel(), "hydroflow", diagnostics.map(d => {
+      monaco.editor.setModelMarkers(editor.getModel(), "dfir_rs", diagnostics.map(d => {
         return {
           startLineNumber: d.span.start.line,
           startColumn: d.span.start.column + 1,
@@ -310,7 +310,7 @@ export function EditorDemo({ compileFn, examples, mermaidId }) {
 export default function Playground() {
   return (
     <Layout
-      description="Playground for the Hydroflow compiler">
+      description="Playground for the DFIR compiler">
       <main>
         <div style={{
           maxWidth: "calc(min(1600px, 100vw - 60px))",
@@ -322,11 +322,11 @@ export default function Playground() {
           <h1 style={{
             fontSize: "3.5rem"
           }}>Playground</h1>
-          <p>In these interactive editors, you can experiment with the Hydroflow compiler by running it in your browser (through WebAssembly)! Try selecting one of the templates or edit the code yourself to see how Hydroflow logic is compiled into a dataflow graph and executable Rust.</p>
+          <p>In these interactive editors, you can experiment with the DFIR compiler by running it in your browser (through WebAssembly)! Try selecting one of the templates or edit the code yourself to see how DFIR logic is compiled into a dataflow graph and executable Rust.</p>
           <h1 style={{
             fontSize: "2.5rem"
-          }}>Hydroflow</h1>
-          <HydroflowSurfaceDemo />
+          }}>DFIR</h1>
+          <DfirSurfaceDemo />
           <h1 style={{
             fontSize: "2.5rem"
           }}>Datalog</h1>

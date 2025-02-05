@@ -19,8 +19,8 @@ pub fn fork_join() -> std::io::Result<()> {
     let file = File::create(path)?;
     let mut write = BufWriter::new(file);
 
-    writeln!(write, "a0 = mod -> tee();")?;
-
+    writeln!(write, "dfir_syntax! {{")?;
+    writeln!(write, "a0 = source_iter(0..NUM_INTS) -> tee();")?;
     for i in 0..NUM_OPS {
         if i > 0 {
             writeln!(write, "a{} = union() -> tee();", i)?;
@@ -28,8 +28,12 @@ pub fn fork_join() -> std::io::Result<()> {
         writeln!(write, "a{} -> filter(|x| x % 2 == 0) -> a{};", i, i + 1)?;
         writeln!(write, "a{} -> filter(|x| x % 2 == 1) -> a{};", i, i + 1)?;
     }
-
-    writeln!(write, "a{} = union() -> mod;", NUM_OPS)?;
+    writeln!(
+        write,
+        "a{} = union() -> for_each(|x| {{ black_box(x); }});",
+        NUM_OPS
+    )?;
+    writeln!(write, "}}")?;
 
     write.flush()?;
 

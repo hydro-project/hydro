@@ -1,8 +1,7 @@
 ---
 ---
-- [The Hydroflow Book]({{ "/book/" | prepend: site.github.url | replace: 'http://', '//' }})
-- [Rust Docs]({{ "/doc/hydroflow/" | prepend: site.github.url | replace: 'http://', '//' }})
-- [Design Docs]({{ "/design_docs/" | prepend: site.github.url | replace: 'http://', '//' }})
-- [Benchmark History]({{ "/bench/" | prepend: site.github.url | replace: 'http://', '//' }})
-- [Latest Benchmarks]({{ "/criterion/report/" | prepend: site.github.url | replace: 'http://', '//' }})
-- [Github Repository 🔗](https://github.com/hydro-project/hydroflow)
+- [Main website (hydro.run) 🔗](https://hydro.run)
+- [Github Repository 🔗](https://github.com/hydro-project/hydro)
+- [Design Docs]({{ "/design_docs/" | prepend: site.github.url | replace: 'https://', '//' }})
+- [Benchmark History]({{ "/bench/" | prepend: site.github.url | replace: 'https://', '//' }})
+- [Latest Benchmarks]({{ "/criterion/report/" | prepend: site.github.url | replace: 'https://', '//' }})

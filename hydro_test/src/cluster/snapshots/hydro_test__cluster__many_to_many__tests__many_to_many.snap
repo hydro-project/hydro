@@ -1,0 +1,61 @@
+---
+source: hydro_test/src/cluster/many_to_many.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
+        input: Network {
+            from_location: Cluster(
+                0,
+            ),
+            from_key: None,
+            to_location: Cluster(
+                0,
+            ),
+            to_key: None,
+            serialize_fn: Some(
+                | (id , data) : (hydro_lang :: ClusterId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
+            ),
+            instantiate_fn: <network instantiate>,
+            deserialize_fn: Some(
+                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+            ),
+            input: FlatMap {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | b | ids__free . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
+                input: Source {
+                    source: Iter(
+                        { use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
+                    ),
+                    location_kind: Cluster(
+                        0,
+                    ),
+                    metadata: HydroNodeMetadata {
+                        location_kind: Cluster(
+                            0,
+                        ),
+                        output_type: Some(
+                            i32,
+                        ),
+                    },
+                },
+                metadata: HydroNodeMetadata {
+                    location_kind: Cluster(
+                        0,
+                    ),
+                    output_type: Some(
+                        (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                location_kind: Cluster(
+                    0,
+                ),
+                output_type: Some(
+                    i32,
+                ),
+            },
+        },
+    },
+]

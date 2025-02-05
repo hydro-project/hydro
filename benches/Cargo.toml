@@ -14,7 +14,7 @@ workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
-hydroflow = { path = "../hydroflow", features = [ "debugging" ] }
+dfir_rs = { path = "../dfir_rs", features = [ "debugging" ] }
 nameof = "1.0.0"
 rand = "0.8.0"
 rand_distr = "0.4.3"

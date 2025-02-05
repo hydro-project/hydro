@@ -1,15 +1,15 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use hydroflow::scheduled::graph::Hydroflow;
-use hydroflow::scheduled::graph_ext::GraphExt;
-use hydroflow::scheduled::handoff::{Iter, VecHandoff};
-use hydroflow::scheduled::port::RecvPort;
+use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::scheduled::graph_ext::GraphExt;
+use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
+use dfir_rs::scheduled::port::RecvPort;
 
 use crate::{Datum, RelExpr};
 
 pub(crate) fn run_dataflow(r: RelExpr) -> Vec<Vec<Datum>> {
-    let mut df = Hydroflow::new();
+    let mut df = Dfir::new();
 
     let output_port = render_relational(&mut df, r);
 
@@ -28,7 +28,7 @@ pub(crate) fn run_dataflow(r: RelExpr) -> Vec<Vec<Datum>> {
     v.clone()
 }
 
-fn render_relational(df: &mut Hydroflow, r: RelExpr) -> RecvPort<VecHandoff<Vec<Datum>>> {
+fn render_relational(df: &mut Dfir, r: RelExpr) -> RecvPort<VecHandoff<Vec<Datum>>> {
     let (send_port, recv_port) = df.make_edge("handoff");
     match r {
         RelExpr::Values(mut v) => {

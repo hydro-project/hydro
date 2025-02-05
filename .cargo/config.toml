@@ -1,12 +1,8 @@
 [build]
 rustflags = [
-    "-Zproc-macro-backtrace",
     # Flag to make build.rs scripts generate docs. Should only be used in this repository
     # internally, not by dependants.
     '--cfg=HYDROFLOW_GENERATE_DOCS',
-    # https://github.com/rust-lang/rust-clippy/issues/10087
-    ## TODO(mingwei): Need rust-analyzer support:
-    # "-Aclippy::uninlined-format-args",
 ]
 
 [target.x86_64-apple-darwin]

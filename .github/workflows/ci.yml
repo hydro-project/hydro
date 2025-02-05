@@ -36,13 +36,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        rust_release: [pinned-nightly, latest-nightly]
+        rust_release: [pinned-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-nightly' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
     env:
       CARGO_TERM_COLOR: always
@@ -55,12 +55,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
-          override: ${{ matrix.rust_release == 'latest-nightly' }}
+          toolchain: stable
+          override: ${{ matrix.rust_release == 'latest-stable' }}
           components: rustfmt, clippy
 
       - name: Run sccache-cache
@@ -96,31 +96,31 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_release: [pinned-nightly, latest-nightly]
+        rust_release: [pinned-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-nightly' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-nightly' }}
+          override: ${{ matrix.rust_release == 'latest-stable' }}
 
-      - name: Check hydroflow_lang
+      - name: Check dfir_lang
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: -p hydroflow_lang --target wasm32-unknown-unknown
+          args: -p dfir_lang --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
@@ -132,13 +132,13 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        rust_release: [pinned-nightly, latest-nightly]
+        rust_release: [pinned-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-nightly' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
           - os: ${{ (github.event_name != 'pull_request' && 'nothing') || 'windows-latest' }}
 
     env:
@@ -152,12 +152,12 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
-          override: ${{ matrix.rust_release == 'latest-nightly' }}
+          toolchain: stable
+          override: ${{ matrix.rust_release == 'latest-stable' }}
 
       - name: Run sccache-cache
         if: matrix.rust_release == 'pinned-nightly'
@@ -182,6 +182,10 @@ jobs:
 
       - name: Run cargo nextest on all targets
         run: cargo nextest run --no-fail-fast --features python --features deploy --all-targets
+        env:
+          # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
+          TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
+          HYDROFLOW_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
         run: cargo test --no-fail-fast --features python --features deploy --doc
@@ -217,7 +221,7 @@ jobs:
           cd python_tests
           pip install -r requirements.txt
           RUST_BACKTRACE=1 pytest
-      
+
       - name: Run Python tests (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
@@ -235,25 +239,25 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        rust_release: [pinned-nightly, latest-nightly]
+        rust_release: [pinned-nightly, latest-stable]
         exclude:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
-          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-nightly' }}
+          - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      - name: Install nightly toolchain
+      - name: Install toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: nightly
+          toolchain: stable
           target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-nightly' }}
+          override: ${{ matrix.rust_release == 'latest-stable' }}
 
       - name: Get wasm-bindgen version
         id: wasm-bindgen-version
@@ -271,7 +275,7 @@ jobs:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
         with:
           command: test
-          args: -p hydroflow --target wasm32-unknown-unknown --tests --no-fail-fast
+          args: -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
   build-website:
     name: Build Website
@@ -391,7 +395,7 @@ jobs:
 
       - name: Run benchmark
         run: |
-          time cargo bench -p benches -- hydroflow --output-format bencher | tee output.txt
+          time cargo bench -p benches -- dfir --output-format bencher | tee output.txt
           time cargo bench -p benches -- micro/ops/ --output-format bencher | tee -a output.txt
 
       - name: Generate benchmark page

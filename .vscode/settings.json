@@ -1,18 +1,18 @@
 {
-    "rust-analyzer.runnableEnv": [
-        {
-            "env": {
-                // Stack backtraces.
-                "RUST_BACKTRACE": "full",
-                // Set output levels for `tracing` logging.
-                "RUST_LOG": "debug,hydroflow=trace",
-                // Make sure all snapshots are written instead of just the first failure.
-                "INSTA_FORCE_PASS": "1",
-                "INSTA_UPDATE": "always",
-                "TRYBUILD": "overwrite",
-            }
-        }
+    "rust-analyzer.runnables.extraEnv": {
+        // Stack backtraces.
+        "RUST_BACKTRACE": "full",
+        // Set output levels for `tracing` logging.
+        "RUST_LOG": "debug,dfir_rs=trace",
+        // Make sure all snapshots are written instead of just the first failure.
+        "INSTA_FORCE_PASS": "1",
+        "INSTA_UPDATE": "always",
+        "TRYBUILD": "overwrite",
+    },
+    "rust-analyzer.runnables.extraTestBinaryArgs": [
+        "--nocapture"
     ],
+    "rust-analyzer.cargo.features": ["deploy"],
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {

@@ -1,10 +1,11 @@
 [package]
 name = "variadics"
 publish = true
-version = "0.0.7"
+version = "0.0.8"
 edition = "2021"
 license = "Apache-2.0"
 documentation = "https://docs.rs/variadics/"
+repository = "https://github.com/hydro-project/hydro"
 description = "Variadic generics on stable Rust using tuple lists"
 
 [lints]

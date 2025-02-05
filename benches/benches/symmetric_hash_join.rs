@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use hydroflow::compiled::pull::{symmetric_hash_join_into_iter, HalfSetJoinState};
+use dfir_rs::compiled::pull::{symmetric_hash_join_into_iter, HalfSetJoinState};
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
 use rand::SeedableRng;

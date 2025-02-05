@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use hydroflow::bytes::{Bytes, BytesMut};
-use hydroflow::tokio_stream::wrappers::UnboundedReceiverStream;
-use hydroflow::util::multiset::HashMultiSet;
-use hydroflow::util::{
+use dfir_rs::bytes::{Bytes, BytesMut};
+use dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
+use dfir_rs::util::multiset::HashMultiSet;
+use dfir_rs::util::{
     collect_ready_async, deserialize_from_bytes, serialize_to_bytes, unbounded_channel,
 };
 use tokio::sync::mpsc::error::SendError;
@@ -55,7 +55,7 @@ pub async fn read_all_query(
         .collect::<HashMultiSet<_>>()
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn simple_payload_test() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
 
@@ -93,7 +93,7 @@ async fn simple_payload_test() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn idempotence_test() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
     let (_operations_tx, operations_rx) = unbounded_channel::<Result<BytesMut, std::io::Error>>();
@@ -134,7 +134,7 @@ async fn idempotence_test() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn backwards_in_time_test() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
 
@@ -175,7 +175,7 @@ async fn backwards_in_time_test() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn multiple_input_sources_test() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
     let (_operations_tx, operations_rx) = unbounded_channel::<Result<BytesMut, std::io::Error>>();
@@ -217,7 +217,7 @@ async fn multiple_input_sources_test() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn operations_across_ticks() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
 
@@ -280,7 +280,7 @@ async fn operations_across_ticks() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn operations_multiple_keys() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
 
@@ -367,7 +367,7 @@ async fn operations_multiple_keys() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn gossip_multiple_keys() {
     let neighbors: Vec<u32> = vec![1, 2, 3];
 
@@ -437,7 +437,7 @@ async fn gossip_multiple_keys() {
     ]));
 }
 
-#[hydroflow::test(start_paused = true)]
+#[dfir_rs::test(start_paused = true)]
 async fn ping_pongs() {
     let neighbors: Vec<u32> = vec![1];
 

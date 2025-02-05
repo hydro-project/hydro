@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 RUN mkdir -p xfer/examples
 RUN ls -dR target/*/release/examples/* | grep -vE '^.*/[a-z_]+\-.*$' | grep -vE '^.*\.d$' | xargs -I{} cp {} xfer/examples/
-RUN mkdir -p xfer/example_utils && cp hydroflow/example_utils/* xfer/example_utils/.
+RUN mkdir -p xfer/example_utils && cp dfir_rs/example_utils/* xfer/example_utils/.
 
 # Runtime stage
 FROM rust:slim-buster

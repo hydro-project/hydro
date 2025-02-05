@@ -1,10 +1,10 @@
 # Releasing Guide
 
-This is a guide on how to create releases for Hydroflow and all the other crates in this workspace.
+This is a guide on how to create releases for all Hydro crates in this workspace.
 
 We use the [`cargo-smart-release` crate](https://github.com/Byron/cargo-smart-release) for our
 release workflow. Originally, cargo-smart-release [was part of gitoxide](https://github.com/Byron/gitoxide/pull/998)
-but it has since been separated into its own crate. We have our own [GitHub Action release workflow](https://github.com/hydro-project/hydroflow/actions/workflows/release.yml)
+but it has since been separated into its own crate. We have our own [GitHub Action release workflow](https://github.com/hydro-project/hydro/actions/workflows/release.yml)
 ([action YAML here](.github/workflows/release.yml)) which is our intended way to create
 releases.
 
@@ -28,10 +28,10 @@ To (dry) run the command locally to spot-check for errors and warnings:
 cargo smart-release --update-crates-index \
    --no-changelog-preview --allow-fully-generated-changelogs \
    --bump-dependencies auto --bump minor \ # or `patch`, `major`, `keep`, `auto`
-   hydroflow hydroflow_lang hydroflow_macro hydroflow_plus \
-   hydroflow_datalog hydroflow_datalog_core \
-   hydro_deploy hydro_cli hydroflow_cli_integration \
-   hydroflow_plus_cli_integration \
+   dfir_rs dfir_lang dfir_macro \
+   dfir_datalog dfir_datalog_core \
+   hydro_lang hydro_std \
+   hydro_deploy hydro_cli hydroflow_deploy_integration \
    stageleft stageleft_macro stageleft_tool \
    multiplatform_test
 ```
@@ -42,7 +42,7 @@ cargo smart-release --update-crates-index \
 package has changes but doesn't have the right commit messages then `cargo smart-release` will
 complain and give up.
 
-To see if anything needs addressing, go to the [Release action](https://github.com/hydro-project/hydroflow/actions/workflows/release.yml)
+To see if anything needs addressing, go to the [Release action](https://github.com/hydro-project/hydro/actions/workflows/release.yml)
 and click on the "Run workflow" button in the top right corner. Branch should be `main`, version
 bump should most likely be `patch`, `minor`, or `major`. Note that semantic versioning is:
 ```js
@@ -60,23 +60,23 @@ showing that all the changelogs can be modified. Make sure the version bumps loo
 [INFO ] Updating crates-io index
 [WARN ] Refused to publish 'hydroflow_deploy_integration' as as it didn't change.
 [INFO ] Will not publish or alter 3 dependent crates: unchanged = 'hydroflow_deploy_integration', 'variadics', 'pusherator'
-[INFO ] WOULD auto-bump dependent package 'hydroflow_lang' from 0.4.0 to 0.5.0 for publishing
-[INFO ] WOULD auto-bump dependent package 'hydroflow_datalog_core' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_lang'
-[INFO ] WOULD auto-bump dependent package 'hydroflow_datalog' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_datalog_core'
-[INFO ] WOULD auto-bump dependent package 'hydroflow_macro' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_lang'
+[INFO ] WOULD auto-bump dependent package 'dfir_lang' from 0.4.0 to 0.5.0 for publishing
+[INFO ] WOULD auto-bump dependent package 'dfir_datalog_core' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_lang'
+[INFO ] WOULD auto-bump dependent package 'dfir_datalog' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_datalog_core'
+[INFO ] WOULD auto-bump dependent package 'dfir_macro' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_lang'
 [INFO ] WOULD auto-bump dependent package 'lattices' from 0.4.0 to 0.5.0 for publishing
-[INFO ] WOULD minor-bump provided package 'hydroflow' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'hydroflow_datalog'
+[INFO ] WOULD minor-bump provided package 'dfir_rs' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_datalog'
 [INFO ] WOULD minor-bump provided package 'hydro_cli' from 0.4.0 to 0.5.0 for publishing
-[INFO ] WOULD adjust 2 manifest versions due to breaking change in 'hydroflow_lang': 'hydroflow_datalog_core' 0.4.0 ➡ 0.5.0, 'hydroflow_macro' 0.4.0 ➡ 0.5.0
-[INFO ] WOULD adjust 1 manifest version due to breaking change in 'hydroflow_datalog_core': 'hydroflow_datalog' 0.4.0 ➡ 0.5.0
-[INFO ] WOULD adjust 1 manifest version due to breaking change in 'hydroflow_datalog': 'hydroflow' 0.4.0 ➡ 0.5.0
+[INFO ] WOULD adjust 2 manifest versions due to breaking change in 'dfir_lang': 'dfir_datalog_core' 0.4.0 ➡ 0.5.0, 'dfir_macro' 0.4.0 ➡ 0.5.0
+[INFO ] WOULD adjust 1 manifest version due to breaking change in 'dfir_datalog_core': 'dfir_datalog' 0.4.0 ➡ 0.5.0
+[INFO ] WOULD adjust 1 manifest version due to breaking change in 'dfir_datalog': 'dfir_rs' 0.4.0 ➡ 0.5.0
 [INFO ] WOULD adjust version constraints in manifests of 2 packages as direct dependencies are changing: relalg, website_playground
-[INFO ] WOULD modify existing changelog for 'hydroflow_lang'.
-[INFO ] WOULD modify existing changelog for 'hydroflow_datalog_core'.
-[INFO ] WOULD modify existing changelog for 'hydroflow_datalog'.
-[INFO ] WOULD modify existing changelog for 'hydroflow_macro'.
+[INFO ] WOULD modify existing changelog for 'dfir_lang'.
+[INFO ] WOULD modify existing changelog for 'dfir_datalog_core'.
+[INFO ] WOULD modify existing changelog for 'dfir_datalog'.
+[INFO ] WOULD modify existing changelog for 'dfir_macro'.
 [INFO ] WOULD modify existing changelog for 'lattices'.
-[INFO ] WOULD modify existing changelog for 'hydroflow'.
+[INFO ] WOULD modify existing changelog for 'dfir_rs'.
 [INFO ] WOULD modify existing changelog for 'hydro_cli'.
 ```
 
@@ -85,24 +85,23 @@ showing that all the changelogs can be modified. Make sure the version bumps loo
 If the job does not succeed or succeeds but fails to generate changelogs for certain packages, then you will
 need to do a bit of manual work. That looks like this in the log (check for this!):
 ```log
-[WARN ] WOULD ask for review after commit as the changelog entry is empty for crates: hydroflow_datalog, hydroflow_macro
+[WARN ] WOULD ask for review after commit as the changelog entry is empty for crates: dfir_datalog, dfir_macro
 ```
 In this case, you will need to create a commit to each package's `CHANGELOG.md` to mark it as
-unchanged (or minimally changed). For example, [hydro_datalog 0.4](https://github.com/hydro-project/hydroflow/commit/5faee64ab82eeb7a24f62a1b55c46d72d8eb5320)
-or [hydro_cli 0.3](https://github.com/hydro-project/hydroflow/commit/4c2cf81411835529b5d7daa35717834e46e28b9b).
+unchanged (or minimally changed). For example, [hydro_cli 0.3](https://github.com/hydro-project/hydro/commit/4c2cf81411835529b5d7daa35717834e46e28b9b).
 
 Once all changelogs are ok to autogenerate, we can move on to the real-deal run.
 
 ## Real-deal run
 
-Again, go to the [Release action](https://github.com/hydro-project/hydroflow/actions/workflows/release.yml)
+Again, go to the [Release action](https://github.com/hydro-project/hydro/actions/workflows/release.yml)
 and click on the "Run workflow" button in the top right corner. Select branch `main`, version bump as needed and this time _check_ the "Actually execute and publish the release?" box.
 
 Hopefully all goes well and the release will appear on the other end.
 
 If the release fails it may leave the repo in a bit of a half-broken or half-released state. Some
 or all of the release verison tags may be pushed. You may need to manually create some
-[GitHub releases](https://github.com/hydro-project/hydroflow/releases).
+[GitHub releases](https://github.com/hydro-project/hydro/releases).
 You can also try re-running the release action but with the version bump set to `keep`, if versions
 have been bumped but not released. You'll have to figure it out, its finicky.
 
@@ -118,14 +117,15 @@ junk you mistakenly pushed.
 
 When adding a new crate which is published, you need to:
 1. Ensure `publish = true` and other required fields (`license`, `description`, `documentation`,
-   etc.), are set in `my_crate/Cargo.toml`
+   `repository`, etc.), are set in `my_crate/Cargo.toml`
    https://doc.rust-lang.org/cargo/reference/publishing.html#before-publishing-a-new-crate
 2. Ensure any `path` dependencies to/from `my_crate` also include `version = "^0.1.0"`
    (substitute correct version).
 3. You must commit a new (empty) file `my_crate/CHANGELOG.md` to ensure the file will be tracked
    by git and pushed by `cargo-smart-release`
-4. If you want your package to be lockstep-versioned alongside hydroflow then make sure to add it
-   to the [command in the `release.yml` workflow](https://github.com/hydro-project/hydroflow/blob/main/.github/workflows/release.yml#L82).
+4. If you want your package to be lockstep-versioned alongside hydro then make sure to add it
+   to the [command in the `release.yml` workflow](https://github.com/hydro-project/hydro/blob/main/.github/workflows/release.yml#L82).
+   (also update the `cargo smart-release` test command above in this file).
 
 Then just run the release workflow as normal.
 
@@ -179,7 +179,12 @@ crate_old_name = { path = "../crate_old_path", version = "^0.8.0" }
 crate_new_name = { path = "../crate_new_path", version = "^0.9.0" }
 ```
 
-Commit those changes, then continue as normal.
+Commit those changes, then continue as normal. E.g. for a minor version bump, update only the
+renamed crates' versions, then continue with a `minor` release which will bump all the other crates.
+The release run will have log outputs as follows for each renamed crate:
+```log
+[INFO ] Manifest version of dependent package 'dfir_lang' at 0.11.0 is sufficient, creating a new release 🎉, ignoring computed version 0.12.
+```
 
 (There may be other issues with the `git tag`s `cargo-smart-release` uses to track versions if you
 are renaming a crate _back to an old name_).
@@ -194,7 +199,7 @@ section in order to work around this issue.
 
 ## Addendum: The GitHub App account
 
-So... `cargo smart-release` wants to push to `hydro-project/hydroflow`'s `main` branch. However,
+So... `cargo smart-release` wants to push to `hydro-project/hydro`'s `main` branch. However,
 branch protection says you can only push to main via a pull request, and for some reason that
 branch protection also applies to GitHub Actions.
 
@@ -203,7 +208,7 @@ Basically it is a pretty unremarkable unpublished GitHub App with permissions to
 It has some sort of secret which lets us act as the app within GitHub actions, which is passed
 through via `secrets.APP_PRIVATE_KEY`. (I guess this is the "Client secrets" secret, but for some
 reason that says "Never used"? I don't remember). Importantly, we have also given the Hydro Project
-Bot permission to bypass [`main` branch protection rules](https://github.com/hydro-project/hydroflow/settings/branch_protection_rules/24797446),
+Bot permission to bypass [`main` branch protection rules](https://github.com/hydro-project/hydro/settings/branch_protection_rules/24797446),
 under "Allow specified actors to bypass required pull requests" and also under "Allow force pushes"
 (although I don't think that `cargo smart-release` does force pushes?).
 

@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::handoff::Iter;
-use hydroflow::scheduled::query::Query as Q;
+use dfir_rs::dfir_syntax;
+use dfir_rs::scheduled::handoff::Iter;
+use dfir_rs::scheduled::query::Query as Q;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};
 
@@ -9,7 +9,7 @@ const NUM_OPS: usize = 20;
 const NUM_INTS: usize = 1_000_000;
 
 fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
-    c.bench_function("fan_out/hydroflow/scheduled", |b| {
+    c.bench_function("fan_out/dfir_rs/scheduled", |b| {
         b.iter(|| {
             let mut q = Q::new();
 
@@ -30,9 +30,9 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
     const_assert!(NUM_OPS == 20); // This benchmark is hardcoded for 20 ops, so assert that NUM_OPS is 20.
-    c.bench_function("fan_out/hydroflow/surface", |b| {
+    c.bench_function("fan_out/dfir_rs/surface", |b| {
         b.iter(|| {
-            let mut df = hydroflow_syntax! {
+            let mut df = dfir_syntax! {
                 my_tee = tee();
 
                 source_iter(black_box(0..NUM_INTS)) -> my_tee;
@@ -68,7 +68,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
 }
 
 // fn benchmark_hydroflow_teer(c: &mut Criterion) {
-//     c.bench_function("fan_out/hydroflow/teer", |b| {
+//     c.bench_function("fan_out/dfir/teer", |b| {
 //         b.iter(|| {
 //             let mut df = Hydroflow::new();
 //             let output = df.add_source(|send: &SendCtx<TeeingHandoff<_>>| {

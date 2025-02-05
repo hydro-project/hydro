@@ -22,7 +22,7 @@ use runtime_support::FreeVariableWithContext;
 use crate::runtime_support::get_final_crate_name;
 
 mod type_name;
-pub use type_name::quote_type;
+pub use type_name::{add_private_reexport, quote_type};
 
 #[cfg(windows)]
 #[macro_export]
@@ -54,16 +54,17 @@ macro_rules! stageleft_crate {
             "lib_macro.rs"
         ));
 
-        #[cfg(not(feature = "stageleft_devel"))]
         #[cfg(not(stageleft_macro))]
         #[doc(hidden)]
         #[allow(
             unused,
             ambiguous_glob_reexports,
+            unexpected_cfgs,
             clippy::suspicious_else_formatting,
             reason = "generated code"
         )]
         pub mod __staged {
+            #[cfg(not(feature = "stageleft_devel"))]
             include!(concat!(
                 env!("OUT_DIR"),
                 $crate::PATH_SEPARATOR!(),
@@ -76,16 +77,17 @@ macro_rules! stageleft_crate {
 #[macro_export]
 macro_rules! stageleft_no_entry_crate {
     () => {
-        #[cfg(not(feature = "stageleft_devel"))]
         #[doc(hidden)]
         #[allow(
             unused,
             ambiguous_glob_reexports,
+            unexpected_cfgs,
             clippy::suspicious_else_formatting,
             clippy::type_complexity,
             reason = "generated code"
         )]
         pub mod __staged {
+            #[cfg(not(feature = "stageleft_devel"))]
             include!(concat!(
                 env!("OUT_DIR"),
                 $crate::PATH_SEPARATOR!(),

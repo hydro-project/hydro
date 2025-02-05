@@ -1,0 +1,29 @@
+[package]
+name = "hydro_std"
+publish = true
+version = "0.11.0"
+edition = "2021"
+license = "Apache-2.0"
+documentation = "https://docs.rs/hydro_plus/"
+repository = "https://github.com/hydro-project/hydro"
+description = "Standard library of distributed systems building blocks for Hydro"
+
+[lints]
+workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.11.0" }
+stageleft = { path = "../stageleft", version = "^0.6.0" }
+
+[build-dependencies]
+stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+
+[dev-dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.11.0", features = ["deploy"] }
+insta = "1.39"
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.11.0" }
+async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
+ctor = "0.2"

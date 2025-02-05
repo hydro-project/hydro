@@ -4,10 +4,10 @@ use std::thread::sleep;
 use std::time::Duration;
 
 use clap::Parser;
+use dfir_rs::util::{unbounded_channel, unsync_channel};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
 use gossip_kv::{ClientRequest, GossipMessage};
 use governor::{Quota, RateLimiter};
-use hydroflow::util::{unbounded_channel, unsync_channel};
 use prometheus::{gather, Encoder, TextEncoder};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::task;
@@ -16,18 +16,18 @@ use warp::Filter;
 
 type LoadTestAddress = u64;
 
+use dfir_rs::futures::sink::drain;
+use dfir_rs::futures::stream;
+use dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
+use dfir_rs::tokio_stream::StreamExt;
 use gossip_kv::server::{server, SeedNode};
-use hydroflow::futures::sink::drain;
-use hydroflow::futures::stream;
-use hydroflow::tokio_stream::wrappers::UnboundedReceiverStream;
-use hydroflow::tokio_stream::StreamExt;
 use lattices::cc_traits::Iter;
 
 const UNKNOWN_ADDRESS: LoadTestAddress = 9999999999;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Parser)]
 struct Opts {
-    /// Number of threads to run. Each thread will run an instance of the gossip-kv server transducer.
+    /// Number of threads to run. Each thread will run an instance of the gossip-kv server process.
     #[clap(short, long, default_value = "5")]
     thread_count: usize,
 

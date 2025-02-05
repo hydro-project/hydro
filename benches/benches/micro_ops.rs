@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
-use hydroflow::hydroflow_syntax;
+use dfir_rs::dfir_syntax;
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -14,7 +14,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(data)) -> identity() -> for_each(|x| { black_box(x); });
                 }
             },
@@ -32,7 +32,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(data) -> unique() -> for_each(|x| { black_box(x); });
                 }
             },
@@ -50,7 +50,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(data)) -> map(|x| x + 1) -> for_each(|x| { black_box(x); });
                 }
             },
@@ -68,7 +68,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let data: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(data)) -> flat_map(|x| [x]) -> for_each(|x| { black_box(x); });
                 }
             },
@@ -89,7 +89,7 @@ fn ops(c: &mut Criterion) {
                 let input1: Vec<(usize, ())> =
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_join = join();
 
                     source_iter(black_box(input0)) -> [0]my_join;
@@ -115,7 +115,7 @@ fn ops(c: &mut Criterion) {
                 let input1: Vec<(usize, ())> =
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_difference = difference();
 
                     source_iter(black_box(input0)) -> [pos]my_difference;
@@ -139,7 +139,7 @@ fn ops(c: &mut Criterion) {
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_union = union();
 
                     source_iter(black_box(input0)) -> my_union;
@@ -162,7 +162,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_tee = tee();
 
                     source_iter(black_box(input0)) -> my_tee;
@@ -186,7 +186,7 @@ fn ops(c: &mut Criterion) {
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
                 {
-                    hydroflow_syntax! {
+                    dfir_syntax! {
                         source_iter(black_box(input0)) -> fold::<'tick>(|| 0, |accum: &mut _, elem| { *accum += elem }) -> for_each(|x| { black_box(x); });
                     }
                 }
@@ -205,7 +205,7 @@ fn ops(c: &mut Criterion) {
                 let dist = Uniform::new(0, 100);
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(input0)) -> sort() -> for_each(|x| { black_box(x); });
                 }
             },
@@ -227,7 +227,7 @@ fn ops(c: &mut Criterion) {
                 let input0: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_crossjoin = cross_join();
 
                     source_iter(black_box(input0)) -> [0]my_crossjoin;
@@ -252,7 +252,7 @@ fn ops(c: &mut Criterion) {
                     (0..NUM_INTS).map(|_| (dist.sample(&mut rng), ())).collect();
                 let input1: Vec<usize> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     my_antijoin = anti_join();
 
                     source_iter(black_box(input0)) -> [pos]my_antijoin;
@@ -271,7 +271,7 @@ fn ops(c: &mut Criterion) {
     c.bench_function("micro/ops/next_tick/small", |b| {
         const DATA: [u64; 1024] = [0; 1024];
 
-        let mut df = hydroflow_syntax! {
+        let mut df = dfir_syntax! {
             source_iter(black_box(DATA)) -> persist::<'static>()
                 -> map(black_box)
                 -> defer_tick()
@@ -305,7 +305,7 @@ fn ops(c: &mut Criterion) {
     c.bench_function("micro/ops/next_tick/big", |b| {
         const DATA: [[u8; 8192]; 1] = [[0; 8192]; 1];
 
-        let mut df = hydroflow_syntax! {
+        let mut df = dfir_syntax! {
             source_iter(black_box(DATA)) -> persist::<'static>()
                 -> defer_tick()
                 -> map(black_box)
@@ -345,7 +345,7 @@ fn ops(c: &mut Criterion) {
                     .map(|_| (dist.sample(&mut rng), dist.sample(&mut rng)))
                     .collect();
 
-                hydroflow_syntax! {
+                dfir_syntax! {
                     source_iter(black_box(input0))
                         -> fold_keyed(|| 0, |x: &mut usize, n: usize| {
                             *x += n;

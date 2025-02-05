@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::Display;
 use std::io::BufRead;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::sync::OnceLock;
 
 use cargo_metadata::diagnostic::Diagnostic;
@@ -184,14 +184,20 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                 ProgressTracker::println(msg.message.rendered.as_deref().unwrap());
                                 diagnostics.push(msg.message);
                             }
+                            cargo_metadata::Message::TextLine(line) => {
+                                ProgressTracker::println(&line);
+                            }
+                            cargo_metadata::Message::BuildFinished(_) => {}
+                            cargo_metadata::Message::BuildScriptExecuted(_) => {}
                             _ => {}
                         }
                     }
 
-                    if spawned.wait().unwrap().success() {
+                    let exit_code = spawned.wait().unwrap();
+                    if exit_code.success() {
                         Err(BuildError::NoBinaryEmitted)
                     } else {
-                        Err(BuildError::FailedToBuildCrate(diagnostics))
+                        Err(BuildError::FailedToBuildCrate(exit_code, diagnostics))
                     }
                 })
                 .await
@@ -203,7 +209,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
 #[derive(Clone, Debug)]
 pub enum BuildError {
-    FailedToBuildCrate(Vec<Diagnostic>),
+    FailedToBuildCrate(ExitStatus, Vec<Diagnostic>),
     TokioJoinError,
     NoBinaryEmitted,
 }
@@ -211,8 +217,8 @@ pub enum BuildError {
 impl Display for BuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::FailedToBuildCrate(diagnostics) => {
-                writeln!(f, "Failed to build crate:")?;
+            Self::FailedToBuildCrate(exit_status, diagnostics) => {
+                writeln!(f, "Failed to build crate ({}):", exit_status)?;
                 for diagnostic in diagnostics {
                     write!(f, "{}", diagnostic)?;
                 }

@@ -5,10 +5,10 @@ use std::rc::Rc;
 use std::sync::LazyLock;
 
 use criterion::{criterion_group, criterion_main, Criterion};
+use dfir_rs::dfir_syntax;
+use dfir_rs::scheduled::graph_ext::GraphExt;
 use differential_dataflow::input::Input;
 use differential_dataflow::operators::{Iterate, Join, Threshold};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph_ext::GraphExt;
 
 static EDGES: LazyLock<HashMap<usize, Vec<usize>>> = LazyLock::new(|| {
     let cursor = Cursor::new(include_bytes!("reachability_edges.txt"));
@@ -119,17 +119,17 @@ fn benchmark_differential(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
-    use hydroflow::scheduled::graph::Hydroflow;
-    use hydroflow::scheduled::handoff::{Iter, VecHandoff};
-    use hydroflow::{var_args, var_expr};
+    use dfir_rs::scheduled::graph::Dfir;
+    use dfir_rs::scheduled::handoff::{Iter, VecHandoff};
+    use dfir_rs::{var_args, var_expr};
 
     let edges = &*EDGES;
     let reachable = &*REACHABLE;
 
-    c.bench_function("reachability/hydroflow/scheduled", |b| {
+    c.bench_function("reachability/dfir_rs/scheduled", |b| {
         b.iter(|| {
             // A dataflow that represents graph reachability.
-            let mut df = Hydroflow::new();
+            let mut df = Dfir::new();
 
             type Hoff = VecHandoff<usize>;
             let (reachable_out, union_lhs) = df.make_edge::<_, Hoff>("reachable_out -> union_lhs");
@@ -213,19 +213,19 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow(c: &mut Criterion) {
-    use hydroflow::pusherator::for_each::ForEach;
-    use hydroflow::pusherator::{IteratorToPusherator, PusheratorBuild};
-    use hydroflow::scheduled::graph::Hydroflow;
-    use hydroflow::scheduled::handoff::VecHandoff;
-    use hydroflow::{var_args, var_expr};
+    use dfir_rs::pusherator::for_each::ForEach;
+    use dfir_rs::pusherator::{IteratorToPusherator, PusheratorBuild};
+    use dfir_rs::scheduled::graph::Dfir;
+    use dfir_rs::scheduled::handoff::VecHandoff;
+    use dfir_rs::{var_args, var_expr};
 
     let edges = &*EDGES;
     let reachable = &*REACHABLE;
 
-    c.bench_function("reachability/hydroflow", |b| {
+    c.bench_function("reachability/dfir_rs", |b| {
         b.iter(|| {
             // A dataflow that represents graph reachability.
-            let mut df = Hydroflow::new();
+            let mut df = Dfir::new();
 
             let (reachable_out, origins_in) =
                 df.make_edge::<_, VecHandoff<usize>>("reachable -> origins");
@@ -290,7 +290,7 @@ fn benchmark_hydroflow(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
-    c.bench_function("reachability/hydroflow/surface_cheating", |b| {
+    c.bench_function("reachability/dfir_rs/surface_cheating", |b| {
         b.iter_batched(
             || {
                 let reachable_verts = Rc::new(RefCell::new(HashSet::new()));
@@ -298,7 +298,7 @@ fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
                 let df = {
                     let reachable_inner = reachable_verts.clone();
 
-                    hydroflow_syntax! {
+                    dfir_syntax! {
                         origin = source_iter([1]);
                         reached_vertices = union();
                         origin -> reached_vertices;
@@ -320,7 +320,7 @@ fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
-    c.bench_function("reachability/hydroflow/surface", |b| {
+    c.bench_function("reachability/dfir_rs/surface", |b| {
         let edges: Vec<_> = EDGES
             .iter()
             .flat_map(|(&k, v)| v.iter().map(move |v| (k, *v)))
@@ -334,7 +334,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
                     let edges = edges.clone();
                     let reachable_inner = reachable_verts.clone();
 
-                    hydroflow_syntax! {
+                    dfir_syntax! {
                         origin = source_iter(vec![1]);
                         stream_of_edges = source_iter(edges);
                         reached_vertices = union();

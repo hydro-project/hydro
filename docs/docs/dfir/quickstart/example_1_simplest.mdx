@@ -1,0 +1,91 @@
+---
+sidebar_position: 2
+---
+import CodeBlock from '@theme/CodeBlock';
+import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_1_simplest.rs';
+import exampleOutput from '!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_1_simplest.snap';
+import { getLines, extractOutput } from '../../../src/util';
+
+# Simplest Example
+
+> In this example we will cover:
+> - Modifying the DFIR template project
+> - How DFIR program specs are embedded inside Rust
+> - How to execute a simple DFIR program
+> - Two DFIR operators: `source_iter` and `for_each`
+
+Lets start out with the simplest possible DFIR program, which prints out
+the numbers in `0..10`.
+
+Create a clean template project:
+```console
+#shell-command-next-line
+cargo generate gh:hydro-project/dfir-template
+⚠️   Favorite `gh:hydro-project/dfir-template` not found in config, using it as a git repository: https://github.com/hydro-project/dfir-template.git
+🤷   Project Name: simple
+🔧   Destination: /Users/me/code/simple ...
+🔧   project-name: simple ...
+🔧   Generating template ...
+[11/11]   Done: src
+🔧   Moving generated files into: `<dir>/simple`...
+💡   Initializing a fresh Git repository
+✨   Done! New project created <dir>/simple
+```
+
+After `cd`ing into the generated folder, ensure the correct nightly version of rust is installed, and test the generated project:
+```bash
+#shell-command-next-line
+rustup update
+#shell-command-next-line
+cargo test
+```
+
+Then edit the `src/main.rs` file, replacing
+*all* of its contents with the following code:
+
+<CodeBlock language="rust" showLineNumbers>{exampleCode}</CodeBlock>
+
+And then run the program:
+
+<CodeBlock language="console">{extractOutput(exampleOutput)}</CodeBlock>
+
+## Understanding the Code
+Although this is a trivial program, it's useful to go through it line by line.
+
+<CodeBlock language="rust">{getLines(exampleCode, 'use')}</CodeBlock>
+
+This import gives you the macro you need from DFIR to write code in DFIR's
+[_surface syntax_](../syntax).
+
+Next, inside the main method we specify a flow by calling the
+`dfir_syntax!` macro. We assign the resulting `Dfir` instance to
+a mutable variable `flow`––mutable because we will be changing its status when we run it.
+<CodeBlock language="rust">{getLines(exampleCode, 'macro_call')}</CodeBlock>
+
+DFIR surface syntax defines a "flow" consisting of *operators* connected via `->` arrows.
+This simplest example uses a simple two-step linear flow.
+It starts with a [`source_iter`](../syntax/surface_ops_gen#source_iter) operator that takes the Rust
+iterator `0..10` and iterates it to emit the
+numbers 0 through 9. That operator then passes those numbers along the `->` arrow downstream to a
+[`for_each`](../syntax/surface_ops_gen#for_each) operator that invokes its closure argument to print each
+item passed in.
+
+The DFIR surface syntax is merely a *specification*; it does not actually do anything
+until we run it.
+We can run this flow from within Rust via the [`run_available()` method](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir#method.run_available).
+
+<CodeBlock language="rust">{getLines(exampleCode, 'run')}</CodeBlock>
+
+Note that `run_available()` runs the DFIR graph until no more work is immediately
+available. In this example flow, running the graph drains the iterator completely, so no
+more work will *ever* be available. In future examples we will use external inputs such as
+network ingress, in which case more work might appear at any time.
+
+In server applications that use network ingress for inputs, new work can appear at any time. In these application
+we may need a different method than `run_available()`, e.g. the [`run_async()`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html#method.run_async) method, check [the networking
+examples](./example_7_networking) for more.
+
+### A Note on Project Structure
+The template project is intended to be a starting point for your own DFIR project, and you can add files and directories as you see fit. The only requirement is that the `src/main.rs` file exists and contains a `main()` function.
+
+In this simplest example we did not use a number of the files in the template: notably everything in the `src/` subdirectory other than `src/main.rs`. If you'd like to delete those extraneous files you can do so, but it's not necessary, and we'll use them in subsequent examples.

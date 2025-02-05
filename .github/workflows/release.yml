@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: "Specify how to bump the version for `hydroflow` crates. Does not affect dependencies."
+        description: "Specify how to bump the version for Hydro crates. Does not affect dependencies."
         required: true
         default: "patch"
         type: choice
@@ -31,7 +31,7 @@ jobs:
       # and tags to `main` in the normal way. Instead we have an app:
       # https://github.com/organizations/hydro-project/settings/apps/hydro-project-bot
       # Which is added the the users allowed to bypass branch protections:
-      # https://github.com/hydro-project/hydroflow/settings/branches
+      # https://github.com/hydro-project/hydro/settings/branches
       # We grab a token from the app using this action via the `APP_ID` ("App ID") and an
       # `APP_PRIVATE_KEY` ("Generate a private key").
       - name: Generate token
@@ -86,8 +86,9 @@ jobs:
           --no-changelog-preview --allow-fully-generated-changelogs
           --bump ${{ inputs.bump }} --bump-dependencies auto
           ${{ inputs.execute && '--execute' || '--no-publish' }}
-          hydroflow hydroflow_lang hydroflow_macro hydroflow_plus
-          hydroflow_plus_std hydroflow_datalog hydroflow_datalog_core
+          dfir_rs dfir_lang dfir_macro
+          dfir_datalog dfir_datalog_core
+          hydro_lang hydro_std
           hydro_deploy hydro_cli hydroflow_deploy_integration
           stageleft stageleft_macro stageleft_tool
           multiplatform_test

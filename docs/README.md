@@ -14,7 +14,7 @@ $ npm run start
 ```
 
 ## Building the Playground
-By default, the Hydroflow / Datalog playgrounds are not loaded when launching the website. To build the playground, you'll need to follow a couple additional steps. This requires Rust and [wasm-pack](https://rustwasm.github.io/wasm-pack/):
+By default, the DFIR / Datalog playgrounds are not loaded when launching the website. To build the playground, you'll need to follow a couple additional steps. This requires Rust and [wasm-pack](https://rustwasm.github.io/wasm-pack/):
 
 ```bash
 $ rustup target add wasm32-unknown-unknown

@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-use hydroflow::lattices::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
+use dfir_rs::lattices::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 use serde::{Deserialize, Serialize};
 
 /// A bounded set union lattice with a fixed size N.
@@ -191,7 +191,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use hydroflow::lattices::test::check_all;
+    use dfir_rs::lattices::test::check_all;
 
     use super::*;
 

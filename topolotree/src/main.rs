@@ -8,17 +8,17 @@ use std::io;
 use std::rc::Rc;
 use std::time::Duration;
 
-use futures::{SinkExt, Stream};
-use hydroflow::bytes::{Bytes, BytesMut};
-use hydroflow::hydroflow_syntax;
-use hydroflow::scheduled::graph::Hydroflow;
-use hydroflow::util::deploy::{
+use dfir_rs::bytes::{Bytes, BytesMut};
+use dfir_rs::dfir_syntax;
+use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged,
 };
+use futures::{SinkExt, Stream};
 
 mod protocol;
-use hydroflow::scheduled::ticks::TickInstant;
-use hydroflow::util::{deserialize_from_bytes, serialize_to_bytes};
+use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::util::{deserialize_from_bytes, serialize_to_bytes};
 use protocol::*;
 use tokio::time::Instant;
 
@@ -42,7 +42,7 @@ fn run_topolotree(
     increment_requests: impl Stream<Item = Result<BytesMut, io::Error>> + Unpin + 'static,
     output_send: tokio::sync::mpsc::UnboundedSender<(u32, Bytes)>,
     query_send: tokio::sync::mpsc::UnboundedSender<Bytes>,
-) -> Hydroflow<'static> {
+) -> Dfir<'static> {
     fn merge(x: &mut i64, y: i64) {
         *x += y;
     }
@@ -58,7 +58,7 @@ fn run_topolotree(
 
     // we use current tick to keep track of which *keys* have been modified
 
-    hydroflow_syntax! {
+    dfir_syntax! {
         parsed_input = source_stream(input_recv)
             -> map(Result::unwrap)
             -> map(|(src, x)| (NodeId(src), deserialize_from_bytes::<TopolotreeMessage>(&x).unwrap()))
@@ -211,13 +211,13 @@ fn run_topolotree(
     }
 }
 
-#[hydroflow::main]
+#[dfir_rs::main]
 async fn main() {
     let mut args = std::env::args().skip(1);
     let _self_id: u32 = args.next().unwrap().parse().unwrap();
     let neighbors: Vec<u32> = args.map(|x| x.parse().unwrap()).collect();
 
-    let ports = hydroflow::util::deploy::init::<()>().await;
+    let ports = dfir_rs::util::deploy::init::<()>().await;
 
     let input_recv = ports
         .port("from_peer")
@@ -289,6 +289,6 @@ async fn main() {
     }
 
     let f1_handle = tokio::spawn(f1);
-    hydroflow::util::deploy::launch_flow(flow).await;
+    dfir_rs::util::deploy::launch_flow(flow).await;
     f1_handle.abort();
 }

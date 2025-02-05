@@ -143,7 +143,7 @@ const papers = [
       <>Hydroflow is primarily a low-level compilation target for future declarative cloud programming languages, but developers can use it directly to precisely control program execution or fine-tune and debug compiled programs.</>
     ],
     conf: "UC Berkeley Technical Report",
-    links: <><Link href="pathname:///papers/hydroflow-thesis.pdf">PDF</Link> / <Link href="https://github.com/hydro-project/hydroflow">GitHub</Link></>
+    links: <><Link href="pathname:///papers/hydroflow-thesis.pdf">PDF</Link> / <Link href="https://github.com/hydro-project/hydro">GitHub</Link></>
   },
   {
     title: "New Directions in Cloud Programming",
