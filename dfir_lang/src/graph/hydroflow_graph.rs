@@ -835,15 +835,14 @@ impl DfirGraph {
         let mut out = TokenStream::new();
         let mut queue = VecDeque::from_iter(self.root_loops.iter().copied());
         while let Some(loop_id) = queue.pop_front() {
-            let parent_code = if let Some(&parent_id) = self.loop_parent.get(loop_id) {
-                let parent_ident = Self::loop_as_ident(parent_id);
-                quote! { Some(#parent_ident) }
-            } else {
-                quote! { None }
-            };
+            let parent_opt = self
+                .loop_parent(loop_id)
+                .map(Self::loop_as_ident)
+                .map(|ident| quote! { Some(#ident) })
+                .unwrap_or_else(|| quote! { None });
             let loop_name = Self::loop_as_ident(loop_id);
             out.append_all(quote! {
-                let #loop_name = #hf.add_loop(#parent_code);
+                let #loop_name = #hf.add_loop(#parent_opt);
             });
             queue.extend(self.loop_children.get(loop_id).into_iter().flatten());
         }
@@ -1217,8 +1216,9 @@ impl DfirGraph {
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
                 let loop_id_opt = self
+                    // All nodes in a subgraph should be in the same loop.
                     .node_loop(subgraph_nodes[0])
-                    .map(|loop_id| Self::loop_as_ident(loop_id))
+                    .map(Self::loop_as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
 
