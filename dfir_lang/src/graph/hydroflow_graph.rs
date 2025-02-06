@@ -2,7 +2,6 @@
 
 extern crate proc_macro;
 
-use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::iter::FusedIterator;
@@ -1021,8 +1020,8 @@ impl DfirGraph {
                                     expect(unused_labels, reason = "conditional compilation")
                                 )]
                                 let source_tag = 'a: {
-                                    if let Some(tag) = self.operator_tag.get(node_id) {
-                                        break 'a Cow::Borrowed(&**tag);
+                                    if let Some(tag) = self.operator_tag.get(node_id).cloned() {
+                                        break 'a tag;
                                     }
 
                                     #[cfg(nightly)]
@@ -1040,8 +1039,7 @@ impl DfirGraph {
                                             op_span.start().column(),
                                             op_span.end().line(),
                                             op_span.end().column(),
-                                        )
-                                        .into();
+                                        );
                                     }
 
                                     format!(
@@ -1051,7 +1049,6 @@ impl DfirGraph {
                                         op_span.end().line,
                                         op_span.end().column
                                     )
-                                    .into()
                                 };
 
                                 let fn_ident = format_ident!(
