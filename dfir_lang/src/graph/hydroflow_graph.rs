@@ -47,7 +47,7 @@ pub struct DfirGraph {
     #[serde(skip)]
     operator_instances: SecondaryMap<GraphNodeId, OperatorInstance>,
     /// Debugging/tracing tag for each operator node.
-    operator_tag: SecondaryMap<GraphNodeId, Cow<'static, str>>,
+    operator_tag: SecondaryMap<GraphNodeId, String>,
     /// Graph data structure (two-way adjacency list).
     graph: DiMulGraph<GraphNodeId, GraphEdgeId>,
     /// Input and output port for each edge.
@@ -468,8 +468,8 @@ impl DfirGraph {
     }
 
     /// Set the operator tag (for debugging/tracing).
-    pub fn set_operator_tag(&mut self, node_id: GraphNodeId, tag: Cow<'static, str>) {
-        self.operator_tag.insert(node_id, tag);
+    pub fn set_operator_tag(&mut self, node_id: GraphNodeId, tag: String) {
+        self.operator_tag.insert(node_id, tag.to_owned());
     }
 }
 

@@ -84,14 +84,8 @@ impl FlatGraphBuilder {
     /// Convert the Hydroflow code AST into a graph builder.
     pub fn from_hfcode(input: HfCode) -> Self {
         let mut builder = Self::default();
-        builder.process_statements(input.statements);
+        builder.add_dfir(input, None, None);
         builder
-    }
-
-    fn process_statements(&mut self, statements: impl IntoIterator<Item = HfStatement>) {
-        for stmt in statements {
-            self.add_statement(stmt);
-        }
     }
 
     /// Build into an unpartitioned [`DfirGraph`], returning a tuple of a `HydroflowGraph` and
@@ -100,22 +94,43 @@ impl FlatGraphBuilder {
     /// Even if there are errors, the `HydroflowGraph` will be returned (potentially in a invalid
     /// state). Does not call `emit` on any diagnostics.
     pub fn build(mut self) -> (DfirGraph, Vec<ItemUse>, Vec<Diagnostic>) {
-        self.connect_operator_links();
+        self.finalize_connect_operator_links();
         self.process_operator_errors();
 
         (self.flat_graph, self.uses, self.diagnostics)
     }
 
-    /// Add a single [`HfStatement`] line to this `HydroflowGraph` in the root context.
-    pub fn add_statement(&mut self, stmt: HfStatement) {
-        self.add_statement_with_loop(stmt, None)
+    /// Adds all [`HfStatement`]s within the [`HfCode`] to this `HydroflowGraph`.
+    ///
+    /// Optional configuration:
+    /// * In the given loop context `current_loop`.
+    /// * With the given operator tag `operator_tag`.
+    pub fn add_dfir(
+        &mut self,
+        dfir: HfCode,
+        current_loop: Option<GraphLoopId>,
+        operator_tag: Option<&str>,
+    ) {
+        for stmt in dfir.statements {
+            self.add_statement_internal(stmt, current_loop, operator_tag);
+        }
     }
 
-    /// Add a single [`HfStatement`] line to this `HydroflowGraph` in the given loop context.
-    pub fn add_statement_with_loop(
+    /// Add a single [`HfStatement`] line to this `HydroflowGraph` in the root context.
+    pub fn add_statement(&mut self, stmt: HfStatement) {
+        self.add_statement_internal(stmt, None, None);
+    }
+
+    /// Add a single [`HfStatement`] line to this `HydroflowGraph` with given configuration.
+    ///
+    /// Optional configuration:
+    /// * In the given loop context `current_loop`.
+    /// * With the given operator tag `operator_tag`.
+    fn add_statement_internal(
         &mut self,
         stmt: HfStatement,
         current_loop: Option<GraphLoopId>,
+        operator_tag: Option<&str>,
     ) {
         match stmt {
             HfStatement::Use(yuse) => {
@@ -123,41 +138,71 @@ impl FlatGraphBuilder {
             }
             HfStatement::Named(named) => {
                 let stmt_span = named.span();
-                let ends = self.add_pipeline(named.pipeline, Some(&named.name), current_loop);
+                let ends = self.add_pipeline(
+                    named.pipeline,
+                    Some(&named.name),
+                    current_loop,
+                    operator_tag,
+                );
                 self.assign_varname_checked(named.name, stmt_span, ends);
             }
             HfStatement::Pipeline(pipeline_stmt) => {
-                let ends = self.add_pipeline(pipeline_stmt.pipeline, None, current_loop);
+                let ends =
+                    self.add_pipeline(pipeline_stmt.pipeline, None, current_loop, operator_tag);
                 Self::helper_check_unused_port(&mut self.diagnostics, &ends, true);
                 Self::helper_check_unused_port(&mut self.diagnostics, &ends, false);
             }
             HfStatement::Loop(loop_statement) => {
                 let inner_loop = self.flat_graph.insert_loop(current_loop);
                 for stmt in loop_statement.statements {
-                    self.add_statement_with_loop(stmt, Some(inner_loop));
+                    self.add_statement_internal(stmt, Some(inner_loop), operator_tag);
                 }
             }
         }
     }
 
-    /// Adds an operator and assigns it to the given varname.
+    /// Programatically add an pipeline, optionally adding `pred_name` as a single predecessor and
+    /// assigning it all to `asgn_name`.
     ///
-    /// Optionally:
-    /// * Takes a `current_loop` to put the operator in.
-    /// * Takes an `operator_tag` to tag the operator with, for debugging/tracing.
-    pub fn add_operator_varname(
+    /// In DFIR syntax, equivalent to [`Self::add_statement`] of (if all names are supplied):
+    /// ```text
+    /// #asgn_name = #pred_name -> #pipeline;
+    /// ```
+    ///
+    /// But with, optionally:
+    /// * A `current_loop` to put the operator in.
+    /// * An `operator_tag` to tag the operator with, for debugging/tracing.
+    pub fn append_assign_pipeline(
         &mut self,
-        operator: Operator,
-        varname: Ident,
+        asgn_name: Option<&Ident>,
+        pred_name: Option<&Ident>,
+        pipeline: Pipeline,
         current_loop: Option<GraphLoopId>,
-        operator_tag: Option<Cow<'static, str>>,
+        operator_tag: Option<&str>,
     ) {
-        let op_span = operator.span();
-        let (node_id, ends) =
-            self.add_operator(Some(&varname), current_loop, operator, Some(op_span));
-        self.assign_varname_checked(varname, op_span, ends);
-        if let Some(operator_tag) = operator_tag {
-            self.flat_graph.set_operator_tag(node_id, operator_tag);
+        let span = pipeline.span();
+        let mut ends = self.add_pipeline(pipeline, asgn_name, current_loop, operator_tag);
+
+        // Connect `pred_name` if supplied.
+        if let Some(pred_name) = pred_name {
+            if let Some(pred_varname_info) = self.varname_ends.get(pred_name) {
+                // Update ends for `asgn_name`.
+                ends = self.connect_ends(pred_varname_info.ends.clone(), ends);
+            } else {
+                self.diagnostics.push(Diagnostic::spanned(
+                    pred_name.span(),
+                    Level::Error,
+                    format!(
+                        "Cannot find referenced name `{}`; name was never assigned.",
+                        pred_name
+                    ),
+                ));
+            }
+        }
+
+        // Assign `asgn_name` if supplied.
+        if let Some(asgn_name) = asgn_name {
+            self.assign_varname_checked(asgn_name.clone(), span, ends);
         }
     }
 }
@@ -200,13 +245,18 @@ impl FlatGraphBuilder {
         pipeline: Pipeline,
         current_varname: Option<&Ident>,
         current_loop: Option<GraphLoopId>,
+        operator_tag: Option<&str>,
     ) -> Ends {
         match pipeline {
             Pipeline::Paren(ported_pipeline_paren) => {
                 let (inn_port, pipeline_paren, out_port) =
                     PortIndexValue::from_ported(ported_pipeline_paren);
-                let og_ends =
-                    self.add_pipeline(*pipeline_paren.pipeline, current_varname, current_loop);
+                let og_ends = self.add_pipeline(
+                    *pipeline_paren.pipeline,
+                    current_varname,
+                    current_loop,
+                    operator_tag,
+                );
                 Self::helper_combine_ends(&mut self.diagnostics, og_ends, inn_port, out_port)
             }
             Pipeline::Name(pipeline_name) => {
@@ -244,29 +294,50 @@ impl FlatGraphBuilder {
             }
             Pipeline::Link(pipeline_link) => {
                 // Add the nested LHS and RHS of this link.
-                let lhs_ends = self.add_pipeline(*pipeline_link.lhs, current_varname, current_loop);
-                let rhs_ends = self.add_pipeline(*pipeline_link.rhs, current_varname, current_loop);
+                let lhs_ends = self.add_pipeline(
+                    *pipeline_link.lhs,
+                    current_varname,
+                    current_loop,
+                    operator_tag,
+                );
+                let rhs_ends = self.add_pipeline(
+                    *pipeline_link.rhs,
+                    current_varname,
+                    current_loop,
+                    operator_tag,
+                );
 
-                // Outer (first and last) ends.
-                let outer_ends = Ends {
-                    inn: lhs_ends.inn,
-                    out: rhs_ends.out,
-                };
-                // Inner (link) ends.
-                let link_ends = Ends {
-                    out: lhs_ends.out,
-                    inn: rhs_ends.inn,
-                };
-                self.links.push(link_ends);
-                outer_ends
+                self.connect_ends(lhs_ends, rhs_ends)
             }
             Pipeline::Operator(operator) => {
                 let op_span = Some(operator.span());
-                let (_node_id, ends) =
+                let (node_id, ends) =
                     self.add_operator(current_varname, current_loop, operator, op_span);
+                if let Some(operator_tag) = operator_tag {
+                    self.flat_graph
+                        .set_operator_tag(node_id, operator_tag.to_owned());
+                }
                 ends
             }
         }
+    }
+
+    /// Connects two [`Ends`] together. Returns the outer [`Ends`] for the connection.
+    ///
+    /// Links the inner ends together by adding it to `self.links`.
+    fn connect_ends(&mut self, lhs_ends: Ends, rhs_ends: Ends) -> Ends {
+        // Outer (first and last) ends.
+        let outer_ends = Ends {
+            inn: lhs_ends.inn,
+            out: rhs_ends.out,
+        };
+        // Inner (link) ends.
+        let link_ends = Ends {
+            out: lhs_ends.out,
+            inn: rhs_ends.inn,
+        };
+        self.links.push(link_ends);
+        outer_ends
     }
 
     /// Adds an operator to the graph, returning its [`GraphNodeId`] the input and output [`Ends`] for it.
@@ -297,14 +368,14 @@ impl FlatGraphBuilder {
 
     /// Connects operator links as a final building step. Processes all the links stored in
     /// `self.links` and actually puts them into the graph.
-    fn connect_operator_links(&mut self) {
+    fn finalize_connect_operator_links(&mut self) {
         // `->` edges
         for Ends { out, inn } in std::mem::take(&mut self.links) {
             let out_opt = self.helper_resolve_name(out, false);
             let inn_opt = self.helper_resolve_name(inn, true);
             // `None` already have errors in `self.diagnostics`.
             if let (Some((out_port, out_node)), Some((inn_port, inn_node))) = (out_opt, inn_opt) {
-                let _ = self.connect_operators(out_port, out_node, inn_port, inn_node);
+                let _ = self.finalize_connect_operators(out_port, out_node, inn_port, inn_node);
             }
         }
 
@@ -428,7 +499,7 @@ impl FlatGraphBuilder {
     }
 
     /// Connect two operators on the given port indexes.
-    fn connect_operators(
+    fn finalize_connect_operators(
         &mut self,
         src_port: PortIndexValue,
         src: GraphNodeId,
