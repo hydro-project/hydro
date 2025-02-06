@@ -2,6 +2,7 @@
 
 extern crate proc_macro;
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
 use std::iter::FusedIterator;
@@ -45,6 +46,8 @@ pub struct DfirGraph {
     /// This field will be empty after deserialization.
     #[serde(skip)]
     operator_instances: SecondaryMap<GraphNodeId, OperatorInstance>,
+    /// Debugging/tracing tag for each operator node.
+    operator_tag: SecondaryMap<GraphNodeId, Cow<'static, str>>,
     /// Graph data structure (two-way adjacency list).
     graph: DiMulGraph<GraphNodeId, GraphEdgeId>,
     /// Input and output port for each edge.
@@ -462,6 +465,11 @@ impl DfirGraph {
             (0 | 1, _many) => Some(Color::Push),
             (_many, _to_many) => Some(Color::Comp),
         }
+    }
+
+    /// Set the operator tag (for debugging/tracing).
+    pub fn set_operator_tag(&mut self, node_id: GraphNodeId, tag: Cow<'static, str>) {
+        self.operator_tag.insert(node_id, tag);
     }
 }
 
@@ -1012,7 +1020,11 @@ impl DfirGraph {
                                     not(nightly),
                                     expect(unused_labels, reason = "conditional compilation")
                                 )]
-                                let source_info = 'a: {
+                                let source_tag = 'a: {
+                                    if let Some(tag) = self.operator_tag.get(node_id) {
+                                        break 'a Cow::Borrowed(&**tag);
+                                    }
+
                                     #[cfg(nightly)]
                                     if proc_macro::is_available() {
                                         let op_span = op_span.unwrap();
@@ -1028,7 +1040,8 @@ impl DfirGraph {
                                             op_span.start().column(),
                                             op_span.end().line(),
                                             op_span.end().column(),
-                                        );
+                                        )
+                                        .into();
                                     }
 
                                     format!(
@@ -1038,13 +1051,14 @@ impl DfirGraph {
                                         op_span.end().line,
                                         op_span.end().column
                                     )
+                                    .into()
                                 };
 
                                 let fn_ident = format_ident!(
                                     "{}__{}__{}",
                                     ident,
                                     op_name,
-                                    source_info,
+                                    source_tag,
                                     span = op_span
                                 );
                                 let type_guard = if is_pull {

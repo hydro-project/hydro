@@ -60,7 +60,7 @@ pub struct FlatGraphBuilder {
     /// Spanned error/warning/etc diagnostics to emit.
     diagnostics: Vec<Diagnostic>,
 
-    /// HydroflowGraph being built.
+    /// [`DfirGraph`] being built.
     flat_graph: DfirGraph,
     /// Variable names, used as [`HfStatement::Named`] are added.
     varname_ends: BTreeMap<Ident, VarnameInfo>,
@@ -124,32 +124,7 @@ impl FlatGraphBuilder {
             HfStatement::Named(named) => {
                 let stmt_span = named.span();
                 let ends = self.add_pipeline(named.pipeline, Some(&named.name), current_loop);
-                match self.varname_ends.entry(named.name) {
-                    Entry::Vacant(vacant_entry) => {
-                        vacant_entry.insert(VarnameInfo::new(ends));
-                    }
-                    Entry::Occupied(occupied_entry) => {
-                        let prev_conflict = occupied_entry.key();
-                        self.diagnostics.push(Diagnostic::spanned(
-                            prev_conflict.span(),
-                            Level::Error,
-                            format!(
-                                "Existing assignment to `{}` conflicts with later assignment: {} (1/2)",
-                                prev_conflict,
-                                PrettySpan(stmt_span),
-                            ),
-                        ));
-                        self.diagnostics.push(Diagnostic::spanned(
-                            stmt_span,
-                            Level::Error,
-                            format!(
-                                "Name assignment to `{}` conflicts with existing assignment: {} (2/2)",
-                                prev_conflict,
-                                PrettySpan(prev_conflict.span())
-                            ),
-                        ));
-                    }
-                }
+                self.assign_varname_checked(named.name, stmt_span, ends);
             }
             HfStatement::Pipeline(pipeline_stmt) => {
                 let ends = self.add_pipeline(pipeline_stmt.pipeline, None, current_loop);
@@ -165,7 +140,61 @@ impl FlatGraphBuilder {
         }
     }
 
-    /// Helper: Add a pipeline, i.e. `a -> b -> c`. Return the input and output ends for it.
+    /// Adds an operator and assigns it to the given varname.
+    ///
+    /// Optionally:
+    /// * Takes a `current_loop` to put the operator in.
+    /// * Takes an `operator_tag` to tag the operator with, for debugging/tracing.
+    pub fn add_operator_varname(
+        &mut self,
+        operator: Operator,
+        varname: Ident,
+        current_loop: Option<GraphLoopId>,
+        operator_tag: Option<Cow<'static, str>>,
+    ) {
+        let op_span = operator.span();
+        let (node_id, ends) =
+            self.add_operator(Some(&varname), current_loop, operator, Some(op_span));
+        self.assign_varname_checked(varname, op_span, ends);
+        if let Some(operator_tag) = operator_tag {
+            self.flat_graph.set_operator_tag(node_id, operator_tag);
+        }
+    }
+}
+
+/// Internal methods.
+impl FlatGraphBuilder {
+    /// Assign a variable name to a pipeline, checking for conflicts.
+    fn assign_varname_checked(&mut self, name: Ident, stmt_span: Span, ends: Ends) {
+        match self.varname_ends.entry(name) {
+            Entry::Vacant(vacant_entry) => {
+                vacant_entry.insert(VarnameInfo::new(ends));
+            }
+            Entry::Occupied(occupied_entry) => {
+                let prev_conflict = occupied_entry.key();
+                self.diagnostics.push(Diagnostic::spanned(
+                    prev_conflict.span(),
+                    Level::Error,
+                    format!(
+                        "Existing assignment to `{}` conflicts with later assignment: {} (1/2)",
+                        prev_conflict,
+                        PrettySpan(stmt_span),
+                    ),
+                ));
+                self.diagnostics.push(Diagnostic::spanned(
+                    stmt_span,
+                    Level::Error,
+                    format!(
+                        "Name assignment to `{}` conflicts with existing assignment: {} (2/2)",
+                        prev_conflict,
+                        PrettySpan(prev_conflict.span())
+                    ),
+                ));
+            }
+        }
+    }
+
+    /// Helper: Add a pipeline, i.e. `a -> b -> c`. Return the input and output [`Ends`] for it.
     fn add_pipeline(
         &mut self,
         pipeline: Pipeline,
@@ -233,17 +262,37 @@ impl FlatGraphBuilder {
             }
             Pipeline::Operator(operator) => {
                 let op_span = Some(operator.span());
-                let nid = self.flat_graph.insert_node(
-                    GraphNode::Operator(operator),
-                    current_varname.cloned(),
-                    current_loop,
-                );
-                Ends {
-                    inn: Some((PortIndexValue::Elided(op_span), GraphDet::Determined(nid))),
-                    out: Some((PortIndexValue::Elided(op_span), GraphDet::Determined(nid))),
-                }
+                let (_node_id, ends) =
+                    self.add_operator(current_varname, current_loop, operator, op_span);
+                ends
             }
         }
+    }
+
+    /// Adds an operator to the graph, returning its [`GraphNodeId`] the input and output [`Ends`] for it.
+    fn add_operator(
+        &mut self,
+        current_varname: Option<&Ident>,
+        current_loop: Option<GraphLoopId>,
+        operator: Operator,
+        op_span: Option<Span>,
+    ) -> (GraphNodeId, Ends) {
+        let node_id = self.flat_graph.insert_node(
+            GraphNode::Operator(operator),
+            current_varname.cloned(),
+            current_loop,
+        );
+        let ends = Ends {
+            inn: Some((
+                PortIndexValue::Elided(op_span),
+                GraphDet::Determined(node_id),
+            )),
+            out: Some((
+                PortIndexValue::Elided(op_span),
+                GraphDet::Determined(node_id),
+            )),
+        };
+        (node_id, ends)
     }
 
     /// Connects operator links as a final building step. Processes all the links stored in
