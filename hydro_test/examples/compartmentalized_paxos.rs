@@ -48,23 +48,24 @@ async fn main() {
     let num_replicas = 4;
     let acceptor_retry_timeout = 10; // Sec
 
-    let (proposers, proxy_leaders, acceptors, clients, replicas) = hydro_test::cluster::compartmentalized_paxos_bench::compartmentalized_paxos_bench(
-        &builder,
-        num_clients_per_node,
-        median_latency_window_size,
-        checkpoint_frequency,
-        CompartmentalizedPaxosConfig {
-            f,
-            i_am_leader_send_timeout,
-            i_am_leader_check_timeout,
-            i_am_leader_check_timeout_delay_multiplier,
-            num_proxy_leaders,
-            acceptor_grid_rows,
-            acceptor_grid_cols,
-            num_replicas,
-            acceptor_retry_timeout,
-        },
-    );
+    let (proposers, proxy_leaders, acceptors, clients, replicas) =
+        hydro_test::cluster::compartmentalized_paxos_bench::compartmentalized_paxos_bench(
+            &builder,
+            num_clients_per_node,
+            median_latency_window_size,
+            checkpoint_frequency,
+            CompartmentalizedPaxosConfig {
+                f,
+                i_am_leader_send_timeout,
+                i_am_leader_check_timeout,
+                i_am_leader_check_timeout_delay_multiplier,
+                num_proxy_leaders,
+                acceptor_grid_rows,
+                acceptor_grid_cols,
+                num_replicas,
+                acceptor_retry_timeout,
+            },
+        );
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 

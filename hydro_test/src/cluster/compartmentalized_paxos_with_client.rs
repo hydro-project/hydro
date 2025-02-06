@@ -1,6 +1,9 @@
 use hydro_lang::*;
 
-use super::{compartmentalized_paxos::{compartmentalized_paxos_core, CompartmentalizedPaxosConfig, ProxyLeader}, paxos::{Acceptor, Ballot, PaxosPayload, Proposer}};
+use super::compartmentalized_paxos::{
+    compartmentalized_paxos_core, CompartmentalizedPaxosConfig, ProxyLeader,
+};
+use super::paxos::{Acceptor, Ballot, PaxosPayload, Proposer};
 
 /// Wraps the core Paxos algorithm with logic to send payloads from clients to the current
 /// leader.

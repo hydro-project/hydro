@@ -1250,34 +1250,30 @@ expression: built.ir()
                             ),
                         },
                         Tee {
-                            inner: <tee 35>: FilterMap {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < usize > , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | v | v }),
-                                input: Fold {
-                                    init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | | None }),
-                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < usize > , (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , core :: option :: Option < usize >) , () > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | filled_slot , (sorted_payload , highest_seq) | { let expected_next_slot = std :: cmp :: max (filled_slot . map (| v | v + 1) . unwrap_or (0) , highest_seq . map (| v | v + 1) . unwrap_or (0) ,) ; if sorted_payload . seq == expected_next_slot { * filled_slot = Some (sorted_payload . seq) ; } } }),
-                                    input: CrossSingleton(
-                                        Tee {
-                                            inner: <tee 34>,
-                                        },
-                                        Chain(
-                                            Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: optional :: * ; | v | Some (v) }),
-                                                input: CycleSource {
-                                                    ident: Ident {
-                                                        sym: cycle_2,
-                                                    },
-                                                    location_kind: Tick(
-                                                        8,
-                                                        Cluster(
-                                                            3,
-                                                        ),
-                                                    ),
+                            inner: <tee 35>: Fold {
+                                init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | | 0 }),
+                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , () > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | new_next_slot , (sorted_payload , next_slot) | { if sorted_payload . seq == std :: cmp :: max (* new_next_slot , next_slot) { * new_next_slot = sorted_payload . seq + 1 ; } } }),
+                                input: CrossSingleton(
+                                    Tee {
+                                        inner: <tee 34>,
+                                    },
+                                    Tee {
+                                        inner: <tee 36>: Chain(
+                                            CycleSource {
+                                                ident: Ident {
+                                                    sym: cycle_2,
                                                 },
+                                                location_kind: Tick(
+                                                    8,
+                                                    Cluster(
+                                                        3,
+                                                    ),
+                                                ),
                                             },
                                             Persist(
                                                 Source {
                                                     source: Iter(
-                                                        [:: std :: option :: Option :: None],
+                                                        { use hydro_lang :: __staged :: location :: * ; let e__free = { use crate :: __staged :: cluster :: kv_replica :: * ; 0 } ; [e__free] },
                                                     ),
                                                     location_kind: Cluster(
                                                         3,
@@ -1285,8 +1281,8 @@ expression: built.ir()
                                                 },
                                             ),
                                         ),
-                                    ),
-                                },
+                                    },
+                                ),
                             },
                         },
                     ),
@@ -1305,31 +1301,29 @@ expression: built.ir()
             ),
         ),
         input: DeferTick(
-            Tee {
-                inner: <tee 36>: FilterMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , core :: option :: Option < usize >) , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (_kv_store , highest_seq) | highest_seq }),
-                    input: Fold {
-                        init: stageleft :: runtime_support :: fn0_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , core :: option :: Option < usize >) > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | | (HashMap :: new () , None) }),
-                        acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , core :: option :: Option < usize >) , hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , () > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (kv_store , last_seq) , payload | { if let Some (kv) = payload . kv { kv_store . insert (kv . key , kv . value) ; } debug_assert ! (payload . seq == (last_seq . map (| s | s + 1) . unwrap_or (0)) , "Hole in log between seq {:?} and {}" , * last_seq , payload . seq) ; * last_seq = Some (payload . seq) ; } }),
-                        input: Persist(
-                            Tee {
-                                inner: <tee 37>: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (sorted_payload , _) | { sorted_payload } }),
-                                    input: Filter {
-                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , bool > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq <= * highest_seq }),
-                                        input: CrossSingleton(
-                                            Tee {
-                                                inner: <tee 34>,
-                                            },
-                                            Tee {
-                                                inner: <tee 35>,
-                                            },
-                                        ),
-                                    },
+            Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , usize > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (_kv_store , next_slot) | next_slot }),
+                input: Fold {
+                    init: stageleft :: runtime_support :: fn0_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | | (HashMap :: new () , 0) }),
+                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , () > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (kv_store , next_slot) , payload | { if let Some (kv) = payload . kv { kv_store . insert (kv . key , kv . value) ; } * next_slot = payload . seq + 1 ; } }),
+                    input: Persist(
+                        Tee {
+                            inner: <tee 37>: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (sorted_payload , _) | { sorted_payload } }),
+                                input: Filter {
+                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , usize) , bool > ({ use crate :: __staged :: cluster :: kv_replica :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq < * highest_seq }),
+                                    input: CrossSingleton(
+                                        Tee {
+                                            inner: <tee 34>,
+                                        },
+                                        Tee {
+                                            inner: <tee 35>,
+                                        },
+                                    ),
                                 },
                             },
-                        ),
-                    },
+                        },
+                    ),
                 },
             },
         ),
@@ -1347,7 +1341,7 @@ expression: built.ir()
         input: DeferTick(
             Tee {
                 inner: <tee 38>: FilterMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1usize ; move | (max_checkpointed_seq , new_highest_seq) | if max_checkpointed_seq . map (| m | new_highest_seq - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (new_highest_seq) } else { None } }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1usize ; move | (max_checkpointed_seq , next_slot) | if max_checkpointed_seq . map (| m | next_slot - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (next_slot) } else { None } }),
                     input: CrossSingleton(
                         Chain(
                             Map {

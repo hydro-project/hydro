@@ -2,11 +2,15 @@ use hydro_lang::*;
 use hydro_std::quorum::collect_quorum;
 
 use super::bench_client::{bench_client, Client};
+use super::compartmentalized_paxos::{CompartmentalizedPaxosConfig, ProxyLeader};
 use super::compartmentalized_paxos_with_client::compartmentalized_paxos_with_client;
 use super::kv_replica::{kv_replica, KvPayload, Replica};
 use super::paxos::{Acceptor, Proposer};
-use super::compartmentalized_paxos::{CompartmentalizedPaxosConfig, ProxyLeader};
 
+#[expect(
+    clippy::type_complexity,
+    reason = "internal paxos code // TODO"
+)]
 pub fn compartmentalized_paxos_bench<'a>(
     flow: &FlowBuilder<'a>,
     num_clients_per_node: usize,

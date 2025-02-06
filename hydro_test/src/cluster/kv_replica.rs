@@ -111,25 +111,25 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
             *next_slot = payload.seq + 1;
         }));
     // Update the highest seq for the next tick
-    r_next_slot_complete_cycle.complete_next_tick(r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot)));
+    r_next_slot_complete_cycle
+        .complete_next_tick(r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot)));
 
     // Send checkpoints to the acceptors when we've processed enough payloads
     let (r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
         replica_tick.cycle::<Optional<usize, _, _>>();
     let r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
-    let r_checkpoint_seq_new =
-        r_max_checkpointed_seq
-            .zip(r_next_slot)
-            .filter_map(q!(
-                move |(max_checkpointed_seq, next_slot)| if max_checkpointed_seq
-                    .map(|m| next_slot - m >= checkpoint_frequency)
-                    .unwrap_or(true)
-                {
-                    Some(next_slot)
-                } else {
-                    None
-                }
-            ));
+    let r_checkpoint_seq_new = r_max_checkpointed_seq
+        .zip(r_next_slot)
+        .filter_map(q!(
+            move |(max_checkpointed_seq, next_slot)| if max_checkpointed_seq
+                .map(|m| next_slot - m >= checkpoint_frequency)
+                .unwrap_or(true)
+            {
+                Some(next_slot)
+            } else {
+                None
+            }
+        ));
     r_checkpointed_seqs_complete_cycle.complete_next_tick(r_checkpoint_seq_new.clone());
 
     // Tell clients that the payload has been committed. All ReplicaPayloads contain the client's machine ID (to string) as value.

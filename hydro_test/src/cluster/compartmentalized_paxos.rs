@@ -159,7 +159,6 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
 
 #[expect(
     clippy::type_complexity,
-    clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
 unsafe fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
@@ -607,11 +606,14 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     let num_proxy_leaders = paxos_config.num_proxy_leaders;
     let p_to_proxy_leaders_p2a = p_indexed_payloads
         .cross_singleton(p_ballot.clone())
-        .map(q!(move |((slot, payload), ballot)| (ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32), (
-            (slot, ballot),
-            Some(payload)
+        .map(q!(move |((slot, payload), ballot)| (
+            ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            ((slot, ballot), Some(payload))
+        )))
+        .chain(p_log_to_recommit.map(q!(move |p2a| (
+            ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32),
+            ((p2a.slot, p2a.ballot), p2a.value)
         ))))
-        .chain(p_log_to_recommit.map(q!(move |p2a| (ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32), ((p2a.slot, p2a.ballot), p2a.value)))))
         .all_ticks()
         .send_bincode_interleaved(proxy_leaders);
 
@@ -624,9 +626,14 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
             let row = slot % num_acceptor_rows;
             let mut p2as = Vec::new();
             for i in 0..num_acceptor_cols {
-                p2as.push((ClusterId::<Acceptor>::from_raw((row * num_acceptor_cols + i) as u32), P2a {
-                    slot, ballot, value: payload.clone()
-                }));
+                p2as.push((
+                    ClusterId::<Acceptor>::from_raw((row * num_acceptor_cols + i) as u32),
+                    P2a {
+                        slot,
+                        ballot,
+                        value: payload.clone(),
+                    },
+                ));
             }
             p2as
         }))
@@ -650,7 +657,9 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     );
 
     let pl_to_replicas = join_responses(proxy_leader_tick, quorums.map(q!(|k| (k, ()))), unsafe {
-        p_to_proxy_leaders_p2a.timestamped(proxy_leader_tick).tick_batch()
+        p_to_proxy_leaders_p2a
+            .timestamped(proxy_leader_tick)
+            .tick_batch()
     });
 
     let pl_failed_p2b_to_proposer = fails
@@ -751,11 +760,7 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
     }));
     let f = paxos_config.f;
     let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs.clone().count().filter_map(q!(
-        move |num_received| if num_received >= f + 1 {
-            Some(true)
-        } else {
-            None
-        }
+        move |num_received| if num_received > f { Some(true) } else { None }
     ));
     // Find the smallest checkpoint seq that everyone agrees to, track whenever it changes
     let a_new_checkpoint = a_checkpoint_largest_seqs
@@ -819,7 +824,8 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
     let num_proxy_leaders = paxos_config.num_proxy_leaders;
     let a_to_proxy_leaders_p2b = p_to_acceptors_p2a_batch
         .cross_singleton(a_max_ballot)
-        .map(q!(move |(p2a, max_ballot)| (ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32), (
+        .map(q!(move |(p2a, max_ballot)| (
+            ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32),
             (
                 (p2a.slot, p2a.ballot),
                 if p2a.ballot == max_ballot {
@@ -828,7 +834,7 @@ fn acceptor_p2<'a, P: PaxosPayload, R>(
                     Err(max_ballot)
                 }
             )
-        ))))
+        )))
         .all_ticks()
         .send_bincode_interleaved(proxy_leaders);
     (a_log, a_to_proxy_leaders_p2b)
