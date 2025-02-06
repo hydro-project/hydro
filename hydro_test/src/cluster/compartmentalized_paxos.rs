@@ -601,14 +601,11 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
         c_to_proposers
             .timestamped(proposer_tick)
             .tick_batch()
-            .inspect(q!(|payload| println!("Proposer received payload: {:?}", payload)))
             .continue_if(p_is_leader.clone())
-            .inspect(q!(|payload| println!("Proposer is leader, indexing payload: {:?}", payload)))
     });
 
     let num_proxy_leaders = paxos_config.num_proxy_leaders;
     let p_to_proxy_leaders_p2a = p_indexed_payloads
-        .inspect(q!(|(slot, _)| println!("Proposer indexed: {:?}", slot)))
         .cross_singleton(p_ballot.clone())
         .map(q!(move |((slot, payload), ballot)| (ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32), (
             (slot, ballot),
@@ -616,7 +613,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
         ))))
         .chain(p_log_to_recommit.map(q!(move |p2a| (ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32), ((p2a.slot, p2a.ballot), p2a.value)))))
         .all_ticks()
-        .inspect(q!(|(proxy_leader, p2a)| println!("Proposer sending P2a to proxy leader: {:?} {:?}", proxy_leader, p2a)))
         .send_bincode_interleaved(proxy_leaders);
 
     // Send to a specific acceptor row
@@ -624,7 +620,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     let num_acceptor_cols = paxos_config.acceptor_grid_cols;
     let pl_to_acceptors_p2a_thrifty = p_to_proxy_leaders_p2a
         .clone()
-        .inspect(q!(|((slot, ballot), payload)| println!("Proxy leader received slot: {:?}", slot)))
         .flat_map_unordered(q!(move |((slot, ballot), payload)| {
             let row = slot % num_acceptor_rows;
             let mut p2as = Vec::new();
@@ -635,7 +630,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
             }
             p2as
         }))
-        .inspect(q!(|(acceptor, p2a)| println!("Proxy leader sending P2a to acceptor: {:?} {:?}", acceptor, p2a)))
         .send_bincode_interleaved(acceptors);
 
     let (a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
@@ -667,7 +661,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     (
         pl_to_replicas
             .map(q!(|((slot, _ballot), (value, _))| (slot, value)))
-            .inspect(q!(|(slot, _)| println!("Proxy leader sending P2a to replica: {:?}", slot)))
             .drop_timestamp(),
         a_log,
         pl_failed_p2b_to_proposer,

@@ -54,8 +54,7 @@ pub fn compartmentalized_paxos_bench<'a>(
                 )
             };
 
-            let sequenced_to_replicas = sequenced_payloads.inspect(q!(|payload| println!("Broadcasting payload to replicas: {:?}", payload)))
-            .broadcast_bincode_interleaved(&replicas);
+            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(&replicas);
 
             // Replicas
             let (replica_checkpoint, processed_payloads) =
@@ -68,18 +67,16 @@ pub fn compartmentalized_paxos_bench<'a>(
                     payload.value.0,
                     ((payload.key, payload.value.1), Ok(()))
                 )))
-                .send_bincode_interleaved(&clients)
-                .inspect(q!(|payload| println!("Client received payload: {:?}", payload)));
+                .send_bincode_interleaved(&clients);
 
             // we only mark a transaction as committed when f+1 replicas have applied it
             collect_quorum::<_, _, _, ()>(
                 c_received_payloads.timestamped(&clients.tick()),
-                paxos_config.num_replicas,
+                paxos_config.f + 1,
                 paxos_config.num_replicas,
             )
             .0
             .drop_timestamp()
-            .inspect(q!(|(key, value)| println!("Client received quorum for key {:?} with value {:?}", key, value)))
         },
         num_clients_per_node,
         median_latency_window_size,

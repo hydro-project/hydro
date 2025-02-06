@@ -69,37 +69,31 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
         .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
         .sort();
     // Create a cycle since we'll use this seq before we define it
-    let (r_highest_seq_complete_cycle, r_highest_seq) =
-        replica_tick.cycle::<Optional<usize, _, _>>();
+    let (r_next_slot_complete_cycle, r_next_slot) =
+        replica_tick.cycle_with_initial(replica_tick.singleton(q!(0)));
     // Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
-    let r_highest_seq_processable_payload = r_sorted_payloads
+    let r_next_slot_after_processing_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq.into_singleton())
+        .cross_singleton(r_next_slot.clone())
         .fold(
-            q!(|| None),
-            q!(|filled_slot, (sorted_payload, highest_seq)| {
-                let expected_next_slot = std::cmp::max(
-                    filled_slot.map(|v| v + 1).unwrap_or(0),
-                    highest_seq.map(|v| v + 1).unwrap_or(0),
-                );
-
-                if sorted_payload.seq == expected_next_slot {
-                    *filled_slot = Some(sorted_payload.seq);
+            q!(|| 0),
+            q!(|new_next_slot, (sorted_payload, next_slot)| {
+                if sorted_payload.seq == std::cmp::max(*new_next_slot, next_slot) {
+                    *new_next_slot = sorted_payload.seq + 1;
                 }
             }),
-        )
-        .filter_map(q!(|v| v));
+        );
     // Find all payloads that can and cannot be processed in this tick.
     let r_processable_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq_processable_payload.clone())
+        .cross_singleton(r_next_slot_after_processing_payloads.clone())
         .filter(q!(
-            |(sorted_payload, highest_seq)| sorted_payload.seq <= *highest_seq
+            |(sorted_payload, highest_seq)| sorted_payload.seq < *highest_seq
         ))
         .map(q!(|(sorted_payload, _)| { sorted_payload }));
     let r_new_non_processable_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq_processable_payload.clone())
+        .cross_singleton(r_next_slot_after_processing_payloads.clone())
         .filter(q!(
             |(sorted_payload, highest_seq)| sorted_payload.seq > *highest_seq
         ))
@@ -109,19 +103,15 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
 
     let r_kv_store = r_processable_payloads
         .clone()
-        .inspect(q!(|payload| println!("Replica processing payload: {:?}", payload)))
         .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
-        .fold(q!(|| (HashMap::new(), None)), q!(|(kv_store, last_seq), payload| {
+        .fold(q!(|| (HashMap::new(), 0)), q!(|(kv_store, next_slot), payload| {
             if let Some(kv) = payload.kv {
                 kv_store.insert(kv.key, kv.value);
             }
-
-            debug_assert!(payload.seq == (last_seq.map(|s| s + 1).unwrap_or(0)), "Hole in log between seq {:?} and {}", *last_seq, payload.seq);
-            *last_seq = Some(payload.seq);
+            *next_slot = payload.seq + 1;
         }));
     // Update the highest seq for the next tick
-    let r_new_highest_seq = r_kv_store.filter_map(q!(|(_kv_store, highest_seq)| highest_seq));
-    r_highest_seq_complete_cycle.complete_next_tick(r_new_highest_seq.clone());
+    r_next_slot_complete_cycle.complete_next_tick(r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot)));
 
     // Send checkpoints to the acceptors when we've processed enough payloads
     let (r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
@@ -129,13 +119,13 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
     let r_checkpoint_seq_new =
         r_max_checkpointed_seq
-            .zip(r_new_highest_seq)
+            .zip(r_next_slot)
             .filter_map(q!(
-                move |(max_checkpointed_seq, new_highest_seq)| if max_checkpointed_seq
-                    .map(|m| new_highest_seq - m >= checkpoint_frequency)
+                move |(max_checkpointed_seq, next_slot)| if max_checkpointed_seq
+                    .map(|m| next_slot - m >= checkpoint_frequency)
                     .unwrap_or(true)
                 {
-                    Some(new_highest_seq)
+                    Some(next_slot)
                 } else {
                     None
                 }
