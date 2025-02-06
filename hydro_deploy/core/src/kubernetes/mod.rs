@@ -56,7 +56,7 @@ impl PodHost {
 #[async_trait]
 impl Host for PodHost {
     fn target_type(&self) -> HostTargetType {
-        HostTargetType::Linux(crate::LinuxArchitecture::AARCH64)
+        HostTargetType::Linux(crate::LinuxArchitecture::Aarch64)
     }
 
     fn request_port(&self, _bind_type: &ServerStrategy) {}
@@ -124,9 +124,8 @@ impl Host for PodHost {
             }
             if !found_existing_pod {
                 let res = pods.create(&PostParams::default(), &p).await;
-                match res {
-                    Err(e) => ProgressTracker::println(format!("{:?}", e).as_str()),
-                    Ok(_) => (),
+                if let Err(e) = res {
+                    ProgressTracker::println(format!("{:?}", e).as_str());
                 }
             }
 
@@ -152,7 +151,7 @@ impl Host for PodHost {
                         stream = pods.watch(&wp, "0").await.unwrap().boxed();
                     }
                     Err(e) => {
-                        ProgressTracker::println(&format!("Error watching pod events: {:?}", e));
+                        ProgressTracker::println(format!("Error watching pod events: {:?}", e));
                         break;
                     }
                 }
@@ -184,7 +183,7 @@ impl Host for PodHost {
             let mut update_apt = pods
                 .exec(
                     pod_name.clone().as_str(),
-                    vec![&format!("apt-get"), "update"],
+                    vec!["apt-get".to_string(), "update".to_string()],
                     &ap,
                 )
                 .await
@@ -192,31 +191,23 @@ impl Host for PodHost {
             let update_apt_status = update_apt.take_status().unwrap();
 
             // Verify that no errors occurred with command
-            match update_apt_status.await {
-                None => {
-                    ProgressTracker::println("Warning: Command 'apt-get update' failed in pod");
-                }
-                _ => {}
+            if update_apt_status.await.is_none() {
+                ProgressTracker::println("Warning: Command 'apt-get update' failed in pod");
             }
 
             // Install lsof in the pod to track open files
             let mut install_lsof = pods
                 .exec(
                     pod_name.clone().as_str(),
-                    vec![&format!("apt-get"), "install", "-y", "lsof"],
+                    vec!["apt-get", "install", "-y", "lsof"],
                     &ap,
                 )
                 .await
                 .unwrap();
             let install_lsof_status = install_lsof.take_status().unwrap();
 
-            match install_lsof_status.await {
-                None => {
-                    ProgressTracker::println(
-                        "Warning: Command 'apt-get install -y lsof' failed in pod",
-                    );
-                }
-                _ => {}
+            if install_lsof_status.await.is_none() {
+                ProgressTracker::println("Warning: Command 'apt-get install -y lsof' failed in pod");
             }
         }
 
@@ -336,19 +327,19 @@ impl LaunchedHost for LaunchedPod {
 
         // Write file contents through stdin
         if let Err(e) = tar_stdin.write_all(&data).await {
-            ProgressTracker::println(&format!("Error writing to stdin: {:?}", e));
+            ProgressTracker::println(format!("Error writing to stdin: {:?}", e));
             return Err(e.into());
         }
 
         // Flush the stdin to finish sending the file through
         if let Err(e) = tar_stdin.flush().await {
-            ProgressTracker::println(&format!("Error flushing stdin: {:?}", e));
+            ProgressTracker::println(format!("Error flushing stdin: {:?}", e));
             return Err(e.into());
         }
 
         // Shut down stdin to end writing process
         if let Err(e) = tar_stdin.shutdown().await {
-            ProgressTracker::println(&format!("Error shutting down stdin: {:?}", e));
+            ProgressTracker::println(format!("Error shutting down stdin: {:?}", e));
             return Err(e.into());
         }
 
@@ -414,7 +405,7 @@ impl LaunchedHost for LaunchedPod {
         let launch_binary = match pods.exec(pod_name, args_list, &ap).await {
             Ok(exec) => exec,
             Err(e) => {
-                ProgressTracker::println(&format!("Failed to launch binary in Pod: {:?}", e));
+                ProgressTracker::println(format!("Failed to launch binary in Pod: {:?}", e));
                 return Err(e.into());
             }
         };

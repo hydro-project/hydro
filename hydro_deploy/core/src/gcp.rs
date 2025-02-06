@@ -220,7 +220,7 @@ impl GcpComputeEngineHost {
 impl Host for GcpComputeEngineHost {
     fn target_type(&self) -> HostTargetType {
         match self.architecture.as_deref() {
-            Some("aarch64") => HostTargetType::Linux(crate::LinuxArchitecture::AARCH64),
+            Some("aarch64") => HostTargetType::Linux(crate::LinuxArchitecture::Aarch64),
             _ => HostTargetType::Linux(crate::LinuxArchitecture::X86_64),
         }
     }

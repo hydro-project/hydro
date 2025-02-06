@@ -147,7 +147,7 @@ pub enum ClientStrategy<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LinuxArchitecture {
     X86_64,
-    AARCH64,
+    Aarch64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

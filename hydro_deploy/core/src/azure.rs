@@ -59,6 +59,10 @@ pub struct AzureHost {
 }
 
 impl AzureHost {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "required parameters for Azure Machine"
+    )]
     pub fn new(
         id: usize,
         project: String,
@@ -88,7 +92,7 @@ impl AzureHost {
 impl Host for AzureHost {
     fn target_type(&self) -> HostTargetType {
         match self.architecture.as_deref() {
-            Some("aarch64") => HostTargetType::Linux(crate::LinuxArchitecture::AARCH64),
+            Some("aarch64") => HostTargetType::Linux(crate::LinuxArchitecture::Aarch64),
             _ => HostTargetType::Linux(crate::LinuxArchitecture::X86_64),
         }
     }

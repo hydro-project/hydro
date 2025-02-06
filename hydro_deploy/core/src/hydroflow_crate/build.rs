@@ -109,7 +109,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         HostTargetType::Linux(LinuxArchitecture::X86_64) => {
                             command.args(["--target", "x86_64-unknown-linux-musl"]);
                         }
-                        HostTargetType::Linux(LinuxArchitecture::AARCH64) => {
+                        HostTargetType::Linux(LinuxArchitecture::Aarch64) => {
                             command.args(["--target", "aarch64-unknown-linux-musl"]);
                         }
                     }

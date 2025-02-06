@@ -168,7 +168,7 @@ impl Deployment {
         let arc = self
             .underlying
             .blocking_write()
-            .add_host(|id| core::PodHost::new(id));
+            .add_host(core::PodHost::new);
 
         Ok(Py::new(
             py,

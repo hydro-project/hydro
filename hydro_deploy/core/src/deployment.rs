@@ -281,9 +281,8 @@ impl Deployment {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[builder(entry = "PodHost", exit = "add")]
     pub fn add_pod_host(&mut self) -> Arc<PodHost> {
-        self.add_host(|id| PodHost::new(id))
+        self.add_host(PodHost::new)
     }
 }
