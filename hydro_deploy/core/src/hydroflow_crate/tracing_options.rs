@@ -22,8 +22,7 @@ pub struct TracingOptions {
 
     /// Output filename for the raw data emitted by `perf record`. Example: `my_worker.perf.data`.
     pub perf_raw_outfile: Option<PathBuf>,
-    /// Output filename for the raw data processed by `perf report`. Example: `my_worker.perf.out`.
-    pub perf_machine_readable_outfile: Option<PathBuf>,
+    
     // /// Output filename for `perf script -i <`[`Self::perf_raw_outfile`]`>`. Example: `my_worker.perf`.
     // pub perf_script_outfile: Option<PathBuf>,
     /// If set, what the write the folded output to.

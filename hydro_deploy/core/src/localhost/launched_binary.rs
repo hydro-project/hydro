@@ -171,13 +171,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                         name_of!(perf_raw_outfile in TracingOptions)
                     )
                 })?;
-                let perf_machine_readable_outfile = tracing.perf_machine_readable_outfile.as_ref().ok_or_else(|| {
-                    anyhow!(
-                        "`{}` must be set for `perf` on localhost.",
-                        name_of!(perf_machine_readable_outfile in TracingOptions)
-                    )
-                })?;
-
+                
                 // Run perf script.
                 let mut perf_script = Command::new("perf")
                     .args(["script", "--symfs=/", "-i"])
@@ -186,20 +180,9 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     .stderr(Stdio::piped())
                     .spawn()?;
 
-                // Run perf report
-                let outfile = File::create(perf_machine_readable_outfile)?;
-                let mut perf_report = Command::new("perf")
-                    .args(["report", "--symfs=/", "-n", "--stdio", "-i"])
-                    .arg(perf_raw_outfile)
-                    .stdout(outfile)
-                    .stderr(Stdio::piped())
-                    .spawn()?;
-
                 let stdout = perf_script.stdout.take().unwrap().compat();
-                let mut script_stderr_lines =
+                let mut stderr_lines =
                     TokioBufReader::new(perf_script.stderr.take().unwrap().compat()).lines();
-                let mut report_stderr_lines =
-                    TokioBufReader::new(perf_report.stderr.take().unwrap().compat()).lines();
 
                 let mut fold_er =
                     PerfFolder::from(tracing.fold_perf_options.clone().unwrap_or_default());
@@ -208,11 +191,8 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 let ((), fold_data, ()) = tokio::try_join!(
                     async move {
                         // Log stderr.
-                        while let Ok(Some(s)) = script_stderr_lines.next_line().await {
+                        while let Ok(Some(s)) = stderr_lines.next_line().await {
                             ProgressTracker::println(format!("[perf script stderr] {s}"));
-                        }
-                        while let Ok(Some(s)) = report_stderr_lines.next_line().await {
-                            ProgressTracker::println(format!("[perf report stderr] {s}"));
                         }
                         Result::<_>::Ok(())
                     },
@@ -231,7 +211,6 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     async move {
                         // Close stdin and wait for command exit.
                         perf_script.status().await?;
-                        perf_report.status().await?;
                         Ok(())
                     },
                 )?;
