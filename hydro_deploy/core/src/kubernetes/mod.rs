@@ -395,7 +395,6 @@ impl LaunchedHost for LaunchedPod {
         args: &[String],
         _perf: Option<TracingOptions>,
     ) -> Result<Box<dyn LaunchedBinary>> {
-
         let client = Client::try_default().await?;
         let pods: Api<Pod> = Api::default_namespaced(client);
         let pod_name = &self.pod_name;
