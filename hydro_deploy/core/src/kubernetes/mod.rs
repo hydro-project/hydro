@@ -207,7 +207,9 @@ impl Host for PodHost {
             let install_lsof_status = install_lsof.take_status().unwrap();
 
             if install_lsof_status.await.is_none() {
-                ProgressTracker::println("Warning: Command 'apt-get install -y lsof' failed in pod");
+                ProgressTracker::println(
+                    "Warning: Command 'apt-get install -y lsof' failed in pod",
+                );
             }
         }
 
