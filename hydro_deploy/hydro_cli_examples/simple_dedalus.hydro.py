@@ -2,31 +2,10 @@ import hydro
 import json
 from pathlib import Path
 from aiostream import stream
-import time
-
-def setup_machine(argument, deployment, gcp_vpc, localhost_machine):
-    if argument == "gcp":
-        machine = deployment.GcpComputeEngineHost(
-            project="autocompartmentalization",
-            machine_type="e2-micro",
-            image="debian-cloud/debian-11",
-            region="us-west1-a",
-            network=gcp_vpc
-        )
-    elif argument == "azure":
-        machine = deployment.AzureHost(
-        project="hydro-example" + str(int(time.time())),
-            os_type="linux",
-            machine_size="Standard_B1s",
-            region="East US",
-        )
-    elif argument == "kubernetes":
-        machine = deployment.PodHost()
-    else:
-        machine = localhost_machine
-    return machine
 
 async def main(args):
+    machine_1_gcp = args[0] == "gcp"
+    machine_2_gcp = args[1] == "gcp"
 
     deployment = hydro.Deployment()
     localhost_machine = deployment.Localhost()
@@ -35,8 +14,21 @@ async def main(args):
         project="autocompartmentalization",
     )
 
-    machine1 = setup_machine(args[0], deployment, gcp_vpc, localhost_machine)
-    machine2 = setup_machine(args[1], deployment, gcp_vpc, localhost_machine)
+    machine1 = deployment.GcpComputeEngineHost(
+        project="autocompartmentalization",
+        machine_type="e2-micro",
+        image="debian-cloud/debian-11",
+        region="us-west1-a",
+        network=gcp_vpc
+    ) if machine_1_gcp else localhost_machine
+
+    machine2 = deployment.GcpComputeEngineHost(
+        project="autocompartmentalization",
+        machine_type="e2-micro",
+        image="debian-cloud/debian-11",
+        region="us-west1-a",
+        network=gcp_vpc
+    ) if machine_2_gcp else localhost_machine
 
     sender_count = 2
     senders = [deployment.HydroflowCrate(
