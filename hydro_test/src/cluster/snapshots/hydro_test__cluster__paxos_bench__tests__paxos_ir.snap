@@ -2441,69 +2441,58 @@ snapshot_kind: text
                                                                                                         ),
                                                                                                     },
                                                                                                 },
-                                                                                                second: Map {
-                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer > , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >) > ({ use crate :: __staged :: cluster :: paxos :: * ; | p2a | ((p2a . slot , p2a . ballot) , p2a . value) }),
-                                                                                                    input: Chain {
-                                                                                                        first: FilterMap {
-                                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < usize >) , core :: option :: Option < hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer > > > ({ use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; let f__free = 1usize ; move | (((slot , (count , entry)) , ballot) , checkpoint) | { if count > f__free { return None ; } else if let Some (checkpoint) = checkpoint { if slot <= checkpoint { return None ; } } Some (P2a { sender : CLUSTER_SELF_ID__free , ballot , slot , value : entry . value , }) } }),
-                                                                                                            input: CrossSingleton {
-                                                                                                                left: CrossSingleton {
-                                                                                                                    left: Tee {
-                                                                                                                        inner: <tee 21>,
-                                                                                                                        metadata: HydroNodeMetadata {
-                                                                                                                            location_kind: Cluster(
-                                                                                                                                0,
-                                                                                                                            ),
-                                                                                                                            output_type: Some(
-                                                                                                                                (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)),
-                                                                                                                            ),
-                                                                                                                        },
-                                                                                                                    },
-                                                                                                                    right: Tee {
-                                                                                                                        inner: <tee 3>,
-                                                                                                                        metadata: HydroNodeMetadata {
-                                                                                                                            location_kind: Cluster(
-                                                                                                                                0,
-                                                                                                                            ),
-                                                                                                                            output_type: Some(
-                                                                                                                                hydro_test :: cluster :: paxos :: Ballot,
-                                                                                                                            ),
-                                                                                                                        },
-                                                                                                                    },
+                                                                                                second: Chain {
+                                                                                                    first: FilterMap {
+                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < usize >) , core :: option :: Option < ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >) > > ({ use crate :: __staged :: cluster :: paxos :: * ; let f__free = 1usize ; move | (((slot , (count , entry)) , ballot) , checkpoint) | { if count > f__free { return None ; } else if let Some (checkpoint) = checkpoint { if slot <= checkpoint { return None ; } } Some (((slot , ballot) , entry . value)) } }),
+                                                                                                        input: CrossSingleton {
+                                                                                                            left: CrossSingleton {
+                                                                                                                left: Tee {
+                                                                                                                    inner: <tee 21>,
                                                                                                                     metadata: HydroNodeMetadata {
                                                                                                                         location_kind: Cluster(
                                                                                                                             0,
                                                                                                                         ),
                                                                                                                         output_type: Some(
-                                                                                                                            ((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot),
+                                                                                                                            (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)),
                                                                                                                         ),
                                                                                                                     },
                                                                                                                 },
                                                                                                                 right: Tee {
-                                                                                                                    inner: <tee 29>: Chain {
-                                                                                                                        first: Map {
-                                                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: optional :: * ; | v | Some (v) }),
-                                                                                                                            input: Reduce {
-                                                                                                                                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
-                                                                                                                                input: FilterMap {
-                                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: paxos :: * ; | (checkpoint , _log) | checkpoint }),
-                                                                                                                                    input: Tee {
-                                                                                                                                        inner: <tee 22>,
-                                                                                                                                        metadata: HydroNodeMetadata {
-                                                                                                                                            location_kind: Cluster(
-                                                                                                                                                0,
-                                                                                                                                            ),
-                                                                                                                                            output_type: Some(
-                                                                                                                                                (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >),
-                                                                                                                                            ),
-                                                                                                                                        },
-                                                                                                                                    },
+                                                                                                                    inner: <tee 3>,
+                                                                                                                    metadata: HydroNodeMetadata {
+                                                                                                                        location_kind: Cluster(
+                                                                                                                            0,
+                                                                                                                        ),
+                                                                                                                        output_type: Some(
+                                                                                                                            hydro_test :: cluster :: paxos :: Ballot,
+                                                                                                                        ),
+                                                                                                                    },
+                                                                                                                },
+                                                                                                                metadata: HydroNodeMetadata {
+                                                                                                                    location_kind: Cluster(
+                                                                                                                        0,
+                                                                                                                    ),
+                                                                                                                    output_type: Some(
+                                                                                                                        ((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot),
+                                                                                                                    ),
+                                                                                                                },
+                                                                                                            },
+                                                                                                            right: Tee {
+                                                                                                                inner: <tee 29>: Chain {
+                                                                                                                    first: Map {
+                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: optional :: * ; | v | Some (v) }),
+                                                                                                                        input: Reduce {
+                                                                                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
+                                                                                                                            input: FilterMap {
+                                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , core :: option :: Option < usize > > ({ use crate :: __staged :: cluster :: paxos :: * ; | (checkpoint , _log) | checkpoint }),
+                                                                                                                                input: Tee {
+                                                                                                                                    inner: <tee 22>,
                                                                                                                                     metadata: HydroNodeMetadata {
                                                                                                                                         location_kind: Cluster(
                                                                                                                                             0,
                                                                                                                                         ),
                                                                                                                                         output_type: Some(
-                                                                                                                                            usize,
+                                                                                                                                            (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >),
                                                                                                                                         ),
                                                                                                                                     },
                                                                                                                                 },
@@ -2521,27 +2510,27 @@ snapshot_kind: text
                                                                                                                                     0,
                                                                                                                                 ),
                                                                                                                                 output_type: Some(
-                                                                                                                                    core :: option :: Option < usize >,
+                                                                                                                                    usize,
                                                                                                                                 ),
                                                                                                                             },
                                                                                                                         },
-                                                                                                                        second: Persist {
-                                                                                                                            inner: Source {
-                                                                                                                                source: Iter(
-                                                                                                                                    [:: std :: option :: Option :: None],
-                                                                                                                                ),
-                                                                                                                                location_kind: Cluster(
-                                                                                                                                    0,
-                                                                                                                                ),
-                                                                                                                                metadata: HydroNodeMetadata {
-                                                                                                                                    location_kind: Cluster(
-                                                                                                                                        0,
-                                                                                                                                    ),
-                                                                                                                                    output_type: Some(
-                                                                                                                                        core :: option :: Option < usize >,
-                                                                                                                                    ),
-                                                                                                                                },
-                                                                                                                            },
+                                                                                                                        metadata: HydroNodeMetadata {
+                                                                                                                            location_kind: Cluster(
+                                                                                                                                0,
+                                                                                                                            ),
+                                                                                                                            output_type: Some(
+                                                                                                                                core :: option :: Option < usize >,
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                    second: Persist {
+                                                                                                                        inner: Source {
+                                                                                                                            source: Iter(
+                                                                                                                                [:: std :: option :: Option :: None],
+                                                                                                                            ),
+                                                                                                                            location_kind: Cluster(
+                                                                                                                                0,
+                                                                                                                            ),
                                                                                                                             metadata: HydroNodeMetadata {
                                                                                                                                 location_kind: Cluster(
                                                                                                                                     0,
@@ -2574,7 +2563,7 @@ snapshot_kind: text
                                                                                                                         0,
                                                                                                                     ),
                                                                                                                     output_type: Some(
-                                                                                                                        (((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < usize >),
+                                                                                                                        core :: option :: Option < usize >,
                                                                                                                     ),
                                                                                                                 },
                                                                                                             },
@@ -2583,45 +2572,45 @@ snapshot_kind: text
                                                                                                                     0,
                                                                                                                 ),
                                                                                                                 output_type: Some(
-                                                                                                                    hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >,
+                                                                                                                    (((usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < usize >),
                                                                                                                 ),
                                                                                                             },
                                                                                                         },
-                                                                                                        second: Map {
-                                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , hydro_test :: cluster :: paxos :: Ballot) , hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: cluster :: paxos :: Proposer > :: from_raw (__hydro_lang_cluster_self_id_0) ; move | (slot , ballot) | P2a { sender : CLUSTER_SELF_ID__free , ballot , slot , value : None } }),
-                                                                                                            input: CrossSingleton {
-                                                                                                                left: Difference {
-                                                                                                                    pos: FlatMap {
-                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < usize >) , std :: ops :: Range < usize > > ({ use crate :: __staged :: cluster :: paxos :: * ; | (max_slot , checkpoint) | { if let Some (checkpoint) = checkpoint { (checkpoint + 1) .. max_slot } else { 0 .. max_slot } } }),
-                                                                                                                        input: CrossSingleton {
-                                                                                                                            left: Tee {
-                                                                                                                                inner: <tee 20>,
-                                                                                                                                metadata: HydroNodeMetadata {
-                                                                                                                                    location_kind: Cluster(
-                                                                                                                                        0,
-                                                                                                                                    ),
-                                                                                                                                    output_type: Some(
-                                                                                                                                        usize,
-                                                                                                                                    ),
-                                                                                                                                },
-                                                                                                                            },
-                                                                                                                            right: Tee {
-                                                                                                                                inner: <tee 29>,
-                                                                                                                                metadata: HydroNodeMetadata {
-                                                                                                                                    location_kind: Cluster(
-                                                                                                                                        0,
-                                                                                                                                    ),
-                                                                                                                                    output_type: Some(
-                                                                                                                                        core :: option :: Option < usize >,
-                                                                                                                                    ),
-                                                                                                                                },
-                                                                                                                            },
+                                                                                                        metadata: HydroNodeMetadata {
+                                                                                                            location_kind: Cluster(
+                                                                                                                0,
+                                                                                                            ),
+                                                                                                            output_type: Some(
+                                                                                                                ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >),
+                                                                                                            ),
+                                                                                                        },
+                                                                                                    },
+                                                                                                    second: Map {
+                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , hydro_test :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >) > ({ use crate :: __staged :: cluster :: paxos :: * ; move | (slot , ballot) | ((slot , ballot) , None) }),
+                                                                                                        input: CrossSingleton {
+                                                                                                            left: Difference {
+                                                                                                                pos: FlatMap {
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < usize >) , std :: ops :: Range < usize > > ({ use crate :: __staged :: cluster :: paxos :: * ; | (max_slot , checkpoint) | { if let Some (checkpoint) = checkpoint { (checkpoint + 1) .. max_slot } else { 0 .. max_slot } } }),
+                                                                                                                    input: CrossSingleton {
+                                                                                                                        left: Tee {
+                                                                                                                            inner: <tee 20>,
                                                                                                                             metadata: HydroNodeMetadata {
                                                                                                                                 location_kind: Cluster(
                                                                                                                                     0,
                                                                                                                                 ),
                                                                                                                                 output_type: Some(
-                                                                                                                                    (usize , core :: option :: Option < usize >),
+                                                                                                                                    usize,
+                                                                                                                                ),
+                                                                                                                            },
+                                                                                                                        },
+                                                                                                                        right: Tee {
+                                                                                                                            inner: <tee 29>,
+                                                                                                                            metadata: HydroNodeMetadata {
+                                                                                                                                location_kind: Cluster(
+                                                                                                                                    0,
+                                                                                                                                ),
+                                                                                                                                output_type: Some(
+                                                                                                                                    core :: option :: Option < usize >,
                                                                                                                                 ),
                                                                                                                             },
                                                                                                                         },
@@ -2630,29 +2619,7 @@ snapshot_kind: text
                                                                                                                                 0,
                                                                                                                             ),
                                                                                                                             output_type: Some(
-                                                                                                                                usize,
-                                                                                                                            ),
-                                                                                                                        },
-                                                                                                                    },
-                                                                                                                    neg: Map {
-                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , usize > ({ use crate :: __staged :: cluster :: paxos :: * ; | (slot , _) | slot }),
-                                                                                                                        input: Tee {
-                                                                                                                            inner: <tee 21>,
-                                                                                                                            metadata: HydroNodeMetadata {
-                                                                                                                                location_kind: Cluster(
-                                                                                                                                    0,
-                                                                                                                                ),
-                                                                                                                                output_type: Some(
-                                                                                                                                    (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)),
-                                                                                                                                ),
-                                                                                                                            },
-                                                                                                                        },
-                                                                                                                        metadata: HydroNodeMetadata {
-                                                                                                                            location_kind: Cluster(
-                                                                                                                                0,
-                                                                                                                            ),
-                                                                                                                            output_type: Some(
-                                                                                                                                usize,
+                                                                                                                                (usize , core :: option :: Option < usize >),
                                                                                                                             ),
                                                                                                                         },
                                                                                                                     },
@@ -2665,14 +2632,25 @@ snapshot_kind: text
                                                                                                                         ),
                                                                                                                     },
                                                                                                                 },
-                                                                                                                right: Tee {
-                                                                                                                    inner: <tee 3>,
+                                                                                                                neg: Map {
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , usize > ({ use crate :: __staged :: cluster :: paxos :: * ; | (slot , _) | slot }),
+                                                                                                                    input: Tee {
+                                                                                                                        inner: <tee 21>,
+                                                                                                                        metadata: HydroNodeMetadata {
+                                                                                                                            location_kind: Cluster(
+                                                                                                                                0,
+                                                                                                                            ),
+                                                                                                                            output_type: Some(
+                                                                                                                                (usize , (usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)),
+                                                                                                                            ),
+                                                                                                                        },
+                                                                                                                    },
                                                                                                                     metadata: HydroNodeMetadata {
                                                                                                                         location_kind: Cluster(
                                                                                                                             0,
                                                                                                                         ),
                                                                                                                         output_type: Some(
-                                                                                                                            hydro_test :: cluster :: paxos :: Ballot,
+                                                                                                                            usize,
                                                                                                                         ),
                                                                                                                     },
                                                                                                                 },
@@ -2681,7 +2659,18 @@ snapshot_kind: text
                                                                                                                         0,
                                                                                                                     ),
                                                                                                                     output_type: Some(
-                                                                                                                        (usize , hydro_test :: cluster :: paxos :: Ballot),
+                                                                                                                        usize,
+                                                                                                                    ),
+                                                                                                                },
+                                                                                                            },
+                                                                                                            right: Tee {
+                                                                                                                inner: <tee 3>,
+                                                                                                                metadata: HydroNodeMetadata {
+                                                                                                                    location_kind: Cluster(
+                                                                                                                        0,
+                                                                                                                    ),
+                                                                                                                    output_type: Some(
+                                                                                                                        hydro_test :: cluster :: paxos :: Ballot,
                                                                                                                     ),
                                                                                                                 },
                                                                                                             },
@@ -2690,7 +2679,7 @@ snapshot_kind: text
                                                                                                                     0,
                                                                                                                 ),
                                                                                                                 output_type: Some(
-                                                                                                                    hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >,
+                                                                                                                    (usize , hydro_test :: cluster :: paxos :: Ballot),
                                                                                                                 ),
                                                                                                             },
                                                                                                         },
@@ -2699,7 +2688,7 @@ snapshot_kind: text
                                                                                                                 0,
                                                                                                             ),
                                                                                                             output_type: Some(
-                                                                                                                hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >,
+                                                                                                                ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >),
                                                                                                             ),
                                                                                                         },
                                                                                                     },

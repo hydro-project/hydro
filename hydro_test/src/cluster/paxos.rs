@@ -482,7 +482,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-fn recommit_after_leader_election<'a, P: PaxosPayload>(
+pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
     accepted_logs: Stream<
         (Option<usize>, HashMap<usize, LogValue<P>>),
         Tick<Cluster<'a, Proposer>>,
@@ -492,7 +492,7 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     f: usize,
 ) -> (
-    Stream<P2a<P, Proposer>, Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
+    Stream<((usize, Ballot), Option<P>), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
     let p_p1b_max_checkpoint = accepted_logs
@@ -537,12 +537,7 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
                     return None;
                 }
             }
-            Some(P2a {
-                sender: CLUSTER_SELF_ID,
-                ballot,
-                slot,
-                value: entry.value,
-            })
+            Some(((slot, ballot), entry.value))
         }));
     let p_max_slot = p_p1b_highest_entries_and_count
         .clone()
@@ -563,12 +558,7 @@ fn recommit_after_leader_election<'a, P: PaxosPayload>(
         }))
         .filter_not_in(p_proposed_slots)
         .cross_singleton(p_ballot.clone())
-        .map(q!(move |(slot, ballot)| P2a {
-            sender: CLUSTER_SELF_ID,
-            ballot,
-            slot,
-            value: None
-        }));
+        .map(q!(move |(slot, ballot)| ((slot, ballot), None)));
 
     (p_log_to_try_commit.chain(p_log_holes), p_max_slot)
 }
@@ -632,7 +622,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
             (slot, ballot),
             Some(payload)
         )))
-        .chain(p_log_to_recommit.map(q!(|p2a| ((p2a.slot, p2a.ballot), p2a.value))))
+        .chain(p_log_to_recommit)
         .continue_if(p_is_leader)
         .all_ticks_atomic();
 
@@ -679,7 +669,7 @@ pub enum CheckpointOrP2a<P, S> {
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-fn index_payloads<'a, P: PaxosPayload>(
+pub fn index_payloads<'a, P: PaxosPayload>(
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
     p_max_slot: Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
     c_to_proposers: Stream<P, Tick<Cluster<'a, Proposer>>, Bounded>,

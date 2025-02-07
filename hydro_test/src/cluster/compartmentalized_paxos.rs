@@ -6,8 +6,8 @@ use hydro_std::request_response::join_responses;
 use serde::{Deserialize, Serialize};
 
 use super::paxos::{
-    acceptor_p2, leader_election, Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload,
-    Proposer,
+    acceptor_p2, index_payloads, leader_election, recommit_after_leader_election, Acceptor, Ballot,
+    LogValue, P2a, PaxosConfig, PaxosPayload, Proposer,
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -149,100 +149,6 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
     )
 }
 
-#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-fn recommit_after_leader_election<'a, P: PaxosPayload>(
-    accepted_logs: Stream<
-        (Option<usize>, HashMap<usize, LogValue<P>>),
-        Tick<Cluster<'a, Proposer>>,
-        Bounded,
-        NoOrder,
-    >,
-    p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    config: CompartmentalizedPaxosConfig,
-) -> (
-    Stream<P2a<P, ProxyLeader>, Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
-    Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
-) {
-    let f = config.paxos_config.f;
-    let num_proxy_leaders = config.num_proxy_leaders;
-    let p_p1b_max_checkpoint = accepted_logs
-        .clone()
-        .filter_map(q!(|(checkpoint, _log)| checkpoint))
-        .max()
-        .into_singleton();
-    let p_p1b_highest_entries_and_count = accepted_logs
-        .map(q!(|(_checkpoint, log)| log))
-        .flatten_unordered() // Convert HashMap log back to stream
-        .fold_keyed_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
-            if let Some(curr_entry_payload) = &mut curr_entry.1 {
-                let same_values = new_entry.value == curr_entry_payload.value;
-                let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
-                // Increment count if the values are the same
-                if same_values {
-                    curr_entry.0 += 1;
-                }
-                // Replace the ballot with the largest one
-                if higher_ballot {
-                    curr_entry_payload.ballot = new_entry.ballot;
-                    // Replace the value with the one from the largest ballot, if necessary
-                    if !same_values {
-                        curr_entry.0 = 1;
-                        curr_entry_payload.value = new_entry.value;
-                    }
-                }
-            } else {
-                *curr_entry = (1, Some(new_entry));
-            }
-        }))
-        .map(q!(|(slot, (count, entry))| (slot, (count, entry.unwrap()))));
-    let p_log_to_try_commit = p_p1b_highest_entries_and_count
-        .clone()
-        .cross_singleton(p_ballot.clone())
-        .cross_singleton(p_p1b_max_checkpoint.clone())
-        .filter_map(q!(move |(((slot, (count, entry)), ballot), checkpoint)| {
-            if count > f {
-                return None;
-            } else if let Some(checkpoint) = checkpoint {
-                if slot <= checkpoint {
-                    return None;
-                }
-            }
-            Some(P2a {
-                sender: ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
-                ballot,
-                slot,
-                value: entry.value,
-            })
-        }));
-    let p_max_slot = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot))
-        .max();
-    let p_proposed_slots = p_p1b_highest_entries_and_count
-        .clone()
-        .map(q!(|(slot, _)| slot));
-    let p_log_holes = p_max_slot
-        .clone()
-        .zip(p_p1b_max_checkpoint)
-        .flat_map_ordered(q!(|(max_slot, checkpoint)| {
-            if let Some(checkpoint) = checkpoint {
-                (checkpoint + 1)..max_slot
-            } else {
-                0..max_slot
-            }
-        }))
-        .filter_not_in(p_proposed_slots)
-        .cross_singleton(p_ballot.clone())
-        .map(q!(move |(slot, ballot)| P2a {
-            sender: ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
-            ballot,
-            slot,
-            value: None
-        }));
-
-    (p_log_to_try_commit.chain(p_log_holes), p_max_slot)
-}
-
 #[expect(
     clippy::type_complexity,
     clippy::too_many_arguments,
@@ -284,7 +190,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
     let (p_log_to_recommit, p_max_slot) =
-        recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config);
+        recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
 
     let p_indexed_payloads = index_payloads(proposer_tick, p_max_slot, unsafe {
         // SAFETY: We batch payloads so that we can compute the correct slot based on
@@ -304,9 +210,9 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
             ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
             ((slot, ballot), Some(payload))
         )))
-        .chain(p_log_to_recommit.map(q!(move |p2a| (
-            ClusterId::<ProxyLeader>::from_raw((p2a.slot % num_proxy_leaders) as u32),
-            ((p2a.slot, p2a.ballot), p2a.value)
+        .chain(p_log_to_recommit.map(q!(move |((slot, ballot), payload)| (
+            ClusterId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            ((slot, ballot), payload)
         ))))
         .all_ticks()
         .send_bincode_anonymous(proxy_leaders);
@@ -369,35 +275,4 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
         a_log,
         pl_failed_p2b_to_proposer,
     )
-}
-
-// Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-fn index_payloads<'a, P: PaxosPayload>(
-    proposer_tick: &Tick<Cluster<'a, Proposer>>,
-    p_max_slot: Optional<usize, Tick<Cluster<'a, Proposer>>, Bounded>,
-    c_to_proposers: Stream<P, Tick<Cluster<'a, Proposer>>, Bounded>,
-) -> Stream<(usize, P), Tick<Cluster<'a, Proposer>>, Bounded> {
-    let (p_next_slot_complete_cycle, p_next_slot) =
-        proposer_tick.cycle_with_initial::<Singleton<usize, _, _>>(proposer_tick.singleton(q!(0)));
-    let p_next_slot_after_reconciling_p1bs = p_max_slot.map(q!(|max_slot| max_slot + 1));
-
-    let base_slot = p_next_slot_after_reconciling_p1bs.unwrap_or(p_next_slot);
-
-    let p_indexed_payloads = c_to_proposers
-        .enumerate()
-        .cross_singleton(base_slot.clone())
-        .map(q!(|((index, payload), base_slot)| (
-            base_slot + index,
-            payload
-        )));
-
-    let p_num_payloads = p_indexed_payloads.clone().count();
-    let p_next_slot_after_sending_payloads =
-        p_num_payloads
-            .clone()
-            .zip(base_slot)
-            .map(q!(|(num_payloads, base_slot)| base_slot + num_payloads));
-
-    p_next_slot_complete_cycle.complete_next_tick(p_next_slot_after_sending_payloads);
-    p_indexed_payloads
 }
