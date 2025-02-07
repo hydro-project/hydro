@@ -1,40 +1,57 @@
+use std::fmt::Debug;
+
 use hydro_lang::*;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 
-use super::paxos::{paxos_core, Acceptor, Ballot, PaxosConfig, PaxosPayload, Proposer};
+use super::paxos::PaxosPayload;
 
-/// Wraps the core Paxos algorithm with logic to send payloads from clients to the current
-/// leader.
-///
-/// # Safety
-/// Clients may send payloads to a stale leader if the leader changes between the time the
-/// payload is sent and the time it is processed. This will result in the payload being dropped.
-/// Payloads sent from multiple clients may be interleaved in a non-deterministic order.
-pub unsafe fn paxos_with_client<'a, C: 'a, R, P: PaxosPayload>(
-    proposers: &Cluster<'a, Proposer>,
-    acceptors: &Cluster<'a, Acceptor>,
-    clients: &Cluster<'a, C>,
-    payloads: Stream<P, Cluster<'a, C>, Unbounded>,
-    replica_checkpoint: Stream<(ClusterId<R>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
-    paxos_config: PaxosConfig,
-) -> Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder> {
-    unsafe {
-        // SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
-        // care about the order in which key writes are processed, which is the non-determinism in
-        // `sequenced_payloads`.
+pub trait PaxosLike<'a>: Sized {
+    type Leader: 'a;
+    type Ballot: Clone + Ord + Debug + Serialize + DeserializeOwned;
 
-        paxos_core(
-            proposers,
-            acceptors,
-            replica_checkpoint,
-            |new_leader_elected| {
-                let cur_leader_id = new_leader_elected
-                    .broadcast_bincode_interleaved(clients)
-                    .inspect(q!(|ballot| println!(
-                        "Client notified that leader was elected: {:?}",
-                        ballot
-                    )))
-                    .max()
-                    .map(q!(|ballot: Ballot| ballot.proposer_id));
+    fn leaders(&self) -> &Cluster<'a, Self::Leader>;
+
+    fn get_ballot_leader<L: Location<'a>>(
+        ballot: Optional<Self::Ballot, L, Unbounded>,
+    ) -> Optional<ClusterId<Self::Leader>, L, Unbounded>;
+
+    /// # Safety
+    /// During leader-reelection, the latest known leader may be stale, which may
+    /// result in non-deterministic dropping of payloads.
+    #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
+    unsafe fn build<P: PaxosPayload>(
+        self,
+        payload_generator: impl FnOnce(
+            Stream<Self::Ballot, Cluster<'a, Self::Leader>, Unbounded>,
+        ) -> Stream<P, Cluster<'a, Self::Leader>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::Leader>, Unbounded, NoOrder>;
+
+    /// # Safety
+    /// During leader-reelection, the latest known leader may be stale, which may
+    /// result in non-deterministic dropping of payloads.
+    #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
+    unsafe fn with_client<C: 'a, P: PaxosPayload>(
+        self,
+        clients: &Cluster<'a, C>,
+        payloads: Stream<P, Cluster<'a, C>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::Leader>, Unbounded, NoOrder> {
+        unsafe {
+            // SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
+            // care about the order in which key writes are processed, which is the non-determinism in
+            // `sequenced_payloads`.
+            let leaders = self.leaders().clone();
+
+            self.build(move |new_leader_elected| {
+                let cur_leader_id = Self::get_ballot_leader(
+                    new_leader_elected
+                        .broadcast_bincode_interleaved(clients)
+                        .inspect(q!(|ballot| println!(
+                            "Client notified that leader was elected: {:?}",
+                            ballot
+                        )))
+                        .max(),
+                );
 
                 let payloads_at_proposer = {
                     // SAFETY: the risk here is that we send a batch of requests
@@ -59,7 +76,7 @@ pub unsafe fn paxos_with_client<'a, C: 'a, R, P: PaxosPayload>(
                     all_payloads.cross_singleton(latest_leader).all_ticks()
                 }
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
-                .send_bincode_anonymous(proposers);
+                .send_bincode_anonymous(&leaders);
 
                 let payloads_at_proposer = {
                     // SAFETY: documented non-determinism in interleaving of client payloads
@@ -67,9 +84,7 @@ pub unsafe fn paxos_with_client<'a, C: 'a, R, P: PaxosPayload>(
                 };
 
                 payloads_at_proposer
-            },
-            paxos_config,
-        )
-        .1
+            })
+        }
     }
 }
