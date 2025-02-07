@@ -17,7 +17,31 @@ expression: built.ir()
                     location_kind: Process(
                         0,
                     ),
+                    metadata: HydroNodeMetadata {
+                        location_kind: Process(
+                            0,
+                        ),
+                        output_type: Some(
+                            std :: string :: String,
+                        ),
+                    },
                 },
+                metadata: HydroNodeMetadata {
+                    location_kind: Process(
+                        0,
+                    ),
+                    output_type: Some(
+                        (std :: string :: String , ()),
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                location_kind: Process(
+                    0,
+                ),
+                output_type: Some(
+                    (std :: string :: String , i32),
+                ),
             },
         },
     },

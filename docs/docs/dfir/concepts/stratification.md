@@ -3,12 +3,12 @@ sidebar_position: 3
 ---
 
 # Streaming, Blocking and Stratification
-Many DFIR operators (e.g. `map`, `filter` and `join`) work in a streaming fashion. Streaming operators process data as it arrives, generating outputs in the midst of processing inputs. If you restrict yourself to operators that work in this streaming fashion, then your transducer may start sending data across the network mid-tick, even while it is still consuming the data in the input batch.
+Many DFIR operators (e.g. `map`, `filter` and `join`) work in a streaming fashion. Streaming operators process data as it arrives, generating outputs in the midst of processing inputs. If you restrict yourself to operators that work in this streaming fashion, then your process may start sending data across the network mid-tick, even while it is still consuming the data in the input batch.
 
 But some operators are blocking, and must wait for all their input data to arrive before they can produce any output data. For example, a `sort` operator must wait for all its input data to arrive before it can produce a single output value. After all, the lowest value may be the last to arrive!
 
 ## Examples of Blocking Operators
-The discussion above should raise questions in your mind. What do we mean by "all the input data" in a long-running service? We don't want to wait until the end of time—this is one reason we break time up into discrete "ticks" at each transducer. So when we say that a blocking operator waits for "all the input data", we mean "all the input data in the current tick".
+The discussion above should raise questions in your mind. What do we mean by "all the input data" in a long-running service? We don't want to wait until the end of time—this is one reason we break time up into discrete "ticks" at each process. So when we say that a blocking operator waits for "all the input data", we mean "all the input data in the current tick".
 
 Consider the simple statement below, which receives data from a network source each tick, sorts that tick's worth of data, and prints it to stdout:
 ```rust,ignore
@@ -59,14 +59,14 @@ end
 The `difference` operators is one with inputs of two different types. It is supposed to output all the items from its `pos` input that do not appear in its `neg` input. To achieve that, the `neg` input must be blocking, but the `pos` input can stream. Blocking on the `neg` input ensures that if the operator streams an output from the `pos` input, it will never need to retract that output.
 
 
-Given these examples, we can refine our diagram of the DFIR transducer loop to account for stratified execution within each tick:
+Given these examples, we can refine our diagram of the DFIR process loop to account for stratified execution within each tick:
 ```mermaid
 %%{init: {'theme':'neutral'}}%%
 flowchart LR
     subgraph external[External]
         network>"messages\n& events"\nfa:fa-telegram]-->buffer[[buffer]]
     end
-    subgraph transducer[Transducer Loop]
+    subgraph process[Process Loop]
          buffer-->ingest>"ingest a batch\nof data"]-->loop((("for each stratum in\n[0..max(strata)]\nrun stratum to fixpoint\nfa:fa-cog")))-->stream[stream out\nmsgs & events\nfa:fa-telegram]-->clock((advance\nclock\nfa:fa-clock-o))-- new tick! -->ingest
     end
     style stream fill:#0fa,stroke:#aaa,stroke-width:2px,stroke-dasharray: 5 5
@@ -88,7 +88,7 @@ The DFIR compiler performs stratification via static analysis of the DFIR spec. 
 
 Given the acyclicity test, any legal DFIR program consists of a directed acyclic graph (DAG) of strata and handoffs. The strata are numbered in ascending order by assigning stratum number 0 to the "leaves" of the DAG (strata with no upstream operators), and then ensuring that each stratum is assigned a number that is one larger than any of its upstream strata.
 
-As a DFIR operator executes, it is running on a particular transducer, in a particular tick, in a particular stratum. 
+As a DFIR operator executes, it is running on a particular process, in a particular tick, in a particular stratum. 
 
 
 ### Determining whether an operator should block: Monotonicity
@@ -102,6 +102,6 @@ By contrast, consider the output of a blocking operator like `difference`. The o
 
 DFIR is designed to use the monotonicity property to determine whether an operator should block. If an operator is monotone with respect to an input, that input is streaming. If an operator is non-monotone, it is blocking.
 
-Monotonicity turns out to be particularly important for distributed systems. In particular, if all your transducers are fully monotone across ticks, then they can run in parallel without any coordination—they will always stream correct prefixes of the final outputs, and eventually will deliver the complete output. This is the positive direction of the [CALM Theorem](https://cacm.acm.org/magazines/2020/9/246941-keeping-calm/fulltext).
+Monotonicity turns out to be particularly important for distributed systems. In particular, if all your processes are fully monotone across ticks, then they can run in parallel without any coordination—they will always stream correct prefixes of the final outputs, and eventually will deliver the complete output. This is the positive direction of the [CALM Theorem](https://cacm.acm.org/magazines/2020/9/246941-keeping-calm/fulltext).
 
 > In future versions of DFIR, the type system will represent monotonicity explicitly and reason about it automatically.

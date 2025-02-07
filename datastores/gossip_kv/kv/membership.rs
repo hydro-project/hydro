@@ -7,8 +7,8 @@ pub type MemberId = String;
 
 /// Information about a member in the cluster.
 ///
-/// A member is a transducer that is part of the cluster. Leaving or failing is a terminal
-/// state for a member. When a transducer restarts and rejoins the cluster, it is considered a
+/// A member is a process that is part of the cluster. Leaving or failing is a terminal
+/// state for a member. When a process restarts and rejoins the cluster, it is considered a
 /// new member.
 ///
 /// # Generic Parameters

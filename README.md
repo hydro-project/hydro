@@ -2,13 +2,13 @@
     <img src="https://raw.githubusercontent.com/hydro-project/hydro/main/docs/static/img/hydro-logo.svg" width="200" alt='"hf"'>
 </h1>
 <p align="center">
-    <a href="https://crates.io/crates/hydroflow"><img src="https://img.shields.io/crates/v/hydroflow?style=flat-square&logo=rust" alt="Crates.io"></a>
-    <a href="https://docs.rs/hydroflow/"><img src="https://img.shields.io/badge/docs.rs-Hydroflow-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
+    <a href="https://crates.io/crates/hydro_lang"><img src="https://img.shields.io/crates/v/hydro_lang?style=flat-square&logo=rust" alt="Crates.io"></a>
+    <a href="https://docs.rs/hydro_lang/"><img src="https://img.shields.io/badge/docs.rs-Hydro-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
 </p>
 
-Hydro is a novel distributed programming library for standard Rust. Hydro allows developers to build distributed systems that are efficient, scalable, and correct.
+Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](https://hydro.run/docs/hydro/correctness.md).
 
-Hydro integrates naturally into standard Rust constructs and IDEs, providing types and programming constructs for ensuring distributed correctness. Under the covers it provides a metaprogrammed compiler that optimizes for cross-node issues of scaling and data movement while leveraging Rust and LLVM for per-node performance.
+Hydro integrates naturally into standard Rust constructs and IDEs, providing types and programming constructs for ensuring distributed safety. Under the covers it provides a metaprogrammed compiler that optimizes for cross-node issues of scaling and data movement while leveraging Rust and LLVM for per-node performance.
 
 We often describe Hydro via a metaphor: *LLVM for the cloud*. Like LLVM, Hydro is a layered compilation framework with a low-level Internal Representation language. In contrast to LLVM, Hydro focuses on distributed aspects of modern software.
 
@@ -17,10 +17,10 @@ We often describe Hydro via a metaphor: *LLVM for the cloud*. Like LLVM, Hydro i
 </div>
 
 
-## The Language (and the Low-Level IR)
-Hydro provides a [high-level language](https://hydro.run/docs/hydro) that allows you to program an entire fleet of processes from a single program, and then launch your fleet locally or in the cloud via [Hydro Deploy](https://hydro.run/docs/deploy). Get started with Hydro via the language [documentation](https://hydro.run/docs/hydro) and [examples](https://github.com/hydro-project/hydro/tree/main/hydro_test/examples).
+## The Hydro API (and the Low-Level IR)
+Hydro provides a [high-level API](https://hydro.run/docs/hydro) that allows you to program an entire fleet of processes from a single program, and then launch your fleet locally or in the cloud via [Hydro Deploy](https://hydro.run/docs/deploy). Get started with Hydro via the API [documentation](https://hydro.run/docs/hydro) and [examples](https://github.com/hydro-project/hydro/tree/main/hydro_test/examples).
 
-> Internally, the Hydro stack compiles Hydro programs into a low-level Dataflow Internal Representation (IR) language called [DFIR](https://hydro.run/docs/dfir); each process corresponds to a separate DFIR program. In rare cases you may want to compose one or more processes in DFIR by hand; see the DFIR [documentation](https://hydro.run/docs/dfir) or [examples](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples) for details.
+> Internally, the Hydro stack compiles Hydro programs into a low-level single-threaded DataFlow Internal Representation (IR) language called [DFIR](https://hydro.run/docs/dfir); each Hydro process corresponds to a separate DFIR program. In rare cases you may want to hand-author one or more processes in DFIR; see the DFIR [documentation](https://hydro.run/docs/dfir) or [examples](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples) for details.
 
 ## Development Setup
 
@@ -32,7 +32,7 @@ There have been many frameworks and platforms for distributed programming over t
 **Higher level frameworks** have been designed to serve specialized distributed use cases. These including *Client-Server (Monolith)* frameworks  (e.g. Ruby on Rails + DBMS), parallel *Bulk Dataflow* frameworks (e.g. Spark, Flink, etc.), and step-wise *Workflows / Pipelines / Serverless / μservice Orchestration* frameworks (e.g. Kafka, Airflow). All of these frameworks offer limited expressibility and are inefficient outside their sweet spot. Each one ties developers' hands in different ways.
 
 **Lower level asynchronous APIs** provide general-purpose distributed interfaces for sequential programming, including
-    *RPCs*, *Async/Await* frameworks and *Actor* frameworks (e.g. Akka, Ray, Unison, Orleans, gRPC). These interfaces allow developers to build distributed systems *one async sequential process* at a time. While they offer low-level control of individual processes, they provide minimal help for global correctness of the fleet.
+    *RPCs*, *Async/Await* frameworks and *Actor* frameworks (e.g. Akka, Ray, Unison, Orleans, gRPC). These interfaces allow developers to build distributed systems *one async sequential process* at a time. While they offer low-level control of individual processes, they provide minimal help with ensuring the global correctness of the fleet.
 
 ## Towards a more comprehensive approach
 What's wanted, we believe, is a proper language stack addressing distributed concerns:

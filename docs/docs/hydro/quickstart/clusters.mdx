@@ -12,13 +12,13 @@ So far, we have looked at distributed systems where each process is running a di
 ## Dataflow with Clusters
 Just like we use the `Process` type to represent a virtual handle to a single node, we can use the **`Cluster`** type to represent a handle to a **set of nodes** (with size unknown at compile-time).
 
-A `Stream` located on a `Cluster` can be thought of as SIMD-style programming, where each cluster member executes the same operators but on different pieces of data.
+A `Stream` located on a `Cluster` can be thought of as [SPMD](https://en.wikipedia.org/wiki/Single_program,_multiple_data)-style programming, where each cluster member executes the same operators but on different streams of data.
 
 To start, we set up a new module in `src/first_ten_cluster.rs` with a dataflow program that takes in a `Process` for a leader and `Cluster` for a set of workers.
 
 <CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 1, 6)}</CodeBlock>
 
-We start by materializing a stream of numbers on the `leader`, as before. But rather than sending the stream to a single process, we will instead _distribute_ the data to each member of the cluster using `round_robin_bincode`. This API places data on a `cluster` in a round-robin fashion by using the order of elements to determine which cluster member each element is sent to.
+We start by materializing a stream of numbers on the `leader`, as before. But rather than sending the stream to a single process, we will instead _distribute_ the data to each member of the cluster using `round_robin_bincode`. This API partitions (shards) data across a `cluster` in a round-robin fashion by using the order of elements to determine which cluster member each element is sent to.
 
 :::info
 
@@ -32,12 +32,12 @@ On each cluster member, we will then do some work to transform the data (using `
 
 <CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 10, 11)}</CodeBlock>
 
-Finally, we will send the data back to the leader. We achieve this using a variant of the APIs from before: `send_bincode_interleaved`. If we used `send_bincode`, we would get a stream of (cluster ID, data) tuples. Since it is a common pattern to ignore the IDs, `send_bincode_interleaved` is available as a helper.
+Finally, we will send the data back to the leader. We achieve this using a variant of the APIs from before: `send_bincode_anonymous`. If we used `send_bincode`, we would get a stream of `(cluster ID, data)` tuples. Since it is a common pattern to ignore the IDs, `send_bincode_anonymous` is available as a helper.
 
 <CodeBlock language="rust" title="src/first_ten_cluster.rs">{getLines(firstTenClusterSrc, 12, 14)}</CodeBlock>
 
 ## Deploying Clusters
-Deployment scripts are similar to before, except that when provisioning a cluster we provide a list of deployment hosts rather than a single one. In our example, we'll launch 4 nodes for the cluster by creating a `Vec` of 4 localhost instances.
+Deployment scripts are similar to before, except that when provisioning a cluster we provide a *list* of deployment hosts rather than a single one. In our example, we'll launch 4 nodes for the cluster by creating a `Vec` of 4 localhost instances.
 
 <CodeBlock language="rust" title="examples/first_ten_cluster.rs">{highlightLines(firstTenClusterExample, [14])}</CodeBlock>
 
@@ -70,4 +70,4 @@ cargo run --example first_ten_cluster
 [hydro_template::first_ten_cluster::Leader (process 0)] 14
 ```
 
-You'll notice the round-robin distribution in action here, as each cluster log is tagged with the ID of the member (e.g. `/ 0`). In our deployment, we are sending data round-robin across 4 members of the cluster, numbered `0` through `3`.  Hence cluster member `0` receives values `0`, `4`, `8` (corresponding to the highlighted lines),  member `1`  receives values `1`, `5`, `9`, and so on.
+You'll notice the round-robin distribution in action here, as each cluster log is tagged with the ID of the member (e.g. `/ 0`). In our deployment, we are sending the even numbers round-robin across 4 members of the cluster, numbered `0` through `3`.  Hence cluster member `0` receives values `0`, `8`, `16` (corresponding to the highlighted lines),  member `1`  receives values `2`, `10`, `18`, and so on.

@@ -213,7 +213,7 @@ impl Display for BuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::FailedToBuildCrate(exit_status, diagnostics) => {
-                writeln!(f, "Failed to build crate (exit status {}):", exit_status)?;
+                writeln!(f, "Failed to build crate ({}):", exit_status)?;
                 for diagnostic in diagnostics {
                     write!(f, "{}", diagnostic)?;
                 }

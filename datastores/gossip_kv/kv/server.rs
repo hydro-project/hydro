@@ -105,7 +105,7 @@ where
     dfir_syntax! {
 
         on_start = initialize() -> tee();
-        on_start -> for_each(|_| info!("{:?}: Transducer {} started.", context.current_tick(), member_id_6));
+        on_start -> for_each(|_| info!("{:?}: Process {} started.", context.current_tick(), member_id_6));
 
         seed_nodes = source_stream(seed_node_stream)
             -> fold::<'static>(|| Box::new(seed_nodes), |last_seed_nodes, new_seed_nodes: Vec<SeedNode<Addr>>| {
@@ -274,7 +274,7 @@ where
         new_writes -> for_each(|x| trace!("NEW WRITE: {:?}", x));
 
         // Step 1: Put the new writes in a map, with the write as the key and a SetBoundedLattice as the value.
-        infecting_writes = union() -> state::<'static, MapUnionHashMap<MessageId, InfectingWrite>>();
+        infecting_writes = union() -> state_by::<'static, MapUnionHashMap<MessageId, InfectingWrite>>(std::convert::identity, std::default::Default::default);
 
         new_writes -> map(|write| {
             // Ideally, the write itself is the key, but writes are a hashmap and hashmaps don't

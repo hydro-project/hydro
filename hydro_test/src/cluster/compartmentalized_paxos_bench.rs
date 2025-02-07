@@ -7,10 +7,7 @@ use super::compartmentalized_paxos_with_client::compartmentalized_paxos_with_cli
 use super::kv_replica::{kv_replica, KvPayload, Replica};
 use super::paxos::{Acceptor, Proposer};
 
-#[expect(
-    clippy::type_complexity,
-    reason = "internal paxos code // TODO"
-)]
+#[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
 pub fn compartmentalized_paxos_bench<'a>(
     flow: &FlowBuilder<'a>,
     num_clients_per_node: usize,
@@ -58,7 +55,7 @@ pub fn compartmentalized_paxos_bench<'a>(
                 )
             };
 
-            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(&replicas);
+            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);
 
             // Replicas
             let (replica_checkpoint, processed_payloads) =
@@ -71,16 +68,16 @@ pub fn compartmentalized_paxos_bench<'a>(
                     payload.value.0,
                     ((payload.key, payload.value.1), Ok(()))
                 )))
-                .send_bincode_interleaved(&clients);
+                .send_bincode_anonymous(&clients);
 
             // we only mark a transaction as committed when f+1 replicas have applied it
             collect_quorum::<_, _, _, ()>(
-                c_received_payloads.timestamped(&clients.tick()),
+                c_received_payloads.atomic(&clients.tick()),
                 paxos_config.f + 1,
                 paxos_config.num_replicas,
             )
             .0
-            .drop_timestamp()
+            .end_atomic()
         },
         num_clients_per_node,
         median_latency_window_size,

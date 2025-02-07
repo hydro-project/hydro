@@ -33,7 +33,7 @@ pub unsafe fn compartmentalized_paxos_with_client<'a, C: 'a, R, P: PaxosPayload>
             replica_checkpoint,
             |new_leader_elected| {
                 let cur_leader_id = new_leader_elected
-                    .broadcast_bincode_interleaved(clients)
+                    .broadcast_bincode_anonymous(clients)
                     .inspect(q!(|ballot| println!(
                         "Client notified that leader was elected: {:?}",
                         ballot
@@ -48,9 +48,9 @@ pub unsafe fn compartmentalized_paxos_with_client<'a, C: 'a, R, P: PaxosPayload>
                     // is documented non-determinism.
 
                     let client_tick = clients.tick();
-                    let payload_batch = payloads.timestamped(&client_tick).tick_batch();
+                    let payload_batch = payloads.tick_batch(&client_tick);
 
-                    let latest_leader = cur_leader_id.timestamped(&client_tick).latest_tick();
+                    let latest_leader = cur_leader_id.latest_tick(&client_tick);
 
                     let (unsent_payloads_complete, unsent_payloads) =
                         client_tick.cycle::<Stream<_, _, _, TotalOrder>>();
@@ -68,7 +68,7 @@ pub unsafe fn compartmentalized_paxos_with_client<'a, C: 'a, R, P: PaxosPayload>
                 //     payload, leader_id
                 // )))
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
-                .send_bincode_interleaved(proposers);
+                .send_bincode_anonymous(proposers);
 
                 let payloads_at_proposer = {
                     // SAFETY: documented non-determinism in interleaving of client payloads

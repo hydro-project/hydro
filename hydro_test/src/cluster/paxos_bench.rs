@@ -50,7 +50,7 @@ pub fn paxos_bench<'a>(
                 )
             };
 
-            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(&replicas);
+            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);
 
             // Replicas
             let (replica_checkpoint, processed_payloads) =
@@ -63,16 +63,16 @@ pub fn paxos_bench<'a>(
                     payload.value.0,
                     ((payload.key, payload.value.1), Ok(()))
                 )))
-                .send_bincode_interleaved(&clients);
+                .send_bincode_anonymous(&clients);
 
             // we only mark a transaction as committed when all replicas have applied it
             collect_quorum::<_, _, _, ()>(
-                c_received_payloads.timestamped(&clients.tick()),
+                c_received_payloads.atomic(&clients.tick()),
                 paxos_config.f + 1,
                 paxos_config.f + 1,
             )
             .0
-            .drop_timestamp()
+            .end_atomic()
         },
         num_clients_per_node,
         median_latency_window_size,

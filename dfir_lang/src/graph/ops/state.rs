@@ -19,6 +19,8 @@ use super::{
 ///     -> map(SetUnionSingletonSet::new_from)
 ///     -> state::<SetUnionHashSet<usize>>();
 /// ```
+/// The `state` operator is equivalent to `state_by` used with an identity mapping operator with
+/// `Default::default` providing the factory function.
 pub const STATE: OperatorConstraints = OperatorConstraints {
     name: "state",
     categories: &[OperatorCategory::Persistence],
@@ -39,7 +41,7 @@ pub const STATE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
 
         let wc = WriteContextArgs {
-            arguments: &parse_quote_spanned!(op_span => ::std::convert::identity),
+            arguments: &parse_quote_spanned!(op_span => ::std::convert::identity, ::std::default::Default::default),
             ..wc.clone()
         };
 

@@ -26,6 +26,22 @@ expression: built.ir()
                 location_kind: ExternalProcess(
                     0,
                 ),
+                metadata: HydroNodeMetadata {
+                    location_kind: ExternalProcess(
+                        0,
+                    ),
+                    output_type: Some(
+                        std :: string :: String,
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                location_kind: Process(
+                    1,
+                ),
+                output_type: Some(
+                    std :: string :: String,
+                ),
             },
         },
     },
@@ -56,7 +72,31 @@ expression: built.ir()
                     location_kind: Process(
                         1,
                     ),
+                    metadata: HydroNodeMetadata {
+                        location_kind: Process(
+                            1,
+                        ),
+                        output_type: Some(
+                            u32,
+                        ),
+                    },
                 },
+                metadata: HydroNodeMetadata {
+                    location_kind: Process(
+                        1,
+                    ),
+                    output_type: Some(
+                        hydro_test :: distributed :: first_ten :: SendOverNetwork,
+                    ),
+                },
+            },
+            metadata: HydroNodeMetadata {
+                location_kind: Process(
+                    2,
+                ),
+                output_type: Some(
+                    hydro_test :: distributed :: first_ten :: SendOverNetwork,
+                ),
             },
         },
     },

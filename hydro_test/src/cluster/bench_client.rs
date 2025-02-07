@@ -19,7 +19,7 @@ pub fn bench_client<'a>(
     // r_to_clients_payload_applied.clone().inspect(q!(|payload: &(u32, ReplicaPayload)| println!("Client received payload: {:?}", payload)));
 
     // Set up an initial set of payloads on the first tick
-    let start_this_tick = client_tick.singleton_first_tick(q!(()));
+    let start_this_tick = client_tick.optional_first_tick(q!(()));
 
     let c_new_payloads_on_start = start_this_tick.clone().flat_map_ordered(q!(move |_| (0
         ..num_clients_per_node)
@@ -35,9 +35,7 @@ pub fn bench_client<'a>(
         // across *different* keys, we are safe because delaying a transaction result for a key
         // will only affect when the next request for that key is emitted with respect to other
         // keys
-        transaction_cycle(c_to_proposers)
-            .timestamped(&client_tick)
-            .tick_batch()
+        transaction_cycle(c_to_proposers).tick_batch(&client_tick)
     };
 
     // Whenever all replicas confirm that a payload was committed, send another payload
@@ -52,8 +50,7 @@ pub fn bench_client<'a>(
                 // across keys
                 c_new_payloads_when_committed.assume_ordering::<TotalOrder>()
             })
-            .all_ticks()
-            .drop_timestamp(),
+            .all_ticks(),
     );
 
     // Track statistics
@@ -82,8 +79,7 @@ pub fn bench_client<'a>(
         // SAFETY: intentionally sampling statistics
         clients
             .source_interval(q!(Duration::from_secs(1)))
-            .timestamped(&client_tick)
-            .tick_batch()
+            .tick_batch(&client_tick)
     }
     .first();
 
@@ -146,7 +142,9 @@ pub fn bench_client<'a>(
 
     unsafe {
         // SAFETY: intentionally sampling statistics
-        c_latencies.zip(c_throughput).latest_tick()
+        c_latencies
+            .latest_tick(&client_tick)
+            .zip(c_throughput.latest_tick(&client_tick))
     }
     .continue_if(c_stats_output_timer)
     .all_ticks()

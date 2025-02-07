@@ -16,7 +16,7 @@ use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
-use crate::location::tick::{NoTimestamp, Timestamped};
+use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
     check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
 };
@@ -73,6 +73,16 @@ pub struct Stream<T, L, B, Order = TotalOrder> {
     _phantom: PhantomData<(T, L, B, Order)>,
 }
 
+impl<'a, T, L: Location<'a>, O> From<Stream<T, L, Bounded, O>> for Stream<T, L, Unbounded, O> {
+    fn from(stream: Stream<T, L, Bounded, O>) -> Stream<T, L, Unbounded, O> {
+        Stream {
+            location: stream.location,
+            ir_node: stream.ir_node,
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, T, L: Location<'a>, B> From<Stream<T, L, B, TotalOrder>> for Stream<T, L, B, NoOrder> {
     fn from(stream: Stream<T, L, B, TotalOrder>) -> Stream<T, L, B, NoOrder> {
         Stream {
@@ -103,10 +113,11 @@ impl<'a, T, L: Location<'a>, Order> CycleCollection<'a, TickCycleMarker>
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
         let location_id = location.id();
         Stream::new(
-            location,
+            location.clone(),
             HydroNode::CycleSource {
                 ident,
                 location_kind: location_id,
+                metadata: location.new_node_metadata::<T>(),
             },
         )
     }
@@ -142,12 +153,17 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> CycleCollection<'a, ForwardRefMa
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
         let location_id = location.id();
+
         Stream::new(
-            location,
-            HydroNode::Persist(Box::new(HydroNode::CycleSource {
-                ident,
-                location_kind: location_id,
-            })),
+            location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(HydroNode::CycleSource {
+                    ident,
+                    location_kind: location_id,
+                    metadata: location.new_node_metadata::<T>(),
+                }),
+                metadata: location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -161,6 +177,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> CycleComplete<'a, ForwardRefMark
             expected_location,
             "locations do not match"
         );
+        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
@@ -170,7 +187,10 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> CycleComplete<'a, ForwardRefMark
             .push(HydroLeaf::CycleSink {
                 ident,
                 location_kind: self.location_kind(),
-                input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
+                input: Box::new(HydroNode::Unpersist {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata,
+                }),
             });
     }
 }
@@ -191,14 +211,16 @@ impl<'a, T: Clone, L: Location<'a>, B, Order> Clone for Stream<T, L, B, Order> {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
                 inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                metadata: self.location.new_node_metadata::<T>(),
             };
         }
 
-        if let HydroNode::Tee { inner } = self.ir_node.borrow().deref() {
+        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
             Stream {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
                     inner: TeeNode(inner.0.clone()),
+                    metadata: metadata.clone(),
                 }
                 .into(),
                 _phantom: PhantomData,
@@ -222,7 +244,6 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// let words = process.source_iter(q!(vec!["hello", "world"]));
     /// words.map(q!(|x| x.to_uppercase()))
     /// # }, |mut stream| async move {
-    /// // HELLO, WORLD
     /// # for w in vec!["HELLO", "WORLD"] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
@@ -234,34 +255,13 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ) -> Stream<U, L, B, Order> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Map {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
-    }
-
-    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
-    ///
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// process.source_iter(q!(vec![1..3])).cloned()
-    /// # }, |mut stream| async move {
-    /// // 1, 2, 3
-    /// # for w in vec![1..3] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// ```
-    pub fn cloned(self) -> Stream<T, L, B, Order>
-    where
-        T: Clone,
-    {
-        self.map(q!(|d| d.clone()))
     }
 
     /// For each item `i` in the input stream, transform `i` using `f` and then treat the
@@ -292,10 +292,11 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ) -> Stream<U, L, B, Order> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -330,10 +331,11 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ) -> Stream<U, L, B, NoOrder> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FlatMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -423,10 +425,11 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ) -> Stream<T, L, B, Order> {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::Filter {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             },
         )
     }
@@ -453,10 +456,11 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ) -> Stream<U, L, B, Order> {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FilterMap {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
             },
         )
     }
@@ -473,11 +477,10 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// let batch = unsafe {
     ///     process
     ///         .source_iter(q!(vec![1, 2, 3, 4]))
-    ///         .timestamped(&tick)
-    ///         .tick_batch()
+    ///         .tick_batch(&tick)
     /// };
-    /// let count = batch.clone().count();
-    /// batch.cross_singleton(count).all_ticks().drop_timestamp()
+    /// let count = batch.clone().count(); // `count()` returns a singleton
+    /// batch.cross_singleton(count).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 4), (2, 4), (3, 4), (4, 4)
     /// # for w in vec![(1, 4), (2, 4), (3, 4), (4, 4)] {
@@ -495,11 +498,12 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         check_matching_location(&self.location, &other.location);
 
         Stream::new(
-            self.location,
-            HydroNode::CrossSingleton(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(other.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::CrossSingleton {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(T, O)>(),
+            },
         )
     }
 
@@ -509,14 +513,29 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
             .map(q!(|(d, _signal)| d))
     }
 
-    /// Allow this stream through if the other stream is empty, otherwise the output is empty.
+    /// Allow this stream through if the argument (a Bounded Optional) is empty, otherwise the output is empty.
     pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Stream<T, L, B, Order> {
         self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
     }
 
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
-    /// tupled pairs.
-    pub fn cross_product<O>(self, other: Stream<O, L, B, Order>) -> Stream<(T, O), L, B, Order>
+    /// tupled pairs in a non-deterministic order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use std::collections::HashSet;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let stream1 = process.source_iter(q!(vec!['a', 'b', 'c']));
+    /// let stream2 = process.source_iter(q!(vec![1, 2, 3]));
+    /// stream1.cross_product(stream2)
+    /// # }, |mut stream| async move {
+    /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
+    /// # stream.map(|i| assert!(expected.contains(&i)));
+    /// # }));
+    pub fn cross_product<O>(self, other: Stream<O, L, B, Order>) -> Stream<(T, O), L, B, NoOrder>
     where
         T: Clone,
         O: Clone,
@@ -524,23 +543,40 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         check_matching_location(&self.location, &other.location);
 
         Stream::new(
-            self.location,
-            HydroNode::CrossProduct(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(other.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::CrossProduct {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(T, O)>(),
+            },
         )
     }
 
     /// Takes one stream as input and filters out any duplicate occurrences. The output
     /// contains all unique values from the input.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    ///     process.source_iter(q!(vec![1, 2, 3, 2, 1, 4])).unique()
+    /// # }, |mut stream| async move {
+    /// # for w in vec![1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn unique(self) -> Stream<T, L, B, Order>
     where
         T: Eq + Hash,
     {
         Stream::new(
-            self.location,
-            HydroNode::Unique(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Unique {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -548,6 +584,28 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ///
     /// The `other` stream must be [`Bounded`], since this function will wait until
     /// all its elements are available before producing any output.
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let stream = unsafe {
+    ///    process
+    ///    .source_iter(q!(vec![ 1, 2, 3, 4 ]))
+    ///    .tick_batch(&tick)
+    /// };
+    /// let batch = unsafe {
+    ///     process
+    ///         .source_iter(q!(vec![1, 2]))
+    ///         .tick_batch(&tick)
+    /// };
+    /// stream.filter_not_in(batch).all_ticks()
+    /// # }, |mut stream| async move {
+    /// # for w in vec![3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn filter_not_in<O2>(self, other: Stream<T, L, Bounded, O2>) -> Stream<T, L, Bounded, Order>
     where
         T: Eq + Hash,
@@ -555,17 +613,33 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
         check_matching_location(&self.location, &other.location);
 
         Stream::new(
-            self.location,
-            HydroNode::Difference(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(other.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::Difference {
+                pos: Box::new(self.ir_node.into_inner()),
+                neg: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     /// An operator which allows you to "inspect" each element of a stream without
     /// modifying it. The closure `f` is called on a reference to each item. This is
     /// mainly useful for debugging, and should not be used to generate side-effects.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let nums = process.source_iter(q!(vec![1, 2]));
+    /// // prints "1 * 10 = 10" and "2 * 10 = 20"
+    /// nums.inspect(q!(|x| println!("{} * 10 = {}", x, x * 10)))
+    /// # }, |mut stream| async move {
+    /// # for w in vec![1, 2] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn inspect<F: Fn(&T) + 'a>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
@@ -574,18 +648,26 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
 
         if L::is_top_level() {
             Stream::new(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::Inspect {
-                    f,
-                    input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                })),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Inspect {
+                        f,
+                        input: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<T>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<T>(),
+                },
             )
         } else {
             Stream::new(
-                self.location,
+                self.location.clone(),
                 HydroNode::Inspect {
                     f,
                     input: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<T>(),
                 },
             )
         }
@@ -599,8 +681,57 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
+    ///
+    /// # Example
+    /// # TODO: more sensible code after Shadaj merges
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use std::collections::HashSet;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let nums = process.source_iter(q!({
+    ///     let now = std::time::SystemTime::now();
+    ///     match now.elapsed().unwrap().as_secs() % 2 {
+    ///         0 => vec![5, 4, 3, 2, 1],
+    ///         _ => vec![1, 2, 3, 4, 5],
+    ///     }
+    ///     .into_iter()
+    /// }));
+    /// // despite being generated by `source_iter`, the order of `nums` across runs is non-deterministic
+    /// let stream = unsafe { nums.assume_ordering::<NoOrder>() };
+    /// stream
+    /// # }, |mut stream| async move {
+    /// # for w in vec![1, 2, 3, 4, 5] {
+    /// #     assert!((1..=5).contains(&stream.next().await.unwrap()));
+    /// # }
+    /// # }));
+    /// ```
     pub unsafe fn assume_ordering<O>(self) -> Stream<T, L, B, O> {
         Stream::new(self.location, self.ir_node.into_inner())
+    }
+}
+
+impl<'a, T, L: Location<'a>, B, Order> Stream<&T, L, B, Order> {
+    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(&[1, 2, 3])).cloned()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn cloned(self) -> Stream<T, L, B, Order>
+    where
+        T: Clone,
+    {
+        self.map(q!(|d| d.clone()))
     }
 }
 
@@ -608,7 +739,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order>
 where
     Order: MinOrder<NoOrder, Min = NoOrder>,
 {
-    /// Combines elements of the stream into a [`Singleton`], by starting with an intitial value,
+    /// Combines elements of the stream into a [`Singleton`], by starting with an initial value,
     /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
     /// Unlike iterators, `comb` takes the accumulator by `&mut` reference, so that it can be modified in place.
     ///
@@ -621,11 +752,10 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -643,13 +773,17 @@ where
             init,
             acc: comb,
             input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<A>(),
         };
 
         if L::is_top_level() {
             // top-level (possibly unbounded) singletons are represented as
             // a stream which produces all values from all ticks every tick,
             // so Unpersist will always give the lastest aggregation
-            core = HydroNode::Persist(Box::new(core));
+            core = HydroNode::Persist {
+                inner: Box::new(core),
+                metadata: self.location.new_node_metadata::<A>(),
+            };
         }
 
         Singleton::new(self.location, core)
@@ -669,11 +803,10 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .reduce_commutative(q!(|curr, new| *curr += new))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
@@ -687,10 +820,14 @@ where
         let mut core = HydroNode::Reduce {
             f,
             input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<T>(),
         };
 
         if L::is_top_level() {
-            core = HydroNode::Persist(Box::new(core));
+            core = HydroNode::Persist {
+                inner: Box::new(core),
+                metadata: self.location.new_node_metadata::<T>(),
+            };
         }
 
         Optional::new(self.location, core)
@@ -706,8 +843,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.max().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.max().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -735,8 +872,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.max_by_key(q!(|x| -x)).all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.max_by_key(q!(|x| -x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -760,10 +897,14 @@ where
         let mut core = HydroNode::Reduce {
             f: wrapped.into(),
             input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<T>(),
         };
 
         if L::is_top_level() {
-            core = HydroNode::Persist(Box::new(core));
+            core = HydroNode::Persist {
+                inner: Box::new(core),
+                metadata: self.location.new_node_metadata::<T>(),
+            };
         }
 
         Optional::new(self.location, core)
@@ -779,8 +920,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.min().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.min().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -806,8 +947,8 @@ where
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.count().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.count().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -819,21 +960,46 @@ where
 }
 
 impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
+    /// Returns a stream with the current count tupled with each element in the input stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, TotalOrder>(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// numbers.enumerate()
+    /// # }, |mut stream| async move {
+    /// // (0, 1), (1, 2), (2, 3), (3, 4)
+    /// # for w in vec![(0, 1), (1, 2), (2, 3), (3, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
     pub fn enumerate(self) -> Stream<(usize, T), L, B, TotalOrder> {
         if L::is_top_level() {
             Stream::new(
-                self.location,
-                HydroNode::Persist(Box::new(HydroNode::Enumerate {
-                    is_static: true,
-                    input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
-                })),
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Enumerate {
+                        is_static: true,
+                        input: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<T>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<(usize, T)>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<(usize, T)>(),
+                },
             )
         } else {
             Stream::new(
-                self.location,
+                self.location.clone(),
                 HydroNode::Enumerate {
                     is_static: false,
                     input: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<(usize, T)>(),
                 },
             )
         }
@@ -852,8 +1018,8 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.first().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.first().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1
     /// # assert_eq!(stream.next().await.unwrap(), 1);
@@ -876,8 +1042,8 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.last().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.last().all_ticks()
     /// # }, |mut stream| async move {
     /// // 4
     /// # assert_eq!(stream.next().await.unwrap(), 4);
@@ -901,11 +1067,10 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&tick) };
     /// batch
     ///     .fold(q!(|| String::new()), q!(|acc, x| acc.push_str(x)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -923,19 +1088,23 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
             init,
             acc: comb,
             input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<A>(),
         };
 
         if L::is_top_level() {
             // top-level (possibly unbounded) singletons are represented as
             // a stream which produces all values from all ticks every tick,
             // so Unpersist will always give the lastest aggregation
-            core = HydroNode::Persist(Box::new(core));
+            core = HydroNode::Persist {
+                inner: Box::new(core),
+                metadata: self.location.new_node_metadata::<A>(),
+            };
         }
 
         Singleton::new(self.location, core)
     }
 
-    /// Combines elements of the stream into a [`Optional`], by starting with the first element in the stream,
+    /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
     /// and then applying the `comb` closure to each element in the stream. The [`Optional`] will be empty
     /// until the first element in the input arrives.
     ///
@@ -949,12 +1118,11 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = unsafe { words.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { words.tick_batch(&tick) };
     /// batch
     ///     .map(q!(|x| x.to_string()))
     ///     .reduce(q!(|curr, new| curr.push_str(&new)))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -968,17 +1136,21 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
         let mut core = HydroNode::Reduce {
             f,
             input: Box::new(self.ir_node.into_inner()),
+            metadata: self.location.new_node_metadata::<T>(),
         };
 
         if L::is_top_level() {
-            core = HydroNode::Persist(Box::new(core));
+            core = HydroNode::Persist {
+                inner: Box::new(core),
+                metadata: self.location.new_node_metadata::<T>(),
+            };
         }
 
         Optional::new(self.location, core)
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, O> Stream<T, L, Unbounded, O> {
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O> Stream<T, L, Unbounded, O> {
     /// Produces a new stream that interleaves the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
     ///
@@ -1004,17 +1176,10 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, O> Stream<T, L, Unbounded, O
         unsafe {
             // SAFETY: Because the outputs are unordered,
             // we can interleave batches from both streams.
-            self.timestamped(&tick)
-                .tick_batch()
+            self.tick_batch(&tick)
                 .assume_ordering::<NoOrder>()
-                .chain(
-                    other
-                        .timestamped(&tick)
-                        .tick_batch()
-                        .assume_ordering::<NoOrder>(),
-                )
+                .chain(other.tick_batch(&tick).assume_ordering::<NoOrder>())
                 .all_ticks()
-                .drop_timestamp()
                 .assume_ordering()
         }
     }
@@ -1035,8 +1200,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch.sort().all_ticks().drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.sort().all_ticks()
     /// # }, |mut stream| async move {
     /// // 1, 2, 3, 4
     /// # for w in (1..5) {
@@ -1049,8 +1214,11 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
         T: Ord,
     {
         Stream::new(
-            self.location,
-            HydroNode::Sort(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Sort {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -1070,13 +1238,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch
-    ///     .clone()
-    ///     .map(q!(|x| x + 1))
-    ///     .chain(batch)
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.clone().map(q!(|x| x + 1)).chain(batch).all_ticks()
     /// # }, |mut stream| async move {
     /// // 2, 3, 4, 5, 1, 2, 3, 4
     /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
@@ -1091,11 +1254,12 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
         check_matching_location(&self.location, &other.location);
 
         Stream::new(
-            self.location,
-            HydroNode::Chain(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(other.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -1103,6 +1267,22 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
 impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
     /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
     /// by equi-joining the two streams on the key attribute `K`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use std::collections::HashSet;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let stream1 = process.source_iter(q!(vec![(1, 'a'), (2, 'b')]));
+    /// let stream2 = process.source_iter(q!(vec![(1, 'x'), (2, 'y')]));
+    /// stream1.join(stream2)
+    /// # }, |mut stream| async move {
+    /// // (1, ('a', 'x')), (2, ('b', 'y'))
+    /// # let expected = HashSet::from([(1, ('a', 'x')), (2, ('b', 'y'))]);
+    /// # stream.map(|i| assert!(expected.contains(&i)));
+    /// # }));
     pub fn join<V2, O2>(self, n: Stream<(K, V2), L, B, O2>) -> Stream<(K, (V1, V2)), L, B, NoOrder>
     where
         K: Eq + Hash,
@@ -1110,18 +1290,42 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
         check_matching_location(&self.location, &n.location);
 
         Stream::new(
-            self.location,
-            HydroNode::Join(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(n.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::Join {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(n.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, (V1, V2))>(),
+            },
         )
     }
 
-    /// Given two streams of pairs `(K, V1)` and `(K, V2)`,
+    /// Given a stream of pairs `(K, V1)` and a bounded stream of keys `K`,
     /// computes the anti-join of the items in the input -- i.e. returns
     /// unique items in the first input that do not have a matching key
     /// in the second input.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let stream = unsafe {
+    ///    process
+    ///    .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
+    ///    .tick_batch(&tick)
+    /// };
+    /// let batch = unsafe {
+    ///     process
+    ///         .source_iter(q!(vec![1, 2]))
+    ///         .tick_batch(&tick)
+    /// };
+    /// stream.anti_join(batch).all_ticks()
+    /// # }, |mut stream| async move {
+    /// # for w in vec![(3, 'c'), (4, 'd')] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
     pub fn anti_join<O2>(self, n: Stream<K, L, Bounded, O2>) -> Stream<(K, V1), L, B, Order>
     where
         K: Eq + Hash,
@@ -1129,11 +1333,12 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
         check_matching_location(&self.location, &n.location);
 
         Stream::new(
-            self.location,
-            HydroNode::AntiJoin(
-                Box::new(self.ir_node.into_inner()),
-                Box::new(n.ir_node.into_inner()),
-            ),
+            self.location.clone(),
+            HydroNode::AntiJoin {
+                pos: Box::new(self.ir_node.into_inner()),
+                neg: Box::new(n.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V1)>(),
+            },
         )
     }
 }
@@ -1156,11 +1361,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_keyed(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1176,11 +1380,12 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FoldKeyed {
                 init,
                 acc: comb,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, A)>(),
             },
         )
     }
@@ -1201,11 +1406,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
-    /// batch
-    ///     .reduce_keyed(q!(|acc, x| *acc += x))
-    ///     .all_ticks()
-    ///     .drop_timestamp()
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.reduce_keyed(q!(|acc, x| *acc += x)).all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1219,10 +1421,11 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::ReduceKeyed {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
             },
         )
     }
@@ -1245,11 +1448,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .fold_keyed_commutative(q!(|| 0), q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1265,16 +1467,32 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::FoldKeyed {
                 init,
                 acc: comb,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, A)>(),
             },
         )
     }
 
     /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.keys().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2
+    /// # assert_eq!(stream.next().await.unwrap(), 1);
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// ```
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, Order> {
         self.fold_keyed_commutative(q!(|| ()), q!(|_, _| {}))
             .map(q!(|(k, _)| k))
@@ -1295,11 +1513,10 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.timestamped(&tick).tick_batch() };
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
     ///     .reduce_keyed_commutative(q!(|acc, x| *acc += x))
     ///     .all_ticks()
-    ///     .drop_timestamp()
     /// # }, |mut stream| async move {
     /// // (1, 5), (2, 7)
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
@@ -1313,44 +1530,55 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(
-            self.location,
+            self.location.clone(),
             HydroNode::ReduceKeyed {
                 f,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
             },
         )
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, Timestamped<L>, B, Order> {
-    /// Given a tick, returns a stream corresponding to a batch of elements for that tick.
-    /// These batches are guaranteed to be contiguous across ticks and preserve the order
-    /// of the input.
+impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, Atomic<L>, B, Order> {
+    /// Returns a stream corresponding to the latest batch of elements being atomically
+    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
     ///
     /// # Safety
     /// The batch boundaries are non-deterministic and may change across executions.
     pub unsafe fn tick_batch(self) -> Stream<T, Tick<L>, Bounded, Order> {
         Stream::new(
-            self.location.tick,
-            HydroNode::Unpersist(Box::new(self.ir_node.into_inner())),
+            self.location.clone().tick,
+            HydroNode::Unpersist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
-    pub fn drop_timestamp(self) -> Stream<T, L, B, Order> {
+    pub fn end_atomic(self) -> Stream<T, L, B, Order> {
         Stream::new(self.location.tick.l, self.ir_node.into_inner())
     }
 
-    pub fn timestamp_source(&self) -> Tick<L> {
+    pub fn atomic_source(&self) -> Tick<L> {
         self.location.tick.clone()
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Order> {
-    pub fn timestamped(self, tick: &Tick<L>) -> Stream<T, Timestamped<L>, B, Order> {
-        Stream::new(
-            Timestamped { tick: tick.clone() },
-            self.ir_node.into_inner(),
-        )
+impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order> {
+    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, Order> {
+        Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
+    }
+
+    /// Given a tick, returns a stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Safety
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub unsafe fn tick_batch(self, tick: &Tick<L>) -> Stream<T, Tick<L>, Bounded, Order> {
+        unsafe { self.atomic(tick).tick_batch() }
     }
 
     /// Given a time interval, returns a stream corresponding to samples taken from the
@@ -1373,11 +1601,9 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
         let tick = self.location.tick();
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.timestamped(&tick)
-                .tick_batch()
-                .continue_if(samples.timestamped(&tick).tick_batch().first())
+            self.tick_batch(&tick)
+                .continue_if(samples.tick_batch(&tick).first())
                 .all_ticks()
-                .drop_timestamp()
         }
     }
 
@@ -1408,7 +1634,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
 
         unsafe {
             // SAFETY: Non-deterministic delay in detecting a timeout is expected.
-            latest_received.timestamped(&tick).latest_tick()
+            latest_received.latest_tick(&tick)
         }
         .filter_map(q!(move |latest_received| {
             if let Some(latest_received) = latest_received {
@@ -1422,13 +1648,13 @@ impl<'a, T, L: Location<'a> + NoTick + NoTimestamp, B, Order> Stream<T, L, B, Or
             }
         }))
         .latest()
-        .drop_timestamp()
     }
 }
 
 impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
+        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
@@ -1436,7 +1662,10 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
             .as_mut()
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::ForEach {
-                input: Box::new(HydroNode::Unpersist(Box::new(self.ir_node.into_inner()))),
+                input: Box::new(HydroNode::Unpersist {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata,
+                }),
                 f,
             });
     }
@@ -1459,12 +1688,25 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
 }
 
 impl<'a, T, L: Location<'a>, Order> Stream<T, Tick<L>, Bounded, Order> {
-    pub fn all_ticks(self) -> Stream<T, Timestamped<L>, Unbounded, Order> {
+    pub fn all_ticks(self) -> Stream<T, L, Unbounded, Order> {
         Stream::new(
-            Timestamped {
+            self.location.outer().clone(),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
+        )
+    }
+
+    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, Order> {
+        Stream::new(
+            Atomic {
                 tick: self.location.clone(),
             },
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
@@ -1473,22 +1715,31 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, Tick<L>, Bounded, Order> {
         T: Clone,
     {
         Stream::new(
-            self.location,
-            HydroNode::Persist(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Persist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn defer_tick(self) -> Stream<T, Tick<L>, Bounded, Order> {
         Stream::new(
-            self.location,
-            HydroNode::DeferTick(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 
     pub fn delta(self) -> Stream<T, Tick<L>, Bounded, Order> {
         Stream::new(
-            self.location,
-            HydroNode::Delta(Box::new(self.ir_node.into_inner())),
+            self.location.clone(),
+            HydroNode::Delta {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
+            },
         )
     }
 }
@@ -1559,6 +1810,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: other.new_node_metadata::<CoreType>(),
             },
         )
     }
@@ -1573,6 +1825,8 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         // for now, we restirct Out<CoreType> to be CoreType, which means no tagged cluster -> external
     {
         let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::is_demux()));
+
+        let metadata = other.new_node_metadata::<CoreType>();
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
@@ -1594,6 +1848,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata,
             }),
         });
 
@@ -1630,6 +1885,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                     Some(expr.into())
                 },
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: other.new_node_metadata::<Bytes>(),
             },
         )
     }
@@ -1638,6 +1894,8 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     where
         L::Root: CanSend<'a, ExternalProcess<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
     {
+        let metadata = other.new_node_metadata::<Bytes>();
+
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
         let external_key = flow_state_borrow.next_external_out;
         flow_state_borrow.next_external_out += 1;
@@ -1657,6 +1915,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
+                metadata,
             }),
         });
 
@@ -1666,7 +1925,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         }
     }
 
-    pub fn send_bincode_interleaved<L2: Location<'a>, Tag, CoreType>(
+    pub fn send_bincode_anonymous<L2: Location<'a>, Tag, CoreType>(
         self,
         other: &L2,
     ) -> Stream<CoreType, L2, Unbounded, Order::Min>
@@ -1678,7 +1937,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         self.send_bincode::<L2, CoreType>(other).map(q!(|(_, b)| b))
     }
 
-    pub fn send_bytes_interleaved<L2: Location<'a>, Tag>(
+    pub fn send_bytes_anonymous<L2: Location<'a>, Tag>(
         self,
         other: &L2,
     ) -> Stream<Bytes, L2, Unbounded, Order::Min>
@@ -1713,7 +1972,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         .send_bincode(other)
     }
 
-    pub fn broadcast_bincode_interleaved<C2: 'a, Tag>(
+    pub fn broadcast_bincode_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order::Min>
@@ -1749,7 +2008,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         .send_bytes(other)
     }
 
-    pub fn broadcast_bytes_interleaved<C2: 'a, Tag>(
+    pub fn broadcast_bytes_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<Bytes, Cluster<'a, C2>, Unbounded, Order::Min>
@@ -1789,7 +2048,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Stream<T, L, B, TotalOrder> {
             .send_bincode(other)
     }
 
-    pub fn round_robin_bincode_interleaved<C2: 'a, Tag>(
+    pub fn round_robin_bincode_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<
@@ -1833,7 +2092,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Stream<T, L, B, TotalOrder> {
             .send_bytes(other)
     }
 
-    pub fn round_robin_bytes_interleaved<C2: 'a, Tag>(
+    pub fn round_robin_bytes_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<

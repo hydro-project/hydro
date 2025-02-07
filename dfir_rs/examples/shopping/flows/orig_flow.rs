@@ -17,7 +17,7 @@ pub(crate) async fn orig_flow(
 ) -> Dfir<'static> {
     let client_class = client_class_iter();
 
-    // This is the straightforward single-transducer sequential case.
+    // This is the straightforward single-process sequential case.
     // For each Request in "shopping" we look up its "client_class" (basic or prime)
     // via a join operator, then we group by (client, class), and for each such pair
     // we grow a separate vector of ClLineItems. No seal is needed in the sequential case.
