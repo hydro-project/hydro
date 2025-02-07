@@ -1532,6 +1532,40 @@
 <a href="#1532" id="1532">1532</a>
 <a href="#1533" id="1533">1533</a>
 <a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+<a href="#1543" id="1543">1543</a>
+<a href="#1544" id="1544">1544</a>
+<a href="#1545" id="1545">1545</a>
+<a href="#1546" id="1546">1546</a>
+<a href="#1547" id="1547">1547</a>
+<a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
+<a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
+<a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
@@ -1547,6 +1581,8 @@
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>proc_macro2::Span;
 <span class="kw">use </span>proc_macro2::TokenStream;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">use </span>quote::quote;
 <span class="kw">use </span>quote::ToTokens;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>syn::parse_quote;
@@ -1730,9 +1766,13 @@
                 graph_builders
                     .entry(input_location_id)
                     .or_default()
-                    .add_statement(<span class="macro">parse_quote!</span> {
-                        #input_ident -&gt; for_each(#f);
-                    });
+                    .add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #input_ident -&gt; for_each(#f);
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
             }
 
             HydroLeaf::DestSink { sink, input } =&gt; {
@@ -1742,9 +1782,13 @@
                 graph_builders
                     .entry(input_location_id)
                     .or_default()
-                    .add_statement(<span class="macro">parse_quote!</span> {
-                        #input_ident -&gt; dest_sink(#sink);
-                    });
+                    .add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #input_ident -&gt; dest_sink(#sink);
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
             }
 
             HydroLeaf::CycleSink {
@@ -1767,12 +1811,13 @@
                     <span class="string">"cycle_sink location mismatch"
                 </span>);
 
-                graph_builders
-                    .entry(<span class="kw-2">*</span>location_id)
-                    .or_default()
-                    .add_statement(<span class="macro">parse_quote!</span> {
+                graph_builders.entry(<span class="kw-2">*</span>location_id).or_default().add_dfir(
+                    <span class="macro">parse_quote!</span> {
                         #ident = #input_ident;
-                    });
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
             }
         }
     }
@@ -2201,9 +2246,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, persist_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(location).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #persist_ident = #inner_ident -&gt; persist::&lt;<span class="lifetime">'static</span>&gt;();
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #persist_ident = #inner_ident -&gt; persist::&lt;<span class="lifetime">'static</span>&gt;();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (persist_ident, location)
             }
@@ -2222,9 +2271,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, delta_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(location).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #delta_ident = #inner_ident -&gt; multiset_delta();
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #delta_ident = #inner_ident -&gt; multiset_delta();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (delta_ident, location)
             }
@@ -2274,10 +2327,11 @@
                         }
                     };
 
-                    graph_builders
-                        .entry(<span class="kw-2">*</span>location_id)
-                        .or_default()
-                        .add_statement(source_stmt);
+                    graph_builders.entry(<span class="kw-2">*</span>location_id).or_default().add_dfir(
+                        source_stmt,
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
 
                     (source_ident, <span class="kw-2">*</span>location_id)
                 }
@@ -2316,9 +2370,13 @@
                         syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, tee_id), Span::call_site());
 
                     <span class="kw">let </span>builder = graph_builders.entry(inner_location_id).or_default();
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #tee_ident = #inner_ident -&gt; tee();
-                    });
+                    builder.add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #tee_ident = #inner_ident -&gt; tee();
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
 
                     built_tees.insert(
                         inner.<span class="number">0</span>.as_ref() <span class="kw">as </span><span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;,
@@ -2347,17 +2405,15 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, union_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(first_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #chain_ident = chain();
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #first_ident -&gt; [<span class="number">0</span>]#chain_ident;
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #second_ident -&gt; [<span class="number">1</span>]#chain_ident;
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #chain_ident = chain();
+                        #first_ident -&gt; [<span class="number">0</span>]#chain_ident;
+                        #second_ident -&gt; [<span class="number">1</span>]#chain_ident;
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (chain_ident, first_location_id)
             }
@@ -2380,17 +2436,15 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, union_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(left_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #cross_ident = cross_singleton();
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #left_ident -&gt; [input]#cross_ident;
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #right_ident -&gt; [single]#cross_ident;
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #cross_ident = cross_singleton();
+                        #left_ident -&gt; [input]#cross_ident;
+                        #right_ident -&gt; [single]#cross_ident;
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (cross_ident, left_location_id)
             }
@@ -2408,18 +2462,18 @@
                     <span class="macro">unreachable!</span>()
                 };
 
-                <span class="kw">let </span>(left_inner, left_was_persist) =
+                <span class="kw">let </span>(left_inner, left_lifetime) =
                     <span class="kw">if let </span>HydroNode::Persist { inner: left, .. } = left.as_ref() {
-                        (left, <span class="bool-val">true</span>)
+                        (left, <span class="macro">quote!</span>(<span class="lifetime">'static</span>))
                     } <span class="kw">else </span>{
-                        (left, <span class="bool-val">false</span>)
+                        (left, <span class="macro">quote!</span>(<span class="lifetime">'tick</span>))
                     };
 
-                <span class="kw">let </span>(right_inner, right_was_persist) =
+                <span class="kw">let </span>(right_inner, right_lifetime) =
                     <span class="kw">if let </span>HydroNode::Persist { inner: right, .. } = right.as_ref() {
-                        (right, <span class="bool-val">true</span>)
+                        (right, <span class="macro">quote!</span>(<span class="lifetime">'static</span>))
                     } <span class="kw">else </span>{
-                        (right, <span class="bool-val">false</span>)
+                        (right, <span class="macro">quote!</span>(<span class="lifetime">'tick</span>))
                     };
 
                 <span class="kw">let </span>(left_ident, left_location_id) =
@@ -2440,36 +2494,15 @@
 
                 <span class="kw">let </span>builder = graph_builders.entry(left_location_id).or_default();
 
-                <span class="kw">match </span>(left_was_persist, right_was_persist) {
-                    (<span class="bool-val">true</span>, <span class="bool-val">true</span>) =&gt; {
-                        builder.add_statement(<span class="macro">parse_quote!</span> {
-                            #stream_ident = #operator::&lt;<span class="lifetime">'static</span>, <span class="lifetime">'static</span>&gt;();
-                        });
-                    }
-                    (<span class="bool-val">true</span>, <span class="bool-val">false</span>) =&gt; {
-                        builder.add_statement(<span class="macro">parse_quote!</span> {
-                            #stream_ident = #operator::&lt;<span class="lifetime">'static</span>, <span class="lifetime">'tick</span>&gt;();
-                        });
-                    }
-                    (<span class="bool-val">false</span>, <span class="bool-val">true</span>) =&gt; {
-                        builder.add_statement(<span class="macro">parse_quote!</span> {
-                            #stream_ident = #operator::&lt;<span class="lifetime">'tick</span>, <span class="lifetime">'static</span>&gt;();
-                        });
-                    }
-                    (<span class="bool-val">false</span>, <span class="bool-val">false</span>) =&gt; {
-                        builder.add_statement(<span class="macro">parse_quote!</span> {
-                            #stream_ident = #operator::&lt;<span class="lifetime">'tick</span>, <span class="lifetime">'tick</span>&gt;();
-                        });
-                    }
-                };
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #left_ident -&gt; [<span class="number">0</span>]#stream_ident;
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #right_ident -&gt; [<span class="number">1</span>]#stream_ident;
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #stream_ident = #operator::&lt;#left_lifetime, #right_lifetime&gt;();
+                        #left_ident -&gt; [<span class="number">0</span>]#stream_ident;
+                        #right_ident -&gt; [<span class="number">1</span>]#stream_ident;
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (stream_ident, left_location_id)
             }
@@ -2487,11 +2520,11 @@
                     <span class="macro">unreachable!</span>()
                 };
 
-                <span class="kw">let </span>(neg, neg_was_persist) =
+                <span class="kw">let </span>(neg, neg_lifetime) =
                     <span class="kw">if let </span>HydroNode::Persist { inner: neg, .. } = neg.as_ref() {
-                        (neg, <span class="bool-val">true</span>)
+                        (neg, <span class="macro">quote!</span>(<span class="lifetime">'static</span>))
                     } <span class="kw">else </span>{
-                        (neg, <span class="bool-val">false</span>)
+                        (neg, <span class="macro">quote!</span>(<span class="lifetime">'tick</span>))
                     };
 
                 <span class="kw">let </span>(pos_ident, pos_location_id) =
@@ -2512,23 +2545,15 @@
 
                 <span class="kw">let </span>builder = graph_builders.entry(pos_location_id).or_default();
 
-                <span class="kw">if </span>neg_was_persist {
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #stream_ident = #operator::&lt;<span class="lifetime">'tick</span>, <span class="lifetime">'static</span>&gt;();
-                    });
-                } <span class="kw">else </span>{
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #stream_ident = #operator::&lt;<span class="lifetime">'tick</span>, <span class="lifetime">'tick</span>&gt;();
-                    });
-                }
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #pos_ident -&gt; [pos]#stream_ident;
-                });
-
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #neg_ident -&gt; [neg]#stream_ident;
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #stream_ident = #operator::&lt;<span class="lifetime">'tick</span>, #neg_lifetime&gt;();
+                        #pos_ident -&gt; [pos]#stream_ident;
+                        #neg_ident -&gt; [neg]#stream_ident;
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (stream_ident, pos_location_id)
             }
@@ -2543,9 +2568,13 @@
                 <span class="kw">let </span>map_ident = syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, map_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #map_ident = #input_ident -&gt; map(#f);
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #map_ident = #input_ident -&gt; map(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (map_ident, input_location_id)
             }
@@ -2561,9 +2590,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, flat_map_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #flat_map_ident = #input_ident -&gt; flat_map(#f);
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #flat_map_ident = #input_ident -&gt; flat_map(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (flat_map_ident, input_location_id)
             }
@@ -2579,9 +2612,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, filter_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #filter_ident = #input_ident -&gt; filter(#f);
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #filter_ident = #input_ident -&gt; filter(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (filter_ident, input_location_id)
             }
@@ -2597,9 +2634,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, filter_map_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #filter_map_ident = #input_ident -&gt; filter_map(#f);
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #filter_map_ident = #input_ident -&gt; filter_map(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (filter_map_ident, input_location_id)
             }
@@ -2614,9 +2655,13 @@
                 <span class="kw">let </span>sort_ident = syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, sort_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #sort_ident = #input_ident -&gt; sort();
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #sort_ident = #input_ident -&gt; sort();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (sort_ident, input_location_id)
             }
@@ -2632,9 +2677,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, defer_tick_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #defer_tick_ident = #input_ident -&gt; defer_tick_lazy();
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #defer_tick_ident = #input_ident -&gt; defer_tick_lazy();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (defer_tick_ident, input_location_id)
             }
@@ -2653,15 +2702,18 @@
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
 
-                <span class="kw">if </span><span class="kw-2">*</span>is_static {
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #enumerate_ident = #input_ident -&gt; enumerate::&lt;<span class="lifetime">'static</span>&gt;();
-                    });
+                <span class="kw">let </span>lifetime = <span class="kw">if </span><span class="kw-2">*</span>is_static {
+                    <span class="macro">quote!</span>(<span class="lifetime">'static</span>)
                 } <span class="kw">else </span>{
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #enumerate_ident = #input_ident -&gt; enumerate::&lt;<span class="lifetime">'tick</span>&gt;();
-                    });
-                }
+                    <span class="macro">quote!</span>(<span class="lifetime">'tick</span>)
+                };
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #enumerate_ident = #input_ident -&gt; enumerate::&lt;#lifetime&gt;();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (enumerate_ident, input_location_id)
             }
@@ -2677,9 +2729,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, inspect_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #inspect_ident = #input_ident -&gt; inspect(#f);
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #inspect_ident = #input_ident -&gt; inspect(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (inspect_ident, input_location_id)
             }
@@ -2695,9 +2751,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, unique_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(<span class="macro">parse_quote!</span> {
-                    #unique_ident = #input_ident -&gt; unique::&lt;<span class="lifetime">'tick</span>&gt;();
-                });
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #unique_ident = #input_ident -&gt; unique::&lt;<span class="lifetime">'tick</span>&gt;();
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (unique_ident, input_location_id)
             }
@@ -2719,11 +2779,11 @@
                     <span class="macro">unreachable!</span>()
                 };
 
-                <span class="kw">let </span>(input, input_was_persist) =
+                <span class="kw">let </span>(input, lifetime) =
                     <span class="kw">if let </span>HydroNode::Persist { inner: input, .. } = input.as_ref() {
-                        (input, <span class="bool-val">true</span>)
+                        (input, <span class="macro">quote!</span>(<span class="lifetime">'static</span>))
                     } <span class="kw">else </span>{
-                        (input, <span class="bool-val">false</span>)
+                        (input, <span class="macro">quote!</span>(<span class="lifetime">'tick</span>))
                     };
 
                 <span class="kw">let </span>(input_ident, input_location_id) =
@@ -2736,15 +2796,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, reduce_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                <span class="kw">if </span>input_was_persist {
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #fold_ident = #input_ident -&gt; #operator::&lt;<span class="lifetime">'static</span>&gt;(#init, #acc);
-                    });
-                } <span class="kw">else </span>{
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #fold_ident = #input_ident -&gt; #operator::&lt;<span class="lifetime">'tick</span>&gt;(#init, #acc);
-                    });
-                }
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #fold_ident = #input_ident -&gt; #operator::&lt;#lifetime&gt;(#init, #acc);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (fold_ident, input_location_id)
             }
@@ -2762,11 +2820,11 @@
                     <span class="macro">unreachable!</span>()
                 };
 
-                <span class="kw">let </span>(input, input_was_persist) =
+                <span class="kw">let </span>(input, lifetime) =
                     <span class="kw">if let </span>HydroNode::Persist { inner: input, .. } = input.as_ref() {
-                        (input, <span class="bool-val">true</span>)
+                        (input, <span class="macro">quote!</span>(<span class="lifetime">'static</span>))
                     } <span class="kw">else </span>{
-                        (input, <span class="bool-val">false</span>)
+                        (input, <span class="macro">quote!</span>(<span class="lifetime">'tick</span>))
                     };
 
                 <span class="kw">let </span>(input_ident, input_location_id) =
@@ -2779,15 +2837,13 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, reduce_id), Span::call_site());
 
                 <span class="kw">let </span>builder = graph_builders.entry(input_location_id).or_default();
-                <span class="kw">if </span>input_was_persist {
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #reduce_ident = #input_ident -&gt; #operator::&lt;<span class="lifetime">'static</span>&gt;(#f);
-                    });
-                } <span class="kw">else </span>{
-                    builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #reduce_ident = #input_ident -&gt; #operator::&lt;<span class="lifetime">'tick</span>&gt;(#f);
-                    });
-                }
+                builder.add_dfir(
+                    <span class="macro">parse_quote!</span> {
+                        #reduce_ident = #input_ident -&gt; #operator::&lt;#lifetime&gt;(#f);
+                    },
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                );
 
                 (reduce_ident, input_location_id)
             }
@@ -2819,13 +2875,21 @@
                 <span class="kw">let </span>sender_builder = graph_builders.entry(input_location_id).or_default();
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_pipeline) = serialize_pipeline {
-                    sender_builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #input_ident -&gt; map(#serialize_pipeline) -&gt; dest_sink(#sink_expr);
-                    });
+                    sender_builder.add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #input_ident -&gt; map(#serialize_pipeline) -&gt; dest_sink(#sink_expr);
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
                 } <span class="kw">else </span>{
-                    sender_builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #input_ident -&gt; dest_sink(#sink_expr);
-                    });
+                    sender_builder.add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #input_ident -&gt; dest_sink(#sink_expr);
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
                 }
 
                 <span class="kw">let </span>to_id = <span class="kw">match </span>to_location {
@@ -2843,13 +2907,17 @@
                     syn::Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, receiver_stream_id), Span::call_site());
 
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_pipeline) = deserialize_pipeline {
-                    receiver_builder.add_statement(<span class="macro">parse_quote!</span> {
+                    receiver_builder.add_dfir(<span class="macro">parse_quote!</span> {
                         #receiver_stream_ident = source_stream(#source_expr) -&gt; map(#deserialize_pipeline);
-                    });
+                    }, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
                 } <span class="kw">else </span>{
-                    receiver_builder.add_statement(<span class="macro">parse_quote!</span> {
-                        #receiver_stream_ident = source_stream(#source_expr);
-                    });
+                    receiver_builder.add_dfir(
+                        <span class="macro">parse_quote!</span> {
+                            #receiver_stream_ident = source_stream(#source_expr);
+                        },
+                        <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span>,
+                    );
                 }
 
                 (receiver_stream_ident, <span class="kw-2">*</span>to_id)
