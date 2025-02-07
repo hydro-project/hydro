@@ -160,7 +160,7 @@ export default function Home() {
               <PersonCard
                 name={"Lucky Katahanas"}
                 role={"Research Engineer"}
-                url={"https://www.linkedin.com/in/lucky-k-59020457/"}
+                url={"https://www.linkedin.com/in/luckykatahanas/"}
                 img={lucky}
               ></PersonCard>
             </div>
