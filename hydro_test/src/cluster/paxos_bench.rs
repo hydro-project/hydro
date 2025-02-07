@@ -3,23 +3,16 @@ use hydro_std::quorum::collect_quorum;
 
 use super::bench_client::{bench_client, Client};
 use super::kv_replica::{kv_replica, KvPayload, Replica};
-use super::paxos::{Acceptor, PaxosConfig, Proposer};
-use super::paxos_with_client::paxos_with_client;
+use super::paxos_with_client::PaxosLike;
 
-pub fn paxos_bench<'a>(
+pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     flow: &FlowBuilder<'a>,
     num_clients_per_node: usize,
     median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
-    paxos_config: PaxosConfig,
-) -> (
-    Cluster<'a, Proposer>,
-    Cluster<'a, Acceptor>,
-    Cluster<'a, Client>,
-    Cluster<'a, Replica>,
-) {
-    let proposers = flow.cluster::<Proposer>();
-    let acceptors = flow.cluster::<Acceptor>();
+    replica_count: usize,
+    create_paxos: impl FnOnce(Stream<usize, Cluster<'a, Replica>, Unbounded>) -> Paxos,
+) -> (Cluster<'a, Client>, Cluster<'a, Replica>) {
     let clients = flow.cluster::<Client>();
     let replicas = flow.cluster::<Replica>();
 
@@ -35,19 +28,14 @@ pub fn paxos_bench<'a>(
             let (replica_checkpoint_complete, replica_checkpoint) =
                 replicas.forward_ref::<Stream<_, _, _>>();
 
+            let paxos = create_paxos(replica_checkpoint);
+
             let sequenced_payloads = unsafe {
                 // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
                 // the order of writes to the same key
 
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                paxos_with_client(
-                    &proposers,
-                    &acceptors,
-                    &clients,
-                    payloads,
-                    replica_checkpoint.broadcast_bincode(&acceptors),
-                    paxos_config,
-                )
+                paxos.with_client(&clients, payloads)
             };
 
             let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(&replicas);
@@ -68,8 +56,8 @@ pub fn paxos_bench<'a>(
             // we only mark a transaction as committed when all replicas have applied it
             collect_quorum::<_, _, _, ()>(
                 c_received_payloads.atomic(&clients.tick()),
-                paxos_config.f + 1,
-                paxos_config.f + 1,
+                replica_count,
+                replica_count,
             )
             .0
             .end_atomic()
@@ -78,7 +66,7 @@ pub fn paxos_bench<'a>(
         median_latency_window_size,
     );
 
-    (proposers, acceptors, clients, replicas)
+    (clients, replicas)
 }
 
 #[cfg(test)]
@@ -86,23 +74,25 @@ mod tests {
     use hydro_lang::deploy::DeployRuntime;
     use stageleft::RuntimeData;
 
-    use crate::cluster::paxos::PaxosConfig;
+    use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 
     #[test]
     fn paxos_ir() {
         let builder = hydro_lang::FlowBuilder::new();
-        let _ = super::paxos_bench(
-            &builder,
-            1,
-            1,
-            1,
-            PaxosConfig {
+        let proposers = builder.cluster();
+        let acceptors = builder.cluster();
+
+        let _ = super::paxos_bench(&builder, 1, 1, 1, 2, |replica_checkpoint| CorePaxos {
+            proposers,
+            acceptors: acceptors.clone(),
+            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
+            paxos_config: PaxosConfig {
                 f: 1,
                 i_am_leader_send_timeout: 1,
                 i_am_leader_check_timeout: 1,
                 i_am_leader_check_timeout_delay_multiplier: 1,
             },
-        );
+        });
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {

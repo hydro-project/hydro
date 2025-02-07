@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_test::cluster::paxos::PaxosConfig;
+use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -42,16 +42,25 @@ async fn main() {
     let i_am_leader_check_timeout = 10; // Sec
     let i_am_leader_check_timeout_delay_multiplier = 15;
 
-    let (proposers, acceptors, clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
+    let proposers = builder.cluster();
+    let acceptors = builder.cluster();
+
+    let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
         &builder,
         num_clients_per_node,
         median_latency_window_size,
         checkpoint_frequency,
-        PaxosConfig {
-            f,
-            i_am_leader_send_timeout,
-            i_am_leader_check_timeout,
-            i_am_leader_check_timeout_delay_multiplier,
+        f + 1,
+        |replica_checkpoint| CorePaxos {
+            proposers: proposers.clone(),
+            acceptors: acceptors.clone(),
+            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
+            paxos_config: PaxosConfig {
+                f,
+                i_am_leader_send_timeout,
+                i_am_leader_check_timeout,
+                i_am_leader_check_timeout_delay_multiplier,
+            },
         },
     );
 
