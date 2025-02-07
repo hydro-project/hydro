@@ -13,7 +13,7 @@ pub fn compartmentalized_paxos_bench<'a>(
     num_clients_per_node: usize,
     median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
-    paxos_config: CompartmentalizedPaxosConfig,
+    config: CompartmentalizedPaxosConfig,
 ) -> (
     Cluster<'a, Proposer>,
     Cluster<'a, ProxyLeader>,
@@ -51,7 +51,7 @@ pub fn compartmentalized_paxos_bench<'a>(
                     &clients,
                     payloads,
                     replica_checkpoint.broadcast_bincode(&acceptors),
-                    paxos_config,
+                    config,
                 )
             };
 
@@ -73,8 +73,8 @@ pub fn compartmentalized_paxos_bench<'a>(
             // we only mark a transaction as committed when f+1 replicas have applied it
             collect_quorum::<_, _, _, ()>(
                 c_received_payloads.atomic(&clients.tick()),
-                paxos_config.f + 1,
-                paxos_config.num_replicas,
+                config.paxos_config.f + 1,
+                config.num_replicas,
             )
             .0
             .end_atomic()
@@ -92,6 +92,7 @@ mod tests {
     use stageleft::RuntimeData;
 
     use crate::cluster::compartmentalized_paxos::CompartmentalizedPaxosConfig;
+    use crate::cluster::paxos::PaxosConfig;
 
     #[test]
     fn paxos_ir() {
@@ -102,10 +103,12 @@ mod tests {
             1,
             1,
             CompartmentalizedPaxosConfig {
-                f: 1,
-                i_am_leader_send_timeout: 1,
-                i_am_leader_check_timeout: 1,
-                i_am_leader_check_timeout_delay_multiplier: 1,
+                paxos_config: PaxosConfig {
+                    f: 1,
+                    i_am_leader_send_timeout: 1,
+                    i_am_leader_check_timeout: 1,
+                    i_am_leader_check_timeout_delay_multiplier: 1,
+                },
                 num_proxy_leaders: 1,
                 acceptor_grid_rows: 1,
                 acceptor_grid_cols: 1,

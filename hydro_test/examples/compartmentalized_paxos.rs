@@ -4,6 +4,7 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_test::cluster::compartmentalized_paxos::CompartmentalizedPaxosConfig;
+use hydro_test::cluster::paxos::PaxosConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -55,10 +56,12 @@ async fn main() {
             median_latency_window_size,
             checkpoint_frequency,
             CompartmentalizedPaxosConfig {
-                f,
-                i_am_leader_send_timeout,
-                i_am_leader_check_timeout,
-                i_am_leader_check_timeout_delay_multiplier,
+                paxos_config: PaxosConfig {
+                    f,
+                    i_am_leader_send_timeout,
+                    i_am_leader_check_timeout,
+                    i_am_leader_check_timeout_delay_multiplier,
+                },
                 num_proxy_leaders,
                 acceptor_grid_rows,
                 acceptor_grid_cols,
