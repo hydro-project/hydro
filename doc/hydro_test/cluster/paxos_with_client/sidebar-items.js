@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["paxos_with_client"]};
+window.SIDEBAR_ITEMS = {"trait":["PaxosLike"]};

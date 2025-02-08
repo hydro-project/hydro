@@ -73,43 +73,75 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
-<span class="kw">use </span><span class="kw">super</span>::paxos::{paxos_core, Acceptor, Ballot, PaxosConfig, PaxosPayload, Proposer};
+<span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<span class="kw">use </span>serde::de::DeserializeOwned;
+<span class="kw">use </span>serde::Serialize;
 
-<span class="doccomment">/// Wraps the core Paxos algorithm with logic to send payloads from clients to the current
-/// leader.
-///
-/// # Safety
-/// Clients may send payloads to a stale leader if the leader changes between the time the
-/// payload is sent and the time it is processed. This will result in the payload being dropped.
-/// Payloads sent from multiple clients may be interleaved in a non-deterministic order.
-</span><span class="kw">pub unsafe fn </span>paxos_with_client&lt;<span class="lifetime">'a</span>, C: <span class="lifetime">'a</span>, R, P: PaxosPayload&gt;(
-    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
-    acceptors: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
-    clients: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C&gt;,
-    payloads: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded&gt;,
-    replica_checkpoint: Stream&lt;(ClusterId&lt;R&gt;, usize), Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded, NoOrder&gt;,
-    paxos_config: PaxosConfig,
-) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt; {
-    <span class="kw">unsafe </span>{
-        <span class="comment">// SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
-        // care about the order in which key writes are processed, which is the non-determinism in
-        // `sequenced_payloads`.
+<span class="kw">use </span><span class="kw">super</span>::paxos::PaxosPayload;
 
-        </span>paxos_core(
-            proposers,
-            acceptors,
-            replica_checkpoint,
-            |new_leader_elected| {
-                <span class="kw">let </span>cur_leader_id = new_leader_elected
-                    .broadcast_bincode_interleaved(clients)
-                    .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
-                        <span class="string">"Client notified that leader was elected: {:?}"</span>,
-                        ballot
-                    )))
-                    .max()
-                    .map(<span class="macro">q!</span>(|ballot: Ballot| ballot.proposer_id));
+<span class="kw">pub trait </span>PaxosLike&lt;<span class="lifetime">'a</span>&gt;: Sized {
+    <span class="kw">type </span>Leader: <span class="lifetime">'a</span>;
+    <span class="kw">type </span>Ballot: Clone + Ord + Debug + Serialize + DeserializeOwned;
+
+    <span class="kw">fn </span>leaders(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::Leader&gt;;
+
+    <span class="kw">fn </span>get_ballot_leader&lt;L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
+        ballot: Optional&lt;<span class="self">Self</span>::Ballot, L, Unbounded&gt;,
+    ) -&gt; Optional&lt;ClusterId&lt;<span class="self">Self</span>::Leader&gt;, L, Unbounded&gt;;
+
+    <span class="doccomment">/// # Safety
+    /// During leader-reelection, the latest known leader may be stale, which may
+    /// result in non-deterministic dropping of payloads.
+    </span><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
+    </span><span class="kw">unsafe fn </span>build&lt;P: PaxosPayload&gt;(
+        <span class="self">self</span>,
+        payload_generator: <span class="kw">impl </span>FnOnce(
+            Stream&lt;<span class="self">Self</span>::Ballot, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::Leader&gt;, Unbounded&gt;,
+        ) -&gt; Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::Leader&gt;, Unbounded&gt;,
+    ) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::Leader&gt;, Unbounded, NoOrder&gt;;
+
+    <span class="doccomment">/// # Safety
+    /// During leader-reelection, the latest known leader may be stale, which may
+    /// result in non-deterministic dropping of payloads.
+    </span><span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"internal paxos code // TODO"</span>)]
+    </span><span class="kw">unsafe fn </span>with_client&lt;C: <span class="lifetime">'a</span>, P: PaxosPayload&gt;(
+        <span class="self">self</span>,
+        clients: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C&gt;,
+        payloads: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded&gt;,
+    ) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::Leader&gt;, Unbounded, NoOrder&gt; {
+        <span class="kw">unsafe </span>{
+            <span class="comment">// SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
+            // care about the order in which key writes are processed, which is the non-determinism in
+            // `sequenced_payloads`.
+            </span><span class="kw">let </span>leaders = <span class="self">self</span>.leaders().clone();
+
+            <span class="self">self</span>.build(<span class="kw">move </span>|new_leader_elected| {
+                <span class="kw">let </span>cur_leader_id = <span class="self">Self</span>::get_ballot_leader(
+                    new_leader_elected
+                        .broadcast_bincode_interleaved(clients)
+                        .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
+                            <span class="string">"Client notified that leader was elected: {:?}"</span>,
+                            ballot
+                        )))
+                        .max(),
+                );
 
                 <span class="kw">let </span>payloads_at_proposer = {
                     <span class="comment">// SAFETY: the risk here is that we send a batch of requests
@@ -134,7 +166,7 @@
                     all_payloads.cross_singleton(latest_leader).all_ticks()
                 }
                 .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
-                .send_bincode_anonymous(proposers);
+                .send_bincode_anonymous(<span class="kw-2">&amp;</span>leaders);
 
                 <span class="kw">let </span>payloads_at_proposer = {
                     <span class="comment">// SAFETY: documented non-determinism in interleaving of client payloads
@@ -142,10 +174,8 @@
                 };
 
                 payloads_at_proposer
-            },
-            paxos_config,
-        )
-        .<span class="number">1
-    </span>}
+            })
+        }
+    }
 }
 </code></pre></div></section></main></body></html>

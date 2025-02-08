@@ -829,6 +829,50 @@
 <a href="#829" id="829">829</a>
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -839,6 +883,9 @@
 <span class="kw">use </span>hydro_std::request_response::join_responses;
 <span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
+
+<span class="kw">use </span><span class="kw">super</span>::kv_replica::Replica;
+<span class="kw">use </span><span class="kw">super</span>::paxos_with_client::PaxosLike;
 
 <span class="kw">pub struct </span>Proposer {}
 <span class="kw">pub struct </span>Acceptor {}
@@ -890,6 +937,47 @@
     slot: usize,
     value: <span class="prelude-ty">Option</span>&lt;P&gt;, <span class="comment">// might be a re-committed hole
 </span>}
+
+<span class="kw">pub struct </span>CorePaxos&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub </span>proposers: Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
+    <span class="kw">pub </span>acceptors: Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
+    <span class="kw">pub </span>replica_checkpoint:
+        Stream&lt;(ClusterId&lt;Replica&gt;, usize), Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded, NoOrder&gt;,
+    <span class="kw">pub </span>paxos_config: PaxosConfig,
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; PaxosLike&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>CorePaxos&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">type </span>Leader = Proposer;
+    <span class="kw">type </span>Ballot = Ballot;
+
+    <span class="kw">fn </span>leaders(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.proposers
+    }
+
+    <span class="kw">fn </span>get_ballot_leader&lt;L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
+        ballot: Optional&lt;<span class="self">Self</span>::Ballot, L, Unbounded&gt;,
+    ) -&gt; Optional&lt;ClusterId&lt;<span class="self">Self</span>::Leader&gt;, L, Unbounded&gt; {
+        ballot.map(<span class="macro">q!</span>(|ballot| ballot.proposer_id))
+    }
+
+    <span class="kw">unsafe fn </span>build&lt;P: PaxosPayload&gt;(
+        <span class="self">self</span>,
+        with_ballot: <span class="kw">impl </span>FnOnce(
+            Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
+        ) -&gt; Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
+    ) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt; {
+        <span class="kw">unsafe </span>{
+            paxos_core(
+                <span class="kw-2">&amp;</span><span class="self">self</span>.proposers,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.acceptors,
+                <span class="self">self</span>.replica_checkpoint,
+                with_ballot,
+                <span class="self">self</span>.paxos_config,
+            )
+            .<span class="number">1
+        </span>}
+    }
+}
 
 <span class="doccomment">/// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors
 /// to sequence payloads being sent to the proposers.
