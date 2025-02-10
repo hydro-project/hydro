@@ -13,6 +13,8 @@ use dfir_lang::graph::FlatGraphBuilder;
 #[cfg(feature = "build")]
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
+#[cfg(feature = "build")]
+use quote::quote;
 use quote::ToTokens;
 #[cfg(feature = "build")]
 use syn::parse_quote;
@@ -196,9 +198,13 @@ impl HydroLeaf {
                 graph_builders
                     .entry(input_location_id)
                     .or_default()
-                    .add_statement(parse_quote! {
-                        #input_ident -> for_each(#f);
-                    });
+                    .add_dfir(
+                        parse_quote! {
+                            #input_ident -> for_each(#f);
+                        },
+                        None,
+                        None,
+                    );
             }
 
             HydroLeaf::DestSink { sink, input } => {
@@ -208,9 +214,13 @@ impl HydroLeaf {
                 graph_builders
                     .entry(input_location_id)
                     .or_default()
-                    .add_statement(parse_quote! {
-                        #input_ident -> dest_sink(#sink);
-                    });
+                    .add_dfir(
+                        parse_quote! {
+                            #input_ident -> dest_sink(#sink);
+                        },
+                        None,
+                        None,
+                    );
             }
 
             HydroLeaf::CycleSink {
@@ -233,12 +243,13 @@ impl HydroLeaf {
                     "cycle_sink location mismatch"
                 );
 
-                graph_builders
-                    .entry(*location_id)
-                    .or_default()
-                    .add_statement(parse_quote! {
+                graph_builders.entry(*location_id).or_default().add_dfir(
+                    parse_quote! {
                         #ident = #input_ident;
-                    });
+                    },
+                    None,
+                    None,
+                );
             }
         }
     }
@@ -667,9 +678,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", persist_id), Span::call_site());
 
                 let builder = graph_builders.entry(location).or_default();
-                builder.add_statement(parse_quote! {
-                    #persist_ident = #inner_ident -> persist::<'static>();
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #persist_ident = #inner_ident -> persist::<'static>();
+                    },
+                    None,
+                    None,
+                );
 
                 (persist_ident, location)
             }
@@ -688,9 +703,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", delta_id), Span::call_site());
 
                 let builder = graph_builders.entry(location).or_default();
-                builder.add_statement(parse_quote! {
-                    #delta_ident = #inner_ident -> multiset_delta();
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #delta_ident = #inner_ident -> multiset_delta();
+                    },
+                    None,
+                    None,
+                );
 
                 (delta_ident, location)
             }
@@ -740,10 +759,11 @@ impl<'a> HydroNode {
                         }
                     };
 
-                    graph_builders
-                        .entry(*location_id)
-                        .or_default()
-                        .add_statement(source_stmt);
+                    graph_builders.entry(*location_id).or_default().add_dfir(
+                        source_stmt,
+                        None,
+                        None,
+                    );
 
                     (source_ident, *location_id)
                 }
@@ -782,9 +802,13 @@ impl<'a> HydroNode {
                         syn::Ident::new(&format!("stream_{}", tee_id), Span::call_site());
 
                     let builder = graph_builders.entry(inner_location_id).or_default();
-                    builder.add_statement(parse_quote! {
-                        #tee_ident = #inner_ident -> tee();
-                    });
+                    builder.add_dfir(
+                        parse_quote! {
+                            #tee_ident = #inner_ident -> tee();
+                        },
+                        None,
+                        None,
+                    );
 
                     built_tees.insert(
                         inner.0.as_ref() as *const RefCell<HydroNode>,
@@ -813,17 +837,15 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", union_id), Span::call_site());
 
                 let builder = graph_builders.entry(first_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #chain_ident = chain();
-                });
-
-                builder.add_statement(parse_quote! {
-                    #first_ident -> [0]#chain_ident;
-                });
-
-                builder.add_statement(parse_quote! {
-                    #second_ident -> [1]#chain_ident;
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #chain_ident = chain();
+                        #first_ident -> [0]#chain_ident;
+                        #second_ident -> [1]#chain_ident;
+                    },
+                    None,
+                    None,
+                );
 
                 (chain_ident, first_location_id)
             }
@@ -846,17 +868,15 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", union_id), Span::call_site());
 
                 let builder = graph_builders.entry(left_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #cross_ident = cross_singleton();
-                });
-
-                builder.add_statement(parse_quote! {
-                    #left_ident -> [input]#cross_ident;
-                });
-
-                builder.add_statement(parse_quote! {
-                    #right_ident -> [single]#cross_ident;
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #cross_ident = cross_singleton();
+                        #left_ident -> [input]#cross_ident;
+                        #right_ident -> [single]#cross_ident;
+                    },
+                    None,
+                    None,
+                );
 
                 (cross_ident, left_location_id)
             }
@@ -874,18 +894,18 @@ impl<'a> HydroNode {
                     unreachable!()
                 };
 
-                let (left_inner, left_was_persist) =
+                let (left_inner, left_lifetime) =
                     if let HydroNode::Persist { inner: left, .. } = left.as_ref() {
-                        (left, true)
+                        (left, quote!('static))
                     } else {
-                        (left, false)
+                        (left, quote!('tick))
                     };
 
-                let (right_inner, right_was_persist) =
+                let (right_inner, right_lifetime) =
                     if let HydroNode::Persist { inner: right, .. } = right.as_ref() {
-                        (right, true)
+                        (right, quote!('static))
                     } else {
-                        (right, false)
+                        (right, quote!('tick))
                     };
 
                 let (left_ident, left_location_id) =
@@ -906,36 +926,15 @@ impl<'a> HydroNode {
 
                 let builder = graph_builders.entry(left_location_id).or_default();
 
-                match (left_was_persist, right_was_persist) {
-                    (true, true) => {
-                        builder.add_statement(parse_quote! {
-                            #stream_ident = #operator::<'static, 'static>();
-                        });
-                    }
-                    (true, false) => {
-                        builder.add_statement(parse_quote! {
-                            #stream_ident = #operator::<'static, 'tick>();
-                        });
-                    }
-                    (false, true) => {
-                        builder.add_statement(parse_quote! {
-                            #stream_ident = #operator::<'tick, 'static>();
-                        });
-                    }
-                    (false, false) => {
-                        builder.add_statement(parse_quote! {
-                            #stream_ident = #operator::<'tick, 'tick>();
-                        });
-                    }
-                };
-
-                builder.add_statement(parse_quote! {
-                    #left_ident -> [0]#stream_ident;
-                });
-
-                builder.add_statement(parse_quote! {
-                    #right_ident -> [1]#stream_ident;
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #stream_ident = #operator::<#left_lifetime, #right_lifetime>();
+                        #left_ident -> [0]#stream_ident;
+                        #right_ident -> [1]#stream_ident;
+                    },
+                    None,
+                    None,
+                );
 
                 (stream_ident, left_location_id)
             }
@@ -953,11 +952,11 @@ impl<'a> HydroNode {
                     unreachable!()
                 };
 
-                let (neg, neg_was_persist) =
+                let (neg, neg_lifetime) =
                     if let HydroNode::Persist { inner: neg, .. } = neg.as_ref() {
-                        (neg, true)
+                        (neg, quote!('static))
                     } else {
-                        (neg, false)
+                        (neg, quote!('tick))
                     };
 
                 let (pos_ident, pos_location_id) =
@@ -978,23 +977,15 @@ impl<'a> HydroNode {
 
                 let builder = graph_builders.entry(pos_location_id).or_default();
 
-                if neg_was_persist {
-                    builder.add_statement(parse_quote! {
-                        #stream_ident = #operator::<'tick, 'static>();
-                    });
-                } else {
-                    builder.add_statement(parse_quote! {
-                        #stream_ident = #operator::<'tick, 'tick>();
-                    });
-                }
-
-                builder.add_statement(parse_quote! {
-                    #pos_ident -> [pos]#stream_ident;
-                });
-
-                builder.add_statement(parse_quote! {
-                    #neg_ident -> [neg]#stream_ident;
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #stream_ident = #operator::<'tick, #neg_lifetime>();
+                        #pos_ident -> [pos]#stream_ident;
+                        #neg_ident -> [neg]#stream_ident;
+                    },
+                    None,
+                    None,
+                );
 
                 (stream_ident, pos_location_id)
             }
@@ -1009,9 +1000,13 @@ impl<'a> HydroNode {
                 let map_ident = syn::Ident::new(&format!("stream_{}", map_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #map_ident = #input_ident -> map(#f);
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #map_ident = #input_ident -> map(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (map_ident, input_location_id)
             }
@@ -1027,9 +1022,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", flat_map_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #flat_map_ident = #input_ident -> flat_map(#f);
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #flat_map_ident = #input_ident -> flat_map(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (flat_map_ident, input_location_id)
             }
@@ -1045,9 +1044,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", filter_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #filter_ident = #input_ident -> filter(#f);
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #filter_ident = #input_ident -> filter(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (filter_ident, input_location_id)
             }
@@ -1063,9 +1066,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", filter_map_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #filter_map_ident = #input_ident -> filter_map(#f);
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #filter_map_ident = #input_ident -> filter_map(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (filter_map_ident, input_location_id)
             }
@@ -1080,9 +1087,13 @@ impl<'a> HydroNode {
                 let sort_ident = syn::Ident::new(&format!("stream_{}", sort_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #sort_ident = #input_ident -> sort();
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #sort_ident = #input_ident -> sort();
+                    },
+                    None,
+                    None,
+                );
 
                 (sort_ident, input_location_id)
             }
@@ -1098,9 +1109,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", defer_tick_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #defer_tick_ident = #input_ident -> defer_tick_lazy();
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #defer_tick_ident = #input_ident -> defer_tick_lazy();
+                    },
+                    None,
+                    None,
+                );
 
                 (defer_tick_ident, input_location_id)
             }
@@ -1119,15 +1134,18 @@ impl<'a> HydroNode {
 
                 let builder = graph_builders.entry(input_location_id).or_default();
 
-                if *is_static {
-                    builder.add_statement(parse_quote! {
-                        #enumerate_ident = #input_ident -> enumerate::<'static>();
-                    });
+                let lifetime = if *is_static {
+                    quote!('static)
                 } else {
-                    builder.add_statement(parse_quote! {
-                        #enumerate_ident = #input_ident -> enumerate::<'tick>();
-                    });
-                }
+                    quote!('tick)
+                };
+                builder.add_dfir(
+                    parse_quote! {
+                        #enumerate_ident = #input_ident -> enumerate::<#lifetime>();
+                    },
+                    None,
+                    None,
+                );
 
                 (enumerate_ident, input_location_id)
             }
@@ -1143,9 +1161,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", inspect_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #inspect_ident = #input_ident -> inspect(#f);
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #inspect_ident = #input_ident -> inspect(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (inspect_ident, input_location_id)
             }
@@ -1161,9 +1183,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", unique_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                builder.add_statement(parse_quote! {
-                    #unique_ident = #input_ident -> unique::<'tick>();
-                });
+                builder.add_dfir(
+                    parse_quote! {
+                        #unique_ident = #input_ident -> unique::<'tick>();
+                    },
+                    None,
+                    None,
+                );
 
                 (unique_ident, input_location_id)
             }
@@ -1185,11 +1211,11 @@ impl<'a> HydroNode {
                     unreachable!()
                 };
 
-                let (input, input_was_persist) =
+                let (input, lifetime) =
                     if let HydroNode::Persist { inner: input, .. } = input.as_ref() {
-                        (input, true)
+                        (input, quote!('static))
                     } else {
-                        (input, false)
+                        (input, quote!('tick))
                     };
 
                 let (input_ident, input_location_id) =
@@ -1202,15 +1228,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", reduce_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                if input_was_persist {
-                    builder.add_statement(parse_quote! {
-                        #fold_ident = #input_ident -> #operator::<'static>(#init, #acc);
-                    });
-                } else {
-                    builder.add_statement(parse_quote! {
-                        #fold_ident = #input_ident -> #operator::<'tick>(#init, #acc);
-                    });
-                }
+                builder.add_dfir(
+                    parse_quote! {
+                        #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
+                    },
+                    None,
+                    None,
+                );
 
                 (fold_ident, input_location_id)
             }
@@ -1228,11 +1252,11 @@ impl<'a> HydroNode {
                     unreachable!()
                 };
 
-                let (input, input_was_persist) =
+                let (input, lifetime) =
                     if let HydroNode::Persist { inner: input, .. } = input.as_ref() {
-                        (input, true)
+                        (input, quote!('static))
                     } else {
-                        (input, false)
+                        (input, quote!('tick))
                     };
 
                 let (input_ident, input_location_id) =
@@ -1245,15 +1269,13 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", reduce_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
-                if input_was_persist {
-                    builder.add_statement(parse_quote! {
-                        #reduce_ident = #input_ident -> #operator::<'static>(#f);
-                    });
-                } else {
-                    builder.add_statement(parse_quote! {
-                        #reduce_ident = #input_ident -> #operator::<'tick>(#f);
-                    });
-                }
+                builder.add_dfir(
+                    parse_quote! {
+                        #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
+                    },
+                    None,
+                    None,
+                );
 
                 (reduce_ident, input_location_id)
             }
@@ -1285,13 +1307,21 @@ impl<'a> HydroNode {
                 let sender_builder = graph_builders.entry(input_location_id).or_default();
 
                 if let Some(serialize_pipeline) = serialize_pipeline {
-                    sender_builder.add_statement(parse_quote! {
-                        #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
-                    });
+                    sender_builder.add_dfir(
+                        parse_quote! {
+                            #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
+                        },
+                        None,
+                        None,
+                    );
                 } else {
-                    sender_builder.add_statement(parse_quote! {
-                        #input_ident -> dest_sink(#sink_expr);
-                    });
+                    sender_builder.add_dfir(
+                        parse_quote! {
+                            #input_ident -> dest_sink(#sink_expr);
+                        },
+                        None,
+                        None,
+                    );
                 }
 
                 let to_id = match to_location {
@@ -1309,13 +1339,17 @@ impl<'a> HydroNode {
                     syn::Ident::new(&format!("stream_{}", receiver_stream_id), Span::call_site());
 
                 if let Some(deserialize_pipeline) = deserialize_pipeline {
-                    receiver_builder.add_statement(parse_quote! {
+                    receiver_builder.add_dfir(parse_quote! {
                         #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                    });
+                    }, None, None);
                 } else {
-                    receiver_builder.add_statement(parse_quote! {
-                        #receiver_stream_ident = source_stream(#source_expr);
-                    });
+                    receiver_builder.add_dfir(
+                        parse_quote! {
+                            #receiver_stream_ident = source_stream(#source_expr);
+                        },
+                        None,
+                        None,
+                    );
                 }
 
                 (receiver_stream_ident, *to_id)

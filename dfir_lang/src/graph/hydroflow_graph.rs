@@ -45,6 +45,8 @@ pub struct DfirGraph {
     /// This field will be empty after deserialization.
     #[serde(skip)]
     operator_instances: SecondaryMap<GraphNodeId, OperatorInstance>,
+    /// Debugging/tracing tag for each operator node.
+    operator_tag: SecondaryMap<GraphNodeId, String>,
     /// Graph data structure (two-way adjacency list).
     graph: DiMulGraph<GraphNodeId, GraphEdgeId>,
     /// Input and output port for each edge.
@@ -462,6 +464,11 @@ impl DfirGraph {
             (0 | 1, _many) => Some(Color::Push),
             (_many, _to_many) => Some(Color::Comp),
         }
+    }
+
+    /// Set the operator tag (for debugging/tracing).
+    pub fn set_operator_tag(&mut self, node_id: GraphNodeId, tag: String) {
+        self.operator_tag.insert(node_id, tag.to_owned());
     }
 }
 
@@ -1012,7 +1019,11 @@ impl DfirGraph {
                                     not(nightly),
                                     expect(unused_labels, reason = "conditional compilation")
                                 )]
-                                let source_info = 'a: {
+                                let source_tag = 'a: {
+                                    if let Some(tag) = self.operator_tag.get(node_id).cloned() {
+                                        break 'a tag;
+                                    }
+
                                     #[cfg(nightly)]
                                     if proc_macro::is_available() {
                                         let op_span = op_span.unwrap();
@@ -1044,7 +1055,7 @@ impl DfirGraph {
                                     "{}__{}__{}",
                                     ident,
                                     op_name,
-                                    source_info,
+                                    source_tag,
                                     span = op_span
                                 );
                                 let type_guard = if is_pull {

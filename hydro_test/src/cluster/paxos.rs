@@ -9,6 +9,9 @@ use hydro_std::request_response::join_responses;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use super::kv_replica::Replica;
+use super::paxos_with_client::PaxosLike;
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Proposer {}
 pub struct Acceptor {}
@@ -60,6 +63,47 @@ pub struct P2a<P, S> {
     pub ballot: Ballot,
     pub slot: usize,
     pub value: Option<P>, // might be a re-committed hole
+}
+
+pub struct CorePaxos<'a> {
+    pub proposers: Cluster<'a, Proposer>,
+    pub acceptors: Cluster<'a, Acceptor>,
+    pub replica_checkpoint:
+        Stream<(ClusterId<Replica>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
+    pub paxos_config: PaxosConfig,
+}
+
+impl<'a> PaxosLike<'a> for CorePaxos<'a> {
+    type Leader = Proposer;
+    type Ballot = Ballot;
+
+    fn leaders(&self) -> &Cluster<'a, Proposer> {
+        &self.proposers
+    }
+
+    fn get_ballot_leader<L: Location<'a>>(
+        ballot: Optional<Self::Ballot, L, Unbounded>,
+    ) -> Optional<ClusterId<Self::Leader>, L, Unbounded> {
+        ballot.map(q!(|ballot| ballot.proposer_id))
+    }
+
+    unsafe fn build<P: PaxosPayload>(
+        self,
+        with_ballot: impl FnOnce(
+            Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
+        ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder> {
+        unsafe {
+            paxos_core(
+                &self.proposers,
+                &self.acceptors,
+                self.replica_checkpoint,
+                with_ballot,
+                self.paxos_config,
+            )
+            .1
+        }
+    }
 }
 
 /// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors

@@ -370,11 +370,9 @@ impl ProgressTracker {
             .lock()
             .unwrap();
 
-        if progress_bar.current_count == 0
-            || progress_bar.multi_progress.println(msg.as_ref()).is_err()
-        {
+        progress_bar.multi_progress.suspend(|| {
             println!("{}", msg.as_ref());
-        }
+        });
     }
 
     pub fn with_group<'a, T, F: Future<Output = T>>(

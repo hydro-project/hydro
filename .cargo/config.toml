@@ -5,6 +5,9 @@ rustflags = [
     '--cfg=HYDROFLOW_GENERATE_DOCS',
 ]
 
+[target.aarch64-apple-darwin]
+linker = "rust-lld"
+
 [target.x86_64-apple-darwin]
 linker = "rust-lld"
 
