@@ -22,7 +22,7 @@ Hydro provides a [high-level API](https://hydro.run/docs/hydro) that allows you 
 
 > Internally, the Hydro stack compiles Hydro programs into a low-level single-threaded DataFlow Internal Representation (IR) language called [DFIR](https://hydro.run/docs/dfir); each Hydro process corresponds to a separate DFIR program. In rare cases you may want to hand-author one or more processes in DFIR; see the DFIR [documentation](https://hydro.run/docs/dfir) or [examples](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples) for details.
 
-## Development Setup
+## Developer Quick Start
 
 See the [quickstart section of the Hydro book](https://hydro.run/docs/hydro/quickstart/) for instructions on installing Rust and getting started with the Hydro template.
 
@@ -47,7 +47,7 @@ What's wanted, we believe, is a proper language stack addressing distributed con
 
 [Hydro](https://hydro.run) is a Rust framework for distributed programming that is designed to address these goals.
 
-# Learning More
+# Learn More
 The Hydro project's main website is at [https://hydro.run](https://hydro.run).
 
 - **Docs**: There are docs for the [high-level Hydro language](https://hydro.run/docs/hydro/) and the low-level dataflow IR, [DFIR](https://hydro.run/docs/dfir), as well as the [Hydro Deploy](https://hydro.run/docs/deploy) framework for launching Hydro programs.
@@ -56,3 +56,7 @@ The Hydro project's main website is at [https://hydro.run](https://hydro.run).
     - The original Hydro vision paper from CIDR 2021: [New Directions in Cloud Programming](https://hydro.run/papers/new-directions.pdf)
     - The first paper on optimizations from SIGMOD 2024: [Optimizing Distributed Protocols with Query Rewrites](https://hydro.run/papers/david-sigmod-2024.pdf)
     - The first paper on Hydro's formal semantics to appear in POPL 2025: [Flo: a Semantic Foundation for Progressive Stream Processing](https://arxiv.org/abs/2411.08274)
+
+# Contributing
+
+For Hydro development setup and contribution info, see [CONTRIBUTING.md](CONTRIBUTING.md).
