@@ -41,6 +41,8 @@ pub mod ir;
 
 pub mod rewrites;
 
+pub use sysinfo;
+
 mod staging_util;
 
 #[cfg(feature = "deploy")]
