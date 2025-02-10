@@ -185,10 +185,10 @@ impl<T: Eq> PartialOrd<Self> for BoundedPrefix<T> {
         // ensure each vec is not in internal conflict with its len
         assert!(self
             .len
-            .map_or(true, |self_len_some| self.vec.len() <= self_len_some));
+            .is_none_or(|self_len_some| self.vec.len() <= self_len_some));
         assert!(other
             .len
-            .map_or(true, |other_len_some| other.vec.len() <= other_len_some));
+            .is_none_or(|other_len_some| other.vec.len() <= other_len_some));
 
         // `self` has some field indicating it is greater than `other`.
         let mut self_greater = false;

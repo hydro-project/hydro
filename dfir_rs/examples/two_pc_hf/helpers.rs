@@ -1,8 +1,5 @@
 pub fn parse_out<T: std::str::FromStr>(line: String) -> Option<T> {
-    match line.trim().parse::<T>() {
-        Ok(the_xid) => Some(the_xid),
-        Err(_) => None,
-    }
+    line.trim().parse::<T>().ok()
 }
 
 use rand::Rng;
