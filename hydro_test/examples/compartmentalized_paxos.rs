@@ -3,7 +3,10 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+use hydro_test::cluster::compartmentalized_paxos::{
+    CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
+};
+use hydro_test::cluster::paxos::PaxosConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -42,7 +45,14 @@ async fn main() {
     let i_am_leader_check_timeout = 10; // Sec
     let i_am_leader_check_timeout_delay_multiplier = 15;
 
+    let num_proxy_leaders = 10;
+    let acceptor_grid_rows = 2;
+    let acceptor_grid_cols = 2;
+    let num_replicas = 4;
+    let acceptor_retry_timeout = 10; // Sec
+
     let proposers = builder.cluster();
+    let proxy_leaders = builder.cluster();
     let acceptors = builder.cluster();
 
     let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
@@ -51,16 +61,24 @@ async fn main() {
         median_latency_window_size,
         checkpoint_frequency,
         f,
-        f + 1,
-        |replica_checkpoint| CorePaxos {
+        num_replicas,
+        |replica_checkpoint| CoreCompartmentalizedPaxos {
             proposers: proposers.clone(),
+            proxy_leaders: proxy_leaders.clone(),
             acceptors: acceptors.clone(),
             replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
-            paxos_config: PaxosConfig {
-                f,
-                i_am_leader_send_timeout,
-                i_am_leader_check_timeout,
-                i_am_leader_check_timeout_delay_multiplier,
+            config: CompartmentalizedPaxosConfig {
+                paxos_config: PaxosConfig {
+                    f,
+                    i_am_leader_send_timeout,
+                    i_am_leader_check_timeout,
+                    i_am_leader_check_timeout_delay_multiplier,
+                },
+                num_proxy_leaders,
+                acceptor_grid_rows,
+                acceptor_grid_cols,
+                num_replicas,
+                acceptor_retry_timeout,
             },
         },
     );
@@ -74,8 +92,13 @@ async fn main() {
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .with_cluster(
+            &proxy_leaders,
+            (0..num_proxy_leaders)
+                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+        )
+        .with_cluster(
             &acceptors,
-            (0..2 * f + 1)
+            (0..acceptor_grid_rows * acceptor_grid_cols)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .with_cluster(
@@ -85,7 +108,7 @@ async fn main() {
         )
         .with_cluster(
             &replicas,
-            (0..f + 1)
+            (0..num_replicas)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .deploy(&mut deployment);

@@ -7,14 +7,17 @@ use serde::Serialize;
 use super::paxos::PaxosPayload;
 
 pub trait PaxosLike<'a>: Sized {
-    type Leader: 'a;
+    /// The nodes that receive inputs in Paxos. Usually the proposers.
+    type PaxosIn: 'a;
+    /// The nodes that output the results of Paxos. Proposers in Paxos, Proxy leaders in Compartmentalized Paxos.
+    type PaxosOut: 'a;
     type Ballot: Clone + Ord + Debug + Serialize + DeserializeOwned;
 
-    fn leaders(&self) -> &Cluster<'a, Self::Leader>;
+    fn payload_recipients(&self) -> &Cluster<'a, Self::PaxosIn>;
 
-    fn get_ballot_leader<L: Location<'a>>(
+    fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::Leader>, L, Unbounded>;
+    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded>;
 
     /// # Safety
     /// During leader-reelection, the latest known leader may be stale, which may
@@ -23,9 +26,9 @@ pub trait PaxosLike<'a>: Sized {
     unsafe fn build<P: PaxosPayload>(
         self,
         payload_generator: impl FnOnce(
-            Stream<Self::Ballot, Cluster<'a, Self::Leader>, Unbounded>,
-        ) -> Stream<P, Cluster<'a, Self::Leader>, Unbounded>,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::Leader>, Unbounded, NoOrder>;
+            Stream<Self::Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
+        ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder>;
 
     /// # Safety
     /// During leader-reelection, the latest known leader may be stale, which may
@@ -35,17 +38,17 @@ pub trait PaxosLike<'a>: Sized {
         self,
         clients: &Cluster<'a, C>,
         payloads: Stream<P, Cluster<'a, C>, Unbounded>,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::Leader>, Unbounded, NoOrder> {
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
         unsafe {
             // SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
             // care about the order in which key writes are processed, which is the non-determinism in
             // `sequenced_payloads`.
-            let leaders = self.leaders().clone();
+            let leaders = self.payload_recipients().clone();
 
             self.build(move |new_leader_elected| {
-                let cur_leader_id = Self::get_ballot_leader(
+                let cur_leader_id = Self::get_recipient_from_ballot(
                     new_leader_elected
-                        .broadcast_bincode_interleaved(clients)
+                        .broadcast_bincode_anonymous(clients)
                         .inspect(q!(|ballot| println!(
                             "Client notified that leader was elected: {:?}",
                             ballot
