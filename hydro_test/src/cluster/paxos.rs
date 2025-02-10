@@ -74,25 +74,26 @@ pub struct CorePaxos<'a> {
 }
 
 impl<'a> PaxosLike<'a> for CorePaxos<'a> {
-    type Leader = Proposer;
+    type PaxosIn = Proposer;
+    type PaxosOut = Proposer;
     type Ballot = Ballot;
 
-    fn leaders(&self) -> &Cluster<'a, Proposer> {
+    fn payload_recipients(&self) -> &Cluster<'a, Self::PaxosIn> {
         &self.proposers
     }
 
-    fn get_ballot_leader<L: Location<'a>>(
+    fn get_recipient_from_ballot<L: Location<'a>>(
         ballot: Optional<Self::Ballot, L, Unbounded>,
-    ) -> Optional<ClusterId<Self::Leader>, L, Unbounded> {
+    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
     unsafe fn build<P: PaxosPayload>(
         self,
         with_ballot: impl FnOnce(
-            Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
-        ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder> {
+            Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
+        ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
         unsafe {
             paxos_core(
                 &self.proposers,

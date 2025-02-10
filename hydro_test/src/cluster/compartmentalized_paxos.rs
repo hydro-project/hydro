@@ -5,10 +5,12 @@ use hydro_std::quorum::collect_quorum;
 use hydro_std::request_response::join_responses;
 use serde::{Deserialize, Serialize};
 
+use super::kv_replica::Replica;
 use super::paxos::{
     acceptor_p2, index_payloads, leader_election, recommit_after_leader_election, Acceptor, Ballot,
     LogValue, P2a, PaxosConfig, PaxosPayload, Proposer,
 };
+use super::paxos_with_client::PaxosLike;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ProxyLeader {}
@@ -24,6 +26,50 @@ pub struct CompartmentalizedPaxosConfig {
     pub num_replicas: usize,
     /// How long to wait before resending message to a different write quorum
     pub acceptor_retry_timeout: u64,
+}
+
+pub struct CoreCompartmentalizedPaxos<'a> {
+    pub proposers: Cluster<'a, Proposer>,
+    pub proxy_leaders: Cluster<'a, ProxyLeader>,
+    pub acceptors: Cluster<'a, Acceptor>,
+    pub replica_checkpoint:
+        Stream<(ClusterId<Replica>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
+    pub config: CompartmentalizedPaxosConfig,
+}
+
+impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
+    type PaxosIn = Proposer;
+    type PaxosOut = ProxyLeader;
+    type Ballot = Ballot;
+
+    fn payload_recipients(&self) -> &Cluster<'a, Self::PaxosIn> {
+        &self.proposers
+    }
+
+    fn get_recipient_from_ballot<L: Location<'a>>(
+        ballot: Optional<Self::Ballot, L, Unbounded>,
+    ) -> Optional<ClusterId<Self::PaxosIn>, L, Unbounded> {
+        ballot.map(q!(|ballot| ballot.proposer_id))
+    }
+
+    unsafe fn build<P: PaxosPayload>(
+        self,
+        with_ballot: impl FnOnce(
+            Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
+        ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
+    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
+        unsafe {
+            compartmentalized_paxos_core(
+                &self.proposers,
+                &self.proxy_leaders,
+                &self.acceptors,
+                self.replica_checkpoint,
+                with_ballot,
+                self.config,
+            )
+            .1
+        }
+    }
 }
 
 /// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors

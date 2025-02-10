@@ -1,7 +1,5 @@
 pub mod bench_client;
 pub mod compartmentalized_paxos;
-pub mod compartmentalized_paxos_bench;
-pub mod compartmentalized_paxos_with_client;
 pub mod compute_pi;
 pub mod kv_replica;
 pub mod many_to_many;

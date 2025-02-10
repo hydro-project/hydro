@@ -3,7 +3,9 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_test::cluster::compartmentalized_paxos::CompartmentalizedPaxosConfig;
+use hydro_test::cluster::compartmentalized_paxos::{
+    CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
+};
 use hydro_test::cluster::paxos::PaxosConfig;
 use tokio::sync::RwLock;
 
@@ -49,13 +51,23 @@ async fn main() {
     let num_replicas = 4;
     let acceptor_retry_timeout = 10; // Sec
 
-    let (proposers, proxy_leaders, acceptors, clients, replicas) =
-        hydro_test::cluster::compartmentalized_paxos_bench::compartmentalized_paxos_bench(
-            &builder,
-            num_clients_per_node,
-            median_latency_window_size,
-            checkpoint_frequency,
-            CompartmentalizedPaxosConfig {
+    let proposers = builder.cluster();
+    let proxy_leaders = builder.cluster();
+    let acceptors = builder.cluster();
+
+    let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
+        &builder,
+        num_clients_per_node,
+        median_latency_window_size,
+        checkpoint_frequency,
+        f,
+        num_replicas,
+        |replica_checkpoint| CoreCompartmentalizedPaxos {
+            proposers: proposers.clone(),
+            proxy_leaders: proxy_leaders.clone(),
+            acceptors: acceptors.clone(),
+            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
+            config: CompartmentalizedPaxosConfig {
                 paxos_config: PaxosConfig {
                     f,
                     i_am_leader_send_timeout,
@@ -68,7 +80,8 @@ async fn main() {
                 num_replicas,
                 acceptor_retry_timeout,
             },
-        );
+        },
+    );
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
