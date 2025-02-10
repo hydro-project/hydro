@@ -51,6 +51,10 @@ impl BarrierCrossers {
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
         .edges()
+        .filter(|&(_, (_src, dst))| {
+            // Ignore barriers within `loop {` blocks.
+            partitioned_graph.node_loop(dst).is_none()
+        })
         .filter_map(|(edge_id, (_src, dst))| {
             let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
@@ -371,9 +375,14 @@ fn find_subgraph_strata(
         |u| subgraph_graph.succs.get(&u).into_iter().flatten().cloned(),
     );
 
-    // Each subgraph's stratum number is the same as it's predecessors. Unless there is a negative
-    // edge, then we increment.
+    // Each subgraph's stratum number is the same as it's predecessors.
+    //
+    // Unless:
+    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
+    // - Entering or exiting a loop.
     for sg_id in topo_sort_order {
+        let curr_loop = partitioned_graph.subgraph_loop(sg_id);
+
         let stratum = subgraph_graph
             .preds
             .get(&sg_id)
@@ -383,8 +392,18 @@ fn find_subgraph_strata(
                 partitioned_graph
                     .subgraph_stratum(pred_sg_id)
                     .map(|stratum| {
-                        stratum
-                            + (subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id)) as usize)
+                        let pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
+                        if curr_loop != pred_loop {
+                            // Entering or exiting a loop.
+                            stratum + 1
+                        } else if curr_loop.is_none()
+                            && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id))
+                        {
+                            // Top level && negative edge.
+                            stratum + 1
+                        } else {
+                            stratum
+                        }
                     })
             })
             .max()
@@ -396,6 +415,10 @@ fn find_subgraph_strata(
     let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
     for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
+        // Ignore barriers within `loop {` blocks.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
         let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());

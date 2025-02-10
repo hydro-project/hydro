@@ -6,56 +6,62 @@ digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([\"alice\", \"bob\"])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) source_stream(iter_batches_stream(0..12, 3))", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) prefix()", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) batch()", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) cross_join()", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) map(|item| (context.current_tick().0, item))", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) repeat_n(3)", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) inspect(|x| println!(\"A {:?} {}\", x, context.is_first_loop_iteration()))", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) repeat_n(3)", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) inspect(|x| println!(\"B {:?} {}\", x, context.is_first_loop_iteration()))", shape=invhouse, fillcolor="#88aaff"]
     n7v1 [label="(n7v1) for_each(|x| result_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n3v1 -> n5v1 [label="0"]
+    n10v1 [label="(n10v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n1v1 -> n8v1
-    n4v1 -> n5v1 [label="1"]
+    n3v1 -> n4v1
     n2v1 -> n9v1
     n6v1 -> n7v1
     n5v1 -> n6v1
-    n8v1 -> n3v1
-    n9v1 -> n4v1
+    n4v1 -> n10v1
+    n8v1 -> n2v1
+    n9v1 -> n3v1
+    n10v1 -> n5v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
         n1v1
-        subgraph "cluster_sg_1v1_var_users" {
-            label="var users"
+        subgraph "cluster_sg_1v1_var_usrs1" {
+            label="var usrs1"
             n1v1
         }
     }
     subgraph "cluster n2v1" {
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 0"
+        label = "sg_2v1\nstratum 1"
         n2v1
-        subgraph "cluster_sg_2v1_var_messages" {
-            label="var messages"
+        subgraph "cluster_sg_2v1_var_usrs2" {
+            label="var usrs2"
             n2v1
         }
     }
     subgraph "cluster n3v1" {
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 1"
+        label = "sg_3v1\nstratum 2"
         n3v1
         n4v1
+        subgraph "cluster_sg_3v1_var_usrs3" {
+            label="var usrs3"
+            n3v1
+            n4v1
+        }
+    }
+    subgraph "cluster n4v1" {
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 3"
         n5v1
         n6v1
         n7v1
-        subgraph "cluster_sg_3v1_var_cp" {
-            label="var cp"
-            n5v1
-            n6v1
-            n7v1
-        }
     }
 }

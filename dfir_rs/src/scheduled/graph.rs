@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cmp::Ordering;
 use std::future::Future;
 use std::marker::PhantomData;
 
@@ -21,7 +22,7 @@ use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
-use super::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
+use super::{HandoffId, HandoffTag, LoopId, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
 use crate::util::slot_vec::SlotVec;
 use crate::Never;
@@ -262,28 +263,63 @@ impl<'a> Dfir<'a> {
         // This drains the task buffer, so becomes a no-op after first call.
         self.context.spawn_tasks();
 
-        let current_tick = self.context.current_tick;
-
         let mut work_done = false;
 
         while let Some(sg_id) =
             self.context.stratum_queues[self.context.current_stratum].pop_front()
         {
             work_done = true;
+
             {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
-                tracing::trace!(
+                tracing::info!(
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
+                    sg_depth = sg_data.loop_depth,
                     "Running subgraph."
                 );
 
+                match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
+                    Ordering::Greater => {
+                        // We have entered a loop.
+                        self.context.loop_nonce += 1;
+                        self.context.loop_nonce_stack.push(self.context.loop_nonce);
+                        tracing::warn!(loop_nonce = self.context.loop_nonce, "Entered loop.");
+                    }
+                    Ordering::Less => {
+                        // We have exited a loop.
+                        self.context.loop_nonce_stack.pop();
+                        tracing::warn!("Exited loop.");
+                    }
+                    Ordering::Equal => {}
+                }
+
+                tracing::warn!(
+                    loop_nonce = self.context.loop_nonce,
+                    stack_len = self.context.loop_nonce_stack.len()
+                );
+
                 self.context.subgraph_id = sg_id;
-                self.context.subgraph_last_tick_run_in = sg_data.last_tick_run_in;
+                self.context.is_first_run_this_tick = sg_data
+                    .last_tick_run_in
+                    .is_none_or(|last_tick| last_tick < self.context.current_tick);
+                self.context.is_first_loop_iteration = self
+                    .context
+                    .loop_nonce_stack
+                    .last()
+                    .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
+
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
-                sg_data.last_tick_run_in = Some(current_tick);
+
+                sg_data.last_tick_run_in = Some(self.context.current_tick);
+                sg_data.last_loop_nonce = self
+                    .context
+                    .loop_nonce_stack
+                    .last()
+                    .copied()
+                    .unwrap_or_default()
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -300,8 +336,23 @@ impl<'a> Dfir<'a> {
                         if !succ_sg_data.is_scheduled.replace(true) {
                             self.context.stratum_queues[succ_sg_data.stratum].push_back(succ_id);
                         }
+                        // Add stratum to stratum stack if it is within a loop.
+                        if 0 < succ_sg_data.loop_depth {
+                            // TODO(mingwei): handle duplicates
+                            self.context
+                                .stratum_stack
+                                .push(succ_sg_data.loop_depth, succ_sg_data.stratum);
+                        }
                     }
                 }
+            }
+
+            if self.context.reschedule_loop_block.take() {
+                // Re-enqueue the subgraph.
+                self.context.schedule_deferred.push(sg_id);
+                self.context
+                    .stratum_stack
+                    .push(sg_data.loop_depth, sg_data.stratum);
             }
         }
         work_done
@@ -326,7 +377,13 @@ impl<'a> Dfir<'a> {
             "Starting `next_stratum` call.",
         );
 
+        // The stratum we will stop searching at, i.e. made a full loop around.
+        let mut end_stratum = self.context.current_stratum;
+        let mut new_tick_started = false;
+
         if 0 == self.context.current_stratum {
+            new_tick_started = true;
+
             // Starting the tick, reset this to `false`.
             tracing::trace!("Starting tick, setting `can_start_tick = false`.");
             self.context.can_start_tick = false;
@@ -339,16 +396,12 @@ impl<'a> Dfir<'a> {
             }
         }
 
-        // The stratum we will stop searching at, i.e. made a full loop around.
-        let mut end_stratum = self.context.current_stratum;
-
         loop {
             tracing::trace!(
                 tick = u64::from(self.context.current_tick),
                 stratum = self.context.current_stratum,
                 "Looking for work on stratum."
             );
-
             // If current stratum has work, return true.
             if !self.context.stratum_queues[self.context.current_stratum].is_empty() {
                 tracing::trace!(
@@ -359,48 +412,73 @@ impl<'a> Dfir<'a> {
                 return true;
             }
 
-            // Increment stratum counter.
-            self.context.current_stratum += 1;
-            if self.context.current_stratum >= self.context.stratum_queues.len() {
-                tracing::trace!(
-                    can_start_tick = self.context.can_start_tick,
-                    "End of tick {}, starting tick {}.",
-                    self.context.current_tick,
-                    self.context.current_tick + TickDuration::SINGLE_TICK,
-                );
-                self.context.reset_state_at_end_of_tick();
+            if let Some(next_stratum) = self.context.stratum_stack.pop() {
+                self.context.current_stratum = next_stratum;
 
-                self.context.current_stratum = 0;
-                self.context.current_tick += TickDuration::SINGLE_TICK;
-                self.context.events_received_tick = false;
-
-                if current_tick_only {
-                    tracing::trace!(
-                        "`current_tick_only` is `true`, returning `false` before receiving events."
-                    );
-                    return false;
-                } else {
-                    self.try_recv_events();
-                    if std::mem::replace(&mut self.context.can_start_tick, false) {
-                        tracing::trace!(
+                // Now schedule deferred subgraphs.
+                {
+                    for sg_id in self.context.schedule_deferred.drain(..) {
+                        let sg_data = &self.subgraphs[sg_id];
+                        tracing::info!(
                             tick = u64::from(self.context.current_tick),
-                            "`can_start_tick` is `true`, continuing."
+                            stratum = self.context.current_stratum,
+                            sg_id = sg_id.to_string(),
+                            sg_name = &*sg_data.name,
+                            is_scheduled = sg_data.is_scheduled.get(),
+                            "Rescheduling deferred subgraph."
                         );
-                        // Do a full loop more to find where events have been added.
-                        end_stratum = 0;
-                        continue;
-                    } else {
+                        if !sg_data.is_scheduled.replace(true) {
+                            self.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+                        }
+                    }
+                }
+            } else {
+                // Increment stratum counter.
+                self.context.current_stratum += 1;
+
+                if self.context.current_stratum >= self.context.stratum_queues.len() {
+                    new_tick_started = true;
+
+                    tracing::trace!(
+                        can_start_tick = self.context.can_start_tick,
+                        "End of tick {}, starting tick {}.",
+                        self.context.current_tick,
+                        self.context.current_tick + TickDuration::SINGLE_TICK,
+                    );
+                    self.context.reset_state_at_end_of_tick();
+
+                    self.context.current_stratum = 0;
+                    self.context.current_tick += TickDuration::SINGLE_TICK;
+                    self.context.events_received_tick = false;
+
+                    if current_tick_only {
                         tracing::trace!(
-                            "`can_start_tick` is `false`, re-setting `events_received_tick = false`, returning `false`."
+                            "`current_tick_only` is `true`, returning `false` before receiving events."
                         );
-                        self.context.events_received_tick = false;
                         return false;
+                    } else {
+                        self.try_recv_events();
+                        if std::mem::replace(&mut self.context.can_start_tick, false) {
+                            tracing::trace!(
+                                tick = u64::from(self.context.current_tick),
+                                "`can_start_tick` is `true`, continuing."
+                            );
+                            // Do a full loop more to find where events have been added.
+                            end_stratum = 0;
+                            continue;
+                        } else {
+                            tracing::trace!(
+                                "`can_start_tick` is `false`, re-setting `events_received_tick = false`, returning `false`."
+                            );
+                            self.context.events_received_tick = false;
+                            return false;
+                        }
                     }
                 }
             }
 
             // After incrementing, exit if we made a full loop around the strata.
-            if end_stratum == self.context.current_stratum {
+            if new_tick_started && end_stratum == self.context.current_stratum {
                 tracing::trace!("Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`.");
                 // Note: if current stratum had work, the very first loop iteration would've
                 // returned true. Therefore we can return false without checking.
@@ -599,6 +677,29 @@ impl<'a> Dfir<'a> {
         recv_ports: R,
         send_ports: W,
         laziness: bool,
+        subgraph: F,
+    ) -> SubgraphId
+    where
+        Name: Into<Cow<'static, str>>,
+        R: 'static + PortList<RECV>,
+        W: 'static + PortList<SEND>,
+        F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
+    {
+        self.add_subgraph_full(
+            name, stratum, recv_ports, send_ports, laziness, None, subgraph,
+        )
+    }
+
+    /// Adds a new compiled subgraph with all options.
+    #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
+    pub fn add_subgraph_full<Name, R, W, F>(
+        &mut self,
+        name: Name,
+        stratum: usize,
+        recv_ports: R,
+        send_ports: W,
+        laziness: bool,
+        loop_id: Option<LoopId>,
         mut subgraph: F,
     ) -> SubgraphId
     where
@@ -607,6 +708,11 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
+        let loop_depth = loop_id
+            .and_then(|loop_id| self.context.loop_depth.get(loop_id))
+            .copied()
+            .unwrap_or(0);
+
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let (mut subgraph_preds, mut subgraph_succs) = Default::default();
             recv_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_preds, sg_id, true);
@@ -626,6 +732,8 @@ impl<'a> Dfir<'a> {
                 subgraph_succs,
                 true,
                 laziness,
+                loop_id,
+                loop_depth,
             )
         });
         self.context.init_stratum(stratum);
@@ -719,6 +827,8 @@ impl<'a> Dfir<'a> {
                 subgraph_succs,
                 true,
                 false,
+                None,
+                0,
             )
         });
 
@@ -780,6 +890,16 @@ impl<'a> Dfir<'a> {
     pub fn context_mut(&mut self, sg_id: SubgraphId) -> &mut Context {
         self.context.subgraph_id = sg_id;
         &mut self.context
+    }
+
+    /// Adds a new loop with the given parent (or `None` for top-level). Returns a loop ID which
+    /// is used in [`Self::add_subgraph_stratified`] or for nested loops.
+    ///
+    /// TODO(mingwei): add loop names to ensure traceability while debugging?
+    pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
+        let depth = parent.map_or(0, |p| self.context.loop_depth[p] + 1);
+        let loop_id = self.context.loop_depth.insert(depth);
+        loop_id
     }
 }
 
@@ -873,6 +993,8 @@ pub(super) struct SubgraphData<'a> {
     /// A friendly name for diagnostics.
     pub(super) name: Cow<'static, str>,
     /// This subgraph's stratum number.
+    ///
+    /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
     pub(super) stratum: usize,
     /// The actual execution code of the subgraph.
     subgraph: Box<dyn Subgraph + 'a>,
@@ -889,19 +1011,30 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
+    /// A meaningless ID to track the loop execution this subgraph was last run in.
+    last_loop_nonce: usize,
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
+
+    /// The subgraph's loop ID, or `None` for the top level.
+    #[expect(dead_code, reason = "TODO(mingwei): WIP")]
+    loop_id: Option<LoopId>,
+    /// The loop depth of the subgraph.
+    loop_depth: usize,
 }
 impl<'a> SubgraphData<'a> {
-    pub fn new(
+    #[expect(clippy::too_many_arguments, reason = "internal use")]
+    pub(crate) fn new(
         name: Cow<'static, str>,
         stratum: usize,
         subgraph: impl Subgraph + 'a,
         preds: Vec<HandoffId>,
         succs: Vec<HandoffId>,
         is_scheduled: bool,
-        laziness: bool,
+        is_lazy: bool,
+        loop_id: Option<LoopId>,
+        loop_depth: usize,
     ) -> Self {
         Self {
             name,
@@ -911,7 +1044,10 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            is_lazy: laziness,
+            last_loop_nonce: 0,
+            is_lazy,
+            loop_id,
+            loop_depth,
         }
     }
 }
