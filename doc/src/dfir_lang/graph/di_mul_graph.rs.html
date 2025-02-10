@@ -319,6 +319,10 @@
 <a href="#319" id="319">319</a>
 <a href="#320" id="320">320</a>
 <a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
 </pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">use </span>std::collections::BTreeSet;
@@ -556,6 +560,8 @@
     }
 
     <span class="doccomment">/// Return an iterator of all successor vertex IDs of `v`.
+    ///
+    /// If there are multiple edges from `v` to the same vertex, that vertex will appear multiple times in the iterator.
     </span><span class="kw">pub fn </span>successor_vertices(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         v: V,
@@ -565,6 +571,8 @@
     }
 
     <span class="doccomment">/// Return an iterator of all predecessor vertex IDs of `v`.
+    ///
+    /// If there are multiple edges from a vertex to `v`, that vertex will appear multiple times in the iterator.
     </span><span class="kw">pub fn </span>predecessor_vertices(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         v: V,

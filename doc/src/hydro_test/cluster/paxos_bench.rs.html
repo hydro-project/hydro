@@ -102,6 +102,7 @@
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>hydro_std::quorum::collect_quorum;
 
@@ -114,7 +115,8 @@
     num_clients_per_node: usize,
     median_latency_window_size: usize, <span class="comment">/* How many latencies to keep in the window for calculating the median */
     </span>checkpoint_frequency: usize,       <span class="comment">// How many sequence numbers to commit before checkpointing
-    </span>replica_count: usize,
+    </span>f: usize, <span class="comment">// Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it.
+    </span>num_replicas: usize,
     create_paxos: <span class="kw">impl </span>FnOnce(Stream&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;) -&gt; Paxos,
 ) -&gt; (Cluster&lt;<span class="lifetime">'a</span>, Client&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;) {
     <span class="kw">let </span>clients = flow.cluster::&lt;Client&gt;();
@@ -142,7 +144,7 @@
                 </span>paxos.with_client(<span class="kw-2">&amp;</span>clients, payloads)
             };
 
-            <span class="kw">let </span>sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(<span class="kw-2">&amp;</span>replicas);
+            <span class="kw">let </span>sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(<span class="kw-2">&amp;</span>replicas);
 
             <span class="comment">// Replicas
             </span><span class="kw">let </span>(replica_checkpoint, processed_payloads) =
@@ -160,8 +162,8 @@
             <span class="comment">// we only mark a transaction as committed when all replicas have applied it
             </span>collect_quorum::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, ()&gt;(
                 c_received_payloads.atomic(<span class="kw-2">&amp;</span>clients.tick()),
-                replica_count,
-                replica_count,
+                f + <span class="number">1</span>,
+                num_replicas,
             )
             .<span class="number">0
             </span>.end_atomic()
@@ -186,7 +188,7 @@
         <span class="kw">let </span>proposers = builder.cluster();
         <span class="kw">let </span>acceptors = builder.cluster();
 
-        <span class="kw">let _ </span>= <span class="kw">super</span>::paxos_bench(<span class="kw-2">&amp;</span>builder, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>, |replica_checkpoint| CorePaxos {
+        <span class="kw">let _ </span>= <span class="kw">super</span>::paxos_bench(<span class="kw-2">&amp;</span>builder, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>, |replica_checkpoint| CorePaxos {
             proposers,
             acceptors: acceptors.clone(),
             replica_checkpoint: replica_checkpoint.broadcast_bincode(<span class="kw-2">&amp;</span>acceptors),

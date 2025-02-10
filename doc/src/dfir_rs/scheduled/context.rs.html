@@ -272,11 +272,59 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
 //!
 //! Provides APIs for state and scheduling.
 
 </span><span class="kw">use </span>std::any::Any;
+<span class="kw">use </span>std::cell::Cell;
 <span class="kw">use </span>std::collections::VecDeque;
 <span class="kw">use </span>std::future::Future;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -288,8 +336,10 @@
 <span class="kw">use </span>web_time::SystemTime;
 
 <span class="kw">use </span><span class="kw">super</span>::state::StateHandle;
-<span class="kw">use super</span>::{StateId, SubgraphId};
+<span class="kw">use super</span>::{LoopTag, StateId, SubgraphId};
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::ticks::TickInstant;
+<span class="kw">use </span><span class="kw">crate</span>::util::priority_stack::PriorityStack;
+<span class="kw">use </span><span class="kw">crate</span>::util::slot_vec::SlotVec;
 
 <span class="doccomment">/// The main state and scheduler of the Hydroflow instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
@@ -300,9 +350,19 @@
     <span class="doccomment">/// User-facing State API.
     </span>states: Vec&lt;StateData&gt;,
 
+    <span class="doccomment">/// Priority stack for handling strata within loops. Prioritized by loop depth.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) stratum_stack: PriorityStack&lt;usize&gt;,
+
+    <span class="kw">pub</span>(<span class="kw">super</span>) loop_nonce_stack: Vec&lt;usize&gt;,
+
+    <span class="doccomment">/// TODO(mingwei):
+    /// used for loop iteration scheduling.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) schedule_deferred: Vec&lt;SubgraphId&gt;,
+
     <span class="doccomment">/// TODO(mingwei): separate scheduler into its own struct/trait?
     /// Index is stratum, value is FIFO queue for that stratum.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) stratum_queues: Vec&lt;VecDeque&lt;SubgraphId&gt;&gt;,
+
     <span class="doccomment">/// Receive events, if second arg indicates if it is an external "important" event (true).
     </span><span class="kw">pub</span>(<span class="kw">super</span>) event_queue_recv: UnboundedReceiver&lt;(SubgraphId, bool)&gt;,
     <span class="doccomment">/// If external events or data can justify starting the next tick.
@@ -314,18 +374,26 @@
     // Second field (bool) is for if the event is an external "important" event (true).
     </span><span class="kw">pub</span>(<span class="kw">super</span>) event_queue_send: UnboundedSender&lt;(SubgraphId, bool)&gt;,
 
+    <span class="doccomment">/// If the current subgraph wants to reschedule the current loop block (in the current tick).
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) reschedule_loop_block: Cell&lt;bool&gt;,
+
     <span class="kw">pub</span>(<span class="kw">super</span>) current_tick: TickInstant,
     <span class="kw">pub</span>(<span class="kw">super</span>) current_stratum: usize,
 
     <span class="kw">pub</span>(<span class="kw">super</span>) current_tick_start: SystemTime,
-    <span class="kw">pub</span>(<span class="kw">super</span>) subgraph_last_tick_run_in: <span class="prelude-ty">Option</span>&lt;TickInstant&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) is_first_run_this_tick: bool,
+    <span class="kw">pub</span>(<span class="kw">super</span>) is_first_loop_iteration: bool,
+
+    <span class="comment">// Depth of loop (zero for top-level).
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) loop_depth: SlotVec&lt;LoopTag, usize&gt;,
+
+    <span class="kw">pub</span>(<span class="kw">super</span>) loop_nonce: usize,
 
     <span class="doccomment">/// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is meaningless.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) subgraph_id: SubgraphId,
 
     tasks_to_spawn: Vec&lt;Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>&gt;&gt;&gt;,
-
     <span class="doccomment">/// Join handles for spawned tasks.
     </span>task_join_handles: Vec&lt;JoinHandle&lt;()&gt;&gt;,
 }
@@ -343,10 +411,15 @@
 
     <span class="doccomment">/// Gets whether this is the first time this subgraph is being scheduled for this tick
     </span><span class="kw">pub fn </span>is_first_run_this_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.subgraph_last_tick_run_in
-            .map_or(<span class="bool-val">true</span>, |tick_last_run_in| {
-                <span class="self">self</span>.current_tick &gt; tick_last_run_in
-            })
+        <span class="self">self</span>.is_first_run_this_tick
+    }
+
+    <span class="doccomment">/// Gets whether this run is the first iteration of a loop.
+    ///
+    /// This is only meaningful if the subgraph is in a loop, otherwise this will always return
+    /// `false`.
+    </span><span class="kw">pub fn </span>is_first_loop_iteration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.is_first_loop_iteration
     }
 
     <span class="doccomment">/// Gets the current stratum nubmer.
@@ -359,9 +432,18 @@
         <span class="self">self</span>.subgraph_id
     }
 
-    <span class="doccomment">/// Schedules a subgraph.
+    <span class="doccomment">/// Schedules a subgraph for the next tick.
+    ///
+    /// If `is_external` is `true`, the scheduling will trigger the next tick to begin. If it is
+    /// `false` then scheduling will be lazy and the next tick will not begin unless there is other
+    /// reason to.
     </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>, sg_id: SubgraphId, is_external: bool) {
         <span class="self">self</span>.event_queue_send.send((sg_id, is_external)).unwrap()
+    }
+
+    <span class="doccomment">/// Schedules the current loop block to be run again (_in this tick_).
+    </span><span class="kw">pub fn </span>reschedule_loop_block(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.reschedule_loop_block.set(<span class="bool-val">true</span>);
     }
 
     <span class="doccomment">/// Returns a `Waker` for interacting with async Rust.
@@ -496,8 +578,15 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>stratum_queues = <span class="macro">vec!</span>[Default::default()]; <span class="comment">// Always initialize stratum #0.
         </span><span class="kw">let </span>(event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
+        <span class="kw">let </span>(stratum_stack, loop_depth) = Default::default();
         <span class="self">Self </span>{
             states: Vec::new(),
+
+            stratum_stack,
+
+            loop_nonce_stack: Vec::new(),
+
+            schedule_deferred: Vec::new(),
 
             stratum_queues,
             event_queue_recv,
@@ -505,12 +594,17 @@
             events_received_tick: <span class="bool-val">false</span>,
 
             event_queue_send,
+            reschedule_loop_block: Cell::new(<span class="bool-val">false</span>),
 
             current_stratum: <span class="number">0</span>,
             current_tick: TickInstant::default(),
 
             current_tick_start: SystemTime::now(),
-            subgraph_last_tick_run_in: <span class="prelude-val">None</span>,
+            is_first_run_this_tick: <span class="bool-val">false</span>,
+            is_first_loop_iteration: <span class="bool-val">false</span>,
+
+            loop_depth,
+            loop_nonce: <span class="number">0</span>,
 
             <span class="comment">// Will be re-set before use.
             </span>subgraph_id: SubgraphId::from_raw(<span class="number">0</span>),

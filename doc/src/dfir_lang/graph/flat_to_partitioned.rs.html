@@ -529,6 +529,29 @@
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
+<a href="#554" id="554">554</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Subgraph partioning algorithm
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
@@ -582,6 +605,10 @@
 </span><span class="kw">fn </span>find_barrier_crossers(partitioned_graph: <span class="kw-2">&amp;</span>DfirGraph) -&gt; BarrierCrossers {
     <span class="kw">let </span>edge_barrier_crossers = partitioned_graph
         .edges()
+        .filter(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, (_src, dst))| {
+            <span class="comment">// Ignore barriers within `loop {` blocks.
+            </span>partitioned_graph.node_loop(dst).is_none()
+        })
         .filter_map(|(edge_id, (_src, dst))| {
             <span class="kw">let </span>(_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             <span class="kw">let </span>op_constraints = partitioned_graph.node_op_inst(dst)<span class="question-mark">?</span>.op_constraints;
@@ -902,9 +929,14 @@
         |u| subgraph_graph.succs.get(<span class="kw-2">&amp;</span>u).into_iter().flatten().cloned(),
     );
 
-    <span class="comment">// Each subgraph's stratum number is the same as it's predecessors. Unless there is a negative
-    // edge, then we increment.
+    <span class="comment">// Each subgraph's stratum number is the same as it's predecessors.
+    //
+    // Unless:
+    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
+    // - Entering or exiting a loop.
     </span><span class="kw">for </span>sg_id <span class="kw">in </span>topo_sort_order {
+        <span class="kw">let </span>curr_loop = partitioned_graph.subgraph_loop(sg_id);
+
         <span class="kw">let </span>stratum = subgraph_graph
             .preds
             .get(<span class="kw-2">&amp;</span>sg_id)
@@ -914,8 +946,18 @@
                 partitioned_graph
                     .subgraph_stratum(pred_sg_id)
                     .map(|stratum| {
-                        stratum
-                            + (subgraph_stratum_barriers.contains(<span class="kw-2">&amp;</span>(pred_sg_id, sg_id)) <span class="kw">as </span>usize)
+                        <span class="kw">let </span>pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
+                        <span class="kw">if </span>curr_loop != pred_loop {
+                            <span class="comment">// Entering or exiting a loop.
+                            </span>stratum + <span class="number">1
+                        </span>} <span class="kw">else if </span>curr_loop.is_none()
+                            &amp;&amp; subgraph_stratum_barriers.contains(<span class="kw-2">&amp;</span>(pred_sg_id, sg_id))
+                        {
+                            <span class="comment">// Top level &amp;&amp; negative edge.
+                            </span>stratum + <span class="number">1
+                        </span>} <span class="kw">else </span>{
+                            stratum
+                        }
                     })
             })
             .max()
@@ -927,6 +969,10 @@
     </span><span class="kw">let </span>extra_stratum = partitioned_graph.max_stratum().unwrap_or(<span class="number">0</span>) + <span class="number">1</span>; <span class="comment">// Used for `defer_tick()` delayer subgraphs.
     </span><span class="kw">for </span>(edge_id, <span class="kw-2">&amp;</span>delay_type) <span class="kw">in </span>barrier_crossers.edge_barrier_crossers.iter() {
         <span class="kw">let </span>(hoff, dst) = partitioned_graph.edge(edge_id);
+        <span class="comment">// Ignore barriers within `loop {` blocks.
+        </span><span class="kw">if </span>partitioned_graph.node_loop(dst).is_some() {
+            <span class="kw">continue</span>;
+        }
         <span class="kw">let </span>(_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         <span class="macro">assert_eq!</span>(<span class="number">1</span>, partitioned_graph.node_predecessors(hoff).count());

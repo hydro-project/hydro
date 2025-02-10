@@ -137,15 +137,6 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::hash::Hash;
@@ -216,37 +207,31 @@
         .chain(r_buffered_payloads) <span class="comment">// Combine with all payloads that we've received and not processed yet
         </span>.sort();
     <span class="comment">// Create a cycle since we'll use this seq before we define it
-    </span><span class="kw">let </span>(r_highest_seq_complete_cycle, r_highest_seq) =
-        replica_tick.cycle::&lt;Optional&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
+    </span><span class="kw">let </span>(r_next_slot_complete_cycle, r_next_slot) =
+        replica_tick.cycle_with_initial(replica_tick.singleton(<span class="macro">q!</span>(<span class="number">0</span>)));
     <span class="comment">// Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
-    </span><span class="kw">let </span>r_highest_seq_processable_payload = r_sorted_payloads
+    </span><span class="kw">let </span>r_next_slot_after_processing_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq.into_singleton())
+        .cross_singleton(r_next_slot.clone())
         .fold(
-            <span class="macro">q!</span>(|| <span class="prelude-val">None</span>),
-            <span class="macro">q!</span>(|filled_slot, (sorted_payload, highest_seq)| {
-                <span class="kw">let </span>expected_next_slot = std::cmp::max(
-                    filled_slot.map(|v| v + <span class="number">1</span>).unwrap_or(<span class="number">0</span>),
-                    highest_seq.map(|v| v + <span class="number">1</span>).unwrap_or(<span class="number">0</span>),
-                );
-
-                <span class="kw">if </span>sorted_payload.seq == expected_next_slot {
-                    <span class="kw-2">*</span>filled_slot = <span class="prelude-val">Some</span>(sorted_payload.seq);
+            <span class="macro">q!</span>(|| <span class="number">0</span>),
+            <span class="macro">q!</span>(|new_next_slot, (sorted_payload, next_slot)| {
+                <span class="kw">if </span>sorted_payload.seq == std::cmp::max(<span class="kw-2">*</span>new_next_slot, next_slot) {
+                    <span class="kw-2">*</span>new_next_slot = sorted_payload.seq + <span class="number">1</span>;
                 }
             }),
-        )
-        .filter_map(<span class="macro">q!</span>(|v| v));
+        );
     <span class="comment">// Find all payloads that can and cannot be processed in this tick.
     </span><span class="kw">let </span>r_processable_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq_processable_payload.clone())
+        .cross_singleton(r_next_slot_after_processing_payloads.clone())
         .filter(<span class="macro">q!</span>(
-            |(sorted_payload, highest_seq)| sorted_payload.seq &lt;= <span class="kw-2">*</span>highest_seq
+            |(sorted_payload, highest_seq)| sorted_payload.seq &lt; <span class="kw-2">*</span>highest_seq
         ))
         .map(<span class="macro">q!</span>(|(sorted_payload, <span class="kw">_</span>)| { sorted_payload }));
     <span class="kw">let </span>r_new_non_processable_payloads = r_sorted_payloads
         .clone()
-        .cross_singleton(r_highest_seq_processable_payload.clone())
+        .cross_singleton(r_next_slot_after_processing_payloads.clone())
         .filter(<span class="macro">q!</span>(
             |(sorted_payload, highest_seq)| sorted_payload.seq &gt; <span class="kw-2">*</span>highest_seq
         ))
@@ -257,35 +242,32 @@
     <span class="kw">let </span>r_kv_store = r_processable_payloads
         .clone()
         .persist() <span class="comment">// Optimization: all_ticks() + fold() = fold&lt;static&gt;, where the state of the previous fold is saved and persisted values are deleted.
-        </span>.fold(<span class="macro">q!</span>(|| (HashMap::new(), <span class="prelude-val">None</span>)), <span class="macro">q!</span>(|(kv_store, last_seq), payload| {
+        </span>.fold(<span class="macro">q!</span>(|| (HashMap::new(), <span class="number">0</span>)), <span class="macro">q!</span>(|(kv_store, next_slot), payload| {
             <span class="kw">if let </span><span class="prelude-val">Some</span>(kv) = payload.kv {
                 kv_store.insert(kv.key, kv.value);
             }
-
-            <span class="macro">debug_assert!</span>(payload.seq == (last_seq.map(|s| s + <span class="number">1</span>).unwrap_or(<span class="number">0</span>)), <span class="string">"Hole in log between seq {:?} and {}"</span>, <span class="kw-2">*</span>last_seq, payload.seq);
-            <span class="kw-2">*</span>last_seq = <span class="prelude-val">Some</span>(payload.seq);
+            <span class="kw-2">*</span>next_slot = payload.seq + <span class="number">1</span>;
         }));
     <span class="comment">// Update the highest seq for the next tick
-    </span><span class="kw">let </span>r_new_highest_seq = r_kv_store.filter_map(<span class="macro">q!</span>(|(_kv_store, highest_seq)| highest_seq));
-    r_highest_seq_complete_cycle.complete_next_tick(r_new_highest_seq.clone());
+    </span>r_next_slot_complete_cycle
+        .complete_next_tick(r_kv_store.map(<span class="macro">q!</span>(|(_kv_store, next_slot)| next_slot)));
 
     <span class="comment">// Send checkpoints to the acceptors when we've processed enough payloads
     </span><span class="kw">let </span>(r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
         replica_tick.cycle::&lt;Optional&lt;usize, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
     <span class="kw">let </span>r_max_checkpointed_seq = r_checkpointed_seqs.persist().max().into_singleton();
-    <span class="kw">let </span>r_checkpoint_seq_new =
-        r_max_checkpointed_seq
-            .zip(r_new_highest_seq)
-            .filter_map(<span class="macro">q!</span>(
-                <span class="kw">move </span>|(max_checkpointed_seq, new_highest_seq)| <span class="kw">if </span>max_checkpointed_seq
-                    .map(|m| new_highest_seq - m &gt;= checkpoint_frequency)
-                    .unwrap_or(<span class="bool-val">true</span>)
-                {
-                    <span class="prelude-val">Some</span>(new_highest_seq)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">None
-                </span>}
-            ));
+    <span class="kw">let </span>r_checkpoint_seq_new = r_max_checkpointed_seq
+        .zip(r_next_slot)
+        .filter_map(<span class="macro">q!</span>(
+            <span class="kw">move </span>|(max_checkpointed_seq, next_slot)| <span class="kw">if </span>max_checkpointed_seq
+                .map(|m| next_slot - m &gt;= checkpoint_frequency)
+                .unwrap_or(<span class="bool-val">true</span>)
+            {
+                <span class="prelude-val">Some</span>(next_slot)
+            } <span class="kw">else </span>{
+                <span class="prelude-val">None
+            </span>}
+        ));
     r_checkpointed_seqs_complete_cycle.complete_next_tick(r_checkpoint_seq_new.clone());
 
     <span class="comment">// Tell clients that the payload has been committed. All ReplicaPayloads contain the client's machine ID (to string) as value.

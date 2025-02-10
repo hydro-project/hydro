@@ -2164,7 +2164,6 @@
 <a href="#2164" id="2164">2164</a>
 <a href="#2165" id="2165">2165</a>
 <a href="#2166" id="2166">2166</a>
-<a href="#2167" id="2167">2167</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -3795,8 +3794,7 @@
         <span class="kw">let </span>latest_received = <span class="self">self</span>.fold_commutative(
             <span class="macro">q!</span>(|| <span class="prelude-val">None</span>),
             <span class="macro">q!</span>(|latest, <span class="kw">_</span>| {
-                <span class="comment">// Note: May want to check received ballot against our own?
-                </span><span class="kw-2">*</span>latest = <span class="prelude-val">Some</span>(Instant::now());
+                <span class="kw-2">*</span>latest = <span class="prelude-val">Some</span>(Instant::now());
             }),
         );
 
@@ -4105,7 +4103,7 @@
         <span class="self">self</span>.send_bincode::&lt;L2, CoreType&gt;(other).map(<span class="macro">q!</span>(|(<span class="kw">_</span>, b)| b))
     }
 
-    <span class="kw">pub fn </span>send_bytes_interleaved&lt;L2: Location&lt;<span class="lifetime">'a</span>&gt;, Tag&gt;(
+    <span class="kw">pub fn </span>send_bytes_anonymous&lt;L2: Location&lt;<span class="lifetime">'a</span>&gt;, Tag&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>L2,
     ) -&gt; Stream&lt;Bytes, L2, Unbounded, Order::Min&gt;
@@ -4140,7 +4138,7 @@
         .send_bincode(other)
     }
 
-    <span class="kw">pub fn </span>broadcast_bincode_interleaved&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
+    <span class="kw">pub fn </span>broadcast_bincode_anonymous&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C2&gt;,
     ) -&gt; Stream&lt;T, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, Unbounded, Order::Min&gt;
@@ -4176,7 +4174,7 @@
         .send_bytes(other)
     }
 
-    <span class="kw">pub fn </span>broadcast_bytes_interleaved&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
+    <span class="kw">pub fn </span>broadcast_bytes_anonymous&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C2&gt;,
     ) -&gt; Stream&lt;Bytes, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, Unbounded, Order::Min&gt;
@@ -4216,7 +4214,7 @@
             .send_bincode(other)
     }
 
-    <span class="kw">pub fn </span>round_robin_bincode_interleaved&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
+    <span class="kw">pub fn </span>round_robin_bincode_anonymous&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C2&gt;,
     ) -&gt; Stream&lt;
@@ -4260,7 +4258,7 @@
             .send_bytes(other)
     }
 
-    <span class="kw">pub fn </span>round_robin_bytes_interleaved&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
+    <span class="kw">pub fn </span>round_robin_bytes_anonymous&lt;C2: <span class="lifetime">'a</span>, Tag&gt;(
         <span class="self">self</span>,
         other: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C2&gt;,
     ) -&gt; Stream&lt;

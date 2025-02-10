@@ -7,13 +7,41 @@
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
-</pre></div><pre class="rust"><code><span class="kw">use super</span>::{DelayType, OperatorConstraints};
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+</pre></div><pre class="rust"><code><span class="kw">use super</span>::{FloType, OperatorCategory, OperatorConstraints, IDENTITY_WRITE_FN, RANGE_0, RANGE_1};
 
-<span class="comment">// Same as batch, but with a stratum barrier.
-</span><span class="doccomment">/// TODO(mingwei): docs
+<span class="doccomment">/// Given a _bounded_ input stream, emits the entire stream in the first loop iteration.
+///
+/// Never causes additional loop iterations.
 </span><span class="kw">pub const </span>ALL_ONCE: OperatorConstraints = OperatorConstraints {
     name: <span class="string">"all_once"</span>,
-    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::Stratum),
-    ..<span class="kw">super</span>::batch::BATCH
+    categories: <span class="kw-2">&amp;</span>[OperatorCategory::Windowing],
+    hard_range_inn: RANGE_1,
+    soft_range_inn: RANGE_1,
+    hard_range_out: RANGE_1,
+    soft_range_out: RANGE_1,
+    num_args: <span class="number">0</span>,
+    persistence_args: RANGE_0,
+    type_args: RANGE_0,
+    is_external_input: <span class="bool-val">false</span>,
+    has_singleton_output: <span class="bool-val">true</span>,
+    flo_type: <span class="prelude-val">Some</span>(FloType::Windowing),
+    ports_inn: <span class="prelude-val">None</span>,
+    ports_out: <span class="prelude-val">None</span>,
+    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+    write_fn: IDENTITY_WRITE_FN,
 };
 </code></pre></div></section></main></body></html>
