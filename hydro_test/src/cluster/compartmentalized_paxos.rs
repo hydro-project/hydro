@@ -72,12 +72,15 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
     }
 }
 
-/// Implements the core Paxos algorithm, which uses a cluster of propsers and acceptors
-/// to sequence payloads being sent to the proposers.
+/// Implements the Compartmentalized Paxos algorithm as described in "Scaling Replicated State Machines with Compartmentalization",
+/// which augments regular Paxos with a cluster of Proxy Leaders.
 ///
-/// Proposers that currently are the leader will work with acceptors to sequence incoming
-/// payloads, but may drop payloads if they are not the lader or lose leadership during
-/// the commit process.
+/// Proposers that wish to broadcast p2as to acceptors or collect p2bs from acceptors instead
+/// go through the Proxy Leaders, which offload networking. The slot is used to determine which Proxy Leader to offload to.
+/// Acceptors are arranged into a grid, where each row and column must have at least f+1 members.
+/// Rows represent "write quorums"; an entire row of acceptors must confirm a payload before it is committed.
+/// Columns represent "read quorums"; an entire column of acceptors must respond to a p1b before a proposer is elected the leader.
+/// Read and write quorums were introduced in "Flexible Paxos: Quorum Intersection Revisited".
 ///
 /// Returns a stream of ballots, where new values are emitted when a new leader is elected,
 /// and a stream of sequenced payloads with an index and optional payload (in the case of

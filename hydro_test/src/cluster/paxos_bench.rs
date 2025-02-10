@@ -10,7 +10,7 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     num_clients_per_node: usize,
     median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
-    f: usize,
+    f: usize, // Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it.
     num_replicas: usize,
     create_paxos: impl FnOnce(Stream<usize, Cluster<'a, Replica>, Unbounded>) -> Paxos,
 ) -> (Cluster<'a, Client>, Cluster<'a, Replica>) {
