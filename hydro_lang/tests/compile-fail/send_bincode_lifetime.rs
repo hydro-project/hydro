@@ -1,4 +1,4 @@
-use dfir_lang::*;
+use hydro_lang::*;
 
 struct P1 {}
 struct P2 {}
