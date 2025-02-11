@@ -6,8 +6,8 @@ fn main() {
     {
         #[allow(unused_qualifications)]
         {
-            use root::{var_expr, var_args};
-            let mut df = root::scheduled::graph::Dfir::new();
+            use dfir_rs::{var_expr, var_args};
+            let mut df = dfir_rs::scheduled::graph::Dfir::new();
             df.__assign_meta_graph(
                 "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"source_stream (ints1)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints2)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result2 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'tick , 'tick , dfir_rs :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : ((_ ,) , ((_ ,) , ())) | (kv . 0 . 0 , kv . 1 . 0 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ , _ ,) | ((_v . 0 ,) , (_v . 1 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | ((_v . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ ,) | (() , (() ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"fold_keyed :: < 'tick , () , (Option < _ > ,) > (| | (None ,) , | old : & mut (Option < _ > ,) , val : (_ ,) | { old . 0 = if let Some (prev) = old . 0 . take () { Some (prev + 1) } else { Some (1) } ; })\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : (() , _) | (a . 0 . unwrap () ,))\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'tick , 'tick , dfir_rs :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : ((_ ,) , ((_ ,) , ())) | (kv . 0 . 0 , kv . 1 . 0 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ , _ ,) | ((_v . 0 ,) , (_v . 1 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | ((_v . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ ,) | (() , ((row . 0) ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"fold_keyed :: < 'tick , () , (Option < _ > ,) > (| | (None ,) , | old : & mut (Option < _ > ,) , val : (_ ,) | { old . 0 = if let Some (prev) = old . 0 . take () { Some ({ let prev : (dfir_rs :: rustc_hash :: FxHashSet < _ > , _) = prev ; let mut set : dfir_rs :: rustc_hash :: FxHashSet < _ > = prev . 0 ; if set . insert (val . 0) { (set , prev . 1 + 1) } else { (set , prev . 1) } }) } else { Some ({ let mut set = dfir_rs :: rustc_hash :: FxHashSet :: < _ > :: default () ; set . insert (val . 0) ; (set , 1) }) } ; })\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : (() , _) | (a . 0 . unwrap () . 1 ,))\"},\"version\":1}],\"operator_tag\":[{\"value\":null,\"version\":0}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":13,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":14,\"version\":1},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":6,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":23,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":9,\"version\":3},{\"idx\":20,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":30,\"version\":1},{\"idx\":11,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":12,\"version\":3},{\"idx\":19,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":1,\"version\":3},{\"idx\":29,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":3},{\"idx\":27,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":8,\"version\":1},{\"idx\":15,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":11,\"version\":1},{\"idx\":16,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":17,\"version\":1},{\"idx\":18,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":19,\"version\":1},{\"idx\":17,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":12,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":20,\"version\":1},{\"idx\":17,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":6,\"version\":1},{\"idx\":9,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":7,\"version\":3},{\"idx\":26,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":22,\"version\":1},{\"idx\":23,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":21,\"version\":1},{\"idx\":10,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":18,\"version\":1},{\"idx\":21,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":24,\"version\":1},{\"idx\":25,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":26,\"version\":1},{\"idx\":24,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":7,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":27,\"version\":1},{\"idx\":24,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":6,\"version\":1},{\"idx\":4,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":10,\"version\":3},{\"idx\":22,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":29,\"version\":1},{\"idx\":30,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":28,\"version\":1},{\"idx\":1,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":25,\"version\":1},{\"idx\":28,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1}],\"node_loops\":[{\"value\":null,\"version\":0}],\"loop_nodes\":[{\"value\":null,\"version\":0}],\"loop_parent\":[{\"value\":null,\"version\":0}],\"root_loops\":[],\"loop_children\":[{\"value\":null,\"version\":0}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":13,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":14,\"version\":1},{\"idx\":5,\"version\":1},{\"idx\":6,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":22,\"version\":1},{\"idx\":23,\"version\":1},{\"idx\":8,\"version\":1},{\"idx\":15,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":29,\"version\":1},{\"idx\":30,\"version\":1},{\"idx\":11,\"version\":1},{\"idx\":16,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":19,\"version\":1},{\"idx\":20,\"version\":1},{\"idx\":17,\"version\":1},{\"idx\":18,\"version\":1},{\"idx\":21,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":26,\"version\":1},{\"idx\":27,\"version\":1},{\"idx\":24,\"version\":1},{\"idx\":25,\"version\":1},{\"idx\":28,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints1_insert\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":\"ints2_insert\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":\"result_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result2_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_2\",\"version\":1},{\"value\":\"join_2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_5\",\"version\":1},{\"value\":\"join_5\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}",
             );
@@ -15,42 +15,42 @@ fn main() {
             let (hoff_1v3_send, hoff_1v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(1v3)");
             let (hoff_4v3_send, hoff_4v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(4v3)");
             let (hoff_7v3_send, hoff_7v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(7v3)");
             let (hoff_9v3_send, hoff_9v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(9v3)");
             let (hoff_10v3_send, hoff_10v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(10v3)");
             let (hoff_12v3_send, hoff_12v3_recv) = df
                 .make_edge::<
                     _,
-                    root::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(12v3)");
             let mut sg_1v1_node_13v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: root::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl root::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -60,21 +60,21 @@ fn main() {
             let sg_1v1_node_2v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let mut sg_2v1_node_14v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: root::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl root::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -84,39 +84,39 @@ fn main() {
             let sg_2v1_node_5v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_3v1_node_22v1_groupbydata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::rustc_hash::FxHashMap::<(), (Option<_>,)>::default(),
+                        dfir_rs::rustc_hash::FxHashMap::<(), (Option<_>,)>::default(),
                     ),
                 );
             let sg_3v1_node_8v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_4v1_node_29v1_groupbydata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::rustc_hash::FxHashMap::<(), (Option<_>,)>::default(),
+                        dfir_rs::rustc_hash::FxHashMap::<(), (Option<_>,)>::default(),
                     ),
                 );
             let sg_4v1_node_11v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -128,7 +128,7 @@ fn main() {
                 );
             df.set_state_tick_hook(
                 sg_5v1_node_17v1_joindata_lhs,
-                |rcell| root::util::clear::Clear::clear(rcell.get_mut()),
+                |rcell| dfir_rs::util::clear::Clear::clear(rcell.get_mut()),
             );
             let sg_5v1_node_17v1_joindata_rhs = df
                 .add_state(
@@ -138,7 +138,7 @@ fn main() {
                 );
             df.set_state_tick_hook(
                 sg_5v1_node_17v1_joindata_rhs,
-                |rcell| root::util::clear::Clear::clear(rcell.get_mut()),
+                |rcell| dfir_rs::util::clear::Clear::clear(rcell.get_mut()),
             );
             let sg_6v1_node_24v1_joindata_lhs = df
                 .add_state(
@@ -148,7 +148,7 @@ fn main() {
                 );
             df.set_state_tick_hook(
                 sg_6v1_node_24v1_joindata_lhs,
-                |rcell| root::util::clear::Clear::clear(rcell.get_mut()),
+                |rcell| dfir_rs::util::clear::Clear::clear(rcell.get_mut()),
             );
             let sg_6v1_node_24v1_joindata_rhs = df
                 .add_state(
@@ -158,7 +158,7 @@ fn main() {
                 );
             df.set_state_tick_hook(
                 sg_6v1_node_24v1_joindata_rhs,
-                |rcell| root::util::clear::Clear::clear(rcell.get_mut()),
+                |rcell| dfir_rs::util::clear::Clear::clear(rcell.get_mut()),
             );
             df.add_subgraph_full(
                 "Subgraph GraphSubgraphId(1v1)",
@@ -168,14 +168,14 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!(hoff_7v3_send, hoff_12v3_send)| {
-                    let hoff_7v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_7v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_7v3_send.give(Some(v));
                     });
-                    let hoff_12v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_12v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_12v3_send.give(Some(v));
                     });
                     let op_13v1 = std::iter::from_fn(|| {
-                        match root::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_1v1_node_13v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -264,7 +264,7 @@ fn main() {
                         }
                         op_2v1__unique__loc_nopath_2_19_2_24(op_2v1)
                     };
-                    let op_3v1 = root::pusherator::tee::Tee::new(
+                    let op_3v1 = dfir_rs::pusherator::tee::Tee::new(
                         hoff_12v3_send,
                         hoff_7v3_send,
                     );
@@ -273,21 +273,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_3v1__tee__loc_nopath_2_19_2_24<
                             Item,
-                            Input: root::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl root::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
-                            > root::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -301,10 +301,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_1v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_1v1(op_2v1, op_3v1);
                 },
@@ -317,14 +317,14 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!(hoff_4v3_send, hoff_9v3_send)| {
-                    let hoff_4v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_4v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_4v3_send.give(Some(v));
                     });
-                    let hoff_9v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_9v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_9v3_send.give(Some(v));
                     });
                     let op_14v1 = std::iter::from_fn(|| {
-                        match root::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_2v1_node_14v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -413,7 +413,7 @@ fn main() {
                         }
                         op_5v1__unique__loc_nopath_3_19_3_24(op_5v1)
                     };
-                    let op_6v1 = root::pusherator::tee::Tee::new(
+                    let op_6v1 = dfir_rs::pusherator::tee::Tee::new(
                         hoff_9v3_send,
                         hoff_4v3_send,
                     );
@@ -422,21 +422,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_6v1__tee__loc_nopath_3_19_3_24<
                             Item,
-                            Input: root::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl root::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
-                            > root::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -450,10 +450,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_2v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_2v1(op_5v1, op_6v1);
                 },
@@ -632,7 +632,7 @@ fn main() {
                         }
                         op_8v1__unique__loc_nopath_5_20_5_26(op_8v1)
                     };
-                    let op_15v1 = root::pusherator::for_each::ForEach::new(|v| {
+                    let op_15v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result.send(v).unwrap()
                     });
                     let op_15v1 = {
@@ -640,21 +640,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_15v1__for_each__loc_nopath_5_28_5_65<
                             Item,
-                            Input: root::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl root::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
-                            > root::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -668,10 +668,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_3v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_3v1(op_8v1, op_15v1);
                 },
@@ -864,7 +864,7 @@ fn main() {
                         }
                         op_11v1__unique__loc_nopath_6_20_6_27(op_11v1)
                     };
-                    let op_16v1 = root::pusherator::for_each::ForEach::new(|v| {
+                    let op_16v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result2.send(v).unwrap()
                     });
                     let op_16v1 = {
@@ -872,21 +872,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_16v1__for_each__loc_nopath_6_29_6_67<
                             Item,
-                            Input: root::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl root::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
-                            > root::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -900,10 +900,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_4v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_4v1(op_11v1, op_16v1);
                 },
@@ -924,7 +924,7 @@ fn main() {
                     let hoff_9v3_recv = hoff_9v3_recv.drain(..);
                     let mut hoff_12v3_recv = hoff_12v3_recv.borrow_mut_swap();
                     let hoff_12v3_recv = hoff_12v3_recv.drain(..);
-                    let hoff_10v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_10v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_10v3_send.give(Some(v));
                     });
                     #[allow(
@@ -1031,7 +1031,7 @@ fn main() {
                             I1: 'a + Iterator<Item = (K, V1)>,
                             I2: 'a + Iterator<Item = (K, V2)>,
                         {
-                            root::compiled::pull::symmetric_hash_join_into_iter(
+                            dfir_rs::compiled::pull::symmetric_hash_join_into_iter(
                                 lhs,
                                 rhs,
                                 lhs_state,
@@ -1157,10 +1157,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_5v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_5v1(op_21v1, hoff_10v3_send);
                 },
@@ -1181,7 +1181,7 @@ fn main() {
                     let hoff_4v3_recv = hoff_4v3_recv.drain(..);
                     let mut hoff_7v3_recv = hoff_7v3_recv.borrow_mut_swap();
                     let hoff_7v3_recv = hoff_7v3_recv.drain(..);
-                    let hoff_1v3_send = root::pusherator::for_each::ForEach::new(|v| {
+                    let hoff_1v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_1v3_send.give(Some(v));
                     });
                     #[allow(
@@ -1288,7 +1288,7 @@ fn main() {
                             I1: 'a + Iterator<Item = (K, V1)>,
                             I2: 'a + Iterator<Item = (K, V2)>,
                         {
-                            root::compiled::pull::symmetric_hash_join_into_iter(
+                            dfir_rs::compiled::pull::symmetric_hash_join_into_iter(
                                 lhs,
                                 rhs,
                                 lhs_state,
@@ -1414,10 +1414,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_6v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_6v1(op_28v1, hoff_1v3_send);
                 },

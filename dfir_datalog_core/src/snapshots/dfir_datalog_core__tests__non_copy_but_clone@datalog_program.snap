@@ -6,8 +6,8 @@ fn main() {
     {
         #[allow(unused_qualifications)]
         {
-            use root::{var_expr, var_args};
-            let mut df = root::scheduled::graph::Dfir::new();
+            use dfir_rs::{var_expr, var_args};
+            let mut df = dfir_rs::scheduled::graph::Dfir::new();
             df.__assign_meta_graph(
                 "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"source_stream (strings)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 . clone () , row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ ,) , _) | (g . 0 , g . 1 ,))\"},\"version\":1}],\"operator_tag\":[{\"value\":null,\"version\":0}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":3}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3}],\"node_loops\":[{\"value\":null,\"version\":0}],\"loop_nodes\":[{\"value\":null,\"version\":0}],\"loop_parent\":[{\"value\":null,\"version\":0}],\"root_loops\":[],\"loop_children\":[{\"value\":null,\"version\":0}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":10,\"version\":1},{\"idx\":5,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"strings_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result_insert\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}",
             );
@@ -15,12 +15,12 @@ fn main() {
             let mut sg_1v1_node_7v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: root::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl root::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -30,18 +30,18 @@ fn main() {
             let sg_1v1_node_2v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_1v1_node_5v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        root::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            root::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -54,7 +54,7 @@ fn main() {
                 None,
                 move |context, var_args!(), var_args!()| {
                     let op_7v1 = std::iter::from_fn(|| {
-                        match root::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_1v1_node_7v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -266,7 +266,7 @@ fn main() {
                         }
                         op_5v1__unique__loc_nopath_3_20_3_26(op_5v1)
                     };
-                    let op_8v1 = root::pusherator::for_each::ForEach::new(|v| {
+                    let op_8v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result.send(v).unwrap()
                     });
                     let op_8v1 = {
@@ -274,21 +274,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_8v1__for_each__loc_nopath_3_28_3_65<
                             Item,
-                            Input: root::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl root::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: root::pusherator::Pusherator<Item = Item>,
-                            > root::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -302,10 +302,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_1v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: root::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        root::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_1v1(op_5v1, op_8v1);
                 },

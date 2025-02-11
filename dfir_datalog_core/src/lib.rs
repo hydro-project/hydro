@@ -828,8 +828,8 @@ mod tests {
                 insta::assert_snapshot!(flat_graph_ref.surface_syntax_string());
             });
 
-            // Fake root, just for codegen snapshot testing.
-            let tokens = dfir_graph_to_program(flat_graph, quote::quote! { root });
+            // `dfir_rs` as root. Only used for codegen snapshot testing.
+            let tokens = dfir_graph_to_program(flat_graph, quote::quote! { dfir_rs });
             let out: syn::Stmt = syn::parse_quote!(#tokens);
             let wrapped: syn::File = parse_quote! {
                 fn main() {
