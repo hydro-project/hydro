@@ -16,6 +16,8 @@ type FlamegraphOptions = inferno::flamegraph::Options<'static>;
 pub struct TracingOptions {
     /// Samples per second.
     pub frequency: u32,
+    /// Number of seconds to wait before measurement
+    pub delay_sec: u32,
 
     /// Output filename for `dtrace`. Example: `my_worker.stacks`.
     pub dtrace_outfile: Option<PathBuf>,

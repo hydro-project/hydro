@@ -169,6 +169,14 @@ impl LaunchedHost for LaunchedLocalhost {
                     )
                 })?;
 
+                // Tell the user that delay_sec will be ignored
+                // We choose not to implement it since dtrace doesn't show per-operator CPU usage anyway.
+                if tracing.delay_sec != 0 {
+                    ProgressTracker::println(
+                        format!("[{id} tracing] `dtrace` will ignore delay_sec.",),
+                    );
+                }
+
                 let mut command = Command::new("dtrace");
                 command
                     .arg("-o")
@@ -227,6 +235,8 @@ impl LaunchedHost for LaunchedLocalhost {
                 command
                     .args([
                         "record",
+                        "-D",
+                        &tracing.delay_sec.to_string(),
                         "-F",
                         &tracing.frequency.to_string(),
                         "-e",

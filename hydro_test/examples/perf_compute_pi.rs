@@ -4,6 +4,7 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::rewrites::{analyze_perf, persist_pullup};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -44,12 +45,12 @@ async fn main() {
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
-    // Uncomment below, change .bin("counter_compute_pi") in order to track cardinality per operation
-    // dbg!(builder.with_default_optimize()
-    //     .optimize_with(|ir| profiling(ir, RuntimeData::new("FAKE"), RuntimeData::new("FAKE")))
-    //     .ir());
+    let frequency = 128;
+    let delay_sec = 0;
 
     let _nodes = builder
+        .optimize_with(persist_pullup::persist_pullup)
+        // .optimize_with(analyze_perf::analyze_perf)
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment))
@@ -60,7 +61,8 @@ async fn main() {
                         .dtrace_outfile("leader.stacks")
                         .fold_outfile("leader.data.folded")
                         .flamegraph_outfile("leader.svg")
-                        .frequency(128)
+                        .frequency(frequency)
+                        .delay_sec(delay_sec)
                         .build(),
                 ),
         )
@@ -75,7 +77,8 @@ async fn main() {
                             .dtrace_outfile(format!("cluster{}.leader.stacks", idx))
                             .fold_outfile(format!("cluster{}.data.folded", idx))
                             .flamegraph_outfile(format!("cluster{}.svg", idx))
-                            .frequency(128)
+                            .frequency(frequency)
+                            .delay_sec(delay_sec)
                             .build(),
                     )
             }),
