@@ -391,6 +391,16 @@ pub trait DeployCrateWrapper {
     async fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().read().await.stderr()
     }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn stdout_filter(&self, prefix: String) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().read().await.stdout_filter(prefix)
+    }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn stderr_filter(&self, prefix: String) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().read().await.stderr_filter(prefix)
+    }
 }
 
 #[derive(Clone)]

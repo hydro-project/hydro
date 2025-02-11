@@ -25,7 +25,7 @@ pub async fn async_retry<T, F: Future<Output = Result<T>>>(
 
 type PriorityBroadcacst = (
     Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    Arc<Mutex<Vec<mpsc::UnboundedSender<String>>>>,
+    Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
 );
 
 pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin + 'static>(
@@ -33,7 +33,8 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
     default: impl Fn(String) + Send + 'static,
 ) -> PriorityBroadcacst {
     let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
-    let receivers = Arc::new(Mutex::new(Vec::<mpsc::UnboundedSender<String>>::new()));
+    // Option<String> is the prefix to separate special stdout messages from regular ones
+    let receivers = Arc::new(Mutex::new(Vec::<(Option<String>, mpsc::UnboundedSender<String>)>::new()));
 
     let weak_priority_receivers = Arc::downgrade(&priority_receivers);
     let weak_receivers = Arc::downgrade(&receivers);
@@ -57,11 +58,14 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
 
             if let Some(receivers) = weak_receivers.upgrade() {
                 let mut receivers = receivers.lock().unwrap();
-                receivers.retain(|receiver| !receiver.is_closed());
+                receivers.retain(|receiver| !receiver.1.is_closed());
 
                 let mut successful_send = false;
-                for receiver in receivers.iter() {
-                    successful_send |= receiver.send(line.clone()).is_ok();
+                // Send to specific receivers if the filter prefix matches
+                for (prefix_filter, receiver) in receivers.iter() {
+                    if prefix_filter.as_ref().map(|prefix| line.starts_with(prefix)).unwrap_or(true) {
+                        successful_send |= receiver.send(line.clone()).is_ok();
+                    }
                 }
                 if !successful_send {
                     (default)(line);

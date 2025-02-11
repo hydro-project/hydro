@@ -160,6 +160,14 @@ impl HydroflowCrateService {
         self.launched_binary.as_ref().unwrap().stderr()
     }
 
+    pub fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary.as_ref().unwrap().stdout_filter(prefix)
+    }
+
+    pub fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
+        self.launched_binary.as_ref().unwrap().stderr_filter(prefix)
+    }
+
     pub fn exit_code(&self) -> Option<i32> {
         self.launched_binary.as_ref().unwrap().exit_code()
     }

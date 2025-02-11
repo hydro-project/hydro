@@ -3,7 +3,7 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::rewrites::{analyze_perf, persist_pullup};
 use tokio::sync::RwLock;
 
@@ -48,7 +48,7 @@ async fn main() {
     let frequency = 128;
     let delay_sec = 0;
 
-    let _nodes = builder
+    let nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
         // .optimize_with(analyze_perf::analyze_perf)
         .with_process(
@@ -84,5 +84,8 @@ async fn main() {
             }),
         )
         .deploy(&mut deployment);
+
+    let cpu_usage_prefix = "prefix".to_string();
+    let leader_usage_out = nodes.get_process(&leader).stdout_filter(cpu_usage_prefix).await;
     deployment.run_ctrl_c().await.unwrap();
 }

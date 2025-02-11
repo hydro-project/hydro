@@ -29,8 +29,8 @@ pub struct LaunchedLocalhostBinary {
     tracing: Option<TracingOptions>,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    stdout_receivers: Arc<Mutex<Vec<mpsc::UnboundedSender<String>>>>,
-    stderr_receivers: Arc<Mutex<Vec<mpsc::UnboundedSender<String>>>>,
+    stdout_receivers: Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
+    stderr_receivers: Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
 }
 
 #[cfg(unix)]
@@ -112,14 +112,28 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
     fn stdout(&self) -> mpsc::UnboundedReceiver<String> {
         let mut receivers = self.stdout_receivers.lock().unwrap();
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push(sender);
+        receivers.push((None, sender));
         receiver
     }
 
     fn stderr(&self) -> mpsc::UnboundedReceiver<String> {
         let mut receivers = self.stderr_receivers.lock().unwrap();
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push(sender);
+        receivers.push((None, sender));
+        receiver
+    }
+
+    fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
+        let mut receivers = self.stdout_receivers.lock().unwrap();
+        let (sender, receiver) = mpsc::unbounded_channel::<String>();
+        receivers.push((Some(prefix), sender));
+        receiver
+    }
+
+    fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
+        let mut receivers = self.stderr_receivers.lock().unwrap();
+        let (sender, receiver) = mpsc::unbounded_channel::<String>();
+        receivers.push((Some(prefix), sender));
         receiver
     }
 
