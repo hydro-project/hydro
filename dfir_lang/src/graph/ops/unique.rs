@@ -62,7 +62,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -92,7 +92,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
         let (write_prologue, get_set) = match persistence {
             Persistence::Tick => {
                 let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                         #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default(),
                     ));
                 };
@@ -104,7 +104,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
             }
             Persistence::Static => {
                 let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
                 };
                 let get_set = quote_spanned! {op_span=>
                     let mut set = #context.state_ref(#uniquedata_ident).borrow_mut();

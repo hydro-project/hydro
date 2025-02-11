@@ -52,7 +52,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -109,14 +109,14 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #hydroflow.add_state(
+            let #singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new((#initializer_func_ident)())
             );
         };
         if Persistence::Tick == persistence {
             write_prologue.extend(quote_spanned! {op_span=>
                 // Reset the value to the initializer fn if it is a new tick.
-                #hydroflow.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.replace((#initializer_func_ident)()); });
+                #df_ident.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.replace((#initializer_func_ident)()); });
             });
         }
         let write_iterator = if is_pull {

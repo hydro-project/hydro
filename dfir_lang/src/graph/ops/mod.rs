@@ -1,4 +1,4 @@
-//! Hydroflow's operators
+//! DFIR's operators
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
@@ -235,7 +235,7 @@ pub const NULL_WRITE_FN: WriteFn = |write_context_args, _| {
 macro_rules! declare_ops {
     ( $( $mod:ident :: $op:ident, )* ) => {
         $( pub(crate) mod $mod; )*
-        /// All Hydroflow operators.
+        /// All DFIR operators.
         pub const OPERATORS: &[OperatorConstraints] = &[
             $( $mod :: $op, )*
         ];
@@ -347,7 +347,7 @@ pub struct WriteContextArgs<'a> {
     /// `df` ident, the name of the
     /// [`dfir_rs::scheduled::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
     /// instance.
-    pub hydroflow: &'a Ident,
+    pub df_ident: &'a Ident,
     /// Subgraph ID in which this operator is contained.
     pub subgraph_id: GraphSubgraphId,
     /// Node ID identifying this operator in the flat or partitioned graph meta-datastructure.

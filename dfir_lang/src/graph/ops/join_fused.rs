@@ -4,8 +4,8 @@ use syn::spanned::Spanned;
 use syn::{parse_quote, Expr, ExprCall};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -281,10 +281,13 @@ pub(crate) fn make_joindata(
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
-    let context = wc.context;
-    let hydroflow = wc.hydroflow;
-    let root = wc.root;
-    let op_span = wc.op_span;
+    let &WriteContextArgs {
+        context,
+        df_ident,
+        root,
+        op_span,
+        ..
+    } = wc;
 
     let join_type = match *join_options {
         JoinOptions::FoldFrom(_, _) => {
@@ -301,7 +304,7 @@ pub(crate) fn make_joindata(
     let (prologue, borrow) = match persistence {
         Persistence::Tick => (
             quote_spanned! {op_span=>
-                let #joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+                let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #root::util::monotonic_map::MonotonicMap::new_init(
                         #join_type::default()
                     )
@@ -313,7 +316,7 @@ pub(crate) fn make_joindata(
         ),
         Persistence::Static => (
             quote_spanned! {op_span=>
-                let #joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+                let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #join_type::default()
                 ));
             },

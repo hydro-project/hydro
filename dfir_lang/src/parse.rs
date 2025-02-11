@@ -16,19 +16,19 @@ use syn::{
 
 use crate::process_singletons::preprocess_singletons;
 
-pub struct HfCode {
-    pub statements: Vec<HfStatement>,
+pub struct DfirCode {
+    pub statements: Vec<DfirStatement>,
 }
-impl Parse for HfCode {
+impl Parse for DfirCode {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut statements = Vec::new();
         while !input.is_empty() {
             statements.push(input.parse()?);
         }
-        Ok(HfCode { statements })
+        Ok(DfirCode { statements })
     }
 }
-impl ToTokens for HfCode {
+impl ToTokens for DfirCode {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         for statement in self.statements.iter() {
             statement.to_tokens(tokens);
@@ -36,13 +36,13 @@ impl ToTokens for HfCode {
     }
 }
 
-pub enum HfStatement {
+pub enum DfirStatement {
     Use(ItemUse),
-    Named(NamedHfStatement),
+    Named(NamedStatement),
     Pipeline(PipelineStatement),
     Loop(LoopStatement),
 }
-impl Parse for HfStatement {
+impl Parse for DfirStatement {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let lookahead1 = input.lookahead1();
         if lookahead1.peek(Token![use]) {
@@ -57,7 +57,7 @@ impl Parse for HfStatement {
             let _: Path = fork.parse()?;
             let lookahead2 = fork.lookahead1();
             if lookahead2.peek(Token![=]) {
-                Ok(Self::Named(NamedHfStatement::parse(input)?))
+                Ok(Self::Named(NamedStatement::parse(input)?))
             } else if lookahead2.peek(Token![->])
                 || lookahead2.peek(Paren)
                 || lookahead2.peek(Bracket)
@@ -71,7 +71,7 @@ impl Parse for HfStatement {
         }
     }
 }
-impl ToTokens for HfStatement {
+impl ToTokens for DfirStatement {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         match self {
             Self::Use(x) => x.to_tokens(tokens),
@@ -82,13 +82,13 @@ impl ToTokens for HfStatement {
     }
 }
 
-pub struct NamedHfStatement {
+pub struct NamedStatement {
     pub name: Ident,
     pub equals: Token![=],
     pub pipeline: Pipeline,
     pub semi_token: Token![;],
 }
-impl Parse for NamedHfStatement {
+impl Parse for NamedStatement {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name = input.parse()?;
         let equals = input.parse()?;
@@ -102,7 +102,7 @@ impl Parse for NamedHfStatement {
         })
     }
 }
-impl ToTokens for NamedHfStatement {
+impl ToTokens for NamedStatement {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         self.name.to_tokens(tokens);
         self.equals.to_tokens(tokens);
@@ -226,7 +226,7 @@ pub struct LoopStatement {
     pub loop_token: Token![loop],
     pub ident: Option<Ident>,
     pub brace_token: Brace,
-    pub statements: Vec<HfStatement>,
+    pub statements: Vec<DfirStatement>,
 }
 impl Parse for LoopStatement {
     fn parse(input: ParseStream) -> syn::Result<Self> {

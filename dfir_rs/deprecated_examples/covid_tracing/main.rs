@@ -23,7 +23,7 @@ fn main() {
     type Phone = &'static str;
     type DateTime = usize;
 
-    let mut df = Hydroflow::new();
+    let mut df = Dfir::new();
 
     let (contacts_send, contacts_recv) =
         df.make_edge::<_, VecHandoff<(Pid, Pid, DateTime)>>("contacts");

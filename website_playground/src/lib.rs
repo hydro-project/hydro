@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::task::{Context, Poll};
 use std::thread_local;
 
-use dfir_datalog_core::gen_hydroflow_graph;
+use dfir_datalog_core::gen_dfir_graph;
 use dfir_lang::diagnostic::{Diagnostic, Level};
 use dfir_lang::graph::{build_hfcode, partition_graph, WriteConfig};
 use dfir_rs::datalog;
@@ -119,7 +119,7 @@ pub fn compile_dfir(
 
     let out = match syn::parse_str(&program) {
         Ok(input) => {
-            let (graph_code_opt, diagnostics) = build_hfcode(input, &quote!(hydroflow));
+            let (graph_code_opt, diagnostics) = build_hfcode(input, &quote!(dfir_rs));
             let output = graph_code_opt.map(|(graph, code)| {
                 let mermaid = graph.to_mermaid(&write_config);
                 let file = syn::parse_quote! {
@@ -174,13 +174,13 @@ pub fn compile_datalog(
 
     let wrapped = format!("r#\"{}\"#", program);
     let out = match syn::parse_str(&wrapped) {
-        Ok(input) => match gen_hydroflow_graph(input) {
+        Ok(input) => match gen_dfir_graph(input) {
             Ok(flat_graph) => {
                 let mut diagnostics = Vec::new();
                 let output = match partition_graph(flat_graph) {
                     Ok(part_graph) => {
                         let out = part_graph.as_code(
-                            &quote!(hydroflow),
+                            &quote!(dfir_rs),
                             true,
                             quote!(),
                             &mut diagnostics,

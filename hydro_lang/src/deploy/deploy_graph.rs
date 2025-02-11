@@ -664,7 +664,7 @@ impl Node for DeployNode {
     fn update_meta(&mut self, meta: &Self::Meta) {
         let underlying_node = self.underlying.borrow();
         let mut n = underlying_node.as_ref().unwrap().try_write().unwrap();
-        n.update_meta(HydroflowPlusMeta {
+        n.update_meta(HydroMeta {
             clusters: meta.clone(),
             cluster_id: None,
             subgraph_id: self.id,
@@ -779,7 +779,7 @@ impl Node for DeployCluster {
     fn update_meta(&mut self, meta: &Self::Meta) {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
             let mut n = node.underlying.try_write().unwrap();
-            n.update_meta(HydroflowPlusMeta {
+            n.update_meta(HydroMeta {
                 clusters: meta.clone(),
                 cluster_id: Some(cluster_id as u32),
                 subgraph_id: self.id,

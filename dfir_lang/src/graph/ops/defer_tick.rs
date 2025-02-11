@@ -5,7 +5,7 @@ use super::{
 
 /// Buffers all input items and releases them in the next tick.
 /// the state of the current tick. For example,
-/// See the [book discussion of Hydroflow time](../concepts/life_and_times) for details on ticks.
+/// See the [book discussion on time](../concepts/life_and_times) for details on ticks.
 /// A tick may be divided into multiple [strata](../concepts/stratification); see the [`next_stratum()`](#next_stratum)
 /// operator.
 ///

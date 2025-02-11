@@ -5,7 +5,7 @@ pub use dfir_lang::diagnostic;
 use dfir_lang::diagnostic::{Diagnostic, Level};
 use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph, DfirGraph, FlatGraphBuilder};
 use dfir_lang::parse::{
-    HfStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
+    DfirStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
 };
 use proc_macro2::{Span, TokenStream};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
@@ -53,7 +53,7 @@ pub fn parse_static(
         })
 }
 
-pub fn gen_hydroflow_graph(literal: proc_macro2::Literal) -> Result<DfirGraph, Vec<Diagnostic>> {
+pub fn gen_dfir_graph(literal: proc_macro2::Literal) -> Result<DfirGraph, Vec<Diagnostic>> {
     let offset = {
         // This includes the quotes, i.e. 'r#"my test"#' or '"hello\nworld"'.
         let source_str = literal.to_string();
@@ -321,7 +321,7 @@ fn handle_errors(
     diagnostics
 }
 
-pub fn hydroflow_graph_to_program(flat_graph: DfirGraph, root: TokenStream) -> TokenStream {
+pub fn dfir_graph_to_program(flat_graph: DfirGraph, root: TokenStream) -> TokenStream {
     let partitioned_graph =
         partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
@@ -433,7 +433,7 @@ fn generate_rule(
             span: Span::call_site(),
         }),
     });
-    flat_graph_builder.add_statement(HfStatement::Pipeline(PipelineStatement {
+    flat_graph_builder.add_statement(DfirStatement::Pipeline(PipelineStatement {
         pipeline: Pipeline::Link(PipelineLink {
             lhs: Box::new(parse_quote!(#out_name #out_indexing)), // out_name[idx]
             arrow: parse_quote!(->),
@@ -817,18 +817,19 @@ fn apply_aggregations(
 mod tests {
     use syn::parse_quote;
 
-    use super::{gen_hydroflow_graph, hydroflow_graph_to_program};
+    use super::{dfir_graph_to_program, gen_dfir_graph};
 
     macro_rules! test_snapshots {
         ($program:literal) => {
-            let flat_graph = gen_hydroflow_graph(parse_quote!($program)).unwrap();
+            let flat_graph = gen_dfir_graph(parse_quote!($program)).unwrap();
 
             let flat_graph_ref = &flat_graph;
             insta::with_settings!({snapshot_suffix => "surface_graph"}, {
                 insta::assert_snapshot!(flat_graph_ref.surface_syntax_string());
             });
 
-            let tokens = hydroflow_graph_to_program(flat_graph, quote::quote! { hydroflow });
+            // Fake root, just for codegen snapshot testing.
+            let tokens = dfir_graph_to_program(flat_graph, quote::quote! { root });
             let out: syn::Stmt = syn::parse_quote!(#tokens);
             let wrapped: syn::File = parse_quote! {
                 fn main() {

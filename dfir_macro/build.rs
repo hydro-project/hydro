@@ -208,7 +208,7 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if Err(VarError::NotPresent) != std::env::var("CARGO_CFG_HYDROFLOW_GENERATE_DOCS") {
+    if Err(VarError::NotPresent) != std::env::var("CARGO_CFG_DFIR_GENERATE_DOCS") {
         if let Err(err) = update_book() {
             eprintln!("dfir_macro/build.rs error: {:?}", err);
         }

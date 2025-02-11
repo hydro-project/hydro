@@ -49,7 +49,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -109,10 +109,10 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
             make_antijoindata(persistences[1], "neg")?;
 
         let write_prologue = quote_spanned! {op_span=>
-            let #neg_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+            let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #neg_init
             ));
-            let #pos_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+            let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #pos_init
             ));
         };

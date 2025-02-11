@@ -40,7 +40,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    op_span,
                    inputs,
@@ -54,7 +54,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
         let borrow_ident = wc.make_ident("borrow_ident");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #internal_buffer = #hydroflow.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
+            let #internal_buffer = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
         };
 
         let input = &inputs[0];
