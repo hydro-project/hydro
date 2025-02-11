@@ -150,7 +150,7 @@ pub fn bench_client<'a>(
     .all_ticks()
     .for_each(q!(move |(latencies, throughput)| {
         let mut latencies_mut = latencies.borrow_mut();
-        if latencies_mut.len() > 0 {
+        if !latencies_mut.is_empty() {
             let middle_idx = latencies_mut.len() / 2;
             let (_, median, _) = latencies_mut.select_nth_unstable(middle_idx);
             println!("Median latency: {}ms", median.as_micros() as f64 / 1000.0);

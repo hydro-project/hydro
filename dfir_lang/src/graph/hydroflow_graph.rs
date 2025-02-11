@@ -1056,10 +1056,6 @@ impl DfirGraph {
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
-                                #[cfg_attr(
-                                    not(nightly),
-                                    expect(unused_labels, reason = "conditional compilation")
-                                )]
                                 let source_tag = 'a: {
                                     if let Some(tag) = self.operator_tag.get(node_id).cloned() {
                                         break 'a tag;

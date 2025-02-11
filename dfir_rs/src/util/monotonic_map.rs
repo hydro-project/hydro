@@ -42,7 +42,7 @@ where
 
     /// Inserts the value using the function if new `key` is strictly later than the current key.
     pub fn get_mut_with(&mut self, key: K, init: impl FnOnce() -> V) -> &mut V {
-        if self.key.as_ref().map_or(true, |old_key| old_key < &key) {
+        if self.key.as_ref().is_none_or(|old_key| old_key < &key) {
             self.key = Some(key);
             self.val = (init)();
         }
@@ -85,7 +85,7 @@ where
     /// Gets a mutable reference to the inner value. If `key` is strictly later than the existing
     /// key, the value will be cleared via the [`Clear`] trait.
     pub fn get_mut_clear(&mut self, key: K) -> &mut V {
-        if self.key.as_ref().map_or(true, |old_key| old_key < &key) {
+        if self.key.as_ref().is_none_or(|old_key| old_key < &key) {
             self.key = Some(key);
             self.val.clear();
         }

@@ -34,8 +34,8 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         msgs = inbound_chan[0] ->  demux(|m:SubordResponse, var_args!(commits, aborts, acks, endeds, errs)| match m.mtype {
                     MsgType::Commit => commits.give(m),
                     MsgType::Abort => aborts.give(m),
-                    MsgType::AckP2 {..} => acks.give(m),
-                    MsgType::Ended {..} => endeds.give(m),
+                    MsgType::AckP2 => acks.give(m),
+                    MsgType::Ended => endeds.give(m),
                     _ => errs.give(m),
                 });
         msgs[errs] -> for_each(|m| println!("Received unexpected message type: {:?}", m));

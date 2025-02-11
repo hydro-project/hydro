@@ -179,7 +179,7 @@ where
         let reserve = if self.is_empty() {
             iter.size_hint().0
         } else {
-            (iter.size_hint().0 + 1) / 2
+            iter.size_hint().0.div_ceil(2)
         };
         self.table
             .reserve(reserve, |item| self.hasher.hash_one(item));
@@ -427,7 +427,7 @@ where
         let reserve = if self.is_empty() {
             iter.size_hint().0
         } else {
-            (iter.size_hint().0 + 1) / 2
+            iter.size_hint().0.div_ceil(2)
         };
         self.table
             .reserve(reserve, |item| self.hasher.hash_one(item));
