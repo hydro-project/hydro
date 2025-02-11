@@ -62,7 +62,7 @@ pub struct Context {
 
     pub(super) current_tick_start: SystemTime,
     pub(super) is_first_run_this_tick: bool,
-    pub(super) loop_iteration: usize,
+    pub(super) loop_iter_count: usize,
 
     // Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
@@ -95,8 +95,8 @@ impl Context {
     }
 
     /// Gets the current loop iteration count.
-    pub fn loop_iteration(&self) -> usize {
-        self.loop_iteration
+    pub fn loop_iter_count(&self) -> usize {
+        self.loop_iter_count
     }
 
     /// Gets the current stratum nubmer.
@@ -278,7 +278,7 @@ impl Default for Context {
 
             current_tick_start: SystemTime::now(),
             is_first_run_this_tick: false,
-            loop_iteration: 0,
+            loop_iter_count: 0,
 
             loop_depth,
             loop_nonce: 0,

@@ -51,7 +51,7 @@ pub fn test_flo_syntax() {
     );
 }
 
-#[multiplatform_test]
+#[multiplatform_test(test, wasm, env_tracing)]
 pub fn test_flo_nested() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
 
@@ -116,7 +116,9 @@ pub fn test_flo_repeat_n() {
             messages -> batch() -> [1]cp;
             cp = cross_join();
             loop {
-                cp -> repeat_n(2) -> for_each(|x| result_send.send(x).unwrap());
+                cp -> repeat_n(2)
+                    -> inspect(|x| println!("{:?} {}", x, context.loop_iter_count()))
+                    -> for_each(|x| result_send.send(x).unwrap());
             }
         }
     };
@@ -175,10 +177,10 @@ pub fn test_flo_repeat_n_nested() {
         loop {
             usrs2 = usrs1 -> batch();
             loop {
-                usrs3 = usrs2 -> repeat_n(3) -> inspect(|x| println!("A {:?} {}", x, context.loop_iteration()));
+                usrs3 = usrs2 -> repeat_n(3) -> inspect(|x| println!("A {:?} {}", x, context.loop_iter_count()));
                 loop {
                     usrs3 -> repeat_n(3)
-                        -> inspect(|x| println!("B {:?} {}", x, context.loop_iteration()))
+                        -> inspect(|x| println!("B {:?} {}", x, context.loop_iter_count()))
                         -> for_each(|x| result_send.send(x).unwrap());
                 }
             }
@@ -207,16 +209,16 @@ pub fn test_flo_repeat_n_multiple_nested() {
             usrs2 = usrs1 -> batch();
             loop {
                 usrs3 = usrs2 -> repeat_n(3)
-                    -> inspect(|x| println!("{:?} {}", x, context.loop_iteration()))
+                    -> inspect(|x| println!("{:?} {}", x, context.loop_iter_count()))
                     -> tee();
                 loop {
                     usrs3 -> repeat_n(3)
-                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iteration()))
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iter_count()))
                     -> for_each(|x| result1_send.send(x).unwrap());
             }
             loop {
                 usrs3 -> repeat_n(3)
-                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iteration()))
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iter_count()))
                     -> for_each(|x| result2_send.send(x).unwrap());
                 }
             }
