@@ -175,10 +175,10 @@ pub fn test_flo_repeat_n_nested() {
         loop {
             usrs2 = usrs1 -> batch();
             loop {
-                usrs3 = usrs2 -> repeat_n(3) -> inspect(|x| println!("A {:?} {}", x, context.is_first_loop_iteration()));
+                usrs3 = usrs2 -> repeat_n(3) -> inspect(|x| println!("A {:?} {}", x, context.loop_iteration()));
                 loop {
                     usrs3 -> repeat_n(3)
-                        -> inspect(|x| println!("B {:?} {}", x, context.is_first_loop_iteration()))
+                        -> inspect(|x| println!("B {:?} {}", x, context.loop_iteration()))
                         -> for_each(|x| result_send.send(x).unwrap());
                 }
             }
@@ -207,16 +207,16 @@ pub fn test_flo_repeat_n_multiple_nested() {
             usrs2 = usrs1 -> batch();
             loop {
                 usrs3 = usrs2 -> repeat_n(3)
-                    -> inspect(|x| println!("{:?} {}", x, context.is_first_loop_iteration()))
+                    -> inspect(|x| println!("{:?} {}", x, context.loop_iteration()))
                     -> tee();
                 loop {
                     usrs3 -> repeat_n(3)
-                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iteration()))
                     -> for_each(|x| result1_send.send(x).unwrap());
             }
             loop {
                 usrs3 -> repeat_n(3)
-                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.is_first_loop_iteration()))
+                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iteration()))
                     -> for_each(|x| result2_send.send(x).unwrap());
                 }
             }
