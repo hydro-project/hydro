@@ -32,6 +32,7 @@ pub struct Context {
     /// Priority stack for handling strata within loops. Prioritized by loop depth.
     pub(super) stratum_stack: PriorityStack<usize>,
 
+    /// Stack of loop nonces. Used to identify when a new loop iteration begins.
     pub(super) loop_nonce_stack: Vec<usize>,
 
     /// TODO(mingwei):
@@ -61,7 +62,7 @@ pub struct Context {
 
     pub(super) current_tick_start: SystemTime,
     pub(super) is_first_run_this_tick: bool,
-    pub(super) is_first_loop_iteration: bool,
+    pub(super) loop_iteration: usize,
 
     // Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
@@ -93,12 +94,9 @@ impl Context {
         self.is_first_run_this_tick
     }
 
-    /// Gets whether this run is the first iteration of a loop.
-    ///
-    /// This is only meaningful if the subgraph is in a loop, otherwise this will always return
-    /// `false`.
-    pub fn is_first_loop_iteration(&self) -> bool {
-        self.is_first_loop_iteration
+    /// Gets the current loop iteration count.
+    pub fn loop_iteration(&self) -> usize {
+        self.loop_iteration
     }
 
     /// Gets the current stratum nubmer.
@@ -280,7 +278,7 @@ impl Default for Context {
 
             current_tick_start: SystemTime::now(),
             is_first_run_this_tick: false,
-            is_first_loop_iteration: false,
+            loop_iteration: 0,
 
             loop_depth,
             loop_nonce: 0,

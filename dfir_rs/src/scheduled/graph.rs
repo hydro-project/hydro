@@ -22,15 +22,18 @@ use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
-use super::{HandoffId, HandoffTag, LoopId, SubgraphId, SubgraphTag};
+use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 #[derive(Default)]
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
+    /// `(nonce, iteration count)` pair.
+    pub(super) loop_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
+
     pub(super) context: Context,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
@@ -305,11 +308,25 @@ impl<'a> Dfir<'a> {
                 self.context.is_first_run_this_tick = sg_data
                     .last_tick_run_in
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
-                self.context.is_first_loop_iteration = self
-                    .context
-                    .loop_nonce_stack
-                    .last()
-                    .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
+
+                if let Some(loop_id) = sg_data.loop_id {
+                    let prev_loop_counter = self.loop_counters.get(loop_id).copied();
+                    let (new_nonce, new_count) =
+                        if let Some((prev_nonce, prev_count)) = prev_loop_counter {
+                            if prev_nonce == self.context.loop_nonce {
+                                // We are in the same loop iteration.
+                                (prev_nonce, prev_count + 1)
+                            } else {
+                                // We are in a new loop iteration.
+                                (self.context.loop_nonce, 0)
+                            }
+                        } else {
+                            // We are in a new loop iteration.
+                            (self.context.loop_nonce, 0)
+                        };
+                    self.context.loop_iteration = new_count;
+                    self.loop_counters.insert(loop_id, (new_nonce, new_count));
+                }
 
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
 
