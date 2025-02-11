@@ -54,7 +54,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
             let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
-            if 0 == #context.loop_iteration() {
+            if 0 == #context.loop_iter_count() {
                 *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
             }
             let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
@@ -65,7 +65,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>
             {
-                if #context.loop_iteration() + 1 < #count_arg {
+                if #context.loop_iter_count() + 1 < #count_arg {
                     #context.reschedule_loop_block();
                 }
             }
