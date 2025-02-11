@@ -370,7 +370,7 @@ impl Display for PortIndexValue {
     }
 }
 
-/// The main function of this module. Compiles a [`HfCode`] AST into a [`DfirGraph`] and
+/// The main function of this module. Compiles a [`DfirCode`] AST into a [`DfirGraph`] and
 /// source code, or [`Diagnostic`] errors.
 pub fn build_hfcode(
     hf_code: DfirCode,
