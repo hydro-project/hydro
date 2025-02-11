@@ -354,6 +354,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         let user = self.ssh_user();
         let binary_path = PathBuf::from(format!("/home/{user}/hydro-{unique_name}"));
 
+        // gets the ssh session for launching the binary
         let channel = ProgressTracker::leaf(
             format!("launching binary {}", binary_path.display()),
             async {
@@ -397,11 +398,14 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                     break;
                 }
 
+                // flush the entire buffer
                 stdin.flush().await.unwrap();
             }
         });
 
         let id_clone = id.clone();
+        // Pull away the first stdout stream (which contains setup info for communication between binaries) into a different "prioritized" channel,
+        // and send everything else to normal stdout
         let (stdout_deploy_receivers, stdout_receivers) =
             prioritized_broadcast(FuturesBufReader::new(channel.stream(0)).lines(), move |s| {
                 ProgressTracker::println(format!("[{id_clone}] {s}"));

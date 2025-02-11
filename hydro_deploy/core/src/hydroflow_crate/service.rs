@@ -205,7 +205,7 @@ impl Service for HydroflowCrateService {
                 let built = ProgressTracker::leaf("build", self.build()).await?;
 
                 let host = &self.on;
-                let launched = host.provision(resource_result);
+                let launched = host.provision(resource_result).await;
 
                 launched.copy_binary(built).await?;
 

@@ -50,6 +50,7 @@ pub struct AzureHost {
     project: String,
     os_type: String, // linux or windows
     machine_size: String,
+    architecture: Option<String>, // default to x86_64
     image: Option<HashMap<String, String>>,
     region: String,
     user: Option<String>,
@@ -58,11 +59,16 @@ pub struct AzureHost {
 }
 
 impl AzureHost {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "required parameters for Azure Machine"
+    )]
     pub fn new(
         id: usize,
         project: String,
         os_type: String, // linux or windows
         machine_size: String,
+        architecture: Option<String>, // default to x86_64
         image: Option<HashMap<String, String>>,
         region: String,
         user: Option<String>,
@@ -73,6 +79,7 @@ impl AzureHost {
             os_type,
             machine_size,
             image,
+            architecture,
             region,
             user,
             launched: OnceLock::new(),
@@ -84,7 +91,10 @@ impl AzureHost {
 #[async_trait]
 impl Host for AzureHost {
     fn target_type(&self) -> HostTargetType {
-        HostTargetType::Linux
+        match self.architecture.as_deref() {
+            Some("aarch64") => HostTargetType::Linux(crate::LinuxArchitecture::Aarch64),
+            _ => HostTargetType::Linux(crate::LinuxArchitecture::X86_64),
+        }
     }
 
     fn request_port(&self, bind_type: &ServerStrategy) {
@@ -401,7 +411,7 @@ impl Host for AzureHost {
             .map(|a| a.clone() as Arc<dyn LaunchedHost>)
     }
 
-    fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
+    async fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
         self.launched
             .get_or_init(|| {
                 let id = self.id;

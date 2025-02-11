@@ -15,6 +15,9 @@ pub mod progress;
 pub mod localhost;
 pub use localhost::LocalhostHost;
 
+pub mod kubernetes;
+pub use kubernetes::PodHost;
+
 pub mod ssh;
 
 pub mod gcp;
@@ -140,14 +143,22 @@ pub enum ClientStrategy<'a> {
     ),
 }
 
+// Architecture for binary
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LinuxArchitecture {
+    X86_64,
+    Aarch64,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HostTargetType {
     Local,
-    Linux,
+    Linux(LinuxArchitecture),
 }
 
 pub type HostStrategyGetter = Box<dyn FnOnce(&dyn std::any::Any) -> ServerStrategy>;
 
+#[async_trait]
 pub trait Host: Send + Sync {
     fn target_type(&self) -> HostTargetType;
 
@@ -155,6 +166,9 @@ pub trait Host: Send + Sync {
 
     /// An identifier for this host, which is unique within a deployment.
     fn id(&self) -> usize;
+
+    /// Returns a reference to the host as a trait object.
+    fn as_any(&self) -> &dyn std::any::Any;
 
     /// Configures the host to support copying and running a custom binary.
     fn request_custom_binary(&self);
@@ -167,7 +181,7 @@ pub trait Host: Send + Sync {
     /// Connects to the acquired resources and prepares the host to run services.
     ///
     /// This should be called after `collect_resources` is called.
-    fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost>;
+    async fn provision(&self, resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost>;
 
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>>;
 
@@ -180,9 +194,6 @@ pub trait Host: Send + Sync {
 
     /// Determines whether this host can connect to another host using the given strategy.
     fn can_connect_to(&self, typ: ClientStrategy) -> bool;
-
-    /// Returns a reference to the host as a trait object.
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 #[async_trait]

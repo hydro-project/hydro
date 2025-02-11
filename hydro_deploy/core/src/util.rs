@@ -28,6 +28,8 @@ type PriorityBroadcacst = (
     Arc<Mutex<Vec<mpsc::UnboundedSender<String>>>>,
 );
 
+// Divides up a single stream into two channels (one prioritized and the other not)
+// The first data packet that comes in will get sent to the first channel, and all others will get sent to the second channel
 pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin + 'static>(
     mut lines: T,
     default: impl Fn(String) + Send + 'static,

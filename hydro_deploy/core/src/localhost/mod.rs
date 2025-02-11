@@ -66,7 +66,7 @@ impl Host for LocalhostHost {
         Some(Arc::new(LaunchedLocalhost))
     }
 
-    fn provision(&self, _resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
+    async fn provision(&self, _resource_result: &Arc<ResourceResult>) -> Arc<dyn LaunchedHost> {
         Arc::new(LaunchedLocalhost)
     }
 

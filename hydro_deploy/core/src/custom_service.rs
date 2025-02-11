@@ -59,7 +59,7 @@ impl Service for CustomService {
         }
 
         let host = &self.on;
-        let launched = host.provision(resource_result);
+        let launched = host.provision(resource_result).await;
         self.launched_host = Some(launched);
         Ok(())
     }
