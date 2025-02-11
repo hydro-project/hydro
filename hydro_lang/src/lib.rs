@@ -6,6 +6,8 @@ pub use stageleft::q;
 #[doc(hidden)]
 pub mod runtime_support {
     pub use bincode;
+
+    pub mod resource_measurement;
 }
 
 pub mod runtime_context;
@@ -40,8 +42,6 @@ pub use builder::FlowBuilder;
 pub mod ir;
 
 pub mod rewrites;
-
-pub use sysinfo;
 
 mod staging_util;
 

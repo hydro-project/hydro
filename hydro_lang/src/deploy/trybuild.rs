@@ -114,12 +114,12 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
             let ports = hydro_lang::dfir_rs::util::deploy::init_no_ack_start().await;
             let flow = __hydro_runtime(&ports);
             println!("ack start");
-            // let mut s = hydro_lang::sysinfo::System::new_with_specifics(hydro_lang::sysinfo::RefreshKind::nothing().with_cpu(hydro_lang::sysinfo::CpuRefreshKind::nothing().with_cpu_usage()));
-            hydro_lang::dfir_rs::util::deploy::launch_flow(flow).await;
-            // s.refresh_cpu_all();
-            // for cpu in s.cpus() {
-            //     println!("CPU {:?}: {}%", cpu.name(), cpu.cpu_usage());
-            // }
+
+            // When rustflags includes --cfg measure, run with measurement
+            #[cfg(measure)]
+            hydro_lang::runtime_support::run_with_measurement(flow).await;
+            #[cfg(not(measure))]
+            hydro_lang::runtime_support::run(flow).await;
         }
     };
     source_ast

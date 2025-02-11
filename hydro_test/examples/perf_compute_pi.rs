@@ -31,13 +31,13 @@ async fn main() {
                     .startup_script(startup_script)
                     .add()
             }),
-            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off",
+            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure",
         )
     } else {
         let localhost = deployment.Localhost();
         (
             Box::new(move |_| -> Arc<dyn Host> { localhost.clone() }),
-            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off",
+            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure",
         )
     };
 
