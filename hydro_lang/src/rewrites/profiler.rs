@@ -19,16 +19,16 @@ fn add_profiling_node<'a>(
     node: &mut HydroNode,
     counters: RuntimeData<&'a RefCell<Vec<u64>>>,
     counter_queue: RuntimeData<&'a RefCell<UnboundedSender<(usize, u64)>>>,
-    id: &mut u32,
     seen_tees: &mut SeenTees,
+    next_stmt_id: &mut usize,
 ) {
-    let my_id = *id;
-    *id += 1;
-
     node.transform_children(
-        |node, seen_tees| add_profiling_node(node, counters, counter_queue, id, seen_tees),
+        |node, seen_tees, next_stmt_id| add_profiling_node(node, counters, counter_queue, seen_tees, next_stmt_id),
         seen_tees,
+        next_stmt_id,
     );
+    let my_id = *next_stmt_id;
+
     let orig_node = std::mem::replace(node, HydroNode::Placeholder);
     let new_metadata = orig_node.metadata().clone();
     *node = HydroNode::Inspect {
@@ -36,11 +36,11 @@ fn add_profiling_node<'a>(
             // Put counters on queue
             counter_queue
                 .borrow()
-                .unbounded_send((my_id as usize, counters.borrow()[my_id as usize]))
+                .unbounded_send((my_id, counters.borrow()[my_id]))
                 .unwrap();
-            counters.borrow_mut()[my_id as usize] = 0;
+            counters.borrow_mut()[my_id] = 0;
             move |_| {
-                myself::increment_counter(&mut counters.borrow_mut()[my_id as usize]);
+                myself::increment_counter(&mut counters.borrow_mut()[my_id]);
             }
         }))
         .splice_untyped()
@@ -56,15 +56,15 @@ pub fn profiling<'a>(
     counters: RuntimeData<&'a RefCell<Vec<u64>>>,
     counter_queue: RuntimeData<&'a RefCell<UnboundedSender<(usize, u64)>>>,
 ) -> Vec<HydroLeaf> {
-    let mut id = 0;
     let mut seen_tees = Default::default();
+    let mut next_stmt_id = 0;
     ir.into_iter()
         .map(|l| {
             l.transform_children(
-                |node, seen_tees| {
-                    add_profiling_node(node, counters, counter_queue, &mut id, seen_tees)
-                },
+                |node, seen_tees, next_stmt_id|
+                    add_profiling_node(node, counters, counter_queue, seen_tees, next_stmt_id),
                 &mut seen_tees,
+                &mut next_stmt_id,
             )
         })
         .collect()

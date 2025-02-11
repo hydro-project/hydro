@@ -59,10 +59,11 @@ impl PropertyDatabase {
 // Dataflow graph optimization rewrite rules based on algebraic property tags
 // TODO add a test that verifies the space of possible graphs after rewrites is correct for each property
 
-fn properties_optimize_node(node: &mut HydroNode, db: &PropertyDatabase, seen_tees: &mut SeenTees) {
+fn properties_optimize_node(node: &mut HydroNode, db: &PropertyDatabase, seen_tees: &mut SeenTees, next_stmt_id: &mut usize) {
     node.transform_children(
-        |node, seen_tees| properties_optimize_node(node, db, seen_tees),
+        |node, seen_tees, next_stmt_id| properties_optimize_node(node, db, seen_tees, next_stmt_id),
         seen_tees,
+        next_stmt_id,
     );
     match node {
         HydroNode::ReduceKeyed { f, .. } if db.is_tagged_commutative(&f.0) => {
@@ -74,11 +75,13 @@ fn properties_optimize_node(node: &mut HydroNode, db: &PropertyDatabase, seen_te
 
 pub fn properties_optimize(ir: Vec<HydroLeaf>, db: &PropertyDatabase) -> Vec<HydroLeaf> {
     let mut seen_tees = Default::default();
+    let mut next_stmt_id = 0;
     ir.into_iter()
         .map(|l| {
             l.transform_children(
-                |node, seen_tees| properties_optimize_node(node, db, seen_tees),
+                |node, seen_tees, next_stmt_id| properties_optimize_node(node, db, seen_tees, next_stmt_id),
                 &mut seen_tees,
+                &mut next_stmt_id,
             )
         })
         .collect()

@@ -137,35 +137,42 @@ impl HydroLeaf {
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) -> HydroLeaf {
+        let mut next_stmt_id = 0;
         self.transform_children(
-            |n, s| {
+            |n, s, _| {
                 n.compile_network::<D>(compile_env, s, processes, clusters, externals);
             },
             seen_tees,
+            &mut next_stmt_id,
         )
     }
 
     pub fn connect_network(self, seen_tees: &mut SeenTees) -> HydroLeaf {
+        let mut next_stmt_id = 0;
         self.transform_children(
-            |n, s| {
+            |n, s, _| {
                 n.connect_network(s);
             },
             seen_tees,
+            &mut next_stmt_id,
         )
     }
 
     pub fn transform_children(
         self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees, &mut usize),
         seen_tees: &mut SeenTees,
+        next_stmt_id: &mut usize,
     ) -> HydroLeaf {
         match self {
             HydroLeaf::ForEach { f, mut input } => {
-                transform(&mut input, seen_tees);
+                transform(&mut input, seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
                 HydroLeaf::ForEach { f, input }
             }
             HydroLeaf::DestSink { sink, mut input } => {
-                transform(&mut input, seen_tees);
+                transform(&mut input, seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
                 HydroLeaf::DestSink { sink, input }
             }
             HydroLeaf::CycleSink {
@@ -173,7 +180,8 @@ impl HydroLeaf {
                 location_kind,
                 mut input,
             } => {
-                transform(&mut input, seen_tees);
+                transform(&mut input, seen_tees, next_stmt_id);
+                // Don't need to increment next_stmt_id because CycleSink doesn't show up in DFIR
                 HydroLeaf::CycleSink {
                     ident,
                     location_kind,
@@ -195,6 +203,9 @@ impl HydroLeaf {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
+                let stream_id = *next_stmt_id;
+                *next_stmt_id += 1;
+
                 graph_builders
                     .entry(input_location_id)
                     .or_default()
@@ -203,13 +214,16 @@ impl HydroLeaf {
                             #input_ident -> for_each(#f);
                         },
                         None,
-                        None,
+                        Some(&stream_id.to_string()),
                     );
             }
 
             HydroLeaf::DestSink { sink, input } => {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
+
+                let stream_id = *next_stmt_id;
+                *next_stmt_id += 1;
 
                 graph_builders
                     .entry(input_location_id)
@@ -219,7 +233,7 @@ impl HydroLeaf {
                             #input_ident -> dest_sink(#sink);
                         },
                         None,
-                        None,
+                        Some(&stream_id.to_string()),
                     );
             }
 
@@ -488,68 +502,70 @@ impl<'a> HydroNode {
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) {
-        self.transform_children(
-            |n, s| n.compile_network::<D>(compile_env, s, nodes, clusters, externals),
-            seen_tees,
-        );
+        let mut next_stmt_id = 0;
+        self.transform_bottom_up(|n, _, _| {
+            if let HydroNode::Network {
+                from_location,
+                from_key,
+                to_location,
+                to_key,
+                instantiate_fn,
+                ..
+            } = n
+            {
+                let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
+                    DebugInstantiate::Building() => instantiate_network::<D>(
+                        from_location,
+                        *from_key,
+                        to_location,
+                        *to_key,
+                        nodes,
+                        clusters,
+                        externals,
+                        compile_env,
+                    ),
 
-        if let HydroNode::Network {
-            from_location,
-            from_key,
-            to_location,
-            to_key,
-            instantiate_fn,
-            ..
-        } = self
-        {
-            let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                DebugInstantiate::Building() => instantiate_network::<D>(
-                    from_location,
-                    *from_key,
-                    to_location,
-                    *to_key,
-                    nodes,
-                    clusters,
-                    externals,
-                    compile_env,
-                ),
+                    DebugInstantiate::Finalized(_, _, _) => panic!("network already finalized"),
+                };
 
-                DebugInstantiate::Finalized(_, _, _) => panic!("network already finalized"),
-            };
-
-            *instantiate_fn = DebugInstantiate::Finalized(sink_expr, source_expr, Some(connect_fn));
-        }
+                *instantiate_fn = DebugInstantiate::Finalized(sink_expr, source_expr, Some(connect_fn));
+            }
+        }, seen_tees, &mut (), &mut next_stmt_id);
     }
 
     pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
-        self.transform_children(|n, s| n.connect_network(s), seen_tees);
-        if let HydroNode::Network { instantiate_fn, .. } = self {
-            match instantiate_fn {
-                DebugInstantiate::Building() => panic!("network not built"),
+        let mut next_stmt_id = 0;
+        self.transform_bottom_up(|n, _, _| {
+            if let HydroNode::Network { instantiate_fn, .. } = n {
+                match instantiate_fn {
+                    DebugInstantiate::Building() => panic!("network not built"),
 
-                DebugInstantiate::Finalized(_, _, connect_fn) => {
-                    connect_fn.take().unwrap()();
+                    DebugInstantiate::Finalized(_, _, connect_fn) => {
+                        connect_fn.take().unwrap()();
+                    }
                 }
             }
-        }
+        }, seen_tees, &mut (), &mut next_stmt_id);
     }
 
     pub fn transform_bottom_up<C>(
         &mut self,
-        mut transform: impl FnMut(&mut HydroNode, &mut C) + Copy,
+        mut transform: impl FnMut(&mut HydroNode, &mut C, &mut usize) + Copy,
         seen_tees: &mut SeenTees,
         ctx: &mut C,
+        next_stmt_id: &mut usize
     ) {
-        self.transform_children(|n, s| n.transform_bottom_up(transform, s, ctx), seen_tees);
+        self.transform_children(|n, s, c| n.transform_bottom_up(transform, s, ctx, c), seen_tees, next_stmt_id);
 
-        transform(self, ctx)
+        transform(self, ctx, next_stmt_id)
     }
 
     #[inline(always)]
     pub fn transform_children(
         &mut self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees, &mut usize),
         seen_tees: &mut SeenTees,
+        next_stmt_id: &mut usize,
     ) {
         match self {
             HydroNode::Placeholder => {
@@ -572,86 +588,116 @@ impl<'a> HydroNode {
                         transformed_cell.clone(),
                     );
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
-                    transform(&mut orig, seen_tees);
+                    transform(&mut orig, seen_tees, next_stmt_id);
+                    *next_stmt_id += 1;
                     *transformed_cell.borrow_mut() = orig;
                     *inner = TeeNode(transformed_cell);
                 }
             }
 
-            HydroNode::Persist { inner, .. } => transform(inner.as_mut(), seen_tees),
-            HydroNode::Unpersist { inner, .. } => transform(inner.as_mut(), seen_tees),
-            HydroNode::Delta { inner, .. } => transform(inner.as_mut(), seen_tees),
+            HydroNode::Persist { inner, .. } => {
+                transform(inner.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
+            },
+            HydroNode::Unpersist { inner, .. } => {
+                transform(inner.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
+            },
+            HydroNode::Delta { inner, .. } => {
+                transform(inner.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
+            }
 
             HydroNode::Chain { first, second, .. } => {
-                transform(first.as_mut(), seen_tees);
-                transform(second.as_mut(), seen_tees);
+                transform(first.as_mut(), seen_tees, next_stmt_id);
+                transform(second.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::CrossProduct { left, right, .. } => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
+                transform(left.as_mut(), seen_tees, next_stmt_id);
+                transform(right.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::CrossSingleton { left, right, .. } => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
+                transform(left.as_mut(), seen_tees, next_stmt_id);
+                transform(right.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Join { left, right, .. } => {
-                transform(left.as_mut(), seen_tees);
-                transform(right.as_mut(), seen_tees);
+                transform(left.as_mut(), seen_tees, next_stmt_id);
+                transform(right.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Difference { pos, neg, .. } => {
-                transform(pos.as_mut(), seen_tees);
-                transform(neg.as_mut(), seen_tees);
+                transform(pos.as_mut(), seen_tees, next_stmt_id);
+                transform(neg.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::AntiJoin { pos, neg, .. } => {
-                transform(pos.as_mut(), seen_tees);
-                transform(neg.as_mut(), seen_tees);
+                transform(pos.as_mut(), seen_tees, next_stmt_id);
+                transform(neg.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
 
             HydroNode::Map { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::FlatMap { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Filter { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::FilterMap { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Sort { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::DeferTick { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Enumerate { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::Inspect { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
 
             HydroNode::Unique { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
 
             HydroNode::Fold { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::FoldKeyed { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
 
             HydroNode::Reduce { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
             HydroNode::ReduceKeyed { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
 
             HydroNode::Network { input, .. } => {
-                transform(input.as_mut(), seen_tees);
+                transform(input.as_mut(), seen_tees, next_stmt_id);
+                *next_stmt_id += 1;
             }
         }
     }
@@ -683,7 +729,7 @@ impl<'a> HydroNode {
                         #persist_ident = #inner_ident -> persist::<'static>();
                     },
                     None,
-                    None,
+                    Some(&persist_id.to_string()),
                 );
 
                 (persist_ident, location)
@@ -708,7 +754,7 @@ impl<'a> HydroNode {
                         #delta_ident = #inner_ident -> multiset_delta();
                     },
                     None,
-                    None,
+                    Some(&delta_id.to_string()),
                 );
 
                 (delta_ident, location)
@@ -762,7 +808,7 @@ impl<'a> HydroNode {
                     graph_builders.entry(*location_id).or_default().add_dfir(
                         source_stmt,
                         None,
-                        None,
+                        Some(&source_id.to_string()),
                     );
 
                     (source_ident, *location_id)
@@ -807,7 +853,7 @@ impl<'a> HydroNode {
                             #tee_ident = #inner_ident -> tee();
                         },
                         None,
-                        None,
+                        Some(&tee_id.to_string()),
                     );
 
                     built_tees.insert(
@@ -830,11 +876,11 @@ impl<'a> HydroNode {
                     "chain inputs must be in the same location"
                 );
 
-                let union_id = *next_stmt_id;
+                let chain_id = *next_stmt_id;
                 *next_stmt_id += 1;
 
                 let chain_ident =
-                    syn::Ident::new(&format!("stream_{}", union_id), Span::call_site());
+                    syn::Ident::new(&format!("stream_{}", chain_id), Span::call_site());
 
                 let builder = graph_builders.entry(first_location_id).or_default();
                 builder.add_dfir(
@@ -844,7 +890,7 @@ impl<'a> HydroNode {
                         #second_ident -> [1]#chain_ident;
                     },
                     None,
-                    None,
+                    Some(&chain_id.to_string()),
                 );
 
                 (chain_ident, first_location_id)
@@ -861,11 +907,11 @@ impl<'a> HydroNode {
                     "cross_singleton inputs must be in the same location"
                 );
 
-                let union_id = *next_stmt_id;
+                let cross_id = *next_stmt_id;
                 *next_stmt_id += 1;
 
                 let cross_ident =
-                    syn::Ident::new(&format!("stream_{}", union_id), Span::call_site());
+                    syn::Ident::new(&format!("stream_{}", cross_id), Span::call_site());
 
                 let builder = graph_builders.entry(left_location_id).or_default();
                 builder.add_dfir(
@@ -875,7 +921,7 @@ impl<'a> HydroNode {
                         #right_ident -> [single]#cross_ident;
                     },
                     None,
-                    None,
+                    Some(&cross_id.to_string()),
                 );
 
                 (cross_ident, left_location_id)
@@ -933,7 +979,7 @@ impl<'a> HydroNode {
                         #right_ident -> [1]#stream_ident;
                     },
                     None,
-                    None,
+                    Some(&stream_id.to_string()),
                 );
 
                 (stream_ident, left_location_id)
@@ -984,7 +1030,7 @@ impl<'a> HydroNode {
                         #neg_ident -> [neg]#stream_ident;
                     },
                     None,
-                    None,
+                    Some(&stream_id.to_string()),
                 );
 
                 (stream_ident, pos_location_id)
@@ -1005,7 +1051,7 @@ impl<'a> HydroNode {
                         #map_ident = #input_ident -> map(#f);
                     },
                     None,
-                    None,
+                    Some(&map_id.to_string()),
                 );
 
                 (map_ident, input_location_id)
@@ -1027,7 +1073,7 @@ impl<'a> HydroNode {
                         #flat_map_ident = #input_ident -> flat_map(#f);
                     },
                     None,
-                    None,
+                    Some(&flat_map_id.to_string()),
                 );
 
                 (flat_map_ident, input_location_id)
@@ -1049,7 +1095,7 @@ impl<'a> HydroNode {
                         #filter_ident = #input_ident -> filter(#f);
                     },
                     None,
-                    None,
+                    Some(&filter_id.to_string()),
                 );
 
                 (filter_ident, input_location_id)
@@ -1071,7 +1117,7 @@ impl<'a> HydroNode {
                         #filter_map_ident = #input_ident -> filter_map(#f);
                     },
                     None,
-                    None,
+                    Some(&filter_map_id.to_string()),
                 );
 
                 (filter_map_ident, input_location_id)
@@ -1092,7 +1138,7 @@ impl<'a> HydroNode {
                         #sort_ident = #input_ident -> sort();
                     },
                     None,
-                    None,
+                    Some(&sort_id.to_string()),
                 );
 
                 (sort_ident, input_location_id)
@@ -1114,7 +1160,7 @@ impl<'a> HydroNode {
                         #defer_tick_ident = #input_ident -> defer_tick_lazy();
                     },
                     None,
-                    None,
+                    Some(&defer_tick_id.to_string()),
                 );
 
                 (defer_tick_ident, input_location_id)
@@ -1144,7 +1190,7 @@ impl<'a> HydroNode {
                         #enumerate_ident = #input_ident -> enumerate::<#lifetime>();
                     },
                     None,
-                    None,
+                    Some(&enumerate_id.to_string()),
                 );
 
                 (enumerate_ident, input_location_id)
@@ -1166,7 +1212,7 @@ impl<'a> HydroNode {
                         #inspect_ident = #input_ident -> inspect(#f);
                     },
                     None,
-                    None,
+                    Some(&inspect_id.to_string()),
                 );
 
                 (inspect_ident, input_location_id)
@@ -1188,7 +1234,7 @@ impl<'a> HydroNode {
                         #unique_ident = #input_ident -> unique::<'tick>();
                     },
                     None,
-                    None,
+                    Some(&unique_id.to_string()),
                 );
 
                 (unique_ident, input_location_id)
@@ -1221,11 +1267,11 @@ impl<'a> HydroNode {
                 let (input_ident, input_location_id) =
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
-                let reduce_id = *next_stmt_id;
+                let fold_id = *next_stmt_id;
                 *next_stmt_id += 1;
 
                 let fold_ident =
-                    syn::Ident::new(&format!("stream_{}", reduce_id), Span::call_site());
+                    syn::Ident::new(&format!("stream_{}", fold_id), Span::call_site());
 
                 let builder = graph_builders.entry(input_location_id).or_default();
                 builder.add_dfir(
@@ -1233,7 +1279,7 @@ impl<'a> HydroNode {
                         #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
                     },
                     None,
-                    None,
+                    Some(&fold_id.to_string()),
                 );
 
                 (fold_ident, input_location_id)
@@ -1274,7 +1320,7 @@ impl<'a> HydroNode {
                         #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
                     },
                     None,
-                    None,
+                    Some(&reduce_id.to_string()),
                 );
 
                 (reduce_ident, input_location_id)
@@ -1305,6 +1351,8 @@ impl<'a> HydroNode {
                     input.emit(graph_builders, built_tees, next_stmt_id);
 
                 let sender_builder = graph_builders.entry(input_location_id).or_default();
+                let stream_id = *next_stmt_id;
+                *next_stmt_id += 1;
 
                 if let Some(serialize_pipeline) = serialize_pipeline {
                     sender_builder.add_dfir(
@@ -1312,7 +1360,7 @@ impl<'a> HydroNode {
                             #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
                         },
                         None,
-                        None,
+                        Some(&stream_id.to_string()),
                     );
                 } else {
                     sender_builder.add_dfir(
@@ -1320,7 +1368,7 @@ impl<'a> HydroNode {
                             #input_ident -> dest_sink(#sink_expr);
                         },
                         None,
-                        None,
+                        Some(&stream_id.to_string()),
                     );
                 }
 
@@ -1332,23 +1380,22 @@ impl<'a> HydroNode {
                 };
 
                 let receiver_builder = graph_builders.entry(*to_id).or_default();
-                let receiver_stream_id = *next_stmt_id;
-                *next_stmt_id += 1;
+                
 
                 let receiver_stream_ident =
-                    syn::Ident::new(&format!("stream_{}", receiver_stream_id), Span::call_site());
+                    syn::Ident::new(&format!("stream_{}", stream_id), Span::call_site());
 
                 if let Some(deserialize_pipeline) = deserialize_pipeline {
                     receiver_builder.add_dfir(parse_quote! {
                         #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                    }, None, None);
+                    }, None, Some(&stream_id.to_string()));
                 } else {
                     receiver_builder.add_dfir(
                         parse_quote! {
                             #receiver_stream_ident = source_stream(#source_expr);
                         },
                         None,
-                        None,
+                        Some(&stream_id.to_string()),
                     );
                 }
 
