@@ -117,9 +117,9 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
 
             // When rustflags includes --cfg measure, run with measurement
             #[cfg(measure)]
-            hydro_lang::runtime_support::run_with_measurement(flow).await;
+            hydro_lang::runtime_support::resource_measurement::run_with_measurement(flow).await;
             #[cfg(not(measure))]
-            hydro_lang::runtime_support::run(flow).await;
+            hydro_lang::runtime_support::resource_measurement::run(flow).await;
         }
     };
     source_ast
