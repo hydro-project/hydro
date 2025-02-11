@@ -109,7 +109,7 @@ pub enum HydroSource {
 
 /// An leaf in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
-/// generating Hydroflow IR start from leaves.
+/// generating DFIR IR start from leaves.
 #[derive(Debug, Hash)]
 pub enum HydroLeaf {
     ForEach {

@@ -1,6 +1,6 @@
 //! This module contains types to work with ticks.
 //!
-//! Each iteration of a Hydroflow process loop is called a tick. Associated with the process
+//! Each iteration of a process loop is called a tick. Associated with the process
 //! is a clock value, which tells you how many ticks were executed by this process prior to the
 //! current tick. Each process produces totally ordered, sequentially increasing clock values,
 //! which you can think of as the "local logical time" at the process.

@@ -179,12 +179,8 @@ pub fn compile_datalog(
                 let mut diagnostics = Vec::new();
                 let output = match partition_graph(flat_graph) {
                     Ok(part_graph) => {
-                        let out = part_graph.as_code(
-                            &quote!(dfir_rs),
-                            true,
-                            quote!(),
-                            &mut diagnostics,
-                        );
+                        let out =
+                            part_graph.as_code(&quote!(dfir_rs), true, quote!(), &mut diagnostics);
                         let file: syn::File = syn::parse_quote! {
                             fn main() {
                                 #out

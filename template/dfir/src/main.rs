@@ -11,7 +11,7 @@ mod helpers;
 mod protocol;
 mod server;
 
-/// A simple echo server & client generated using the Hydroflow template. The lines starting with
+/// A simple echo server & client generated using the DFIR template. The lines starting with
 /// `///` contain the message that appears when you run the compiled binary with the '--help'
 /// arguments, so feel free to change it to whatever makes sense for your application.
 ///
@@ -32,7 +32,7 @@ struct Opts {
     // value_parser => parse "ip:port" using ipv4_resolve
     address: Option<SocketAddr>, // Since this is an Option<T>, it is an optional argument.
 
-    /// If specified, a graph representation of the Hydroflow flow used by the program will be
+    /// If specified, a graph representation of the flow used by the program will be
     /// printed to the console in the specified format. This parameter can be removed if your
     /// application doesn't need this functionality.
     #[clap(long)]

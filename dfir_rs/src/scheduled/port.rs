@@ -1,4 +1,4 @@
-//! Organizational module for Hydroflow Send/RecvCtx structs and Input/OutputPort structs.
+//! Organizational module for [`SendCtx`]/[`RecvCtx`] structs and [`SendPort`]/[`RecvPort`] structs.
 use std::cell::RefMut;
 use std::marker::PhantomData;
 
