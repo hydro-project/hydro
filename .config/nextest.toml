@@ -6,7 +6,7 @@ filter = 'binary(deadlock_detector)'
 test-group = 'serial-integration'
 
 [[profile.default.overrides]]
-filter = 'binary(two_pc)'
+filter = 'binary(two_pc_hf)'
 test-group = 'serial-integration'
 
 [[profile.default.overrides]]
