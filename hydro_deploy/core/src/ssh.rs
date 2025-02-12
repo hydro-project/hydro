@@ -391,10 +391,10 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                     command.push_str(&shell_escape::unix::escape(Cow::Borrowed(arg)))
                 }
                 // Launch with perf if specified, also copy local binary to expected place for perf report to work
-                if let Some(TracingOptions { frequency, delay_sec, .. }) = tracing.clone() {
+                if let Some(TracingOptions { frequency, .. }) = tracing.clone() {
                     // Attach perf to the command
                     command = format!(
-                        "perf record -D {delay_sec} -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
+                        "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
                     );
                 }
                 channel.exec(&command).await?;

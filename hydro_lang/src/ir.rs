@@ -267,6 +267,14 @@ impl HydroLeaf {
             }
         }
     }
+
+    pub fn print_root(&self) -> String {
+        match self {
+            HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
+            HydroLeaf::DestSink { sink, .. } => format!("DestSink({:?})", sink),
+            HydroLeaf::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+        }
+    }
 }
 
 type PrintedTees = RefCell<Option<(usize, HashMap<*const RefCell<HydroNode>, usize>)>>;
@@ -1435,6 +1443,53 @@ impl<'a> HydroNode {
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
+        }
+    }
+
+    pub fn print_root(&self) -> String {
+        match self {
+            HydroNode::Placeholder => {
+                panic!()
+            }
+            HydroNode::Source { source, .. } => format!("Source({:?})", source),
+            HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
+            HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
+            HydroNode::Persist { .. } => format!("Persist()"),
+            HydroNode::Unpersist { .. } => format!("Unpersist()"),
+            HydroNode::Delta { .. } => format!("Delta()"),
+            HydroNode::Chain { first, second, .. } => {
+                format!("Chain({}, {})", first.print_root(), second.print_root())
+            }
+            HydroNode::CrossProduct { left, right, .. } => {
+                format!("CrossProduct({}, {})", left.print_root(), right.print_root())
+            }
+            HydroNode::CrossSingleton { left, right, .. } => {
+                format!("CrossSingleton({}, {})", left.print_root(), right.print_root())
+            }
+            HydroNode::Join { left, right, .. } => {
+                format!("Join({}, {})", left.print_root(), right.print_root())
+            }
+            HydroNode::Difference { pos, neg, .. } => {
+                format!("Difference({}, {})", pos.print_root(), neg.print_root())
+            }
+            HydroNode::AntiJoin { pos, neg, .. } => {
+                format!("AntiJoin({}, {})", pos.print_root(), neg.print_root())
+            }
+            HydroNode::Map { f, .. } => format!("Map({:?})", f),
+            HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
+            HydroNode::Filter { f, .. } => format!("Filter({:?})", f),
+            HydroNode::FilterMap { f, .. } => format!("FilterMap({:?})", f),
+            HydroNode::DeferTick { .. } => format!("DeferTick()"),
+            HydroNode::Enumerate { is_static, .. } => format!("Enumerate({:?})", is_static),
+            HydroNode::Inspect { f, .. } => format!("Inspect({:?})", f),
+            HydroNode::Unique { .. } => format!("Unique()"),
+            HydroNode::Sort { .. } => format!("Sort()"),
+            HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
+            HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
+            HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
+            HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
+            HydroNode::Network { .. } => format!("Network()"),
+
         }
     }
 }

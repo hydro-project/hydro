@@ -3,6 +3,8 @@ use std::collections::HashMap;
 
 use crate::ir::*;
 
+pub const CPU_USAGE_PREFIX: &str = "CPU: ";
+
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
 fn parse_perf(file_path: &str) -> HashMap<usize, HashMap<String, f64>> {
@@ -16,7 +18,7 @@ fn parse_perf(file_path: &str) -> HashMap<usize, HashMap<String, f64>> {
         let n_samples_index = line.rfind(' ').unwrap() + 1;
         let n_samples = &line[n_samples_index..].parse::<f64>().unwrap();
 
-        for cap in operator_regex.captures_iter(line) {
+        if let Some(cap) = operator_regex.captures_iter(line).last() {
             let operator_name = &cap[1];
             let id = cap[2].parse::<usize>().unwrap();
             let dfir_operator_and_samples = samples_per_operator.entry(id).or_insert(HashMap::new());
@@ -49,7 +51,7 @@ fn analyze_perf_node(
     let my_id = next_stmt_id;
     if let Some(dfir_operator_and_samples) = id_to_usage.get(my_id) {
         for (dfir_operator, samples) in dfir_operator_and_samples {
-            println!("Hydro node {:?}: {} {:.02}%", node, dfir_operator, samples * 100f64);
+            println!("Hydro node {}: {} {:.02}%", node.print_root(), dfir_operator, samples * 100f64);
         }
     }
     else {
@@ -59,7 +61,7 @@ fn analyze_perf_node(
 
 pub fn analyze_perf(ir: Vec<HydroLeaf>) -> Vec<HydroLeaf> {
     let mut seen_tees = Default::default();
-    let mut id_to_usage = parse_perf("../leader.data.folded");
+    let mut id_to_usage = parse_perf("cluster0.data.folded");
     let mut next_stmt_id = 0;
     ir.into_iter()
         .map(|l| {

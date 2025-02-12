@@ -43,6 +43,7 @@ toml = { version = "0.8.0", optional = true }
 trybuild-internals-api = { version = "1.0.99", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
+chrono = "0.4.39"
 procfs = "0.17.0"
 
 [build-dependencies]

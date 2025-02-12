@@ -4,6 +4,7 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
+use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
 use hydro_lang::rewrites::{analyze_perf, persist_pullup};
 use tokio::sync::RwLock;
 
@@ -46,7 +47,6 @@ async fn main() {
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
     let frequency = 128;
-    let delay_sec = 0;
 
     let nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
@@ -62,7 +62,6 @@ async fn main() {
                         .fold_outfile("leader.data.folded")
                         .flamegraph_outfile("leader.svg")
                         .frequency(frequency)
-                        .delay_sec(delay_sec)
                         .build(),
                 ),
         )
@@ -78,14 +77,30 @@ async fn main() {
                             .fold_outfile(format!("cluster{}.data.folded", idx))
                             .flamegraph_outfile(format!("cluster{}.svg", idx))
                             .frequency(frequency)
-                            .delay_sec(delay_sec)
                             .build(),
                     )
             }),
         )
         .deploy(&mut deployment);
 
-    let cpu_usage_prefix = "prefix".to_string();
-    let leader_usage_out = nodes.get_process(&leader).stdout_filter(cpu_usage_prefix).await;
-    deployment.run_ctrl_c().await.unwrap();
+    deployment.deploy().await.unwrap();
+
+    let mut leader_usage_out = nodes.get_process(&leader).stdout_filter(CPU_USAGE_PREFIX).await;
+    let mut clusters_usage_out = vec![];
+    for worker in nodes.get_cluster(&cluster).members() {
+        clusters_usage_out.push(
+            worker
+                .stdout_filter(CPU_USAGE_PREFIX)
+                .await,
+        );
+    }
+
+    deployment.start_until(async {
+        std::io::stdin().read_line(&mut String::new()).unwrap();
+    }).await.unwrap();
+
+    println!("Leader {}", leader_usage_out.recv().await.unwrap());
+    for mut cluster_usage_out in clusters_usage_out {
+        println!("Worker {}", cluster_usage_out.recv().await.unwrap());
+    }
 }
