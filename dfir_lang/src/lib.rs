@@ -1,4 +1,4 @@
-//! Hydroflow surface syntax
+//! DFIR syntax
 
 #![warn(missing_docs)]
 #![cfg_attr(nightly, feature(proc_macro_diagnostic, proc_macro_span))]

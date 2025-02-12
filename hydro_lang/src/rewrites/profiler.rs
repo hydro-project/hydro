@@ -93,7 +93,7 @@ mod tests {
 
         // Print mermaid
         // let mut mermaid_config = WriteConfig {op_text_no_imports: true, ..Default::default()};
-        // for (_, ir) in built.clone().with_default_optimize().compile().hydroflow_ir() {
+        // for (_, ir) in built.clone().with_default_optimize().compile().dfir() {
         //     println!("{}", ir.to_mermaid(&mermaid_config));
         // }
 

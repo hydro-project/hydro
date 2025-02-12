@@ -20,10 +20,10 @@ use crate::scheduled::ticks::TickInstant;
 use crate::util::priority_stack::PriorityStack;
 use crate::util::slot_vec::SlotVec;
 
-/// The main state and scheduler of the Hydroflow instance. Provided as the `context` API to each
+/// The main state and scheduler of the runtime instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
 ///
-/// Each Hydroflow instances stores eactly one Context inline. Before the `Context` is provided to
+/// Each instance stores eactly one Context inline. Before the `Context` is provided to
 /// a running operator, the `subgraph_id` field must be updated.
 pub struct Context {
     /// User-facing State API.
@@ -313,7 +313,7 @@ impl Context {
     }
 }
 
-/// Internal struct containing a pointer to [`Hydroflow`]-owned state.
+/// Internal struct containing a pointer to instance-owned state.
 struct StateData {
     state: Box<dyn Any>,
     tick_reset: Option<TickResetFn>,

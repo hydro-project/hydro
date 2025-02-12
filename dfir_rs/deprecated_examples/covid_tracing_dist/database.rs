@@ -16,7 +16,7 @@ use rand::Rng;
 pub(crate) async fn run_database(opts: Opts) {
     let all_people = people::get_people();
 
-    let mut df = Hydroflow::new();
+    let mut df = Dfir::new();
 
     let (notifs, notif_sink) = df.make_edge::<_, VecHandoff<(String, usize)>>("notifs");
     let (encode_contacts_out, contacts_merge) =

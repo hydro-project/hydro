@@ -1,5 +1,5 @@
 #![warn(missing_docs)]
-//! Helper utilities for the Hydroflow surface syntax.
+//! Helper utilities for the DFIR syntax.
 
 pub mod clear;
 #[cfg(feature = "dfir_macro")]
@@ -58,7 +58,7 @@ pub enum PersistenceKeyed<K, V> {
     Delete(K),
 }
 
-/// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in Hydroflow.
+/// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 pub fn unbounded_channel<T>() -> (
     tokio::sync::mpsc::UnboundedSender<T>,
     tokio_stream::wrappers::UnboundedReceiverStream<T>,
@@ -68,7 +68,7 @@ pub fn unbounded_channel<T>() -> (
     (send, recv)
 }
 
-/// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in Hydroflow.
+/// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
 pub fn unsync_channel<T>(
     capacity: Option<NonZeroUsize>,
 ) -> (unsync::mpsc::Sender<T>, unsync::mpsc::Receiver<T>) {

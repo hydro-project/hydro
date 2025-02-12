@@ -719,7 +719,7 @@ pub fn test_covid_tracing() {
 
     let (out_send, mut out_recv) = unbounded_channel::<String>();
 
-    let mut hydroflow = dfir_syntax! {
+    let mut df = dfir_syntax! {
         contacts = source_stream(contacts_recv) -> flat_map(|(pid_a, pid_b, time)| [(pid_a, (pid_b, time)), (pid_b, (pid_a, time))]);
 
         exposed = union();
@@ -749,7 +749,7 @@ pub fn test_covid_tracing() {
         source_stream(people_recv) -> [0]notifs;
         new_exposed[1] -> [1]notifs;
     };
-    assert_graphvis_snapshots!(hydroflow);
+    assert_graphvis_snapshots!(df);
 
     {
         people_send
@@ -777,7 +777,7 @@ pub fn test_covid_tracing() {
             ))
             .unwrap();
 
-        hydroflow.run_available();
+        df.run_available();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!([] as [String; 0], *results);
         println!("A");
@@ -786,7 +786,7 @@ pub fn test_covid_tracing() {
             .send((101, 103, mae_diag_datetime + 6))
             .unwrap(); // Mingwei + Mae
 
-        hydroflow.run_available();
+        df.run_available();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!(
             [
@@ -803,7 +803,7 @@ pub fn test_covid_tracing() {
             .send((103, ("Joe H", "+1 510 555 9999")))
             .unwrap();
 
-        hydroflow.run_available();
+        df.run_available();
         let results = collect_ready::<Vec<_>, _>(&mut out_recv);
         assert_eq!(
             [

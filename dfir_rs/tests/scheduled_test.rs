@@ -319,7 +319,7 @@ fn test_input_handle_thread() {
 #[test]
 // #[multiplatform_test]   // no threads on WASM
 fn test_input_channel() {
-    // This test creates two parallel Hydroflow graphs and bounces messages back
+    // This test creates two parallel graphs and bounces messages back
     // and forth between them.
 
     use std::cell::Cell;

@@ -48,7 +48,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
     write_fn: |wc @ &WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    op_span,
                    root,
@@ -72,7 +72,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
         let lattice_ident = wc.make_ident("lattice");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lattice_ident = #hydroflow.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
+            let #lattice_ident = #df_ident.add_state(::std::cell::RefCell::new(<#lattice_type as ::std::default::Default>::default()));
         };
 
         let input = &inputs[0];

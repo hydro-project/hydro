@@ -49,7 +49,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -113,7 +113,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let write_prologue_pos = match persistences[0] {
             Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
-                let #pos_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+                let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             },
@@ -128,7 +128,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         };
 
         let write_prologue = quote_spanned! {op_span=>
-            let #neg_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+            let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #neg_init
             ));
 

@@ -10,13 +10,13 @@ use dfir_rs::util::deploy::DeployPorts;
 use stageleft::{QuotedWithContext, RuntimeData};
 
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};
-use crate::deploy_runtime::HydroflowPlusMeta;
+use crate::deploy_runtime::HydroMeta;
 
 pub struct DeployRuntime {}
 
 impl<'a> Deploy<'a> for DeployRuntime {
     type InstantiateEnv = ();
-    type CompileEnv = RuntimeData<&'a DeployPorts<HydroflowPlusMeta>>;
+    type CompileEnv = RuntimeData<&'a DeployPorts<HydroMeta>>;
     type Process = DeployRuntimeNode;
     type Cluster = DeployRuntimeCluster;
     type ExternalProcess = DeployRuntimeNode;

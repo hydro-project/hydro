@@ -6,7 +6,7 @@ use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
-use super::hydroflow_graph::DfirGraph;
+use super::meta_graph::DfirGraph;
 use super::ops::{find_node_op_constraints, DelayType};
 use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
 use crate::diagnostic::{Diagnostic, Level};
@@ -228,7 +228,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
 
     // Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
-    // Eventually returned directly in the `HydroflowGraph`.
+    // Eventually returned directly in the [`DfirGraph`].
     let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
     for (_repr_node, member_nodes) in grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
@@ -512,7 +512,7 @@ fn separate_external_inputs(partitioned_graph: &mut DfirGraph) {
         // Remove node from old subgraph.
         assert!(
             partitioned_graph.remove_from_subgraph(node_id),
-            "Cannot move input node that is not in a subgraph, this is a Hydroflow bug."
+            "Cannot move input node that is not in a subgraph, this is a bug."
         );
         // Create new subgraph in stratum 0 for this source.
         let new_sg_id = partitioned_graph.insert_subgraph(vec![node_id]).unwrap();

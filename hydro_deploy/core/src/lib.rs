@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use hydroflow_crate::build::BuildOutput;
 use hydroflow_crate::tracing_options::TracingOptions;
 use hydroflow_deploy_integration::ServerBindConfig;
+use tokio::sync::{mpsc, oneshot};
 
 pub mod deployment;
 pub use deployment::Deployment;
@@ -28,9 +30,6 @@ pub use hydroflow_crate::HydroflowCrate;
 
 pub mod custom_service;
 pub use custom_service::CustomService;
-use tokio::sync::{mpsc, oneshot};
-
-use crate::hydroflow_crate::build::BuildOutput;
 
 pub mod terraform;
 

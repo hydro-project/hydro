@@ -98,7 +98,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -139,7 +139,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
             let reset = match persistence {
                 Persistence::Tick => quote_spanned! {op_span=>
-                    #hydroflow.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
+                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
                 },
                 Persistence::Static => Default::default(),
                 Persistence::Mutable => {
@@ -152,7 +152,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 }
             };
             let init = quote_spanned! {op_span=>
-                let #joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     #join_type::default()
                 ));
                 #reset

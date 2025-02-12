@@ -232,7 +232,7 @@ impl<T: Eq> PartialOrd<Self> for BoundedPrefix<T> {
 }
 impl<T: Eq> LatticeOrd<Self> for BoundedPrefix<T> {}
 
-// use Hydroflow's built-in lattice tests to see if our lattices behave well
+// use library lattice tests to see if our lattices behave well
 #[cfg(test)]
 mod test {
     use super::{BoundedPrefix, SealedSetOfIndexedValues};

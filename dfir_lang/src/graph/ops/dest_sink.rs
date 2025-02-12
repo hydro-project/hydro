@@ -1,8 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 /// > Arguments: An [async `Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html).
@@ -11,14 +10,14 @@ use super::{
 /// A `Sink` is a thing into which values can be sent, asynchronously. For example, sending items
 /// into a bounded channel.
 ///
-/// Note this operator must be used within a Tokio runtime, and the Hydroflow program must be launched with `run_async`.
+/// Note this operator must be used within a Tokio runtime, and the DFIR program must be launched with `run_async`.
 ///
 /// ```rustbook
 /// # #[dfir_rs::main]
 /// # async fn main() {
 /// // In this example we use a _bounded_ channel for our `Sink`. This is for demonstration only,
 /// // instead you should use [`dfir_rs::util::unbounded_channel`]. A bounded channel results in
-/// // `Hydroflow` buffering items internally instead of within the channel. (We can't use
+/// // buffering items internally instead of within the channel. (We can't use
 /// // unbounded here since unbounded channels are synchonous to write to and therefore not
 /// // `Sink`s.)
 /// let (send, recv) = tokio::sync::mpsc::channel::<usize>(5);
@@ -99,7 +98,7 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -139,7 +138,7 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
                         sink.flush().await.expect("Failed to flush sink.");
                     }
                 }
-                #hydroflow
+                #df_ident
                     .request_task(sink_feed_flush(#recv_ident, #sink_arg));
             }
         };
