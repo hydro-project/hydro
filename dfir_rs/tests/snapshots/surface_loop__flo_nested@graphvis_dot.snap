@@ -11,7 +11,7 @@ digraph {
     n4v1 [label="(n4v1) batch()", shape=invhouse, fillcolor="#88aaff"]
     n5v1 [label="(n5v1) cross_join()", shape=invhouse, fillcolor="#88aaff"]
     n6v1 [label="(n6v1) all_once()", shape=invhouse, fillcolor="#88aaff"]
-    n7v1 [label="(n7v1) map(|vec| (context.current_tick().0, vec))", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) map(|item| (context.current_tick().0, item))", shape=invhouse, fillcolor="#88aaff"]
     n8v1 [label="(n8v1) for_each(|x| result_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n10v1 [label="(n10v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
