@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 use stageleft::{q, QuotedWithContext, RuntimeData};
 
 #[derive(Default, Serialize, Deserialize)]
-pub struct HydroflowPlusMeta {
+pub struct HydroMeta {
     pub clusters: HashMap<usize, Vec<u32>>,
     pub cluster_id: Option<u32>,
     pub subgraph_id: usize,
 }
 
 pub fn cluster_members(
-    cli: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    cli: RuntimeData<&DeployPorts<HydroMeta>>,
     of_cluster: usize,
 ) -> impl QuotedWithContext<&[u32], ()> + Copy {
     q!(cli
@@ -26,7 +26,7 @@ pub fn cluster_members(
 }
 
 pub fn cluster_self_id(
-    cli: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    cli: RuntimeData<&DeployPorts<HydroMeta>>,
 ) -> impl QuotedWithContext<u32, ()> + Copy {
     q!(cli
         .meta
@@ -35,7 +35,7 @@ pub fn cluster_self_id(
 }
 
 pub fn deploy_o2o(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     p2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
@@ -60,7 +60,7 @@ pub fn deploy_o2o(
 }
 
 pub fn deploy_o2m(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     c2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
@@ -85,7 +85,7 @@ pub fn deploy_o2m(
 }
 
 pub fn deploy_m2o(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     c1_port: &str,
     p2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
@@ -110,7 +110,7 @@ pub fn deploy_m2o(
 }
 
 pub fn deploy_m2m(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     c1_port: &str,
     c2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
@@ -135,7 +135,7 @@ pub fn deploy_m2m(
 }
 
 pub fn deploy_e2o(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     _e1_port: &str,
     p2_port: &str,
 ) -> syn::Expr {
@@ -148,7 +148,7 @@ pub fn deploy_e2o(
 }
 
 pub fn deploy_o2e(
-    env: RuntimeData<&DeployPorts<HydroflowPlusMeta>>,
+    env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     _e2_port: &str,
 ) -> syn::Expr {

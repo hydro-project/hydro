@@ -109,7 +109,7 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
                     .iter()
                     .position(|ident| ident == &port_idents[i])
                     .expect(
-                        "Missing port, this should've been caught in the check above, this is a Hydroflow bug.",
+                        "Missing port, this should've been caught in the check above, this is a bug.",
                     )
             });
             let arg2_val = quote_spanned! {arg2_span.span()=> [ #( #idx_ints ),* ] };
@@ -222,7 +222,7 @@ fn determine_indices_or_idents(
     match (!ports_numeric.is_empty(), !ports_idents.is_empty()) {
         (false, false) => {
             // Had no ports or only elided ports.
-            assert!(diagnostics.iter().any(Diagnostic::is_error), "Empty input ports, expected an error diagnostic but none were emitted, this is a Hydroflow bug.");
+            assert!(diagnostics.iter().any(Diagnostic::is_error), "Empty input ports, expected an error diagnostic but none were emitted, this is a bug.");
             Err(())
         }
         (true, true) => {

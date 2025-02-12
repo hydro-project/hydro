@@ -70,7 +70,7 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -86,7 +86,7 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
         let py_func_ident = wc.make_ident("py_func");
 
         let err_lit = Literal::string(&format!(
-            "Hydroflow 'python' feature must be enabled to use `{}`",
+            "`python` feature must be enabled to use `{}`",
             op_name
         ));
 
@@ -105,7 +105,7 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
                             .getattr(#py_func_name)?
                             .into())
                         }).expect("Failed to compile python.");
-                        #hydroflow.add_state(func)
+                        #df_ident.add_state(func)
                     };
                 },
                 {

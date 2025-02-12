@@ -25,9 +25,9 @@ pub enum JoinPlan<'a> {
     MagicNatLt(Box<JoinPlan<'a>>, ExtractExpr, ExtractExpr),
 }
 
-/// Tracks the Hydroflow node that corresponds to a subtree of a join plan.
+/// Tracks the DFIR node that corresponds to a subtree of a join plan.
 pub struct IntermediateJoinNode {
-    /// The name of the Hydroflow node that this join outputs to.
+    /// The name of the DFIR node that this join outputs to.
     pub name: syn::Ident,
     /// If true, the correct dataflow for this node ends in a `persist::<'static>()` operator.
     pub persisted: bool,
@@ -58,21 +58,21 @@ impl JoinSide {
     }
 }
 
-/// Generates a Hydroflow pipeline that transforms some input to a join
+/// Generates a DFIR pipeline that transforms some input to a join
 /// to emit key-value tuples that can be fed into a join operator.
 fn emit_join_input_pipeline(
     // The identifiers of the input node that the key should be populated with.
     identifiers_to_join: &[String],
     identifiers_to_not_join: &[String],
-    // The Hydroflow node that is one side of the join.
+    // The DFIR node that is one side of the join.
     source_expanded: &IntermediateJoinNode,
-    // The Hydroflow node for the join operator.
+    // The DFIR node for the join operator.
     join_node: &syn::Ident,
     // Whether this node contributes to the left or right side of the join.
     join_side: JoinSide,
     // Whether the pipeline is for an anti-join.
     anti_join: bool,
-    // The Hydroflow graph to emit the pipeline to.
+    // The DFIR graph to emit the pipeline to.
     flat_graph_builder: &mut FlatGraphBuilder,
 ) {
     let hash_keys: Vec<syn::Expr> = identifiers_to_join
@@ -189,7 +189,7 @@ fn gen_predicate_value_expr(
     )
 }
 
-/// Processes an extract expression to generate a Hydroflow pipeline that reads the input
+/// Processes an extract expression to generate a DFIR pipeline that reads the input
 /// data from the IDB/EDB.
 ///
 /// `row_width` is the number of elements in the tuples emitted by the **current** pipeline,
@@ -327,11 +327,11 @@ fn process_extract(
     }
 }
 
-/// Generates a Hydroflow pipeline that computes the output to a given [`JoinPlan`].
+/// Generates a DFIR pipeline that computes the output to a given [`JoinPlan`].
 pub fn expand_join_plan(
-    // The plan we are converting to a Hydroflow pipeline.
+    // The plan we are converting to a DFIR pipeline.
     plan: &JoinPlan,
-    // The Hydroflow graph to emit the pipeline to.
+    // The DFIR graph to emit the pipeline to.
     flat_graph_builder: &mut FlatGraphBuilder,
     tee_counter: &mut HashMap<String, Counter>,
     next_join_idx: &mut Counter,

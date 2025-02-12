@@ -55,7 +55,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -85,7 +85,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         let persistdata_ident = singleton_output_ident;
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
-            let #persistdata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+            let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 ::std::vec::Vec::new(),
             ));
         };

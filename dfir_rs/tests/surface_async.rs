@@ -260,7 +260,7 @@ pub async fn test_futures_stream_sink() {
 async fn asynctest_dest_sink_bounded_channel() {
     // In this example we use a _bounded_ channel for our `Sink`. This is for demonstration only,
     // instead you should use [`dfir_rs::util::unbounded_channel`]. A bounded channel results in
-    // `Hydroflow` buffering items internally instead of within the channel.
+    // buffering items internally instead of within the channel.
     let (send, recv) = tokio::sync::mpsc::channel::<usize>(5);
     let send = tokio_util::sync::PollSender::new(send);
     let mut recv = tokio_stream::wrappers::ReceiverStream::new(recv);

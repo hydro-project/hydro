@@ -45,7 +45,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     },
     write_fn: |wc @ &WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -81,7 +81,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let write_prologue_rhs = match persistences[1] {
             Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
-                let #rhs_joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             },

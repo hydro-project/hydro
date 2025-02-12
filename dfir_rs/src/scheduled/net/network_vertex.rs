@@ -34,8 +34,8 @@ impl Dfir<'_> {
         self.inbound_tcp_vertex_internal(None).await
     }
     // TODO(justin): this needs to return a result/get rid of all the unwraps, I
-    // guess we need a HydroflowError?
-    /// Begins listening on some TCP port. Returns an [OutputPort] representing
+    // guess we need a custom error type?
+    /// Begins listening on some TCP port. Returns an [`RecvPort`] representing
     /// the stream of messages received. Currently there is no notion of
     /// identity to the connections received, if they are to be attached to some
     /// participant in the system, that needs to be included in the message
@@ -114,7 +114,7 @@ impl Dfir<'_> {
         let (mut outbound_messages_send, mut outbound_messages_recv) =
             futures::channel::mpsc::channel(1024);
         tokio::spawn(async move {
-            // TODO(justin): this cache should be global to the entire Hydroflow
+            // TODO(justin): this cache should be global to the entire
             // instance so we can reuse connections from inbound connections.
             let mut connections = HashMap::<Address, ConnStatus<T>>::new();
 

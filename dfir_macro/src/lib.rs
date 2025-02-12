@@ -5,7 +5,7 @@
 
 use dfir_lang::diagnostic::{Diagnostic, Level};
 use dfir_lang::graph::{build_hfcode, partition_graph, FlatGraphBuilder};
-use dfir_lang::parse::HfCode;
+use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote};
 use syn::{
@@ -13,11 +13,11 @@ use syn::{
     WherePredicate,
 };
 
-/// Create a Hydroflow instance using Hydroflow's custom "surface syntax."
+/// Create a runnable graph instance using DFIR's custom syntax.
 ///
 /// For example usage, take a look at the [`surface_*` tests in the `tests` folder](https://github.com/hydro-project/hydro/tree/main/dfir_rs/tests)
 /// or the [`examples` folder](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples)
-/// in the [Hydroflow repo](https://github.com/hydro-project/hydro).
+/// in the [Hydro repo](https://github.com/hydro-project/hydro).
 // TODO(mingwei): rustdoc examples inline.
 #[proc_macro]
 pub fn dfir_syntax(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -35,9 +35,9 @@ pub fn dfir_syntax_noemit(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 fn root() -> proc_macro2::TokenStream {
     use std::env::{var as env_var, VarError};
 
-    let hydroflow_crate =
+    let root_crate =
         proc_macro_crate::crate_name("dfir_rs").expect("dfir_rs should be present in `Cargo.toml`");
-    match hydroflow_crate {
+    match root_crate {
         proc_macro_crate::FoundCrate::Itself => {
             if Err(VarError::NotPresent) == env_var("CARGO_BIN_NAME")
                 && Err(VarError::NotPresent) != env_var("CARGO_PRIMARY_PACKAGE")
@@ -61,7 +61,7 @@ fn dfir_syntax_internal(
     input: proc_macro::TokenStream,
     min_diagnostic_level: Option<Level>,
 ) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as HfCode);
+    let input = parse_macro_input!(input as DfirCode);
     let root = root();
     let (graph_code_opt, diagnostics) = build_hfcode(input, &root);
     let tokens = graph_code_opt
@@ -84,14 +84,14 @@ fn dfir_syntax_internal(
     .into()
 }
 
-/// Parse Hydroflow "surface syntax" without emitting code.
+/// Parse DFIR syntax without emitting code.
 ///
 /// Used for testing, users will want to use [`dfir_syntax!`] instead.
 #[proc_macro]
 pub fn dfir_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as HfCode);
+    let input = parse_macro_input!(input as DfirCode);
 
-    let flat_graph_builder = FlatGraphBuilder::from_hfcode(input);
+    let flat_graph_builder = FlatGraphBuilder::from_dfir(input);
     let (mut flat_graph, _uses, mut diagnostics) = flat_graph_builder.build();
     if !diagnostics.iter().any(Diagnostic::is_error) {
         if let Err(diagnostic) = flat_graph.merge_modules() {
@@ -153,7 +153,7 @@ pub fn doctest_markdown_glob(input: proc_macro::TokenStream) -> proc_macro::Toke
     out.into()
 }
 
-fn hydroflow_wrap(item: proc_macro::TokenStream, attribute: Attribute) -> proc_macro::TokenStream {
+fn wrap_localset(item: proc_macro::TokenStream, attribute: Attribute) -> proc_macro::TokenStream {
     use quote::ToTokens;
 
     let root = root();
@@ -198,7 +198,7 @@ pub fn dfir_test(
     let root = root();
     let args_2: proc_macro2::TokenStream = args.into();
 
-    hydroflow_wrap(
+    wrap_localset(
         item,
         parse_quote!(
             #[#root::tokio::test(flavor = "current_thread", #args_2)]
@@ -213,7 +213,7 @@ pub fn dfir_main(
 ) -> proc_macro::TokenStream {
     let root = root();
 
-    hydroflow_wrap(
+    wrap_localset(
         item,
         parse_quote!(
             #[#root::tokio::main(flavor = "current_thread")]

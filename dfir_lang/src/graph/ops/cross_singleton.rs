@@ -50,7 +50,7 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
     },
     write_fn: |wc @ &WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    op_span,
                    inputs,
@@ -65,11 +65,11 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
         let singleton_handle_ident = wc.make_ident("singleton_handle");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_handle_ident = #hydroflow.add_state(
+            let #singleton_handle_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::option::Option::None)
             );
             // Reset the value if it is a new tick.
-            #hydroflow.set_state_tick_hook(#singleton_handle_ident, |rcell| { rcell.take(); });
+            #df_ident.set_state_tick_hook(#singleton_handle_ident, |rcell| { rcell.take(); });
         };
 
         let write_iterator = quote_spanned! {op_span=>

@@ -4,7 +4,7 @@ use super::clear::Clear;
 
 /// A map-like interface which in reality only stores one value at a time.
 ///
-/// The keys must be monotonically increasing (i.e. timestamps). For Hydroflow, this allows state
+/// The keys must be monotonically increasing (i.e. timestamps). For DFIR, this allows state
 /// to be stored which resets each tick by using the tick counter as the key. In the generic `Map`
 /// case it can be swapped out for a true map to allow processing of multiple ticks of data at
 /// once.

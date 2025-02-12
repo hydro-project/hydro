@@ -1,4 +1,4 @@
-//! Hydroflow declarative macros.
+//! Declarative macros.
 
 /// [`assert!`] but returns a [`Result<(), String>`] instead of panicking.
 #[macro_export]
@@ -48,7 +48,7 @@ macro_rules! assert_var_impl {
 ///
 /// For example usage, see `dfir/tests/surface_warnings.rs`.
 #[macro_export]
-macro_rules! hydroflow_expect_warnings {
+macro_rules! dfir_expect_warnings {
     (
         $hf:tt,
         $( $msg:literal ),*
@@ -56,7 +56,7 @@ macro_rules! hydroflow_expect_warnings {
     ) => {
         {
             fn emit(msg: impl ::std::convert::AsRef<str>) {
-                if Ok("ignore") == ::std::env::var("HYDROFLOW_EXPECT_WARNINGS").as_deref() {
+                if Ok("ignore") == ::std::env::var("DFIR_EXPECT_WARNINGS").as_deref() {
                     eprintln!("{}", msg.as_ref());
                 } else {
                     panic!("{}", msg.as_ref());

@@ -10,14 +10,13 @@ use async_trait::async_trait;
 use hydroflow_deploy_integration::ServerBindConfig;
 use nameof::name_of;
 
-use super::{
-    ClientStrategy, Host, HostTargetType, LaunchedBinary, LaunchedHost, ResourceBatch,
-    ResourceResult, ServerStrategy,
-};
 use crate::hydroflow_crate::build::BuildOutput;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
-use crate::HostStrategyGetter;
+use crate::{
+    ClientStrategy, Host, HostStrategyGetter, HostTargetType, LaunchedBinary, LaunchedHost,
+    ResourceBatch, ResourceResult, ServerStrategy,
+};
 
 pub mod launched_binary;
 pub use launched_binary::*;

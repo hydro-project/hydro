@@ -58,7 +58,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     write_fn: |&WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -107,12 +107,12 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                     let #state_ident = {
                         let data_struct : #lattice_type = (#factory_fn)();
                         ::std::debug_assert!(::lattices::IsBot::is_bot(&data_struct));
-                        #hydroflow.add_state(::std::cell::RefCell::new(data_struct))
+                        #df_ident.add_state(::std::cell::RefCell::new(data_struct))
                     };
         };
         if Persistence::Tick == persistence {
             write_prologue.extend(quote_spanned! {op_span=>
-                #hydroflow.set_state_tick_hook(#state_ident, |rcell| { rcell.take(); }); // Resets state to `Default::default()`.
+                #df_ident.set_state_tick_hook(#state_ident, |rcell| { rcell.take(); }); // Resets state to `Default::default()`.
             });
         }
 
