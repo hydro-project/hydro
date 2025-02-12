@@ -48,12 +48,12 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
 /// Contains runtime information passed by Hydro Deploy to a program,
 /// describing how to connect to other services and metadata about them.
 pub struct DeployPorts<T = Option<()>> {
-    ports: RefCell<HashMap<String, ServerOrBound>>,
+    ports: RefCell<HashMap<String, Connection>>,
     pub meta: T,
 }
 
 impl<T> DeployPorts<T> {
-    pub fn port(&self, name: &str) -> ServerOrBound {
+    pub fn port(&self, name: &str) -> Connection {
         self.ports
             .try_borrow_mut()
             .unwrap()
@@ -74,7 +74,7 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
     let mut binds = HashMap::new();
     for (name, config) in bind_config.0 {
         let bound = config.bind().await;
-        bind_results.insert(name.clone(), bound.sink_port());
+        bind_results.insert(name.clone(), bound.server_port());
         binds.insert(name.clone(), bound);
     }
 
@@ -94,11 +94,11 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
 
     let mut all_connected = HashMap::new();
     for (name, defn) in connection_defns {
-        all_connected.insert(name, ServerOrBound::Server((&defn).into()));
+        all_connected.insert(name, Connection::AsClient(defn.connect()));
     }
 
     for (name, defn) in binds {
-        all_connected.insert(name, ServerOrBound::Bound(defn));
+        all_connected.insert(name, Connection::AsServer(defn));
     }
 
     DeployPorts {
