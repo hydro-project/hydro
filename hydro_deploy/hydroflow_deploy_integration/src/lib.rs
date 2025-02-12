@@ -43,29 +43,13 @@ pub enum ServerPort {
 }
 
 impl ServerPort {
-    pub fn instantiate(&self) -> ServerOrBound {
-        ServerOrBound::Server(self.into())
-    }
-}
-
-#[derive(Debug)]
-pub enum RealizedServerPort {
-    UnixSocket(JoinHandle<io::Result<UnixStream>>),
-    TcpPort(JoinHandle<io::Result<TcpStream>>),
-    Demux(HashMap<u32, RealizedServerPort>),
-    Merge(Vec<RealizedServerPort>),
-    Tagged(Box<RealizedServerPort>, u32),
-    Null,
-}
-
-impl From<&ServerPort> for RealizedServerPort {
-    fn from(port: &ServerPort) -> Self {
-        match port {
+    pub fn connect(&self) -> ClientConnection {
+        match self {
             ServerPort::UnixSocket(path) => {
                 #[cfg(unix)]
                 {
                     let bound = UnixStream::connect(path.clone());
-                    RealizedServerPort::UnixSocket(tokio::spawn(bound))
+                    ClientConnection::UnixSocket(tokio::spawn(bound))
                 }
 
                 #[cfg(not(unix))]
@@ -81,20 +65,34 @@ impl From<&ServerPort> for RealizedServerPort {
                     10,
                     Duration::from_secs(1),
                 );
-                RealizedServerPort::TcpPort(tokio::spawn(bound))
+                ClientConnection::TcpPort(tokio::spawn(bound))
             }
             ServerPort::Demux(bindings) => {
-                RealizedServerPort::Demux(bindings.iter().map(|(k, v)| (*k, v.into())).collect())
+                ClientConnection::Demux(bindings.iter().map(|(k, v)| (*k, v.connect())).collect())
             }
             ServerPort::Merge(ports) => {
-                RealizedServerPort::Merge(ports.iter().map(|p| p.into()).collect())
+                ClientConnection::Merge(ports.iter().map(|p| p.connect()).collect())
             }
             ServerPort::Tagged(port, tag) => {
-                RealizedServerPort::Tagged(Box::new(port.as_ref().into()), *tag)
+                ClientConnection::Tagged(Box::new(port.as_ref().connect()), *tag)
             }
-            ServerPort::Null => RealizedServerPort::Null,
+            ServerPort::Null => ClientConnection::Null,
         }
     }
+
+    pub fn instantiate(&self) -> Connection {
+        Connection::AsClient(self.connect())
+    }
+}
+
+#[derive(Debug)]
+pub enum ClientConnection {
+    UnixSocket(JoinHandle<io::Result<UnixStream>>),
+    TcpPort(JoinHandle<io::Result<TcpStream>>),
+    Demux(HashMap<u32, ClientConnection>),
+    Merge(Vec<ClientConnection>),
+    Tagged(Box<ClientConnection>, u32),
+    Null,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -112,7 +110,7 @@ pub enum ServerBindConfig {
 
 impl ServerBindConfig {
     #[async_recursion]
-    pub async fn bind(self) -> BoundConnection {
+    pub async fn bind(self) -> BoundServer {
         match self {
             ServerBindConfig::UnixSocket => {
                 #[cfg(unix)]
@@ -120,7 +118,7 @@ impl ServerBindConfig {
                     let dir = tempfile::tempdir().unwrap();
                     let socket_path = dir.path().join("socket");
                     let bound = UnixListener::bind(socket_path).unwrap();
-                    BoundConnection::UnixSocket(
+                    BoundServer::UnixSocket(
                         tokio::spawn(async move { Ok(bound.accept().await?.0) }),
                         dir,
                     )
@@ -134,37 +132,37 @@ impl ServerBindConfig {
             ServerBindConfig::TcpPort(host) => {
                 let listener = TcpListener::bind((host, 0)).await.unwrap();
                 let addr = listener.local_addr().unwrap();
-                BoundConnection::TcpPort(TcpListenerStream::new(listener), addr)
+                BoundServer::TcpPort(TcpListenerStream::new(listener), addr)
             }
             ServerBindConfig::Demux(bindings) => {
                 let mut demux = HashMap::new();
                 for (key, bind) in bindings {
                     demux.insert(key, bind.bind().await);
                 }
-                BoundConnection::Demux(demux)
+                BoundServer::Demux(demux)
             }
             ServerBindConfig::Merge(bindings) => {
                 let mut merge = Vec::new();
                 for bind in bindings {
                     merge.push(bind.bind().await);
                 }
-                BoundConnection::Merge(merge)
+                BoundServer::Merge(merge)
             }
             ServerBindConfig::Tagged(underlying, id) => {
-                BoundConnection::Tagged(Box::new(underlying.bind().await), id)
+                BoundServer::Tagged(Box::new(underlying.bind().await), id)
             }
-            ServerBindConfig::Null => BoundConnection::Null,
+            ServerBindConfig::Null => BoundServer::Null,
         }
     }
 }
 
 #[derive(Debug)]
-pub enum ServerOrBound {
-    Server(RealizedServerPort),
-    Bound(BoundConnection),
+pub enum Connection {
+    AsClient(ClientConnection),
+    AsServer(BoundServer),
 }
 
-impl ServerOrBound {
+impl Connection {
     pub async fn connect<T: Connected>(self) -> T {
         T::from_defn(self).await
     }
@@ -176,7 +174,7 @@ impl ServerOrBound {
     }
 
     pub async fn accept_tcp(&mut self) -> TcpStream {
-        if let ServerOrBound::Bound(BoundConnection::TcpPort(handle, _)) = self {
+        if let Connection::AsServer(BoundServer::TcpPort(handle, _)) = self {
             handle.next().await.unwrap().unwrap()
         } else {
             panic!("Not a TCP port")
@@ -201,7 +199,7 @@ pub type DynStreamSink = Pin<Box<dyn StreamSink + Send + Sync>>;
 
 #[async_trait]
 pub trait Connected: Send {
-    async fn from_defn(pipe: ServerOrBound) -> Self;
+    async fn from_defn(pipe: Connection) -> Self;
 }
 
 pub trait ConnectedSink {
@@ -218,19 +216,19 @@ pub trait ConnectedSource {
 }
 
 #[derive(Debug)]
-pub enum BoundConnection {
+pub enum BoundServer {
     UnixSocket(JoinHandle<io::Result<UnixStream>>, tempfile::TempDir),
     TcpPort(TcpListenerStream, SocketAddr),
-    Demux(HashMap<u32, BoundConnection>),
-    Merge(Vec<BoundConnection>),
-    Tagged(Box<BoundConnection>, u32),
+    Demux(HashMap<u32, BoundServer>),
+    Merge(Vec<BoundServer>),
+    Tagged(Box<BoundServer>, u32),
     Null,
 }
 
-impl BoundConnection {
-    pub fn sink_port(&self) -> ServerPort {
+impl BoundServer {
+    pub fn server_port(&self) -> ServerPort {
         match self {
-            BoundConnection::UnixSocket(_, tempdir) => {
+            BoundServer::UnixSocket(_, tempdir) => {
                 #[cfg(unix)]
                 {
                     ServerPort::UnixSocket(tempdir.path().join("socket"))
@@ -242,39 +240,39 @@ impl BoundConnection {
                     panic!("Unix sockets are not supported on this platform")
                 }
             }
-            BoundConnection::TcpPort(_, addr) => {
+            BoundServer::TcpPort(_, addr) => {
                 ServerPort::TcpPort(SocketAddr::new(addr.ip(), addr.port()))
             }
 
-            BoundConnection::Demux(bindings) => {
+            BoundServer::Demux(bindings) => {
                 let mut demux = HashMap::new();
                 for (key, bind) in bindings {
-                    demux.insert(*key, bind.sink_port());
+                    demux.insert(*key, bind.server_port());
                 }
                 ServerPort::Demux(demux)
             }
 
-            BoundConnection::Merge(bindings) => {
+            BoundServer::Merge(bindings) => {
                 let mut merge = Vec::new();
                 for bind in bindings {
-                    merge.push(bind.sink_port());
+                    merge.push(bind.server_port());
                 }
                 ServerPort::Merge(merge)
             }
 
-            BoundConnection::Tagged(underlying, id) => {
-                ServerPort::Tagged(Box::new(underlying.sink_port()), *id)
+            BoundServer::Tagged(underlying, id) => {
+                ServerPort::Tagged(Box::new(underlying.server_port()), *id)
             }
 
-            BoundConnection::Null => ServerPort::Null,
+            BoundServer::Null => ServerPort::Null,
         }
     }
 }
 
 #[async_recursion]
-async fn accept(bound: BoundConnection) -> ConnectedDirect {
+async fn accept(bound: BoundServer) -> ConnectedDirect {
     match bound {
-        BoundConnection::UnixSocket(listener, _) => {
+        BoundServer::UnixSocket(listener, _) => {
             #[cfg(unix)]
             {
                 let stream = listener.await.unwrap().unwrap();
@@ -291,7 +289,7 @@ async fn accept(bound: BoundConnection) -> ConnectedDirect {
                 panic!("Unix sockets are not supported on this platform")
             }
         }
-        BoundConnection::TcpPort(mut listener, _) => {
+        BoundServer::TcpPort(mut listener, _) => {
             let stream = listener.next().await.unwrap().unwrap();
             ConnectedDirect {
                 stream_sink: Some(Box::pin(tcp_bytes(stream))),
@@ -299,7 +297,7 @@ async fn accept(bound: BoundConnection) -> ConnectedDirect {
                 sink_only: None,
             }
         }
-        BoundConnection::Merge(merge) => {
+        BoundServer::Merge(merge) => {
             let mut sources = vec![];
             for bound in merge {
                 sources.push(accept(bound).await.into_source());
@@ -316,10 +314,10 @@ async fn accept(bound: BoundConnection) -> ConnectedDirect {
                 sink_only: None,
             }
         }
-        BoundConnection::Demux(_) => panic!("Cannot connect to a demux pipe directly"),
-        BoundConnection::Tagged(_, _) => panic!("Cannot connect to a tagged pipe directly"),
-        BoundConnection::Null => {
-            ConnectedDirect::from_defn(ServerOrBound::Server(RealizedServerPort::Null)).await
+        BoundServer::Demux(_) => panic!("Cannot connect to a demux pipe directly"),
+        BoundServer::Tagged(_, _) => panic!("Cannot connect to a tagged pipe directly"),
+        BoundServer::Null => {
+            ConnectedDirect::from_defn(Connection::AsClient(ClientConnection::Null)).await
         }
     }
 }
@@ -382,9 +380,9 @@ pub struct ConnectedDirect {
 
 #[async_trait]
 impl Connected for ConnectedDirect {
-    async fn from_defn(pipe: ServerOrBound) -> Self {
+    async fn from_defn(pipe: Connection) -> Self {
         match pipe {
-            ServerOrBound::Server(RealizedServerPort::UnixSocket(stream)) => {
+            Connection::AsClient(ClientConnection::UnixSocket(stream)) => {
                 #[cfg(unix)]
                 {
                     let stream = stream.await.unwrap().unwrap();
@@ -401,7 +399,7 @@ impl Connected for ConnectedDirect {
                     panic!("Unix sockets are not supported on this platform");
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::TcpPort(stream)) => {
+            Connection::AsClient(ClientConnection::TcpPort(stream)) => {
                 let stream = stream.await.unwrap().unwrap();
                 stream.set_nodelay(true).unwrap();
                 ConnectedDirect {
@@ -410,9 +408,9 @@ impl Connected for ConnectedDirect {
                     sink_only: None,
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::Merge(merge)) => {
+            Connection::AsClient(ClientConnection::Merge(merge)) => {
                 let sources = futures::future::join_all(merge.into_iter().map(|port| async {
-                    ConnectedDirect::from_defn(ServerOrBound::Server(port))
+                    ConnectedDirect::from_defn(Connection::AsClient(port))
                         .await
                         .into_source()
                 }))
@@ -429,15 +427,15 @@ impl Connected for ConnectedDirect {
                     sink_only: None,
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::Demux(_)) => {
+            Connection::AsClient(ClientConnection::Demux(_)) => {
                 panic!("Cannot connect to a demux pipe directly")
             }
 
-            ServerOrBound::Server(RealizedServerPort::Tagged(_, _)) => {
+            Connection::AsClient(ClientConnection::Tagged(_, _)) => {
                 panic!("Cannot connect to a tagged pipe directly")
             }
 
-            ServerOrBound::Server(RealizedServerPort::Null) => ConnectedDirect {
+            Connection::AsClient(ClientConnection::Null) => ConnectedDirect {
                 stream_sink: None,
                 source_only: Some(Box::pin(stream::empty())),
                 sink_only: Some(Box::pin(IoErrorDrain {
@@ -445,7 +443,7 @@ impl Connected for ConnectedDirect {
                 })),
             },
 
-            ServerOrBound::Bound(bound) => accept(bound).await,
+            Connection::AsServer(bound) => accept(bound).await,
         }
     }
 }
@@ -538,16 +536,16 @@ impl<T: Connected + ConnectedSink> Connected for ConnectedDemux<T>
 where
     <T as ConnectedSink>::Input: 'static + Sync,
 {
-    async fn from_defn(pipe: ServerOrBound) -> Self {
+    async fn from_defn(pipe: Connection) -> Self {
         match pipe {
-            ServerOrBound::Server(RealizedServerPort::Demux(demux)) => {
+            Connection::AsClient(ClientConnection::Demux(demux)) => {
                 let mut connected_demux = HashMap::new();
                 let keys = demux.keys().cloned().collect();
                 for (id, pipe) in demux {
                     connected_demux.insert(
                         id,
                         Box::pin(
-                            T::from_defn(ServerOrBound::Server(pipe))
+                            T::from_defn(Connection::AsClient(pipe))
                                 .await
                                 .into_sink()
                                 .buffer(1024),
@@ -566,14 +564,14 @@ where
                 }
             }
 
-            ServerOrBound::Bound(BoundConnection::Demux(demux)) => {
+            Connection::AsServer(BoundServer::Demux(demux)) => {
                 let mut connected_demux = HashMap::new();
                 let keys = demux.keys().cloned().collect();
                 for (id, bound) in demux {
                     connected_demux.insert(
                         id,
                         Box::pin(
-                            T::from_defn(ServerOrBound::Bound(bound))
+                            T::from_defn(Connection::AsServer(bound))
                                 .await
                                 .into_sink()
                                 .buffer(1024),
@@ -686,12 +684,12 @@ impl<T: Connected + ConnectedSource> Connected for ConnectedTagged<T>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,
 {
-    async fn from_defn(pipe: ServerOrBound) -> Self {
+    async fn from_defn(pipe: Connection) -> Self {
         let sources = match pipe {
-            ServerOrBound::Server(RealizedServerPort::Tagged(pipe, id)) => {
+            Connection::AsClient(ClientConnection::Tagged(pipe, id)) => {
                 vec![(
                     Box::pin(
-                        T::from_defn(ServerOrBound::Server(*pipe))
+                        T::from_defn(Connection::AsClient(*pipe))
                             .await
                             .into_source(),
                     ),
@@ -699,13 +697,13 @@ where
                 )]
             }
 
-            ServerOrBound::Server(RealizedServerPort::Merge(m)) => {
+            Connection::AsClient(ClientConnection::Merge(m)) => {
                 let mut sources = Vec::new();
                 for port in m {
-                    if let RealizedServerPort::Tagged(pipe, id) = port {
+                    if let ClientConnection::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
-                                T::from_defn(ServerOrBound::Server(*pipe))
+                                T::from_defn(Connection::AsClient(*pipe))
                                     .await
                                     .into_source(),
                             ),
@@ -719,10 +717,10 @@ where
                 sources
             }
 
-            ServerOrBound::Bound(BoundConnection::Tagged(pipe, id)) => {
+            Connection::AsServer(BoundServer::Tagged(pipe, id)) => {
                 vec![(
                     Box::pin(
-                        T::from_defn(ServerOrBound::Bound(*pipe))
+                        T::from_defn(Connection::AsServer(*pipe))
                             .await
                             .into_source(),
                     ),
@@ -730,13 +728,13 @@ where
                 )]
             }
 
-            ServerOrBound::Bound(BoundConnection::Merge(m)) => {
+            Connection::AsServer(BoundServer::Merge(m)) => {
                 let mut sources = Vec::new();
                 for port in m {
-                    if let BoundConnection::Tagged(pipe, id) = port {
+                    if let BoundServer::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
-                                T::from_defn(ServerOrBound::Bound(*pipe))
+                                T::from_defn(Connection::AsServer(*pipe))
                                     .await
                                     .into_source(),
                             ),

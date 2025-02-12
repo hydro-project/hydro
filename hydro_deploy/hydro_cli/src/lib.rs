@@ -15,7 +15,7 @@ use std::sync::{Arc, OnceLock};
 use bytes::Bytes;
 use futures::{Future, SinkExt, StreamExt};
 use hydroflow_deploy_integration::{
-    ConnectedDirect, ConnectedSink, ConnectedSource, DynSink, DynStream, ServerOrBound,
+    ConnectedDirect, ConnectedSink, ConnectedSource, Connection, DynSink, DynStream,
 };
 use pyo3::exceptions::{PyException, PyStopAsyncIteration};
 use pyo3::prelude::*;
@@ -731,7 +731,7 @@ impl ServerPort {
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
     fn into_source<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
-        let realized = with_tokio_runtime(|| ServerOrBound::Server((&self.underlying).into()));
+        let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
             Ok(PythonStream {
@@ -744,7 +744,7 @@ impl ServerPort {
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
     fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
-        let realized = with_tokio_runtime(|| ServerOrBound::Server((&self.underlying).into()));
+        let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
             Ok(PythonSink {
