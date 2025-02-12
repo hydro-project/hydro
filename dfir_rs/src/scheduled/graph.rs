@@ -32,7 +32,7 @@ use crate::Never;
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
     /// `(nonce, iteration count)` pair.
-    pub(super) loop_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
+    pub(super) loop_iter_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
 
     pub(super) context: Context,
 
@@ -320,14 +320,14 @@ impl<'a> Dfir<'a> {
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
                     let (prev_loop_nonce, prev_iter_count) = self
-                        .loop_counters
+                        .loop_iter_counters
                         .get(loop_id)
                         .copied()
                         .filter(|&loop_counter| sg_data.last_loop_nonce < loop_counter)
                         .unwrap_or(sg_data.last_loop_nonce);
 
-                    let curr_iter_count = if let Some(&(loop_loop_nonce, loop_iter_count)) =
-                        self.loop_counters.get(loop_id)
+                    let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
+                        self.loop_iter_counters.get(loop_id)
                     {
                         // If the loop nonce is the same as the previous execution, then we are in
                         // the same loop execution.
@@ -354,9 +354,12 @@ impl<'a> Dfir<'a> {
 
                     self.context.loop_iter_count = curr_iter_count;
                     // Update the loop data.
-                    self.loop_counters
-                        .insert(loop_id, (curr_loop_nonce.unwrap_or_default(), curr_iter_count));
-                    sg_data.last_loop_nonce = (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
+                    self.loop_iter_counters.insert(
+                        loop_id,
+                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count),
+                    );
+                    sg_data.last_loop_nonce =
+                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
                 }
 
                 tracing::info!(

@@ -13,7 +13,7 @@ pub fn test_flo_syntax() {
             users -> prefix() -> [0]cp;
             messages -> batch() -> [1]cp;
             cp = cross_join()
-                -> map(|item| (context.current_tick().0, item))
+                -> map(|item| (context.loop_iter_count(), item))
                 -> for_each(|x| result_send.send(x).unwrap());
         }
     };
@@ -65,7 +65,7 @@ pub fn test_flo_nested() {
             loop {
                 cp
                     -> all_once()
-                    -> map(|vec| (context.current_tick().0, vec))
+                    -> map(|item| (context.current_tick().0, item))
                     -> for_each(|x| result_send.send(x).unwrap());
             }
         }
