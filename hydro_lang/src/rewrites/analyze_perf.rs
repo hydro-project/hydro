@@ -35,41 +35,44 @@ fn parse_perf(file_path: &str) -> HashMap<usize, HashMap<String, f64>> {
     samples_per_operator
 }
 
-// fn combine_perf_outputs(folded_filepaths: Vec<&str>) {
-//     let mut id_to_usage = HashMap::new();
-//     for filepath in folded_filepaths {
-//         let mut id_to_usage_for_file = parse_perf(filepath);
-
-//     }
-// }
+fn analyze_perf_leaf(
+    leaf: & HydroLeaf,
+    id_to_usage: &mut HashMap<usize, HashMap<String, f64>>,
+    next_stmt_id: &mut usize,
+) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+        for (dfir_operator, samples) in dfir_operator_and_samples {
+            println!("Hydro node {}: {} {:.02}%", leaf.print_root(), dfir_operator, samples * 100f64);
+        }
+    }
+}
 
 fn analyze_perf_node(
     node: &mut HydroNode,
     id_to_usage: &mut HashMap<usize, HashMap<String, f64>>,
     next_stmt_id: &mut usize,
 ) {
-    let my_id = next_stmt_id;
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(my_id) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
         for (dfir_operator, samples) in dfir_operator_and_samples {
-            println!("Hydro node {}: {} {:.02}%", node.print_root(), dfir_operator, samples * 100f64);
+            println!("{} Hydro node {}: {} {:.02}%", next_stmt_id, node.print_root(), dfir_operator, samples * 100f64);
         }
-    }
-    else {
-        println!("No samples for operator with ID: {}. Not necessarily an error, could be because it barely executed.", my_id);
     }
 }
 
 pub fn analyze_perf(ir: Vec<HydroLeaf>) -> Vec<HydroLeaf> {
     let mut seen_tees = Default::default();
-    let mut id_to_usage = parse_perf("cluster0.data.folded");
+    let mut id_to_usage = parse_perf("proposer0.data.folded");
     let mut next_stmt_id = 0;
-    ir.into_iter()
+    let out = ir.into_iter()
         .map(|l| {
-            l.transform_children(
+            let l = l.transform_children(
                 |n, s, c| n.transform_bottom_up(analyze_perf_node, s, &mut id_to_usage, c),
                 &mut seen_tees,
                 &mut next_stmt_id,
-            )
+            );
+            analyze_perf_leaf(&l, &mut id_to_usage, &mut next_stmt_id);
+            l
         })
-        .collect()
+        .collect();
+    out
 }

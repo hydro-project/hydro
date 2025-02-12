@@ -580,7 +580,9 @@ impl<'a> HydroNode {
                 panic!();
             }
 
-            HydroNode::Source { .. } => {}
+            HydroNode::Source { .. } => {
+                *next_stmt_id += 1;
+            }
 
             HydroNode::CycleSource { .. } => {}
 
@@ -603,27 +605,14 @@ impl<'a> HydroNode {
                 }
             }
 
-            HydroNode::Persist { inner, .. } => {
+            HydroNode::Persist { inner, .. } | HydroNode::Unpersist { inner, .. } | HydroNode::Delta { inner, .. } => {
                 transform(inner.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             },
-            HydroNode::Unpersist { inner, .. } => {
-                transform(inner.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            },
-            HydroNode::Delta { inner, .. } => {
-                transform(inner.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
 
             HydroNode::Chain { first, second, .. } => {
                 transform(first.as_mut(), seen_tees, next_stmt_id);
                 transform(second.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::CrossProduct { left, right, .. } => {
-                transform(left.as_mut(), seen_tees, next_stmt_id);
-                transform(right.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }
             HydroNode::CrossSingleton { left, right, .. } => {
@@ -631,79 +620,77 @@ impl<'a> HydroNode {
                 transform(right.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }
-            HydroNode::Join { left, right, .. } => {
-                transform(left.as_mut(), seen_tees, next_stmt_id);
-                transform(right.as_mut(), seen_tees, next_stmt_id);
+            HydroNode::CrossProduct { .. } | HydroNode::Join { .. } => {
+                let (HydroNode::CrossProduct { left, right, .. }
+                | HydroNode::Join { left, right, .. }) = self
+                else {
+                    unreachable!()
+                };
+
+                let left_inner =
+                    if let HydroNode::Persist { inner: left, .. } = left.as_mut() {
+                        left
+                    } else {
+                        left
+                    };
+
+                let right_inner =
+                    if let HydroNode::Persist { inner: right, .. } = right.as_mut() {
+                        right
+                    } else {
+                        right
+                    };
+
+                transform(left_inner.as_mut(), seen_tees, next_stmt_id);
+                transform(right_inner.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }
-            HydroNode::Difference { pos, neg, .. } => {
+            HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } => {
+                let (HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. }) =
+                    self
+                else {
+                    unreachable!()
+                };
+
+                let neg =
+                    if let HydroNode::Persist { inner: neg, .. } = neg.as_mut() {
+                        neg
+                    } else {
+                        neg
+                    };
+
                 transform(pos.as_mut(), seen_tees, next_stmt_id);
                 transform(neg.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }
-            HydroNode::AntiJoin { pos, neg, .. } => {
-                transform(pos.as_mut(), seen_tees, next_stmt_id);
-                transform(neg.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
 
-            HydroNode::Map { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::FlatMap { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::Filter { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::FilterMap { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::Sort { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::DeferTick { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::Enumerate { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::Inspect { input, .. } => {
+            HydroNode::Map { input, .. } | HydroNode::FlatMap { input, .. } 
+            | HydroNode::Filter { input, .. } | HydroNode::FilterMap { input, .. }
+            | HydroNode::Sort { input, .. } | HydroNode::DeferTick { input, .. }
+            | HydroNode::Enumerate { input, .. } | HydroNode::Inspect { input, .. }
+            | HydroNode::Unique { input, .. } |  HydroNode::Network { input, .. } => {
                 transform(input.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }
 
-            HydroNode::Unique { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
+            HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
+                let (HydroNode::Fold {
+                    init: _, acc: _, input, ..
+                }
+                | HydroNode::FoldKeyed {
+                    init: _, acc: _, input, ..
+                } | HydroNode::Reduce { f: _, input, .. } | HydroNode::ReduceKeyed { f: _, input, .. }) = self
+                else {
+                    unreachable!()
+                };
 
-            HydroNode::Fold { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::FoldKeyed { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-
-            HydroNode::Reduce { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-            HydroNode::ReduceKeyed { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-            }
-
-            HydroNode::Network { input, .. } => {
+                let input =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        input
+                    } else {
+                        input
+                    };
+                    
                 transform(input.as_mut(), seen_tees, next_stmt_id);
                 *next_stmt_id += 1;
             }

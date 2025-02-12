@@ -16,31 +16,25 @@ async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let (create_host, rustflags): (HostCreator, &'static str) = if host_arg == *"gcp" {
+    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
+    let create_host: HostCreator = if host_arg == *"gcp" {
         let project = std::env::args().nth(2).unwrap();
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
-
-        (
-            Box::new(move |deployment| -> Arc<dyn Host> {
-                let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
-                deployment
-                    .GcpComputeEngineHost()
-                    .project(&project)
-                    .machine_type("e2-micro")
-                    .image("debian-cloud/debian-11")
-                    .region("us-west1-a")
-                    .network(network.clone())
-                    .startup_script(startup_script)
-                    .add()
-            }),
-            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure",
-        )
+        Box::new(move |deployment| -> Arc<dyn Host> {
+            let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+            deployment
+                .GcpComputeEngineHost()
+                .project(&project)
+                .machine_type("e2-micro")
+                .image("debian-cloud/debian-11")
+                .region("us-west1-a")
+                .network(network.clone())
+                .startup_script(startup_script)
+                .add()
+        })
     } else {
         let localhost = deployment.Localhost();
-        (
-            Box::new(move |_| -> Arc<dyn Host> { localhost.clone() }),
-            "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure",
-        )
+        Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
     let builder = hydro_lang::FlowBuilder::new();
