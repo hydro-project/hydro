@@ -130,63 +130,65 @@ pub enum HydroLeaf {
 impl HydroLeaf {
     #[cfg(feature = "build")]
     pub fn compile_network<'a, D: Deploy<'a>>(
-        self,
+        &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    ) -> HydroLeaf {
-        let mut next_stmt_id = 0;
+    ) {
         self.transform_children(
-            |n, s, _| {
+            |n, s| {
                 n.compile_network::<D>(compile_env, s, processes, clusters, externals);
             },
             seen_tees,
-            &mut next_stmt_id,
         )
     }
 
-    pub fn connect_network(self, seen_tees: &mut SeenTees) -> HydroLeaf {
-        let mut next_stmt_id = 0;
+    pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
         self.transform_children(
-            |n, s, _| {
+            |n, s| {
                 n.connect_network(s);
             },
             seen_tees,
-            &mut next_stmt_id,
         )
     }
 
-    pub fn transform_children(
-        self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees, &mut usize),
+    pub fn transform_bottom_up<C>(
+        &mut self,
+        mut transform_leaf: impl FnMut(&mut HydroLeaf, &mut C, &mut usize) + Copy,
+        transform_node: impl FnMut(&mut HydroNode, &mut C, &mut usize) + Copy,
         seen_tees: &mut SeenTees,
-        next_stmt_id: &mut usize,
-    ) -> HydroLeaf {
+        ctx: &mut C,
+        next_stmt_id: &mut usize
+    ) {
+        self.transform_children(|n, s| n.transform_bottom_up(transform_node, s, ctx, next_stmt_id), seen_tees);
+
+        transform_leaf(self, ctx, next_stmt_id);
+
+        // Don't increment next_stmt_id in special cases
         match self {
-            HydroLeaf::ForEach { f, mut input } => {
-                transform(&mut input, seen_tees, next_stmt_id);
+            HydroLeaf::CycleSink { .. } => {}
+            _ => {
                 *next_stmt_id += 1;
-                HydroLeaf::ForEach { f, input }
             }
-            HydroLeaf::DestSink { sink, mut input } => {
-                transform(&mut input, seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
-                HydroLeaf::DestSink { sink, input }
-            }
-            HydroLeaf::CycleSink {
-                ident,
-                location_kind,
-                mut input,
+        }
+    }
+
+    pub fn transform_children(
+        &mut self,
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
+        seen_tees: &mut SeenTees,
+    ) {
+        match self {
+            HydroLeaf::ForEach { f: _, ref mut input }
+            | HydroLeaf::DestSink { sink: _, ref mut input }
+            | HydroLeaf::CycleSink {
+                ident: _,
+                location_kind: _,
+                ref mut input,
             } => {
-                transform(&mut input, seen_tees, next_stmt_id);
-                // Don't need to increment next_stmt_id because CycleSink doesn't show up in DFIR
-                HydroLeaf::CycleSink {
-                    ident,
-                    location_kind,
-                    input,
-                }
+                transform(input, seen_tees);
             }
         }
     }
@@ -563,28 +565,31 @@ impl<'a> HydroNode {
         ctx: &mut C,
         next_stmt_id: &mut usize
     ) {
-        self.transform_children(|n, s, c| n.transform_bottom_up(transform, s, ctx, c), seen_tees, next_stmt_id);
+        self.transform_children(|n, s| n.transform_bottom_up(transform, s, ctx, next_stmt_id), seen_tees);
 
-        transform(self, ctx, next_stmt_id)
+        transform(self, ctx, next_stmt_id);
+
+        // Don't increment next_stmt_id in special cases
+        match self {
+            HydroNode::Placeholder | HydroNode::CycleSource { .. } => {}
+            _ => {
+                *next_stmt_id += 1;
+            }
+        }
     }
 
     #[inline(always)]
     pub fn transform_children(
         &mut self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees, &mut usize),
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
         seen_tees: &mut SeenTees,
-        next_stmt_id: &mut usize,
     ) {
         match self {
             HydroNode::Placeholder => {
                 panic!();
             }
 
-            HydroNode::Source { .. } => {
-                *next_stmt_id += 1;
-            }
-
-            HydroNode::CycleSource { .. } => {}
+            HydroNode::Source { .. } | HydroNode::CycleSource { .. } => {}
 
             HydroNode::Tee { inner, .. } => {
                 if let Some(transformed) =
@@ -598,27 +603,23 @@ impl<'a> HydroNode {
                         transformed_cell.clone(),
                     );
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
-                    transform(&mut orig, seen_tees, next_stmt_id);
-                    *next_stmt_id += 1;
+                    transform(&mut orig, seen_tees);
                     *transformed_cell.borrow_mut() = orig;
                     *inner = TeeNode(transformed_cell);
                 }
             }
 
             HydroNode::Persist { inner, .. } | HydroNode::Unpersist { inner, .. } | HydroNode::Delta { inner, .. } => {
-                transform(inner.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(inner.as_mut(), seen_tees);
             },
 
             HydroNode::Chain { first, second, .. } => {
-                transform(first.as_mut(), seen_tees, next_stmt_id);
-                transform(second.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(first.as_mut(), seen_tees);
+                transform(second.as_mut(), seen_tees);
             }
             HydroNode::CrossSingleton { left, right, .. } => {
-                transform(left.as_mut(), seen_tees, next_stmt_id);
-                transform(right.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(left.as_mut(), seen_tees);
+                transform(right.as_mut(), seen_tees);
             }
             HydroNode::CrossProduct { .. } | HydroNode::Join { .. } => {
                 let (HydroNode::CrossProduct { left, right, .. }
@@ -641,9 +642,8 @@ impl<'a> HydroNode {
                         right
                     };
 
-                transform(left_inner.as_mut(), seen_tees, next_stmt_id);
-                transform(right_inner.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(left_inner.as_mut(), seen_tees);
+                transform(right_inner.as_mut(), seen_tees);
             }
             HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } => {
                 let (HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. }) =
@@ -659,9 +659,8 @@ impl<'a> HydroNode {
                         neg
                     };
 
-                transform(pos.as_mut(), seen_tees, next_stmt_id);
-                transform(neg.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(pos.as_mut(), seen_tees);
+                transform(neg.as_mut(), seen_tees);
             }
 
             HydroNode::Map { input, .. } | HydroNode::FlatMap { input, .. } 
@@ -669,8 +668,7 @@ impl<'a> HydroNode {
             | HydroNode::Sort { input, .. } | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. } | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. } |  HydroNode::Network { input, .. } => {
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(input.as_mut(), seen_tees);
             }
 
             HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
@@ -691,8 +689,7 @@ impl<'a> HydroNode {
                         input
                     };
                     
-                transform(input.as_mut(), seen_tees, next_stmt_id);
-                *next_stmt_id += 1;
+                transform(input.as_mut(), seen_tees);
             }
         }
     }
