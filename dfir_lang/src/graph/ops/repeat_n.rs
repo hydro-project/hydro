@@ -60,7 +60,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
-        // TODO(mingwei): USE LOOP ITERATION COUNTER.
         // Reschedule, to repeat.
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>

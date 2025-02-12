@@ -283,28 +283,20 @@ impl<'a> Dfir<'a> {
                         // We have entered a loop.
                         self.context.loop_nonce += 1;
                         self.context.loop_nonce_stack.push(self.context.loop_nonce);
-                        tracing::warn!(loop_nonce = self.context.loop_nonce, "Entered loop.");
+                        tracing::trace!(loop_nonce = self.context.loop_nonce, "Entered loop.");
                     }
                     Ordering::Less => {
                         // We have exited a loop.
                         self.context.loop_nonce_stack.pop();
-                        tracing::warn!("Exited loop.");
+                        tracing::trace!("Exited loop.");
                     }
                     Ordering::Equal => {}
                 }
-
-                tracing::warn!(
-                    loop_nonce = self.context.loop_nonce,
-                    stack_len = self.context.loop_nonce_stack.len(),
-                    "stack: {:?}",
-                    self.context.loop_nonce_stack,
-                );
 
                 tracing::info!(
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
                     sg_depth = sg_data.loop_depth,
-                    sg_loop_nonce = sg_data.last_loop_nonce.0,
                     sg_iter_count = sg_data.last_loop_nonce.1,
                     "preRunning subgraph."
                 );
