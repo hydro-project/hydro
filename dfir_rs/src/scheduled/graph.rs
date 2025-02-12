@@ -303,16 +303,11 @@ impl<'a> Dfir<'a> {
                     // iteration count, then we need to increment the count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
-                    let (prev_loop_nonce, prev_iter_count) = self
-                        .loop_iter_counters
-                        .get(loop_id)
-                        .copied()
-                        .filter(|&loop_counter| sg_data.last_loop_nonce < loop_counter)
-                        .unwrap_or(sg_data.last_loop_nonce);
-
                     let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
                         self.loop_iter_counters.get(loop_id)
                     {
+                        let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+
                         // If the loop nonce is the same as the previous execution, then we are in
                         // the same loop execution.
                         // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
