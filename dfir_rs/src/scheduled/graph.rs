@@ -293,14 +293,6 @@ impl<'a> Dfir<'a> {
                     Ordering::Equal => {}
                 }
 
-                tracing::info!(
-                    sg_id = sg_id.to_string(),
-                    sg_name = &*sg_data.name,
-                    sg_depth = sg_data.loop_depth,
-                    sg_iter_count = sg_data.last_loop_nonce.1,
-                    "preRunning subgraph."
-                );
-
                 self.context.subgraph_id = sg_id;
                 self.context.is_first_run_this_tick = sg_data
                     .last_tick_run_in
