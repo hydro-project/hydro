@@ -275,17 +275,13 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a></pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
+<a href="#277" id="277">277</a></pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::task::{Context, Poll};
 <span class="kw">use </span>std::thread_local;
 
-<span class="kw">use </span>dfir_datalog_core::gen_hydroflow_graph;
+<span class="kw">use </span>dfir_datalog_core::gen_dfir_graph;
 <span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span>dfir_lang::graph::{build_hfcode, partition_graph, WriteConfig};
 <span class="kw">use </span>dfir_rs::datalog;
@@ -400,7 +396,7 @@
 
     <span class="kw">let </span>out = <span class="kw">match </span>syn::parse_str(<span class="kw-2">&amp;</span>program) {
         <span class="prelude-val">Ok</span>(input) =&gt; {
-            <span class="kw">let </span>(graph_code_opt, diagnostics) = build_hfcode(input, <span class="kw-2">&amp;</span><span class="macro">quote!</span>(hydroflow));
+            <span class="kw">let </span>(graph_code_opt, diagnostics) = build_hfcode(input, <span class="kw-2">&amp;</span><span class="macro">quote!</span>(dfir_rs));
             <span class="kw">let </span>output = graph_code_opt.map(|(graph, code)| {
                 <span class="kw">let </span>mermaid = graph.to_mermaid(<span class="kw-2">&amp;</span>write_config);
                 <span class="kw">let </span>file = <span class="macro">syn::parse_quote!</span> {
@@ -455,17 +451,13 @@
 
     <span class="kw">let </span>wrapped = <span class="macro">format!</span>(<span class="string">"r#\"{}\"#"</span>, program);
     <span class="kw">let </span>out = <span class="kw">match </span>syn::parse_str(<span class="kw-2">&amp;</span>wrapped) {
-        <span class="prelude-val">Ok</span>(input) =&gt; <span class="kw">match </span>gen_hydroflow_graph(input) {
+        <span class="prelude-val">Ok</span>(input) =&gt; <span class="kw">match </span>gen_dfir_graph(input) {
             <span class="prelude-val">Ok</span>(flat_graph) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>diagnostics = Vec::new();
                 <span class="kw">let </span>output = <span class="kw">match </span>partition_graph(flat_graph) {
                     <span class="prelude-val">Ok</span>(part_graph) =&gt; {
-                        <span class="kw">let </span>out = part_graph.as_code(
-                            <span class="kw-2">&amp;</span><span class="macro">quote!</span>(hydroflow),
-                            <span class="bool-val">true</span>,
-                            <span class="macro">quote!</span>(),
-                            <span class="kw-2">&amp;mut </span>diagnostics,
-                        );
+                        <span class="kw">let </span>out =
+                            part_graph.as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span>(dfir_rs), <span class="bool-val">true</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics);
                         <span class="kw">let </span>file: syn::File = <span class="macro">syn::parse_quote!</span> {
                             <span class="kw">fn </span>main() {
                                 #out

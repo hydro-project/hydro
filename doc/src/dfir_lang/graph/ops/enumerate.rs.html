@@ -149,7 +149,7 @@
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -185,11 +185,11 @@
         <span class="kw">let </span>counter_ident = wc.make_ident(<span class="string">"counterdata"</span>);
 
         <span class="kw">let </span><span class="kw-2">mut </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#counter_ident = #hydroflow.add_state(::std::cell::RefCell::new(<span class="number">0</span>..));
+            <span class="kw">let </span>#counter_ident = #df_ident.add_state(::std::cell::RefCell::new(<span class="number">0</span>..));
         };
         <span class="kw">if </span>Persistence::Tick == persistence {
             write_prologue.extend(<span class="macro">quote_spanned!</span> {op_span=&gt;
-                #hydroflow.set_state_tick_hook(#counter_ident, |rcell| { rcell.replace(<span class="number">0</span>..); });
+                #df_ident.set_state_tick_hook(#counter_ident, |rcell| { rcell.replace(<span class="number">0</span>..); });
             });
         }
 

@@ -217,7 +217,7 @@
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -233,7 +233,7 @@
         <span class="kw">let </span>py_func_ident = wc.make_ident(<span class="string">"py_func"</span>);
 
         <span class="kw">let </span>err_lit = Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
-            <span class="string">"Hydroflow 'python' feature must be enabled to use `{}`"</span>,
+            <span class="string">"`python` feature must be enabled to use `{}`"</span>,
             op_name
         ));
 
@@ -252,7 +252,7 @@
                             </span>.getattr(#py_func_name)<span class="question-mark">?
                             </span>.into())
                         }).expect(<span class="string">"Failed to compile python."</span>);
-                        #hydroflow.add_state(func)
+                        #df_ident.add_state(func)
                     };
                 },
                 {

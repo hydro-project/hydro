@@ -1273,14 +1273,15 @@
 <a href="#1272" id="1272">1272</a>
 <a href="#1273" id="1273">1273</a>
 <a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<a href="#1275" id="1275">1275</a>
+<a href="#1276" id="1276">1276</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>std::ops::Deref;
 
 <span class="kw">pub use </span>dfir_lang::diagnostic;
 <span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span>dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph, DfirGraph, FlatGraphBuilder};
 <span class="kw">use </span>dfir_lang::parse::{
-    HfStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
+    DfirStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
 };
 <span class="kw">use </span>proc_macro2::{Span, TokenStream};
 <span class="kw">use </span>rust_sitter::errors::{ParseError, ParseErrorReason};
@@ -1328,7 +1329,7 @@
         })
 }
 
-<span class="kw">pub fn </span>gen_hydroflow_graph(literal: proc_macro2::Literal) -&gt; <span class="prelude-ty">Result</span>&lt;DfirGraph, Vec&lt;Diagnostic&gt;&gt; {
+<span class="kw">pub fn </span>gen_dfir_graph(literal: proc_macro2::Literal) -&gt; <span class="prelude-ty">Result</span>&lt;DfirGraph, Vec&lt;Diagnostic&gt;&gt; {
     <span class="kw">let </span>offset = {
         <span class="comment">// This includes the quotes, i.e. 'r#"my test"#' or '"hello\nworld"'.
         </span><span class="kw">let </span>source_str = literal.to_string();
@@ -1596,7 +1597,7 @@
     diagnostics
 }
 
-<span class="kw">pub fn </span>hydroflow_graph_to_program(flat_graph: DfirGraph, root: TokenStream) -&gt; TokenStream {
+<span class="kw">pub fn </span>dfir_graph_to_program(flat_graph: DfirGraph, root: TokenStream) -&gt; TokenStream {
     <span class="kw">let </span>partitioned_graph =
         partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>);
 
@@ -1708,7 +1709,7 @@
             span: Span::call_site(),
         }),
     });
-    flat_graph_builder.add_statement(HfStatement::Pipeline(PipelineStatement {
+    flat_graph_builder.add_statement(DfirStatement::Pipeline(PipelineStatement {
         pipeline: Pipeline::Link(PipelineLink {
             lhs: Box::new(<span class="macro">parse_quote!</span>(#out_name #out_indexing)), <span class="comment">// out_name[idx]
             </span>arrow: <span class="macro">parse_quote!</span>(-&gt;),
@@ -2092,18 +2093,19 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>syn::parse_quote;
 
-    <span class="kw">use super</span>::{gen_hydroflow_graph, hydroflow_graph_to_program};
+    <span class="kw">use super</span>::{dfir_graph_to_program, gen_dfir_graph};
 
     <span class="macro">macro_rules!</span> test_snapshots {
         (<span class="macro-nonterminal">$program</span>:literal) =&gt; {
-            <span class="kw">let </span>flat_graph = gen_hydroflow_graph(<span class="macro">parse_quote!</span>(<span class="macro-nonterminal">$program</span>)).unwrap();
+            <span class="kw">let </span>flat_graph = gen_dfir_graph(<span class="macro">parse_quote!</span>(<span class="macro-nonterminal">$program</span>)).unwrap();
 
             <span class="kw">let </span>flat_graph_ref = <span class="kw-2">&amp;</span>flat_graph;
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">"surface_graph"</span>}, {
                 <span class="macro">insta::assert_snapshot!</span>(flat_graph_ref.surface_syntax_string());
             });
 
-            <span class="kw">let </span>tokens = hydroflow_graph_to_program(flat_graph, <span class="macro">quote::quote!</span> { hydroflow });
+            <span class="comment">// `dfir_rs` as root. Only used for codegen snapshot testing.
+            </span><span class="kw">let </span>tokens = dfir_graph_to_program(flat_graph, <span class="macro">quote::quote!</span> { dfir_rs });
             <span class="kw">let </span>out: syn::Stmt = <span class="macro">syn::parse_quote!</span>(#tokens);
             <span class="kw">let </span>wrapped: syn::File = <span class="macro">parse_quote!</span> {
                 <span class="kw">fn </span>main() {

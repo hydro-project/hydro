@@ -135,7 +135,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
 <span class="doccomment">/// `persist_mut_keyed()` is similar to `persist_mut()` except that it also enables key-based deletions
-/// `persist_mut()` expects an input of type [`PersistenceKeyed&lt;T&gt;`](https://docs.rs/hydroflow/latest/hydroflow/util/enum.PersistenceKeyed.html),
+/// `persist_mut()` expects an input of type [`PersistenceKeyed&lt;T&gt;`](https://docs.rs/dfir_rs/latest/dfir_rs/util/enum.PersistenceKeyed.html),
 /// and it is this enumeration that enables the user to communicate deletion.
 /// Deletions/persists happen in the order they are received in the stream.
 /// For example, `[Persist(1), Delete(1), Persist(1)]` will result in a a single `1` value being stored.
@@ -174,7 +174,7 @@
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -204,7 +204,7 @@
         <span class="kw">let </span>persistdata_ident = wc.make_ident(<span class="string">"persistdata"</span>);
         <span class="kw">let </span>vec_ident = wc.make_ident(<span class="string">"persistvec"</span>);
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#persistdata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+            <span class="kw">let </span>#persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::rustc_hash::FxHashMap::&lt;<span class="kw">_</span>, #root::util::sparse_vec::SparseVec&lt;<span class="kw">_</span>&gt;&gt;::default()
             ));
         };

@@ -88,7 +88,7 @@
     input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -101,7 +101,7 @@
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="attr">#[allow(clippy::redundant_closure_call)]
-            </span><span class="kw">let </span>#singleton_output_ident = #hydroflow.add_state(
+            </span><span class="kw">let </span>#singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::vec::Vec::new())
             );
         };

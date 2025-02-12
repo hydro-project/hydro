@@ -878,7 +878,7 @@
 <span class="kw">use </span>bytes::Bytes;
 <span class="kw">use </span>futures::{Future, SinkExt, StreamExt};
 <span class="kw">use </span>hydroflow_deploy_integration::{
-    ConnectedDirect, ConnectedSink, ConnectedSource, DynSink, DynStream, ServerOrBound,
+    ConnectedDirect, ConnectedSink, ConnectedSource, Connection, DynSink, DynStream,
 };
 <span class="kw">use </span>pyo3::exceptions::{PyException, PyStopAsyncIteration};
 <span class="kw">use </span>pyo3::prelude::<span class="kw-2">*</span>;
@@ -1594,7 +1594,7 @@
 
     <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
     </span><span class="kw">fn </span>into_source&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'p </span>PyAny&gt; {
-        <span class="kw">let </span>realized = with_tokio_runtime(|| ServerOrBound::Server((<span class="kw-2">&amp;</span><span class="self">self</span>.underlying).into()));
+        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
 
         interruptible_future_to_py(py, <span class="kw">async move </span>{
             <span class="prelude-val">Ok</span>(PythonStream {
@@ -1607,7 +1607,7 @@
 
     <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
     </span><span class="kw">fn </span>into_sink&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'p </span>PyAny&gt; {
-        <span class="kw">let </span>realized = with_tokio_runtime(|| ServerOrBound::Server((<span class="kw-2">&amp;</span><span class="self">self</span>.underlying).into()));
+        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
 
         interruptible_future_to_py(py, <span class="kw">async move </span>{
             <span class="prelude-val">Ok</span>(PythonSink {

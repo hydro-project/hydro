@@ -24,9 +24,9 @@
 <span class="kw">pub type </span>Invariant&lt;<span class="lifetime">'a</span>, D = ()&gt; = PhantomData&lt;(<span class="kw">fn</span>(<span class="kw-2">&amp;</span><span class="lifetime">'a </span>()) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'a </span>(), D)&gt;;
 
 <span class="kw">pub fn </span>get_this_crate() -&gt; TokenStream {
-    <span class="kw">let </span>hydroflow_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
+    <span class="kw">let </span>hydro_lang_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
         .expect(<span class="string">"hydro_lang should be present in `Cargo.toml`"</span>);
-    <span class="kw">match </span>hydroflow_crate {
+    <span class="kw">match </span>hydro_lang_crate {
         proc_macro_crate::FoundCrate::Itself =&gt; <span class="macro">quote!</span> { hydro_lang },
         proc_macro_crate::FoundCrate::Name(name) =&gt; {
             <span class="kw">let </span>ident = syn::Ident::new(<span class="kw-2">&amp;</span>name, Span::call_site());

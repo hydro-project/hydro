@@ -432,7 +432,7 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for Hydroflow graphs.
+<a href="#434" id="434">434</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for DFIR graphs.
 
 </span><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::hash::Hash;
@@ -447,7 +447,7 @@
 
 <span class="kw">use </span><span class="self">self</span>::ops::{OperatorConstraints, Persistence};
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
-<span class="kw">use </span><span class="kw">crate</span>::parse::{HfCode, IndexInt, Operator, PortIndex, Ported};
+<span class="kw">use </span><span class="kw">crate</span>::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported};
 <span class="kw">use </span><span class="kw">crate</span>::pretty_span::PrettySpan;
 
 <span class="kw">mod </span>di_mul_graph;
@@ -455,8 +455,8 @@
 <span class="kw">mod </span>flat_graph_builder;
 <span class="kw">mod </span>flat_to_partitioned;
 <span class="kw">mod </span>graph_write;
-<span class="kw">mod </span>hydroflow_graph;
-<span class="kw">mod </span>hydroflow_graph_debugging;
+<span class="kw">mod </span>meta_graph;
+<span class="kw">mod </span>meta_graph_debugging;
 
 <span class="kw">use </span>std::fmt::Display;
 
@@ -464,7 +464,7 @@
 <span class="kw">pub use </span>eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 <span class="kw">pub use </span>flat_graph_builder::FlatGraphBuilder;
 <span class="kw">pub use </span>flat_to_partitioned::partition_graph;
-<span class="kw">pub use </span>hydroflow_graph::{DfirGraph, WriteConfig, WriteGraphType};
+<span class="kw">pub use </span>meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 
 <span class="kw">pub mod </span>graph_algorithms;
 <span class="kw">pub mod </span>ops;
@@ -485,8 +485,8 @@
 
 <span class="doccomment">/// Context identifier as a string.
 </span><span class="kw">const </span>CONTEXT: <span class="kw-2">&amp;</span>str = <span class="string">"context"</span>;
-<span class="doccomment">/// Hydroflow identifier as a string.
-</span><span class="kw">const </span>HYDROFLOW: <span class="kw-2">&amp;</span>str = <span class="string">"df"</span>;
+<span class="doccomment">/// Runnable DFIR graph object identifier as a string.
+</span><span class="kw">const </span>GRAPH: <span class="kw-2">&amp;</span>str = <span class="string">"df"</span>;
 
 <span class="kw">const </span>HANDOFF_NODE_STR: <span class="kw-2">&amp;</span>str = <span class="string">"handoff"</span>;
 <span class="kw">const </span>MODULE_BOUNDARY_NODE_STR: <span class="kw-2">&amp;</span>str = <span class="string">"module_boundary"</span>;
@@ -804,13 +804,13 @@
     }
 }
 
-<span class="doccomment">/// The main function of this module. Compiles a [`HfCode`] AST into a [`DfirGraph`] and
+<span class="doccomment">/// The main function of this module. Compiles a [`DfirCode`] AST into a [`DfirGraph`] and
 /// source code, or [`Diagnostic`] errors.
 </span><span class="kw">pub fn </span>build_hfcode(
-    hf_code: HfCode,
+    hf_code: DfirCode,
     root: <span class="kw-2">&amp;</span>TokenStream,
 ) -&gt; (<span class="prelude-ty">Option</span>&lt;(DfirGraph, TokenStream)&gt;, Vec&lt;Diagnostic&gt;) {
-    <span class="kw">let </span>flat_graph_builder = FlatGraphBuilder::from_hfcode(hf_code);
+    <span class="kw">let </span>flat_graph_builder = FlatGraphBuilder::from_dfir(hf_code);
     <span class="kw">let </span>(<span class="kw-2">mut </span>flat_graph, uses, <span class="kw-2">mut </span>diagnostics) = flat_graph_builder.build();
     <span class="kw">if </span>!diagnostics.iter().any(Diagnostic::is_error) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(diagnostic) = flat_graph.merge_modules() {

@@ -137,7 +137,7 @@
 
         <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
 
-        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>)).hydroflow_ir() {
+        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>)).dfir() {
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
                 <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
             });

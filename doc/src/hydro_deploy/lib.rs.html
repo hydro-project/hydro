@@ -219,15 +219,16 @@
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#221" id="221">221</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>async_trait::async_trait;
+<span class="kw">use </span>hydroflow_crate::build::BuildOutput;
 <span class="kw">use </span>hydroflow_crate::tracing_options::TracingOptions;
 <span class="kw">use </span>hydroflow_deploy_integration::ServerBindConfig;
+<span class="kw">use </span>tokio::sync::{mpsc, oneshot};
 
 <span class="kw">pub mod </span>deployment;
 <span class="kw">pub use </span>deployment::Deployment;
@@ -250,9 +251,6 @@
 
 <span class="kw">pub mod </span>custom_service;
 <span class="kw">pub use </span>custom_service::CustomService;
-<span class="kw">use </span>tokio::sync::{mpsc, oneshot};
-
-<span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::build::BuildOutput;
 
 <span class="kw">pub mod </span>terraform;
 

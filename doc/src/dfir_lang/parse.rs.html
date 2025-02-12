@@ -631,19 +631,19 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::process_singletons::preprocess_singletons;
 
-<span class="kw">pub struct </span>HfCode {
-    <span class="kw">pub </span>statements: Vec&lt;HfStatement&gt;,
+<span class="kw">pub struct </span>DfirCode {
+    <span class="kw">pub </span>statements: Vec&lt;DfirStatement&gt;,
 }
-<span class="kw">impl </span>Parse <span class="kw">for </span>HfCode {
+<span class="kw">impl </span>Parse <span class="kw">for </span>DfirCode {
     <span class="kw">fn </span>parse(input: ParseStream) -&gt; syn::Result&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>statements = Vec::new();
         <span class="kw">while </span>!input.is_empty() {
             statements.push(input.parse()<span class="question-mark">?</span>);
         }
-        <span class="prelude-val">Ok</span>(HfCode { statements })
+        <span class="prelude-val">Ok</span>(DfirCode { statements })
     }
 }
-<span class="kw">impl </span>ToTokens <span class="kw">for </span>HfCode {
+<span class="kw">impl </span>ToTokens <span class="kw">for </span>DfirCode {
     <span class="kw">fn </span>to_tokens(<span class="kw-2">&amp;</span><span class="self">self</span>, tokens: <span class="kw-2">&amp;mut </span>TokenStream) {
         <span class="kw">for </span>statement <span class="kw">in </span><span class="self">self</span>.statements.iter() {
             statement.to_tokens(tokens);
@@ -651,13 +651,13 @@
     }
 }
 
-<span class="kw">pub enum </span>HfStatement {
+<span class="kw">pub enum </span>DfirStatement {
     Use(ItemUse),
-    Named(NamedHfStatement),
+    Named(NamedStatement),
     Pipeline(PipelineStatement),
     Loop(LoopStatement),
 }
-<span class="kw">impl </span>Parse <span class="kw">for </span>HfStatement {
+<span class="kw">impl </span>Parse <span class="kw">for </span>DfirStatement {
     <span class="kw">fn </span>parse(input: ParseStream) -&gt; syn::Result&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>lookahead1 = input.lookahead1();
         <span class="kw">if </span>lookahead1.peek(<span class="macro">Token!</span>[<span class="kw">use</span>]) {
@@ -672,7 +672,7 @@
             <span class="kw">let _</span>: Path = fork.parse()<span class="question-mark">?</span>;
             <span class="kw">let </span>lookahead2 = fork.lookahead1();
             <span class="kw">if </span>lookahead2.peek(<span class="macro">Token!</span>[=]) {
-                <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Named(NamedHfStatement::parse(input)<span class="question-mark">?</span>))
+                <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Named(NamedStatement::parse(input)<span class="question-mark">?</span>))
             } <span class="kw">else if </span>lookahead2.peek(<span class="macro">Token!</span>[-&gt;])
                 || lookahead2.peek(Paren)
                 || lookahead2.peek(Bracket)
@@ -686,7 +686,7 @@
         }
     }
 }
-<span class="kw">impl </span>ToTokens <span class="kw">for </span>HfStatement {
+<span class="kw">impl </span>ToTokens <span class="kw">for </span>DfirStatement {
     <span class="kw">fn </span>to_tokens(<span class="kw-2">&amp;</span><span class="self">self</span>, tokens: <span class="kw-2">&amp;mut </span>TokenStream) {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Use(x) =&gt; x.to_tokens(tokens),
@@ -697,13 +697,13 @@
     }
 }
 
-<span class="kw">pub struct </span>NamedHfStatement {
+<span class="kw">pub struct </span>NamedStatement {
     <span class="kw">pub </span>name: Ident,
     <span class="kw">pub </span>equals: <span class="macro">Token!</span>[=],
     <span class="kw">pub </span>pipeline: Pipeline,
     <span class="kw">pub </span>semi_token: <span class="macro">Token!</span>[;],
 }
-<span class="kw">impl </span>Parse <span class="kw">for </span>NamedHfStatement {
+<span class="kw">impl </span>Parse <span class="kw">for </span>NamedStatement {
     <span class="kw">fn </span>parse(input: ParseStream) -&gt; syn::Result&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>name = input.parse()<span class="question-mark">?</span>;
         <span class="kw">let </span>equals = input.parse()<span class="question-mark">?</span>;
@@ -717,7 +717,7 @@
         })
     }
 }
-<span class="kw">impl </span>ToTokens <span class="kw">for </span>NamedHfStatement {
+<span class="kw">impl </span>ToTokens <span class="kw">for </span>NamedStatement {
     <span class="kw">fn </span>to_tokens(<span class="kw-2">&amp;</span><span class="self">self</span>, tokens: <span class="kw-2">&amp;mut </span>TokenStream) {
         <span class="self">self</span>.name.to_tokens(tokens);
         <span class="self">self</span>.equals.to_tokens(tokens);
@@ -841,7 +841,7 @@
     <span class="kw">pub </span>loop_token: <span class="macro">Token!</span>[<span class="kw">loop</span>],
     <span class="kw">pub </span>ident: <span class="prelude-ty">Option</span>&lt;Ident&gt;,
     <span class="kw">pub </span>brace_token: Brace,
-    <span class="kw">pub </span>statements: Vec&lt;HfStatement&gt;,
+    <span class="kw">pub </span>statements: Vec&lt;DfirStatement&gt;,
 }
 <span class="kw">impl </span>Parse <span class="kw">for </span>LoopStatement {
     <span class="kw">fn </span>parse(input: ParseStream) -&gt; syn::Result&lt;<span class="self">Self</span>&gt; {

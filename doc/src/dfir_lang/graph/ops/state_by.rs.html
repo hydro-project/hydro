@@ -259,7 +259,7 @@
     write_fn: |<span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -308,12 +308,12 @@
                     <span class="kw">let </span>#state_ident = {
                         <span class="kw">let </span>data_struct : #lattice_type = (#factory_fn)();
                         <span class="macro">::std::debug_assert!</span>(::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
-                        #hydroflow.add_state(::std::cell::RefCell::new(data_struct))
+                        #df_ident.add_state(::std::cell::RefCell::new(data_struct))
                     };
         };
         <span class="kw">if </span>Persistence::Tick == persistence {
             write_prologue.extend(<span class="macro">quote_spanned!</span> {op_span=&gt;
-                #hydroflow.set_state_tick_hook(#state_ident, |rcell| { rcell.take(); }); <span class="comment">// Resets state to `Default::default()`.
+                #df_ident.set_state_tick_hook(#state_ident, |rcell| { rcell.take(); }); <span class="comment">// Resets state to `Default::default()`.
             </span>});
         }
 

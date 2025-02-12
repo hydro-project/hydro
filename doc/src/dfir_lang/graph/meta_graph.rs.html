@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/hydroflow_graph.rs`."><title>hydroflow_graph.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-cf3c48c1.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0-nightly (124cc9219 2025-02-09)" data-channel="nightly" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-8fee9dc5.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/</div>hydroflow_graph.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/meta_graph.rs`."><title>meta_graph.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-cf3c48c1.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.86.0-nightly (124cc9219 2025-02-09)" data-channel="nightly" data-search-js="search-581efc7a.js" data-settings-js="settings-6dad6058.js" ><script src="../../../static.files/storage-3a5871a4.js"></script><script defer src="../../../static.files/src-script-8fee9dc5.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-4d63596a.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-893ab5e7.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-6580c154.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/</div>meta_graph.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers">
 <a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
@@ -1688,8 +1688,7 @@
 <a href="#1687" id="1687">1687</a>
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
-<a href="#1690" id="1690">1690</a>
-<a href="#1691" id="1691">1691</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#1690" id="1690">1690</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">extern crate </span>proc_macro;
 
@@ -1711,17 +1710,17 @@
 };
 <span class="kw">use super</span>::{
     change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT,
-    HANDOFF_NODE_STR, HYDROFLOW, MODULE_BOUNDARY_NODE_STR,
+    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
+    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span><span class="kw">crate</span>::pretty_span::{PrettyRowCol, PrettySpan};
 <span class="kw">use </span><span class="kw">crate</span>::process_singletons;
 
-<span class="doccomment">/// An abstract "meta graph" representation of a Hydroflow graph.
+<span class="doccomment">/// An abstract "meta graph" representation of a DFIR graph.
 ///
 /// Can be with or without subgraph partitioning, stratification, and handoff insertion. This is
-/// the meta graph used for generating Rust source code in macros from Hydroflow surface sytnax.
+/// the meta graph used for generating Rust source code in macros from DFIR sytnax.
 ///
 /// This struct has a lot of methods for manipulating the graph, vaguely grouped together in
 /// separate `impl` blocks. You might notice a few particularly specific arbitray-seeming methods
@@ -1775,7 +1774,7 @@
 
 <span class="doccomment">/// Basic methods.
 </span><span class="kw">impl </span>DfirGraph {
-    <span class="doccomment">/// Create a new empty `HydroflowGraph`.
+    <span class="doccomment">/// Create a new empty graph.
     </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
         Default::default()
     }
@@ -2471,9 +2470,8 @@
             .map(|singleton_node_id| {
                 <span class="comment">// TODO(mingwei): this `expect` should be caught in error checking
                 </span><span class="self">self</span>.node_as_singleton_ident(
-                    singleton_node_id.expect(
-                        <span class="string">"Expected singleton to be resolved but was not, this is a Hydroflow bug."</span>,
-                    ),
+                    singleton_node_id
+                        .expect(<span class="string">"Expected singleton to be resolved but was not, this is a bug."</span>),
                     span,
                 )
             })
@@ -2521,7 +2519,7 @@
     }
 
     <span class="doccomment">/// Code for adding all nested loops.
-    </span><span class="kw">fn </span>codegen_nested_loops(<span class="kw-2">&amp;</span><span class="self">self</span>, hf: <span class="kw-2">&amp;</span>Ident) -&gt; TokenStream {
+    </span><span class="kw">fn </span>codegen_nested_loops(<span class="kw-2">&amp;</span><span class="self">self</span>, df: <span class="kw-2">&amp;</span>Ident) -&gt; TokenStream {
         <span class="comment">// Breadth-first iteration from outermost (root) loops to deepest nested loops.
         </span><span class="kw">let </span><span class="kw-2">mut </span>out = TokenStream::new();
         <span class="kw">let </span><span class="kw-2">mut </span>queue = VecDeque::from_iter(<span class="self">self</span>.root_loops.iter().copied());
@@ -2533,14 +2531,14 @@
                 .unwrap_or_else(|| <span class="macro">quote!</span> { <span class="prelude-val">None </span>});
             <span class="kw">let </span>loop_name = <span class="self">Self</span>::loop_as_ident(loop_id);
             out.append_all(<span class="macro">quote!</span> {
-                <span class="kw">let </span>#loop_name = #hf.add_loop(#parent_opt);
+                <span class="kw">let </span>#loop_name = #df.add_loop(#parent_opt);
             });
             queue.extend(<span class="self">self</span>.loop_children.get(loop_id).into_iter().flatten());
         }
         out
     }
 
-    <span class="doccomment">/// Emit this `HydroflowGraph` as runnable Rust source code tokens.
+    <span class="doccomment">/// Emit this graph as runnable Rust source code tokens.
     </span><span class="kw">pub fn </span>as_code(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         root: <span class="kw-2">&amp;</span>TokenStream,
@@ -2548,7 +2546,7 @@
         prefix: TokenStream,
         diagnostics: <span class="kw-2">&amp;mut </span>Vec&lt;Diagnostic&gt;,
     ) -&gt; TokenStream {
-        <span class="kw">let </span>hf = Ident::new(HYDROFLOW, Span::call_site());
+        <span class="kw">let </span>df = Ident::new(GRAPH, Span::call_site());
         <span class="kw">let </span>context = Ident::new(CONTEXT, Span::call_site());
 
         <span class="comment">// Code for adding handoffs.
@@ -2566,7 +2564,7 @@
                 <span class="kw">let </span>hoff_name = Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"handoff {:?}"</span>, node_id));
                 <span class="macro">quote!</span> {
                     <span class="kw">let </span>(#ident_send, #ident_recv) =
-                        #hf.make_edge::&lt;<span class="kw">_</span>, #root::scheduled::handoff::VecHandoff&lt;<span class="kw">_</span>&gt;&gt;(#hoff_name);
+                        #df.make_edge::&lt;<span class="kw">_</span>, #root::scheduled::handoff::VecHandoff&lt;<span class="kw">_</span>&gt;&gt;(#hoff_name);
                 }
             });
 
@@ -2694,7 +2692,7 @@
                             // the dfir syntax proc macro from _within_ a declarative macro then `op_span` will have the
                             // bad `Span::mixed_site()` name resolution and cause "Cannot find value `df/context`" errors. So
                             // we call `.resolved_at()` to fix resolution back to `Span::call_site()`. -Mingwei
-                            </span><span class="kw">let </span>hydroflow = <span class="kw-2">&amp;</span>Ident::new(HYDROFLOW, op_span.resolved_at(hf.span()));
+                            </span><span class="kw">let </span>df_local = <span class="kw-2">&amp;</span>Ident::new(GRAPH, op_span.resolved_at(df.span()));
                             <span class="kw">let </span>context = <span class="kw-2">&amp;</span>Ident::new(CONTEXT, op_span.resolved_at(context.span()));
 
                             <span class="kw">let </span>singletons_resolved =
@@ -2712,7 +2710,7 @@
 
                             <span class="kw">let </span>context_args = WriteContextArgs {
                                 root: <span class="kw-2">&amp;</span>root,
-                                hydroflow,
+                                df_ident: df_local,
                                 context,
                                 subgraph_id,
                                 node_id,
@@ -2737,7 +2735,7 @@
                             } = write_result.unwrap_or_else(|()| {
                                 <span class="macro">assert!</span>(
                                     diagnostics.iter().any(Diagnostic::is_error),
-                                    <span class="string">"Operator `{}` returned `Err` but emitted no diagnostics, this is a Hydroflow bug."</span>,
+                                    <span class="string">"Operator `{}` returned `Err` but emitted no diagnostics, this is a bug."</span>,
                                     op_name,
                                 );
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(<span class="kw-2">&amp;</span>context_args), ..Default::default() }
@@ -2910,7 +2908,7 @@
                     .unwrap_or_else(|| <span class="macro">quote!</span> { <span class="prelude-val">None </span>});
 
                 subgraphs.push(<span class="macro">quote!</span> {
-                    #hf.add_subgraph_full(
+                    #df.add_subgraph_full(
                         #subgraph_name,
                         #stratum,
                         <span class="macro">var_expr!</span>( #( #recv_ports ),* ),
@@ -2928,7 +2926,7 @@
             }
         }
 
-        <span class="kw">let </span>loop_code = <span class="self">self</span>.codegen_nested_loops(<span class="kw-2">&amp;</span>hf);
+        <span class="kw">let </span>loop_code = <span class="self">self</span>.codegen_nested_loops(<span class="kw-2">&amp;</span>df);
 
         <span class="comment">// These two are quoted separately here because iterators are lazily evaluated, so this
         // forces them to do their work. This work includes populating some data, namely
@@ -2956,13 +2954,13 @@
 
                     <span class="kw">use </span>#root::{var_expr, var_args};
 
-                    <span class="kw">let </span><span class="kw-2">mut </span>#hf = #root::scheduled::graph::Dfir::new();
-                    #hf.__assign_meta_graph(#meta_graph_json);
-                    #hf.__assign_diagnostics(#diagnostics_json);
+                    <span class="kw">let </span><span class="kw-2">mut </span>#df = #root::scheduled::graph::Dfir::new();
+                    #df.__assign_meta_graph(#meta_graph_json);
+                    #df.__assign_diagnostics(#diagnostics_json);
 
                     #code
 
-                    #hf
+                    #df
                 }
             }
         }
@@ -3027,7 +3025,7 @@
         <span class="self">self</span>.write_graph(<span class="kw-2">&amp;mut </span>graph_write, write_config)
     }
 
-    <span class="doccomment">/// Write out this `HydroflowGraph` using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
+    <span class="doccomment">/// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_graph&lt;W&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut </span>graph_write: W,

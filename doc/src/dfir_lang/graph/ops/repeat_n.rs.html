@@ -117,7 +117,7 @@
     input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    arguments,
                    ident,
@@ -133,16 +133,16 @@
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="attr">#[allow(clippy::redundant_closure_call)]
-            </span><span class="kw">let </span>#singleton_output_ident = #hydroflow.add_state(
+            </span><span class="kw">let </span>#singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::vec::Vec::new())
             );
 
             <span class="comment">// TODO(mingwei): Is this needed?
             // Reset the value to the initializer fn if it is a new tick.
-            </span>#hydroflow.set_state_tick_hook(#singleton_output_ident, <span class="kw">move </span>|rcell| { rcell.take(); });
+            </span>#df_ident.set_state_tick_hook(#singleton_output_ident, <span class="kw">move </span>|rcell| { rcell.take(); });
 
-            <span class="kw">let </span>#count_ident = #hydroflow.add_state(::std::cell::Cell::new(<span class="number">0_usize</span>));
-            #hydroflow.set_state_tick_hook(#count_ident, <span class="kw">move </span>|cell| { cell.take(); });
+            <span class="kw">let </span>#count_ident = #df_ident.add_state(::std::cell::Cell::new(<span class="number">0_usize</span>));
+            #df_ident.set_state_tick_hook(#count_ident, <span class="kw">move </span>|cell| { cell.take(); });
         };
 
         <span class="kw">let </span>vec_ident = wc.make_ident(<span class="string">"vec"</span>);

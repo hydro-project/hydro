@@ -802,9 +802,9 @@
     </span>MagicNatLt(Box&lt;JoinPlan&lt;<span class="lifetime">'a</span>&gt;&gt;, ExtractExpr, ExtractExpr),
 }
 
-<span class="doccomment">/// Tracks the Hydroflow node that corresponds to a subtree of a join plan.
+<span class="doccomment">/// Tracks the DFIR node that corresponds to a subtree of a join plan.
 </span><span class="kw">pub struct </span>IntermediateJoinNode {
-    <span class="doccomment">/// The name of the Hydroflow node that this join outputs to.
+    <span class="doccomment">/// The name of the DFIR node that this join outputs to.
     </span><span class="kw">pub </span>name: syn::Ident,
     <span class="doccomment">/// If true, the correct dataflow for this node ends in a `persist::&lt;'static&gt;()` operator.
     </span><span class="kw">pub </span>persisted: bool,
@@ -835,21 +835,21 @@
     }
 }
 
-<span class="doccomment">/// Generates a Hydroflow pipeline that transforms some input to a join
+<span class="doccomment">/// Generates a DFIR pipeline that transforms some input to a join
 /// to emit key-value tuples that can be fed into a join operator.
 </span><span class="kw">fn </span>emit_join_input_pipeline(
     <span class="comment">// The identifiers of the input node that the key should be populated with.
     </span>identifiers_to_join: <span class="kw-2">&amp;</span>[String],
     identifiers_to_not_join: <span class="kw-2">&amp;</span>[String],
-    <span class="comment">// The Hydroflow node that is one side of the join.
+    <span class="comment">// The DFIR node that is one side of the join.
     </span>source_expanded: <span class="kw-2">&amp;</span>IntermediateJoinNode,
-    <span class="comment">// The Hydroflow node for the join operator.
+    <span class="comment">// The DFIR node for the join operator.
     </span>join_node: <span class="kw-2">&amp;</span>syn::Ident,
     <span class="comment">// Whether this node contributes to the left or right side of the join.
     </span>join_side: JoinSide,
     <span class="comment">// Whether the pipeline is for an anti-join.
     </span>anti_join: bool,
-    <span class="comment">// The Hydroflow graph to emit the pipeline to.
+    <span class="comment">// The DFIR graph to emit the pipeline to.
     </span>flat_graph_builder: <span class="kw-2">&amp;mut </span>FlatGraphBuilder,
 ) {
     <span class="kw">let </span>hash_keys: Vec&lt;syn::Expr&gt; = identifiers_to_join
@@ -966,7 +966,7 @@
     )
 }
 
-<span class="doccomment">/// Processes an extract expression to generate a Hydroflow pipeline that reads the input
+<span class="doccomment">/// Processes an extract expression to generate a DFIR pipeline that reads the input
 /// data from the IDB/EDB.
 ///
 /// `row_width` is the number of elements in the tuples emitted by the **current** pipeline,
@@ -1104,11 +1104,11 @@
     }
 }
 
-<span class="doccomment">/// Generates a Hydroflow pipeline that computes the output to a given [`JoinPlan`].
+<span class="doccomment">/// Generates a DFIR pipeline that computes the output to a given [`JoinPlan`].
 </span><span class="kw">pub fn </span>expand_join_plan(
-    <span class="comment">// The plan we are converting to a Hydroflow pipeline.
+    <span class="comment">// The plan we are converting to a DFIR pipeline.
     </span>plan: <span class="kw-2">&amp;</span>JoinPlan,
-    <span class="comment">// The Hydroflow graph to emit the pipeline to.
+    <span class="comment">// The DFIR graph to emit the pipeline to.
     </span>flat_graph_builder: <span class="kw-2">&amp;mut </span>FlatGraphBuilder,
     tee_counter: <span class="kw-2">&amp;mut </span>HashMap&lt;String, Counter&gt;,
     next_join_idx: <span class="kw-2">&amp;mut </span>Counter,

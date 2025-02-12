@@ -560,7 +560,7 @@
 <span class="kw">use </span>slotmap::{SecondaryMap, SparseSecondaryMap};
 <span class="kw">use </span>syn::parse_quote;
 
-<span class="kw">use </span><span class="kw">super</span>::hydroflow_graph::DfirGraph;
+<span class="kw">use </span><span class="kw">super</span>::meta_graph::DfirGraph;
 <span class="kw">use </span><span class="kw">super</span>::ops::{find_node_op_constraints, DelayType};
 <span class="kw">use super</span>::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
@@ -782,7 +782,7 @@
 
     <span class="comment">// Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
-    // Eventually returned directly in the `HydroflowGraph`.
+    // Eventually returned directly in the [`DfirGraph`].
     </span><span class="kw">let </span>grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
     <span class="kw">for </span>(_repr_node, member_nodes) <span class="kw">in </span>grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
@@ -1066,7 +1066,7 @@
         <span class="comment">// Remove node from old subgraph.
         </span><span class="macro">assert!</span>(
             partitioned_graph.remove_from_subgraph(node_id),
-            <span class="string">"Cannot move input node that is not in a subgraph, this is a Hydroflow bug."
+            <span class="string">"Cannot move input node that is not in a subgraph, this is a bug."
         </span>);
         <span class="comment">// Create new subgraph in stratum 0 for this source.
         </span><span class="kw">let </span>new_sg_id = partitioned_graph.insert_subgraph(<span class="macro">vec!</span>[node_id]).unwrap();

@@ -143,18 +143,18 @@
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 
 <span class="kw">pub struct </span>CompiledFlow&lt;<span class="lifetime">'a</span>, ID&gt; {
-    <span class="kw">pub</span>(<span class="kw">super</span>) hydroflow_ir: BTreeMap&lt;usize, DfirGraph&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) dfir: BTreeMap&lt;usize, DfirGraph&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) extra_stmts: BTreeMap&lt;usize, Vec&lt;syn::Stmt&gt;&gt;,
     <span class="kw">pub</span>(<span class="kw">super</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, ID&gt;,
 }
 
 <span class="kw">impl</span>&lt;ID&gt; CompiledFlow&lt;<span class="lifetime">'_</span>, ID&gt; {
-    <span class="kw">pub fn </span>hydroflow_ir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BTreeMap&lt;usize, DfirGraph&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.hydroflow_ir
+    <span class="kw">pub fn </span>dfir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>BTreeMap&lt;usize, DfirGraph&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.dfir
     }
 
-    <span class="kw">pub fn </span>take_ir(<span class="self">self</span>) -&gt; BTreeMap&lt;usize, DfirGraph&gt; {
-        <span class="self">self</span>.hydroflow_ir
+    <span class="kw">pub fn </span>take_dfir(<span class="self">self</span>) -&gt; BTreeMap&lt;usize, DfirGraph&gt; {
+        <span class="self">self</span>.dfir
     }
 }
 
@@ -163,9 +163,9 @@
         <span class="self">self</span>,
         id: <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, usize, ()&gt;,
     ) -&gt; CompiledFlowWithId&lt;<span class="lifetime">'a</span>&gt; {
-        <span class="kw">let </span>hydroflow_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
+        <span class="kw">let </span>hydro_lang_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
             .expect(<span class="string">"hydro_lang should be present in `Cargo.toml`"</span>);
-        <span class="kw">let </span>root = <span class="kw">match </span>hydroflow_crate {
+        <span class="kw">let </span>root = <span class="kw">match </span>hydro_lang_crate {
             proc_macro_crate::FoundCrate::Itself =&gt; <span class="macro">quote!</span> { hydro_lang::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) =&gt; {
                 <span class="kw">let </span>ident = syn::Ident::new(<span class="kw-2">&amp;</span>name, proc_macro2::Span::call_site());
@@ -174,7 +174,7 @@
         };
 
         <span class="kw">let </span><span class="kw-2">mut </span>conditioned_tokens = <span class="prelude-val">None</span>;
-        <span class="kw">for </span>(subgraph_id, flat_graph) <span class="kw">in </span><span class="self">self</span>.hydroflow_ir {
+        <span class="kw">for </span>(subgraph_id, flat_graph) <span class="kw">in </span><span class="self">self</span>.dfir {
             <span class="kw">let </span>partitioned_graph =
                 partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>);
 
@@ -223,9 +223,9 @@
     <span class="kw">type </span>O = Dfir&lt;<span class="lifetime">'a</span>&gt;;
 
     <span class="kw">fn </span>to_tokens(<span class="kw-2">mut </span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>Ctx) -&gt; (<span class="prelude-ty">Option</span>&lt;TokenStream&gt;, <span class="prelude-ty">Option</span>&lt;TokenStream&gt;) {
-        <span class="kw">let </span>hydroflow_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
+        <span class="kw">let </span>hydro_lang_crate = proc_macro_crate::crate_name(<span class="string">"hydro_lang"</span>)
             .expect(<span class="string">"hydro_lang should be present in `Cargo.toml`"</span>);
-        <span class="kw">let </span>root = <span class="kw">match </span>hydroflow_crate {
+        <span class="kw">let </span>root = <span class="kw">match </span>hydro_lang_crate {
             proc_macro_crate::FoundCrate::Itself =&gt; <span class="macro">quote!</span> { hydro_lang::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) =&gt; {
                 <span class="kw">let </span>ident = syn::Ident::new(<span class="kw-2">&amp;</span>name, proc_macro2::Span::call_site());
@@ -233,11 +233,11 @@
             }
         };
 
-        <span class="kw">if </span><span class="self">self</span>.hydroflow_ir.len() != <span class="number">1 </span>{
-            <span class="macro">panic!</span>(<span class="string">"Expected exactly one subgraph in the Hydroflow IR"</span>);
+        <span class="kw">if </span><span class="self">self</span>.dfir.len() != <span class="number">1 </span>{
+            <span class="macro">panic!</span>(<span class="string">"Expected exactly one subgraph in the DFIR."</span>);
         }
 
-        <span class="kw">let </span>flat_graph = <span class="self">self</span>.hydroflow_ir.remove(<span class="kw-2">&amp;</span><span class="number">0</span>).unwrap();
+        <span class="kw">let </span>flat_graph = <span class="self">self</span>.dfir.remove(<span class="kw-2">&amp;</span><span class="number">0</span>).unwrap();
         <span class="kw">let </span>partitioned_graph =
             partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>);
 

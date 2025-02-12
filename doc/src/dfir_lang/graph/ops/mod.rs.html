@@ -564,7 +564,7 @@
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a></pre></div><pre class="rust"><code><span class="doccomment">//! Hydroflow's operators
+<a href="#566" id="566">566</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
 
 </span><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::{Debug, Display};
@@ -801,7 +801,7 @@
 <span class="macro">macro_rules!</span> declare_ops {
     ( $( <span class="macro-nonterminal">$</span><span class="kw">mod</span>:<span class="macro-nonterminal">ident </span>:: <span class="macro-nonterminal">$op</span>:ident, )* ) =&gt; {
         $( <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span><span class="macro-nonterminal">$</span><span class="kw">mod</span>; )*
-        <span class="doccomment">/// All Hydroflow operators.
+        <span class="doccomment">/// All DFIR operators.
         </span><span class="kw">pub const </span><span class="macro-nonterminal">OPERATORS</span>: <span class="kw-2">&amp;</span>[OperatorConstraints] = <span class="kw-2">&amp;</span>[
             $( <span class="macro-nonterminal">$</span><span class="kw">mod </span>:: <span class="macro-nonterminal">$op</span>, )*
         ];
@@ -913,7 +913,7 @@
     <span class="doccomment">/// `df` ident, the name of the
     /// [`dfir_rs::scheduled::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
     /// instance.
-    </span><span class="kw">pub </span>hydroflow: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+    </span><span class="kw">pub </span>df_ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
     <span class="doccomment">/// Subgraph ID in which this operator is contained.
     </span><span class="kw">pub </span>subgraph_id: GraphSubgraphId,
     <span class="doccomment">/// Node ID identifying this operator in the flat or partitioned graph meta-datastructure.

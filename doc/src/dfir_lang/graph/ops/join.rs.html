@@ -323,7 +323,7 @@
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -364,7 +364,7 @@
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
             <span class="kw">let </span>reset = <span class="kw">match </span>persistence {
                 Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    #hydroflow.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
+                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
                 },
                 Persistence::Static =&gt; Default::default(),
                 Persistence::Mutable =&gt; {
@@ -377,7 +377,7 @@
                 }
             };
             <span class="kw">let </span>init = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>#joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                <span class="kw">let </span>#joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     #join_type::default()
                 ));
                 #reset

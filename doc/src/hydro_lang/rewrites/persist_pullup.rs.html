@@ -474,7 +474,7 @@
         <span class="kw">let </span>optimized = built.optimize_with(<span class="kw">super</span>::persist_pullup);
 
         <span class="macro">insta::assert_debug_snapshot!</span>(optimized.ir());
-        <span class="kw">for </span>(id, graph) <span class="kw">in </span>optimized.compile_no_network::&lt;MultiGraph&gt;().hydroflow_ir() {
+        <span class="kw">for </span>(id, graph) <span class="kw">in </span>optimized.compile_no_network::&lt;MultiGraph&gt;().dfir() {
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
                 <span class="macro">insta::assert_snapshot!</span>(graph.surface_syntax_string());
             });
@@ -509,7 +509,7 @@
 
         <span class="macro">insta::assert_debug_snapshot!</span>(optimized.ir());
 
-        <span class="kw">for </span>(id, graph) <span class="kw">in </span>optimized.compile_no_network::&lt;MultiGraph&gt;().hydroflow_ir() {
+        <span class="kw">for </span>(id, graph) <span class="kw">in </span>optimized.compile_no_network::&lt;MultiGraph&gt;().dfir() {
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
                 <span class="macro">insta::assert_snapshot!</span>(graph.surface_syntax_string());
             });

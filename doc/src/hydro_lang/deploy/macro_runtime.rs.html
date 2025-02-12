@@ -324,13 +324,13 @@
 <span class="kw">use </span>stageleft::{QuotedWithContext, RuntimeData};
 
 <span class="kw">use </span><span class="kw">crate</span>::deploy::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};
-<span class="kw">use </span><span class="kw">crate</span>::deploy_runtime::HydroflowPlusMeta;
+<span class="kw">use </span><span class="kw">crate</span>::deploy_runtime::HydroMeta;
 
 <span class="kw">pub struct </span>DeployRuntime {}
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; Deploy&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>DeployRuntime {
     <span class="kw">type </span>InstantiateEnv = ();
-    <span class="kw">type </span>CompileEnv = RuntimeData&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>DeployPorts&lt;HydroflowPlusMeta&gt;&gt;;
+    <span class="kw">type </span>CompileEnv = RuntimeData&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>DeployPorts&lt;HydroMeta&gt;&gt;;
     <span class="kw">type </span>Process = DeployRuntimeNode;
     <span class="kw">type </span>Cluster = DeployRuntimeCluster;
     <span class="kw">type </span>ExternalProcess = DeployRuntimeNode;

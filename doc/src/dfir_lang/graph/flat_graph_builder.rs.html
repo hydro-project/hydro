@@ -1056,7 +1056,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span><span class="kw">crate</span>::graph::graph_algorithms;
 <span class="kw">use </span><span class="kw">crate</span>::graph::ops::{PortListSpec, RangeTrait};
-<span class="kw">use </span><span class="kw">crate</span>::parse::{HfCode, HfStatement, Operator, Pipeline};
+<span class="kw">use </span><span class="kw">crate</span>::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 <span class="kw">use </span><span class="kw">crate</span>::pretty_span::PrettySpan;
 
 <span class="attr">#[derive(Clone, Debug)]
@@ -1121,17 +1121,17 @@
         Default::default()
     }
 
-    <span class="doccomment">/// Convert the Hydroflow code AST into a graph builder.
-    </span><span class="kw">pub fn </span>from_hfcode(input: HfCode) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Convert the DFIR code AST into a graph builder.
+    </span><span class="kw">pub fn </span>from_dfir(input: DfirCode) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span><span class="kw-2">mut </span>builder = <span class="self">Self</span>::default();
         builder.add_dfir(input, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
         builder
     }
 
-    <span class="doccomment">/// Build into an unpartitioned [`DfirGraph`], returning a tuple of a `HydroflowGraph` and
+    <span class="doccomment">/// Build into an unpartitioned [`DfirGraph`], returning a tuple of the graph and
     /// any diagnostics.
     ///
-    /// Even if there are errors, the `HydroflowGraph` will be returned (potentially in a invalid
+    /// Even if there are errors, the graph will be returned (potentially in a invalid
     /// state). Does not call `emit` on any diagnostics.
     </span><span class="kw">pub fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; (DfirGraph, Vec&lt;ItemUse&gt;, Vec&lt;Diagnostic&gt;) {
         <span class="self">self</span>.finalize_connect_operator_links();
@@ -1140,14 +1140,14 @@
         (<span class="self">self</span>.flat_graph, <span class="self">self</span>.uses, <span class="self">self</span>.diagnostics)
     }
 
-    <span class="doccomment">/// Adds all [`HfStatement`]s within the [`HfCode`] to this `HydroflowGraph`.
+    <span class="doccomment">/// Adds all [`DfirStatement`]s within the [`DfirCode`] to this [`DfirGraph`].
     ///
     /// Optional configuration:
     /// * In the given loop context `current_loop`.
     /// * With the given operator tag `operator_tag`.
     </span><span class="kw">pub fn </span>add_dfir(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        dfir: HfCode,
+        dfir: DfirCode,
         current_loop: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
         operator_tag: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
     ) {
@@ -1156,27 +1156,27 @@
         }
     }
 
-    <span class="doccomment">/// Add a single [`HfStatement`] line to this `HydroflowGraph` in the root context.
-    </span><span class="kw">pub fn </span>add_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, stmt: HfStatement) {
+    <span class="doccomment">/// Add a single [`DfirStatement`] line to this [`DfirGraph`] in the root context.
+    </span><span class="kw">pub fn </span>add_statement(<span class="kw-2">&amp;mut </span><span class="self">self</span>, stmt: DfirStatement) {
         <span class="self">self</span>.add_statement_internal(stmt, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>);
     }
 
-    <span class="doccomment">/// Add a single [`HfStatement`] line to this `HydroflowGraph` with given configuration.
+    <span class="doccomment">/// Add a single [`DfirStatement`] line to this [`DfirGraph`] with given configuration.
     ///
     /// Optional configuration:
     /// * In the given loop context `current_loop`.
     /// * With the given operator tag `operator_tag`.
     </span><span class="kw">fn </span>add_statement_internal(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        stmt: HfStatement,
+        stmt: DfirStatement,
         current_loop: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
         operator_tag: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
     ) {
         <span class="kw">match </span>stmt {
-            HfStatement::Use(yuse) =&gt; {
+            DfirStatement::Use(yuse) =&gt; {
                 <span class="self">self</span>.uses.push(yuse);
             }
-            HfStatement::Named(named) =&gt; {
+            DfirStatement::Named(named) =&gt; {
                 <span class="kw">let </span>stmt_span = named.span();
                 <span class="kw">let </span>ends = <span class="self">self</span>.add_pipeline(
                     named.pipeline,
@@ -1186,13 +1186,13 @@
                 );
                 <span class="self">self</span>.assign_varname_checked(named.name, stmt_span, ends);
             }
-            HfStatement::Pipeline(pipeline_stmt) =&gt; {
+            DfirStatement::Pipeline(pipeline_stmt) =&gt; {
                 <span class="kw">let </span>ends =
                     <span class="self">self</span>.add_pipeline(pipeline_stmt.pipeline, <span class="prelude-val">None</span>, current_loop, operator_tag);
                 <span class="self">Self</span>::helper_check_unused_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>.diagnostics, <span class="kw-2">&amp;</span>ends, <span class="bool-val">true</span>);
                 <span class="self">Self</span>::helper_check_unused_port(<span class="kw-2">&amp;mut </span><span class="self">self</span>.diagnostics, <span class="kw-2">&amp;</span>ends, <span class="bool-val">false</span>);
             }
-            HfStatement::Loop(loop_statement) =&gt; {
+            DfirStatement::Loop(loop_statement) =&gt; {
                 <span class="kw">let </span>inner_loop = <span class="self">self</span>.flat_graph.insert_loop(current_loop);
                 <span class="kw">for </span>stmt <span class="kw">in </span>loop_statement.statements {
                     <span class="self">self</span>.add_statement_internal(stmt, <span class="prelude-val">Some</span>(inner_loop), operator_tag);

@@ -156,7 +156,7 @@
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a></pre></div><pre class="rust"><code><span class="doccomment">//! Hydroflow declarative macros.
+<a href="#158" id="158">158</a></pre></div><pre class="rust"><code><span class="doccomment">//! Declarative macros.
 
 /// [`assert!`] but returns a [`Result&lt;(), String&gt;`] instead of panicking.
 </span><span class="attr">#[macro_export]
@@ -206,7 +206,7 @@
 ///
 /// For example usage, see `dfir/tests/surface_warnings.rs`.
 </span><span class="attr">#[macro_export]
-</span><span class="macro">macro_rules!</span> hydroflow_expect_warnings {
+</span><span class="macro">macro_rules!</span> dfir_expect_warnings {
     (
         <span class="macro-nonterminal">$hf</span>:tt,
         $( <span class="macro-nonterminal">$msg</span>:literal ),*
@@ -214,7 +214,7 @@
     </span>) =&gt; {
         {
             <span class="kw">fn </span>emit(msg: <span class="kw">impl </span>::std::convert::AsRef&lt;str&gt;) {
-                <span class="kw">if </span><span class="prelude-val">Ok</span>(<span class="string">"ignore"</span>) == ::std::env::var(<span class="string">"HYDROFLOW_EXPECT_WARNINGS"</span>).as_deref() {
+                <span class="kw">if </span><span class="prelude-val">Ok</span>(<span class="string">"ignore"</span>) == ::std::env::var(<span class="string">"DFIR_EXPECT_WARNINGS"</span>).as_deref() {
                     <span class="macro">eprintln!</span>(<span class="string">"{}"</span>, msg.as_ref());
                 } <span class="kw">else </span>{
                     <span class="macro">panic!</span>(<span class="string">"{}"</span>, msg.as_ref());

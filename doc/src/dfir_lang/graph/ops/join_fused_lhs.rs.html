@@ -220,7 +220,7 @@
     },
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -256,7 +256,7 @@
         <span class="kw">let </span>write_prologue_rhs = <span class="kw">match </span>persistences[<span class="number">1</span>] {
             Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;},
             Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>#rhs_joindata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                <span class="kw">let </span>#rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             },

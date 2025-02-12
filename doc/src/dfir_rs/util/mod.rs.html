@@ -377,7 +377,7 @@
 <a href="#376" id="376">376</a>
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
-</span><span class="doccomment">//! Helper utilities for the Hydroflow surface syntax.
+</span><span class="doccomment">//! Helper utilities for the DFIR syntax.
 
 </span><span class="kw">pub mod </span>clear;
 <span class="attr">#[cfg(feature = <span class="string">"dfir_macro"</span>)]
@@ -436,7 +436,7 @@
     </span>Delete(K),
 }
 
-<span class="doccomment">/// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in Hydroflow.
+<span class="doccomment">/// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 </span><span class="kw">pub fn </span>unbounded_channel&lt;T&gt;() -&gt; (
     tokio::sync::mpsc::UnboundedSender&lt;T&gt;,
     tokio_stream::wrappers::UnboundedReceiverStream&lt;T&gt;,
@@ -446,7 +446,7 @@
     (send, recv)
 }
 
-<span class="doccomment">/// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in Hydroflow.
+<span class="doccomment">/// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
 </span><span class="kw">pub fn </span>unsync_channel&lt;T&gt;(
     capacity: <span class="prelude-ty">Option</span>&lt;NonZeroUsize&gt;,
 ) -&gt; (unsync::mpsc::Sender&lt;T&gt;, unsync::mpsc::Receiver&lt;T&gt;) {

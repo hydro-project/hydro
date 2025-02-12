@@ -176,11 +176,11 @@
 <span class="kw">use </span>hydroflow_deploy_integration::{ConnectedDirect, ServerPort};
 <span class="kw">use </span>tokio::sync::RwLock;
 
-<span class="kw">use </span><span class="kw">super</span>::hydroflow_crate::ports::{
-    HydroflowServer, HydroflowSink, HydroflowSource, ServerConfig, SourcePath,
+<span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::ports::{
+    HydroflowServer, HydroflowSink, HydroflowSource, ReverseSinkInstantiator, ServerConfig,
+    SourcePath,
 };
-<span class="kw">use super</span>::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
-<span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::ports::ReverseSinkInstantiator;
+<span class="kw">use crate</span>::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
 
 <span class="doccomment">/// Represents an unknown, third-party service that is not part of the Hydroflow ecosystem.
 </span><span class="kw">pub struct </span>CustomService {

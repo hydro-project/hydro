@@ -340,14 +340,17 @@
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
 <a href="#341" id="341">341</a>
-<a href="#342" id="342">342</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Ident, TokenStream};
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Ident, TokenStream};
 <span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::spanned::Spanned;
 <span class="kw">use </span>syn::{parse_quote, Expr, ExprCall};
 
 <span class="kw">use super</span>::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -623,10 +626,13 @@
     <span class="kw">let </span>joindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}"</span>, side));
     <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
 
-    <span class="kw">let </span>context = wc.context;
-    <span class="kw">let </span>hydroflow = wc.hydroflow;
-    <span class="kw">let </span>root = wc.root;
-    <span class="kw">let </span>op_span = wc.op_span;
+    <span class="kw">let </span><span class="kw-2">&amp;</span>WriteContextArgs {
+        context,
+        df_ident,
+        root,
+        op_span,
+        ..
+    } = wc;
 
     <span class="kw">let </span>join_type = <span class="kw">match </span><span class="kw-2">*</span>join_options {
         JoinOptions::FoldFrom(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
@@ -643,7 +649,7 @@
     <span class="kw">let </span>(prologue, borrow) = <span class="kw">match </span>persistence {
         Persistence::Tick =&gt; (
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>#joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+                <span class="kw">let </span>#joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #root::util::monotonic_map::MonotonicMap::new_init(
                         #join_type::default()
                     )
@@ -655,7 +661,7 @@
         ),
         Persistence::Static =&gt; (
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>#joindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+                <span class="kw">let </span>#joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #join_type::default()
                 ));
             },

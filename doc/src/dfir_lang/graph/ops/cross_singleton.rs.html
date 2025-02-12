@@ -165,7 +165,7 @@
     },
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    op_span,
                    inputs,
@@ -180,11 +180,11 @@
         <span class="kw">let </span>singleton_handle_ident = wc.make_ident(<span class="string">"singleton_handle"</span>);
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#singleton_handle_ident = #hydroflow.add_state(
+            <span class="kw">let </span>#singleton_handle_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::option::Option::None)
             );
             <span class="comment">// Reset the value if it is a new tick.
-            </span>#hydroflow.set_state_tick_hook(#singleton_handle_ident, |rcell| { rcell.take(); });
+            </span>#df_ident.set_state_tick_hook(#singleton_handle_ident, |rcell| { rcell.take(); });
         };
 
         <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;

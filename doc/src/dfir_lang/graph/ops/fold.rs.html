@@ -209,7 +209,7 @@
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -266,14 +266,14 @@
             </span><span class="kw">let </span><span class="kw-2">mut </span>#initializer_func_ident = #init;
 
             <span class="attr">#[allow(clippy::redundant_closure_call)]
-            </span><span class="kw">let </span>#singleton_output_ident = #hydroflow.add_state(
+            </span><span class="kw">let </span>#singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new((#initializer_func_ident)())
             );
         };
         <span class="kw">if </span>Persistence::Tick == persistence {
             write_prologue.extend(<span class="macro">quote_spanned!</span> {op_span=&gt;
                 <span class="comment">// Reset the value to the initializer fn if it is a new tick.
-                </span>#hydroflow.set_state_tick_hook(#singleton_output_ident, <span class="kw">move </span>|rcell| { rcell.replace((#initializer_func_ident)()); });
+                </span>#df_ident.set_state_tick_hook(#singleton_output_ident, <span class="kw">move </span>|rcell| { rcell.replace((#initializer_func_ident)()); });
             });
         }
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {

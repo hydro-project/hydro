@@ -158,12 +158,10 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#160" id="160">160</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 <span class="doccomment">/// &gt; Arguments: An [async `Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html).
@@ -172,14 +170,14 @@
 /// A `Sink` is a thing into which values can be sent, asynchronously. For example, sending items
 /// into a bounded channel.
 ///
-/// Note this operator must be used within a Tokio runtime, and the Hydroflow program must be launched with `run_async`.
+/// Note this operator must be used within a Tokio runtime, and the DFIR program must be launched with `run_async`.
 ///
 /// ```rustbook
 /// # #[dfir_rs::main]
 /// # async fn main() {
 /// // In this example we use a _bounded_ channel for our `Sink`. This is for demonstration only,
 /// // instead you should use [`dfir_rs::util::unbounded_channel`]. A bounded channel results in
-/// // `Hydroflow` buffering items internally instead of within the channel. (We can't use
+/// // buffering items internally instead of within the channel. (We can't use
 /// // unbounded here since unbounded channels are synchonous to write to and therefore not
 /// // `Sink`s.)
 /// let (send, recv) = tokio::sync::mpsc::channel::&lt;usize&gt;(5);
@@ -260,7 +258,7 @@
     input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -300,7 +298,7 @@
                         sink.flush().<span class="kw">await</span>.expect(<span class="string">"Failed to flush sink."</span>);
                     }
                 }
-                #hydroflow
+                #df_ident
                     .request_task(sink_feed_flush(#recv_ident, #sink_arg));
             }
         };

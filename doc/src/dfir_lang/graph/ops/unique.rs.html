@@ -213,7 +213,7 @@
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -243,7 +243,7 @@
         <span class="kw">let </span>(write_prologue, get_set) = <span class="kw">match </span>persistence {
             Persistence::Tick =&gt; {
                 <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    <span class="kw">let </span>#uniquedata_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+                    <span class="kw">let </span>#uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                         #root::util::monotonic_map::MonotonicMap::&lt;<span class="kw">_</span>, #root::rustc_hash::FxHashSet&lt;<span class="kw">_</span>&gt;&gt;::default(),
                     ));
                 };
@@ -255,7 +255,7 @@
             }
             Persistence::Static =&gt; {
                 <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    <span class="kw">let </span>#uniquedata_ident = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                    <span class="kw">let </span>#uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
                 };
                 <span class="kw">let </span>get_set = <span class="macro">quote_spanned!</span> {op_span=&gt;
                     <span class="kw">let </span><span class="kw-2">mut </span>set = #context.state_ref(#uniquedata_ident).borrow_mut();

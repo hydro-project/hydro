@@ -167,12 +167,12 @@
 <span class="doccomment">/// Contains runtime information passed by Hydro Deploy to a program,
 /// describing how to connect to other services and metadata about them.
 </span><span class="kw">pub struct </span>DeployPorts&lt;T = <span class="prelude-ty">Option</span>&lt;()&gt;&gt; {
-    ports: RefCell&lt;HashMap&lt;String, ServerOrBound&gt;&gt;,
+    ports: RefCell&lt;HashMap&lt;String, Connection&gt;&gt;,
     <span class="kw">pub </span>meta: T,
 }
 
 <span class="kw">impl</span>&lt;T&gt; DeployPorts&lt;T&gt; {
-    <span class="kw">pub fn </span>port(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; ServerOrBound {
+    <span class="kw">pub fn </span>port(<span class="kw-2">&amp;</span><span class="self">self</span>, name: <span class="kw-2">&amp;</span>str) -&gt; Connection {
         <span class="self">self</span>.ports
             .try_borrow_mut()
             .unwrap()
@@ -193,7 +193,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>binds = HashMap::new();
     <span class="kw">for </span>(name, config) <span class="kw">in </span>bind_config.<span class="number">0 </span>{
         <span class="kw">let </span>bound = config.bind().<span class="kw">await</span>;
-        bind_results.insert(name.clone(), bound.sink_port());
+        bind_results.insert(name.clone(), bound.server_port());
         binds.insert(name.clone(), bound);
     }
 
@@ -213,11 +213,11 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>all_connected = HashMap::new();
     <span class="kw">for </span>(name, defn) <span class="kw">in </span>connection_defns {
-        all_connected.insert(name, ServerOrBound::Server((<span class="kw-2">&amp;</span>defn).into()));
+        all_connected.insert(name, Connection::AsClient(defn.connect()));
     }
 
     <span class="kw">for </span>(name, defn) <span class="kw">in </span>binds {
-        all_connected.insert(name, ServerOrBound::Bound(defn));
+        all_connected.insert(name, Connection::AsServer(defn));
     }
 
     DeployPorts {

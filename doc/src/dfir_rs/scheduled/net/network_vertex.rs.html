@@ -262,8 +262,8 @@
         <span class="self">self</span>.inbound_tcp_vertex_internal(<span class="prelude-val">None</span>).<span class="kw">await
     </span>}
     <span class="comment">// TODO(justin): this needs to return a result/get rid of all the unwraps, I
-    // guess we need a HydroflowError?
-    </span><span class="doccomment">/// Begins listening on some TCP port. Returns an [OutputPort] representing
+    // guess we need a custom error type?
+    </span><span class="doccomment">/// Begins listening on some TCP port. Returns an [`RecvPort`] representing
     /// the stream of messages received. Currently there is no notion of
     /// identity to the connections received, if they are to be attached to some
     /// participant in the system, that needs to be included in the message
@@ -342,7 +342,7 @@
         <span class="kw">let </span>(<span class="kw-2">mut </span>outbound_messages_send, <span class="kw-2">mut </span>outbound_messages_recv) =
             futures::channel::mpsc::channel(<span class="number">1024</span>);
         tokio::spawn(<span class="kw">async move </span>{
-            <span class="comment">// TODO(justin): this cache should be global to the entire Hydroflow
+            <span class="comment">// TODO(justin): this cache should be global to the entire
             // instance so we can reuse connections from inbound connections.
             </span><span class="kw">let </span><span class="kw-2">mut </span>connections = HashMap::&lt;Address, ConnStatus&lt;T&gt;&gt;::new();
 

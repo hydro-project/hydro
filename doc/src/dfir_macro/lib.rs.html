@@ -367,7 +367,7 @@
 
 </span><span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span>dfir_lang::graph::{build_hfcode, partition_graph, FlatGraphBuilder};
-<span class="kw">use </span>dfir_lang::parse::HfCode;
+<span class="kw">use </span>dfir_lang::parse::DfirCode;
 <span class="kw">use </span>proc_macro2::{Ident, Literal, Span};
 <span class="kw">use </span>quote::{format_ident, quote};
 <span class="kw">use </span>syn::{
@@ -375,11 +375,11 @@
     WherePredicate,
 };
 
-<span class="doccomment">/// Create a Hydroflow instance using Hydroflow's custom "surface syntax."
+<span class="doccomment">/// Create a runnable graph instance using DFIR's custom syntax.
 ///
 /// For example usage, take a look at the [`surface_*` tests in the `tests` folder](https://github.com/hydro-project/hydro/tree/main/dfir_rs/tests)
 /// or the [`examples` folder](https://github.com/hydro-project/hydro/tree/main/dfir_rs/examples)
-/// in the [Hydroflow repo](https://github.com/hydro-project/hydro).
+/// in the [Hydro repo](https://github.com/hydro-project/hydro).
 </span><span class="comment">// TODO(mingwei): rustdoc examples inline.
 </span><span class="attr">#[proc_macro]
 </span><span class="kw">pub fn </span>dfir_syntax(input: proc_macro::TokenStream) -&gt; proc_macro::TokenStream {
@@ -397,9 +397,9 @@
 <span class="kw">fn </span>root() -&gt; proc_macro2::TokenStream {
     <span class="kw">use </span>std::env::{var <span class="kw">as </span>env_var, VarError};
 
-    <span class="kw">let </span>hydroflow_crate =
+    <span class="kw">let </span>root_crate =
         proc_macro_crate::crate_name(<span class="string">"dfir_rs"</span>).expect(<span class="string">"dfir_rs should be present in `Cargo.toml`"</span>);
-    <span class="kw">match </span>hydroflow_crate {
+    <span class="kw">match </span>root_crate {
         proc_macro_crate::FoundCrate::Itself =&gt; {
             <span class="kw">if </span><span class="prelude-val">Err</span>(VarError::NotPresent) == env_var(<span class="string">"CARGO_BIN_NAME"</span>)
                 &amp;&amp; <span class="prelude-val">Err</span>(VarError::NotPresent) != env_var(<span class="string">"CARGO_PRIMARY_PACKAGE"</span>)
@@ -423,7 +423,7 @@
     input: proc_macro::TokenStream,
     min_diagnostic_level: <span class="prelude-ty">Option</span>&lt;Level&gt;,
 ) -&gt; proc_macro::TokenStream {
-    <span class="kw">let </span>input = <span class="macro">parse_macro_input!</span>(input <span class="kw">as </span>HfCode);
+    <span class="kw">let </span>input = <span class="macro">parse_macro_input!</span>(input <span class="kw">as </span>DfirCode);
     <span class="kw">let </span>root = root();
     <span class="kw">let </span>(graph_code_opt, diagnostics) = build_hfcode(input, <span class="kw-2">&amp;</span>root);
     <span class="kw">let </span>tokens = graph_code_opt
@@ -446,14 +446,14 @@
     .into()
 }
 
-<span class="doccomment">/// Parse Hydroflow "surface syntax" without emitting code.
+<span class="doccomment">/// Parse DFIR syntax without emitting code.
 ///
 /// Used for testing, users will want to use [`dfir_syntax!`] instead.
 </span><span class="attr">#[proc_macro]
 </span><span class="kw">pub fn </span>dfir_parser(input: proc_macro::TokenStream) -&gt; proc_macro::TokenStream {
-    <span class="kw">let </span>input = <span class="macro">parse_macro_input!</span>(input <span class="kw">as </span>HfCode);
+    <span class="kw">let </span>input = <span class="macro">parse_macro_input!</span>(input <span class="kw">as </span>DfirCode);
 
-    <span class="kw">let </span>flat_graph_builder = FlatGraphBuilder::from_hfcode(input);
+    <span class="kw">let </span>flat_graph_builder = FlatGraphBuilder::from_dfir(input);
     <span class="kw">let </span>(<span class="kw-2">mut </span>flat_graph, _uses, <span class="kw-2">mut </span>diagnostics) = flat_graph_builder.build();
     <span class="kw">if </span>!diagnostics.iter().any(Diagnostic::is_error) {
         <span class="kw">if let </span><span class="prelude-val">Err</span>(diagnostic) = flat_graph.merge_modules() {
@@ -515,7 +515,7 @@
     out.into()
 }
 
-<span class="kw">fn </span>hydroflow_wrap(item: proc_macro::TokenStream, attribute: Attribute) -&gt; proc_macro::TokenStream {
+<span class="kw">fn </span>wrap_localset(item: proc_macro::TokenStream, attribute: Attribute) -&gt; proc_macro::TokenStream {
     <span class="kw">use </span>quote::ToTokens;
 
     <span class="kw">let </span>root = root();
@@ -560,7 +560,7 @@
     <span class="kw">let </span>root = root();
     <span class="kw">let </span>args_2: proc_macro2::TokenStream = args.into();
 
-    hydroflow_wrap(
+    wrap_localset(
         item,
         <span class="macro">parse_quote!</span>(
             <span class="attr">#[#root::tokio::test(flavor = <span class="string">"current_thread"</span>, #args_2)]
@@ -575,7 +575,7 @@
 ) -&gt; proc_macro::TokenStream {
     <span class="kw">let </span>root = root();
 
-    hydroflow_wrap(
+    wrap_localset(
         item,
         <span class="macro">parse_quote!</span>(
             <span class="attr">#[#root::tokio::main(flavor = <span class="string">"current_thread"</span>)]

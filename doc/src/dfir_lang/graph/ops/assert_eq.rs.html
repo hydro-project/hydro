@@ -130,7 +130,7 @@
     input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    arguments,
                    ..
@@ -162,7 +162,7 @@
 
         <span class="kw">let </span>write_prologue = owo.write_prologue;
         owo.write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#assert_index_ident = #hydroflow.add_state(
+            <span class="kw">let </span>#assert_index_ident = #df_ident.add_state(
                 ::std::cell::Cell::new(<span class="number">0usize</span>)
             );
 

@@ -125,7 +125,7 @@
     input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::Stratum),
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    op_span,
                    inputs,
@@ -139,7 +139,7 @@
         <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="string">"borrow_ident"</span>);
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#internal_buffer = #hydroflow.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
+            <span class="kw">let </span>#internal_buffer = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
         };
 
         <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];

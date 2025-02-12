@@ -121,12 +121,10 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#123" id="123">123</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
 <span class="comment">// TODO(mingwei): more doc
@@ -178,7 +176,7 @@
                    root,
                    op_span,
                    context,
-                   hydroflow,
+                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -193,8 +191,8 @@
         <span class="kw">let </span>curr_data = wc.make_ident(<span class="string">"curr_data"</span>);
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#prev_data = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
-            <span class="kw">let </span>#curr_data = #hydroflow.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
+            <span class="kw">let </span>#prev_data = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
+            <span class="kw">let </span>#curr_data = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
         };
 
         <span class="kw">let </span>tick_swap = <span class="macro">quote_spanned!</span> {op_span=&gt;

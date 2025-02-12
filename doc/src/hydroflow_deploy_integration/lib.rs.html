@@ -780,9 +780,7 @@
 <a href="#779" id="779">779</a>
 <a href="#780" id="780">780</a>
 <a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#782" id="782">782</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::path::PathBuf;
@@ -827,29 +825,13 @@
 }
 
 <span class="kw">impl </span>ServerPort {
-    <span class="kw">pub fn </span>instantiate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ServerOrBound {
-        ServerOrBound::Server(<span class="self">self</span>.into())
-    }
-}
-
-<span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>RealizedServerPort {
-    UnixSocket(JoinHandle&lt;io::Result&lt;UnixStream&gt;&gt;),
-    TcpPort(JoinHandle&lt;io::Result&lt;TcpStream&gt;&gt;),
-    Demux(HashMap&lt;u32, RealizedServerPort&gt;),
-    Merge(Vec&lt;RealizedServerPort&gt;),
-    Tagged(Box&lt;RealizedServerPort&gt;, u32),
-    Null,
-}
-
-<span class="kw">impl </span>From&lt;<span class="kw-2">&amp;</span>ServerPort&gt; <span class="kw">for </span>RealizedServerPort {
-    <span class="kw">fn </span>from(port: <span class="kw-2">&amp;</span>ServerPort) -&gt; <span class="self">Self </span>{
-        <span class="kw">match </span>port {
+    <span class="kw">pub fn </span>connect(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ClientConnection {
+        <span class="kw">match </span><span class="self">self </span>{
             ServerPort::UnixSocket(path) =&gt; {
                 <span class="attr">#[cfg(unix)]
                 </span>{
                     <span class="kw">let </span>bound = UnixStream::connect(path.clone());
-                    RealizedServerPort::UnixSocket(tokio::spawn(bound))
+                    ClientConnection::UnixSocket(tokio::spawn(bound))
                 }
 
                 <span class="attr">#[cfg(not(unix))]
@@ -865,20 +847,34 @@
                     <span class="number">10</span>,
                     Duration::from_secs(<span class="number">1</span>),
                 );
-                RealizedServerPort::TcpPort(tokio::spawn(bound))
+                ClientConnection::TcpPort(tokio::spawn(bound))
             }
             ServerPort::Demux(bindings) =&gt; {
-                RealizedServerPort::Demux(bindings.iter().map(|(k, v)| (<span class="kw-2">*</span>k, v.into())).collect())
+                ClientConnection::Demux(bindings.iter().map(|(k, v)| (<span class="kw-2">*</span>k, v.connect())).collect())
             }
             ServerPort::Merge(ports) =&gt; {
-                RealizedServerPort::Merge(ports.iter().map(|p| p.into()).collect())
+                ClientConnection::Merge(ports.iter().map(|p| p.connect()).collect())
             }
             ServerPort::Tagged(port, tag) =&gt; {
-                RealizedServerPort::Tagged(Box::new(port.as_ref().into()), <span class="kw-2">*</span>tag)
+                ClientConnection::Tagged(Box::new(port.as_ref().connect()), <span class="kw-2">*</span>tag)
             }
-            ServerPort::Null =&gt; RealizedServerPort::Null,
+            ServerPort::Null =&gt; ClientConnection::Null,
         }
     }
+
+    <span class="kw">pub fn </span>instantiate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Connection {
+        Connection::AsClient(<span class="self">self</span>.connect())
+    }
+}
+
+<span class="attr">#[derive(Debug)]
+</span><span class="kw">pub enum </span>ClientConnection {
+    UnixSocket(JoinHandle&lt;io::Result&lt;UnixStream&gt;&gt;),
+    TcpPort(JoinHandle&lt;io::Result&lt;TcpStream&gt;&gt;),
+    Demux(HashMap&lt;u32, ClientConnection&gt;),
+    Merge(Vec&lt;ClientConnection&gt;),
+    Tagged(Box&lt;ClientConnection&gt;, u32),
+    Null,
 }
 
 <span class="attr">#[derive(Serialize, Deserialize, Clone, Debug)]
@@ -896,7 +892,7 @@
 
 <span class="kw">impl </span>ServerBindConfig {
     <span class="attr">#[async_recursion]
-    </span><span class="kw">pub async fn </span>bind(<span class="self">self</span>) -&gt; BoundConnection {
+    </span><span class="kw">pub async fn </span>bind(<span class="self">self</span>) -&gt; BoundServer {
         <span class="kw">match </span><span class="self">self </span>{
             ServerBindConfig::UnixSocket =&gt; {
                 <span class="attr">#[cfg(unix)]
@@ -904,7 +900,7 @@
                     <span class="kw">let </span>dir = tempfile::tempdir().unwrap();
                     <span class="kw">let </span>socket_path = dir.path().join(<span class="string">"socket"</span>);
                     <span class="kw">let </span>bound = UnixListener::bind(socket_path).unwrap();
-                    BoundConnection::UnixSocket(
+                    BoundServer::UnixSocket(
                         tokio::spawn(<span class="kw">async move </span>{ <span class="prelude-val">Ok</span>(bound.accept().<span class="kw">await</span><span class="question-mark">?</span>.<span class="number">0</span>) }),
                         dir,
                     )
@@ -918,37 +914,37 @@
             ServerBindConfig::TcpPort(host) =&gt; {
                 <span class="kw">let </span>listener = TcpListener::bind((host, <span class="number">0</span>)).<span class="kw">await</span>.unwrap();
                 <span class="kw">let </span>addr = listener.local_addr().unwrap();
-                BoundConnection::TcpPort(TcpListenerStream::new(listener), addr)
+                BoundServer::TcpPort(TcpListenerStream::new(listener), addr)
             }
             ServerBindConfig::Demux(bindings) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>demux = HashMap::new();
                 <span class="kw">for </span>(key, bind) <span class="kw">in </span>bindings {
                     demux.insert(key, bind.bind().<span class="kw">await</span>);
                 }
-                BoundConnection::Demux(demux)
+                BoundServer::Demux(demux)
             }
             ServerBindConfig::Merge(bindings) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>merge = Vec::new();
                 <span class="kw">for </span>bind <span class="kw">in </span>bindings {
                     merge.push(bind.bind().<span class="kw">await</span>);
                 }
-                BoundConnection::Merge(merge)
+                BoundServer::Merge(merge)
             }
             ServerBindConfig::Tagged(underlying, id) =&gt; {
-                BoundConnection::Tagged(Box::new(underlying.bind().<span class="kw">await</span>), id)
+                BoundServer::Tagged(Box::new(underlying.bind().<span class="kw">await</span>), id)
             }
-            ServerBindConfig::Null =&gt; BoundConnection::Null,
+            ServerBindConfig::Null =&gt; BoundServer::Null,
         }
     }
 }
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>ServerOrBound {
-    Server(RealizedServerPort),
-    Bound(BoundConnection),
+</span><span class="kw">pub enum </span>Connection {
+    AsClient(ClientConnection),
+    AsServer(BoundServer),
 }
 
-<span class="kw">impl </span>ServerOrBound {
+<span class="kw">impl </span>Connection {
     <span class="kw">pub async fn </span>connect&lt;T: Connected&gt;(<span class="self">self</span>) -&gt; T {
         T::from_defn(<span class="self">self</span>).<span class="kw">await
     </span>}
@@ -960,7 +956,7 @@
     }
 
     <span class="kw">pub async fn </span>accept_tcp(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; TcpStream {
-        <span class="kw">if let </span>ServerOrBound::Bound(BoundConnection::TcpPort(handle, <span class="kw">_</span>)) = <span class="self">self </span>{
+        <span class="kw">if let </span>Connection::AsServer(BoundServer::TcpPort(handle, <span class="kw">_</span>)) = <span class="self">self </span>{
             handle.next().<span class="kw">await</span>.unwrap().unwrap()
         } <span class="kw">else </span>{
             <span class="macro">panic!</span>(<span class="string">"Not a TCP port"</span>)
@@ -985,7 +981,7 @@
 
 <span class="attr">#[async_trait]
 </span><span class="kw">pub trait </span>Connected: Send {
-    <span class="kw">async fn </span>from_defn(pipe: ServerOrBound) -&gt; <span class="self">Self</span>;
+    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self</span>;
 }
 
 <span class="kw">pub trait </span>ConnectedSink {
@@ -1002,19 +998,19 @@
 }
 
 <span class="attr">#[derive(Debug)]
-</span><span class="kw">pub enum </span>BoundConnection {
+</span><span class="kw">pub enum </span>BoundServer {
     UnixSocket(JoinHandle&lt;io::Result&lt;UnixStream&gt;&gt;, tempfile::TempDir),
     TcpPort(TcpListenerStream, SocketAddr),
-    Demux(HashMap&lt;u32, BoundConnection&gt;),
-    Merge(Vec&lt;BoundConnection&gt;),
-    Tagged(Box&lt;BoundConnection&gt;, u32),
+    Demux(HashMap&lt;u32, BoundServer&gt;),
+    Merge(Vec&lt;BoundServer&gt;),
+    Tagged(Box&lt;BoundServer&gt;, u32),
     Null,
 }
 
-<span class="kw">impl </span>BoundConnection {
-    <span class="kw">pub fn </span>sink_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ServerPort {
+<span class="kw">impl </span>BoundServer {
+    <span class="kw">pub fn </span>server_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; ServerPort {
         <span class="kw">match </span><span class="self">self </span>{
-            BoundConnection::UnixSocket(<span class="kw">_</span>, tempdir) =&gt; {
+            BoundServer::UnixSocket(<span class="kw">_</span>, tempdir) =&gt; {
                 <span class="attr">#[cfg(unix)]
                 </span>{
                     ServerPort::UnixSocket(tempdir.path().join(<span class="string">"socket"</span>))
@@ -1026,39 +1022,39 @@
                     <span class="macro">panic!</span>(<span class="string">"Unix sockets are not supported on this platform"</span>)
                 }
             }
-            BoundConnection::TcpPort(<span class="kw">_</span>, addr) =&gt; {
+            BoundServer::TcpPort(<span class="kw">_</span>, addr) =&gt; {
                 ServerPort::TcpPort(SocketAddr::new(addr.ip(), addr.port()))
             }
 
-            BoundConnection::Demux(bindings) =&gt; {
+            BoundServer::Demux(bindings) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>demux = HashMap::new();
                 <span class="kw">for </span>(key, bind) <span class="kw">in </span>bindings {
-                    demux.insert(<span class="kw-2">*</span>key, bind.sink_port());
+                    demux.insert(<span class="kw-2">*</span>key, bind.server_port());
                 }
                 ServerPort::Demux(demux)
             }
 
-            BoundConnection::Merge(bindings) =&gt; {
+            BoundServer::Merge(bindings) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>merge = Vec::new();
                 <span class="kw">for </span>bind <span class="kw">in </span>bindings {
-                    merge.push(bind.sink_port());
+                    merge.push(bind.server_port());
                 }
                 ServerPort::Merge(merge)
             }
 
-            BoundConnection::Tagged(underlying, id) =&gt; {
-                ServerPort::Tagged(Box::new(underlying.sink_port()), <span class="kw-2">*</span>id)
+            BoundServer::Tagged(underlying, id) =&gt; {
+                ServerPort::Tagged(Box::new(underlying.server_port()), <span class="kw-2">*</span>id)
             }
 
-            BoundConnection::Null =&gt; ServerPort::Null,
+            BoundServer::Null =&gt; ServerPort::Null,
         }
     }
 }
 
 <span class="attr">#[async_recursion]
-</span><span class="kw">async fn </span>accept(bound: BoundConnection) -&gt; ConnectedDirect {
+</span><span class="kw">async fn </span>accept(bound: BoundServer) -&gt; ConnectedDirect {
     <span class="kw">match </span>bound {
-        BoundConnection::UnixSocket(listener, <span class="kw">_</span>) =&gt; {
+        BoundServer::UnixSocket(listener, <span class="kw">_</span>) =&gt; {
             <span class="attr">#[cfg(unix)]
             </span>{
                 <span class="kw">let </span>stream = listener.<span class="kw">await</span>.unwrap().unwrap();
@@ -1075,7 +1071,7 @@
                 <span class="macro">panic!</span>(<span class="string">"Unix sockets are not supported on this platform"</span>)
             }
         }
-        BoundConnection::TcpPort(<span class="kw-2">mut </span>listener, <span class="kw">_</span>) =&gt; {
+        BoundServer::TcpPort(<span class="kw-2">mut </span>listener, <span class="kw">_</span>) =&gt; {
             <span class="kw">let </span>stream = listener.next().<span class="kw">await</span>.unwrap().unwrap();
             ConnectedDirect {
                 stream_sink: <span class="prelude-val">Some</span>(Box::pin(tcp_bytes(stream))),
@@ -1083,7 +1079,7 @@
                 sink_only: <span class="prelude-val">None</span>,
             }
         }
-        BoundConnection::Merge(merge) =&gt; {
+        BoundServer::Merge(merge) =&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>sources = <span class="macro">vec!</span>[];
             <span class="kw">for </span>bound <span class="kw">in </span>merge {
                 sources.push(accept(bound).<span class="kw">await</span>.into_source());
@@ -1100,10 +1096,10 @@
                 sink_only: <span class="prelude-val">None</span>,
             }
         }
-        BoundConnection::Demux(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a demux pipe directly"</span>),
-        BoundConnection::Tagged(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a tagged pipe directly"</span>),
-        BoundConnection::Null =&gt; {
-            ConnectedDirect::from_defn(ServerOrBound::Server(RealizedServerPort::Null)).<span class="kw">await
+        BoundServer::Demux(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a demux pipe directly"</span>),
+        BoundServer::Tagged(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a tagged pipe directly"</span>),
+        BoundServer::Null =&gt; {
+            ConnectedDirect::from_defn(Connection::AsClient(ClientConnection::Null)).<span class="kw">await
         </span>}
     }
 }
@@ -1166,9 +1162,9 @@
 
 <span class="attr">#[async_trait]
 </span><span class="kw">impl </span>Connected <span class="kw">for </span>ConnectedDirect {
-    <span class="kw">async fn </span>from_defn(pipe: ServerOrBound) -&gt; <span class="self">Self </span>{
+    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>pipe {
-            ServerOrBound::Server(RealizedServerPort::UnixSocket(stream)) =&gt; {
+            Connection::AsClient(ClientConnection::UnixSocket(stream)) =&gt; {
                 <span class="attr">#[cfg(unix)]
                 </span>{
                     <span class="kw">let </span>stream = stream.<span class="kw">await</span>.unwrap().unwrap();
@@ -1185,7 +1181,7 @@
                     <span class="macro">panic!</span>(<span class="string">"Unix sockets are not supported on this platform"</span>);
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::TcpPort(stream)) =&gt; {
+            Connection::AsClient(ClientConnection::TcpPort(stream)) =&gt; {
                 <span class="kw">let </span>stream = stream.<span class="kw">await</span>.unwrap().unwrap();
                 stream.set_nodelay(<span class="bool-val">true</span>).unwrap();
                 ConnectedDirect {
@@ -1194,9 +1190,9 @@
                     sink_only: <span class="prelude-val">None</span>,
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::Merge(merge)) =&gt; {
+            Connection::AsClient(ClientConnection::Merge(merge)) =&gt; {
                 <span class="kw">let </span>sources = futures::future::join_all(merge.into_iter().map(|port| <span class="kw">async </span>{
-                    ConnectedDirect::from_defn(ServerOrBound::Server(port))
+                    ConnectedDirect::from_defn(Connection::AsClient(port))
                         .<span class="kw">await
                         </span>.into_source()
                 }))
@@ -1213,15 +1209,15 @@
                     sink_only: <span class="prelude-val">None</span>,
                 }
             }
-            ServerOrBound::Server(RealizedServerPort::Demux(<span class="kw">_</span>)) =&gt; {
+            Connection::AsClient(ClientConnection::Demux(<span class="kw">_</span>)) =&gt; {
                 <span class="macro">panic!</span>(<span class="string">"Cannot connect to a demux pipe directly"</span>)
             }
 
-            ServerOrBound::Server(RealizedServerPort::Tagged(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
+            Connection::AsClient(ClientConnection::Tagged(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; {
                 <span class="macro">panic!</span>(<span class="string">"Cannot connect to a tagged pipe directly"</span>)
             }
 
-            ServerOrBound::Server(RealizedServerPort::Null) =&gt; ConnectedDirect {
+            Connection::AsClient(ClientConnection::Null) =&gt; ConnectedDirect {
                 stream_sink: <span class="prelude-val">None</span>,
                 source_only: <span class="prelude-val">Some</span>(Box::pin(stream::empty())),
                 sink_only: <span class="prelude-val">Some</span>(Box::pin(IoErrorDrain {
@@ -1229,7 +1225,7 @@
                 })),
             },
 
-            ServerOrBound::Bound(bound) =&gt; accept(bound).<span class="kw">await</span>,
+            Connection::AsServer(bound) =&gt; accept(bound).<span class="kw">await</span>,
         }
     }
 }
@@ -1322,16 +1318,16 @@
 <span class="kw">where
     </span>&lt;T <span class="kw">as </span>ConnectedSink&gt;::Input: <span class="lifetime">'static </span>+ Sync,
 {
-    <span class="kw">async fn </span>from_defn(pipe: ServerOrBound) -&gt; <span class="self">Self </span>{
+    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>pipe {
-            ServerOrBound::Server(RealizedServerPort::Demux(demux)) =&gt; {
+            Connection::AsClient(ClientConnection::Demux(demux)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
                 <span class="kw">let </span>keys = demux.keys().cloned().collect();
                 <span class="kw">for </span>(id, pipe) <span class="kw">in </span>demux {
                     connected_demux.insert(
                         id,
                         Box::pin(
-                            T::from_defn(ServerOrBound::Server(pipe))
+                            T::from_defn(Connection::AsClient(pipe))
                                 .<span class="kw">await
                                 </span>.into_sink()
                                 .buffer(<span class="number">1024</span>),
@@ -1350,14 +1346,14 @@
                 }
             }
 
-            ServerOrBound::Bound(BoundConnection::Demux(demux)) =&gt; {
+            Connection::AsServer(BoundServer::Demux(demux)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
                 <span class="kw">let </span>keys = demux.keys().cloned().collect();
                 <span class="kw">for </span>(id, bound) <span class="kw">in </span>demux {
                     connected_demux.insert(
                         id,
                         Box::pin(
-                            T::from_defn(ServerOrBound::Bound(bound))
+                            T::from_defn(Connection::AsServer(bound))
                                 .<span class="kw">await
                                 </span>.into_sink()
                                 .buffer(<span class="number">1024</span>),
@@ -1470,12 +1466,12 @@
 <span class="kw">where
     </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
 {
-    <span class="kw">async fn </span>from_defn(pipe: ServerOrBound) -&gt; <span class="self">Self </span>{
+    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>sources = <span class="kw">match </span>pipe {
-            ServerOrBound::Server(RealizedServerPort::Tagged(pipe, id)) =&gt; {
+            Connection::AsClient(ClientConnection::Tagged(pipe, id)) =&gt; {
                 <span class="macro">vec!</span>[(
                     Box::pin(
-                        T::from_defn(ServerOrBound::Server(<span class="kw-2">*</span>pipe))
+                        T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
                             .<span class="kw">await
                             </span>.into_source(),
                     ),
@@ -1483,13 +1479,13 @@
                 )]
             }
 
-            ServerOrBound::Server(RealizedServerPort::Merge(m)) =&gt; {
+            Connection::AsClient(ClientConnection::Merge(m)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
                 <span class="kw">for </span>port <span class="kw">in </span>m {
-                    <span class="kw">if let </span>RealizedServerPort::Tagged(pipe, id) = port {
+                    <span class="kw">if let </span>ClientConnection::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
-                                T::from_defn(ServerOrBound::Server(<span class="kw-2">*</span>pipe))
+                                T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
                                     .<span class="kw">await
                                     </span>.into_source(),
                             ),
@@ -1503,10 +1499,10 @@
                 sources
             }
 
-            ServerOrBound::Bound(BoundConnection::Tagged(pipe, id)) =&gt; {
+            Connection::AsServer(BoundServer::Tagged(pipe, id)) =&gt; {
                 <span class="macro">vec!</span>[(
                     Box::pin(
-                        T::from_defn(ServerOrBound::Bound(<span class="kw-2">*</span>pipe))
+                        T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
                             .<span class="kw">await
                             </span>.into_source(),
                     ),
@@ -1514,13 +1510,13 @@
                 )]
             }
 
-            ServerOrBound::Bound(BoundConnection::Merge(m)) =&gt; {
+            Connection::AsServer(BoundServer::Merge(m)) =&gt; {
                 <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
                 <span class="kw">for </span>port <span class="kw">in </span>m {
-                    <span class="kw">if let </span>BoundConnection::Tagged(pipe, id) = port {
+                    <span class="kw">if let </span>BoundServer::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
-                                T::from_defn(ServerOrBound::Bound(<span class="kw-2">*</span>pipe))
+                                T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
                                     .<span class="kw">await
                                     </span>.into_source(),
                             ),

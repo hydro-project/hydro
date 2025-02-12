@@ -494,7 +494,7 @@
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
 
         CompiledFlow {
-            hydroflow_ir: build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
+            dfir: build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -522,7 +522,7 @@
         <span class="kw">let </span>extra_stmts = <span class="self">self</span>.extra_stmts(env);
 
         CompiledFlow {
-            hydroflow_ir: build_inner(<span class="kw-2">&amp;mut </span>flow_state_networked),
+            dfir: build_inner(<span class="kw-2">&amp;mut </span>flow_state_networked),
             extra_stmts,
             _phantom: PhantomData,
         }

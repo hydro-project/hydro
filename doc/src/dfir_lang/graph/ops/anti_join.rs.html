@@ -213,7 +213,7 @@
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -273,10 +273,10 @@
             make_antijoindata(persistences[<span class="number">1</span>], <span class="string">"neg"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#neg_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+            <span class="kw">let </span>#neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #neg_init
             ));
-            <span class="kw">let </span>#pos_antijoindata_ident = #hydroflow.add_state(std::cell::RefCell::new(
+            <span class="kw">let </span>#pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                 #pos_init
             ));
         };

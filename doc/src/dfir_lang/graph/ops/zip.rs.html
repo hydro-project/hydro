@@ -120,8 +120,8 @@
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, WriteContextArgs, RANGE_0, RANGE_1,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -155,7 +155,7 @@
     write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -191,7 +191,7 @@
         <span class="kw">let </span>zipbuf_ident = wc.make_ident(<span class="string">"zipbuf"</span>);
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#zipbuf_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+            <span class="kw">let </span>#zipbuf_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::util::monotonic_map::MonotonicMap::&lt;
                     #root::scheduled::ticks::TickInstant,
                     (::std::vec::Vec&lt;<span class="kw">_</span>&gt;, ::std::vec::Vec&lt;<span class="kw">_</span>&gt;),
