@@ -6,7 +6,7 @@ on:
       - main
       - feature/**
     tags:
-      - 'hydro_cli-v[0-9]+.[0-9]+.[0-9]+'
+      - "hydro_cli-v[0-9]+.[0-9]+.[0-9]+"
 
 env:
   PACKAGE_NAME: hydro_deploy
@@ -45,6 +45,7 @@ jobs:
           args: --release --out dist
         env:
           CARGO_TARGET_X86_64_APPLE_DARWIN_LINKER: clang
+          CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER: clang
       - name: "Install built wheel"
         run: |
           pip install hydro_deploy/hydro_cli/dist/${{ env.PACKAGE_NAME }}-*.whl --force-reinstall
