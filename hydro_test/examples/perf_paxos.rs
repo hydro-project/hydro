@@ -54,6 +54,7 @@ async fn main() {
         num_clients_per_node,
         median_latency_window_size,
         checkpoint_frequency,
+        f,
         f + 1,
         |replica_checkpoint| CorePaxos {
             proposers: proposers.clone(),
@@ -72,7 +73,7 @@ async fn main() {
 
     let nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(analyze_perf::analyze_perf)
+        // .optimize_with(analyze_perf::analyze_perf)
         .with_cluster(
             &proposers,
             (0..f + 1)

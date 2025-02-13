@@ -201,13 +201,6 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     .await?;
                 fold_data
             } else if cfg!(target_family = "unix") {
-                let perf_raw_outfile = tracing.perf_raw_outfile.as_ref().ok_or_else(|| {
-                    anyhow!(
-                        "`{}` must be set for `perf` on localhost.",
-                        name_of!(perf_raw_outfile in TracingOptions)
-                    )
-                })?;
-                
                 // Run perf script.
                 let mut perf_script = Command::new("perf")
                     .args(["script", "--symfs=/", "-i"])
