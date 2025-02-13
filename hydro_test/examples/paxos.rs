@@ -50,6 +50,7 @@ async fn main() {
         num_clients_per_node,
         median_latency_window_size,
         checkpoint_frequency,
+        f,
         f + 1,
         |replica_checkpoint| CorePaxos {
             proposers: proposers.clone(),

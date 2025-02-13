@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import Layout from '@theme/Layout';
+import React, { useEffect, useState } from "react";
 
 import Editor from "@monaco-editor/react";
 
-import ExecutionEnvironment from '@docusaurus/ExecutionEnvironment';
+import ExecutionEnvironment from "@docusaurus/ExecutionEnvironment";
 
-import siteConfig from '@generated/docusaurus.config';
+import siteConfig from "@generated/docusaurus.config";
 
 import * as wasm from "website_playground/website_playground_bg.wasm";
 import * as playgroundJS from "website_playground/website_playground_bg.js";
@@ -13,7 +12,7 @@ import * as playgroundJS from "website_playground/website_playground_bg.js";
 let compile_DFIR = null;
 let compile_datalog = null;
 
-if (siteConfig.customFields.LOAD_PLAYGROUND === '1') {
+if (siteConfig.customFields.LOAD_PLAYGROUND === "1") {
   compile_DFIR = playgroundJS.compile_dfir;
   compile_datalog = playgroundJS.compile_datalog;
 
@@ -21,10 +20,10 @@ if (siteConfig.customFields.LOAD_PLAYGROUND === '1') {
     playgroundJS.__wbg_set_wasm(wasm);
   } else {
     const wasmUri = require("website_playground/website_playground_bg.wasm");
-    const wasmBuffer = Buffer.from(wasmUri.split(",")[1], 'base64');
+    const wasmBuffer = Buffer.from(wasmUri.split(",")[1], "base64");
     const wasm = new WebAssembly.Module(wasmBuffer);
     const instance = new WebAssembly.Instance(wasm, {
-      "./website_playground_bg.js": require("website_playground/website_playground_bg.js")
+      "./website_playground_bg.js": require("website_playground/website_playground_bg.js"),
     });
     playgroundJS.__wbg_set_wasm(instance.exports);
   }
@@ -37,7 +36,7 @@ import mermaid from "mermaid";
 import styles from "./playground.module.css";
 
 function MermaidGraph({ id, source }) {
-  const [svg, setSvg] = useState({ __html: 'Loading Mermaid graph...' });
+  const [svg, setSvg] = useState({ __html: "Loading Mermaid graph..." });
   useEffect(() => {
     mermaid.render(id, source).then(({ svg }) => {
       setSvg({
@@ -46,17 +45,23 @@ function MermaidGraph({ id, source }) {
     });
   }, [source]);
 
-  return <div className={styles["mermaidContainer"]} style={{
-    marginTop: "-7px"
-  }} dangerouslySetInnerHTML={svg}></div>;
+  return (
+    <div
+      className={styles["mermaidContainer"]}
+      style={{
+        marginTop: "-7px",
+      }}
+      dangerouslySetInnerHTML={svg}
+    ></div>
+  );
 }
 
 const DfirExamples = {
-  "Simplest": `\
+  Simplest: `\
 // https://hydro.run/docs/dfir/quickstart/example_1_simplest
 source_iter(0..10) -> for_each(|n| println!("Hello {}", n));`,
 
-  "Simple": `\
+  Simple: `\
 // https://hydro.run/docs/dfir/quickstart/example_2_simple
 source_iter(0..10)
   -> map(|n| n * n)
@@ -161,11 +166,11 @@ all_vertices[0] -> [pos]unreached_vertices;
 reached_vertices[1] -> [neg]unreached_vertices;
 // the output
 all_vertices[1] -> unique() -> for_each(|v| println!("Received vertex: {}", v));
-unreached_vertices -> for_each(|v| println!("unreached_vertices vertex: {}", v));`
+unreached_vertices -> for_each(|v| println!("unreached_vertices vertex: {}", v));`,
 };
 
 const datalogExamples = {
-  "Simplest": `\
+  Simplest: `\
 .input foo \`null()\`
 .output bar \`null()\`
 bar(x) :- foo(x)`,
@@ -174,19 +179,36 @@ bar(x) :- foo(x)`,
 .input seed_reachable \`null()\`
 .output reachable \`null()\`
 reachable(x) :- seed_reachable(x)
-reachable(y) :- reachable(x), edges(x, y)`
+reachable(y) :- reachable(x), edges(x, y)`,
 };
 
 export function DfirSurfaceDemo() {
-  return <EditorDemo compileFn={compile_DFIR} examples={DfirExamples} mermaidId="mermaid-dfir"></EditorDemo>
+  return (
+    <EditorDemo
+      compileFn={compile_DFIR}
+      examples={DfirExamples}
+      mermaidId="mermaid-dfir"
+    ></EditorDemo>
+  );
 }
 export function DatalogDemo() {
-  return <EditorDemo compileFn={compile_datalog} examples={datalogExamples} mermaidId="mermaid-datalog"></EditorDemo>
+  return (
+    <EditorDemo
+      compileFn={compile_datalog}
+      examples={datalogExamples}
+      mermaidId="mermaid-datalog"
+    ></EditorDemo>
+  );
 }
 
 export function EditorDemo({ compileFn, examples, mermaidId }) {
-  if (siteConfig.customFields.LOAD_PLAYGROUND !== '1') {
-    return <div>Please set LOAD_PLAYGROUND environment variable to 1 to enable the playground.</div>;
+  if (siteConfig.customFields.LOAD_PLAYGROUND !== "1") {
+    return (
+      <div>
+        Please set LOAD_PLAYGROUND environment variable to 1 to enable the
+        playground.
+      </div>
+    );
   }
 
   const [program, setProgram] = useState(Object.values(examples)[0]);
@@ -210,129 +232,165 @@ export function EditorDemo({ compileFn, examples, mermaidId }) {
     return true;
   };
 
-  const { output, diagnostics } = (compileFn)(program, ...Object.values(writeGraphConfig));
+  const { output, diagnostics } = compileFn(
+    program,
+    ...Object.values(writeGraphConfig),
+  );
   const numberOfLines = program.split("\n").length;
 
   useEffect(() => {
     if (editorAndMonaco) {
       const { editor, monaco } = editorAndMonaco;
-      monaco.editor.setModelMarkers(editor.getModel(), "dfir_rs", diagnostics.map(d => {
-        return {
-          startLineNumber: d.span.start.line,
-          startColumn: d.span.start.column + 1,
-          endLineNumber: d.span.end ? d.span.end.line : numberOfLines + 1,
-          endColumn: d.span.end ? d.span.end.column + 1 : 0,
-          message: d.message,
-          severity: d.is_error ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning
-        };
-      }));
+      monaco.editor.setModelMarkers(
+        editor.getModel(),
+        "dfir_rs",
+        diagnostics.map((d) => {
+          return {
+            startLineNumber: d.span.start.line,
+            startColumn: d.span.start.column + 1,
+            endLineNumber: d.span.end ? d.span.end.line : numberOfLines + 1,
+            endColumn: d.span.end ? d.span.end.column + 1 : 0,
+            message: d.message,
+            severity: d.is_error
+              ? monaco.MarkerSeverity.Error
+              : monaco.MarkerSeverity.Warning,
+          };
+        }),
+      );
     }
   }, [editorAndMonaco, numberOfLines, diagnostics]);
 
-  return <div style={{ display: "flex", flexWrap: "wrap" }}>
-    <div className={styles["panel"]}>
-      <span>Template: </span><select style={{
-        fontFamily: "inherit",
-        fontSize: "inherit",
-        marginBottom: "5px"
-      }} onChange={(e) => {
-        setProgram(examples[e.target.value]);
-      }}>{Object.keys(examples).map((name) => {
-        return <option key={name} value={name}>{name}</option>;
-      })}</select>
-      <Editor
-        height="70vh"
-        theme="vs-dark"
-        defaultLanguage="rust"
-        value={program}
-        onChange={(value, _event) => {
-          setProgram(value);
-        }}
-        onMount={(editor, monaco) => {
-          setEditorAndMonaco({ editor, monaco });
-        }}
-      />
-    </div>
-    <div className={styles["panel"]} style={{ marginRight: "0" }}>
-      <div style={{ textAlign: "center", fontWeight: "700", marginBottom: "9px" }}>
-        <a className={showingMermaid ? styles["selected-tab"] : styles["unselected-tab"]} onClick={() => setShowingMermaid(true)} role="button">Graph</a>
-        &nbsp;/&nbsp;
-        <a className={!showingMermaid ? styles["selected-tab"] : styles["unselected-tab"]} onClick={() => setShowingMermaid(false)} role="button">Compiled Rust</a>
-      </div>
-      {(() => {
-        if (null == output) {
-          return <div>
-            <p>Failed to compile:</p>
-            <ul>{diagnostics.map(diag => <li key={Math.random()}>{diag.is_error ? "Error" : "Warning"}: {diag.message} ({diag.span.start.line}:{diag.span.start.column})</li>)}</ul>
-          </div>;
-        }
-        if (showingMermaid) {
-          return <div style={{position: 'relative' }}>
-            <a className={ styles["opts-toggle"] } onClick={() => setShowGraphOpts(!showGraphOpts)}>&hellip;</a>
-            <div className={ styles["opts-pane"] } style={{ display: showGraphOpts ? 'block' : 'none' }}>
-              <ul className={ styles["opts-list"] }>
-                {Object.keys(writeGraphConfig).map(name => {
-                  return (
-                    <li key={name}>
-                      <label>
-                        <input
-                          type="checkbox"
-                          name={name}
-                          value={name}
-                          checked={writeGraphConfig[name]}
-                          onChange={() => writeGraphConfigOnChange(name)}
-                        />
-                        <code>{name}</code>
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-            <MermaidGraph id={mermaidId} source={output.mermaid} />
-          </div>;
-        } else {
-          return <Editor
-            height="70vh"
-            theme="vs-dark"
-            defaultLanguage="rust"
-            value={output.compiled}
-            options={{
-              readOnly: true
-            }}
-          />;
-        }
-      })()}
-    </div>
-  </div>
-}
-
-export default function Playground() {
   return (
-    <Layout
-      description="Playground for the DFIR compiler">
-      <main>
-        <div style={{
-          maxWidth: "calc(min(1600px, 100vw - 60px))",
-          marginLeft: "auto",
-          marginRight: "auto",
-          marginTop: "30px",
-          marginBottom: "30px"
-        }}>
-          <h1 style={{
-            fontSize: "3.5rem"
-          }}>Playground</h1>
-          <p>In these interactive editors, you can experiment with the DFIR compiler by running it in your browser (through WebAssembly)! Try selecting one of the templates or edit the code yourself to see how DFIR logic is compiled into a dataflow graph and executable Rust.</p>
-          <h1 style={{
-            fontSize: "2.5rem"
-          }}>DFIR</h1>
-          <DfirSurfaceDemo />
-          <h1 style={{
-            fontSize: "2.5rem"
-          }}>Datalog</h1>
-          <DatalogDemo />
+    <div style={{ display: "flex", flexWrap: "wrap" }}>
+      <div className={styles["panel"]}>
+        <span>Template: </span>
+        <select
+          style={{
+            fontFamily: "inherit",
+            fontSize: "inherit",
+            marginBottom: "5px",
+          }}
+          onChange={(e) => {
+            setProgram(examples[e.target.value]);
+          }}
+        >
+          {Object.keys(examples).map((name) => {
+            return (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            );
+          })}
+        </select>
+        <Editor
+          height="70vh"
+          theme="vs-dark"
+          defaultLanguage="rust"
+          value={program}
+          onChange={(value, _event) => {
+            setProgram(value);
+          }}
+          onMount={(editor, monaco) => {
+            setEditorAndMonaco({ editor, monaco });
+          }}
+        />
+      </div>
+      <div className={styles["panel"]} style={{ marginRight: "0" }}>
+        <div
+          style={{
+            textAlign: "center",
+            fontWeight: "700",
+            marginBottom: "9px",
+          }}
+        >
+          <a
+            className={
+              showingMermaid ? styles["selected-tab"] : styles["unselected-tab"]
+            }
+            onClick={() => setShowingMermaid(true)}
+            role="button"
+          >
+            Graph
+          </a>
+          &nbsp;/&nbsp;
+          <a
+            className={
+              !showingMermaid
+                ? styles["selected-tab"]
+                : styles["unselected-tab"]
+            }
+            onClick={() => setShowingMermaid(false)}
+            role="button"
+          >
+            Compiled Rust
+          </a>
         </div>
-      </main>
-    </Layout>
+        {(() => {
+          if (null == output) {
+            return (
+              <div>
+                <p>Failed to compile:</p>
+                <ul>
+                  {diagnostics.map((diag) => (
+                    <li key={Math.random()}>
+                      {diag.is_error ? "Error" : "Warning"}: {diag.message} (
+                      {diag.span.start.line}:{diag.span.start.column})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }
+          if (showingMermaid) {
+            return (
+              <div style={{ position: "relative" }}>
+                <a
+                  className={styles["opts-toggle"]}
+                  onClick={() => setShowGraphOpts(!showGraphOpts)}
+                >
+                  &hellip;
+                </a>
+                <div
+                  className={styles["opts-pane"]}
+                  style={{ display: showGraphOpts ? "block" : "none" }}
+                >
+                  <ul className={styles["opts-list"]}>
+                    {Object.keys(writeGraphConfig).map((name) => {
+                      return (
+                        <li key={name}>
+                          <label>
+                            <input
+                              type="checkbox"
+                              name={name}
+                              value={name}
+                              checked={writeGraphConfig[name]}
+                              onChange={() => writeGraphConfigOnChange(name)}
+                            />
+                            <code>{name}</code>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+                <MermaidGraph id={mermaidId} source={output.mermaid} />
+              </div>
+            );
+          } else {
+            return (
+              <Editor
+                height="70vh"
+                theme="vs-dark"
+                defaultLanguage="rust"
+                value={output.compiled}
+                options={{
+                  readOnly: true,
+                }}
+              />
+            );
+          }
+        })()}
+      </div>
+    </div>
   );
 }

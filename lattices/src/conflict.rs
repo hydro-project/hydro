@@ -56,7 +56,7 @@ where
 {
     fn merge(&mut self, other: Conflict<O>) -> bool {
         if let Some(val_self) = &self.0 {
-            if other.0.map_or(true, |val_other| val_self != &val_other) {
+            if other.0.is_none_or(|val_other| val_self != &val_other) {
                 self.0 = None;
                 return true;
             }

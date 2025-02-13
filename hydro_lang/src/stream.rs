@@ -1628,7 +1628,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
         let latest_received = self.fold_commutative(
             q!(|| None),
             q!(|latest, _| {
-                // Note: May want to check received ballot against our own?
                 *latest = Some(Instant::now());
             }),
         );
@@ -1938,7 +1937,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         self.send_bincode::<L2, CoreType>(other).map(q!(|(_, b)| b))
     }
 
-    pub fn send_bytes_interleaved<L2: Location<'a>, Tag>(
+    pub fn send_bytes_anonymous<L2: Location<'a>, Tag>(
         self,
         other: &L2,
     ) -> Stream<Bytes, L2, Unbounded, Order::Min>
@@ -1973,7 +1972,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         .send_bincode(other)
     }
 
-    pub fn broadcast_bincode_interleaved<C2: 'a, Tag>(
+    pub fn broadcast_bincode_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order::Min>
@@ -2009,7 +2008,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         .send_bytes(other)
     }
 
-    pub fn broadcast_bytes_interleaved<C2: 'a, Tag>(
+    pub fn broadcast_bytes_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<Bytes, Cluster<'a, C2>, Unbounded, Order::Min>
@@ -2049,7 +2048,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Stream<T, L, B, TotalOrder> {
             .send_bincode(other)
     }
 
-    pub fn round_robin_bincode_interleaved<C2: 'a, Tag>(
+    pub fn round_robin_bincode_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<
@@ -2093,7 +2092,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Stream<T, L, B, TotalOrder> {
             .send_bytes(other)
     }
 
-    pub fn round_robin_bytes_interleaved<C2: 'a, Tag>(
+    pub fn round_robin_bytes_anonymous<C2: 'a, Tag>(
         self,
         other: &Cluster<'a, C2>,
     ) -> Stream<

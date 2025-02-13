@@ -125,7 +125,7 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         self.used = true;
 
         CompiledFlow {
-            hydroflow_ir: build_inner(&mut self.ir),
+            dfir: build_inner(&mut self.ir),
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -150,7 +150,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         let extra_stmts = self.extra_stmts(env);
 
         CompiledFlow {
-            hydroflow_ir: build_inner(&mut self.ir),
+            dfir: build_inner(&mut flow_state_networked),
             extra_stmts,
             _phantom: PhantomData,
         }

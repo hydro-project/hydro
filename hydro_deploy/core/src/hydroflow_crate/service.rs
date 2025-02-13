@@ -16,6 +16,7 @@ use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
     Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
+    TracingResults,
 };
 
 pub struct HydroflowCrateService {
@@ -166,6 +167,10 @@ impl HydroflowCrateService {
 
     pub fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
         self.launched_binary.as_ref().unwrap().stderr_filter(prefix)
+    }
+    
+    pub fn tracing_results(&self) -> Option<&TracingResults> {
+        self.launched_binary.as_ref().unwrap().tracing_results()
     }
 
     pub fn exit_code(&self) -> Option<i32> {

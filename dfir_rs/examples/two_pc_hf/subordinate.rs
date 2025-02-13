@@ -29,7 +29,7 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
             MsgType::Prepare => prepares.give(m),
             MsgType::Abort => p2.give(m),
             MsgType::Commit => p2.give(m),
-            MsgType::End {..} => ends.give(m),
+            MsgType::End => ends.give(m),
             _ => errs.give(m),
         });
         msgs[errs] -> for_each(|m| println!("Received unexpected message type: {:?}", m));

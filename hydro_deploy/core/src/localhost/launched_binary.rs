@@ -11,6 +11,7 @@ use inferno::collapse::dtrace::Folder as DtraceFolder;
 use inferno::collapse::perf::Folder as PerfFolder;
 use inferno::collapse::Collapse;
 use nameof::name_of;
+use tempfile::NamedTempFile;
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
@@ -20,11 +21,17 @@ use crate::hydroflow_crate::flamegraph::handle_fold_data;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::util::prioritized_broadcast;
-use crate::LaunchedBinary;
+use crate::{LaunchedBinary, TracingResults};
+
+pub(super) struct TracingDataLocal {
+    pub(super) outfile: NamedTempFile,
+}
 
 pub struct LaunchedLocalhostBinary {
     child: Mutex<async_process::Child>,
-    tracing: Option<TracingOptions>,
+    tracing_config: Option<TracingOptions>,
+    tracing_data_local: Option<TracingDataLocal>,
+    tracing_results: Option<TracingResults>,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
     stdout_receivers: Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
@@ -54,7 +61,8 @@ impl LaunchedLocalhostBinary {
     pub fn new(
         mut child: async_process::Child,
         id: String,
-        tracing: Option<TracingOptions>,
+        tracing_config: Option<TracingOptions>,
+        tracing_data_local: Option<TracingDataLocal>,
     ) -> Self {
         let (stdin_sender, mut stdin_receiver) = mpsc::unbounded_channel::<String>();
         let mut stdin = child.stdin.take().unwrap();
@@ -80,7 +88,9 @@ impl LaunchedLocalhostBinary {
 
         Self {
             child: Mutex::new(child),
-            tracing,
+            tracing_config,
+            tracing_data_local,
+            tracing_results: None,
             stdin_sender,
             stdout_deploy_receivers,
             stdout_receivers,
@@ -135,6 +145,10 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
         receiver
     }
 
+    fn tracing_results(&self) -> Option<&TracingResults> {
+        self.tracing_results.as_ref()
+    }
+
     fn exit_code(&self) -> Option<i32> {
         self.child
             .lock()
@@ -157,21 +171,31 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
         }
 
         // Run perf post-processing and download perf output.
-        if let Some(tracing) = self.tracing.as_ref() {
+        if let Some(tracing_config) = self.tracing_config.as_ref() {
+            let tracing_data = self.tracing_data_local.take().unwrap();
+
+            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                if let Some(dtrace_outfile) = tracing_config.dtrace_outfile.as_ref() {
+                    std::fs::copy(&dtrace_outfile, &tracing_data.outfile)?;
+                }
+            } else if cfg!(target_family = "unix") {
+                if let Some(perf_outfile) = tracing_config.perf_raw_outfile.as_ref() {
+                    std::fs::copy(&perf_outfile, &tracing_data.outfile)?;
+                }
+            }
+
             let fold_data = if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
-                let dtrace_outfile = tracing.dtrace_outfile.as_ref().ok_or_else(|| {
-                    anyhow!(
-                        "`{}` must be set for `dtrace` on localhost.",
-                        name_of!(dtrace_outfile in TracingOptions)
-                    )
-                })?;
-                let mut fold_er =
-                    DtraceFolder::from(tracing.fold_dtrace_options.clone().unwrap_or_default());
+                let mut fold_er = DtraceFolder::from(
+                    tracing_config
+                        .fold_dtrace_options
+                        .clone()
+                        .unwrap_or_default(),
+                );
 
                 let fold_data =
                     ProgressTracker::leaf("fold dtrace output".to_owned(), async move {
                         let mut fold_data = Vec::new();
-                        fold_er.collapse_file(Some(dtrace_outfile), &mut fold_data)?;
+                        fold_er.collapse_file(Some(tracing_data.outfile), &mut fold_data)?;
                         Result::<_>::Ok(fold_data)
                     })
                     .await?;
@@ -187,7 +211,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 // Run perf script.
                 let mut perf_script = Command::new("perf")
                     .args(["script", "--symfs=/", "-i"])
-                    .arg(perf_raw_outfile)
+                    .arg(tracing_data.outfile.path())
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .spawn()?;
@@ -197,7 +221,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     TokioBufReader::new(perf_script.stderr.take().unwrap().compat()).lines();
 
                 let mut fold_er =
-                    PerfFolder::from(tracing.fold_perf_options.clone().unwrap_or_default());
+                    PerfFolder::from(tracing_config.fold_perf_options.clone().unwrap_or_default());
 
                 // Pattern on `()` to make sure no `Result`s are ignored.
                 let ((), fold_data, ()) = tokio::try_join!(
@@ -234,7 +258,11 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 );
             };
 
-            handle_fold_data(tracing, fold_data).await?;
+            self.tracing_results = Some(TracingResults {
+                folded_data: fold_data.clone(),
+            });
+
+            handle_fold_data(tracing_config, fold_data).await?;
         };
 
         Ok(())

@@ -2,13 +2,13 @@
 
 extern crate proc_macro;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt::Debug;
 use std::iter::FusedIterator;
 
 use itertools::Itertools;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens};
+use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
@@ -20,17 +20,17 @@ use super::ops::{
 };
 use super::{
     change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT,
-    HANDOFF_NODE_STR, HYDROFLOW, MODULE_BOUNDARY_NODE_STR,
+    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
+    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
 
-/// An abstract "meta graph" representation of a Hydroflow graph.
+/// An abstract "meta graph" representation of a DFIR graph.
 ///
 /// Can be with or without subgraph partitioning, stratification, and handoff insertion. This is
-/// the meta graph used for generating Rust source code in macros from Hydroflow surface sytnax.
+/// the meta graph used for generating Rust source code in macros from DFIR sytnax.
 ///
 /// This struct has a lot of methods for manipulating the graph, vaguely grouped together in
 /// separate `impl` blocks. You might notice a few particularly specific arbitray-seeming methods
@@ -54,10 +54,13 @@ pub struct DfirGraph {
 
     /// Which loop a node belongs to (or none for top-level).
     node_loops: SecondaryMap<GraphNodeId, GraphLoopId>,
+    /// Which nodes belong to each loop.
     loop_nodes: SlotMap<GraphLoopId, Vec<GraphNodeId>>,
-    /// For the key loop, what is its parent (`None` for top-level).
+    /// For the loop, what is its parent (`None` for top-level).
     loop_parent: SparseSecondaryMap<GraphLoopId, GraphLoopId>,
-    /// For the key loop, what are its child loops.
+    /// What loops are at the root.
+    root_loops: Vec<GraphLoopId>,
+    /// For the loop, what are its child loops.
     loop_children: SecondaryMap<GraphLoopId, Vec<GraphLoopId>>,
 
     /// Which subgraph each node belongs to.
@@ -81,7 +84,7 @@ pub struct DfirGraph {
 
 /// Basic methods.
 impl DfirGraph {
-    /// Create a new empty `HydroflowGraph`.
+    /// Create a new empty graph.
     pub fn new() -> Self {
         Default::default()
     }
@@ -450,10 +453,22 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree excluding ref-edges.
-        let inn_degree = self.node_predecessor_edges(node_id).count();
-        // Out-degree excluding ref-edges.
-        let out_degree = self.node_successor_edges(node_id).count();
+        // In-degree, excluding ref-edges and edges which enter/exit loops.
+        let inn_degree = self
+            .node_predecessor_nodes(node_id)
+            .filter(|&pred_id| {
+                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
+                self.node_loop(pred_id) == self.node_loop(node_id)
+            })
+            .count();
+        // Out-degree excluding ref-edges and loop-crossing edges.
+        let out_degree = self
+            .node_successor_nodes(node_id)
+            .filter(|&pred_id| {
+                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
+                self.node_loop(pred_id) == self.node_loop(node_id)
+            })
+            .count();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -765,9 +780,8 @@ impl DfirGraph {
             .map(|singleton_node_id| {
                 // TODO(mingwei): this `expect` should be caught in error checking
                 self.node_as_singleton_ident(
-                    singleton_node_id.expect(
-                        "Expected singleton to be resolved but was not, this is a Hydroflow bug.",
-                    ),
+                    singleton_node_id
+                        .expect("Expected singleton to be resolved but was not, this is a bug."),
                     span,
                 )
             })
@@ -809,7 +823,32 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
-    /// Emit this `HydroflowGraph` as runnable Rust source code tokens.
+    /// Generate a deterministic `Ident` for the given loop ID.
+    fn loop_as_ident(loop_id: GraphLoopId) -> Ident {
+        Ident::new(&format!("loop_{:?}", loop_id.data()), Span::call_site())
+    }
+
+    /// Code for adding all nested loops.
+    fn codegen_nested_loops(&self, df: &Ident) -> TokenStream {
+        // Breadth-first iteration from outermost (root) loops to deepest nested loops.
+        let mut out = TokenStream::new();
+        let mut queue = VecDeque::from_iter(self.root_loops.iter().copied());
+        while let Some(loop_id) = queue.pop_front() {
+            let parent_opt = self
+                .loop_parent(loop_id)
+                .map(Self::loop_as_ident)
+                .map(|ident| quote! { Some(#ident) })
+                .unwrap_or_else(|| quote! { None });
+            let loop_name = Self::loop_as_ident(loop_id);
+            out.append_all(quote! {
+                let #loop_name = #df.add_loop(#parent_opt);
+            });
+            queue.extend(self.loop_children.get(loop_id).into_iter().flatten());
+        }
+        out
+    }
+
+    /// Emit this graph as runnable Rust source code tokens.
     pub fn as_code(
         &self,
         root: &TokenStream,
@@ -817,10 +856,11 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Vec<Diagnostic>,
     ) -> TokenStream {
-        let hf = Ident::new(HYDROFLOW, Span::call_site());
+        let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
-        let handoffs = self
+        // Code for adding handoffs.
+        let handoff_code = self
             .nodes
             .iter()
             .filter_map(|(node_id, node)| match node {
@@ -834,7 +874,7 @@ impl DfirGraph {
                 let hoff_name = Literal::string(&format!("handoff {:?}", node_id));
                 quote! {
                     let (#ident_send, #ident_recv) =
-                        #hf.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
+                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
                 }
             });
 
@@ -962,7 +1002,7 @@ impl DfirGraph {
                             // the dfir syntax proc macro from _within_ a declarative macro then `op_span` will have the
                             // bad `Span::mixed_site()` name resolution and cause "Cannot find value `df/context`" errors. So
                             // we call `.resolved_at()` to fix resolution back to `Span::call_site()`. -Mingwei
-                            let hydroflow = &Ident::new(HYDROFLOW, op_span.resolved_at(hf.span()));
+                            let df_local = &Ident::new(GRAPH, op_span.resolved_at(df.span()));
                             let context = &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
 
                             let singletons_resolved =
@@ -980,7 +1020,7 @@ impl DfirGraph {
 
                             let context_args = WriteContextArgs {
                                 root: &root,
-                                hydroflow,
+                                df_ident: df_local,
                                 context,
                                 subgraph_id,
                                 node_id,
@@ -1005,7 +1045,7 @@ impl DfirGraph {
                             } = write_result.unwrap_or_else(|()| {
                                 assert!(
                                     diagnostics.iter().any(Diagnostic::is_error),
-                                    "Operator `{}` returned `Err` but emitted no diagnostics, this is a Hydroflow bug.",
+                                    "Operator `{}` returned `Err` but emitted no diagnostics, this is a bug.",
                                     op_name,
                                 );
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(&context_args), ..Default::default() }
@@ -1015,10 +1055,6 @@ impl DfirGraph {
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
-                                #[cfg_attr(
-                                    not(nightly),
-                                    expect(unused_labels, reason = "conditional compilation")
-                                )]
                                 let source_tag = 'a: {
                                     if let Some(tag) = self.operator_tag.get(node_id).cloned() {
                                         break 'a tag;
@@ -1167,18 +1203,28 @@ impl DfirGraph {
                     }
                 };
 
-                let hoff_name = Literal::string(&format!("Subgraph {:?}", subgraph_id));
+                let subgraph_name = Literal::string(&format!("Subgraph {:?}", subgraph_id));
                 let stratum = Literal::usize_unsuffixed(
                     self.subgraph_stratum.get(subgraph_id).cloned().unwrap_or(0),
                 );
                 let laziness = self.subgraph_laziness(subgraph_id);
+
+                // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
+                let loop_id_opt = self
+                    // All nodes in a subgraph should be in the same loop.
+                    .node_loop(subgraph_nodes[0])
+                    .map(Self::loop_as_ident)
+                    .map(|ident| quote! { Some(#ident) })
+                    .unwrap_or_else(|| quote! { None });
+
                 subgraphs.push(quote! {
-                    #hf.add_subgraph_stratified(
-                        #hoff_name,
+                    #df.add_subgraph_full(
+                        #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),
                         var_expr!( #( #send_ports ),* ),
                         #laziness,
+                        #loop_id_opt,
                         move |#context, var_args!( #( #recv_ports ),* ), var_args!( #( #send_ports ),* )| {
                             #( #recv_port_code )*
                             #( #send_port_code )*
@@ -1190,12 +1236,15 @@ impl DfirGraph {
             }
         }
 
+        let loop_code = self.codegen_nested_loops(&df);
+
         // These two are quoted separately here because iterators are lazily evaluated, so this
         // forces them to do their work. This work includes populating some data, namely
         // `diagonstics`, which we need to determine if it compilation was actually successful.
         // -Mingwei
         let code = quote! {
-            #( #handoffs )*
+            #( #handoff_code )*
+            #loop_code
             #( #op_prologue_code )*
             #( #subgraphs )*
         };
@@ -1215,13 +1264,13 @@ impl DfirGraph {
 
                     use #root::{var_expr, var_args};
 
-                    let mut #hf = #root::scheduled::graph::Dfir::new();
-                    #hf.__assign_meta_graph(#meta_graph_json);
-                    #hf.__assign_diagnostics(#diagnostics_json);
+                    let mut #df = #root::scheduled::graph::Dfir::new();
+                    #df.__assign_meta_graph(#meta_graph_json);
+                    #df.__assign_diagnostics(#diagnostics_json);
 
                     #code
 
-                    #hf
+                    #df
                 }
             }
         }
@@ -1286,7 +1335,7 @@ impl DfirGraph {
         self.write_graph(&mut graph_write, write_config)
     }
 
-    /// Write out this `HydroflowGraph` using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
+    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
     pub(crate) fn write_graph<W>(
         &self,
         mut graph_write: W,
@@ -1567,6 +1616,8 @@ impl DfirGraph {
                 .get_mut(parent_loop)
                 .unwrap()
                 .push(loop_id);
+        } else {
+            self.root_loops.push(loop_id);
         }
         loop_id
     }
@@ -1574,6 +1625,19 @@ impl DfirGraph {
     /// Get a node's loop context (or `None` for root).
     pub fn node_loop(&self, node_id: GraphNodeId) -> Option<GraphLoopId> {
         self.node_loops.get(node_id).copied()
+    }
+
+    /// Get a subgraph's loop context (or `None` for root).
+    pub fn subgraph_loop(&self, subgraph_id: GraphSubgraphId) -> Option<GraphLoopId> {
+        let &node_id = self.subgraph(subgraph_id).first().unwrap();
+        let out = self.node_loop(node_id);
+        debug_assert!(
+            self.subgraph(subgraph_id)
+                .iter()
+                .all(|&node_id| self.node_loop(node_id) == out),
+            "Subgraph nodes should all have the same loop context."
+        );
+        out
     }
 
     /// Get a loop context's parent loop context (or `None` for root).

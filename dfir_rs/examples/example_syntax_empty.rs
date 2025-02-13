@@ -4,6 +4,6 @@ use dfir_rs::dfir_syntax;
 
 fn main() {
     let mut flow = dfir_syntax! {
-        // Hydroflow Surface Syntax goes here
+        // DFIR syntax goes here
     };
 }

@@ -1,7 +1,7 @@
-//! Hydroflow's outer scheduled layer. Deals with inter-subgraph runtime data-passing and scheduling.
+//! DFIR's outer scheduled layer. Deals with inter-subgraph runtime data-passing and scheduling.
 //!
-//! The most important item is the [`Hydroflow`](graph::Dfir) struct. Most of the items in this
-//! module are supporting the implementation of the `Hydroflow` struct and its operation.
+//! The most important item is the [`Dfir`](graph::Dfir) struct. Most of the items in this
+//! module are supporting the implementation of that struct and its operation.
 
 use crate::util::slot_vec::Key;
 
@@ -36,3 +36,8 @@ pub type HandoffId = Key<HandoffTag>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct StateId(pub(crate) usize);
+
+/// Tag for [`LoopId`].
+pub enum LoopTag {}
+/// A loop's ID.
+pub type LoopId = Key<LoopTag>;

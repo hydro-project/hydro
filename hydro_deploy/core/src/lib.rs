@@ -4,8 +4,10 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
+use hydroflow_crate::build::BuildOutput;
 use hydroflow_crate::tracing_options::TracingOptions;
 use hydroflow_deploy_integration::ServerBindConfig;
+use tokio::sync::{mpsc, oneshot};
 
 pub mod deployment;
 pub use deployment::Deployment;
@@ -28,9 +30,6 @@ pub use hydroflow_crate::HydroflowCrate;
 
 pub mod custom_service;
 pub use custom_service::CustomService;
-use tokio::sync::{mpsc, oneshot};
-
-use crate::hydroflow_crate::build::BuildOutput;
 
 pub mod terraform;
 
@@ -70,6 +69,11 @@ pub struct ResourceResult {
     _last_result: Option<Arc<ResourceResult>>,
 }
 
+#[derive(Clone)]
+pub struct TracingResults {
+    pub folded_data: Vec<u8>,
+}
+
 #[async_trait]
 pub trait LaunchedBinary: Send + Sync {
     fn stdin(&self) -> mpsc::UnboundedSender<String>;
@@ -84,6 +88,8 @@ pub trait LaunchedBinary: Send + Sync {
     fn stderr(&self) -> mpsc::UnboundedReceiver<String>;
     fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
     fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
+
+    fn tracing_results(&self) -> Option<&TracingResults>;
 
     fn exit_code(&self) -> Option<i32>;
 

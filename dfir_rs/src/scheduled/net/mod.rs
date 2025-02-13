@@ -3,7 +3,7 @@
 
 //! This module contiains networking code.
 //!
-//! ## How Tokio interacts with Hydroflow (Mingwei 2021-12-07)
+//! ## How Tokio interacts with the DFIR runtime (Mingwei 2021-12-07)
 //!
 //! [Tokio](https://tokio.rs/) is a Rust async runtime. In Rust's async/await
 //! system, `Future`s must be spawned or sent to an async runtime in order to
@@ -28,31 +28,31 @@
 //! libraries built on top of Tokio providing nice server/client HTTP APIs
 //! like [Hyper](https://hyper.rs/).
 //!
-//! The Hydroflow scheduled layer scheduler is essentially the same as a simple
+//! The DFIR scheduled layer scheduler is essentially the same as a simple
 //! event loop: it runs subgraphs when they have data. We have also let it
 //! respond to external asynchonous events by providing a threadsafe channel
 //! through which subgraphs can be externally scheduled.
 //!
-//! In order to add networking to Hydroflow, in our current implementation we
+//! In order to add networking to DFIR, in our current implementation we
 //! use Tokio and have a compatibility mechanism for working with `Future`s.
 //! A `Future` provides a `Waker` mechanism to notify when it had work to do,
-//! so we have hooked these Wakers up with Hydroflow's threadsafe external
-//! scheduling channel. This essentially turns Hydroflow into a simple async
+//! so we have hooked these Wakers up with DFIR's threadsafe external
+//! scheduling channel. This essentially turns DFIR into a simple async
 //! runtime.
 //!
 //! However in some situations, we still need to run futures outside of
-//! Hydroflow's basic runtime. It's not a goal for Hydroflow to provide all
+//! DFIR's basic runtime. It's not a goal for DFIR to provide all
 //! the features of a full runtime like Tokio. Currently for this situation we
-//! run Hydroflow as a task (`Future`) within the Tokio runtime. In Hydroflow's
+//! run DFIR as a task (`Future`) within the Tokio runtime. In DFIR's
 //! event loop we do all available work, then rather than block and wait for
 //! external events to schedule more tasks, we temporarily yield back to the
 //! Tokio runtime. Tokio will then respond to any outstanding events it has
-//! before once again running the Hydroflow scheduler task.
+//! before once again running the DFIR scheduler task.
 //!
 //! This works perfectly well but maybe isn't the best solution long-term.
 //! In the future we may want to remove the extra Tokio runtime layer and
 //! interface with Mio directly. In this case we would have to do our own
-//! socket-style polling within the Hydroflow scheduler's event loop, which
+//! socket-style polling within the DFIR scheduler's event loop, which
 //! would require some extra work and thought. But for now interfacing with
 //! Tokio works and I don't think the overhead of the extra runtime loop is
 //! significant.

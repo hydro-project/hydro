@@ -3,6 +3,7 @@
 //! Provides APIs for state and scheduling.
 
 use std::any::Any;
+use std::cell::Cell;
 use std::collections::VecDeque;
 use std::future::Future;
 use std::marker::PhantomData;
@@ -14,21 +15,33 @@ use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::state::StateHandle;
-use super::{StateId, SubgraphId};
+use super::{LoopTag, StateId, SubgraphId};
 use crate::scheduled::ticks::TickInstant;
+use crate::util::priority_stack::PriorityStack;
+use crate::util::slot_vec::SlotVec;
 
-/// The main state and scheduler of the Hydroflow instance. Provided as the `context` API to each
+/// The main state and scheduler of the runtime instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
 ///
-/// Each Hydroflow instances stores eactly one Context inline. Before the `Context` is provided to
+/// Each instance stores eactly one Context inline. Before the `Context` is provided to
 /// a running operator, the `subgraph_id` field must be updated.
 pub struct Context {
     /// User-facing State API.
     states: Vec<StateData>,
 
+    /// Priority stack for handling strata within loops. Prioritized by loop depth.
+    pub(super) stratum_stack: PriorityStack<usize>,
+
+    pub(super) loop_nonce_stack: Vec<usize>,
+
+    /// TODO(mingwei):
+    /// used for loop iteration scheduling.
+    pub(super) schedule_deferred: Vec<SubgraphId>,
+
     /// TODO(mingwei): separate scheduler into its own struct/trait?
     /// Index is stratum, value is FIFO queue for that stratum.
     pub(super) stratum_queues: Vec<VecDeque<SubgraphId>>,
+
     /// Receive events, if second arg indicates if it is an external "important" event (true).
     pub(super) event_queue_recv: UnboundedReceiver<(SubgraphId, bool)>,
     /// If external events or data can justify starting the next tick.
@@ -40,18 +53,26 @@ pub struct Context {
     // Second field (bool) is for if the event is an external "important" event (true).
     pub(super) event_queue_send: UnboundedSender<(SubgraphId, bool)>,
 
+    /// If the current subgraph wants to reschedule the current loop block (in the current tick).
+    pub(super) reschedule_loop_block: Cell<bool>,
+
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
 
     pub(super) current_tick_start: SystemTime,
-    pub(super) subgraph_last_tick_run_in: Option<TickInstant>,
+    pub(super) is_first_run_this_tick: bool,
+    pub(super) is_first_loop_iteration: bool,
+
+    // Depth of loop (zero for top-level).
+    pub(super) loop_depth: SlotVec<LoopTag, usize>,
+
+    pub(super) loop_nonce: usize,
 
     /// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is meaningless.
     pub(super) subgraph_id: SubgraphId,
 
     tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
-
     /// Join handles for spawned tasks.
     task_join_handles: Vec<JoinHandle<()>>,
 }
@@ -69,10 +90,15 @@ impl Context {
 
     /// Gets whether this is the first time this subgraph is being scheduled for this tick
     pub fn is_first_run_this_tick(&self) -> bool {
-        self.subgraph_last_tick_run_in
-            .map_or(true, |tick_last_run_in| {
-                self.current_tick > tick_last_run_in
-            })
+        self.is_first_run_this_tick
+    }
+
+    /// Gets whether this run is the first iteration of a loop.
+    ///
+    /// This is only meaningful if the subgraph is in a loop, otherwise this will always return
+    /// `false`.
+    pub fn is_first_loop_iteration(&self) -> bool {
+        self.is_first_loop_iteration
     }
 
     /// Gets the current stratum nubmer.
@@ -85,9 +111,18 @@ impl Context {
         self.subgraph_id
     }
 
-    /// Schedules a subgraph.
+    /// Schedules a subgraph for the next tick.
+    ///
+    /// If `is_external` is `true`, the scheduling will trigger the next tick to begin. If it is
+    /// `false` then scheduling will be lazy and the next tick will not begin unless there is other
+    /// reason to.
     pub fn schedule_subgraph(&self, sg_id: SubgraphId, is_external: bool) {
         self.event_queue_send.send((sg_id, is_external)).unwrap()
+    }
+
+    /// Schedules the current loop block to be run again (_in this tick_).
+    pub fn reschedule_loop_block(&self) {
+        self.reschedule_loop_block.set(true);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -222,8 +257,15 @@ impl Default for Context {
     fn default() -> Self {
         let stratum_queues = vec![Default::default()]; // Always initialize stratum #0.
         let (event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
+        let (stratum_stack, loop_depth) = Default::default();
         Self {
             states: Vec::new(),
+
+            stratum_stack,
+
+            loop_nonce_stack: Vec::new(),
+
+            schedule_deferred: Vec::new(),
 
             stratum_queues,
             event_queue_recv,
@@ -231,12 +273,17 @@ impl Default for Context {
             events_received_tick: false,
 
             event_queue_send,
+            reschedule_loop_block: Cell::new(false),
 
             current_stratum: 0,
             current_tick: TickInstant::default(),
 
             current_tick_start: SystemTime::now(),
-            subgraph_last_tick_run_in: None,
+            is_first_run_this_tick: false,
+            is_first_loop_iteration: false,
+
+            loop_depth,
+            loop_nonce: 0,
 
             // Will be re-set before use.
             subgraph_id: SubgraphId::from_raw(0),
@@ -266,7 +313,7 @@ impl Context {
     }
 }
 
-/// Internal struct containing a pointer to [`Hydroflow`]-owned state.
+/// Internal struct containing a pointer to instance-owned state.
 struct StateData {
     state: Box<dyn Any>,
     tick_reset: Option<TickResetFn>,

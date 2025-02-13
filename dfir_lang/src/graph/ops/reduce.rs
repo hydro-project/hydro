@@ -50,7 +50,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -104,14 +104,14 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         let mut write_prologue = quote_spanned! {op_span=>
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #hydroflow.add_state(
+            let #singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::option::Option::None)
             );
         };
         if Persistence::Tick == persistence {
             write_prologue.extend(quote_spanned! {op_span=>
                 // Reset the value to the initializer fn at the end of each tick.
-                #hydroflow.set_state_tick_hook(#singleton_output_ident, |rcell| { rcell.take(); });
+                #df_ident.set_state_tick_hook(#singleton_output_ident, |rcell| { rcell.take(); });
             });
         }
 

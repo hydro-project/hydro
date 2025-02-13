@@ -104,7 +104,7 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
         use hydro_lang::*;
 
         #[allow(unused)]
-        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroflowPlusMeta>) -> hydro_lang::dfir_rs::scheduled::graph::Dfir<'a> {
+        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
             #tokens
         }

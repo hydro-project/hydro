@@ -153,7 +153,7 @@ export default function Home() {
               ></PersonCard>
               <PersonCard
                 name={"Mingwei Samuel"}
-                role={"Research Engineer"}
+                role={"Chief Research Engineer"}
                 url={"https://github.com/MingweiSamuel"}
                 img={mingwei}
               ></PersonCard>

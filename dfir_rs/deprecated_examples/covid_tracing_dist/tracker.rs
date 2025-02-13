@@ -1,15 +1,17 @@
-use crate::{Decode, Encode, Opts, CONTACTS_ADDR, DIAGNOSES_ADDR};
-
 use dfir_rs::compiled::pull::SymmetricHashJoin;
 use dfir_rs::lang::collections::Iter;
 use dfir_rs::pusherator::{InputBuild, IteratorToPusherator, PusheratorBuild};
+use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::graph_ext::GraphExt;
-use dfir_rs::scheduled::{graph::Dfir, handoff::VecHandoff, net::Message};
-use dfir_rs::var_expr;
+use dfir_rs::scheduled::handoff::VecHandoff;
+use dfir_rs::scheduled::net::Message;
 use dfir_rs::tokio::net::TcpStream;
+use dfir_rs::var_expr;
+
+use crate::{Decode, Encode, Opts, CONTACTS_ADDR, DIAGNOSES_ADDR};
 
 pub(crate) async fn run_tracker(opts: Opts) {
-    let mut df = Hydroflow::new();
+    let mut df = Dfir::new();
 
     let stream = TcpStream::connect(opts.addr).await.unwrap();
     let (network_out, network_in) = df.add_tcp_stream(stream);
@@ -53,7 +55,9 @@ pub(crate) async fn run_tracker(opts: Opts) {
         "main",
         var_expr!(contacts_in, diagnosed_in, loop_in),
         var_expr!(notifs_out, loop_out),
-        move |_ctx, var_expr!(contacts_recv, diagnosed_recv, loop_recv), var_expr!(notifs_send, loop_send)| {
+        move |_ctx,
+              var_expr!(contacts_recv, diagnosed_recv, loop_recv),
+              var_expr!(notifs_send, loop_send)| {
             let looped = loop_recv
                 .take_inner()
                 .into_iter()

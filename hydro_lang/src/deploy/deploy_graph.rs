@@ -16,7 +16,7 @@ use hydro_deploy::hydroflow_crate::ports::{
 };
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::hydroflow_crate::HydroflowCrateService;
-use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate};
+use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate, TracingResults};
 use nameof::name_of;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -401,6 +401,11 @@ pub trait DeployCrateWrapper {
     async fn stderr_filter(&self, prefix: impl Into<String>) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().read().await.stderr_filter(prefix.into())
     }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn tracing_results(&self) -> Option<TracingResults> {
+        self.underlying().read().await.tracing_results().cloned()
+    }
 }
 
 #[derive(Clone)]
@@ -674,7 +679,7 @@ impl Node for DeployNode {
     fn update_meta(&mut self, meta: &Self::Meta) {
         let underlying_node = self.underlying.borrow();
         let mut n = underlying_node.as_ref().unwrap().try_write().unwrap();
-        n.update_meta(HydroflowPlusMeta {
+        n.update_meta(HydroMeta {
             clusters: meta.clone(),
             cluster_id: None,
             subgraph_id: self.id,
@@ -789,7 +794,7 @@ impl Node for DeployCluster {
     fn update_meta(&mut self, meta: &Self::Meta) {
         for (cluster_id, node) in self.members.borrow().iter().enumerate() {
             let mut n = node.underlying.try_write().unwrap();
-            n.update_meta(HydroflowPlusMeta {
+            n.update_meta(HydroMeta {
                 clusters: meta.clone(),
                 cluster_id: Some(cluster_id as u32),
                 subgraph_id: self.id,

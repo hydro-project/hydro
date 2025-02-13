@@ -185,7 +185,7 @@ jobs:
         env:
           # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
           TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
-          HYDROFLOW_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
+          DFIR_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
         run: cargo test --no-fail-fast --features python --features deploy --doc

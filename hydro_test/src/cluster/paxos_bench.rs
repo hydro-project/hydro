@@ -10,7 +10,8 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     num_clients_per_node: usize,
     median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
-    replica_count: usize,
+    f: usize, /* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
+    num_replicas: usize,
     create_paxos: impl FnOnce(Stream<usize, Cluster<'a, Replica>, Unbounded>) -> Paxos,
 ) -> (Cluster<'a, Client>, Cluster<'a, Replica>) {
     let clients = flow.cluster::<Client>();
@@ -38,7 +39,7 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
                 paxos.with_client(&clients, payloads)
             };
 
-            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_interleaved(&replicas);
+            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);
 
             // Replicas
             let (replica_checkpoint, processed_payloads) =
@@ -56,8 +57,8 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
             // we only mark a transaction as committed when all replicas have applied it
             collect_quorum::<_, _, _, ()>(
                 c_received_payloads.atomic(&clients.tick()),
-                replica_count,
-                replica_count,
+                f + 1,
+                num_replicas,
             )
             .0
             .end_atomic()
@@ -82,7 +83,7 @@ mod tests {
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
 
-        let _ = super::paxos_bench(&builder, 1, 1, 1, 2, |replica_checkpoint| CorePaxos {
+        let _ = super::paxos_bench(&builder, 1, 1, 1, 1, 2, |replica_checkpoint| CorePaxos {
             proposers,
             acceptors: acceptors.clone(),
             replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),

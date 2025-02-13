@@ -126,20 +126,15 @@ const config = {
                 label: "Hydro Deploy",
               },
               {
-                href: "pathname:///rustdoc/hydro_lang/",
-                label: "Rustdoc",
-              },
-              {
                 type: "docSidebar",
                 sidebarId: "dfirSidebar",
                 label: "DFIR",
               },
+              {
+                href: "pathname:///rustdoc/hydro_lang/",
+                label: "Rustdoc",
+              },
             ],
-          },
-          {
-            to: "/playground",
-            position: "left",
-            label: "Playground",
           },
           {
             to: "/research",

@@ -22,13 +22,12 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
 use tokio_util::io::SyncIoBridge;
 
-use super::progress::ProgressTracker;
-use super::util::async_retry;
-use super::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy};
 use crate::hydroflow_crate::build::BuildOutput;
 use crate::hydroflow_crate::flamegraph::handle_fold_data;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
-use crate::util::prioritized_broadcast;
+use crate::progress::ProgressTracker;
+use crate::util::{async_retry, prioritized_broadcast};
+use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
@@ -87,6 +86,10 @@ impl LaunchedBinary for LaunchedSshBinary {
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
         receivers.push((Some(prefix), sender));
         receiver
+    }
+
+    fn tracing_results(&self) -> Option<&TracingResults> {
+        todo!("Not yet implemented")
     }
 
     fn exit_code(&self) -> Option<i32> {

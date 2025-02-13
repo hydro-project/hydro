@@ -43,7 +43,7 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    arguments,
                    ..
@@ -75,7 +75,7 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
 
         let write_prologue = owo.write_prologue;
         owo.write_prologue = quote_spanned! {op_span=>
-            let #assert_index_ident = #hydroflow.add_state(
+            let #assert_index_ident = #df_ident.add_state(
                 ::std::cell::Cell::new(0usize)
             );
 

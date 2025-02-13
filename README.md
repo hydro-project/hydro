@@ -6,7 +6,7 @@
     <a href="https://docs.rs/hydro_lang/"><img src="https://img.shields.io/badge/docs.rs-Hydro-blue?style=flat-square&logo=read-the-docs&logoColor=white" alt="Docs.rs"></a>
 </p>
 
-Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](https://hydro.run/docs/hydro/correctness.md).
+Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](https://hydro.run/docs/hydro/correctness).
 
 Hydro integrates naturally into standard Rust constructs and IDEs, providing types and programming constructs for ensuring distributed safety. Under the covers it provides a metaprogrammed compiler that optimizes for cross-node issues of scaling and data movement while leveraging Rust and LLVM for per-node performance.
 

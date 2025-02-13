@@ -6,7 +6,7 @@ use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
-use super::hydroflow_graph::DfirGraph;
+use super::meta_graph::DfirGraph;
 use super::ops::{find_node_op_constraints, DelayType};
 use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
 use crate::diagnostic::{Diagnostic, Level};
@@ -51,6 +51,10 @@ impl BarrierCrossers {
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
         .edges()
+        .filter(|&(_, (_src, dst))| {
+            // Ignore barriers within `loop {` blocks.
+            partitioned_graph.node_loop(dst).is_none()
+        })
         .filter_map(|(edge_id, (_src, dst))| {
             let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
             let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
@@ -224,7 +228,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
 
     // Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
-    // Eventually returned directly in the `HydroflowGraph`.
+    // Eventually returned directly in the [`DfirGraph`].
     let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
     for (_repr_node, member_nodes) in grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
@@ -371,9 +375,14 @@ fn find_subgraph_strata(
         |u| subgraph_graph.succs.get(&u).into_iter().flatten().cloned(),
     );
 
-    // Each subgraph's stratum number is the same as it's predecessors. Unless there is a negative
-    // edge, then we increment.
+    // Each subgraph's stratum number is the same as it's predecessors.
+    //
+    // Unless:
+    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
+    // - Entering or exiting a loop.
     for sg_id in topo_sort_order {
+        let curr_loop = partitioned_graph.subgraph_loop(sg_id);
+
         let stratum = subgraph_graph
             .preds
             .get(&sg_id)
@@ -383,8 +392,18 @@ fn find_subgraph_strata(
                 partitioned_graph
                     .subgraph_stratum(pred_sg_id)
                     .map(|stratum| {
-                        stratum
-                            + (subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id)) as usize)
+                        let pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
+                        if curr_loop != pred_loop {
+                            // Entering or exiting a loop.
+                            stratum + 1
+                        } else if curr_loop.is_none()
+                            && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id))
+                        {
+                            // Top level && negative edge.
+                            stratum + 1
+                        } else {
+                            stratum
+                        }
                     })
             })
             .max()
@@ -396,6 +415,10 @@ fn find_subgraph_strata(
     let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
     for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
+        // Ignore barriers within `loop {` blocks.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
         let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());
@@ -489,7 +512,7 @@ fn separate_external_inputs(partitioned_graph: &mut DfirGraph) {
         // Remove node from old subgraph.
         assert!(
             partitioned_graph.remove_from_subgraph(node_id),
-            "Cannot move input node that is not in a subgraph, this is a Hydroflow bug."
+            "Cannot move input node that is not in a subgraph, this is a bug."
         );
         // Create new subgraph in stratum 0 for this source.
         let new_sg_id = partitioned_graph.insert_subgraph(vec![node_id]).unwrap();

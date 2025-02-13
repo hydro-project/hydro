@@ -11,18 +11,18 @@ use stageleft::QuotedWithContext;
 use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a, ID> {
-    pub(super) hydroflow_ir: BTreeMap<usize, DfirGraph>,
+    pub(super) dfir: BTreeMap<usize, DfirGraph>,
     pub(super) extra_stmts: BTreeMap<usize, Vec<syn::Stmt>>,
     pub(super) _phantom: Invariant<'a, ID>,
 }
 
 impl<ID> CompiledFlow<'_, ID> {
-    pub fn hydroflow_ir(&self) -> &BTreeMap<usize, DfirGraph> {
-        &self.hydroflow_ir
+    pub fn dfir(&self) -> &BTreeMap<usize, DfirGraph> {
+        &self.dfir
     }
 
-    pub fn take_ir(self) -> BTreeMap<usize, DfirGraph> {
-        self.hydroflow_ir
+    pub fn take_dfir(self) -> BTreeMap<usize, DfirGraph> {
+        self.dfir
     }
 }
 
@@ -31,9 +31,9 @@ impl<'a> CompiledFlow<'a, usize> {
         self,
         id: impl QuotedWithContext<'a, usize, ()>,
     ) -> CompiledFlowWithId<'a> {
-        let hydroflow_crate = proc_macro_crate::crate_name("hydro_lang")
+        let hydro_lang_crate = proc_macro_crate::crate_name("hydro_lang")
             .expect("hydro_lang should be present in `Cargo.toml`");
-        let root = match hydroflow_crate {
+        let root = match hydro_lang_crate {
             proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) => {
                 let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
@@ -42,7 +42,7 @@ impl<'a> CompiledFlow<'a, usize> {
         };
 
         let mut conditioned_tokens = None;
-        for (subgraph_id, flat_graph) in self.hydroflow_ir {
+        for (subgraph_id, flat_graph) in self.dfir {
             let partitioned_graph =
                 partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
@@ -91,9 +91,9 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
     type O = Dfir<'a>;
 
     fn to_tokens(mut self, _ctx: &Ctx) -> (Option<TokenStream>, Option<TokenStream>) {
-        let hydroflow_crate = proc_macro_crate::crate_name("hydro_lang")
+        let hydro_lang_crate = proc_macro_crate::crate_name("hydro_lang")
             .expect("hydro_lang should be present in `Cargo.toml`");
-        let root = match hydroflow_crate {
+        let root = match hydro_lang_crate {
             proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) => {
                 let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
@@ -101,11 +101,11 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
             }
         };
 
-        if self.hydroflow_ir.len() != 1 {
-            panic!("Expected exactly one subgraph in the Hydroflow IR");
+        if self.dfir.len() != 1 {
+            panic!("Expected exactly one subgraph in the DFIR.");
         }
 
-        let flat_graph = self.hydroflow_ir.remove(&0).unwrap();
+        let flat_graph = self.dfir.remove(&0).unwrap();
         let partitioned_graph =
             partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
 
