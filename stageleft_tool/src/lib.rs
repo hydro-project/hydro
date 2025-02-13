@@ -216,28 +216,41 @@ impl VisitMut for GenFinalPubVistor {
     }
 
     fn visit_item_fn_mut(&mut self, i: &mut syn::ItemFn) {
-        let is_entry = i
-            .attrs
-            .iter()
-            .any(|a| a.path().to_token_stream().to_string() == "stageleft :: entry");
+        let is_runtime_or_test = i.attrs.iter().any(|a| {
+            a.path().to_token_stream().to_string() == "stageleft :: runtime"
+                || a.to_token_stream().to_string() == "# [test]"
+                || a.to_token_stream().to_string() == "# [tokio::test]"
+        });
 
-        if is_entry {
+        if is_runtime_or_test {
             *i = parse_quote! {
                 #[cfg(stageleft_macro)]
                 #i
+            };
+        } else {
+            let is_entry = i
+                .attrs
+                .iter()
+                .any(|a| a.path().to_token_stream().to_string() == "stageleft :: entry");
+
+            if is_entry {
+                *i = parse_quote! {
+                    #[cfg(stageleft_macro)]
+                    #i
+                }
             }
+
+            let is_ctor = i
+                .attrs
+                .iter()
+                .any(|a| a.path().to_token_stream().to_string() == "ctor :: ctor");
+
+            if !is_ctor {
+                i.vis = parse_quote!(pub);
+            }
+
+            syn::visit_mut::visit_item_fn_mut(self, i);
         }
-
-        let is_ctor = i
-            .attrs
-            .iter()
-            .any(|a| a.path().to_token_stream().to_string() == "ctor :: ctor");
-
-        if !is_ctor {
-            i.vis = parse_quote!(pub);
-        }
-
-        syn::visit_mut::visit_item_fn_mut(self, i);
     }
 
     fn visit_item_mut(&mut self, i: &mut syn::Item) {
@@ -333,7 +346,7 @@ pub fn gen_final_helper() {
 
     fs::write(
         Path::new(&out_dir).join("lib_pub.rs"),
-        flow_lib_pub.to_token_stream().to_string(),
+        prettyplease::unparse(&flow_lib_pub),
     )
     .unwrap();
 

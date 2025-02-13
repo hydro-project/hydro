@@ -20,3 +20,4 @@ quote = "1.0.35"
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit" ] }
 proc-macro2 = "1.0.74"
 sha2 = "0.10.0"
+prettyplease = "0.2.29"

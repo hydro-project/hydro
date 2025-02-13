@@ -6,7 +6,6 @@ use crate::ir::*;
 fn persist_pullup_node(
     node: &mut HydroNode,
     persist_pulled_tees: &mut HashSet<*const RefCell<HydroNode>>,
-    _next_stmt_id: &mut usize,
 ) {
     *node = match_box::match_box! {
         match std::mem::replace(node, HydroNode::Placeholder) {
@@ -179,19 +178,11 @@ fn persist_pullup_node(
     };
 }
 
-pub fn persist_pullup(ir: Vec<HydroLeaf>) -> Vec<HydroLeaf> {
-    let mut seen_tees = Default::default();
+pub fn persist_pullup(ir: &mut Vec<HydroLeaf>) {
     let mut persist_pulled_tees = Default::default();
-    let mut next_stmt_id = 0;
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |n, s, c| n.transform_bottom_up(persist_pullup_node, s, &mut persist_pulled_tees, c),
-                &mut seen_tees,
-                &mut next_stmt_id,
-            )
-        })
-        .collect()
+    transform_bottom_up(ir, &mut |_| (), &mut |node|
+        persist_pullup_node(node, &mut persist_pulled_tees),
+    );
 }
 
 #[cfg(test)]

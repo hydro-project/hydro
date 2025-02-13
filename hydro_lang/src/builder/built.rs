@@ -6,7 +6,7 @@ use dfir_lang::graph::{eliminate_extra_unions_tees, DfirGraph};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy};
-use crate::ir::HydroLeaf;
+use crate::ir::{emit, HydroLeaf};
 use crate::location::{Cluster, ExternalProcess, Process};
 use crate::staging_util::Invariant;
 
@@ -29,14 +29,7 @@ impl Drop for BuiltFlow<'_> {
 }
 
 pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph> {
-    let mut builders = BTreeMap::new();
-    let mut built_tees = HashMap::new();
-    let mut next_stmt_id = 0;
-    for leaf in ir {
-        leaf.emit(&mut builders, &mut built_tees, &mut next_stmt_id);
-    }
-
-    builders
+    emit(ir)
         .into_iter()
         .map(|(k, v)| {
             let (mut flat_graph, _, _) = v.build();
@@ -51,10 +44,11 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
-    pub fn optimize_with(mut self, f: impl FnOnce(Vec<HydroLeaf>) -> Vec<HydroLeaf>) -> Self {
+    pub fn optimize_with(mut self, f: impl FnOnce(&mut Vec<HydroLeaf>)) -> Self {
         self.used = true;
+        f(&mut self.ir);
         BuiltFlow {
-            ir: f(std::mem::take(&mut self.ir)),
+            ir: std::mem::take(&mut self.ir),
             process_id_name: std::mem::take(&mut self.process_id_name),
             cluster_id_name: std::mem::take(&mut self.cluster_id_name),
             external_id_name: std::mem::take(&mut self.external_id_name),

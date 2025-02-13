@@ -19,16 +19,8 @@ fn add_profiling_node<'a>(
     node: &mut HydroNode,
     counters: RuntimeData<&'a RefCell<Vec<u64>>>,
     counter_queue: RuntimeData<&'a RefCell<UnboundedSender<(usize, u64)>>>,
-    seen_tees: &mut SeenTees,
-    next_stmt_id: &mut usize,
+    my_id: usize,
 ) {
-    node.transform_children(
-        |node, seen_tees, next_stmt_id| add_profiling_node(node, counters, counter_queue, seen_tees, next_stmt_id),
-        seen_tees,
-        next_stmt_id,
-    );
-    let my_id = *next_stmt_id;
-
     let orig_node = std::mem::replace(node, HydroNode::Placeholder);
     let new_metadata = orig_node.metadata().clone();
     *node = HydroNode::Inspect {
@@ -51,23 +43,15 @@ fn add_profiling_node<'a>(
 }
 
 /// Count the cardinality of each input and periodically output to a file
+#[cfg(feature = "build")]
+#[stageleft::runtime]
 pub fn profiling<'a>(
-    ir: Vec<HydroLeaf>,
+    ir: &mut Vec<HydroLeaf>,
     counters: RuntimeData<&'a RefCell<Vec<u64>>>,
     counter_queue: RuntimeData<&'a RefCell<UnboundedSender<(usize, u64)>>>,
-) -> Vec<HydroLeaf> {
-    let mut seen_tees = Default::default();
-    let mut next_stmt_id = 0;
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |node, seen_tees, next_stmt_id|
-                    add_profiling_node(node, counters, counter_queue, seen_tees, next_stmt_id),
-                &mut seen_tees,
-                &mut next_stmt_id,
-            )
-        })
-        .collect()
+) {
+    traverse_dfir(ir, |_, _| (),
+    |node, next_stmt_id| add_profiling_node(node, counters, counter_queue,next_stmt_id));
 }
 
 #[cfg(test)]

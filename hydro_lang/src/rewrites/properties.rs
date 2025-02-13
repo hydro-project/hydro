@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use stageleft::*;
 
-use crate::ir::{HydroLeaf, HydroNode, SeenTees};
+use crate::ir::{transform_bottom_up, HydroLeaf, HydroNode};
 
 /// Structure for tracking expressions known to have particular algebraic properties.
 ///
@@ -59,12 +59,7 @@ impl PropertyDatabase {
 // Dataflow graph optimization rewrite rules based on algebraic property tags
 // TODO add a test that verifies the space of possible graphs after rewrites is correct for each property
 
-fn properties_optimize_node(node: &mut HydroNode, db: &PropertyDatabase, seen_tees: &mut SeenTees, next_stmt_id: &mut usize) {
-    node.transform_children(
-        |node, seen_tees, next_stmt_id| properties_optimize_node(node, db, seen_tees, next_stmt_id),
-        seen_tees,
-        next_stmt_id,
-    );
+fn properties_optimize_node(node: &mut HydroNode, db: &mut PropertyDatabase) {
     match node {
         HydroNode::ReduceKeyed { f, .. } if db.is_tagged_commutative(&f.0) => {
             dbg!("IDENTIFIED COMMUTATIVE OPTIMIZATION for {:?}", &f);
@@ -73,18 +68,8 @@ fn properties_optimize_node(node: &mut HydroNode, db: &PropertyDatabase, seen_te
     }
 }
 
-pub fn properties_optimize(ir: Vec<HydroLeaf>, db: &PropertyDatabase) -> Vec<HydroLeaf> {
-    let mut seen_tees = Default::default();
-    let mut next_stmt_id = 0;
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |node, seen_tees, next_stmt_id| properties_optimize_node(node, db, seen_tees, next_stmt_id),
-                &mut seen_tees,
-                &mut next_stmt_id,
-            )
-        })
-        .collect()
+pub fn properties_optimize(ir: &mut Vec<HydroLeaf>, db: &mut PropertyDatabase) {
+    transform_bottom_up(ir, &mut |_| (), &mut |node| properties_optimize_node(node, db));
 }
 
 #[cfg(test)]
@@ -131,7 +116,7 @@ mod tests {
         .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
         let built = flow
-            .optimize_with(|ir| properties_optimize(ir, &database))
+            .optimize_with(|ir| properties_optimize(ir, &mut database))
             .with_default_optimize::<SingleProcessGraph>();
 
         insta::assert_debug_snapshot!(built.ir());

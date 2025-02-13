@@ -137,23 +137,20 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self.used = true;
 
         let mut seen_tees: HashMap<_, _> = HashMap::new();
-        let mut flow_state_networked: Vec<HydroLeaf> = std::mem::take(&mut self.ir)
-            .into_iter()
-            .map(|leaf| {
-                leaf.compile_network::<D>(
-                    env,
-                    &mut seen_tees,
-                    &self.processes,
-                    &self.clusters,
-                    &self.externals,
-                )
-            })
-            .collect();
+        self.ir.iter_mut().for_each(|leaf| {
+            leaf.compile_network::<D>(
+                env,
+                &mut seen_tees,
+                &self.processes,
+                &self.clusters,
+                &self.externals,
+            );
+        });
 
         let extra_stmts = self.extra_stmts(env);
 
         CompiledFlow {
-            hydroflow_ir: build_inner(&mut flow_state_networked),
+            hydroflow_ir: build_inner(&mut self.ir),
             extra_stmts,
             _phantom: PhantomData,
         }
@@ -198,20 +195,17 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         self.used = true;
 
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
-        let mut flow_state_networked: Vec<HydroLeaf> = std::mem::take(&mut self.ir)
-            .into_iter()
-            .map(|leaf| {
-                leaf.compile_network::<D>(
-                    &(),
-                    &mut seen_tees_instantiate,
-                    &self.processes,
-                    &self.clusters,
-                    &self.externals,
-                )
-            })
-            .collect();
+        self.ir.iter_mut().for_each(|leaf| {
+            leaf.compile_network::<D>(
+                &(),
+                &mut seen_tees_instantiate,
+                &self.processes,
+                &self.clusters,
+                &self.externals,
+            );
+        });
 
-        let mut compiled = build_inner(&mut flow_state_networked);
+        let mut compiled = build_inner(&mut self.ir);
         let mut extra_stmts = self.extra_stmts(&());
         let mut meta = D::Meta::default();
 
@@ -275,9 +269,9 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         }
 
         let mut seen_tees_connect = HashMap::new();
-        for leaf in flow_state_networked {
+        self.ir.iter_mut().for_each(|leaf| {
             leaf.connect_network(&mut seen_tees_connect);
-        }
+        });
 
         DeployResult {
             processes,

@@ -36,43 +36,36 @@ fn parse_perf(file_path: &str) -> HashMap<usize, HashMap<String, f64>> {
 }
 
 fn analyze_perf_leaf(
-    leaf: & HydroLeaf,
-    id_to_usage: &mut HashMap<usize, HashMap<String, f64>>,
-    next_stmt_id: &mut usize,
+    leaf: &mut HydroLeaf,
+    id_to_usage: &HashMap<usize, HashMap<String, f64>>,
+    next_stmt_id: usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
         for (dfir_operator, samples) in dfir_operator_and_samples {
-            println!("Hydro node {}: {} {:.02}%", leaf.print_root(), dfir_operator, samples * 100f64);
+            println!("{} Hydro leaf {}: {} {:.02}%", next_stmt_id, leaf.print_root(), dfir_operator, samples * 100f64);
         }
     }
 }
 
 fn analyze_perf_node(
     node: &mut HydroNode,
-    id_to_usage: &mut HashMap<usize, HashMap<String, f64>>,
-    next_stmt_id: &mut usize,
+    id_to_usage: &HashMap<usize, HashMap<String, f64>>,
+    next_stmt_id: usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
         for (dfir_operator, samples) in dfir_operator_and_samples {
             println!("{} Hydro node {}: {} {:.02}%", next_stmt_id, node.print_root(), dfir_operator, samples * 100f64);
         }
     }
 }
 
-pub fn analyze_perf(ir: Vec<HydroLeaf>) -> Vec<HydroLeaf> {
-    let mut seen_tees = Default::default();
-    let mut id_to_usage = parse_perf("proposer0.data.folded");
-    let mut next_stmt_id = 0;
-    let out = ir.into_iter()
-        .map(|l| {
-            let l = l.transform_children(
-                |n, s, c| n.transform_bottom_up(analyze_perf_node, s, &mut id_to_usage, c),
-                &mut seen_tees,
-                &mut next_stmt_id,
-            );
-            analyze_perf_leaf(&l, &mut id_to_usage, &mut next_stmt_id);
-            l
-        })
-        .collect();
-    out
+#[cfg(feature = "build")]
+#[stageleft::runtime]
+pub fn analyze_perf(ir: &mut Vec<HydroLeaf>) {
+    let id_to_usage = parse_perf("proposer0.data.folded");
+    traverse_dfir(ir, |leaf, next_stmt_id| {
+        analyze_perf_leaf(leaf, &id_to_usage, next_stmt_id);
+    }, |node, next_stmt_id| {
+        analyze_perf_node(node, &id_to_usage, next_stmt_id);
+    });
 }
