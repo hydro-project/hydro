@@ -27,7 +27,7 @@ use crate::hydroflow_crate::flamegraph::handle_fold_data;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::util::{async_retry, prioritized_broadcast};
-use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy};
+use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
@@ -72,6 +72,10 @@ impl LaunchedBinary for LaunchedSshBinary {
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
         receivers.push(sender);
         receiver
+    }
+
+    fn tracing_results(&self) -> Option<&TracingResults> {
+        todo!("Not yet implemented")
     }
 
     fn exit_code(&self) -> Option<i32> {

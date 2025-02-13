@@ -16,7 +16,7 @@ use hydro_deploy::hydroflow_crate::ports::{
 };
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::hydroflow_crate::HydroflowCrateService;
-use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate};
+use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate, TracingResults};
 use nameof::name_of;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -390,6 +390,11 @@ pub trait DeployCrateWrapper {
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     async fn stderr(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().read().await.stderr()
+    }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn tracing_results(&self) -> Option<TracingResults> {
+        self.underlying().read().await.tracing_results().cloned()
     }
 }
 
