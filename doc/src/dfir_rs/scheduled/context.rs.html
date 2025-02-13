@@ -317,9 +317,7 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a>
-<a href="#320" id="320">320</a>
-<a href="#321" id="321">321</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
+<a href="#319" id="319">319</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
 //!
 //! Provides APIs for state and scheduling.
 
@@ -353,7 +351,8 @@
     <span class="doccomment">/// Priority stack for handling strata within loops. Prioritized by loop depth.
     </span><span class="kw">pub</span>(<span class="kw">super</span>) stratum_stack: PriorityStack&lt;usize&gt;,
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) loop_nonce_stack: Vec&lt;usize&gt;,
+    <span class="doccomment">/// Stack of loop nonces. Used to identify when a new loop iteration begins.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) loop_nonce_stack: Vec&lt;usize&gt;,
 
     <span class="doccomment">/// TODO(mingwei):
     /// used for loop iteration scheduling.
@@ -382,7 +381,7 @@
 
     <span class="kw">pub</span>(<span class="kw">super</span>) current_tick_start: SystemTime,
     <span class="kw">pub</span>(<span class="kw">super</span>) is_first_run_this_tick: bool,
-    <span class="kw">pub</span>(<span class="kw">super</span>) is_first_loop_iteration: bool,
+    <span class="kw">pub</span>(<span class="kw">super</span>) loop_iter_count: usize,
 
     <span class="comment">// Depth of loop (zero for top-level).
     </span><span class="kw">pub</span>(<span class="kw">super</span>) loop_depth: SlotVec&lt;LoopTag, usize&gt;,
@@ -414,12 +413,9 @@
         <span class="self">self</span>.is_first_run_this_tick
     }
 
-    <span class="doccomment">/// Gets whether this run is the first iteration of a loop.
-    ///
-    /// This is only meaningful if the subgraph is in a loop, otherwise this will always return
-    /// `false`.
-    </span><span class="kw">pub fn </span>is_first_loop_iteration(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.is_first_loop_iteration
+    <span class="doccomment">/// Gets the current loop iteration count.
+    </span><span class="kw">pub fn </span>loop_iter_count(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
+        <span class="self">self</span>.loop_iter_count
     }
 
     <span class="doccomment">/// Gets the current stratum nubmer.
@@ -601,7 +597,7 @@
 
             current_tick_start: SystemTime::now(),
             is_first_run_this_tick: <span class="bool-val">false</span>,
-            is_first_loop_iteration: <span class="bool-val">false</span>,
+            loop_iter_count: <span class="number">0</span>,
 
             loop_depth,
             loop_nonce: <span class="number">0</span>,
