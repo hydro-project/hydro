@@ -299,8 +299,13 @@ impl<'a> Dfir<'a> {
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
 
                 if let Some(loop_id) = sg_data.loop_id {
-                    // If the previous execution of this subgraph had the same loop execution and
-                    // iteration count, then we need to increment the count.
+                    // Loop execution - running loop block, from start to finish, containing
+                    // multiple iterations.
+                    // Loop iteration - a single iteration of a loop block, all subgraphs within
+                    // the loop should run (at most) once.
+
+                    // If the previous run of this subgraph had the same loop execution and
+                    // iteration count, then we need to increment the iteration count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
                     let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
@@ -1043,7 +1048,7 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
-    /// A meaningless ID to track the loop execution this subgraph was last run in.
+    /// A meaningless ID to track the last loop execution this subgraph was run in.
     /// `(loop_nonce, iter_count)` pair.
     last_loop_nonce: (usize, usize),
 
