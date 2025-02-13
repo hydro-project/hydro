@@ -6,8 +6,8 @@ fn main() {
     {
         #[allow(unused_qualifications)]
         {
-            use hydroflow::{var_expr, var_args};
-            let mut df = hydroflow::scheduled::graph::Dfir::new();
+            use dfir_rs::{var_expr, var_args};
+            let mut df = dfir_rs::scheduled::graph::Dfir::new();
             df.__assign_meta_graph(
                 "{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":2},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Handoff\":{}},\"version\":3},{\"value\":{\"Operator\":\"unique :: < 'tick > ()\"},\"version\":1},{\"value\":{\"Operator\":\"difference :: < 'tick , 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"tee ()\"},\"version\":1},{\"value\":{\"Operator\":\"defer_tick ()\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints1)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints2)\"},\"version\":1},{\"value\":{\"Operator\":\"source_stream (ints3)\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result2 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result3 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (| v | result4 . send (v) . unwrap ())\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'static , dfir_rs :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"join :: < 'static , 'tick , dfir_rs :: compiled :: pull :: HalfMultisetJoinState > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : (() , ((_ , _ ,) , (_ ,))) | (kv . 1 . 0 . 0 , kv . 1 . 0 . 1 , kv . 1 . 1 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ , _ ,) | (() , (_v . 0 , _v . 1 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (() , (_v . 0 ,)))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ , _ , _ ,) | ((row . 0 , row . 1 , row . 2 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ , _ , _ ,) , _) | (g . 0 , g . 1 , g . 2 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"anti_join ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| kv : ((_ ,) , ()) | (kv . 0 . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | ((_v . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| _v : (_ ,) | (_v . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| row : (_ ,) | ((row . 0 ,) , ()))\"},\"version\":1},{\"value\":{\"Operator\":\"map (| (g , a) : ((_ ,) , _) | (g . 0 ,))\"},\"version\":1},{\"value\":{\"Operator\":\"persist :: < 'static > ()\"},\"version\":1}],\"operator_tag\":[{\"value\":null,\"version\":0}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":34,\"version\":1},{\"idx\":14,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":5,\"version\":1},{\"idx\":28,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":25,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":35,\"version\":1},{\"idx\":11,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1},{\"idx\":22,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":19,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":36,\"version\":1},{\"idx\":6,\"version\":3}],\"version\":5},{\"value\":[{\"idx\":13,\"version\":3},{\"idx\":33,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":16,\"version\":3},{\"idx\":31,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":19,\"version\":3},{\"idx\":10,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":22,\"version\":3},{\"idx\":8,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":25,\"version\":3},{\"idx\":5,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":28,\"version\":3},{\"idx\":3,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1},{\"idx\":16,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":13,\"version\":3}],\"version\":3},{\"value\":null,\"version\":2},{\"value\":[{\"idx\":6,\"version\":3},{\"idx\":12,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":11,\"version\":3},{\"idx\":7,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":43,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":29,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":26,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":47,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":48,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":14,\"version\":3},{\"idx\":2,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":23,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":56,\"version\":1},{\"idx\":20,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":17,\"version\":3},{\"idx\":65,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":26,\"version\":3},{\"idx\":44,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":20,\"version\":3},{\"idx\":51,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":29,\"version\":3},{\"idx\":43,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":64,\"version\":1},{\"idx\":17,\"version\":3}],\"version\":3},{\"value\":[{\"idx\":4,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":23,\"version\":3},{\"idx\":53,\"version\":1}],\"version\":3},{\"value\":[{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":5},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"0\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Int\":\"1\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"pos\"}],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"1\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"2\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",{\"Path\":\"neg\"}],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[{\"Int\":\"3\"},\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":3},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[{\"Int\":\"0\"},\"Elided\"],\"version\":1}],\"node_loops\":[{\"value\":null,\"version\":0}],\"loop_nodes\":[{\"value\":null,\"version\":0}],\"loop_parent\":[{\"value\":null,\"version\":0}],\"root_loops\":[],\"loop_children\":[{\"value\":null,\"version\":0}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":2,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":3,\"version\":1},\"version\":1},{\"value\":{\"idx\":9,\"version\":1},\"version\":1},{\"value\":{\"idx\":10,\"version\":1},\"version\":1},{\"value\":{\"idx\":11,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":4,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":8,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":5,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":6,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1},{\"value\":{\"idx\":7,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":5,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":10,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":33,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":12,\"version\":1},{\"idx\":43,\"version\":1},{\"idx\":44,\"version\":1},{\"idx\":41,\"version\":1},{\"idx\":42,\"version\":1},{\"idx\":47,\"version\":1},{\"idx\":48,\"version\":1},{\"idx\":45,\"version\":1},{\"idx\":46,\"version\":1},{\"idx\":49,\"version\":1},{\"idx\":50,\"version\":1},{\"idx\":15,\"version\":1},{\"idx\":37,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":53,\"version\":1},{\"idx\":54,\"version\":1},{\"idx\":51,\"version\":1},{\"idx\":52,\"version\":1},{\"idx\":57,\"version\":1},{\"idx\":58,\"version\":1},{\"idx\":18,\"version\":1},{\"idx\":38,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1},{\"idx\":59,\"version\":1},{\"idx\":60,\"version\":1},{\"idx\":61,\"version\":1},{\"idx\":27,\"version\":1},{\"idx\":62,\"version\":1},{\"idx\":63,\"version\":1},{\"idx\":21,\"version\":1},{\"idx\":39,\"version\":1},{\"idx\":64,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":65,\"version\":1},{\"idx\":30,\"version\":1},{\"idx\":31,\"version\":1},{\"idx\":32,\"version\":1},{\"idx\":66,\"version\":1},{\"idx\":67,\"version\":1},{\"idx\":68,\"version\":1},{\"idx\":24,\"version\":1},{\"idx\":40,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":7,\"version\":1},{\"idx\":8,\"version\":1},{\"idx\":9,\"version\":1},{\"idx\":55,\"version\":1},{\"idx\":56,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":34,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":35,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":36,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":1,\"version\":1},{\"value\":2,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":1,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints1_insert\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":\"ints1\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints2_insert\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":\"ints2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"ints3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result2_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result3_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"result4_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_insert\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"intermediate_persist_insert\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":\"intermediate_persist\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_2\",\"version\":1},{\"value\":\"join_2\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_4\",\"version\":1},{\"value\":\"join_4\",\"version\":1},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":null,\"version\":0},{\"value\":\"join_7\",\"version\":1},{\"value\":\"join_7\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}",
             );
@@ -15,82 +15,82 @@ fn main() {
             let (hoff_6v3_send, hoff_6v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(6v3)");
             let (hoff_11v3_send, hoff_11v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(11v3)");
             let (hoff_13v3_send, hoff_13v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(13v3)");
             let (hoff_14v3_send, hoff_14v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(14v3)");
             let (hoff_16v3_send, hoff_16v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(16v3)");
             let (hoff_17v3_send, hoff_17v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(17v3)");
             let (hoff_19v3_send, hoff_19v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(19v3)");
             let (hoff_20v3_send, hoff_20v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(20v3)");
             let (hoff_22v3_send, hoff_22v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(22v3)");
             let (hoff_23v3_send, hoff_23v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(23v3)");
             let (hoff_25v3_send, hoff_25v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(25v3)");
             let (hoff_26v3_send, hoff_26v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(26v3)");
             let (hoff_28v3_send, hoff_28v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(28v3)");
             let (hoff_29v3_send, hoff_29v3_recv) = df
                 .make_edge::<
                     _,
-                    hydroflow::scheduled::handoff::VecHandoff<_>,
+                    dfir_rs::scheduled::handoff::VecHandoff<_>,
                 >("handoff GraphNodeId(29v3)");
             let mut sg_9v1_node_34v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: hydroflow::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl hydroflow::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -100,12 +100,12 @@ fn main() {
             let mut sg_10v1_node_35v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: hydroflow::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl hydroflow::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -115,12 +115,12 @@ fn main() {
             let mut sg_11v1_node_36v1_stream = {
                 #[inline(always)]
                 fn check_stream<
-                    Stream: hydroflow::futures::stream::Stream<Item = Item>
+                    Stream: dfir_rs::futures::stream::Stream<Item = Item>
                         + ::std::marker::Unpin,
                     Item,
                 >(
                     stream: Stream,
-                ) -> impl hydroflow::futures::stream::Stream<
+                ) -> impl dfir_rs::futures::stream::Stream<
                     Item = Item,
                 > + ::std::marker::Unpin {
                     stream
@@ -130,9 +130,9 @@ fn main() {
             let sg_4v1_node_12v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -162,14 +162,14 @@ fn main() {
                 );
             df.set_state_tick_hook(
                 sg_4v1_node_45v1_joindata_rhs,
-                |rcell| hydroflow::util::clear::Clear::clear(rcell.get_mut()),
+                |rcell| dfir_rs::util::clear::Clear::clear(rcell.get_mut()),
             );
             let sg_4v1_node_15v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -178,67 +178,67 @@ fn main() {
             let sg_5v1_node_51v1_antijoindata_neg = df
                 .add_state(
                     std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_5v1_node_51v1_antijoindata_pos = df
                 .add_state(
                     std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_5v1_node_18v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_6v1_node_2v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_6v1_node_3v1_antijoindata_neg = df
                 .add_state(
-                    std::cell::RefCell::new(hydroflow::rustc_hash::FxHashSet::default()),
+                    std::cell::RefCell::new(dfir_rs::rustc_hash::FxHashSet::default()),
                 );
             let sg_6v1_node_3v1_antijoindata_pos = df
                 .add_state(
                     std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_6v1_node_21v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_6v1_node_27v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -247,31 +247,31 @@ fn main() {
             let sg_7v1_node_30v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_7v1_node_31v1_antijoindata_neg = df
                 .add_state(
-                    std::cell::RefCell::new(hydroflow::rustc_hash::FxHashSet::default()),
+                    std::cell::RefCell::new(dfir_rs::rustc_hash::FxHashSet::default()),
                 );
             let sg_7v1_node_31v1_antijoindata_pos = df
                 .add_state(
                     std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_7v1_node_24v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -280,22 +280,22 @@ fn main() {
             let sg_8v1_node_7v1_uniquedata = df
                 .add_state(
                     ::std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
             let sg_8v1_node_8v1_antijoindata_neg = df
                 .add_state(
-                    std::cell::RefCell::new(hydroflow::rustc_hash::FxHashSet::default()),
+                    std::cell::RefCell::new(dfir_rs::rustc_hash::FxHashSet::default()),
                 );
             let sg_8v1_node_8v1_antijoindata_pos = df
                 .add_state(
                     std::cell::RefCell::new(
-                        hydroflow::util::monotonic_map::MonotonicMap::<
+                        dfir_rs::util::monotonic_map::MonotonicMap::<
                             _,
-                            hydroflow::rustc_hash::FxHashSet<_>,
+                            dfir_rs::rustc_hash::FxHashSet<_>,
                         >::default(),
                     ),
                 );
@@ -309,13 +309,11 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!(hoff_14v3_send)| {
-                    let hoff_14v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_14v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_14v3_send.give(Some(v));
                     });
                     let op_34v1 = std::iter::from_fn(|| {
-                        match hydroflow::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_9v1_node_34v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -358,10 +356,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_9v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_9v1(op_34v1, hoff_14v3_send);
                 },
@@ -374,13 +372,11 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!(hoff_11v3_send)| {
-                    let hoff_11v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_11v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_11v3_send.give(Some(v));
                     });
                     let op_35v1 = std::iter::from_fn(|| {
-                        match hydroflow::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_10v1_node_35v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -423,10 +419,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_10v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_10v1(op_35v1, hoff_11v3_send);
                 },
@@ -439,13 +435,11 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!(hoff_6v3_send)| {
-                    let hoff_6v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_6v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_6v3_send.give(Some(v));
                     });
                     let op_36v1 = std::iter::from_fn(|| {
-                        match hydroflow::futures::stream::Stream::poll_next(
+                        match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_11v1_node_36v1_stream),
                             &mut std::task::Context::from_waker(&context.waker()),
                         ) {
@@ -488,10 +482,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_11v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_11v1(op_36v1, hoff_6v3_send);
                 },
@@ -506,9 +500,7 @@ fn main() {
                 move |context, var_args!(hoff_25v3_recv), var_args!(hoff_28v3_send)| {
                     let mut hoff_25v3_recv = hoff_25v3_recv.borrow_mut_swap();
                     let hoff_25v3_recv = hoff_25v3_recv.drain(..);
-                    let hoff_28v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_28v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_28v3_send.give(Some(v));
                     });
                     let op_5v1 = {
@@ -554,10 +546,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_1v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_1v1(op_5v1, hoff_28v3_send);
                 },
@@ -572,9 +564,7 @@ fn main() {
                 move |context, var_args!(hoff_19v3_recv), var_args!(hoff_22v3_send)| {
                     let mut hoff_19v3_recv = hoff_19v3_recv.borrow_mut_swap();
                     let hoff_19v3_recv = hoff_19v3_recv.drain(..);
-                    let hoff_22v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_22v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_22v3_send.give(Some(v));
                     });
                     let op_10v1 = {
@@ -620,10 +610,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_2v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_2v1(op_10v1, hoff_22v3_send);
                 },
@@ -638,9 +628,7 @@ fn main() {
                 move |context, var_args!(hoff_13v3_recv), var_args!(hoff_16v3_send)| {
                     let mut hoff_13v3_recv = hoff_13v3_recv.borrow_mut_swap();
                     let hoff_13v3_recv = hoff_13v3_recv.drain(..);
-                    let hoff_16v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_16v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_16v3_send.give(Some(v));
                     });
                     let op_33v1 = {
@@ -686,10 +674,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_3v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_3v1(op_33v1, hoff_16v3_send);
                 },
@@ -865,7 +853,7 @@ fn main() {
                             I1: 'a + Iterator<Item = (K, V1)>,
                             I2: 'a + Iterator<Item = (K, V2)>,
                         {
-                            hydroflow::compiled::pull::symmetric_hash_join_into_iter(
+                            dfir_rs::compiled::pull::symmetric_hash_join_into_iter(
                                 lhs,
                                 rhs,
                                 lhs_state,
@@ -1055,7 +1043,7 @@ fn main() {
                             I1: 'a + Iterator<Item = (K, V1)>,
                             I2: 'a + Iterator<Item = (K, V2)>,
                         {
-                            hydroflow::compiled::pull::symmetric_hash_join_into_iter(
+                            dfir_rs::compiled::pull::symmetric_hash_join_into_iter(
                                 lhs,
                                 rhs,
                                 lhs_state,
@@ -1265,7 +1253,7 @@ fn main() {
                         }
                         op_15v1__unique__loc_nopath_10_20_10_26(op_15v1)
                     };
-                    let op_37v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
+                    let op_37v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result.send(v).unwrap()
                     });
                     let op_37v1 = {
@@ -1273,21 +1261,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_37v1__for_each__loc_nopath_10_28_10_65<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1301,10 +1289,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_4v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_4v1(op_15v1, op_37v1);
                     context.schedule_subgraph(context.current_subgraph(), false);
@@ -1417,8 +1405,8 @@ fn main() {
                         fn check_inputs<'a, K, I1, V, I2>(
                             input_neg: I1,
                             input_pos: I2,
-                            neg_state: &'a mut hydroflow::rustc_hash::FxHashSet<K>,
-                            pos_state: &'a mut hydroflow::rustc_hash::FxHashSet<(K, V)>,
+                            neg_state: &'a mut dfir_rs::rustc_hash::FxHashSet<K>,
+                            pos_state: &'a mut dfir_rs::rustc_hash::FxHashSet<(K, V)>,
                             is_new_tick: bool,
                         ) -> impl 'a + Iterator<Item = (K, V)>
                         where
@@ -1428,7 +1416,7 @@ fn main() {
                             I2: 'a + Iterator<Item = (K, V)>,
                         {
                             neg_state.extend(input_neg);
-                            hydroflow::compiled::pull::anti_join_into_iter(
+                            dfir_rs::compiled::pull::anti_join_into_iter(
                                 input_pos,
                                 neg_state,
                                 pos_state,
@@ -1637,7 +1625,7 @@ fn main() {
                         }
                         op_18v1__unique__loc_nopath_11_20_11_27(op_18v1)
                     };
-                    let op_38v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
+                    let op_38v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result2.send(v).unwrap()
                     });
                     let op_38v1 = {
@@ -1645,21 +1633,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_38v1__for_each__loc_nopath_11_29_11_67<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1673,10 +1661,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_5v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_5v1(op_18v1, op_38v1);
                     context.schedule_subgraph(context.current_subgraph(), false);
@@ -1702,24 +1690,16 @@ fn main() {
                     let hoff_14v3_recv = hoff_14v3_recv.drain(..);
                     let mut hoff_28v3_recv = hoff_28v3_recv.borrow_mut_swap();
                     let hoff_28v3_recv = hoff_28v3_recv.drain(..);
-                    let hoff_17v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_17v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_17v3_send.give(Some(v));
                     });
-                    let hoff_23v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_23v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_23v3_send.give(Some(v));
                     });
-                    let hoff_25v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_25v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_25v3_send.give(Some(v));
                     });
-                    let hoff_29v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_29v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_29v3_send.give(Some(v));
                     });
                     let op_2v1 = hoff_14v3_recv
@@ -1784,8 +1764,8 @@ fn main() {
                         fn check_inputs<'a, K, I1, V, I2>(
                             input_neg: I1,
                             input_pos: I2,
-                            neg_state: &'a mut hydroflow::rustc_hash::FxHashSet<K>,
-                            pos_state: &'a mut hydroflow::rustc_hash::FxHashSet<(K, V)>,
+                            neg_state: &'a mut dfir_rs::rustc_hash::FxHashSet<K>,
+                            pos_state: &'a mut dfir_rs::rustc_hash::FxHashSet<(K, V)>,
                             is_new_tick: bool,
                         ) -> impl 'a + Iterator<Item = (K, V)>
                         where
@@ -1795,7 +1775,7 @@ fn main() {
                             I2: 'a + Iterator<Item = (K, V)>,
                         {
                             neg_state.extend(input_neg);
-                            hydroflow::compiled::pull::anti_join_into_iter(
+                            dfir_rs::compiled::pull::anti_join_into_iter(
                                 input_pos,
                                 neg_state,
                                 pos_state,
@@ -1844,7 +1824,7 @@ fn main() {
                         }
                         op_3v1__difference__loc_nopath_2_19_2_24(op_3v1)
                     };
-                    let op_64v1 = hydroflow::pusherator::map::Map::new(
+                    let op_64v1 = dfir_rs::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
                         hoff_17v3_send,
                     );
@@ -1853,21 +1833,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_64v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1878,7 +1858,7 @@ fn main() {
                         }
                         op_64v1__map__loc_nopath_1_0_1_0(op_64v1)
                     };
-                    let op_39v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
+                    let op_39v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result3.send(v).unwrap()
                     });
                     let op_39v1 = {
@@ -1886,21 +1866,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_39v1__for_each__loc_nopath_12_29_12_67<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1911,7 +1891,7 @@ fn main() {
                         }
                         op_39v1__for_each__loc_nopath_12_29_12_67(op_39v1)
                     };
-                    let op_21v1 = hydroflow::pusherator::filter::Filter::new(
+                    let op_21v1 = dfir_rs::pusherator::filter::Filter::new(
                         |item| {
                             let mut borrow = context
                                 .state_ref(sg_6v1_node_21v1_uniquedata)
@@ -1935,21 +1915,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_21v1__unique__loc_nopath_12_20_12_27<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1960,7 +1940,7 @@ fn main() {
                         }
                         op_21v1__unique__loc_nopath_12_20_12_27(op_21v1)
                     };
-                    let op_63v1 = hydroflow::pusherator::map::Map::new(
+                    let op_63v1 = dfir_rs::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
                         op_21v1,
                     );
@@ -1969,21 +1949,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_63v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -1994,7 +1974,7 @@ fn main() {
                         }
                         op_63v1__map__loc_nopath_1_0_1_0(op_63v1)
                     };
-                    let op_62v1 = hydroflow::pusherator::map::Map::new(
+                    let op_62v1 = dfir_rs::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
                         op_63v1,
                     );
@@ -2003,21 +1983,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_62v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2028,7 +2008,7 @@ fn main() {
                         }
                         op_62v1__map__loc_nopath_1_0_1_0(op_62v1)
                     };
-                    let op_27v1 = hydroflow::pusherator::filter::Filter::new(
+                    let op_27v1 = dfir_rs::pusherator::filter::Filter::new(
                         |item| {
                             let mut borrow = context
                                 .state_ref(sg_6v1_node_27v1_uniquedata)
@@ -2052,21 +2032,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_27v1__unique__loc_nopath_18_12_18_24<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2085,19 +2065,19 @@ fn main() {
                             vec: &'ctx mut Vec<Item>,
                             mut output: Push,
                             is_new_tick: bool,
-                        ) -> impl 'ctx + hydroflow::pusherator::Pusherator<Item = Item>
+                        ) -> impl 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>
                         where
-                            Push: 'ctx + hydroflow::pusherator::Pusherator<Item = Item>,
+                            Push: 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>,
                             Item: ::std::clone::Clone,
                         {
                             if is_new_tick {
                                 vec.iter()
                                     .cloned()
                                     .for_each(|item| {
-                                        hydroflow::pusherator::Pusherator::give(&mut output, item);
+                                        dfir_rs::pusherator::Pusherator::give(&mut output, item);
                                     });
                             }
-                            hydroflow::pusherator::map::Map::new(
+                            dfir_rs::pusherator::map::Map::new(
                                 |item| {
                                     vec.push(item);
                                     vec.last().unwrap().clone()
@@ -2116,21 +2096,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_61v1__persist__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2141,7 +2121,7 @@ fn main() {
                         }
                         op_61v1__persist__loc_nopath_1_0_1_0(op_61v1)
                     };
-                    let op_60v1 = hydroflow::pusherator::map::Map::new(
+                    let op_60v1 = dfir_rs::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
                         op_61v1,
                     );
@@ -2150,21 +2130,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_60v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2175,7 +2155,7 @@ fn main() {
                         }
                         op_60v1__map__loc_nopath_1_0_1_0(op_60v1)
                     };
-                    let op_59v1 = hydroflow::pusherator::map::Map::new(
+                    let op_59v1 = dfir_rs::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
                         op_60v1,
                     );
@@ -2184,21 +2164,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_59v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2209,16 +2189,13 @@ fn main() {
                         }
                         op_59v1__map__loc_nopath_1_0_1_0(op_59v1)
                     };
-                    let op_4v1 = hydroflow::pusherator::tee::Tee::new(
+                    let op_4v1 = dfir_rs::pusherator::tee::Tee::new(
                         hoff_29v3_send,
-                        hydroflow::pusherator::tee::Tee::new(
+                        dfir_rs::pusherator::tee::Tee::new(
                             hoff_23v3_send,
-                            hydroflow::pusherator::tee::Tee::new(
+                            dfir_rs::pusherator::tee::Tee::new(
                                 op_59v1,
-                                hydroflow::pusherator::tee::Tee::new(
-                                    op_64v1,
-                                    hoff_25v3_send,
-                                ),
+                                dfir_rs::pusherator::tee::Tee::new(op_64v1, hoff_25v3_send),
                             ),
                         ),
                     );
@@ -2227,21 +2204,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_4v1__tee__loc_nopath_2_19_2_24<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2255,10 +2232,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_6v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_6v1(op_3v1, op_4v1);
                     context.schedule_subgraph(context.current_subgraph(), false);
@@ -2280,9 +2257,7 @@ fn main() {
                     let hoff_16v3_recv = hoff_16v3_recv.drain(..);
                     let mut hoff_17v3_recv = hoff_17v3_recv.borrow_mut_swap();
                     let hoff_17v3_recv = hoff_17v3_recv.drain(..);
-                    let hoff_13v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_13v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_13v3_send.give(Some(v));
                     });
                     #[allow(
@@ -2384,8 +2359,8 @@ fn main() {
                         fn check_inputs<'a, K, I1, V, I2>(
                             input_neg: I1,
                             input_pos: I2,
-                            neg_state: &'a mut hydroflow::rustc_hash::FxHashSet<K>,
-                            pos_state: &'a mut hydroflow::rustc_hash::FxHashSet<(K, V)>,
+                            neg_state: &'a mut dfir_rs::rustc_hash::FxHashSet<K>,
+                            pos_state: &'a mut dfir_rs::rustc_hash::FxHashSet<(K, V)>,
                             is_new_tick: bool,
                         ) -> impl 'a + Iterator<Item = (K, V)>
                         where
@@ -2395,7 +2370,7 @@ fn main() {
                             I2: 'a + Iterator<Item = (K, V)>,
                         {
                             neg_state.extend(input_neg);
-                            hydroflow::compiled::pull::anti_join_into_iter(
+                            dfir_rs::compiled::pull::anti_join_into_iter(
                                 input_pos,
                                 neg_state,
                                 pos_state,
@@ -2444,7 +2419,7 @@ fn main() {
                         }
                         op_31v1__difference__loc_nopath_21_21_21_41(op_31v1)
                     };
-                    let op_40v1 = hydroflow::pusherator::for_each::ForEach::new(|v| {
+                    let op_40v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result4.send(v).unwrap()
                     });
                     let op_40v1 = {
@@ -2452,21 +2427,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_40v1__for_each__loc_nopath_13_29_13_67<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2477,7 +2452,7 @@ fn main() {
                         }
                         op_40v1__for_each__loc_nopath_13_29_13_67(op_40v1)
                     };
-                    let op_24v1 = hydroflow::pusherator::filter::Filter::new(
+                    let op_24v1 = dfir_rs::pusherator::filter::Filter::new(
                         |item| {
                             let mut borrow = context
                                 .state_ref(sg_7v1_node_24v1_uniquedata)
@@ -2501,21 +2476,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_24v1__unique__loc_nopath_13_20_13_27<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2534,19 +2509,19 @@ fn main() {
                             vec: &'ctx mut Vec<Item>,
                             mut output: Push,
                             is_new_tick: bool,
-                        ) -> impl 'ctx + hydroflow::pusherator::Pusherator<Item = Item>
+                        ) -> impl 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>
                         where
-                            Push: 'ctx + hydroflow::pusherator::Pusherator<Item = Item>,
+                            Push: 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>,
                             Item: ::std::clone::Clone,
                         {
                             if is_new_tick {
                                 vec.iter()
                                     .cloned()
                                     .for_each(|item| {
-                                        hydroflow::pusherator::Pusherator::give(&mut output, item);
+                                        dfir_rs::pusherator::Pusherator::give(&mut output, item);
                                     });
                             }
-                            hydroflow::pusherator::map::Map::new(
+                            dfir_rs::pusherator::map::Map::new(
                                 |item| {
                                     vec.push(item);
                                     vec.last().unwrap().clone()
@@ -2565,21 +2540,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_68v1__persist__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2590,7 +2565,7 @@ fn main() {
                         }
                         op_68v1__persist__loc_nopath_1_0_1_0(op_68v1)
                     };
-                    let op_67v1 = hydroflow::pusherator::map::Map::new(
+                    let op_67v1 = dfir_rs::pusherator::map::Map::new(
                         |(g, a): ((_,), _)| (g.0,),
                         op_68v1,
                     );
@@ -2599,21 +2574,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_67v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2624,7 +2599,7 @@ fn main() {
                         }
                         op_67v1__map__loc_nopath_1_0_1_0(op_67v1)
                     };
-                    let op_66v1 = hydroflow::pusherator::map::Map::new(
+                    let op_66v1 = dfir_rs::pusherator::map::Map::new(
                         |row: (_,)| ((row.0,), ()),
                         op_67v1,
                     );
@@ -2633,21 +2608,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_66v1__map__loc_nopath_1_0_1_0<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2658,7 +2633,7 @@ fn main() {
                         }
                         op_66v1__map__loc_nopath_1_0_1_0(op_66v1)
                     };
-                    let op_32v1 = hydroflow::pusherator::tee::Tee::new(
+                    let op_32v1 = dfir_rs::pusherator::tee::Tee::new(
                         op_66v1,
                         hoff_13v3_send,
                     );
@@ -2667,21 +2642,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_32v1__tee__loc_nopath_21_21_21_41<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2695,10 +2670,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_7v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_7v1(op_31v1, op_32v1);
                     context.schedule_subgraph(context.current_subgraph(), false);
@@ -2720,19 +2695,13 @@ fn main() {
                     let hoff_11v3_recv = hoff_11v3_recv.drain(..);
                     let mut hoff_22v3_recv = hoff_22v3_recv.borrow_mut_swap();
                     let hoff_22v3_recv = hoff_22v3_recv.drain(..);
-                    let hoff_19v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_19v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_19v3_send.give(Some(v));
                     });
-                    let hoff_20v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_20v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_20v3_send.give(Some(v));
                     });
-                    let hoff_26v3_send = hydroflow::pusherator::for_each::ForEach::new(|
-                        v|
-                    {
+                    let hoff_26v3_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_26v3_send.give(Some(v));
                     });
                     let op_7v1 = hoff_11v3_recv
@@ -2797,8 +2766,8 @@ fn main() {
                         fn check_inputs<'a, K, I1, V, I2>(
                             input_neg: I1,
                             input_pos: I2,
-                            neg_state: &'a mut hydroflow::rustc_hash::FxHashSet<K>,
-                            pos_state: &'a mut hydroflow::rustc_hash::FxHashSet<(K, V)>,
+                            neg_state: &'a mut dfir_rs::rustc_hash::FxHashSet<K>,
+                            pos_state: &'a mut dfir_rs::rustc_hash::FxHashSet<(K, V)>,
                             is_new_tick: bool,
                         ) -> impl 'a + Iterator<Item = (K, V)>
                         where
@@ -2808,7 +2777,7 @@ fn main() {
                             I2: 'a + Iterator<Item = (K, V)>,
                         {
                             neg_state.extend(input_neg);
-                            hydroflow::compiled::pull::anti_join_into_iter(
+                            dfir_rs::compiled::pull::anti_join_into_iter(
                                 input_pos,
                                 neg_state,
                                 pos_state,
@@ -2857,7 +2826,7 @@ fn main() {
                         }
                         op_8v1__difference__loc_nopath_5_19_5_24(op_8v1)
                     };
-                    let op_56v1 = hydroflow::pusherator::map::Map::new(
+                    let op_56v1 = dfir_rs::pusherator::map::Map::new(
                         |_v: (_,)| (_v.0,),
                         hoff_20v3_send,
                     );
@@ -2866,21 +2835,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_56v1__map__loc_nopath_16_37_16_45<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2899,19 +2868,19 @@ fn main() {
                             vec: &'ctx mut Vec<Item>,
                             mut output: Push,
                             is_new_tick: bool,
-                        ) -> impl 'ctx + hydroflow::pusherator::Pusherator<Item = Item>
+                        ) -> impl 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>
                         where
-                            Push: 'ctx + hydroflow::pusherator::Pusherator<Item = Item>,
+                            Push: 'ctx + dfir_rs::pusherator::Pusherator<Item = Item>,
                             Item: ::std::clone::Clone,
                         {
                             if is_new_tick {
                                 vec.iter()
                                     .cloned()
                                     .for_each(|item| {
-                                        hydroflow::pusherator::Pusherator::give(&mut output, item);
+                                        dfir_rs::pusherator::Pusherator::give(&mut output, item);
                                     });
                             }
-                            hydroflow::pusherator::map::Map::new(
+                            dfir_rs::pusherator::map::Map::new(
                                 |item| {
                                     vec.push(item);
                                     vec.last().unwrap().clone()
@@ -2930,21 +2899,21 @@ fn main() {
                         #[inline(always)]
                         pub fn op_55v1__persist__loc_nopath_16_37_16_45<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2955,30 +2924,30 @@ fn main() {
                         }
                         op_55v1__persist__loc_nopath_16_37_16_45(op_55v1)
                     };
-                    let op_9v1 = hydroflow::pusherator::tee::Tee::new(
+                    let op_9v1 = dfir_rs::pusherator::tee::Tee::new(
                         hoff_26v3_send,
-                        hydroflow::pusherator::tee::Tee::new(op_55v1, hoff_19v3_send),
+                        dfir_rs::pusherator::tee::Tee::new(op_55v1, hoff_19v3_send),
                     );
                     let op_9v1 = {
                         #[allow(non_snake_case)]
                         #[inline(always)]
                         pub fn op_9v1__tee__loc_nopath_5_19_5_24<
                             Item,
-                            Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                            Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                         >(
                             input: Input,
-                        ) -> impl hydroflow::pusherator::Pusherator<Item = Item> {
+                        ) -> impl dfir_rs::pusherator::Pusherator<Item = Item> {
                             #[repr(transparent)]
                             struct Push<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
                             > {
                                 inner: Input,
                             }
                             impl<
                                 Item,
-                                Input: hydroflow::pusherator::Pusherator<Item = Item>,
-                            > hydroflow::pusherator::Pusherator for Push<Item, Input> {
+                                Input: dfir_rs::pusherator::Pusherator<Item = Item>,
+                            > dfir_rs::pusherator::Pusherator for Push<Item, Input> {
                                 type Item = Item;
                                 #[inline(always)]
                                 fn give(&mut self, item: Self::Item) {
@@ -2992,10 +2961,10 @@ fn main() {
                     #[inline(always)]
                     fn pivot_run_sg_8v1<
                         Pull: ::std::iter::Iterator<Item = Item>,
-                        Push: hydroflow::pusherator::Pusherator<Item = Item>,
+                        Push: dfir_rs::pusherator::Pusherator<Item = Item>,
                         Item,
                     >(pull: Pull, push: Push) {
-                        hydroflow::pusherator::pivot::Pivot::new(pull, push).run();
+                        dfir_rs::pusherator::pivot::Pivot::new(pull, push).run();
                     }
                     pivot_run_sg_8v1(op_8v1, op_9v1);
                     context.schedule_subgraph(context.current_subgraph(), false);

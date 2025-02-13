@@ -20,17 +20,17 @@ use super::ops::{
 };
 use super::{
     change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT,
-    HANDOFF_NODE_STR, HYDROFLOW, MODULE_BOUNDARY_NODE_STR,
+    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
+    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
 
-/// An abstract "meta graph" representation of a Hydroflow graph.
+/// An abstract "meta graph" representation of a DFIR graph.
 ///
 /// Can be with or without subgraph partitioning, stratification, and handoff insertion. This is
-/// the meta graph used for generating Rust source code in macros from Hydroflow surface sytnax.
+/// the meta graph used for generating Rust source code in macros from DFIR sytnax.
 ///
 /// This struct has a lot of methods for manipulating the graph, vaguely grouped together in
 /// separate `impl` blocks. You might notice a few particularly specific arbitray-seeming methods
@@ -84,7 +84,7 @@ pub struct DfirGraph {
 
 /// Basic methods.
 impl DfirGraph {
-    /// Create a new empty `HydroflowGraph`.
+    /// Create a new empty graph.
     pub fn new() -> Self {
         Default::default()
     }
@@ -780,9 +780,8 @@ impl DfirGraph {
             .map(|singleton_node_id| {
                 // TODO(mingwei): this `expect` should be caught in error checking
                 self.node_as_singleton_ident(
-                    singleton_node_id.expect(
-                        "Expected singleton to be resolved but was not, this is a Hydroflow bug.",
-                    ),
+                    singleton_node_id
+                        .expect("Expected singleton to be resolved but was not, this is a bug."),
                     span,
                 )
             })
@@ -830,7 +829,7 @@ impl DfirGraph {
     }
 
     /// Code for adding all nested loops.
-    fn codegen_nested_loops(&self, hf: &Ident) -> TokenStream {
+    fn codegen_nested_loops(&self, df: &Ident) -> TokenStream {
         // Breadth-first iteration from outermost (root) loops to deepest nested loops.
         let mut out = TokenStream::new();
         let mut queue = VecDeque::from_iter(self.root_loops.iter().copied());
@@ -842,14 +841,14 @@ impl DfirGraph {
                 .unwrap_or_else(|| quote! { None });
             let loop_name = Self::loop_as_ident(loop_id);
             out.append_all(quote! {
-                let #loop_name = #hf.add_loop(#parent_opt);
+                let #loop_name = #df.add_loop(#parent_opt);
             });
             queue.extend(self.loop_children.get(loop_id).into_iter().flatten());
         }
         out
     }
 
-    /// Emit this `HydroflowGraph` as runnable Rust source code tokens.
+    /// Emit this graph as runnable Rust source code tokens.
     pub fn as_code(
         &self,
         root: &TokenStream,
@@ -857,7 +856,7 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Vec<Diagnostic>,
     ) -> TokenStream {
-        let hf = Ident::new(HYDROFLOW, Span::call_site());
+        let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
         // Code for adding handoffs.
@@ -875,7 +874,7 @@ impl DfirGraph {
                 let hoff_name = Literal::string(&format!("handoff {:?}", node_id));
                 quote! {
                     let (#ident_send, #ident_recv) =
-                        #hf.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
+                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
                 }
             });
 
@@ -1003,7 +1002,7 @@ impl DfirGraph {
                             // the dfir syntax proc macro from _within_ a declarative macro then `op_span` will have the
                             // bad `Span::mixed_site()` name resolution and cause "Cannot find value `df/context`" errors. So
                             // we call `.resolved_at()` to fix resolution back to `Span::call_site()`. -Mingwei
-                            let hydroflow = &Ident::new(HYDROFLOW, op_span.resolved_at(hf.span()));
+                            let df_local = &Ident::new(GRAPH, op_span.resolved_at(df.span()));
                             let context = &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
 
                             let singletons_resolved =
@@ -1021,7 +1020,7 @@ impl DfirGraph {
 
                             let context_args = WriteContextArgs {
                                 root: &root,
-                                hydroflow,
+                                df_ident: df_local,
                                 context,
                                 subgraph_id,
                                 node_id,
@@ -1046,7 +1045,7 @@ impl DfirGraph {
                             } = write_result.unwrap_or_else(|()| {
                                 assert!(
                                     diagnostics.iter().any(Diagnostic::is_error),
-                                    "Operator `{}` returned `Err` but emitted no diagnostics, this is a Hydroflow bug.",
+                                    "Operator `{}` returned `Err` but emitted no diagnostics, this is a bug.",
                                     op_name,
                                 );
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(&context_args), ..Default::default() }
@@ -1219,7 +1218,7 @@ impl DfirGraph {
                     .unwrap_or_else(|| quote! { None });
 
                 subgraphs.push(quote! {
-                    #hf.add_subgraph_full(
+                    #df.add_subgraph_full(
                         #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),
@@ -1237,7 +1236,7 @@ impl DfirGraph {
             }
         }
 
-        let loop_code = self.codegen_nested_loops(&hf);
+        let loop_code = self.codegen_nested_loops(&df);
 
         // These two are quoted separately here because iterators are lazily evaluated, so this
         // forces them to do their work. This work includes populating some data, namely
@@ -1265,13 +1264,13 @@ impl DfirGraph {
 
                     use #root::{var_expr, var_args};
 
-                    let mut #hf = #root::scheduled::graph::Dfir::new();
-                    #hf.__assign_meta_graph(#meta_graph_json);
-                    #hf.__assign_diagnostics(#diagnostics_json);
+                    let mut #df = #root::scheduled::graph::Dfir::new();
+                    #df.__assign_meta_graph(#meta_graph_json);
+                    #df.__assign_diagnostics(#diagnostics_json);
 
                     #code
 
-                    #hf
+                    #df
                 }
             }
         }
@@ -1336,7 +1335,7 @@ impl DfirGraph {
         self.write_graph(&mut graph_write, write_config)
     }
 
-    /// Write out this `HydroflowGraph` using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
+    /// Write out this graph using the given `GraphWrite`. E.g. `Mermaid` or `Dot.
     pub(crate) fn write_graph<W>(
         &self,
         mut graph_write: W,

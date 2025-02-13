@@ -66,7 +66,7 @@ macro_rules! subgraph_ext {
     };
 }
 
-/// Convenience extension methods for the Hydroflow struct.
+/// Convenience extension methods for the [`Dfir`] struct.
 pub trait GraphExt {
     subgraph_ext!(add_subgraph_sink, (recv_port: R), ());
     subgraph_ext!(add_subgraph_2sink, (recv_port_1: R1, recv_port_2: R2), ());

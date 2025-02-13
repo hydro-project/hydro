@@ -3,7 +3,7 @@
 use std::fmt::Write;
 use std::io::Result;
 
-use super::hydroflow_graph::WriteConfig;
+use super::meta_graph::WriteConfig;
 use super::{DfirGraph, WriteGraphType};
 
 impl DfirGraph {

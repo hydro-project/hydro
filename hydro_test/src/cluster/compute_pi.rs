@@ -64,7 +64,7 @@ mod tests {
 
         insta::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).hydroflow_ir() {
+        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).dfir() {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });

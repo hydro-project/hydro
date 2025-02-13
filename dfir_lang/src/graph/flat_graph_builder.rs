@@ -16,7 +16,7 @@ use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortInd
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms;
 use crate::graph::ops::{PortListSpec, RangeTrait};
-use crate::parse::{HfCode, HfStatement, Operator, Pipeline};
+use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
 
 #[derive(Clone, Debug)]
@@ -81,17 +81,17 @@ impl FlatGraphBuilder {
         Default::default()
     }
 
-    /// Convert the Hydroflow code AST into a graph builder.
-    pub fn from_hfcode(input: HfCode) -> Self {
+    /// Convert the DFIR code AST into a graph builder.
+    pub fn from_dfir(input: DfirCode) -> Self {
         let mut builder = Self::default();
         builder.add_dfir(input, None, None);
         builder
     }
 
-    /// Build into an unpartitioned [`DfirGraph`], returning a tuple of a `HydroflowGraph` and
+    /// Build into an unpartitioned [`DfirGraph`], returning a tuple of the graph and
     /// any diagnostics.
     ///
-    /// Even if there are errors, the `HydroflowGraph` will be returned (potentially in a invalid
+    /// Even if there are errors, the graph will be returned (potentially in a invalid
     /// state). Does not call `emit` on any diagnostics.
     pub fn build(mut self) -> (DfirGraph, Vec<ItemUse>, Vec<Diagnostic>) {
         self.finalize_connect_operator_links();
@@ -100,14 +100,14 @@ impl FlatGraphBuilder {
         (self.flat_graph, self.uses, self.diagnostics)
     }
 
-    /// Adds all [`HfStatement`]s within the [`HfCode`] to this `HydroflowGraph`.
+    /// Adds all [`DfirStatement`]s within the [`DfirCode`] to this [`DfirGraph`].
     ///
     /// Optional configuration:
     /// * In the given loop context `current_loop`.
     /// * With the given operator tag `operator_tag`.
     pub fn add_dfir(
         &mut self,
-        dfir: HfCode,
+        dfir: DfirCode,
         current_loop: Option<GraphLoopId>,
         operator_tag: Option<&str>,
     ) {
@@ -116,27 +116,27 @@ impl FlatGraphBuilder {
         }
     }
 
-    /// Add a single [`HfStatement`] line to this `HydroflowGraph` in the root context.
-    pub fn add_statement(&mut self, stmt: HfStatement) {
+    /// Add a single [`DfirStatement`] line to this [`DfirGraph`] in the root context.
+    pub fn add_statement(&mut self, stmt: DfirStatement) {
         self.add_statement_internal(stmt, None, None);
     }
 
-    /// Add a single [`HfStatement`] line to this `HydroflowGraph` with given configuration.
+    /// Add a single [`DfirStatement`] line to this [`DfirGraph`] with given configuration.
     ///
     /// Optional configuration:
     /// * In the given loop context `current_loop`.
     /// * With the given operator tag `operator_tag`.
     fn add_statement_internal(
         &mut self,
-        stmt: HfStatement,
+        stmt: DfirStatement,
         current_loop: Option<GraphLoopId>,
         operator_tag: Option<&str>,
     ) {
         match stmt {
-            HfStatement::Use(yuse) => {
+            DfirStatement::Use(yuse) => {
                 self.uses.push(yuse);
             }
-            HfStatement::Named(named) => {
+            DfirStatement::Named(named) => {
                 let stmt_span = named.span();
                 let ends = self.add_pipeline(
                     named.pipeline,
@@ -146,13 +146,13 @@ impl FlatGraphBuilder {
                 );
                 self.assign_varname_checked(named.name, stmt_span, ends);
             }
-            HfStatement::Pipeline(pipeline_stmt) => {
+            DfirStatement::Pipeline(pipeline_stmt) => {
                 let ends =
                     self.add_pipeline(pipeline_stmt.pipeline, None, current_loop, operator_tag);
                 Self::helper_check_unused_port(&mut self.diagnostics, &ends, true);
                 Self::helper_check_unused_port(&mut self.diagnostics, &ends, false);
             }
-            HfStatement::Loop(loop_statement) => {
+            DfirStatement::Loop(loop_statement) => {
                 let inner_loop = self.flat_graph.insert_loop(current_loop);
                 for stmt in loop_statement.statements {
                     self.add_statement_internal(stmt, Some(inner_loop), operator_tag);

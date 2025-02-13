@@ -2,8 +2,8 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, WriteContextArgs, RANGE_0, RANGE_1,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -37,7 +37,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   hydroflow,
+                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -73,7 +73,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         let zipbuf_ident = wc.make_ident("zipbuf");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #zipbuf_ident = #hydroflow.add_state(::std::cell::RefCell::new(
+            let #zipbuf_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::util::monotonic_map::MonotonicMap::<
                     #root::scheduled::ticks::TickInstant,
                     (::std::vec::Vec<_>, ::std::vec::Vec<_>),

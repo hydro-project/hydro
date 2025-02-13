@@ -1,4 +1,4 @@
-//! Graph representation stages for Hydroflow graphs.
+//! Graph representation stages for DFIR graphs.
 
 use std::borrow::Cow;
 use std::hash::Hash;
@@ -13,7 +13,7 @@ use syn::{Expr, ExprPath, GenericArgument, Token, Type};
 
 use self::ops::{OperatorConstraints, Persistence};
 use crate::diagnostic::{Diagnostic, Level};
-use crate::parse::{HfCode, IndexInt, Operator, PortIndex, Ported};
+use crate::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported};
 use crate::pretty_span::PrettySpan;
 
 mod di_mul_graph;
@@ -21,8 +21,8 @@ mod eliminate_extra_unions_tees;
 mod flat_graph_builder;
 mod flat_to_partitioned;
 mod graph_write;
-mod hydroflow_graph;
-mod hydroflow_graph_debugging;
+mod meta_graph;
+mod meta_graph_debugging;
 
 use std::fmt::Display;
 
@@ -30,7 +30,7 @@ pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
 pub use flat_graph_builder::FlatGraphBuilder;
 pub use flat_to_partitioned::partition_graph;
-pub use hydroflow_graph::{DfirGraph, WriteConfig, WriteGraphType};
+pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 
 pub mod graph_algorithms;
 pub mod ops;
@@ -51,8 +51,8 @@ new_key_type! {
 
 /// Context identifier as a string.
 const CONTEXT: &str = "context";
-/// Hydroflow identifier as a string.
-const HYDROFLOW: &str = "df";
+/// Runnable DFIR graph object identifier as a string.
+const GRAPH: &str = "df";
 
 const HANDOFF_NODE_STR: &str = "handoff";
 const MODULE_BOUNDARY_NODE_STR: &str = "module_boundary";
@@ -370,13 +370,13 @@ impl Display for PortIndexValue {
     }
 }
 
-/// The main function of this module. Compiles a [`HfCode`] AST into a [`DfirGraph`] and
+/// The main function of this module. Compiles a [`DfirCode`] AST into a [`DfirGraph`] and
 /// source code, or [`Diagnostic`] errors.
 pub fn build_hfcode(
-    hf_code: HfCode,
+    hf_code: DfirCode,
     root: &TokenStream,
 ) -> (Option<(DfirGraph, TokenStream)>, Vec<Diagnostic>) {
-    let flat_graph_builder = FlatGraphBuilder::from_hfcode(hf_code);
+    let flat_graph_builder = FlatGraphBuilder::from_dfir(hf_code);
     let (mut flat_graph, uses, mut diagnostics) = flat_graph_builder.build();
     if !diagnostics.iter().any(Diagnostic::is_error) {
         if let Err(diagnostic) = flat_graph.merge_modules() {

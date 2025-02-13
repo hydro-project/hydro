@@ -55,7 +55,7 @@ lazy_static! {
         register_int_counter!("sets", "Counts the number of SET requests processed.").unwrap();
 }
 
-/// Creates a L0 key-value store server using Hydroflow.
+/// Creates a L0 key-value store server using DFIR.
 ///
 /// # Arguments
 /// -- `client_inputs`: The input stream of client requests for the client protocol.

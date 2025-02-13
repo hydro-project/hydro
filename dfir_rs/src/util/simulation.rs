@@ -1,9 +1,9 @@
-//! # Hydroflow Deterministic Simulation Testing Framework
+//! # Hydro/DFIR Deterministic Simulation Testing Framework
 //!
-//! This module provides a deterministic simulation testing framework for testing Hydroflow
+//! This module provides a deterministic simulation testing framework for testing Hydro/DFIR
 //! processes.
 //!
-//! It can be used to test complex interactions between multiple Hydroflow processes in a
+//! It can be used to test complex interactions between multiple Hydro/DFIR processes in a
 //! deterministic manner by running them in a single-threaded environment. The framework also
 //! provides a "virtual network" implementation that allows production processes to exchange
 //! messages within the simulation. More importantly, the network is fully under control of the
@@ -13,7 +13,7 @@
 //! ## Overview
 //!
 //! Conceptually, the simulation contains a "Fleet", which is a collection of "Hosts". These
-//! aren't real hosts, but rather a collection of individual Hydroflow processes (one per host)
+//! aren't real hosts, but rather a collection of individual Hydro/DFIR processes (one per host)
 //! that can communicate with each other over a virtual network. Every host has a "hostname"
 //! which uniquely identifies it within the fleet.
 //!
@@ -85,7 +85,7 @@ use crate::scheduled::graph::Dfir;
 use crate::util::{collect_ready_async, unbounded_channel};
 
 /// A hostname is a unique identifier for a host in the simulation. It is used to address messages
-/// to a specific host (and thus a specific Hydroflow process).
+/// to a specific host (and thus a specific Hydro/DFIR process).
 pub type Hostname = String;
 
 /// An interface name is a unique identifier for an inbox or an outbox on host.
@@ -138,7 +138,7 @@ pub struct Outbox {
     receiver: Pin<Box<dyn Stream<Item = MessageWithAddress>>>,
 }
 
-/// A host is a single Hydroflow process running in the simulation. It has a unique hostname
+/// A host is a single Hydro/DFIR process running in the simulation. It has a unique hostname
 /// and can communicate with other hosts over the virtual network. It has a collection of inboxes
 /// and outboxes.
 pub struct Host {

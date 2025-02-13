@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use dfir_rs::hydroflow_expect_warnings;
+use dfir_rs::dfir_expect_warnings;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::collect_ready;
 
@@ -9,7 +9,7 @@ use dfir_rs::util::collect_ready;
 fn test_degenerate_union() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = hydroflow_expect_warnings! {
+    let mut df = dfir_expect_warnings! {
         {
             source_iter([1, 2, 3]) -> union() -> for_each(|x| result_send.send(x).unwrap());
         },
@@ -22,7 +22,7 @@ fn test_degenerate_union() {
 
 #[test]
 fn test_empty_union() {
-    let mut df = hydroflow_expect_warnings! {
+    let mut df = dfir_expect_warnings! {
         {
             union() -> for_each(|x: usize| println!("{}", x));
         },
@@ -35,7 +35,7 @@ fn test_empty_union() {
 fn test_degenerate_tee() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = hydroflow_expect_warnings! {
+    let mut df = dfir_expect_warnings! {
         {
             source_iter([1, 2, 3]) -> tee() -> for_each(|x| result_send.send(x).unwrap());
         },
@@ -51,7 +51,7 @@ fn test_empty_tee() {
     let output = <Rc<RefCell<Vec<usize>>>>::default();
     let output_inner = Rc::clone(&output);
 
-    let mut df = hydroflow_expect_warnings! {
+    let mut df = dfir_expect_warnings! {
         {
             source_iter([1, 2, 3]) -> inspect(|&x| output_inner.borrow_mut().push(x)) -> tee();
         },
@@ -66,7 +66,7 @@ fn test_empty_tee() {
 // But in a different edge order.
 #[test]
 pub fn test_warped_diamond() {
-    let mut df = hydroflow_expect_warnings! {
+    let mut df = dfir_expect_warnings! {
         {
             // active nodes
             nodes = union();
@@ -89,7 +89,7 @@ pub fn test_warped_diamond() {
 
 #[test]
 pub fn test_warped_diamond_2() {
-    let mut hf: Dfir = hydroflow_expect_warnings! {
+    let mut hf: Dfir = dfir_expect_warnings! {
         {
             // active nodes
             nodes = union();
