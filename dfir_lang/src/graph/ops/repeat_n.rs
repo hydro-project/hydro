@@ -38,8 +38,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                _diagnostics| {
         assert!(is_pull);
 
-        let count_ident = wc.make_ident("count");
-
         let write_prologue = quote_spanned! {op_span=>
             #[allow(clippy::redundant_closure_call)]
             let #singleton_output_ident = #df_ident.add_state(
@@ -49,9 +47,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             // TODO(mingwei): Is this needed?
             // Reset the value to the initializer fn if it is a new tick.
             #df_ident.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.take(); });
-
-            let #count_ident = #df_ident.add_state(::std::cell::Cell::new(0_usize));
-            #df_ident.set_state_tick_hook(#count_ident, move |cell| { cell.take(); });
         };
 
         let vec_ident = wc.make_ident("vec");
@@ -59,7 +54,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
             let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
-            if #context.is_first_run_this_tick() {
+            if 0 == #context.loop_iter_count() {
                 *#vec_ident = #input.collect::<::std::vec::Vec<_>>();
             }
             let #ident = std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
@@ -69,14 +64,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
         let count_arg = &arguments[0];
         let write_iterator_after = quote_spanned! {op_span=>
             {
-                let count_ref = #context.state_ref(#count_ident);
-                println!("{}", context.is_first_loop_iteration());
-                if #context.is_first_loop_iteration() {
-                    count_ref.set(0);
-                }
-                let count = count_ref.get() + 1;
-                if count < #count_arg {
-                    count_ref.set(count);
+                if #context.loop_iter_count() + 1 < #count_arg {
                     #context.reschedule_loop_block();
                 }
             }

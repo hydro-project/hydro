@@ -22,15 +22,18 @@ use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
-use super::{HandoffId, HandoffTag, LoopId, SubgraphId, SubgraphTag};
+use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::{TickDuration, TickInstant};
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 #[derive(Default)]
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
+    /// `(nonce, iteration count)` pair.
+    pub(super) loop_iter_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
+
     pub(super) context: Context,
 
     handoffs: SlotVec<HandoffTag, HandoffData>,
@@ -274,52 +277,86 @@ impl<'a> Dfir<'a> {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
-                tracing::info!(
-                    sg_id = sg_id.to_string(),
-                    sg_name = &*sg_data.name,
-                    sg_depth = sg_data.loop_depth,
-                    "Running subgraph."
-                );
 
                 match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
                         // We have entered a loop.
                         self.context.loop_nonce += 1;
                         self.context.loop_nonce_stack.push(self.context.loop_nonce);
-                        tracing::warn!(loop_nonce = self.context.loop_nonce, "Entered loop.");
+                        tracing::trace!(loop_nonce = self.context.loop_nonce, "Entered loop.");
                     }
                     Ordering::Less => {
                         // We have exited a loop.
                         self.context.loop_nonce_stack.pop();
-                        tracing::warn!("Exited loop.");
+                        tracing::trace!("Exited loop.");
                     }
                     Ordering::Equal => {}
                 }
-
-                tracing::warn!(
-                    loop_nonce = self.context.loop_nonce,
-                    stack_len = self.context.loop_nonce_stack.len()
-                );
 
                 self.context.subgraph_id = sg_id;
                 self.context.is_first_run_this_tick = sg_data
                     .last_tick_run_in
                     .is_none_or(|last_tick| last_tick < self.context.current_tick);
-                self.context.is_first_loop_iteration = self
-                    .context
-                    .loop_nonce_stack
-                    .last()
-                    .is_some_and(|&curr_nonce| sg_data.last_loop_nonce < curr_nonce);
 
+                if let Some(loop_id) = sg_data.loop_id {
+                    // Loop execution - running loop block, from start to finish, containing
+                    // multiple iterations.
+                    // Loop iteration - a single iteration of a loop block, all subgraphs within
+                    // the loop should run (at most) once.
+
+                    // If the previous run of this subgraph had the same loop execution and
+                    // iteration count, then we need to increment the iteration count.
+                    let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
+
+                    let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
+                        self.loop_iter_counters.get(loop_id)
+                    {
+                        let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+
+                        // If the loop nonce is the same as the previous execution, then we are in
+                        // the same loop execution.
+                        // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
+                        // always in the same (singular) loop execution.
+                        if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
+                            // If the iteration count is the same as the previous execution, we
+                            // need to increment it.
+                            if loop_iter_count == prev_iter_count {
+                                loop_iter_count + 1
+                            } else {
+                                // Otherwise update the iteration count to match the loop.
+                                debug_assert!(prev_iter_count < loop_iter_count);
+                                loop_iter_count
+                            }
+                        } else {
+                            // We are in a new loop execution.
+                            0
+                        }
+                    } else {
+                        // We are in a new loop execution.
+                        0
+                    };
+
+                    self.context.loop_iter_count = curr_iter_count;
+                    // Update the loop data.
+                    self.loop_iter_counters.insert(
+                        loop_id,
+                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count),
+                    );
+                    sg_data.last_loop_nonce =
+                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
+                }
+
+                tracing::info!(
+                    sg_id = sg_id.to_string(),
+                    sg_name = &*sg_data.name,
+                    sg_depth = sg_data.loop_depth,
+                    sg_loop_nonce = sg_data.last_loop_nonce.0,
+                    sg_iter_count = sg_data.last_loop_nonce.1,
+                    "Running subgraph."
+                );
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
 
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                sg_data.last_loop_nonce = self
-                    .context
-                    .loop_nonce_stack
-                    .last()
-                    .copied()
-                    .unwrap_or_default()
             }
 
             let sg_data = &self.subgraphs[sg_id];
@@ -1011,14 +1048,14 @@ pub(super) struct SubgraphData<'a> {
 
     /// Keep track of the last tick that this subgraph was run in
     last_tick_run_in: Option<TickInstant>,
-    /// A meaningless ID to track the loop execution this subgraph was last run in.
-    last_loop_nonce: usize,
+    /// A meaningless ID to track the last loop execution this subgraph was run in.
+    /// `(loop_nonce, iter_count)` pair.
+    last_loop_nonce: (usize, usize),
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
 
     /// The subgraph's loop ID, or `None` for the top level.
-    #[expect(dead_code, reason = "TODO(mingwei): WIP")]
     loop_id: Option<LoopId>,
     /// The loop depth of the subgraph.
     loop_depth: usize,
@@ -1044,7 +1081,7 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            last_loop_nonce: 0,
+            last_loop_nonce: (0, 0),
             is_lazy,
             loop_id,
             loop_depth,
