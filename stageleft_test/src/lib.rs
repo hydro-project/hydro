@@ -2,6 +2,7 @@ stageleft::stageleft_crate!(stageleft_test_macro);
 
 use stageleft::{q, BorrowBounds, IntoQuotedOnce, Quoted, RuntimeData};
 
+pub(crate) mod features;
 pub(crate) mod submodule;
 
 #[stageleft::entry]

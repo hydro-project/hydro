@@ -4,7 +4,6 @@ pub mod compartmentalize;
 pub mod quorum;
 pub mod request_response;
 
-#[stageleft::runtime]
 #[cfg(test)]
 mod test_init {
     #[ctor::ctor]
