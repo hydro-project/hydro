@@ -14,7 +14,7 @@ pub mod internal {
     pub type CaptureVec = Vec<(String, (Option<TokenStream>, Option<TokenStream>))>;
 }
 
-pub use stageleft_macro::{entry, q, quse_fn, runtime, top_level_mod};
+pub use stageleft_macro::{entry, q, quse_fn, top_level_mod};
 
 pub mod runtime_support;
 use runtime_support::FreeVariableWithContext;

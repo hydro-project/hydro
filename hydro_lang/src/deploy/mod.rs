@@ -13,20 +13,23 @@ pub mod macro_runtime;
 pub use macro_runtime::*;
 
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 pub(crate) mod trybuild;
 
-// TODO(shadaj): has to be public due to stageleft limitations
 #[cfg(feature = "deploy")]
-#[doc(hidden)]
-pub mod trybuild_rewriters;
+#[cfg(stageleft_runtime)]
+mod trybuild_rewriters;
 
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 pub use trybuild::init_test;
 
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 pub mod deploy_graph;
 
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 pub use deploy_graph::*;
 
 pub mod in_memory_graph;
