@@ -49,7 +49,7 @@ pub fn teed_join<'a, S: Stream<Item = u32> + Unpin + 'a>(
         .with_dynamic_id(subgraph_id)
 }
 
-#[stageleft::runtime]
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     use dfir_rs::assert_graphvis_snapshots;

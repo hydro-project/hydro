@@ -41,7 +41,7 @@ pub fn graph_reachability<'a>(
     flow.compile_no_network::<SingleProcessGraph>()
 }
 
-#[stageleft::runtime]
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     use dfir_rs::assert_graphvis_snapshots;
