@@ -226,6 +226,9 @@ pub fn entry(
         syn::parse_macro_input!(attr with Punctuated<Type, Token![,]>::parse_terminated);
 
     let mut input = syn::parse_macro_input!(input as syn::ItemFn);
+    let input_visibility = input.vis.clone();
+    input.vis = syn::Visibility::Inherited; // normalize pub
+
     let input_name = &input.sig.ident;
 
     let input_generics = &input.sig.generics;
@@ -340,11 +343,11 @@ pub fn entry(
         .chars()
         .filter(|c| c.is_alphanumeric())
         .collect::<String>();
+
     let input_hash = "macro_".to_string() + &format!("{:X}", Sha256::digest(input_contents));
     let input_hash_ident = syn::Ident::new(&input_hash, Span::call_site());
     let input_hash_impl_ident = syn::Ident::new(&(input_hash + "_impl"), Span::call_site());
 
-    let input_visibility = input.vis.clone();
     input.vis = syn::parse_quote!(pub(crate));
 
     proc_macro::TokenStream::from(quote_spanned! {input.span()=>
