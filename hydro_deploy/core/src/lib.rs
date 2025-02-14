@@ -69,6 +69,11 @@ pub struct ResourceResult {
     _last_result: Option<Arc<ResourceResult>>,
 }
 
+#[derive(Clone)]
+pub struct TracingResults {
+    pub folded_data: Vec<u8>,
+}
+
 #[async_trait]
 pub trait LaunchedBinary: Send + Sync {
     fn stdin(&self) -> mpsc::UnboundedSender<String>;
@@ -81,6 +86,8 @@ pub trait LaunchedBinary: Send + Sync {
 
     fn stdout(&self) -> mpsc::UnboundedReceiver<String>;
     fn stderr(&self) -> mpsc::UnboundedReceiver<String>;
+
+    fn tracing_results(&self) -> Option<&TracingResults>;
 
     fn exit_code(&self) -> Option<i32>;
 
