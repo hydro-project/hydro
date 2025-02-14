@@ -7,7 +7,7 @@ use quote::ToTokens;
 use sha2::{Digest, Sha256};
 use syn::visit::Visit;
 use syn::visit_mut::VisitMut;
-use syn::{parse_quote, UsePath};
+use syn::{parse_quote, UsePath, Visibility};
 
 struct GenMacroVistor {
     exported_macros: BTreeSet<(String, String)>,
@@ -36,6 +36,8 @@ impl<'a> Visit<'a> for GenMacroVistor {
             let cur_path = &self.current_mod;
             let mut i_cloned = i.clone();
             i_cloned.attrs = vec![];
+            i_cloned.vis = Visibility::Inherited; // normalize pub
+
             let contents = i_cloned
                 .to_token_stream()
                 .to_string()
@@ -84,7 +86,7 @@ pub fn gen_macro(staged_path: &Path, crate_name: &str) {
         out_file.items.push(syn::Item::Fn(proc_macro_wrapper));
     }
 
-    fs::write(dest_path, out_file.to_token_stream().to_string()).unwrap();
+    fs::write(dest_path, prettyplease::unparse(&out_file)).unwrap();
 
     println!("cargo::rustc-check-cfg=cfg(stageleft_macro)");
     println!("cargo::rerun-if-changed=build.rs");
@@ -174,20 +176,19 @@ impl VisitMut for GenFinalPubVistor {
     }
 
     fn visit_item_mod_mut(&mut self, i: &mut syn::ItemMod) {
-        let is_runtime_or_test = i.attrs.iter().any(|a| {
-            a.path().to_token_stream().to_string() == "stageleft :: runtime"
-                || a.to_token_stream().to_string() == "# [test]"
-                || a.to_token_stream().to_string() == "# [tokio::test]"
-        });
+        let is_runtime = i
+            .attrs
+            .iter()
+            .any(|a| a.path().to_token_stream().to_string() == "stageleft :: runtime");
 
         let is_test_mod = i
             .attrs
             .iter()
             .any(|a| a.to_token_stream().to_string() == "# [cfg (test)]");
 
-        if is_runtime_or_test {
+        if is_runtime {
             *i = parse_quote! {
-                #[cfg(stageleft_macro)]
+                #[cfg(not(stageleft_macro))]
                 #i
             };
         } else {
@@ -196,46 +197,50 @@ impl VisitMut for GenFinalPubVistor {
                     .retain(|a| a.to_token_stream().to_string() != "# [cfg (test)]");
 
                 if !self.test_mode {
-                    i.attrs.push(parse_quote!(#[cfg(stageleft_macro)]));
+                    // if test mode is not true, there are no quoted snippets behind #[cfg(test)],
+                    // so no #[cfg(test)] modules will ever be reachable
+                    i.attrs.insert(
+                        0,
+                        parse_quote!(#[cfg(all(stageleft_macro, not(stageleft_macro)))]),
+                    );
                 }
             }
-
-            let old_mod = self.current_mod.clone();
-            let i_ident = &i.ident;
-            self.current_mod = self
-                .current_mod
-                .as_ref()
-                .map(|old_mod| parse_quote!(#old_mod::#i_ident));
-
-            i.vis = parse_quote!(pub);
-
-            syn::visit_mut::visit_item_mod_mut(self, i);
-
-            self.current_mod = old_mod;
         }
+
+        let old_mod = self.current_mod.clone();
+        let i_ident = &i.ident;
+        self.current_mod = self
+            .current_mod
+            .as_ref()
+            .map(|old_mod| parse_quote!(#old_mod::#i_ident));
+
+        i.vis = parse_quote!(pub);
+
+        syn::visit_mut::visit_item_mod_mut(self, i);
+
+        self.current_mod = old_mod;
     }
 
     fn visit_item_fn_mut(&mut self, i: &mut syn::ItemFn) {
-        let is_entry = i
-            .attrs
-            .iter()
-            .any(|a| a.path().to_token_stream().to_string() == "stageleft :: entry");
-
-        if is_entry {
-            *i = parse_quote! {
-                #[cfg(stageleft_macro)]
-                #i
-            }
-        }
-
         let is_ctor = i
             .attrs
             .iter()
             .any(|a| a.path().to_token_stream().to_string() == "ctor :: ctor");
 
-        if !is_ctor {
-            i.vis = parse_quote!(pub);
+        let is_test = i.attrs.iter().any(|a| {
+            a.path().to_token_stream().to_string() == "test"
+                || a.path().to_token_stream().to_string() == "tokio :: test"
+        });
+
+        if is_ctor || is_test {
+            // don't want ctors or tests to be leaked into copied code
+            i.attrs.insert(
+                0,
+                parse_quote!(#[cfg(all(stageleft_macro, not(stageleft_macro)))]),
+            );
         }
+
+        i.vis = parse_quote!(pub);
 
         syn::visit_mut::visit_item_fn_mut(self, i);
     }
@@ -245,19 +250,19 @@ impl VisitMut for GenFinalPubVistor {
         // and is not marked for runtime
         if let Some(cur_path) = self.current_mod.as_ref() {
             if let syn::Item::Struct(s) = i {
-                if matches!(s.vis, syn::Visibility::Public(_)) {
+                if matches!(s.vis, Visibility::Public(_)) {
                     let e_name = &s.ident;
                     *i = parse_quote!(pub use #cur_path::#e_name;);
                     return;
                 }
             } else if let syn::Item::Enum(e) = i {
-                if matches!(e.vis, syn::Visibility::Public(_)) {
+                if matches!(e.vis, Visibility::Public(_)) {
                     let e_name = &e.ident;
                     *i = parse_quote!(pub use #cur_path::#e_name;);
                     return;
                 }
             } else if let syn::Item::Trait(e) = i {
-                if matches!(e.vis, syn::Visibility::Public(_)) {
+                if matches!(e.vis, Visibility::Public(_)) {
                     let e_name = &e.ident;
                     *i = parse_quote!(pub use #cur_path::#e_name;);
                     return;
@@ -269,13 +274,13 @@ impl VisitMut for GenFinalPubVistor {
                     #e
                 );
             } else if let syn::Item::Static(e) = i {
-                if matches!(e.vis, syn::Visibility::Public(_)) {
+                if matches!(e.vis, Visibility::Public(_)) {
                     let e_name = &e.ident;
                     *i = parse_quote!(pub use #cur_path::#e_name;);
                     return;
                 }
             } else if let syn::Item::Const(e) = i {
-                if matches!(e.vis, syn::Visibility::Public(_)) {
+                if matches!(e.vis, Visibility::Public(_)) {
                     let e_name = &e.ident;
                     *i = parse_quote!(pub use #cur_path::#e_name;);
                     return;
@@ -333,7 +338,7 @@ pub fn gen_final_helper() {
 
     fs::write(
         Path::new(&out_dir).join("lib_pub.rs"),
-        flow_lib_pub.to_token_stream().to_string(),
+        prettyplease::unparse(&flow_lib_pub),
     )
     .unwrap();
 
