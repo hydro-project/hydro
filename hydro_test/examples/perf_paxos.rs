@@ -1,23 +1,31 @@
+use core::num;
+use std::any::Any;
+use std::collections::HashMap;
 use std::sync::Arc;
 
+use futures::channel::mpsc::UnboundedReceiver;
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
+use hydro_deploy::hydroflow_crate::tracing_options::{self, TracingOptions};
+use hydro_deploy::progress::ProgressTracker;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
-use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
+use hydro_lang::dfir_rs::tracing;
+use hydro_lang::location::cluster;
+use hydro_lang::rewrites::analyze_perf::{analyze_perf, CPU_USAGE_PREFIX};
 use hydro_lang::rewrites::{analyze_perf, persist_pullup};
+use hydro_lang::Cluster;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-#[tokio::main]
-async fn main() {
-    let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
-
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
-    let create_host: HostCreator = if host_arg == *"gcp" {
+fn cluster_specs(
+    host_arg: &str,
+    deployment: &mut Deployment,
+    cluster_name: &str,
+    num_nodes: usize,
+) -> Vec<TrybuildHost> {
+    let create_host: HostCreator = if host_arg == "gcp" {
         let project = std::env::args().nth(2).unwrap();
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
@@ -35,6 +43,23 @@ async fn main() {
         let localhost = deployment.Localhost();
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
+
+    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
+
+    (0..num_nodes).map(|idx| 
+        TrybuildHost::new(create_host(deployment)).rustflags(rustflags)
+                .tracing(TracingOptions::builder()
+                    .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
+                    .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
+                    .frequency(128)
+                    .build()))
+        .collect()
+}
+
+#[tokio::main]
+async fn main() {
+    let mut deployment = Deployment::new();
+    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
@@ -69,98 +94,39 @@ async fn main() {
         },
     );
 
-    let frequency = 128;
-
-    let nodes = builder
-        .optimize_with(persist_pullup::persist_pullup)
-        // .optimize_with(analyze_perf::analyze_perf)
-        .with_cluster(
-            &proposers,
-            (0..f + 1)
-                .map(|idx| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("proposer{}.perf.data", idx))
-                        .fold_outfile(format!("proposer{}.data.folded", idx))
-                        .frequency(frequency)
-                        .build(),
-                ),
-            ),
-        )
-        .with_cluster(
-            &acceptors,
-            (0..2 * f + 1)
-                .map(|idx| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("acceptor{}.perf.data", idx))
-                        .fold_outfile(format!("acceptor{}.data.folded", idx))
-                        .frequency(frequency)
-                        .build(),
-                ),
-            ),
-        )
-        .with_cluster(
-            &clients,
-            (0..num_clients)
-                .map(|idx| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)
-                .tracing(TracingOptions::builder()
-                    .perf_raw_outfile(format!("client{}.perf.data", idx))
-                    .fold_outfile(format!("client{}.data.folded", idx))
-                    .frequency(frequency)
-                    .build(),
-                ),
-            ),
-        )
-        .with_cluster(
-            &replicas,
-            (0..f + 1)
-                .map(|idx| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("replica{}.perf.data", idx))
-                        .fold_outfile(format!("replica{}.data.folded", idx))
-                        .frequency(frequency)
-                        .build(),
-                ),
-            ),
-        )
+    let optimized = builder
+        .optimize_with(persist_pullup::persist_pullup);
+    let mut ir = optimized.ir().clone();
+    let nodes = optimized
+        .with_cluster(&proposers, cluster_specs(&host_arg, &mut deployment, "proposer", f + 1))
+        .with_cluster(&acceptors, cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1))
+        .with_cluster(&clients, cluster_specs(&host_arg, &mut deployment, "client", num_clients))
+        .with_cluster(&replicas, cluster_specs(&host_arg, &mut deployment, "replica", f + 1))
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
 
-    let mut proposers_usage_out = vec![];
-    let mut acceptors_usage_out = vec![];
-    let mut clients_usage_out = vec![];
-    let mut replicas_usage_out = vec![];
-
-    for proposer in nodes.get_cluster(&proposers).members() {
-        proposers_usage_out.push(proposer.stdout_filter(CPU_USAGE_PREFIX).await);
-    }
-    for acceptor in nodes.get_cluster(&acceptors).members() {
-        acceptors_usage_out.push(acceptor.stdout_filter(CPU_USAGE_PREFIX).await);
-    }
-    for client in nodes.get_cluster(&clients).members() {
-        clients_usage_out.push(client.stdout_filter(CPU_USAGE_PREFIX).await);
-    }
-    for replica in nodes.get_cluster(&replicas).members() {
-        replicas_usage_out.push(replica.stdout_filter(CPU_USAGE_PREFIX).await);
+    // Get stdout for each process to capture their CPU usage later
+    let mut usage_out = HashMap::new();
+    for (id, name, cluster) in nodes.get_all_clusters() {
+        for (idx, node) in cluster.members().iter().enumerate() {
+            let mut out = node.stdout_filter(CPU_USAGE_PREFIX).await;
+            usage_out.insert((id.clone(), name.clone(), idx), out);
+        }
     }
 
     deployment.start_until(async {
         std::io::stdin().read_line(&mut String::new()).unwrap();
     }).await.unwrap();
 
-    for mut proposer_usage_out in proposers_usage_out {
-        println!("Proposer {}", proposer_usage_out.recv().await.unwrap());
-    }
-    for mut acceptor_usage_out in acceptors_usage_out {
-        println!("Acceptor {}", acceptor_usage_out.recv().await.unwrap());
-    }
-    for mut client_usage_out in clients_usage_out {
-        println!("Client {}", client_usage_out.recv().await.unwrap());
-    }
-    for mut replica_usage_out in replicas_usage_out {
-        println!("Replica {}", replica_usage_out.recv().await.unwrap());
+    // Re-analyze the IR using perf data from each node
+    // TODO: Should combine all folded_data and decide which node is the representative of each cluster
+    for (id, name, cluster) in nodes.get_all_clusters() {
+        for (idx, node) in cluster.members().iter().enumerate() {
+            if let Some(perf_results) = node.tracing_results().await {
+                println!("{} {} {}", &name, idx, usage_out.get(&(id, name, idx).unwrap()).recv().await.unwrap());
+                analyze_perf(&mut ir, perf_results.folded_data);
+            }
+        }
     }
 }

@@ -3,13 +3,11 @@ use std::collections::HashMap;
 
 use crate::ir::*;
 
-pub const CPU_USAGE_PREFIX: &str = "CPU: ";
+pub const CPU_USAGE_PREFIX: &str = "CPU:";
 
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
-fn parse_perf(file_path: &str) -> HashMap<usize, HashMap<String, f64>> {
-    let file = std::fs::read_to_string(file_path).unwrap();
-
+fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     let mut total_samples = 0f64;
     let mut samples_per_operator = HashMap::new();
     let operator_regex = Regex::new(r"::op_\d+v\d+__(.*?)__(\d+)::").unwrap();
@@ -59,10 +57,21 @@ fn analyze_perf_node(
     }
 }
 
+// #[cfg(feature = "build")]
+// #[stageleft::runtime]
+// pub fn analyze_perf(ir: &mut Vec<HydroLeaf>) {
+//     let id_to_usage = parse_perf(std::fs::read_to_string("proposer0.data.folded").unwrap());
+//     traverse_dfir(ir, |leaf, next_stmt_id| {
+//         analyze_perf_leaf(leaf, &id_to_usage, next_stmt_id);
+//     }, |node, next_stmt_id| {
+//         analyze_perf_node(node, &id_to_usage, next_stmt_id);
+//     });
+// }
+
 #[cfg(feature = "build")]
 #[stageleft::runtime]
-pub fn analyze_perf(ir: &mut Vec<HydroLeaf>) {
-    let id_to_usage = parse_perf("proposer0.data.folded");
+pub fn analyze_perf(ir: &mut Vec<HydroLeaf>, folded_data: Vec<u8>) {
+    let id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(ir, |leaf, next_stmt_id| {
         analyze_perf_leaf(leaf, &id_to_usage, next_stmt_id);
     }, |node, next_stmt_id| {

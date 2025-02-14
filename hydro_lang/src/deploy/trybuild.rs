@@ -116,10 +116,10 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
             println!("ack start");
 
             // When rustflags includes --cfg measure, run with measurement
-            #[cfg(measure)]
+            // #[cfg(measure)]
             hydro_lang::runtime_support::resource_measurement::run_with_measurement(flow).await;
-            #[cfg(not(measure))]
-            hydro_lang::runtime_support::resource_measurement::run(flow).await;
+            // #[cfg(not(measure))]
+            // hydro_lang::runtime_support::resource_measurement::run(flow).await;
         }
     };
     source_ast

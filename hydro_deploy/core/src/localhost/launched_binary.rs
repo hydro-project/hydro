@@ -176,11 +176,11 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
 
             if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
                 if let Some(dtrace_outfile) = tracing_config.dtrace_outfile.as_ref() {
-                    std::fs::copy(&dtrace_outfile, &tracing_data.outfile)?;
+                    std::fs::copy(&tracing_data.outfile, &dtrace_outfile)?;
                 }
             } else if cfg!(target_family = "unix") {
                 if let Some(perf_outfile) = tracing_config.perf_raw_outfile.as_ref() {
-                    std::fs::copy(&perf_outfile, &tracing_data.outfile)?;
+                    std::fs::copy(&tracing_data.outfile, &perf_outfile)?;
                 }
             }
 

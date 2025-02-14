@@ -98,8 +98,19 @@ impl Hash for DebugInstantiate {
     }
 }
 
+impl Clone for DebugInstantiate {
+    fn clone(&self) -> Self {
+        match self {
+            DebugInstantiate::Building() => DebugInstantiate::Building(),
+            DebugInstantiate::Finalized(_, _, _) => {
+                panic!("DebugInstantiate::Finalized should not be cloned")
+            }
+        }
+    }
+}
+
 /// A source in a Hydro graph, where data enters the graph.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, Clone)]
 pub enum HydroSource {
     Stream(DebugExpr),
     ExternalNetwork(),
@@ -116,7 +127,7 @@ enum BuildersOrCallback<'a, L: FnMut(&mut HydroLeaf, usize), N: FnMut(&mut Hydro
 /// An leaf in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
 /// generating DFIR IR start from leaves.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, Clone)]
 pub enum HydroLeaf {
     ForEach {
         f: DebugExpr,
@@ -366,6 +377,8 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
+// TODO(shadaj): Implement deep copy
+#[derive(Clone)]
 pub struct TeeNode(pub Rc<RefCell<HydroNode>>);
 
 impl Debug for TeeNode {
@@ -413,7 +426,7 @@ pub struct HydroNodeMetadata {
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, Clone)]
 pub enum HydroNode {
     Placeholder,
 
