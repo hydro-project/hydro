@@ -27,7 +27,7 @@ use crate::hydroflow_crate::flamegraph::handle_fold_data;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::util::{async_retry, prioritized_broadcast};
-use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy};
+use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
@@ -40,6 +40,7 @@ struct LaunchedSshBinary {
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
     stderr_receivers: Arc<Mutex<Vec<mpsc::UnboundedSender<String>>>>,
     tracing: Option<TracingOptions>,
+    tracing_results: Option<TracingResults>,
 }
 
 #[async_trait]
@@ -72,6 +73,10 @@ impl LaunchedBinary for LaunchedSshBinary {
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
         receivers.push(sender);
         receiver
+    }
+
+    fn tracing_results(&self) -> Option<&TracingResults> {
+        self.tracing_results.as_ref()
     }
 
     fn exit_code(&self) -> Option<i32> {
@@ -145,6 +150,10 @@ impl LaunchedBinary for LaunchedSshBinary {
                 Result::<_>::Ok(fold_data)
             })
             .await?;
+
+            self.tracing_results = Some(TracingResults {
+                folded_data: fold_data.clone(),
+            });
 
             handle_fold_data(tracing, fold_data).await?;
         };
@@ -419,6 +428,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             stdout_receivers,
             stderr_receivers,
             tracing,
+            tracing_results: None,
         }))
     }
 
