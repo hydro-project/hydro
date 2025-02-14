@@ -37,7 +37,7 @@ pub fn count_elems<'a>(
     count_elems_generic(flow, input_stream, output)
 }
 
-#[stageleft::runtime]
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     use dfir_rs::assert_graphvis_snapshots;

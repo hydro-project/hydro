@@ -9,6 +9,7 @@ workspace = true
 
 [features]
 stageleft_devel = []
+test_feature = []
 
 [dependencies]
 stageleft = { path = "../stageleft", version = "^0.6.0" }

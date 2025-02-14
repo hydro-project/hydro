@@ -15,7 +15,7 @@ pub fn first_ten_runtime<'a>(flow: FlowBuilder<'a>) -> impl Quoted<'a, Dfir<'a>>
     flow.compile_no_network::<SingleProcessGraph>()
 }
 
-#[stageleft::runtime]
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     #[test]

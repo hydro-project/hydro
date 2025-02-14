@@ -7,6 +7,9 @@ edition = "2021"
 [lints]
 workspace = true
 
+[features]
+test_feature = []
+
 [lib]
 proc-macro = true
 path = "../stageleft_test/src/lib.rs"
