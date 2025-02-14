@@ -17,7 +17,7 @@ async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-ssh2-lite = { version = "0.5.0", features = [ "tokio" ] }
 async-trait = "0.1.54"
-buildstructor = "0.5.0"
+buildstructor = "0.6.0"
 bytes = "1.1.0"
 cargo_metadata = "0.18.0"
 dunce = "1.0.0"
