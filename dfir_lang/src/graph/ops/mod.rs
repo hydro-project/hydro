@@ -286,6 +286,7 @@ declare_ops![
     map::MAP,
     union::UNION,
     multiset_delta::MULTISET_DELTA,
+    next_iteration::NEXT_ITERATION,
     next_stratum::NEXT_STRATUM,
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
@@ -569,4 +570,6 @@ pub enum FloType {
     Windowing,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
+    /// Moves data into the next loop iteration within a loop context.
+    NextIteration,
 }

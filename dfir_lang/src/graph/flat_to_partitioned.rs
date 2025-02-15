@@ -7,6 +7,7 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
+use super::ops::next_iteration::NEXT_ITERATION;
 use super::ops::{DelayType, find_node_op_constraints};
 use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 use crate::diagnostic::{Diagnostic, Level};
@@ -20,7 +21,7 @@ struct BarrierCrossers {
     pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
 }
 impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier.
+    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
     fn iter_node_pairs<'a>(
         &'a self,
         partitioned_graph: &'a DfirGraph,
@@ -135,6 +136,13 @@ fn find_subgraph_unionfind(
 
             // Do not connect across loop contexts.
             if partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
+                continue;
+            }
+            // Do not connect `next_iteration()`.
+            if partitioned_graph
+                .node_op_inst(dst)
+                .is_some_and(|op_inst| op_inst.op_constraints.name == NEXT_ITERATION.name)
+            {
                 continue;
             }
 
