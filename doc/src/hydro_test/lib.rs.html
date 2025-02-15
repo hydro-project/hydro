@@ -16,22 +16,18 @@
 <a href="#15" id="15">15</a>
 <a href="#16" id="16">16</a>
 <a href="#17" id="17">17</a>
-<a href="#18" id="18">18</a>
-<a href="#19" id="19">19</a>
-<a href="#20" id="20">20</a></pre></div><pre class="rust"><code><span class="macro">stageleft::stageleft_no_entry_crate!</span>();
+<a href="#18" id="18">18</a></pre></div><pre class="rust"><code><span class="macro">stageleft::stageleft_no_entry_crate!</span>();
 
 <span class="kw">pub mod </span>cluster;
 <span class="kw">pub mod </span>distributed;
 
 <span class="attr">#[doc(hidden)]
-#[stageleft::runtime]
 #[cfg(doctest)]
 </span><span class="kw">mod </span>docs {
     <span class="macro">dfir_macro::doctest_markdown_glob!</span>(<span class="string">"docs/docs/hydro/**/*.md*"</span>);
 }
 
-<span class="attr">#[stageleft::runtime]
-#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test_init {
     <span class="attr">#[ctor::ctor]
     </span><span class="kw">fn </span>init() {

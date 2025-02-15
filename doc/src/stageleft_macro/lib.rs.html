@@ -420,20 +420,7 @@
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Punct, Spacing, Span, TokenStream};
+<a href="#422" id="422">422</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Punct, Spacing, Span, TokenStream};
 <span class="kw">use </span>quote::{quote, quote_spanned, ToTokens};
 <span class="kw">use </span>sha2::{Digest, Sha256};
 <span class="kw">use </span>syn::punctuated::Punctuated;
@@ -572,22 +559,6 @@
     .into()
 }
 
-<span class="doccomment">/// Marks a chunk of code as being runtime-only, which means that no staged code in its crate can depend on it.
-/// Code behind this attribute is allowed to use staged entrypoints defined in the same crate.
-</span><span class="attr">#[proc_macro_attribute]
-</span><span class="kw">pub fn </span>runtime(
-    _attr: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -&gt; proc_macro::TokenStream {
-    <span class="comment">// TODO(shadaj): when this is used for a struct, emit two versions:
-    // one that is runtime-only with public fields and one that is staged-only without
-    </span><span class="kw">let </span>input: TokenStream = input.into();
-    proc_macro::TokenStream::from(<span class="macro">quote!</span> {
-        <span class="attr">#[cfg(not(stageleft_macro))]
-        </span>#input
-    })
-}
-
 <span class="doccomment">/// A utility for declaring top-level public modules in a Stageleft crate that exports macros.
 ///
 /// This gets around errors in compiling the macro crate when there
@@ -661,7 +632,10 @@
         <span class="macro">syn::parse_macro_input!</span>(attr with Punctuated&lt;Type, <span class="macro">Token!</span>[,]&gt;::parse_terminated);
 
     <span class="kw">let </span><span class="kw-2">mut </span>input = <span class="macro">syn::parse_macro_input!</span>(input <span class="kw">as </span>syn::ItemFn);
-    <span class="kw">let </span>input_name = <span class="kw-2">&amp;</span>input.sig.ident;
+    <span class="kw">let </span>input_visibility = input.vis.clone();
+    input.vis = syn::Visibility::Inherited; <span class="comment">// normalize pub
+
+    </span><span class="kw">let </span>input_name = <span class="kw-2">&amp;</span>input.sig.ident;
 
     <span class="kw">let </span>input_generics = <span class="kw-2">&amp;</span>input.sig.generics;
 
@@ -775,11 +749,11 @@
         .chars()
         .filter(|c| c.is_alphanumeric())
         .collect::&lt;String&gt;();
+
     <span class="kw">let </span>input_hash = <span class="string">"macro_"</span>.to_string() + <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(input_contents));
     <span class="kw">let </span>input_hash_ident = syn::Ident::new(<span class="kw-2">&amp;</span>input_hash, Span::call_site());
     <span class="kw">let </span>input_hash_impl_ident = syn::Ident::new(<span class="kw-2">&amp;</span>(input_hash + <span class="string">"_impl"</span>), Span::call_site());
 
-    <span class="kw">let </span>input_visibility = input.vis.clone();
     input.vis = <span class="macro">syn::parse_quote!</span>(<span class="kw">pub</span>(<span class="kw">crate</span>));
 
     proc_macro::TokenStream::from(<span class="macro">quote_spanned!</span> {input.span()=&gt;

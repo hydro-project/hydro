@@ -273,7 +273,10 @@
 <a href="#272" id="272">272</a>
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::future::Future;
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::future::Future;
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::pin::Pin;
 
@@ -288,20 +291,23 @@
 <span class="kw">pub use </span>macro_runtime::<span class="kw-2">*</span>;
 
 <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+#[cfg(stageleft_runtime)]
 </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>trybuild;
 
-<span class="comment">// TODO(shadaj): has to be public due to stageleft limitations
-</span><span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
-#[doc(hidden)]
-</span><span class="kw">pub mod </span>trybuild_rewriters;
+<span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+#[cfg(stageleft_runtime)]
+</span><span class="kw">mod </span>trybuild_rewriters;
 
 <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+#[cfg(stageleft_runtime)]
 </span><span class="kw">pub use </span>trybuild::init_test;
 
 <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+#[cfg(stageleft_runtime)]
 </span><span class="kw">pub mod </span>deploy_graph;
 
 <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+#[cfg(stageleft_runtime)]
 </span><span class="kw">pub use </span>deploy_graph::<span class="kw-2">*</span>;
 
 <span class="kw">pub mod </span>in_memory_graph;

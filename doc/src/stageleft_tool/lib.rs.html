@@ -356,7 +356,74 @@
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeSet;
 <span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::{env, fs};
 
@@ -365,7 +432,7 @@
 <span class="kw">use </span>sha2::{Digest, Sha256};
 <span class="kw">use </span>syn::visit::Visit;
 <span class="kw">use </span>syn::visit_mut::VisitMut;
-<span class="kw">use </span>syn::{parse_quote, UsePath};
+<span class="kw">use </span>syn::{parse_quote, UsePath, Visibility};
 
 <span class="kw">struct </span>GenMacroVistor {
     exported_macros: BTreeSet&lt;(String, String)&gt;,
@@ -394,7 +461,9 @@
             <span class="kw">let </span>cur_path = <span class="kw-2">&amp;</span><span class="self">self</span>.current_mod;
             <span class="kw">let </span><span class="kw-2">mut </span>i_cloned = i.clone();
             i_cloned.attrs = <span class="macro">vec!</span>[];
-            <span class="kw">let </span>contents = i_cloned
+            i_cloned.vis = Visibility::Inherited; <span class="comment">// normalize pub
+
+            </span><span class="kw">let </span>contents = i_cloned
                 .to_token_stream()
                 .to_string()
                 .chars()
@@ -442,9 +511,10 @@
         out_file.items.push(syn::Item::Fn(proc_macro_wrapper));
     }
 
-    fs::write(dest_path, out_file.to_token_stream().to_string()).unwrap();
+    fs::write(dest_path, prettyplease::unparse(<span class="kw-2">&amp;</span>out_file)).unwrap();
 
     <span class="macro">println!</span>(<span class="string">"cargo::rustc-check-cfg=cfg(stageleft_macro)"</span>);
+    <span class="macro">println!</span>(<span class="string">"cargo::rustc-check-cfg=cfg(stageleft_runtime)"</span>);
     <span class="macro">println!</span>(<span class="string">"cargo::rerun-if-changed=build.rs"</span>);
     <span class="macro">println!</span>(<span class="string">"cargo::rustc-env=STAGELEFT_FINAL_CRATE_NAME={}"</span>, crate_name);
     <span class="macro">println!</span>(<span class="string">"cargo::rustc-cfg=stageleft_macro"</span>);
@@ -478,6 +548,15 @@
     test_mode: bool,
 }
 
+<span class="kw">fn </span>get_cfg_attrs(attrs: <span class="kw-2">&amp;</span>[syn::Attribute]) -&gt; <span class="kw">impl </span>Iterator&lt;Item = <span class="kw-2">&amp;</span>syn::Attribute&gt; + <span class="lifetime">'_ </span>{
+    attrs.iter().filter(|attr| attr.path().is_ident(<span class="string">"cfg"</span>))
+}
+
+<span class="kw">fn </span>is_runtime(attrs: <span class="kw-2">&amp;</span>[syn::Attribute]) -&gt; bool {
+    get_cfg_attrs(attrs)
+        .any(|attr| attr.to_token_stream().to_string() == <span class="string">"# [cfg (stageleft_runtime)]"</span>)
+}
+
 <span class="kw">impl </span>VisitMut <span class="kw">for </span>GenFinalPubVistor {
     <span class="kw">fn </span>visit_item_enum_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: <span class="kw-2">&amp;mut </span>syn::ItemEnum) {
         i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
@@ -499,6 +578,14 @@
     }
 
     <span class="kw">fn </span>visit_item_use_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: <span class="kw-2">&amp;mut </span>syn::ItemUse) {
+        <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>i.attrs) {
+            i.attrs.insert(
+                <span class="number">0</span>,
+                <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+            );
+            <span class="kw">return</span>;
+        }
+
         i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
         syn::visit_mut::visit_item_use_mut(<span class="self">self</span>, i);
     }
@@ -532,68 +619,67 @@
     }
 
     <span class="kw">fn </span>visit_item_mod_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: <span class="kw-2">&amp;mut </span>syn::ItemMod) {
-        <span class="kw">let </span>is_runtime_or_test = i.attrs.iter().any(|a| {
-            a.path().to_token_stream().to_string() == <span class="string">"stageleft :: runtime"
-                </span>|| a.to_token_stream().to_string() == <span class="string">"# [test]"
-                </span>|| a.to_token_stream().to_string() == <span class="string">"# [tokio::test]"
-        </span>});
-
         <span class="kw">let </span>is_test_mod = i
             .attrs
             .iter()
             .any(|a| a.to_token_stream().to_string() == <span class="string">"# [cfg (test)]"</span>);
 
-        <span class="kw">if </span>is_runtime_or_test {
-            <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span> {
-                <span class="attr">#[cfg(stageleft_macro)]
-                </span>#i
-            };
-        } <span class="kw">else </span>{
-            <span class="kw">if </span>is_test_mod {
-                i.attrs
-                    .retain(|a| a.to_token_stream().to_string() != <span class="string">"# [cfg (test)]"</span>);
+        <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>i.attrs) {
+            <span class="comment">// no quoted code depends on this module, so we do not need to copy it
+            </span>i.attrs.insert(
+                <span class="number">0</span>,
+                <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+            );
 
-                <span class="kw">if </span>!<span class="self">self</span>.test_mode {
-                    i.attrs.push(<span class="macro">parse_quote!</span>(<span class="attr">#[cfg(stageleft_macro)]</span>));
-                }
+            <span class="kw">return</span>;
+        } <span class="kw">else if </span>is_test_mod {
+            i.attrs
+                .retain(|a| a.to_token_stream().to_string() != <span class="string">"# [cfg (test)]"</span>);
+
+            <span class="kw">if </span>!<span class="self">self</span>.test_mode {
+                <span class="comment">// if test mode is not true, there are no quoted snippets behind #[cfg(test)],
+                // so no #[cfg(test)] modules will ever be reachable
+                </span>i.attrs.insert(
+                    <span class="number">0</span>,
+                    <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                );
             }
-
-            <span class="kw">let </span>old_mod = <span class="self">self</span>.current_mod.clone();
-            <span class="kw">let </span>i_ident = <span class="kw-2">&amp;</span>i.ident;
-            <span class="self">self</span>.current_mod = <span class="self">self
-                </span>.current_mod
-                .as_ref()
-                .map(|old_mod| <span class="macro">parse_quote!</span>(#old_mod::#i_ident));
-
-            i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
-
-            syn::visit_mut::visit_item_mod_mut(<span class="self">self</span>, i);
-
-            <span class="self">self</span>.current_mod = old_mod;
         }
+
+        <span class="kw">let </span>old_mod = <span class="self">self</span>.current_mod.clone();
+        <span class="kw">let </span>i_ident = <span class="kw-2">&amp;</span>i.ident;
+        <span class="self">self</span>.current_mod = <span class="self">self
+            </span>.current_mod
+            .as_ref()
+            .map(|old_mod| <span class="macro">parse_quote!</span>(#old_mod::#i_ident));
+
+        i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
+
+        syn::visit_mut::visit_item_mod_mut(<span class="self">self</span>, i);
+
+        <span class="self">self</span>.current_mod = old_mod;
     }
 
     <span class="kw">fn </span>visit_item_fn_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: <span class="kw-2">&amp;mut </span>syn::ItemFn) {
-        <span class="kw">let </span>is_entry = i
-            .attrs
-            .iter()
-            .any(|a| a.path().to_token_stream().to_string() == <span class="string">"stageleft :: entry"</span>);
-
-        <span class="kw">if </span>is_entry {
-            <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span> {
-                <span class="attr">#[cfg(stageleft_macro)]
-                </span>#i
-            }
-        }
-
         <span class="kw">let </span>is_ctor = i
             .attrs
             .iter()
             .any(|a| a.path().to_token_stream().to_string() == <span class="string">"ctor :: ctor"</span>);
 
-        <span class="kw">if </span>!is_ctor {
-            i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
+        <span class="kw">let </span>is_test = i.attrs.iter().any(|a| {
+            a.path().to_token_stream().to_string() == <span class="string">"test"
+                </span>|| a.path().to_token_stream().to_string() == <span class="string">"tokio :: test"
+        </span>});
+
+        <span class="kw">if </span>is_ctor || is_test {
+            <span class="comment">// don't want ctors or tests to be leaked into copied code
+            </span>i.attrs.insert(
+                <span class="number">0</span>,
+                <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+            );
         }
+
+        i.vis = <span class="macro">parse_quote!</span>(<span class="kw">pub</span>);
 
         syn::visit_mut::visit_item_fn_mut(<span class="self">self</span>, i);
     }
@@ -602,42 +688,88 @@
         <span class="comment">// TODO(shadaj): warn if a pub struct or enum has private fields
         // and is not marked for runtime
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cur_path) = <span class="self">self</span>.current_mod.as_ref() {
-            <span class="kw">if let </span>syn::Item::Struct(s) = i {
-                <span class="kw">if </span><span class="macro">matches!</span>(s.vis, syn::Visibility::Public(<span class="kw">_</span>)) {
-                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>s.ident;
-                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(<span class="kw">pub use </span>#cur_path::#e_name;);
+            <span class="kw">if let </span>syn::Item::Struct(e) = i {
+                <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>e.attrs) {
+                    e.attrs.insert(
+                        <span class="number">0</span>,
+                        <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                    );
+                    <span class="kw">return</span>;
+                }
+
+                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, Visibility::Public(<span class="kw">_</span>)) {
+                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
+                    <span class="kw">let </span>e_attrs = get_cfg_attrs(<span class="kw-2">&amp;</span>e.attrs);
+                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(#(#e_attrs)* <span class="kw">pub use </span>#cur_path::#e_name;);
                     <span class="kw">return</span>;
                 }
             } <span class="kw">else if let </span>syn::Item::Enum(e) = i {
-                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, syn::Visibility::Public(<span class="kw">_</span>)) {
+                <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>e.attrs) {
+                    e.attrs.insert(
+                        <span class="number">0</span>,
+                        <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                    );
+                    <span class="kw">return</span>;
+                }
+
+                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, Visibility::Public(<span class="kw">_</span>)) {
                     <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
-                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(<span class="kw">pub use </span>#cur_path::#e_name;);
+                    <span class="kw">let </span>e_attrs = get_cfg_attrs(<span class="kw-2">&amp;</span>e.attrs);
+                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(#(#e_attrs)* <span class="kw">pub use </span>#cur_path::#e_name;);
                     <span class="kw">return</span>;
                 }
             } <span class="kw">else if let </span>syn::Item::Trait(e) = i {
-                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, syn::Visibility::Public(<span class="kw">_</span>)) {
+                <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>e.attrs) {
+                    e.attrs.insert(
+                        <span class="number">0</span>,
+                        <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                    );
+                    <span class="kw">return</span>;
+                }
+
+                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, Visibility::Public(<span class="kw">_</span>)) {
                     <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
-                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(<span class="kw">pub use </span>#cur_path::#e_name;);
+                    <span class="kw">let </span>e_attrs = get_cfg_attrs(<span class="kw-2">&amp;</span>e.attrs);
+                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(#(#e_attrs)* <span class="kw">pub use </span>#cur_path::#e_name;);
+                    <span class="kw">return</span>;
+                }
+            } <span class="kw">else if let </span>syn::Item::Static(e) = i {
+                <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>e.attrs) {
+                    e.attrs.insert(
+                        <span class="number">0</span>,
+                        <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                    );
+                    <span class="kw">return</span>;
+                }
+
+                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, Visibility::Public(<span class="kw">_</span>)) {
+                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
+                    <span class="kw">let </span>e_attrs = get_cfg_attrs(<span class="kw-2">&amp;</span>e.attrs);
+                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(#(#e_attrs)* <span class="kw">pub use </span>#cur_path::#e_name;);
+                    <span class="kw">return</span>;
+                }
+            } <span class="kw">else if let </span>syn::Item::Const(e) = i {
+                <span class="kw">if </span>is_runtime(<span class="kw-2">&amp;</span>e.attrs) {
+                    e.attrs.insert(
+                        <span class="number">0</span>,
+                        <span class="macro">parse_quote!</span>(<span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]</span>),
+                    );
+                    <span class="kw">return</span>;
+                }
+
+                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, Visibility::Public(<span class="kw">_</span>)) {
+                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
+                    <span class="kw">let </span>e_attrs = get_cfg_attrs(<span class="kw-2">&amp;</span>e.attrs);
+                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(#(#e_attrs)* <span class="kw">pub use </span>#cur_path::#e_name;);
                     <span class="kw">return</span>;
                 }
             } <span class="kw">else if let </span>syn::Item::Impl(e) = i {
                 <span class="comment">// TODO(shadaj): emit impls if the struct is private
+                // currently, we just skip all impls
                 </span><span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(
-                    <span class="attr">#[cfg(stageleft_macro)]
+                    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
                     </span>#e
                 );
-            } <span class="kw">else if let </span>syn::Item::Static(e) = i {
-                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, syn::Visibility::Public(<span class="kw">_</span>)) {
-                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
-                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(<span class="kw">pub use </span>#cur_path::#e_name;);
-                    <span class="kw">return</span>;
-                }
-            } <span class="kw">else if let </span>syn::Item::Const(e) = i {
-                <span class="kw">if </span><span class="macro">matches!</span>(e.vis, syn::Visibility::Public(<span class="kw">_</span>)) {
-                    <span class="kw">let </span>e_name = <span class="kw-2">&amp;</span>e.ident;
-                    <span class="kw-2">*</span>i = <span class="macro">parse_quote!</span>(<span class="kw">pub use </span>#cur_path::#e_name;);
-                    <span class="kw">return</span>;
-                }
             }
         }
 
@@ -691,7 +823,7 @@
 
     fs::write(
         Path::new(<span class="kw-2">&amp;</span>out_dir).join(<span class="string">"lib_pub.rs"</span>),
-        flow_lib_pub.to_token_stream().to_string(),
+        prettyplease::unparse(<span class="kw-2">&amp;</span>flow_lib_pub),
     )
     .unwrap();
 
@@ -708,6 +840,8 @@
         </span>)]
         </span>{
             <span class="macro">println!</span>(<span class="string">"cargo::rustc-check-cfg=cfg(stageleft_macro)"</span>);
+            <span class="macro">println!</span>(<span class="string">"cargo::rustc-check-cfg=cfg(stageleft_runtime)"</span>);
+            <span class="macro">println!</span>(<span class="string">"cargo::rustc-cfg=stageleft_runtime"</span>);
 
             <span class="attr">#[cfg(not(feature = <span class="string">"stageleft_devel"</span>))]
             </span><span class="macro-nonterminal">$crate::gen_final_helper</span>()

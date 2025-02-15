@@ -77,10 +77,12 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a></pre></div><pre class="rust"><code><span class="macro">stageleft::stageleft_crate!</span>(stageleft_test_macro);
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a></pre></div><pre class="rust"><code><span class="macro">stageleft::stageleft_crate!</span>(stageleft_test_macro);
 
 <span class="kw">use </span>stageleft::{q, BorrowBounds, IntoQuotedOnce, Quoted, RuntimeData};
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>features;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>submodule;
 
 <span class="attr">#[stageleft::entry]
@@ -121,7 +123,7 @@
     <span class="macro">q!</span>(<span class="kw">crate</span>::my_top_level_function())
 }
 
-<span class="attr">#[stageleft::runtime]
+<span class="attr">#[cfg(stageleft_runtime)]
 #[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
