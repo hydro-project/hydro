@@ -450,7 +450,17 @@
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
 <a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::path::PathBuf;
@@ -479,7 +489,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::tracing_options::TracingOptions;
 <span class="kw">use </span><span class="kw">crate</span>::progress::ProgressTracker;
 <span class="kw">use </span><span class="kw">crate</span>::util::{async_retry, prioritized_broadcast};
-<span class="kw">use crate</span>::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy};
+<span class="kw">use crate</span>::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 <span class="kw">const </span>PERF_OUTFILE: <span class="kw-2">&amp;</span>str = <span class="string">"__profile.perf.data"</span>;
 
@@ -492,6 +502,7 @@
     stdout_deploy_receivers: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;oneshot::Sender&lt;String&gt;&gt;&gt;&gt;,
     stderr_receivers: Arc&lt;Mutex&lt;Vec&lt;mpsc::UnboundedSender&lt;String&gt;&gt;&gt;&gt;,
     tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
+    tracing_results: <span class="prelude-ty">Option</span>&lt;TracingResults&gt;,
 }
 
 <span class="attr">#[async_trait]
@@ -524,6 +535,10 @@
         <span class="kw">let </span>(sender, receiver) = mpsc::unbounded_channel::&lt;String&gt;();
         receivers.push(sender);
         receiver
+    }
+
+    <span class="kw">fn </span>tracing_results(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TracingResults&gt; {
+        <span class="self">self</span>.tracing_results.as_ref()
     }
 
     <span class="kw">fn </span>exit_code(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;i32&gt; {
@@ -597,6 +612,10 @@
                 <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>&gt;::Ok(fold_data)
             })
             .<span class="kw">await</span><span class="question-mark">?</span>;
+
+            <span class="self">self</span>.tracing_results = <span class="prelude-val">Some</span>(TracingResults {
+                folded_data: fold_data.clone(),
+            });
 
             handle_fold_data(tracing, fold_data).<span class="kw">await</span><span class="question-mark">?</span>;
         };
@@ -871,6 +890,7 @@
             stdout_receivers,
             stderr_receivers,
             tracing,
+            tracing_results: <span class="prelude-val">None</span>,
         }))
     }
 

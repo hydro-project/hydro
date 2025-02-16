@@ -266,22 +266,16 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<a href="#268" id="268">268</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::sync::Arc;
 
-<span class="kw">use </span>anyhow::{anyhow, bail, Context, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>anyhow::{bail, Context, <span class="prelude-ty">Result</span>};
 <span class="kw">use </span>async_process::{Command, Stdio};
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>hydroflow_deploy_integration::ServerBindConfig;
-<span class="kw">use </span>nameof::name_of;
 
 <span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::build::BuildOutput;
 <span class="kw">use </span><span class="kw">crate</span>::hydroflow_crate::tracing_options::TracingOptions;
@@ -428,23 +422,18 @@
         args: <span class="kw-2">&amp;</span>[String],
         tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>LaunchedBinary&gt;&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>command = <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = tracing.as_ref() {
+        <span class="kw">let </span>(maybe_perf_outfile, <span class="kw-2">mut </span>command) = <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = tracing.as_ref() {
             <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"macos"</span>) || <span class="macro">cfg!</span>(target_family = <span class="string">"windows"</span>) {
                 <span class="comment">// dtrace
                 </span>ProgressTracker::println(
                     <span class="macro">format!</span>(<span class="string">"[{id} tracing] Profiling binary with `dtrace`."</span>,),
                 );
-                <span class="kw">let </span>dtrace_outfile = tracing.dtrace_outfile.as_ref().ok_or_else(|| {
-                    <span class="macro">anyhow!</span>(
-                        <span class="string">"`{}` must be set for `dtrace` on localhost."</span>,
-                        <span class="macro">name_of!</span>(dtrace_outfile <span class="kw">in </span>TracingOptions)
-                    )
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>dtrace_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
 
                 <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"dtrace"</span>);
                 command
                     .arg(<span class="string">"-o"</span>)
-                    .arg(dtrace_outfile)
+                    .arg(dtrace_outfile.as_ref())
                     .arg(<span class="string">"-n"</span>)
                     .arg(<span class="macro">format!</span>(
                         <span class="string">"profile-{} /pid == $target/ {{ @[ustack()] = count(); }}"</span>,
@@ -462,7 +451,7 @@
                         .collect::&lt;String&gt;();
                         <span class="kw-2">&amp;*</span>shell_escape::unix::escape(inner_command.into())
                     });
-                command
+                (<span class="prelude-val">Some</span>(dtrace_outfile), command)
             }
             <span class="comment">// else if cfg!(target_family = "windows") {
             //     // blondie_dtrace
@@ -488,12 +477,7 @@
             </span><span class="kw">else if </span><span class="macro">cfg!</span>(target_family = <span class="string">"unix"</span>) {
                 <span class="comment">// perf
                 </span>ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{} tracing] Tracing binary with `perf`."</span>, id));
-                <span class="kw">let </span>perf_outfile = tracing.perf_raw_outfile.as_ref().ok_or_else(|| {
-                    <span class="macro">anyhow!</span>(
-                        <span class="string">"`{}` must be set for `perf` on localhost."</span>,
-                        <span class="macro">name_of!</span>(perf_raw_outfile <span class="kw">in </span>TracingOptions)
-                    )
-                })<span class="question-mark">?</span>;
+                <span class="kw">let </span>perf_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
 
                 <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"perf"</span>);
                 command
@@ -507,10 +491,11 @@
                         <span class="string">"dwarf,65528"</span>,
                         <span class="string">"-o"</span>,
                     ])
-                    .arg(perf_outfile)
+                    .arg(perf_outfile.as_ref())
                     .arg(<span class="kw-2">&amp;</span>binary.bin_path)
                     .args(args);
-                command
+
+                (<span class="prelude-val">Some</span>(perf_outfile), command)
             } <span class="kw">else </span>{
                 <span class="macro">bail!</span>(
                     <span class="string">"Unknown OS for perf/dtrace tracing: {}"</span>,
@@ -520,7 +505,7 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="kw-2">&amp;</span>binary.bin_path);
             command.args(args);
-            command
+            (<span class="prelude-val">None</span>, command)
         };
 
         command
@@ -537,7 +522,12 @@
             .spawn()
             .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to execute command: {:?}"</span>, command))<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(Box::new(LaunchedLocalhostBinary::new(child, id, tracing)))
+        <span class="prelude-val">Ok</span>(Box::new(LaunchedLocalhostBinary::new(
+            child,
+            id,
+            tracing,
+            maybe_perf_outfile.map(|f| TracingDataLocal { outfile: f }),
+        )))
     }
 
     <span class="kw">async fn </span>forward_port(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;SocketAddr&gt; {

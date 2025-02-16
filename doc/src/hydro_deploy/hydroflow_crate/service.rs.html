@@ -343,7 +343,12 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -361,6 +366,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::progress::ProgressTracker;
 <span class="kw">use crate</span>::{
     Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
+    TracingResults,
 };
 
 <span class="kw">pub struct </span>HydroflowCrateService {
@@ -503,6 +509,10 @@
 
     <span class="kw">pub fn </span>stderr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedReceiver&lt;String&gt; {
         <span class="self">self</span>.launched_binary.as_ref().unwrap().stderr()
+    }
+
+    <span class="kw">pub fn </span>tracing_results(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TracingResults&gt; {
+        <span class="self">self</span>.launched_binary.as_ref().unwrap().tracing_results()
     }
 
     <span class="kw">pub fn </span>exit_code(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;i32&gt; {

@@ -8443,7 +8443,13 @@
 <a href="#8442" id="8442">8442</a>
 <a href="#8443" id="8443">8443</a>
 <a href="#8444" id="8444">8444</a>
-<a href="#8445" id="8445">8445</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
+<a href="#8445" id="8445">8445</a>
+<a href="#8446" id="8446">8446</a>
+<a href="#8447" id="8447">8447</a>
+<a href="#8448" id="8448">8448</a>
+<a href="#8449" id="8449">8449</a>
+<a href="#8450" id="8450">8450</a>
+<a href="#8451" id="8451">8451</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
 <span class="kw">pub use </span>stageleft::q;
 <span class="attr">#[doc(hidden)]
 </span><span class="kw">pub mod </span>runtime_support {
@@ -13084,7 +13090,9 @@
         };
         <span class="kw">use </span>hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
         <span class="kw">use </span>hydro_deploy::hydroflow_crate::HydroflowCrateService;
-        <span class="kw">use </span>hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate};
+        <span class="kw">use </span>hydro_deploy::{
+            CustomService, Deployment, Host, HydroflowCrate, TracingResults,
+        };
         <span class="kw">use </span>nameof::name_of;
         <span class="kw">use </span>serde::de::DeserializeOwned;
         <span class="kw">use </span>serde::Serialize;
@@ -13419,6 +13427,10 @@
             <span class="attr">#[expect(async_fn_in_trait, reason = <span class="string">"no auto trait bounds needed"</span>)]
             </span><span class="kw">async fn </span>stderr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; tokio::sync::mpsc::UnboundedReceiver&lt;String&gt; {
                 <span class="self">self</span>.underlying().read().<span class="kw">await</span>.stderr()
+            }
+            <span class="attr">#[expect(async_fn_in_trait, reason = <span class="string">"no auto trait bounds needed"</span>)]
+            </span><span class="kw">async fn </span>tracing_results(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;TracingResults&gt; {
+                <span class="self">self</span>.underlying().read().<span class="kw">await</span>.tracing_results().cloned()
             }
         }
         <span class="attr">#[derive(Clone)]

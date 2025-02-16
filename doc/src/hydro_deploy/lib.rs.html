@@ -219,7 +219,14 @@
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
 <a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::sync::Arc;
 
@@ -290,6 +297,11 @@
     _last_result: <span class="prelude-ty">Option</span>&lt;Arc&lt;ResourceResult&gt;&gt;,
 }
 
+<span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>TracingResults {
+    <span class="kw">pub </span>folded_data: Vec&lt;u8&gt;,
+}
+
 <span class="attr">#[async_trait]
 </span><span class="kw">pub trait </span>LaunchedBinary: Send + Sync {
     <span class="kw">fn </span>stdin(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedSender&lt;String&gt;;
@@ -302,6 +314,8 @@
 
     <span class="kw">fn </span>stdout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedReceiver&lt;String&gt;;
     <span class="kw">fn </span>stderr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedReceiver&lt;String&gt;;
+
+    <span class="kw">fn </span>tracing_results(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>TracingResults&gt;;
 
     <span class="kw">fn </span>exit_code(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;i32&gt;;
 
