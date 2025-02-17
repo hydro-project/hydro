@@ -1,18 +1,25 @@
-use std::panic::AssertUnwindSafe;
-
-use dfir_rs::futures::FutureExt;
 use dfir_rs::scheduled::graph::Dfir;
-use procfs::WithCurrentSystemInfo;
 
+#[cfg(feature = "runtime_measure")]
+use std::panic::AssertUnwindSafe;
+#[cfg(feature = "runtime_measure")]
+use dfir_rs::futures::FutureExt;
+#[cfg(feature = "runtime_measure")]
+#[cfg(target_os = "linux")]
+use procfs::WithCurrentSystemInfo;
+#[cfg(feature = "runtime_measure")]
+#[cfg(target_os = "linux")]
 use crate::rewrites::analyze_perf::CPU_USAGE_PREFIX;
 
+#[cfg(not(feature = "runtime_measure"))]
 pub async fn run(flow: Dfir<'_>) {
     dfir_rs::util::deploy::launch_flow(flow).await;
 }
 
-pub async fn run_with_measurement(flow: Dfir<'_>) {
+#[cfg(feature = "runtime_measure")]
+pub async fn run(flow: Dfir<'_>) {
     // Make sure to print CPU even if we crash
-    let res = AssertUnwindSafe(run(flow)).catch_unwind().await;
+    let res = AssertUnwindSafe(dfir_rs::util::deploy::launch_flow(flow)).catch_unwind().await;
 
     #[cfg(target_os = "linux")]
     {

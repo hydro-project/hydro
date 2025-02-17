@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use futures::{Future, Stream, StreamExt};
-use tokio::sync::{mpsc, oneshot};
+use tokio::sync::oneshot;
 
 use crate::ssh::PrefixFilteredChannel;
 
@@ -36,10 +36,7 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
 ) -> PriorityBroadcacst {
     let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
     // Option<String> is the prefix to separate special stdout messages from regular ones
-    let receivers = Arc::new(Mutex::new(Vec::<(
-        Option<String>,
-        mpsc::UnboundedSender<String>,
-    )>::new()));
+    let receivers = Arc::new(Mutex::new(Vec::<PrefixFilteredChannel>::new()));
 
     let weak_priority_receivers = Arc::downgrade(&priority_receivers);
     let weak_receivers = Arc::downgrade(&receivers);
@@ -101,6 +98,7 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
 #[cfg(test)]
 mod test {
     use tokio_stream::wrappers::UnboundedReceiverStream;
+    use tokio::sync::mpsc;
 
     use super::*;
 

@@ -33,6 +33,7 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
+    hydro_additional_features: &[String]
 ) -> (String, (PathBuf, PathBuf, Option<Vec<String>>)) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
@@ -84,7 +85,7 @@ pub fn create_graph_trybuild(
         hash
     };
 
-    let trybuild_created = create_trybuild(&source, &bin_name, is_test).unwrap();
+    let trybuild_created = create_trybuild(&source, &bin_name, is_test, hydro_additional_features).unwrap();
     (bin_name, trybuild_created)
 }
 
@@ -115,11 +116,7 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
             let flow = __hydro_runtime(&ports);
             println!("ack start");
 
-            // When rustflags includes --cfg measure, run with measurement
-            // #[cfg(measure)]
-            hydro_lang::runtime_support::resource_measurement::run_with_measurement(flow).await;
-            // #[cfg(not(measure))]
-            // hydro_lang::runtime_support::resource_measurement::run(flow).await;
+            hydro_lang::runtime_support::resource_measurement::run(flow).await;
         }
     };
     source_ast
@@ -129,6 +126,7 @@ pub fn create_trybuild(
     source: &str,
     bin: &str,
     is_test: bool,
+    hydro_additional_features: &[String],
 ) -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let Metadata {
         target_directory: target_dir,
@@ -190,6 +188,9 @@ pub fn create_trybuild(
                 v.retain(|f| f != "stageleft_devel");
             });
     }
+
+    let hydro_dep = manifest.dependencies.get_mut("hydro_lang").unwrap();
+    hydro_dep.features.extend(hydro_additional_features.iter().cloned());
 
     let project = Project {
         dir: project_dir,

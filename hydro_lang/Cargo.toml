@@ -19,6 +19,7 @@ default = []
 stageleft_devel = []
 deploy = [ "build", "dep:hydro_deploy", "dep:trybuild-internals-api", "dep:toml", "dep:prettyplease", "dep:sha2", "dep:stageleft_tool", "dep:nameof" ]
 build = [ "dep:dfir_lang" ]
+runtime_measure = []
 
 [dependencies]
 bincode = "1.3.1"

@@ -24,6 +24,7 @@ fn cluster_specs(
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
         Box::new(move |deployment| -> Arc<dyn Host> {
+            let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
                 .project(&project)
@@ -31,6 +32,7 @@ fn cluster_specs(
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
                 .network(network.clone())
+                .startup_script(startup_script)
                 .add()
         })
     } else {
@@ -39,11 +41,12 @@ fn cluster_specs(
     };
 
     let rustflags =
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
     (0..num_nodes)
         .map(|idx| {
             TrybuildHost::new(create_host(deployment))
+                .additional_hydro_features(vec!["runtime_measure".to_string()])
                 .rustflags(rustflags)
                 .tracing(
                     TracingOptions::builder()
