@@ -119,7 +119,7 @@ pub enum HydroSource {
 }
 
 #[cfg(feature = "build")]
-enum BuildersOrCallback<'a, L: FnMut(&mut HydroLeaf, usize), N: FnMut(&mut HydroNode, usize)> {
+pub enum BuildersOrCallback<'a, L: FnMut(&mut HydroLeaf, usize), N: FnMut(&mut HydroNode, usize)> {
     Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
     Callback(L, N),
 }
@@ -236,7 +236,7 @@ impl HydroLeaf {
     }
 
     #[cfg(feature = "build")]
-    fn emit_core(
+    pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<impl FnMut(&mut HydroLeaf, usize), impl FnMut(&mut HydroNode, usize)>,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, (syn::Ident, usize)>,
@@ -356,7 +356,6 @@ pub fn emit(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, FlatGraphBuilder> {
 }
 
 #[cfg(feature = "build")]
-#[stageleft::runtime]
 pub fn traverse_dfir(
     ir: &mut Vec<HydroLeaf>,
     transform_leaf: impl FnMut(&mut HydroLeaf, usize),

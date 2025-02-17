@@ -91,8 +91,6 @@ pub trait LaunchedBinary: Send + Sync {
 
     fn tracing_results(&self) -> Option<&TracingResults>;
 
-    fn tracing_results(&self) -> Option<&TracingResults>;
-
     fn exit_code(&self) -> Option<i32>;
 
     /// Wait for the process to stop on its own. Returns the exit code.

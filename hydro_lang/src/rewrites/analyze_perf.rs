@@ -11,7 +11,6 @@ pub const CPU_USAGE_PREFIX: &str = "CPU:";
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
 #[cfg(feature = "build")]
-#[stageleft::runtime]
 fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     let mut total_samples = 0f64;
     let mut samples_per_operator = HashMap::new();
@@ -39,7 +38,6 @@ fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
 }
 
 #[cfg(feature = "build")]
-#[stageleft::runtime]
 fn analyze_perf_leaf(
     leaf: &mut HydroLeaf,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
@@ -53,7 +51,6 @@ fn analyze_perf_leaf(
 }
 
 #[cfg(feature = "build")]
-#[stageleft::runtime]
 fn analyze_perf_node(
     node: &mut HydroNode,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
@@ -67,7 +64,6 @@ fn analyze_perf_node(
 }
 
 #[cfg(feature = "build")]
-#[stageleft::runtime]
 pub fn analyze_perf(ir: &mut Vec<HydroLeaf>, folded_data: Vec<u8>) {
     let id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(ir, |leaf, next_stmt_id| {
