@@ -44,7 +44,7 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
-    pub fn optimize_with(mut self, f: impl FnOnce(&mut Vec<HydroLeaf>)) -> Self {
+    pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
         self.used = true;
         f(&mut self.ir);
         BuiltFlow {

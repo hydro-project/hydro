@@ -38,15 +38,21 @@ fn cluster_specs(
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
+    let rustflags =
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
 
-    (0..num_nodes).map(|idx| 
-        TrybuildHost::new(create_host(deployment)).rustflags(rustflags)
-                .tracing(TracingOptions::builder()
-                    .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
-                    .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
-                    .frequency(128)
-                    .build()))
+    (0..num_nodes)
+        .map(|idx| {
+            TrybuildHost::new(create_host(deployment))
+                .rustflags(rustflags)
+                .tracing(
+                    TracingOptions::builder()
+                        .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
+                        .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
+                        .frequency(128)
+                        .build(),
+                )
+        })
         .collect()
 }
 
@@ -88,14 +94,25 @@ async fn main() {
         },
     );
 
-    let optimized = builder
-        .optimize_with(persist_pullup::persist_pullup);
+    let optimized = builder.optimize_with(persist_pullup::persist_pullup);
     let mut ir = deep_clone(optimized.ir());
     let nodes = optimized
-        .with_cluster(&proposers, cluster_specs(&host_arg, &mut deployment, "proposer", f + 1))
-        .with_cluster(&acceptors, cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1))
-        .with_cluster(&clients, cluster_specs(&host_arg, &mut deployment, "client", num_clients))
-        .with_cluster(&replicas, cluster_specs(&host_arg, &mut deployment, "replica", f + 1))
+        .with_cluster(
+            &proposers,
+            cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
+        )
+        .with_cluster(
+            &acceptors,
+            cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
+        )
+        .with_cluster(
+            &clients,
+            cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+        )
+        .with_cluster(
+            &replicas,
+            cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+        )
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
@@ -109,16 +126,29 @@ async fn main() {
         }
     }
 
-    deployment.start_until(async {
-        std::io::stdin().read_line(&mut String::new()).unwrap();
-    }).await.unwrap();
+    deployment
+        .start_until(async {
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+        })
+        .await
+        .unwrap();
 
     // Re-analyze the IR using perf data from each node
     // TODO: Should combine all folded_data and decide which node is the representative of each cluster
     for (id, name, cluster) in nodes.get_all_clusters() {
         for (idx, node) in cluster.members().iter().enumerate() {
             if let Some(perf_results) = node.tracing_results().await {
-                println!("{} {} {}", &name, idx, usage_out.get_mut(&(id.clone(), name.clone(), idx)).unwrap().recv().await.unwrap());
+                println!(
+                    "{} {} {}",
+                    &name,
+                    idx,
+                    usage_out
+                        .get_mut(&(id.clone(), name.clone(), idx))
+                        .unwrap()
+                        .recv()
+                        .await
+                        .unwrap()
+                );
                 analyze_perf(&mut ir, perf_results.folded_data);
             }
         }

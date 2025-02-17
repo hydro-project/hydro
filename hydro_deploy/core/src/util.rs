@@ -6,6 +6,8 @@ use anyhow::Result;
 use futures::{Future, Stream, StreamExt};
 use tokio::sync::{mpsc, oneshot};
 
+use crate::ssh::PrefixFilteredChannel;
+
 pub async fn async_retry<T, F: Future<Output = Result<T>>>(
     mut thunk: impl FnMut() -> F,
     count: usize,
@@ -25,7 +27,7 @@ pub async fn async_retry<T, F: Future<Output = Result<T>>>(
 
 type PriorityBroadcacst = (
     Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
+    Arc<Mutex<Vec<PrefixFilteredChannel>>>,
 );
 
 pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin + 'static>(
@@ -34,7 +36,10 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
 ) -> PriorityBroadcacst {
     let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
     // Option<String> is the prefix to separate special stdout messages from regular ones
-    let receivers = Arc::new(Mutex::new(Vec::<(Option<String>, mpsc::UnboundedSender<String>)>::new()));
+    let receivers = Arc::new(Mutex::new(Vec::<(
+        Option<String>,
+        mpsc::UnboundedSender<String>,
+    )>::new()));
 
     let weak_priority_receivers = Arc::downgrade(&priority_receivers);
     let weak_receivers = Arc::downgrade(&receivers);
@@ -63,7 +68,11 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
                 let mut successful_send = false;
                 // Send to specific receivers if the filter prefix matches
                 for (prefix_filter, receiver) in receivers.iter() {
-                    if prefix_filter.as_ref().map(|prefix| line.starts_with(prefix)).unwrap_or(true) {
+                    if prefix_filter
+                        .as_ref()
+                        .map(|prefix| line.starts_with(prefix))
+                        .unwrap_or(true)
+                    {
                         successful_send |= receiver.send(line.clone()).is_ok();
                     }
                 }
@@ -102,7 +111,7 @@ mod test {
 
         let (tx2, mut rx2) = mpsc::unbounded_channel();
 
-        receivers.lock().unwrap().push(tx2);
+        receivers.lock().unwrap().push((None, tx2));
 
         tx.send(Ok("hello".to_string())).unwrap();
         assert_eq!(rx2.recv().await, Some("hello".to_string()));

@@ -178,11 +178,11 @@ fn persist_pullup_node(
     };
 }
 
-pub fn persist_pullup(ir: &mut Vec<HydroLeaf>) {
+pub fn persist_pullup(ir: &mut [HydroLeaf]) {
     let mut persist_pulled_tees = Default::default();
-    transform_bottom_up(ir, &mut |_| (), &mut |node|
-        persist_pullup_node(node, &mut persist_pulled_tees),
-    );
+    transform_bottom_up(ir, &mut |_| (), &mut |node| {
+        persist_pullup_node(node, &mut persist_pulled_tees)
+    });
 }
 
 #[cfg(test)]

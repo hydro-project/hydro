@@ -5,7 +5,7 @@ use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-use hydro_lang::rewrites::{analyze_perf, persist_pullup};
+use hydro_lang::rewrites::persist_pullup;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -16,7 +16,8 @@ async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
+    let rustflags =
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off --cfg measure";
     let create_host: HostCreator = if host_arg == *"gcp" {
         let project = std::env::args().nth(2).unwrap();
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
@@ -79,19 +80,21 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    let mut leader_usage_out = nodes.get_process(&leader).stdout_filter(CPU_USAGE_PREFIX).await;
+    let mut leader_usage_out = nodes
+        .get_process(&leader)
+        .stdout_filter(CPU_USAGE_PREFIX)
+        .await;
     let mut clusters_usage_out = vec![];
     for worker in nodes.get_cluster(&cluster).members() {
-        clusters_usage_out.push(
-            worker
-                .stdout_filter(CPU_USAGE_PREFIX)
-                .await,
-        );
+        clusters_usage_out.push(worker.stdout_filter(CPU_USAGE_PREFIX).await);
     }
 
-    deployment.start_until(async {
-        std::io::stdin().read_line(&mut String::new()).unwrap();
-    }).await.unwrap();
+    deployment
+        .start_until(async {
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+        })
+        .await
+        .unwrap();
 
     println!("Leader {}", leader_usage_out.recv().await.unwrap());
     for mut cluster_usage_out in clusters_usage_out {

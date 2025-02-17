@@ -277,7 +277,9 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             processes,
             clusters,
             externals,
-            cluster_id_name: std::mem::take(&mut self.cluster_id_name).into_iter().collect(),
+            cluster_id_name: std::mem::take(&mut self.cluster_id_name)
+                .into_iter()
+                .collect(),
         }
     }
 }
@@ -309,7 +311,13 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
     }
 
     pub fn get_all_clusters(&self) -> impl Iterator<Item = (LocationId, String, &D::Cluster)> {
-        self.clusters.iter().map(|(&id, c)| (LocationId::Cluster(id), self.cluster_id_name.get(&id).unwrap().clone(), c))
+        self.clusters.iter().map(|(&id, c)| {
+            (
+                LocationId::Cluster(id),
+                self.cluster_id_name.get(&id).unwrap().clone(),
+                c,
+            )
+        })
     }
 
     pub fn get_external<P>(&self, p: &ExternalProcess<P>) -> &D::ExternalProcess {

@@ -19,6 +19,7 @@ use tokio_util::io::SyncIoBridge;
 use crate::hydroflow_crate::flamegraph::handle_fold_data;
 use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
+use crate::ssh::PrefixFilteredChannel;
 use crate::util::prioritized_broadcast;
 use crate::{LaunchedBinary, TracingResults};
 
@@ -33,8 +34,8 @@ pub struct LaunchedLocalhostBinary {
     tracing_results: Option<TracingResults>,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    stdout_receivers: Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
-    stderr_receivers: Arc<Mutex<Vec<(Option<String>, mpsc::UnboundedSender<String>)>>>,
+    stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
+    stderr_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
 }
 
 #[cfg(unix)]

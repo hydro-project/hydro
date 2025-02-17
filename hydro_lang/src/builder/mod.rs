@@ -122,10 +122,7 @@ impl<'a> FlowBuilder<'a> {
     }
 
     #[cfg(feature = "build")]
-    pub fn optimize_with(
-        self,
-        f: impl FnOnce(&mut Vec<HydroLeaf>),
-    ) -> built::BuiltFlow<'a> {
+    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroLeaf])) -> built::BuiltFlow<'a> {
         self.finalize().optimize_with(f)
     }
 

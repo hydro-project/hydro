@@ -168,7 +168,7 @@ impl HydroflowCrateService {
     pub fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
         self.launched_binary.as_ref().unwrap().stderr_filter(prefix)
     }
-    
+
     pub fn tracing_results(&self) -> Option<&TracingResults> {
         self.launched_binary.as_ref().unwrap().tracing_results()
     }

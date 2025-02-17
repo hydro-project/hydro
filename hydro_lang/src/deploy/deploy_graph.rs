@@ -393,12 +393,18 @@ pub trait DeployCrateWrapper {
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stdout_filter(&self, prefix: impl Into<String>) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+    async fn stdout_filter(
+        &self,
+        prefix: impl Into<String>,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().read().await.stdout_filter(prefix.into())
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
-    async fn stderr_filter(&self, prefix: impl Into<String>) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+    async fn stderr_filter(
+        &self,
+        prefix: impl Into<String>,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().read().await.stderr_filter(prefix.into())
     }
 

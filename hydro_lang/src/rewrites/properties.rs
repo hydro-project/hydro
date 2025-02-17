@@ -68,8 +68,10 @@ fn properties_optimize_node(node: &mut HydroNode, db: &mut PropertyDatabase) {
     }
 }
 
-pub fn properties_optimize(ir: &mut Vec<HydroLeaf>, db: &mut PropertyDatabase) {
-    transform_bottom_up(ir, &mut |_| (), &mut |node| properties_optimize_node(node, db));
+pub fn properties_optimize(ir: &mut [HydroLeaf], db: &mut PropertyDatabase) {
+    transform_bottom_up(ir, &mut |_| (), &mut |node| {
+        properties_optimize_node(node, db)
+    });
 }
 
 #[cfg(test)]
