@@ -16,8 +16,7 @@ async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let rustflags =
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
     let create_host: HostCreator = if host_arg == *"gcp" {
         let project = std::env::args().nth(2).unwrap();
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));

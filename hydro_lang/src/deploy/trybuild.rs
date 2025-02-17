@@ -33,7 +33,7 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
-    hydro_additional_features: &[String]
+    hydro_additional_features: &[String],
 ) -> (String, (PathBuf, PathBuf, Option<Vec<String>>)) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
@@ -85,7 +85,8 @@ pub fn create_graph_trybuild(
         hash
     };
 
-    let trybuild_created = create_trybuild(&source, &bin_name, is_test, hydro_additional_features).unwrap();
+    let trybuild_created =
+        create_trybuild(&source, &bin_name, is_test, hydro_additional_features).unwrap();
     (bin_name, trybuild_created)
 }
 
@@ -190,7 +191,9 @@ pub fn create_trybuild(
     }
 
     let hydro_dep = manifest.dependencies.get_mut("hydro_lang").unwrap();
-    hydro_dep.features.extend(hydro_additional_features.iter().cloned());
+    hydro_dep
+        .features
+        .extend(hydro_additional_features.iter().cloned());
 
     let project = Project {
         dir: project_dir,

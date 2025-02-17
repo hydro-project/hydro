@@ -715,8 +715,12 @@ impl Node for DeployNode {
         let service = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c) => c,
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, (dir, target_dir, features)) =
-                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint, &trybuild.additional_hydro_features);
+                let (bin_name, (dir, target_dir, features)) = create_graph_trybuild(
+                    graph,
+                    extra_stmts,
+                    &trybuild.name_hint,
+                    &trybuild.additional_hydro_features,
+                );
                 create_trybuild_service(trybuild, &dir, &target_dir, &features, &bin_name)
             }
         };
@@ -791,10 +795,18 @@ impl Node for DeployCluster {
                 })
                 .collect::<HashSet<_>>();
 
-            assert!(all_features.len() == 1, "all trybuilds in a cluster must have the same features");
+            assert!(
+                all_features.len() == 1,
+                "all trybuilds in a cluster must have the same features"
+            );
             let features = all_features.into_iter().next().unwrap();
 
-            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint, &features))
+            Some(create_graph_trybuild(
+                graph,
+                extra_stmts,
+                &self.name_hint,
+                &features,
+            ))
         } else {
             None
         };

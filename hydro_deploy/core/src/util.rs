@@ -97,8 +97,8 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
 
 #[cfg(test)]
 mod test {
-    use tokio_stream::wrappers::UnboundedReceiverStream;
     use tokio::sync::mpsc;
+    use tokio_stream::wrappers::UnboundedReceiverStream;
 
     use super::*;
 
