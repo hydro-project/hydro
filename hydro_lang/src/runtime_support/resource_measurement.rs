@@ -28,17 +28,17 @@ pub async fn run_with_measurement(flow: Dfir<'_>) {
         let run_time = chrono::Duration::milliseconds((seconds_spent * 1000.0) as i64);
 
         let percent_cpu_use =
-            run_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32 * 100.0;
+            run_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32;
         let user_time = chrono::Duration::milliseconds(
             (stat.utime as f32 / sysinfo.ticks_per_second() as f32 * 1000.0) as i64,
         );
         let user_cpu_use =
-            user_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32 * 100.0;
+            user_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32;
         let system_time = chrono::Duration::milliseconds(
             (stat.stime as f32 / sysinfo.ticks_per_second() as f32 * 1000.0) as i64,
         );
         let system_cpu_use =
-            system_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32 * 100.0;
+            system_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32;
         println!(
             "{} Total {:.4}%, User {:.4}%, System {:.4}%",
             CPU_USAGE_PREFIX, percent_cpu_use, user_cpu_use, system_cpu_use

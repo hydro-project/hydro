@@ -9,6 +9,16 @@ use crate::ir::*;
 
 pub const CPU_USAGE_PREFIX: &str = "CPU:";
 
+#[cfg(feature = "build")]
+pub fn parse_cpu_usage(measurement: String) -> f64 {
+    let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();
+    regex
+        .captures_iter(&measurement)
+        .last()
+        .map(|cap| cap[1].parse::<f64>().unwrap())
+        .unwrap_or(0f64)
+}
+
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
 #[cfg(feature = "build")]
