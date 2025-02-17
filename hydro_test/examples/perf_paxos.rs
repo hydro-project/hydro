@@ -1,19 +1,13 @@
-use core::num;
-use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use futures::channel::mpsc::UnboundedReceiver;
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::hydroflow_crate::tracing_options::{self, TracingOptions};
-use hydro_deploy::progress::ProgressTracker;
+use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
-use hydro_lang::dfir_rs::tracing;
-use hydro_lang::location::cluster;
+use hydro_lang::ir::deep_clone;
 use hydro_lang::rewrites::analyze_perf::{analyze_perf, CPU_USAGE_PREFIX};
-use hydro_lang::rewrites::{analyze_perf, persist_pullup};
-use hydro_lang::Cluster;
+use hydro_lang::rewrites::persist_pullup;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
@@ -96,7 +90,7 @@ async fn main() {
 
     let optimized = builder
         .optimize_with(persist_pullup::persist_pullup);
-    let mut ir = optimized.ir().clone();
+    let mut ir = deep_clone(optimized.ir());
     let nodes = optimized
         .with_cluster(&proposers, cluster_specs(&host_arg, &mut deployment, "proposer", f + 1))
         .with_cluster(&acceptors, cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1))
@@ -110,7 +104,7 @@ async fn main() {
     let mut usage_out = HashMap::new();
     for (id, name, cluster) in nodes.get_all_clusters() {
         for (idx, node) in cluster.members().iter().enumerate() {
-            let mut out = node.stdout_filter(CPU_USAGE_PREFIX).await;
+            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
             usage_out.insert((id.clone(), name.clone(), idx), out);
         }
     }
@@ -124,7 +118,7 @@ async fn main() {
     for (id, name, cluster) in nodes.get_all_clusters() {
         for (idx, node) in cluster.members().iter().enumerate() {
             if let Some(perf_results) = node.tracing_results().await {
-                println!("{} {} {}", &name, idx, usage_out.get(&(id, name, idx).unwrap()).recv().await.unwrap());
+                println!("{} {} {}", &name, idx, usage_out.get_mut(&(id.clone(), name.clone(), idx)).unwrap().recv().await.unwrap());
                 analyze_perf(&mut ir, perf_results.folded_data);
             }
         }

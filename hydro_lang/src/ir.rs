@@ -127,7 +127,7 @@ enum BuildersOrCallback<'a, L: FnMut(&mut HydroLeaf, usize), N: FnMut(&mut Hydro
 /// An leaf in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
 /// generating DFIR IR start from leaves.
-#[derive(Debug, Hash, Clone)]
+#[derive(Debug, Hash)]
 pub enum HydroLeaf {
     ForEach {
         f: DebugExpr,
@@ -197,6 +197,31 @@ impl HydroLeaf {
             } => {
                 transform(input, seen_tees);
             }
+        }
+    }
+
+    pub fn deep_clone(
+        &self,
+        seen_tees: &mut SeenTees,
+    ) -> HydroLeaf {
+        match self {
+            HydroLeaf::ForEach { f, input } => HydroLeaf::ForEach {
+                f: f.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+            },
+            HydroLeaf::DestSink { sink, input } => HydroLeaf::DestSink {
+                sink: sink.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+            },
+            HydroLeaf::CycleSink {
+                ident,
+                location_kind,
+                input,
+            } => HydroLeaf::CycleSink {
+                ident: ident.clone(),
+                location_kind: location_kind.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+            },
         }
     }
 
@@ -303,9 +328,8 @@ impl HydroLeaf {
                                 None,
                             );
                     }
-                    BuildersOrCallback::Callback(ref mut leaf_callback, _) => {
-                        leaf_callback(self, *next_stmt_id);
-                    }
+                    // No ID, no callback
+                    BuildersOrCallback::Callback(_, _) => {}
                 }
             }
         }
@@ -357,6 +381,13 @@ pub fn transform_bottom_up(
     });
 }
 
+pub fn deep_clone(
+    ir: &Vec<HydroLeaf>,
+) -> Vec<HydroLeaf> {
+    let mut seen_tees = HashMap::new();
+    ir.iter().map(|leaf| leaf.deep_clone(&mut seen_tees)).collect()
+}
+
 type PrintedTees = RefCell<Option<(usize, HashMap<*const RefCell<HydroNode>, usize>)>>;
 thread_local! {
     static PRINTED_TEES: PrintedTees = const { RefCell::new(None) };
@@ -377,8 +408,6 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
-// TODO(shadaj): Implement deep copy
-#[derive(Clone)]
 pub struct TeeNode(pub Rc<RefCell<HydroNode>>);
 
 impl Debug for TeeNode {
@@ -426,7 +455,7 @@ pub struct HydroNodeMetadata {
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[derive(Debug, Hash, Clone)]
+#[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
 
@@ -709,6 +738,214 @@ impl<'a> HydroNode {
         }
     }
 
+    pub fn deep_clone(
+        &self,
+        seen_tees: &mut SeenTees
+    ) -> HydroNode {
+        match self {
+            HydroNode::Placeholder => {
+                HydroNode::Placeholder
+            }
+            HydroNode::Source { source, location_kind, metadata } => {
+                HydroNode::Source {
+                    source: source.clone(),
+                    location_kind: location_kind.clone(),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::CycleSource { ident, location_kind, metadata } => {
+                HydroNode::CycleSource {
+                    ident: ident.clone(),
+                    location_kind: location_kind.clone(),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Tee { inner, metadata } => {
+                if let Some(transformed) =
+                    seen_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
+                {
+                    HydroNode::Tee {
+                        inner: TeeNode(transformed.clone()),
+                        metadata: metadata.clone(),
+                    }
+                }
+                else {
+                    let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(inner.0.as_ref() as *const RefCell<HydroNode>, new_rc.clone());
+                    let cloned = inner.0.borrow().deep_clone(seen_tees);
+                    *new_rc.borrow_mut() = cloned;
+                    HydroNode::Tee {
+                        inner: TeeNode(new_rc),
+                        metadata: metadata.clone(),
+                    }
+                }
+            }
+            HydroNode::Persist { inner, metadata } => {
+                HydroNode::Persist {
+                    inner: Box::new(inner.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Unpersist { inner, metadata } => {
+                HydroNode::Unpersist {
+                    inner: Box::new(inner.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Delta { inner, metadata } => {
+                HydroNode::Delta {
+                    inner: Box::new(inner.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Chain { first, second, metadata } => {
+                HydroNode::Chain {
+                    first: Box::new(first.deep_clone(seen_tees)),
+                    second: Box::new(second.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::CrossProduct { left, right, metadata } => {
+                HydroNode::CrossProduct {
+                    left: Box::new(left.deep_clone(seen_tees)),
+                    right: Box::new(right.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::CrossSingleton { left, right, metadata } => {
+                HydroNode::CrossSingleton {
+                    left: Box::new(left.deep_clone(seen_tees)),
+                    right: Box::new(right.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Join { left, right, metadata } => {
+                HydroNode::Join {
+                    left: Box::new(left.deep_clone(seen_tees)),
+                    right: Box::new(right.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Difference { pos, neg, metadata } => {
+                HydroNode::Difference {
+                    pos: Box::new(pos.deep_clone(seen_tees)),
+                    neg: Box::new(neg.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::AntiJoin { pos, neg, metadata } => {
+                HydroNode::AntiJoin {
+                    pos: Box::new(pos.deep_clone(seen_tees)),
+                    neg: Box::new(neg.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Map { f, input, metadata } => {
+                HydroNode::Map {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::FlatMap { f, input, metadata } => {
+                HydroNode::FlatMap {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Filter { f, input, metadata } => {
+                HydroNode::Filter {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::FilterMap { f, input, metadata } => {
+                HydroNode::FilterMap {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::DeferTick { input, metadata } => {
+                HydroNode::DeferTick {
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Enumerate { is_static, input, metadata } => {
+                HydroNode::Enumerate {
+                    is_static: *is_static,
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Inspect { f, input, metadata } => {
+                HydroNode::Inspect {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Unique { input, metadata } => {
+                HydroNode::Unique {
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Sort { input, metadata } => {
+                HydroNode::Sort {
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Fold { init, acc, input, metadata } => {
+                HydroNode::Fold {
+                    init: init.clone(),
+                    acc: acc.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::FoldKeyed { init, acc, input, metadata } => {
+                HydroNode::FoldKeyed {
+                    init: init.clone(),
+                    acc: acc.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Reduce { f, input, metadata } => {
+                HydroNode::Reduce {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::ReduceKeyed { f, input, metadata } => {
+                HydroNode::ReduceKeyed {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+            HydroNode::Network { from_location, from_key, to_location, to_key, serialize_fn, instantiate_fn, deserialize_fn, input, metadata } => {
+                HydroNode::Network {
+                    from_location: from_location.clone(),
+                    from_key: *from_key,
+                    to_location: to_location.clone(),
+                    to_key: *to_key,
+                    serialize_fn: serialize_fn.clone(),
+                    instantiate_fn: instantiate_fn.clone(),
+                    deserialize_fn: deserialize_fn.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
+        }
+    }
+
     #[cfg(feature = "build")]
     pub fn emit_core(
         &mut self,
@@ -786,7 +1023,7 @@ impl<'a> HydroNode {
                 location_kind,
                 ..
             } => {
-                let location_id = match *location_kind {
+                let location_id = match location_kind.clone() {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
@@ -1623,8 +1860,7 @@ impl<'a> HydroNode {
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
-            HydroNode::Network { .. } => format!("Network()"),
-
+            HydroNode::Network { from_location, to_location, .. } => format!("Network(from {:?}, to {:?})", from_location, to_location),
         }
     }
 }

@@ -277,8 +277,6 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             processes,
             clusters,
             externals,
-            process_id_name: std::mem::take(&mut self.process_id_name).into_iter().collect(),
-            external_id_name: std::mem::take(&mut self.external_id_name).into_iter().collect(),
             cluster_id_name: std::mem::take(&mut self.cluster_id_name).into_iter().collect(),
         }
     }
@@ -288,8 +286,6 @@ pub struct DeployResult<'a, D: Deploy<'a>> {
     processes: HashMap<usize, D::Process>,
     clusters: HashMap<usize, D::Cluster>,
     externals: HashMap<usize, D::ExternalProcess>,
-    process_id_name: HashMap<usize, String>,
-    external_id_name: HashMap<usize, String>,
     cluster_id_name: HashMap<usize, String>,
 }
 

@@ -2,7 +2,7 @@ use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
 use async_process::Command;
 use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
@@ -10,7 +10,6 @@ use futures::{AsyncBufReadExt as _, AsyncWriteExt as _};
 use inferno::collapse::dtrace::Folder as DtraceFolder;
 use inferno::collapse::perf::Folder as PerfFolder;
 use inferno::collapse::Collapse;
-use nameof::name_of;
 use tempfile::NamedTempFile;
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
 use tokio::sync::{mpsc, oneshot};
@@ -58,7 +57,7 @@ impl Drop for LaunchedLocalhostBinary {
 }
 
 impl LaunchedLocalhostBinary {
-    pub fn new(
+    pub(super) fn new(
         mut child: async_process::Child,
         id: String,
         tracing_config: Option<TracingOptions>,
