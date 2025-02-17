@@ -1,3 +1,4 @@
+#[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
