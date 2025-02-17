@@ -48,7 +48,6 @@ mod staging_util;
 #[cfg(feature = "deploy")]
 pub mod test_util;
 
-#[stageleft::runtime]
 #[cfg(test)]
 mod test_init {
     #[ctor::ctor]
