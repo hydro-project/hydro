@@ -66,17 +66,6 @@ fn analyze_perf_node(
     }
 }
 
-// #[cfg(feature = "build")]
-// #[stageleft::runtime]
-// pub fn analyze_perf(ir: &mut Vec<HydroLeaf>) {
-//     let id_to_usage = parse_perf(std::fs::read_to_string("proposer0.data.folded").unwrap());
-//     traverse_dfir(ir, |leaf, next_stmt_id| {
-//         analyze_perf_leaf(leaf, &id_to_usage, next_stmt_id);
-//     }, |node, next_stmt_id| {
-//         analyze_perf_node(node, &id_to_usage, next_stmt_id);
-//     });
-// }
-
 #[cfg(feature = "build")]
 #[stageleft::runtime]
 pub fn analyze_perf(ir: &mut Vec<HydroLeaf>, folded_data: Vec<u8>) {
