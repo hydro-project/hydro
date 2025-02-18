@@ -137,10 +137,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self.used = true;
 
         let mut seen_tees: HashMap<_, _> = HashMap::new();
+        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 env,
                 &mut seen_tees,
+                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -195,10 +197,12 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         self.used = true;
 
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
+        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &(),
                 &mut seen_tees_instantiate,
+                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,

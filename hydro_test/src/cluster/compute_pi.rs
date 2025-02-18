@@ -53,7 +53,9 @@ pub fn compute_pi<'a>(
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::{deploy::DeployRuntime, location::LocationId, rewrites::{decoupler, persist_pullup}};
+    use hydro_lang::deploy::DeployRuntime;
+    use hydro_lang::location::LocationId;
+    use hydro_lang::rewrites::{decoupler, persist_pullup};
     use stageleft::RuntimeData;
 
     #[test]
@@ -81,9 +83,7 @@ mod tests {
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|leaves| {
-                decoupler::decouple(leaves, &decoupler)
-            })
+            .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
             .into_deploy::<DeployRuntime>();
 
         insta::assert_debug_snapshot!(built.ir());

@@ -150,13 +150,21 @@ impl HydroLeaf {
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
+        seen_tee_locations: &mut SeenTeeLocations,
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) {
         self.transform_children(
             |n, s| {
-                n.compile_network::<D>(compile_env, s, processes, clusters, externals);
+                n.compile_network::<D>(
+                    compile_env,
+                    s,
+                    seen_tee_locations,
+                    processes,
+                    clusters,
+                    externals,
+                );
             },
             seen_tees,
         )
@@ -611,6 +619,7 @@ pub enum HydroNode {
 }
 
 pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
+pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
 impl<'a> HydroNode {
     #[cfg(feature = "build")]
@@ -618,11 +627,11 @@ impl<'a> HydroNode {
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
+        seen_tee_locations: &mut SeenTeeLocations,
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) {
-        let mut tee_location_map: HashMap<*const RefCell<HydroNode>, LocationId> = HashMap::new();
         let mut curr_location = None;
 
         self.transform_bottom_up(
@@ -662,18 +671,20 @@ impl<'a> HydroNode {
                     }
                     | HydroNode::CycleSource { location_kind, .. }
                     | HydroNode::Source { location_kind, .. } => {
-                        curr_location = Some(location_kind.clone());
+                        // Unwrap location out of Tick
+                        if let LocationId::Tick(_, tick_loc) = location_kind {
+                            curr_location = Some(*tick_loc.clone());
+                        } else {
+                            curr_location = Some(location_kind.clone());
+                        }
                     }
                     HydroNode::Tee { inner, .. } => {
-                        if let Some(tee_location) =
-                            tee_location_map.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
-                        {
+                        let inner_ref = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        if let Some(tee_location) = seen_tee_locations.get(&inner_ref) {
                             curr_location = Some(tee_location.clone());
-                        } else if curr_location != None {
-                            tee_location_map.insert(
-                                inner.0.as_ref() as *const RefCell<HydroNode>,
-                                curr_location.as_ref().unwrap().clone(),
-                            );
+                        } else {
+                            seen_tee_locations
+                                .insert(inner_ref, curr_location.as_ref().unwrap().clone());
                         }
                     }
                     _ => {}
