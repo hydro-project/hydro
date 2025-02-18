@@ -924,6 +924,10 @@ impl DfirGraph {
                     }
                 });
 
+                let loop_id = self
+                    // All nodes in a subgraph should be in the same loop.
+                    .node_loop(subgraph_nodes[0]);
+
                 let mut subgraph_op_iter_code = Vec::new();
                 let mut subgraph_op_iter_after_code = Vec::new();
                 {
@@ -1027,6 +1031,7 @@ impl DfirGraph {
                                 context,
                                 subgraph_id,
                                 node_id,
+                                loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
                                 ident: &ident,
@@ -1214,9 +1219,7 @@ impl DfirGraph {
                 let laziness = self.subgraph_laziness(subgraph_id);
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
-                let loop_id_opt = self
-                    // All nodes in a subgraph should be in the same loop.
-                    .node_loop(subgraph_nodes[0])
+                let loop_id_opt = loop_id
                     .map(Self::loop_as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
