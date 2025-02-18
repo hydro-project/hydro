@@ -12,7 +12,6 @@ use quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
-use syn::{LitBool, LitStr};
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
@@ -455,21 +454,9 @@ impl DfirGraph {
             return Some(Color::Hoff);
         }
         // In-degree, excluding ref-edges and edges which enter/exit loops.
-        let inn_degree = self
-            .node_predecessor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
+        let inn_degree = self.node_predecessor_nodes(node_id).count();
         // Out-degree excluding ref-edges and loop-crossing edges.
-        let out_degree = self
-            .node_successor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
+        let out_degree = self.node_successor_nodes(node_id).count();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -866,18 +853,27 @@ impl DfirGraph {
             .iter()
             .filter_map(|(node_id, node)| match node {
                 GraphNode::Operator(_) => None,
-                &GraphNode::Handoff { src_span, dst_span, is_lazy } => Some((node_id, (src_span, dst_span), is_lazy)),
+                &GraphNode::Handoff {
+                    src_span,
+                    dst_span,
+                    is_lazy,
+                } => Some((node_id, (src_span, dst_span), is_lazy)),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
             .map(|(node_id, (src_span, dst_span), is_lazy)| {
                 let ident_send = Ident::new(&format!("hoff_{:?}_send", node_id.data()), dst_span);
                 let ident_recv = Ident::new(&format!("hoff_{:?}_recv", node_id.data()), src_span);
                 let span = src_span.join(dst_span).unwrap_or(src_span);
-                let hoff_name = LitStr::new(&format!("handoff {:?}", node_id), span);
-                let lazy_lit = LitBool::new(is_lazy, span);
-                quote! {
+                let mut hoff_name = Literal::string(&format!("handoff {:?}", node_id));
+                hoff_name.set_span(span);
+                let hoff_type = if is_lazy {
+                    quote_spanned! (span=> #root::scheduled::handoff::LazyVecHandoff<_>)
+                } else {
+                    quote_spanned! (span=> #root::scheduled::handoff::VecHandoff<_>)
+                };
+                quote_spanned! {span=>
                     let (#ident_send, #ident_recv) =
-                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_, #lazy_lit>>(#hoff_name);
+                        #df.make_edge::<_, #hoff_type>(#hoff_name);
                 }
             });
 
@@ -923,6 +919,10 @@ impl DfirGraph {
                         });
                     }
                 });
+
+                let loop_id = self
+                    // All nodes in a subgraph should be in the same loop.
+                    .node_loop(subgraph_nodes[0]);
 
                 let mut subgraph_op_iter_code = Vec::new();
                 let mut subgraph_op_iter_after_code = Vec::new();
@@ -1027,6 +1027,7 @@ impl DfirGraph {
                                 context,
                                 subgraph_id,
                                 node_id,
+                                loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
                                 ident: &ident,
@@ -1214,9 +1215,7 @@ impl DfirGraph {
                 let laziness = self.subgraph_laziness(subgraph_id);
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
-                let loop_id_opt = self
-                    // All nodes in a subgraph should be in the same loop.
-                    .node_loop(subgraph_nodes[0])
+                let loop_id_opt = loop_id
                     .map(Self::loop_as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });

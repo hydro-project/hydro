@@ -5,14 +5,14 @@ use std::rc::Rc;
 use super::{CanReceive, Handoff, HandoffMeta, Iter};
 
 /// A [Vec]-based FIFO handoff.
-pub struct VecHandoff<T>
+pub struct LazyVecHandoff<T>
 where
     T: 'static,
 {
     pub(crate) input: Rc<RefCell<Vec<T>>>,
     pub(crate) output: Rc<RefCell<Vec<T>>>,
 }
-impl<T> Default for VecHandoff<T>
+impl<T> Default for LazyVecHandoff<T>
 where
     T: 'static,
 {
@@ -23,7 +23,7 @@ where
         }
     }
 }
-impl<T> Handoff for VecHandoff<T> {
+impl<T> Handoff for LazyVecHandoff<T> {
     type Inner = Vec<T>;
 
     fn take_inner(&self) -> Self::Inner {
@@ -40,7 +40,7 @@ impl<T> Handoff for VecHandoff<T> {
     }
 }
 
-impl<T> CanReceive<Option<T>> for VecHandoff<T> {
+impl<T> CanReceive<Option<T>> for LazyVecHandoff<T> {
     fn give(&self, mut item: Option<T>) -> Option<T> {
         if let Some(item) = item.take() {
             (*self.input).borrow_mut().push(item)
@@ -48,7 +48,7 @@ impl<T> CanReceive<Option<T>> for VecHandoff<T> {
         None
     }
 }
-impl<T, I> CanReceive<Iter<I>> for VecHandoff<T>
+impl<T, I> CanReceive<Iter<I>> for LazyVecHandoff<T>
 where
     I: Iterator<Item = T>,
 {
@@ -57,19 +57,19 @@ where
         iter
     }
 }
-impl<T> CanReceive<Vec<T>> for VecHandoff<T> {
+impl<T> CanReceive<Vec<T>> for LazyVecHandoff<T> {
     fn give(&self, mut vec: Vec<T>) -> Vec<T> {
         (*self.input).borrow_mut().extend(vec.drain(..));
         vec
     }
 }
 
-impl<T> HandoffMeta for VecHandoff<T> {
+impl<T> HandoffMeta for LazyVecHandoff<T> {
     fn any_ref(&self) -> &dyn Any {
         self
     }
 
     fn is_bottom(&self) -> bool {
-        (*self.input).borrow_mut().is_empty()
+        true
     }
 }
