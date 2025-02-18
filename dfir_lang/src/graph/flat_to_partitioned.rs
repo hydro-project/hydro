@@ -224,9 +224,17 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
             continue;
         }
 
+        let is_lazy = partitioned_graph
+            .node_op_inst(dst_id)
+            .is_some_and(|op_inst| {
+                // TODO(mingwei): generalize this
+                NEXT_ITERATION.name == op_inst.op_constraints.name
+            });
+
         let hoff = GraphNode::Handoff {
             src_span: src_node.span(),
             dst_span: dst_node.span(),
+            is_lazy,
         };
         let (_node_id, out_edge_id) = partitioned_graph.insert_intermediate_node(edge_id, hoff);
 
@@ -460,6 +468,7 @@ fn find_subgraph_strata(
                     let hoff = GraphNode::Handoff {
                         src_span: Span::call_site(), // TODO(mingwei): Proper spanning?
                         dst_span: Span::call_site(),
+                        is_lazy: false,
                     };
                     let (_hoff_node_id, _hoff_edge_id) =
                         partitioned_graph.insert_intermediate_node(new_edge_id, hoff);
@@ -539,6 +548,7 @@ fn separate_external_inputs(partitioned_graph: &mut DfirGraph) {
             let hoff = GraphNode::Handoff {
                 src_span: span,
                 dst_span: span,
+                is_lazy: false,
             };
             partitioned_graph.insert_intermediate_node(edge_id, hoff);
         }

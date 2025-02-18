@@ -199,6 +199,9 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     I1: 'a + Iterator<Item = (K, V1)>,
                     I2: 'a + Iterator<Item = (K, V2)>,
                 {
+                    // #root::util::clear::Clear::clear(lhs_state);
+                    // #root::util::clear::Clear::clear(rhs_state);
+
                     #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
                 }
 

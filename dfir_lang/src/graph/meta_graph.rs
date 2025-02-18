@@ -12,6 +12,7 @@ use quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
+use syn::{LitBool, LitStr};
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
@@ -865,16 +866,18 @@ impl DfirGraph {
             .iter()
             .filter_map(|(node_id, node)| match node {
                 GraphNode::Operator(_) => None,
-                &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
+                &GraphNode::Handoff { src_span, dst_span, is_lazy } => Some((node_id, (src_span, dst_span), is_lazy)),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
-            .map(|(node_id, (src_span, dst_span))| {
+            .map(|(node_id, (src_span, dst_span), is_lazy)| {
                 let ident_send = Ident::new(&format!("hoff_{:?}_send", node_id.data()), dst_span);
                 let ident_recv = Ident::new(&format!("hoff_{:?}_recv", node_id.data()), src_span);
-                let hoff_name = Literal::string(&format!("handoff {:?}", node_id));
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let hoff_name = LitStr::new(&format!("handoff {:?}", node_id), span);
+                let lazy_lit = LitBool::new(is_lazy, span);
                 quote! {
                     let (#ident_send, #ident_recv) =
-                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
+                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_, #lazy_lit>>(#hoff_name);
                 }
             });
 
