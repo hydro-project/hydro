@@ -112,7 +112,6 @@ impl<'a, P> ExternalProcess<'a, P> {
                 to.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Network {
-                        from_location: LocationId::ExternalProcess(self.id),
                         from_key: Some(next_external_port_id),
                         to_location: to.id(),
                         to_key: None,
@@ -153,7 +152,6 @@ impl<'a, P> ExternalProcess<'a, P> {
                 to.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Network {
-                        from_location: LocationId::ExternalProcess(self.id),
                         from_key: Some(next_external_port_id),
                         to_location: to.id(),
                         to_key: None,

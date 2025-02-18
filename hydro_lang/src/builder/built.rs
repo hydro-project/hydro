@@ -62,7 +62,7 @@ impl<'a> BuiltFlow<'a> {
             .into_deploy()
     }
 
-    fn into_deploy<D: LocalDeploy<'a>>(mut self) -> DeployFlow<'a, D> {
+    pub fn into_deploy<D: LocalDeploy<'a>>(mut self) -> DeployFlow<'a, D> {
         self.used = true;
         let processes = if D::has_trivial_node() {
             self.process_id_name

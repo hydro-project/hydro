@@ -6,9 +6,6 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
         input: Network {
-            from_location: Cluster(
-                0,
-            ),
             from_key: None,
             to_location: Cluster(
                 0,

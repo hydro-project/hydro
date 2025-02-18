@@ -1806,7 +1806,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: None,
@@ -1844,7 +1843,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: Some(external_key),
@@ -1875,7 +1873,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: None,
@@ -1911,7 +1908,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: Some(external_key),

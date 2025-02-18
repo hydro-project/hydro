@@ -6,9 +6,6 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
         input: Network {
-            from_location: ExternalProcess(
-                0,
-            ),
             from_key: Some(
                 0,
             ),
@@ -48,9 +45,6 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
         input: Network {
-            from_location: Process(
-                1,
-            ),
             from_key: None,
             to_location: Process(
                 2,
