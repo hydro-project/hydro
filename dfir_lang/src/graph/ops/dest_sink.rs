@@ -103,6 +103,7 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
                    ident,
                    is_pull,
                    arguments,
+                   ref op_tag,
                    ..
                },
                _| {
@@ -112,13 +113,14 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
 
         let send_ident = wc.make_ident("item_send");
         let recv_ident = wc.make_ident("item_recv");
+        let sink_feed_flush_ident = wc.make_ident(format!("sink_feed_flush_{}", op_tag.clone().unwrap_or_default()));
 
         let write_prologue = quote_spanned! {op_span=>
             let (#send_ident, #recv_ident) = #root::tokio::sync::mpsc::unbounded_channel();
             {
                 /// Function is needed so `Item` is so no ambiguity for what `Item` is used
                 /// when calling `.flush()`.
-                async fn sink_feed_flush<Sink, Item>(
+                async fn #sink_feed_flush_ident<Sink, Item>(
                     mut recv: #root::tokio::sync::mpsc::UnboundedReceiver<Item>,
                     mut sink: Sink,
                 ) where
@@ -139,7 +141,7 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
                     }
                 }
                 #df_ident
-                    .request_task(sink_feed_flush(#recv_ident, #sink_arg));
+                    .request_task(#sink_feed_flush_ident(#recv_ident, #sink_arg));
             }
         };
 

@@ -789,9 +789,9 @@ impl Node for DeployCluster {
                 .as_ref()
                 .unwrap()
                 .iter()
-                .filter_map(|spec| match spec {
+                .map(|spec| match spec {
                     CrateOrTrybuild::Crate(_c) => panic!("unexpected crate in cluster"),
-                    CrateOrTrybuild::Trybuild(t) => Some(t.additional_hydro_features.clone()),
+                    CrateOrTrybuild::Trybuild(t) => t.additional_hydro_features.clone(),
                 })
                 .collect::<HashSet<_>>();
 

@@ -1025,6 +1025,7 @@ impl DfirGraph {
                                 subgraph_id,
                                 node_id,
                                 op_span,
+                                op_tag: self.operator_tag.get(node_id).cloned(),
                                 ident: &ident,
                                 is_pull,
                                 inputs: &inputs,
