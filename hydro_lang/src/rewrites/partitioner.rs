@@ -1,4 +1,4 @@
-
+#[cfg(feature = "build")]
 use std::collections::HashMap;
 
 #[cfg(feature = "build")]
@@ -13,7 +13,7 @@ pub enum PartitionAttribute {
 
 #[cfg(feature = "build")]
 pub struct Partitioner {
-    pub nodes_to_partition: HashMap<usize, PartitionAttribute>, // ID of node right before a Network -> what to partition on
+    pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
     pub num_original_nodes: usize, // Number of nodes at destination process before partitioning
     pub num_partitions: usize,
 }
@@ -59,7 +59,7 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
                 })
             }
         };
-        
+
         let mapped_node = HydroNode::Map {
             f: f.into(),
             input: Box::new(node_content),
@@ -67,7 +67,7 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
         };
 
         *node = mapped_node;
-    } 
+    }
 }
 
 /// Limitations: Can only partition sends to clusters (not processes). Can only partition sends to 1 cluster at a time. Assumes that the partitioned attribute can be casted to usize.

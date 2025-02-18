@@ -45,7 +45,7 @@ async fn main() {
     let (process, cluster) = hydro_test::cluster::simple_cluster::simple_cluster(&builder);
 
     let partitioner = Partitioner {
-        nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1)),]),
+        nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
         num_original_nodes: 2,
         num_partitions: 3,
     };
@@ -59,7 +59,8 @@ async fn main() {
         )
         .with_cluster(
             &cluster,
-            (0..partitioner.num_original_nodes * partitioner.num_partitions).map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..partitioner.num_original_nodes * partitioner.num_partitions)
+                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .deploy(&mut deployment);
     deployment.run_ctrl_c().await.unwrap();
