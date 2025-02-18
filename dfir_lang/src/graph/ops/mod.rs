@@ -354,6 +354,8 @@ pub struct WriteContextArgs<'a> {
     pub node_id: GraphNodeId,
     /// The source span of this operator.
     pub op_span: Span,
+    /// Tag for this operator appended to the generated identifier.
+    pub op_tag: Option<String>,
 
     /// Ident the iterator or pullerator should be assigned to.
     pub ident: &'a Ident,
