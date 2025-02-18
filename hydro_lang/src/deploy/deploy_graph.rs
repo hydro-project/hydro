@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::io::Error;
 use std::pin::Pin;
@@ -393,6 +393,22 @@ pub trait DeployCrateWrapper {
     }
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn stdout_filter(
+        &self,
+        prefix: impl Into<String>,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().read().await.stdout_filter(prefix.into())
+    }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
+    async fn stderr_filter(
+        &self,
+        prefix: impl Into<String>,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
+        self.underlying().read().await.stderr_filter(prefix.into())
+    }
+
+    #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     async fn tracing_results(&self) -> Option<TracingResults> {
         self.underlying().read().await.tracing_results().cloned()
     }
@@ -403,6 +419,7 @@ pub struct TrybuildHost {
     pub host: Arc<dyn Host>,
     pub display_name: Option<String>,
     pub rustflags: Option<String>,
+    pub additional_hydro_features: Vec<String>,
     pub tracing: Option<TracingOptions>,
     pub name_hint: Option<String>,
     pub cluster_idx: Option<usize>,
@@ -414,6 +431,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            additional_hydro_features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -427,6 +445,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            additional_hydro_features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -440,6 +459,7 @@ impl TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            additional_hydro_features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -468,6 +488,13 @@ impl TrybuildHost {
         }
     }
 
+    pub fn additional_hydro_features(self, additional_hydro_features: Vec<String>) -> Self {
+        Self {
+            additional_hydro_features,
+            ..self
+        }
+    }
+
     pub fn tracing(self, tracing: TracingOptions) -> Self {
         if self.tracing.is_some() {
             panic!("{} already set", name_of!(tracing in Self));
@@ -487,6 +514,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             host: self,
             display_name: None,
             rustflags: None,
+            additional_hydro_features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -501,6 +529,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             host: self,
             display_name: None,
             rustflags: None,
+            additional_hydro_features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -686,8 +715,12 @@ impl Node for DeployNode {
         let service = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c) => c,
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, (dir, target_dir, features)) =
-                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
+                let (bin_name, (dir, target_dir, features)) = create_graph_trybuild(
+                    graph,
+                    extra_stmts,
+                    &trybuild.name_hint,
+                    &trybuild.additional_hydro_features,
+                );
                 create_trybuild_service(trybuild, &dir, &target_dir, &features, &bin_name)
             }
         };
@@ -750,7 +783,30 @@ impl Node for DeployCluster {
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
         let maybe_trybuild = if has_trybuild {
-            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint))
+            let all_features = self
+                .cluster_spec
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .iter()
+                .map(|spec| match spec {
+                    CrateOrTrybuild::Crate(_c) => panic!("unexpected crate in cluster"),
+                    CrateOrTrybuild::Trybuild(t) => t.additional_hydro_features.clone(),
+                })
+                .collect::<HashSet<_>>();
+
+            assert!(
+                all_features.len() == 1,
+                "all trybuilds in a cluster must have the same features"
+            );
+            let features = all_features.into_iter().next().unwrap();
+
+            Some(create_graph_trybuild(
+                graph,
+                extra_stmts,
+                &self.name_hint,
+                &features,
+            ))
         } else {
             None
         };

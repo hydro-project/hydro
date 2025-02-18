@@ -86,6 +86,8 @@ pub trait LaunchedBinary: Send + Sync {
 
     fn stdout(&self) -> mpsc::UnboundedReceiver<String>;
     fn stderr(&self) -> mpsc::UnboundedReceiver<String>;
+    fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
+    fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
 
     fn tracing_results(&self) -> Option<&TracingResults>;
 

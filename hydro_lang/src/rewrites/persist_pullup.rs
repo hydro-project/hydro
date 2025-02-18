@@ -178,17 +178,11 @@ fn persist_pullup_node(
     };
 }
 
-pub fn persist_pullup(ir: Vec<HydroLeaf>) -> Vec<HydroLeaf> {
-    let mut seen_tees = Default::default();
+pub fn persist_pullup(ir: &mut [HydroLeaf]) {
     let mut persist_pulled_tees = Default::default();
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |n, s| n.transform_bottom_up(persist_pullup_node, s, &mut persist_pulled_tees),
-                &mut seen_tees,
-            )
-        })
-        .collect()
+    transform_bottom_up(ir, &mut |_| (), &mut |node| {
+        persist_pullup_node(node, &mut persist_pulled_tees)
+    });
 }
 
 #[cfg(test)]
