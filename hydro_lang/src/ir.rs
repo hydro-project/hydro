@@ -150,13 +150,21 @@ impl HydroLeaf {
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
+        seen_tee_locations: &mut SeenTeeLocations,
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) {
         self.transform_children(
             |n, s| {
-                n.compile_network::<D>(compile_env, s, processes, clusters, externals);
+                n.compile_network::<D>(
+                    compile_env,
+                    s,
+                    seen_tee_locations,
+                    processes,
+                    clusters,
+                    externals,
+                );
             },
             seen_tees,
         )
@@ -599,7 +607,6 @@ pub enum HydroNode {
     },
 
     Network {
-        from_location: LocationId,
         from_key: Option<usize>,
         to_location: LocationId,
         to_key: Option<usize>,
@@ -612,6 +619,7 @@ pub enum HydroNode {
 }
 
 pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
+pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
 impl<'a> HydroNode {
     #[cfg(feature = "build")]
@@ -619,14 +627,16 @@ impl<'a> HydroNode {
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
+        seen_tee_locations: &mut SeenTeeLocations,
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
     ) {
+        let mut curr_location = None;
+
         self.transform_bottom_up(
             &mut |n| {
                 if let HydroNode::Network {
-                    from_location,
                     from_key,
                     to_location,
                     to_key,
@@ -636,7 +646,7 @@ impl<'a> HydroNode {
                 {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building() => instantiate_network::<D>(
-                            from_location,
+                            curr_location.as_ref().unwrap(),
                             *from_key,
                             to_location,
                             *to_key,
@@ -651,6 +661,33 @@ impl<'a> HydroNode {
 
                     *instantiate_fn =
                         DebugInstantiate::Finalized(sink_expr, source_expr, Some(connect_fn));
+                }
+
+                // Calculate location of current node to use as from_location
+                match n {
+                    HydroNode::Network {
+                        to_location: location_kind,
+                        ..
+                    }
+                    | HydroNode::CycleSource { location_kind, .. }
+                    | HydroNode::Source { location_kind, .. } => {
+                        // Unwrap location out of Tick
+                        if let LocationId::Tick(_, tick_loc) = location_kind {
+                            curr_location = Some(*tick_loc.clone());
+                        } else {
+                            curr_location = Some(location_kind.clone());
+                        }
+                    }
+                    HydroNode::Tee { inner, .. } => {
+                        let inner_ref = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        if let Some(tee_location) = seen_tee_locations.get(&inner_ref) {
+                            curr_location = Some(tee_location.clone());
+                        } else {
+                            seen_tee_locations
+                                .insert(inner_ref, curr_location.as_ref().unwrap().clone());
+                        }
+                    }
+                    _ => {}
                 }
             },
             seen_tees,
@@ -937,7 +974,6 @@ impl<'a> HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Network {
-                from_location,
                 from_key,
                 to_location,
                 to_key,
@@ -947,7 +983,6 @@ impl<'a> HydroNode {
                 input,
                 metadata,
             } => HydroNode::Network {
-                from_location: from_location.clone(),
                 from_key: *from_key,
                 to_location: to_location.clone(),
                 to_key: *to_key,
@@ -1716,7 +1751,6 @@ impl<'a> HydroNode {
             }
 
             HydroNode::Network {
-                from_location: _,
                 from_key: _,
                 to_location,
                 to_key: _,
@@ -1882,11 +1916,7 @@ impl<'a> HydroNode {
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
-            HydroNode::Network {
-                from_location,
-                to_location,
-                ..
-            } => format!("Network(from {:?}, to {:?})", from_location, to_location),
+            HydroNode::Network { to_location, .. } => format!("Network(to {:?})", to_location),
         }
     }
 }
@@ -1894,9 +1924,9 @@ impl<'a> HydroNode {
 #[cfg(feature = "build")]
 #[expect(clippy::too_many_arguments, reason = "networking internals")]
 fn instantiate_network<'a, D: Deploy<'a>>(
-    from_location: &mut LocationId,
+    from_location: &LocationId,
     from_key: Option<usize>,
-    to_location: &mut LocationId,
+    to_location: &LocationId,
     to_key: Option<usize>,
     nodes: &HashMap<usize, D::Process>,
     clusters: &HashMap<usize, D::Cluster>,

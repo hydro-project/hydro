@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/paxos_bench.rs
 expression: built.ir()
-snapshot_kind: text
 ---
 [
     ForEach {
@@ -295,9 +294,6 @@ snapshot_kind: text
             inner: <tee 2>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , hydro_test :: cluster :: paxos :: Ballot) , hydro_test :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                 input: Network {
-                    from_location: Cluster(
-                        0,
-                    ),
                     from_key: None,
                     to_location: Cluster(
                         0,
@@ -535,9 +531,6 @@ snapshot_kind: text
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Acceptor > , (hydro_test :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , hydro_test :: cluster :: paxos :: Ballot >)) , (hydro_test :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , hydro_test :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                 input: Network {
-                                                    from_location: Cluster(
-                                                        1,
-                                                    ),
                                                     from_key: None,
                                                     to_location: Cluster(
                                                         0,
@@ -558,9 +551,6 @@ snapshot_kind: text
                                                                     inner: <tee 8>: Map {
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , hydro_test :: cluster :: paxos :: Ballot) , hydro_test :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                                         input: Network {
-                                                                            from_location: Cluster(
-                                                                                0,
-                                                                            ),
                                                                             from_key: None,
                                                                             to_location: Cluster(
                                                                                 1,
@@ -1580,9 +1570,6 @@ snapshot_kind: text
                                                     input: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , hydro_test :: cluster :: paxos :: Ballot) , hydro_test :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                         input: Network {
-                                                            from_location: Cluster(
-                                                                0,
-                                                            ),
                                                             from_key: None,
                                                             to_location: Cluster(
                                                                 2,
@@ -1894,9 +1881,6 @@ snapshot_kind: text
                                                     left: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) >) , hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                         input: Network {
-                                                            from_location: Cluster(
-                                                                2,
-                                                            ),
                                                             from_key: None,
                                                             to_location: Cluster(
                                                                 0,
@@ -2352,9 +2336,6 @@ snapshot_kind: text
                                             inner: <tee 26>: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Acceptor > , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: cluster :: paxos :: Ballot >)) , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                 input: Network {
-                                                    from_location: Cluster(
-                                                        1,
-                                                    ),
                                                     from_key: None,
                                                     to_location: Cluster(
                                                         0,
@@ -2374,9 +2355,6 @@ snapshot_kind: text
                                                                 inner: <tee 27>: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >) , hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer > > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                                                     input: Network {
-                                                                        from_location: Cluster(
-                                                                            0,
-                                                                        ),
                                                                         from_key: None,
                                                                         to_location: Cluster(
                                                                             1,
@@ -3262,9 +3240,6 @@ snapshot_kind: text
                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use crate :: __staged :: cluster :: paxos :: * ; | curr_seq , seq | { if seq > * curr_seq { * curr_seq = seq ; } } }),
                                                     input: Persist {
                                                         inner: Network {
-                                                            from_location: Cluster(
-                                                                3,
-                                                            ),
                                                             from_key: None,
                                                             to_location: Cluster(
                                                                 1,
@@ -3544,9 +3519,6 @@ snapshot_kind: text
                                         input: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: paxos :: Proposer > , (usize , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , (usize , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                             input: Network {
-                                                from_location: Cluster(
-                                                    0,
-                                                ),
                                                 from_key: None,
                                                 to_location: Cluster(
                                                     3,
@@ -4169,9 +4141,6 @@ snapshot_kind: text
                             inner: <tee 40>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: kv_replica :: Replica > , ((u32 , u32) , core :: result :: Result < () , () >)) , ((u32 , u32) , core :: result :: Result < () , () >) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                 input: Network {
-                                    from_location: Cluster(
-                                        3,
-                                    ),
                                     from_key: None,
                                     to_location: Cluster(
                                         2,

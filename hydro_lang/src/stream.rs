@@ -1744,10 +1744,8 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, Tick<L>, Bounded, Order> {
     }
 }
 
-fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
+pub fn serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -> syn::Expr {
     let root = get_this_crate();
-
-    let t_type: syn::Type = stageleft::quote_type::<T>();
 
     if is_demux {
         parse_quote! {
@@ -1764,10 +1762,12 @@ fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
     }
 }
 
-pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>) -> syn::Expr {
-    let root = get_this_crate();
+fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
+    serialize_bincode_with_type(is_demux, stageleft::quote_type::<T>())
+}
 
-    let t_type: syn::Type = stageleft::quote_type::<T>();
+pub fn deserialize_bincode_with_type(tagged: Option<syn::Type>, t_type: syn::Type) -> syn::Expr {
+    let root = get_this_crate();
 
     if let Some(c_type) = tagged {
         parse_quote! {
@@ -1783,6 +1783,10 @@ pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>
             }
         }
     }
+}
+
+pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>) -> syn::Expr {
+    deserialize_bincode_with_type(tagged, stageleft::quote_type::<T>())
 }
 
 impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
@@ -1802,7 +1806,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: None,
@@ -1840,7 +1843,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: Some(external_key),
@@ -1871,7 +1873,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: None,
@@ -1907,7 +1908,6 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: self.location.root().id(),
                 from_key: None,
                 to_location: other.id(),
                 to_key: Some(external_key),

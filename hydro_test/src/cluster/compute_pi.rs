@@ -54,13 +54,40 @@ pub fn compute_pi<'a>(
 #[cfg(test)]
 mod tests {
     use hydro_lang::deploy::DeployRuntime;
+    use hydro_lang::rewrites::{decoupler, persist_pullup};
+    use hydro_lang::Location;
     use stageleft::RuntimeData;
+
+    struct DecoupledCluster {}
 
     #[test]
     fn compute_pi_ir() {
         let builder = hydro_lang::FlowBuilder::new();
         let _ = super::compute_pi(&builder, 8192);
         let built = builder.with_default_optimize::<DeployRuntime>();
+
+        insta::assert_debug_snapshot!(built.ir());
+
+        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).dfir() {
+            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+                insta::assert_snapshot!(ir.surface_syntax_string());
+            });
+        }
+    }
+
+    #[test]
+    fn decoupled_compute_pi_ir() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let _ = super::compute_pi(&builder, 8192);
+        let decoupled_cluster = builder.cluster::<DecoupledCluster>();
+        let decoupler = decoupler::Decoupler {
+            nodes_to_decouple: vec![4],
+            new_location: decoupled_cluster.id().clone(),
+        };
+        let built = builder
+            .optimize_with(persist_pullup::persist_pullup)
+            .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
+            .into_deploy::<DeployRuntime>();
 
         insta::assert_debug_snapshot!(built.ir());
 

@@ -44,7 +44,6 @@ async fn main() {
 
     let nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
-        // .optimize_with(analyze_perf::analyze_perf)
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment))

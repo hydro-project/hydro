@@ -98,7 +98,6 @@ fn persist_pullup_node(
             },
 
             HydroNode::Network {
-                from_location,
                 from_key,
                 to_location,
                 to_key,
@@ -109,7 +108,6 @@ fn persist_pullup_node(
                 metadata,
             } => HydroNode::Persist {
                 inner: Box::new(HydroNode::Network {
-                    from_location,
                     from_key,
                     to_location,
                     to_key,
