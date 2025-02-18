@@ -26,19 +26,27 @@ fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     let mut total_samples = 0f64;
     let mut samples_per_operator = HashMap::new();
     let operator_regex = Regex::new(r"::op_\d+v\d+__(.*?)__(\d+)::").unwrap();
+    let sink_feed_regex = Regex::new(r"sink_feed_flush_(\d+)").unwrap();
 
     for line in file.lines() {
         let n_samples_index = line.rfind(' ').unwrap() + 1;
         let n_samples = &line[n_samples_index..].parse::<f64>().unwrap();
 
+        let mut new_samples = vec![];
         if let Some(cap) = operator_regex.captures_iter(line).last() {
             let operator_name = &cap[1];
             let id = cap[2].parse::<usize>().unwrap();
-            let dfir_operator_and_samples =
-                samples_per_operator.entry(id).or_insert(HashMap::new());
-            let prev_samples = dfir_operator_and_samples
-                .entry(operator_name.to_string())
-                .or_insert(0f64);
+            new_samples.push((id, operator_name.to_string()));
+        }
+        // Note: Although we do a regex check twice per line (potentially adding samples twice), there will never be an operator and sink_feed in the same line, so it's ok
+        if let Some(cap) = sink_feed_regex.captures_iter(line).last() {
+            let id = cap[1].parse::<usize>().unwrap();
+            new_samples.push((id, "sink_feed_flush".to_string()));
+        }
+
+        for (id, operator_name) in new_samples {
+            let dfir_operator_and_samples = samples_per_operator.entry(id).or_insert(HashMap::new());
+            let prev_samples = dfir_operator_and_samples.entry(operator_name).or_insert(0f64);
             *prev_samples += n_samples;
         }
 
