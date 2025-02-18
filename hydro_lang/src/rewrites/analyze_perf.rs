@@ -45,8 +45,11 @@ fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
         }
 
         for (id, operator_name) in new_samples {
-            let dfir_operator_and_samples = samples_per_operator.entry(id).or_insert(HashMap::new());
-            let prev_samples = dfir_operator_and_samples.entry(operator_name).or_insert(0f64);
+            let dfir_operator_and_samples =
+                samples_per_operator.entry(id).or_insert(HashMap::new());
+            let prev_samples = dfir_operator_and_samples
+                .entry(operator_name)
+                .or_insert(0f64);
             *prev_samples += n_samples;
         }
 
