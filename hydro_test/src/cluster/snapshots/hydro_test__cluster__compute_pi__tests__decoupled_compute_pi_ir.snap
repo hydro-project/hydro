@@ -34,7 +34,7 @@ expression: built.ir()
                                         input: Network {
                                             from_key: None,
                                             to_location: Cluster(
-                                                0,
+                                                2,
                                             ),
                                             to_key: None,
                                             serialize_fn: Some(
@@ -115,7 +115,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroNodeMetadata {
                                                 location_kind: Cluster(
-                                                    0,
+                                                    2,
                                                 ),
                                                 output_type: Some(
                                                     bool,
@@ -124,7 +124,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroNodeMetadata {
                                             location_kind: Cluster(
-                                                0,
+                                                2,
                                             ),
                                             output_type: Some(
                                                 bool,
