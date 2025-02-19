@@ -4,6 +4,7 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::Location;
 use hydro_lang::rewrites::partitioner::{PartitionAttribute, Partitioner};
 use hydro_lang::rewrites::{partitioner, persist_pullup};
 use tokio::sync::RwLock;
@@ -48,6 +49,7 @@ async fn main() {
     let partitioner = Partitioner {
         nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
         num_partitions: 3,
+        partitioned_cluster_id: cluster.id().raw_id(),
     };
 
     let _nodes = builder

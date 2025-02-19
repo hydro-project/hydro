@@ -18,6 +18,7 @@ pub enum PartitionAttribute {
 pub struct Partitioner {
     pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
     pub num_partitions: usize,
+    pub partitioned_cluster_id: usize,
 }
 
 // Placeholder ClusterId type
@@ -27,6 +28,7 @@ pub struct Partitioned {}
 #[cfg(feature = "build")]
 pub struct ClusterSelfIdReplace {
     pub num_partitions: usize,
+    pub partitioned_cluster_id: usize,
 }
 
 #[cfg(feature = "build")]
@@ -35,7 +37,8 @@ impl VisitMut for ClusterSelfIdReplace {
         if let syn::Expr::Path(path_expr) = expr {
             for segment in path_expr.path.segments.iter_mut() {
                 let ident = segment.ident.to_string();
-                if ident.starts_with("__hydro_lang_cluster_self_id_") {
+                let prefix = format!("__hydro_lang_cluster_self_id_{}", self.partitioned_cluster_id);
+                if ident.starts_with(&prefix) {
                     let num_partitions = self.num_partitions;
                     let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
                     *expr = syn::parse_quote!({
@@ -54,6 +57,7 @@ impl VisitMut for ClusterSelfIdReplace {
 #[cfg(feature = "build")]
 pub struct ClusterMembersReplace {
     pub num_partitions: usize,
+    pub partitioned_cluster_id: usize,
 }
 
 #[cfg(feature = "build")]
@@ -67,7 +71,8 @@ impl VisitMut for ClusterMembersReplace {
                             if let syn::Expr::Path(path_expr) = arg {
                                 for segment in path_expr.path.segments.iter_mut() {
                                     let ident = segment.ident.to_string();
-                                    if ident.starts_with("__hydro_lang_cluster_ids_") {
+                                    let prefix = format!("__hydro_lang_cluster_ids_{}", self.partitioned_cluster_id);
+                                    if ident.starts_with(&prefix) {
                                         let num_partitions = self.num_partitions;
                                         let expr_content =
                                             std::mem::replace(expr, syn::Expr::PLACEHOLDER);
@@ -91,13 +96,13 @@ impl VisitMut for ClusterMembersReplace {
 }
 
 #[cfg(feature = "build")]
-fn replace_membership_info(node: &mut HydroNode, num_partitions: usize) {
+fn replace_membership_info(node: &mut HydroNode, num_partitions: usize, partitioned_cluster_id: usize) {
     node.visit_debug_expr(|expr| {
-        let mut visitor = ClusterMembersReplace { num_partitions };
+        let mut visitor = ClusterMembersReplace { num_partitions, partitioned_cluster_id };
         visitor.visit_expr_mut(&mut expr.0);
     });
     node.visit_debug_expr(|expr| {
-        let mut visitor = ClusterSelfIdReplace { num_partitions };
+        let mut visitor = ClusterSelfIdReplace { num_partitions, partitioned_cluster_id };
         visitor.visit_expr_mut(&mut expr.0);
     });
 }
@@ -107,9 +112,10 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
     let Partitioner {
         nodes_to_partition,
         num_partitions,
+        partitioned_cluster_id,
     } = partitioner;
 
-    replace_membership_info(node, *num_partitions);
+    replace_membership_info(node, *num_partitions, *partitioned_cluster_id);
 
     if let Some(partition_attr) = nodes_to_partition.get(&next_stmt_id) {
         println!("Partitioning node {} {}", next_stmt_id, node.print_root());
