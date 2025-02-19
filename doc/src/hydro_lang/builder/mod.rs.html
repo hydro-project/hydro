@@ -247,10 +247,7 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a>
-<a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::type_name;
+<a href="#249" id="249">249</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::type_name;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -374,10 +371,7 @@
     }
 
     <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-    </span><span class="kw">pub fn </span>optimize_with(
-        <span class="self">self</span>,
-        f: <span class="kw">impl </span>FnOnce(Vec&lt;HydroLeaf&gt;) -&gt; Vec&lt;HydroLeaf&gt;,
-    ) -&gt; built::BuiltFlow&lt;<span class="lifetime">'a</span>&gt; {
+    </span><span class="kw">pub fn </span>optimize_with(<span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>[HydroLeaf])) -&gt; built::BuiltFlow&lt;<span class="lifetime">'a</span>&gt; {
         <span class="self">self</span>.finalize().optimize_with(f)
     }
 

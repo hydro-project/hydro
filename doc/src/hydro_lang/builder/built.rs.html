@@ -164,13 +164,7 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#166" id="166">166</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>dfir_lang::graph::{eliminate_extra_unions_tees, DfirGraph};
@@ -178,7 +172,7 @@
 <span class="kw">use </span><span class="kw">super</span>::compiled::CompiledFlow;
 <span class="kw">use </span><span class="kw">super</span>::deploy::{DeployFlow, DeployResult};
 <span class="kw">use </span><span class="kw">crate</span>::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy};
-<span class="kw">use </span><span class="kw">crate</span>::ir::HydroLeaf;
+<span class="kw">use </span><span class="kw">crate</span>::ir::{emit, HydroLeaf};
 <span class="kw">use </span><span class="kw">crate</span>::location::{Cluster, ExternalProcess, Process};
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 
@@ -201,14 +195,7 @@
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>build_inner(ir: <span class="kw-2">&amp;mut </span>Vec&lt;HydroLeaf&gt;) -&gt; BTreeMap&lt;usize, DfirGraph&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>builders = BTreeMap::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>built_tees = HashMap::new();
-    <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="number">0</span>;
-    <span class="kw">for </span>leaf <span class="kw">in </span>ir {
-        leaf.emit(<span class="kw-2">&amp;mut </span>builders, <span class="kw-2">&amp;mut </span>built_tees, <span class="kw-2">&amp;mut </span>next_stmt_id);
-    }
-
-    builders
+    emit(ir)
         .into_iter()
         .map(|(k, v)| {
             <span class="kw">let </span>(<span class="kw-2">mut </span>flat_graph, <span class="kw">_</span>, <span class="kw">_</span>) = v.build();
@@ -223,10 +210,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.ir
     }
 
-    <span class="kw">pub fn </span>optimize_with(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(Vec&lt;HydroLeaf&gt;) -&gt; Vec&lt;HydroLeaf&gt;) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>optimize_with(<span class="kw-2">mut </span><span class="self">self</span>, f: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>[HydroLeaf])) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
+        f(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir);
         BuiltFlow {
-            ir: f(std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir)),
+            ir: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
             process_id_name: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.process_id_name),
             cluster_id_name: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.cluster_id_name),
             external_id_name: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.external_id_name),
@@ -240,7 +228,7 @@
             .into_deploy()
     }
 
-    <span class="kw">fn </span>into_deploy&lt;D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
+    <span class="kw">pub fn </span>into_deploy&lt;D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
         <span class="kw">let </span>processes = <span class="kw">if </span>D::has_trivial_node() {
             <span class="self">self</span>.process_id_name

@@ -158,7 +158,9 @@
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
 <a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
@@ -263,6 +265,7 @@
                    ident,
                    is_pull,
                    arguments,
+                   <span class="kw-2">ref </span>op_tag,
                    ..
                },
                <span class="kw">_</span>| {
@@ -272,13 +275,14 @@
 
         <span class="kw">let </span>send_ident = wc.make_ident(<span class="string">"item_send"</span>);
         <span class="kw">let </span>recv_ident = wc.make_ident(<span class="string">"item_recv"</span>);
+        <span class="kw">let </span>sink_feed_flush_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"sink_feed_flush_{}"</span>, op_tag.clone().unwrap_or_default()));
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="kw">let </span>(#send_ident, #recv_ident) = #root::tokio::sync::mpsc::unbounded_channel();
             {
                 <span class="doccomment">/// Function is needed so `Item` is so no ambiguity for what `Item` is used
                 /// when calling `.flush()`.
-                </span><span class="kw">async fn </span>sink_feed_flush&lt;Sink, Item&gt;(
+                </span><span class="kw">async fn </span>#sink_feed_flush_ident&lt;Sink, Item&gt;(
                     <span class="kw-2">mut </span>recv: #root::tokio::sync::mpsc::UnboundedReceiver&lt;Item&gt;,
                     <span class="kw-2">mut </span>sink: Sink,
                 ) <span class="kw">where
@@ -299,7 +303,7 @@
                     }
                 }
                 #df_ident
-                    .request_task(sink_feed_flush(#recv_ident, #sink_arg));
+                    .request_task(#sink_feed_flush_ident(#recv_ident, #sink_arg));
             }
         };
 

@@ -171,9 +171,7 @@
 <a href="#170" id="170">170</a>
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
+<a href="#173" id="173">173</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>dfir_rs::bytes::Bytes;
 <span class="kw">use </span>serde::de::DeserializeOwned;
@@ -287,7 +285,6 @@
                 to.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Network {
-                        from_location: LocationId::ExternalProcess(<span class="self">self</span>.id),
                         from_key: <span class="prelude-val">Some</span>(next_external_port_id),
                         to_location: to.id(),
                         to_key: <span class="prelude-val">None</span>,
@@ -328,7 +325,6 @@
                 to.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::Network {
-                        from_location: LocationId::ExternalProcess(<span class="self">self</span>.id),
                         from_key: <span class="prelude-val">Some</span>(next_external_port_id),
                         to_location: to.id(),
                         to_key: <span class="prelude-val">None</span>,

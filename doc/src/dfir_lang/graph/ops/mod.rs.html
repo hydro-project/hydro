@@ -564,7 +564,9 @@
 <a href="#563" id="563">563</a>
 <a href="#564" id="564">564</a>
 <a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
+<a href="#566" id="566">566</a>
+<a href="#567" id="567">567</a>
+<a href="#568" id="568">568</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
 
 </span><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::{Debug, Display};
@@ -920,6 +922,8 @@
     </span><span class="kw">pub </span>node_id: GraphNodeId,
     <span class="doccomment">/// The source span of this operator.
     </span><span class="kw">pub </span>op_span: Span,
+    <span class="doccomment">/// Tag for this operator appended to the generated identifier.
+    </span><span class="kw">pub </span>op_tag: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="doccomment">/// Ident the iterator or pullerator should be assigned to.
     </span><span class="kw">pub </span>ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["CPU_USAGE_PREFIX"],"fn":["analyze_perf","parse_cpu_usage"]};

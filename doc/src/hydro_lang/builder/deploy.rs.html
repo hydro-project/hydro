@@ -367,7 +367,19 @@
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::pin::Pin;
@@ -506,23 +518,22 @@
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>flow_state_networked: Vec&lt;HydroLeaf&gt; = std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir)
-            .into_iter()
-            .map(|leaf| {
-                leaf.compile_network::&lt;D&gt;(
-                    env,
-                    <span class="kw-2">&amp;mut </span>seen_tees,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
-                )
-            })
-            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>seen_tee_locations: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
+        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
+            leaf.compile_network::&lt;D&gt;(
+                env,
+                <span class="kw-2">&amp;mut </span>seen_tees,
+                <span class="kw-2">&amp;mut </span>seen_tee_locations,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
+            );
+        });
 
         <span class="kw">let </span>extra_stmts = <span class="self">self</span>.extra_stmts(env);
 
         CompiledFlow {
-            dfir: build_inner(<span class="kw-2">&amp;mut </span>flow_state_networked),
+            dfir: build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
             extra_stmts,
             _phantom: PhantomData,
         }
@@ -567,20 +578,19 @@
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees_instantiate: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>flow_state_networked: Vec&lt;HydroLeaf&gt; = std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir)
-            .into_iter()
-            .map(|leaf| {
-                leaf.compile_network::&lt;D&gt;(
-                    <span class="kw-2">&amp;</span>(),
-                    <span class="kw-2">&amp;mut </span>seen_tees_instantiate,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
-                )
-            })
-            .collect();
+        <span class="kw">let </span><span class="kw-2">mut </span>seen_tee_locations: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
+        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
+            leaf.compile_network::&lt;D&gt;(
+                <span class="kw-2">&amp;</span>(),
+                <span class="kw-2">&amp;mut </span>seen_tees_instantiate,
+                <span class="kw-2">&amp;mut </span>seen_tee_locations,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
+                <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
+            );
+        });
 
-        <span class="kw">let </span><span class="kw-2">mut </span>compiled = build_inner(<span class="kw-2">&amp;mut </span>flow_state_networked);
+        <span class="kw">let </span><span class="kw-2">mut </span>compiled = build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir);
         <span class="kw">let </span><span class="kw-2">mut </span>extra_stmts = <span class="self">self</span>.extra_stmts(<span class="kw-2">&amp;</span>());
         <span class="kw">let </span><span class="kw-2">mut </span>meta = D::Meta::default();
 
@@ -644,14 +654,17 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees_connect = HashMap::new();
-        <span class="kw">for </span>leaf <span class="kw">in </span>flow_state_networked {
+        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
             leaf.connect_network(<span class="kw-2">&amp;mut </span>seen_tees_connect);
-        }
+        });
 
         DeployResult {
             processes,
             clusters,
             externals,
+            cluster_id_name: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.cluster_id_name)
+                .into_iter()
+                .collect(),
         }
     }
 }
@@ -660,6 +673,7 @@
     processes: HashMap&lt;usize, D::Process&gt;,
     clusters: HashMap&lt;usize, D::Cluster&gt;,
     externals: HashMap&lt;usize, D::ExternalProcess&gt;,
+    cluster_id_name: HashMap&lt;usize, String&gt;,
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt; DeployResult&lt;<span class="lifetime">'a</span>, D&gt; {
@@ -679,6 +693,16 @@
         };
 
         <span class="self">self</span>.clusters.get(<span class="kw-2">&amp;</span>id).unwrap()
+    }
+
+    <span class="kw">pub fn </span>get_all_clusters(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (LocationId, String, <span class="kw-2">&amp;</span>D::Cluster)&gt; {
+        <span class="self">self</span>.clusters.iter().map(|(<span class="kw-2">&amp;</span>id, c)| {
+            (
+                LocationId::Cluster(id),
+                <span class="self">self</span>.cluster_id_name.get(<span class="kw-2">&amp;</span>id).unwrap().clone(),
+                c,
+            )
+        })
     }
 
     <span class="kw">pub fn </span>get_external&lt;P&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, p: <span class="kw-2">&amp;</span>ExternalProcess&lt;P&gt;) -&gt; <span class="kw-2">&amp;</span>D::ExternalProcess {

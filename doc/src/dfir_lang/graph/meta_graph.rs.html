@@ -1688,7 +1688,8 @@
 <a href="#1687" id="1687">1687</a>
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
-<a href="#1690" id="1690">1690</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">extern crate </span>proc_macro;
 
@@ -2715,6 +2716,7 @@
                                 subgraph_id,
                                 node_id,
                                 op_span,
+                                op_tag: <span class="self">self</span>.operator_tag.get(node_id).cloned(),
                                 ident: <span class="kw-2">&amp;</span>ident,
                                 is_pull,
                                 inputs: <span class="kw-2">&amp;</span>inputs,

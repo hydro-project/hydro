@@ -71,7 +71,34 @@
 <a href="#70" id="70">70</a>
 <a href="#71" id="71">71</a>
 <a href="#72" id="72">72</a>
-<a href="#73" id="73">73</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 
@@ -127,13 +154,40 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>hydro_lang::deploy::DeployRuntime;
+    <span class="kw">use </span>hydro_lang::rewrites::{decoupler, persist_pullup};
+    <span class="kw">use </span>hydro_lang::Location;
     <span class="kw">use </span>stageleft::RuntimeData;
+
+    <span class="kw">struct </span>DecoupledCluster {}
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>compute_pi_ir() {
         <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
         <span class="kw">let _ </span>= <span class="kw">super</span>::compute_pi(<span class="kw-2">&amp;</span>builder, <span class="number">8192</span>);
         <span class="kw">let </span>built = builder.with_default_optimize::&lt;DeployRuntime&gt;();
+
+        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
+
+        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>)).dfir() {
+            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
+                <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
+            });
+        }
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>decoupled_compute_pi_ir() {
+        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
+        <span class="kw">let _ </span>= <span class="kw">super</span>::compute_pi(<span class="kw-2">&amp;</span>builder, <span class="number">8192</span>);
+        <span class="kw">let </span>decoupled_cluster = builder.cluster::&lt;DecoupledCluster&gt;();
+        <span class="kw">let </span>decoupler = decoupler::Decoupler {
+            nodes_to_decouple: <span class="macro">vec!</span>[<span class="number">4</span>],
+            new_location: decoupled_cluster.id().clone(),
+        };
+        <span class="kw">let </span>built = builder
+            .optimize_with(persist_pullup::persist_pullup)
+            .optimize_with(|leaves| decoupler::decouple(leaves, <span class="kw-2">&amp;</span>decoupler))
+            .into_deploy::&lt;DeployRuntime&gt;();
 
         <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
 

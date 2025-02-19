@@ -249,15 +249,7 @@
 <a href="#248" id="248">248</a>
 <a href="#249" id="249">249</a>
 <a href="#250" id="250">250</a>
-<a href="#251" id="251">251</a>
-<a href="#252" id="252">252</a>
-<a href="#253" id="253">253</a>
-<a href="#254" id="254">254</a>
-<a href="#255" id="255">255</a>
-<a href="#256" id="256">256</a>
-<a href="#257" id="257">257</a>
-<a href="#258" id="258">258</a>
-<a href="#259" id="259">259</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+<a href="#251" id="251">251</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
@@ -357,7 +349,6 @@
             },
 
             HydroNode::Network {
-                from_location,
                 from_key,
                 to_location,
                 to_key,
@@ -368,7 +359,6 @@
                 metadata,
             } =&gt; HydroNode::Persist {
                 inner: Box::new(HydroNode::Network {
-                    from_location,
                     from_key,
                     to_location,
                     to_key,
@@ -437,17 +427,11 @@
     };
 }
 
-<span class="kw">pub fn </span>persist_pullup(ir: Vec&lt;HydroLeaf&gt;) -&gt; Vec&lt;HydroLeaf&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = Default::default();
+<span class="kw">pub fn </span>persist_pullup(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
     <span class="kw">let </span><span class="kw-2">mut </span>persist_pulled_tees = Default::default();
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |n, s| n.transform_bottom_up(persist_pullup_node, s, <span class="kw-2">&amp;mut </span>persist_pulled_tees),
-                <span class="kw-2">&amp;mut </span>seen_tees,
-            )
-        })
-        .collect()
+    transform_bottom_up(ir, <span class="kw-2">&amp;mut </span>|<span class="kw">_</span>| (), <span class="kw-2">&amp;mut </span>|node| {
+        persist_pullup_node(node, <span class="kw-2">&amp;mut </span>persist_pulled_tees)
+    });
 }
 
 <span class="attr">#[cfg(test)]

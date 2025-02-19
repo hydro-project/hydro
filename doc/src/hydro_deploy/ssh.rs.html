@@ -460,7 +460,23 @@
 <a href="#459" id="459">459</a>
 <a href="#460" id="460">460</a>
 <a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::path::PathBuf;
@@ -493,14 +509,16 @@
 
 <span class="kw">const </span>PERF_OUTFILE: <span class="kw-2">&amp;</span>str = <span class="string">"__profile.perf.data"</span>;
 
+<span class="kw">pub type </span>PrefixFilteredChannel = (<span class="prelude-ty">Option</span>&lt;String&gt;, mpsc::UnboundedSender&lt;String&gt;);
+
 <span class="kw">struct </span>LaunchedSshBinary {
     _resource_result: Arc&lt;ResourceResult&gt;,
     session: <span class="prelude-ty">Option</span>&lt;AsyncSession&lt;TcpStream&gt;&gt;,
     channel: AsyncChannel&lt;TcpStream&gt;,
     stdin_sender: mpsc::UnboundedSender&lt;String&gt;,
-    stdout_receivers: Arc&lt;Mutex&lt;Vec&lt;mpsc::UnboundedSender&lt;String&gt;&gt;&gt;&gt;,
+    stdout_receivers: Arc&lt;Mutex&lt;Vec&lt;PrefixFilteredChannel&gt;&gt;&gt;,
     stdout_deploy_receivers: Arc&lt;Mutex&lt;<span class="prelude-ty">Option</span>&lt;oneshot::Sender&lt;String&gt;&gt;&gt;&gt;,
-    stderr_receivers: Arc&lt;Mutex&lt;Vec&lt;mpsc::UnboundedSender&lt;String&gt;&gt;&gt;&gt;,
+    stderr_receivers: Arc&lt;Mutex&lt;Vec&lt;PrefixFilteredChannel&gt;&gt;&gt;,
     tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
     tracing_results: <span class="prelude-ty">Option</span>&lt;TracingResults&gt;,
 }
@@ -526,14 +544,28 @@
     <span class="kw">fn </span>stdout(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedReceiver&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>receivers = <span class="self">self</span>.stdout_receivers.lock().unwrap();
         <span class="kw">let </span>(sender, receiver) = mpsc::unbounded_channel::&lt;String&gt;();
-        receivers.push(sender);
+        receivers.push((<span class="prelude-val">None</span>, sender));
         receiver
     }
 
     <span class="kw">fn </span>stderr(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; mpsc::UnboundedReceiver&lt;String&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>receivers = <span class="self">self</span>.stderr_receivers.lock().unwrap();
         <span class="kw">let </span>(sender, receiver) = mpsc::unbounded_channel::&lt;String&gt;();
-        receivers.push(sender);
+        receivers.push((<span class="prelude-val">None</span>, sender));
+        receiver
+    }
+
+    <span class="kw">fn </span>stdout_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: String) -&gt; mpsc::UnboundedReceiver&lt;String&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>receivers = <span class="self">self</span>.stdout_receivers.lock().unwrap();
+        <span class="kw">let </span>(sender, receiver) = mpsc::unbounded_channel::&lt;String&gt;();
+        receivers.push((<span class="prelude-val">Some</span>(prefix), sender));
+        receiver
+    }
+
+    <span class="kw">fn </span>stderr_filter(<span class="kw-2">&amp;</span><span class="self">self</span>, prefix: String) -&gt; mpsc::UnboundedReceiver&lt;String&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>receivers = <span class="self">self</span>.stderr_receivers.lock().unwrap();
+        <span class="kw">let </span>(sender, receiver) = mpsc::unbounded_channel::&lt;String&gt;();
+        receivers.push((<span class="prelude-val">Some</span>(prefix), sender));
         receiver
     }
 

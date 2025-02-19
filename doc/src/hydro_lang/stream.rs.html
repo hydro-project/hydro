@@ -3910,10 +3910,8 @@
     }
 }
 
-<span class="kw">fn </span>serialize_bincode&lt;T: Serialize&gt;(is_demux: bool) -&gt; syn::Expr {
+<span class="kw">pub fn </span>serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -&gt; syn::Expr {
     <span class="kw">let </span>root = get_this_crate();
-
-    <span class="kw">let </span>t_type: syn::Type = stageleft::quote_type::&lt;T&gt;();
 
     <span class="kw">if </span>is_demux {
         <span class="macro">parse_quote!</span> {
@@ -3930,10 +3928,12 @@
     }
 }
 
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize_bincode&lt;T: DeserializeOwned&gt;(tagged: <span class="prelude-ty">Option</span>&lt;syn::Type&gt;) -&gt; syn::Expr {
-    <span class="kw">let </span>root = get_this_crate();
+<span class="kw">fn </span>serialize_bincode&lt;T: Serialize&gt;(is_demux: bool) -&gt; syn::Expr {
+    serialize_bincode_with_type(is_demux, stageleft::quote_type::&lt;T&gt;())
+}
 
-    <span class="kw">let </span>t_type: syn::Type = stageleft::quote_type::&lt;T&gt;();
+<span class="kw">pub fn </span>deserialize_bincode_with_type(tagged: <span class="prelude-ty">Option</span>&lt;syn::Type&gt;, t_type: syn::Type) -&gt; syn::Expr {
+    <span class="kw">let </span>root = get_this_crate();
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(c_type) = tagged {
         <span class="macro">parse_quote!</span> {
@@ -3949,6 +3949,10 @@
             }
         }
     }
+}
+
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>deserialize_bincode&lt;T: DeserializeOwned&gt;(tagged: <span class="prelude-ty">Option</span>&lt;syn::Type&gt;) -&gt; syn::Expr {
+    deserialize_bincode_with_type(tagged, stageleft::quote_type::&lt;T&gt;())
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B, Order&gt; Stream&lt;T, L, B, Order&gt; {
@@ -3968,7 +3972,6 @@
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: <span class="self">self</span>.location.root().id(),
                 from_key: <span class="prelude-val">None</span>,
                 to_location: other.id(),
                 to_key: <span class="prelude-val">None</span>,
@@ -4006,7 +4009,6 @@
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: <span class="self">self</span>.location.root().id(),
                 from_key: <span class="prelude-val">None</span>,
                 to_location: other.id(),
                 to_key: <span class="prelude-val">Some</span>(external_key),
@@ -4037,7 +4039,6 @@
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_location: <span class="self">self</span>.location.root().id(),
                 from_key: <span class="prelude-val">None</span>,
                 to_location: other.id(),
                 to_key: <span class="prelude-val">None</span>,
@@ -4073,7 +4074,6 @@
         leaves.push(HydroLeaf::ForEach {
             f: dummy_f.into(),
             input: Box::new(HydroNode::Network {
-                from_location: <span class="self">self</span>.location.root().id(),
                 from_key: <span class="prelude-val">None</span>,
                 to_location: other.id(),
                 to_key: <span class="prelude-val">Some</span>(external_key),

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["DebugInstantiate","HydroLeaf","HydroNode","HydroSource"],"fn":["dbg_dedup_tee"],"struct":["DebugExpr","DebugType","HydroNodeMetadata","TeeNode"],"type":["SeenTees"]};
+window.SIDEBAR_ITEMS = {"enum":["BuildersOrCallback","DebugInstantiate","HydroLeaf","HydroNode","HydroSource"],"fn":["dbg_dedup_tee","deep_clone","emit","transform_bottom_up","traverse_dfir"],"struct":["DebugExpr","DebugType","HydroNodeMetadata","TeeNode"],"type":["SeenTeeLocations","SeenTees"]};

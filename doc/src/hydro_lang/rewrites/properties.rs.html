@@ -126,21 +126,11 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
+<a href="#128" id="128">128</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashSet;
 
 <span class="kw">use </span>stageleft::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, SeenTees};
+<span class="kw">use </span><span class="kw">crate</span>::ir::{transform_bottom_up, HydroLeaf, HydroNode};
 
 <span class="doccomment">/// Structure for tracking expressions known to have particular algebraic properties.
 ///
@@ -197,11 +187,7 @@
 <span class="comment">// Dataflow graph optimization rewrite rules based on algebraic property tags
 // TODO add a test that verifies the space of possible graphs after rewrites is correct for each property
 
-</span><span class="kw">fn </span>properties_optimize_node(node: <span class="kw-2">&amp;mut </span>HydroNode, db: <span class="kw-2">&amp;</span>PropertyDatabase, seen_tees: <span class="kw-2">&amp;mut </span>SeenTees) {
-    node.transform_children(
-        |node, seen_tees| properties_optimize_node(node, db, seen_tees),
-        seen_tees,
-    );
+</span><span class="kw">fn </span>properties_optimize_node(node: <span class="kw-2">&amp;mut </span>HydroNode, db: <span class="kw-2">&amp;mut </span>PropertyDatabase) {
     <span class="kw">match </span>node {
         HydroNode::ReduceKeyed { f, .. } <span class="kw">if </span>db.is_tagged_commutative(<span class="kw-2">&amp;</span>f.<span class="number">0</span>) =&gt; {
             <span class="macro">dbg!</span>(<span class="string">"IDENTIFIED COMMUTATIVE OPTIMIZATION for {:?}"</span>, <span class="kw-2">&amp;</span>f);
@@ -210,16 +196,10 @@
     }
 }
 
-<span class="kw">pub fn </span>properties_optimize(ir: Vec&lt;HydroLeaf&gt;, db: <span class="kw-2">&amp;</span>PropertyDatabase) -&gt; Vec&lt;HydroLeaf&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = Default::default();
-    ir.into_iter()
-        .map(|l| {
-            l.transform_children(
-                |node, seen_tees| properties_optimize_node(node, db, seen_tees),
-                <span class="kw-2">&amp;mut </span>seen_tees,
-            )
-        })
-        .collect()
+<span class="kw">pub fn </span>properties_optimize(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], db: <span class="kw-2">&amp;mut </span>PropertyDatabase) {
+    transform_bottom_up(ir, <span class="kw-2">&amp;mut </span>|<span class="kw">_</span>| (), <span class="kw-2">&amp;mut </span>|node| {
+        properties_optimize_node(node, db)
+    });
 }
 
 <span class="attr">#[cfg(test)]
@@ -266,7 +246,7 @@
         .for_each(<span class="macro">q!</span>(|(string, count)| <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, string, count)));
 
         <span class="kw">let </span>built = flow
-            .optimize_with(|ir| properties_optimize(ir, <span class="kw-2">&amp;</span>database))
+            .optimize_with(|ir| properties_optimize(ir, <span class="kw-2">&amp;mut </span>database))
             .with_default_optimize::&lt;SingleProcessGraph&gt;();
 
         <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
