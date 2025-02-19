@@ -323,12 +323,12 @@ pub fn test_flo_repeat_kmeans() {
                     -> next_iteration()
                     -> inspect(|x| println!("centroid: {:?}", x))
                     -> centroids;
-            }
+            };
 
             centroids
                 -> all_iterations()
                 -> for_each(|x| result_send.send(x).unwrap());
-        }
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
