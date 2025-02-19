@@ -31,8 +31,8 @@ use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 #[derive(Default)]
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
-    /// `(nonce, iteration count)` pair.
-    pub(super) loop_iter_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
+
+    pub(super) loop_data: SecondarySlotVec<LoopTag, LoopData>,
 
     pub(super) context: Context,
 
@@ -268,11 +268,9 @@ impl<'a> Dfir<'a> {
 
         let mut work_done = false;
 
-        while let Some(sg_id) =
+        'pop: while let Some(sg_id) =
             self.context.stratum_queues[self.context.current_stratum].pop_front()
         {
-            work_done = true;
-
             {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
@@ -308,8 +306,11 @@ impl<'a> Dfir<'a> {
                     // iteration count, then we need to increment the iteration count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
-                    let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
-                        self.loop_iter_counters.get(loop_id)
+                    let curr_iter_count = if let Some(&LoopData {
+                        loop_nonce: _loop_loop_nonce,
+                        iter_count: loop_iter_count,
+                        allow_another_iteration,
+                    }) = self.loop_data.get(loop_id)
                     {
                         let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
 
@@ -318,9 +319,16 @@ impl<'a> Dfir<'a> {
                         // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
                         // always in the same (singular) loop execution.
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
-                            // If the iteration count is the same as the previous execution, we
-                            // need to increment it.
+                            // If the iteration count is the same as the previous execution, then
+                            // we are on the next iteration.
                             if loop_iter_count == prev_iter_count {
+                                // If not true, then we shall not run the next iteration.
+                                if !allow_another_iteration {
+                                    tracing::trace!(
+                                        "Loop will not continue to next iteration, skipping."
+                                    );
+                                    continue 'pop;
+                                }
                                 loop_iter_count + 1
                             } else {
                                 // Otherwise update the iteration count to match the loop.
@@ -338,9 +346,13 @@ impl<'a> Dfir<'a> {
 
                     self.context.loop_iter_count = curr_iter_count;
                     // Update the loop data.
-                    self.loop_iter_counters.insert(
+                    self.loop_data.insert(
                         loop_id,
-                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count),
+                        LoopData {
+                            loop_nonce: curr_loop_nonce.unwrap_or_default(),
+                            iter_count: curr_iter_count,
+                            allow_another_iteration: false,
+                        },
                     );
                     sg_data.last_loop_nonce =
                         (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
@@ -384,13 +396,23 @@ impl<'a> Dfir<'a> {
                 }
             }
 
-            if self.context.reschedule_loop_block.take() {
+            let reschedule = self.context.reschedule_loop_block.take();
+            let allow_another = self.context.allow_another_iteration.take();
+
+            if reschedule {
                 // Re-enqueue the subgraph.
                 self.context.schedule_deferred.push(sg_id);
                 self.context
                     .stratum_stack
                     .push(sg_data.loop_depth, sg_data.stratum);
             }
+            if reschedule || allow_another {
+                if let Some(loop_id) = sg_data.loop_id {
+                    self.loop_data.get_mut(loop_id).unwrap().allow_another_iteration = true;
+                }
+            }
+
+            work_done = true;
         }
         work_done
     }
@@ -1089,4 +1111,13 @@ impl<'a> SubgraphData<'a> {
             loop_depth,
         }
     }
+}
+
+pub(crate) struct LoopData {
+    /// Loop execution nonce.
+    loop_nonce: usize,
+    /// Count of iterations of this loop.
+    iter_count: usize,
+    /// If the loop has reason to do another iteration.
+    allow_another_iteration: bool,
 }
