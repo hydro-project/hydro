@@ -1,7 +1,6 @@
 //! Module for all [`Handoff`]-related items.
 
 pub mod handoff_list;
-mod lazy_vector;
 mod tee;
 mod vector;
 
@@ -9,7 +8,6 @@ use std::any::Any;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
-pub use lazy_vector::LazyVecHandoff;
 pub use tee::TeeingHandoff;
 pub use vector::VecHandoff;
 

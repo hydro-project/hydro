@@ -94,8 +94,6 @@ pub enum GraphNode {
         /// The span of the output out of the handoff.
         #[serde(skip, default = "Span::call_site")]
         dst_span: Span,
-        /// If the handoff is lazy (doesn't cause scheduling).
-        is_lazy: bool,
     },
 
     /// Module Boundary, used for importing modules. Only exists prior to partitioning.

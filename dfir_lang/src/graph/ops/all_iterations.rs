@@ -1,8 +1,8 @@
 use super::{FloType, OperatorCategory, OperatorConstraints, IDENTITY_WRITE_FN, RANGE_0, RANGE_1};
 
 // TODO(mingwei)
-pub const LAST_ITERATION: OperatorConstraints = OperatorConstraints {
-    name: "last_iteration",
+pub const ALL_ITERATIONS: OperatorConstraints = OperatorConstraints {
+    name: "all_iterations",
     categories: &[OperatorCategory::Unwindowing],
     hard_range_inn: RANGE_1,
     soft_range_inn: RANGE_1,
