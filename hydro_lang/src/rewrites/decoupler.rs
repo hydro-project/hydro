@@ -41,7 +41,7 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usiz
         );
         let f: syn::Expr = syn::parse_quote!(|b| (
             ClusterId::<hydro_lang::rewrites::decoupler::Decoupled>::from_raw(#ident),
-            b.clone()
+            b
         ));
         let mapped_node = HydroNode::Map {
             f: f.into(),
