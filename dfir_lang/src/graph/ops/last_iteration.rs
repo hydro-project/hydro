@@ -10,7 +10,7 @@ pub const LAST_ITERATION: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: RANGE_0,
-    type_args: RANGE_0,
+    type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: true,
     flo_type: Some(FloType::Unwindowing),

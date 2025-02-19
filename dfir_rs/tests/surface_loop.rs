@@ -293,7 +293,7 @@ pub fn test_flo_repeat_kmeans() {
                     -> [0]cj;
                 batch_centroids -> all_once() -> centroids;
 
-                centroids = union() -> identity::<[i32; 2]>() -> tee();
+                centroids = union() -> tee();
                 centroids -> [1]cj;
 
                 cj = cross_join_multiset()
@@ -324,7 +324,7 @@ pub fn test_flo_repeat_kmeans() {
             }
 
             centroids
-                -> last_iteration()
+                -> last_iteration::<[i32; 2]>()
                 -> for_each(|x| println!("XXX {:?}", x));
                 // -> sort()
                 // -> assert_eq([[-231, -118], [-103, 97], [168, -6]]);
