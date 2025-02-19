@@ -14,7 +14,6 @@ pub enum PartitionAttribute {
 #[cfg(feature = "build")]
 pub struct Partitioner {
     pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
-    pub num_original_nodes: usize, // Number of nodes at destination process before partitioning
     pub num_partitions: usize,
 }
 
@@ -25,7 +24,6 @@ pub struct Partitioned {}
 fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
     let Partitioner {
         nodes_to_partition,
-        num_original_nodes,
         num_partitions,
         ..
     } = partitioner;
@@ -40,7 +38,7 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
             PartitionAttribute::All() => {
                 syn::parse_quote!(|(orig_dest, item)| {
                     let orig_dest_id = orig_dest.raw_id;
-                    let new_dest_id = orig_dest_id + (#num_original_nodes * (item as usize % #num_partitions)) as u32;
+                    let new_dest_id = (orig_dest_id * #num_partitions as u32) + (item as usize % #num_partitions) as u32;
                     (
                         ClusterId::<hydro_lang::rewrites::partitioner::Partitioned>::from_raw(new_dest_id),
                         item.clone()
@@ -51,7 +49,7 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
                 let tuple_index_ident = syn::Index::from(*tuple_index);
                 syn::parse_quote!(|(orig_dest, tuple)| {
                     let orig_dest_id = orig_dest.raw_id;
-                    let new_dest_id = orig_dest_id + (#num_original_nodes * (tuple.#tuple_index_ident as usize % #num_partitions)) as u32;
+                    let new_dest_id = (orig_dest_id * #num_partitions as u32) + (tuple.#tuple_index_ident as usize % #num_partitions) as u32;
                     (
                         ClusterId::<hydro_lang::rewrites::partitioner::Partitioned>::from_raw(new_dest_id),
                         tuple.clone()
