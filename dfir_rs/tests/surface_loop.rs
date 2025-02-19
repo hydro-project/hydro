@@ -2,7 +2,7 @@ use dfir_rs::util::{collect_ready, iter_batches_stream};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
-#[multiplatform_test]
+#[multiplatform_test(test, env_tracing, wasm)]
 pub fn test_flo_syntax() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
 
