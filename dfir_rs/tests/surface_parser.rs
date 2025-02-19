@@ -246,6 +246,6 @@ pub fn test_flo_syntax() {
             users -> batch() -> flatten() -> [0]cp;
             messages -> batch() -> flatten() -> [1]cp;
             cp = cross_join() -> for_each(|(user, message)| println!("notify {} of {}", user, message));
-        }
+        };
     }
 }

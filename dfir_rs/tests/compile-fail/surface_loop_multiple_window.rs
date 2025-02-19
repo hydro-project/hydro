@@ -4,8 +4,8 @@ fn main() {
         loop {
             loop {
                 a -> batch() -> null();
-            }
-        }
+            };
+        };
     };
     df.run_available();
 }
