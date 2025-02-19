@@ -26,8 +26,8 @@ linkStyle default stroke:#aaa
 16v1[\"(16v1) <code>map(|(_centroid, (p, n)): (_, ([i32; 2], i32))| { [p[0] / n, p[1] / n] })</code>"/]:::pullClass
 17v1[\"(17v1) <code>next_iteration()</code>"/]:::pullClass
 18v1[\"(18v1) <code>inspect(|x| println!(&quot;centroid: {:?}&quot;, x))</code>"/]:::pullClass
-19v1[\"(19v1) <code>last_iteration::&lt;[i32; 2]&gt;()</code>"/]:::pullClass
-20v1[/"(20v1) <code>for_each(|x| println!(&quot;XXX {:?}&quot;, x))</code>"\]:::pushClass
+19v1[\"(19v1) <code>all_iterations()</code>"/]:::pullClass
+20v1[/"(20v1) <code>for_each(|x| result_send.send(x).unwrap())</code>"\]:::pushClass
 21v1["(21v1) <code>handoff</code>"]:::otherClass
 22v1["(22v1) <code>handoff</code>"]:::otherClass
 23v1["(23v1) <code>handoff</code>"]:::otherClass

@@ -280,6 +280,8 @@ pub fn test_flo_repeat_kmeans() {
     ];
     const CENTROIDS: &[[i32; 2]] = &[[-50, 0], [0, 0], [50, 0]];
 
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
+
     let mut df = dfir_syntax! {
         init_points = source_iter(POINTS) -> map(std::clone::Clone::clone);
         init_centroids = source_iter(CENTROIDS) -> map(std::clone::Clone::clone);
@@ -321,15 +323,19 @@ pub fn test_flo_repeat_kmeans() {
                     -> next_iteration()
                     -> inspect(|x| println!("centroid: {:?}", x))
                     -> centroids;
-            }
+            };
 
             centroids
-                -> last_iteration::<[i32; 2]>()
-                -> for_each(|x| println!("XXX {:?}", x));
-                // -> sort()
-                // -> assert_eq([[-231, -118], [-103, 97], [168, -6]]);
-        }
+                -> all_iterations()
+                -> for_each(|x| result_send.send(x).unwrap());
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
+
+    let mut result = collect_ready::<Vec<_>, _>(&mut result_recv);
+    let n = result.len();
+    let last = &mut result[n - 3..];
+    last.sort_unstable();
+    assert_eq!(&[[-231, -118], [-103, 97], [168, -6]], last);
 }

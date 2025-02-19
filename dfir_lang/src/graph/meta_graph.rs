@@ -856,21 +856,16 @@ impl DfirGraph {
                 &GraphNode::Handoff {
                     src_span,
                     dst_span,
-                    is_lazy,
-                } => Some((node_id, (src_span, dst_span), is_lazy)),
+                } => Some((node_id, (src_span, dst_span))),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
-            .map(|(node_id, (src_span, dst_span), is_lazy)| {
+            .map(|(node_id, (src_span, dst_span))| {
                 let ident_send = Ident::new(&format!("hoff_{:?}_send", node_id.data()), dst_span);
                 let ident_recv = Ident::new(&format!("hoff_{:?}_recv", node_id.data()), src_span);
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let mut hoff_name = Literal::string(&format!("handoff {:?}", node_id));
                 hoff_name.set_span(span);
-                let hoff_type = if is_lazy {
-                    quote_spanned! (span=> #root::scheduled::handoff::LazyVecHandoff<_>)
-                } else {
-                    quote_spanned! (span=> #root::scheduled::handoff::VecHandoff<_>)
-                };
+                let hoff_type = quote_spanned! (span=> #root::scheduled::handoff::VecHandoff<_>);
                 quote_spanned! {span=>
                     let (#ident_send, #ident_recv) =
                         #df.make_edge::<_, #hoff_type>(#hoff_name);

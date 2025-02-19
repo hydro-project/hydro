@@ -243,6 +243,7 @@ macro_rules! declare_ops {
     };
 }
 declare_ops![
+    all_iterations::ALL_ITERATIONS,
     all_once::ALL_ONCE,
     anti_join::ANTI_JOIN,
     anti_join_multiset::ANTI_JOIN_MULTISET,
@@ -279,7 +280,7 @@ declare_ops![
     fold_keyed::FOLD_KEYED,
     reduce_keyed::REDUCE_KEYED,
     repeat_n::REPEAT_N,
-    last_iteration::LAST_ITERATION,
+    // last_iteration::LAST_ITERATION,
     lattice_bimorphism::LATTICE_BIMORPHISM,
     _lattice_fold_batch::_LATTICE_FOLD_BATCH,
     lattice_fold::LATTICE_FOLD,
