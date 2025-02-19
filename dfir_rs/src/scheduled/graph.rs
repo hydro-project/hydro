@@ -306,12 +306,14 @@ impl<'a> Dfir<'a> {
                     // iteration count, then we need to increment the iteration count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
+                    let mut allow_iter = false;
                     let curr_iter_count = if let Some(&LoopData {
                         loop_nonce: _loop_loop_nonce,
                         iter_count: loop_iter_count,
                         allow_another_iteration,
                     }) = self.loop_data.get(loop_id)
                     {
+                        allow_iter = allow_another_iteration;
                         let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
 
                         // If the loop nonce is the same as the previous execution, then we are in
@@ -329,6 +331,7 @@ impl<'a> Dfir<'a> {
                                     );
                                     continue 'pop;
                                 }
+                                allow_iter = false;
                                 loop_iter_count + 1
                             } else {
                                 // Otherwise update the iteration count to match the loop.
@@ -351,7 +354,7 @@ impl<'a> Dfir<'a> {
                         LoopData {
                             loop_nonce: curr_loop_nonce.unwrap_or_default(),
                             iter_count: curr_iter_count,
-                            allow_another_iteration: false,
+                            allow_another_iteration: allow_iter,
                         },
                     );
                     sg_data.last_loop_nonce =
@@ -408,7 +411,10 @@ impl<'a> Dfir<'a> {
             }
             if reschedule || allow_another {
                 if let Some(loop_id) = sg_data.loop_id {
-                    self.loop_data.get_mut(loop_id).unwrap().allow_another_iteration = true;
+                    self.loop_data
+                        .get_mut(loop_id)
+                        .unwrap()
+                        .allow_another_iteration = true;
                 }
             }
 
