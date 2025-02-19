@@ -13,7 +13,8 @@ use syn::punctuated::Punctuated;
 use syn::{parse_quote_spanned, Expr, Token};
 
 use super::{
-    GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance, PortIndexValue,
+    GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
+    PortIndexValue,
 };
 use crate::diagnostic::Diagnostic;
 use crate::parse::{Operator, PortIndex};
@@ -277,6 +278,7 @@ declare_ops![
     fold_keyed::FOLD_KEYED,
     reduce_keyed::REDUCE_KEYED,
     repeat_n::REPEAT_N,
+    last_iteration::LAST_ITERATION,
     lattice_bimorphism::LATTICE_BIMORPHISM,
     _lattice_fold_batch::_LATTICE_FOLD_BATCH,
     lattice_fold::LATTICE_FOLD,
@@ -285,6 +287,7 @@ declare_ops![
     map::MAP,
     union::UNION,
     multiset_delta::MULTISET_DELTA,
+    next_iteration::NEXT_ITERATION,
     next_stratum::NEXT_STRATUM,
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
@@ -352,6 +355,8 @@ pub struct WriteContextArgs<'a> {
     pub subgraph_id: GraphSubgraphId,
     /// Node ID identifying this operator in the flat or partitioned graph meta-datastructure.
     pub node_id: GraphNodeId,
+    /// Loop ID in which this operator is contained, or `None` if not in a loop.
+    pub loop_id: Option<GraphLoopId>,
     /// The source span of this operator.
     pub op_span: Span,
     /// Tag for this operator appended to the generated identifier.
@@ -565,4 +570,6 @@ pub enum FloType {
     Windowing,
     /// An un-windowing operator, for moving data out of a loop context.
     Unwindowing,
+    /// Moves data into the next loop iteration within a loop context.
+    NextIteration,
 }

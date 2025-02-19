@@ -94,6 +94,8 @@ pub enum GraphNode {
         /// The span of the output out of the handoff.
         #[serde(skip, default = "Span::call_site")]
         dst_span: Span,
+        /// If the handoff is lazy (doesn't cause scheduling).
+        is_lazy: bool,
     },
 
     /// Module Boundary, used for importing modules. Only exists prior to partitioning.
@@ -131,7 +133,9 @@ impl GraphNode {
     pub fn span(&self) -> Span {
         match self {
             Self::Operator(op) => op.span(),
-            &Self::Handoff { src_span, dst_span } => src_span.join(dst_span).unwrap_or(src_span),
+            &Self::Handoff {
+                src_span, dst_span, ..
+            } => src_span.join(dst_span).unwrap_or(src_span),
             Self::ModuleBoundary { import_expr, .. } => *import_expr,
         }
     }
