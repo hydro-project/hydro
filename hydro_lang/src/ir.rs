@@ -1832,6 +1832,36 @@ impl<'a> HydroNode {
         }
     }
 
+    pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
+        match self {
+            HydroNode::Placeholder => {
+                panic!()
+            }
+            HydroNode::Source { source, .. } => {
+                match source {
+                    HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
+                    HydroSource::ExternalNetwork() | HydroSource::Spin() => {},
+                }
+            }
+            HydroNode::CycleSource { .. } | HydroNode::Tee { .. } | HydroNode::Persist { .. } | HydroNode::Unpersist { .. } | HydroNode::Delta { .. } | HydroNode::Chain { .. } | HydroNode::CrossProduct { .. } | HydroNode::CrossSingleton { .. } | HydroNode::Join { .. } | HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } | HydroNode::DeferTick { .. } | HydroNode::Enumerate { .. } | HydroNode::Unique { .. } | HydroNode::Sort { .. } => {}
+            HydroNode::Map { f, .. } | HydroNode::FlatMap { f, .. } | HydroNode::Filter { f, .. } | HydroNode::FilterMap { f, .. } | HydroNode::Inspect { f, .. } | HydroNode::Reduce { f, .. } | HydroNode::ReduceKeyed { f, .. } => {
+                transform(f);
+            }
+            HydroNode::Fold { init, acc, .. } | HydroNode::FoldKeyed { init, acc, .. } => {
+                transform(init);
+                transform(acc);
+            }
+            HydroNode::Network { serialize_fn, deserialize_fn, .. } => {
+                if let Some(serialize_fn) = serialize_fn {
+                    transform(serialize_fn);
+                }
+                if let Some(deserialize_fn) = deserialize_fn {
+                    transform(deserialize_fn);
+                }
+            }
+        }
+    }
+
     pub fn metadata(&self) -> &HydroNodeMetadata {
         match self {
             HydroNode::Placeholder => {
