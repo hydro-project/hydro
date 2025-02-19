@@ -3,7 +3,7 @@ fn main() {
         loop {
             a = identity() -> identity() -> identity() -> identity();
             a -> a;
-        }
+        };
     };
     df.run_available();
 }

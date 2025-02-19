@@ -227,6 +227,7 @@ pub struct LoopStatement {
     pub ident: Option<Ident>,
     pub brace_token: Brace,
     pub statements: Vec<DfirStatement>,
+    pub semi_token: Token![;],
 }
 impl Parse for LoopStatement {
     fn parse(input: ParseStream) -> syn::Result<Self> {
@@ -238,11 +239,13 @@ impl Parse for LoopStatement {
         while !content.is_empty() {
             statements.push(content.parse()?);
         }
+        let semi_token = input.parse()?;
         Ok(Self {
             loop_token,
             ident,
             brace_token,
             statements,
+            semi_token,
         })
     }
 }
@@ -255,6 +258,7 @@ impl ToTokens for LoopStatement {
                 statement.to_tokens(tokens);
             }
         });
+        self.semi_token.to_tokens(tokens);
     }
 }
 

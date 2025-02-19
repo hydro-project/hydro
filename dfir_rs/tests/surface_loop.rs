@@ -15,7 +15,7 @@ pub fn test_flo_syntax() {
             cp = cross_join()
                 -> map(|item| (context.loop_iter_count(), item))
                 -> for_each(|x| result_send.send(x).unwrap());
-        }
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
@@ -67,8 +67,8 @@ pub fn test_flo_nested() {
                     -> all_once()
                     -> map(|item| (context.current_tick().0, item))
                     -> for_each(|x| result_send.send(x).unwrap());
-            }
-        }
+            };
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
@@ -119,8 +119,8 @@ pub fn test_flo_repeat_n() {
                 cp -> repeat_n(2)
                     -> inspect(|x| println!("{:?} {}", x, context.loop_iter_count()))
                     -> for_each(|x| result_send.send(x).unwrap());
-            }
-        }
+            };
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
@@ -182,9 +182,9 @@ pub fn test_flo_repeat_n_nested() {
                     usrs3 -> repeat_n(3)
                         -> inspect(|x| println!("B {:?} {}", x, context.loop_iter_count()))
                         -> for_each(|x| result_send.send(x).unwrap());
-                }
-            }
-        }
+                };
+            };
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
@@ -215,14 +215,14 @@ pub fn test_flo_repeat_n_multiple_nested() {
                     usrs3 -> repeat_n(3)
                     -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iter_count()))
                     -> for_each(|x| result1_send.send(x).unwrap());
-            }
-            loop {
-                usrs3 -> repeat_n(3)
-                    -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iter_count()))
-                    -> for_each(|x| result2_send.send(x).unwrap());
-                }
-            }
-        }
+                };
+                loop {
+                    usrs3 -> repeat_n(3)
+                        -> inspect(|x| println!("{} {:?} {}", line!(), x, context.loop_iter_count()))
+                        -> for_each(|x| result2_send.send(x).unwrap());
+                };
+            };
+        };
     };
     assert_graphvis_snapshots!(df);
     df.run_available();
