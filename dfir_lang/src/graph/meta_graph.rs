@@ -853,10 +853,7 @@ impl DfirGraph {
             .iter()
             .filter_map(|(node_id, node)| match node {
                 GraphNode::Operator(_) => None,
-                &GraphNode::Handoff {
-                    src_span,
-                    dst_span,
-                } => Some((node_id, (src_span, dst_span))),
+                &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
             .map(|(node_id, (src_span, dst_span))| {
