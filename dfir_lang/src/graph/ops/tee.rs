@@ -1,8 +1,8 @@
 use quote::{quote_spanned, ToTokens};
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1, RANGE_ANY,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    RANGE_ANY,
 };
 
 /// > 1 input stream, *n* output streams
@@ -35,6 +35,7 @@ pub const TEE: OperatorConstraints = OperatorConstraints {
     write_fn: |&WriteContextArgs {
                    root,
                    op_span,
+                   op_name,
                    ident,
                    inputs,
                    outputs,
@@ -55,7 +56,15 @@ pub const TEE: OperatorConstraints = OperatorConstraints {
                 let #ident = #tees;
             }
         } else {
+            // Pull.
             assert_eq!(1, inputs.len());
+            assert_eq!(
+                1,
+                outputs.len(),
+                "`{}()` marked as pull should have exactly one output, actually has {}. This is a bug.",
+                op_name,
+                outputs.len()
+            );
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = #input;
