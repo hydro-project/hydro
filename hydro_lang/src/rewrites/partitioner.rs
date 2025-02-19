@@ -23,6 +23,33 @@ pub struct Partitioner {
 // Placeholder ClusterId type
 pub struct Partitioned {}
 
+/// Replace CLUSTER_SELF_ID with the ID of the original node the partition is assigned to
+#[cfg(feature = "build")]
+pub struct ClusterSelfIdReplace {
+    pub num_partitions: usize,
+}
+
+#[cfg(feature = "build")]
+impl VisitMut for ClusterSelfIdReplace {
+    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
+        if let syn::Expr::Path(path_expr) = expr {
+            for segment in path_expr.path.segments.iter_mut() {
+                let ident = segment.ident.to_string();
+                if ident.starts_with("__hydro_lang_cluster_self_id_") {
+                    let num_partitions = self.num_partitions;
+                    let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
+                    *expr = syn::parse_quote!({
+                        #expr_content % #num_partitions as u32
+                    });
+                    println!("Partitioning: Replaced CLUSTER_SELF_ID");
+                    return;
+                }
+            }
+        }
+        visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
 /// Don't expose partition members to the cluster
 #[cfg(feature = "build")]
 pub struct ClusterMembersReplace {
@@ -42,10 +69,13 @@ impl VisitMut for ClusterMembersReplace {
                                     let ident = segment.ident.to_string();
                                     if ident.starts_with("__hydro_lang_cluster_ids_") {
                                         let num_partitions = self.num_partitions;
-                                        let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
-                                        *expr = syn::parse_quote! { 
-                                            &#expr_content[0..#expr_content.len() / #num_partitions]
-                                        };
+                                        let expr_content =
+                                            std::mem::replace(expr, syn::Expr::PLACEHOLDER);
+                                        *expr = syn::parse_quote!({
+                                            let all_ids = #expr_content;
+                                            &all_ids[0..all_ids.len() / #num_partitions]
+                                        });
+                                        println!("Partitioning: Replaced cluster members");
                                         // Don't need to visit children
                                         return;
                                     }
@@ -61,18 +91,25 @@ impl VisitMut for ClusterMembersReplace {
 }
 
 #[cfg(feature = "build")]
+fn replace_membership_info(node: &mut HydroNode, num_partitions: usize) {
+    node.visit_debug_expr(|expr| {
+        let mut visitor = ClusterMembersReplace { num_partitions };
+        visitor.visit_expr_mut(&mut expr.0);
+    });
+    node.visit_debug_expr(|expr| {
+        let mut visitor = ClusterSelfIdReplace { num_partitions };
+        visitor.visit_expr_mut(&mut expr.0);
+    });
+}
+
+#[cfg(feature = "build")]
 fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
     let Partitioner {
         nodes_to_partition,
         num_partitions,
     } = partitioner;
 
-    node.visit_debug_expr(|expr| {
-        let mut visitor = ClusterMembersReplace {
-            num_partitions: *num_partitions,
-        };
-        visitor.visit_expr_mut(&mut expr.0);
-    });
+    replace_membership_info(node, *num_partitions);
 
     if let Some(partition_attr) = nodes_to_partition.get(&next_stmt_id) {
         println!("Partitioning node {} {}", next_stmt_id, node.print_root());
