@@ -51,14 +51,10 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
     let cluster = flow.cluster();
 
     let numbers = process.source_iter(q!(0..5));
-    let ids = process
-        .source_iter(cluster.members())
-        .map(q!(|&id| id))
-        .inspect(q!(|id| println!("ids: {:?}", id)));
+    let ids = process.source_iter(cluster.members()).map(q!(|&id| id));
 
     ids.cross_product(numbers)
         .map(q!(|(id, n)| (id, (id, n))))
-        .inspect(q!(|n| println!("node sending: {:?}", n)))
         .send_bincode(&cluster)
         .inspect(q!(move |n| println!(
             "cluster received: {:?} (self cluster id: {})",

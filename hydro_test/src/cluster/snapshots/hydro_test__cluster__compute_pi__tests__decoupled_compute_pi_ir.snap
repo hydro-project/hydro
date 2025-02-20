@@ -42,10 +42,10 @@ expression: built.ir()
                                             ),
                                             instantiate_fn: <network instantiate>,
                                             deserialize_fn: Some(
-                                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < hydro_lang :: rewrites :: decoupler :: Decoupled > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < bool > (& b) . unwrap ()) },
+                                                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < bool > (& b) . unwrap ()) },
                                             ),
                                             input: Map {
-                                                f: | b | (ClusterId :: < hydro_lang :: rewrites :: decoupler :: Decoupled > :: from_raw (__hydro_lang_cluster_self_id_0) , b . clone ()),
+                                                f: | b | (ClusterId :: < () > :: from_raw (__hydro_lang_cluster_self_id_0) , b),
                                                 input: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
                                                     input: Map {
