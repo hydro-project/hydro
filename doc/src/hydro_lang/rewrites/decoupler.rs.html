@@ -83,37 +83,18 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a>
-<a href="#89" id="89">89</a>
-<a href="#90" id="90">90</a>
-<a href="#91" id="91">91</a>
-<a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a>
-<a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span>proc_macro2::Span;
+<a href="#85" id="85">85</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Span;
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::location::LocationId;
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
+<span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::location::LocationId;
+<span class="kw">use </span><span class="kw">crate</span>::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">pub struct </span>Decoupler {
+<span class="kw">pub struct </span>Decoupler {
     <span class="kw">pub </span>nodes_to_decouple: Vec&lt;usize&gt;,
     <span class="kw">pub </span>new_location: LocationId,
 }
 
-<span class="comment">// Placeholder ClusterId type
-</span><span class="kw">pub struct </span>Decoupled {}
-
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">fn </span>decouple_node(node: <span class="kw-2">&amp;mut </span>HydroNode, decoupler: <span class="kw-2">&amp;</span>Decoupler, next_stmt_id: usize) {
+<span class="kw">fn </span>decouple_node(node: <span class="kw-2">&amp;mut </span>HydroNode, decoupler: <span class="kw-2">&amp;</span>Decoupler, next_stmt_id: usize) {
     <span class="kw">let </span>metadata = node.metadata().clone();
     <span class="kw">if </span>decoupler.nodes_to_decouple.contains(<span class="kw-2">&amp;</span>next_stmt_id) {
         <span class="macro">println!</span>(<span class="string">"Decoupling node {} {}"</span>, next_stmt_id, node.print_root());
@@ -135,8 +116,8 @@
             Span::call_site(),
         );
         <span class="kw">let </span>f: syn::Expr = <span class="macro">syn::parse_quote!</span>(|b| (
-            ClusterId::&lt;hydro_lang::rewrites::decoupler::Decoupled&gt;::from_raw(#ident),
-            b.clone()
+            ClusterId::&lt;()&gt;::from_raw(#ident),
+            b
         ));
         <span class="kw">let </span>mapped_node = HydroNode::Map {
             f: f.into(),
@@ -158,7 +139,7 @@
                 .map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building(),
             deserialize_fn: <span class="prelude-val">Some</span>(deserialize_bincode_with_type(
-                <span class="prelude-val">Some</span>(stageleft::quote_type::&lt;Decoupled&gt;()),
+                <span class="prelude-val">Some</span>(stageleft::quote_type::&lt;()&gt;()),
                 output_type.clone(),
             ))
             .map(|e| e.into()),
@@ -178,7 +159,6 @@
 }
 
 <span class="doccomment">/// Limitations: Cannot decouple across a cycle. Can only decouple clusters (not processes).
-</span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">pub fn </span>decouple(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], decoupler: <span class="kw-2">&amp;</span>Decoupler) {
     traverse_dfir(
         ir,

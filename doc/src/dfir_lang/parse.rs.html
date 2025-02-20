@@ -613,7 +613,11 @@
 <a href="#612" id="612">612</a>
 <a href="#613" id="613">613</a>
 <a href="#614" id="614">614</a>
-<a href="#615" id="615">615</a></pre></div><pre class="rust"><code><span class="doccomment">//! AST for surface syntax, modelled on [`syn`]'s ASTs.
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a></pre></div><pre class="rust"><code><span class="doccomment">//! AST for surface syntax, modelled on [`syn`]'s ASTs.
 </span><span class="attr">#![allow(clippy::allow_attributes, missing_docs, reason = <span class="string">"internal use"</span>)]
 
 </span><span class="kw">use </span>std::fmt::Debug;
@@ -842,6 +846,7 @@
     <span class="kw">pub </span>ident: <span class="prelude-ty">Option</span>&lt;Ident&gt;,
     <span class="kw">pub </span>brace_token: Brace,
     <span class="kw">pub </span>statements: Vec&lt;DfirStatement&gt;,
+    <span class="kw">pub </span>semi_token: <span class="macro">Token!</span>[;],
 }
 <span class="kw">impl </span>Parse <span class="kw">for </span>LoopStatement {
     <span class="kw">fn </span>parse(input: ParseStream) -&gt; syn::Result&lt;<span class="self">Self</span>&gt; {
@@ -853,11 +858,13 @@
         <span class="kw">while </span>!content.is_empty() {
             statements.push(content.parse()<span class="question-mark">?</span>);
         }
+        <span class="kw">let </span>semi_token = input.parse()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
             loop_token,
             ident,
             brace_token,
             statements,
+            semi_token,
         })
     }
 }
@@ -870,6 +877,7 @@
                 statement.to_tokens(tokens);
             }
         });
+        <span class="self">self</span>.semi_token.to_tokens(tokens);
     }
 }
 

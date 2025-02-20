@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["decouple"],"struct":["Decoupled","Decoupler"]};
+window.SIDEBAR_ITEMS = {"fn":["decouple"],"struct":["Decoupler"]};

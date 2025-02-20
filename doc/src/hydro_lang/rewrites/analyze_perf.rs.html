@@ -105,28 +105,14 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span>std::collections::HashMap;
+<a href="#107" id="107">107</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span>regex::Regex;
+<span class="kw">use </span>regex::Regex;
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
+<span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
+<span class="kw">pub use </span><span class="kw">crate</span>::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
 
-<span class="kw">pub const </span>CPU_USAGE_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"CPU:"</span>;
-
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">pub fn </span>parse_cpu_usage(measurement: String) -&gt; f64 {
+<span class="kw">pub fn </span>parse_cpu_usage(measurement: String) -&gt; f64 {
     <span class="kw">let </span>regex = Regex::new(<span class="string">r"Total (\d+\.\d+)%"</span>).unwrap();
     regex
         .captures_iter(<span class="kw-2">&amp;</span>measurement)
@@ -137,7 +123,6 @@
 
 <span class="doccomment">/// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
-</span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">fn </span>parse_perf(file: String) -&gt; HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>total_samples = <span class="number">0f64</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>samples_per_operator = HashMap::new();
@@ -179,8 +164,7 @@
     samples_per_operator
 }
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">fn </span>analyze_perf_leaf(
+<span class="kw">fn </span>analyze_perf_leaf(
     leaf: <span class="kw-2">&amp;mut </span>HydroLeaf,
     id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
     next_stmt_id: usize,
@@ -198,8 +182,7 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">fn </span>analyze_perf_node(
+<span class="kw">fn </span>analyze_perf_node(
     node: <span class="kw-2">&amp;mut </span>HydroNode,
     id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
     next_stmt_id: usize,
@@ -217,8 +200,7 @@
     }
 }
 
-<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-</span><span class="kw">pub fn </span>analyze_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
+<span class="kw">pub fn </span>analyze_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
     <span class="kw">let </span>id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(
         ir,

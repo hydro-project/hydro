@@ -3,9 +3,19 @@
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
-<a href="#5" id="5">5</a></pre></div><pre class="rust"><code><span class="kw">pub mod </span>analyze_perf;
-<span class="kw">pub mod </span>decoupler;
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>analyze_perf;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>decoupler;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>partitioner;
 <span class="kw">pub mod </span>persist_pullup;
-<span class="kw">pub mod </span>print_id;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>print_id;
 <span class="kw">pub mod </span>properties;
 </code></pre></div></section></main></body></html>

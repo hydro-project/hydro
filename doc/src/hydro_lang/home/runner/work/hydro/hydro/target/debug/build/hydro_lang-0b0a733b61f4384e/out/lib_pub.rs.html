@@ -9244,7 +9244,206 @@
 <a href="#9243" id="9243">9243</a>
 <a href="#9244" id="9244">9244</a>
 <a href="#9245" id="9245">9245</a>
-<a href="#9246" id="9246">9246</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
+<a href="#9246" id="9246">9246</a>
+<a href="#9247" id="9247">9247</a>
+<a href="#9248" id="9248">9248</a>
+<a href="#9249" id="9249">9249</a>
+<a href="#9250" id="9250">9250</a>
+<a href="#9251" id="9251">9251</a>
+<a href="#9252" id="9252">9252</a>
+<a href="#9253" id="9253">9253</a>
+<a href="#9254" id="9254">9254</a>
+<a href="#9255" id="9255">9255</a>
+<a href="#9256" id="9256">9256</a>
+<a href="#9257" id="9257">9257</a>
+<a href="#9258" id="9258">9258</a>
+<a href="#9259" id="9259">9259</a>
+<a href="#9260" id="9260">9260</a>
+<a href="#9261" id="9261">9261</a>
+<a href="#9262" id="9262">9262</a>
+<a href="#9263" id="9263">9263</a>
+<a href="#9264" id="9264">9264</a>
+<a href="#9265" id="9265">9265</a>
+<a href="#9266" id="9266">9266</a>
+<a href="#9267" id="9267">9267</a>
+<a href="#9268" id="9268">9268</a>
+<a href="#9269" id="9269">9269</a>
+<a href="#9270" id="9270">9270</a>
+<a href="#9271" id="9271">9271</a>
+<a href="#9272" id="9272">9272</a>
+<a href="#9273" id="9273">9273</a>
+<a href="#9274" id="9274">9274</a>
+<a href="#9275" id="9275">9275</a>
+<a href="#9276" id="9276">9276</a>
+<a href="#9277" id="9277">9277</a>
+<a href="#9278" id="9278">9278</a>
+<a href="#9279" id="9279">9279</a>
+<a href="#9280" id="9280">9280</a>
+<a href="#9281" id="9281">9281</a>
+<a href="#9282" id="9282">9282</a>
+<a href="#9283" id="9283">9283</a>
+<a href="#9284" id="9284">9284</a>
+<a href="#9285" id="9285">9285</a>
+<a href="#9286" id="9286">9286</a>
+<a href="#9287" id="9287">9287</a>
+<a href="#9288" id="9288">9288</a>
+<a href="#9289" id="9289">9289</a>
+<a href="#9290" id="9290">9290</a>
+<a href="#9291" id="9291">9291</a>
+<a href="#9292" id="9292">9292</a>
+<a href="#9293" id="9293">9293</a>
+<a href="#9294" id="9294">9294</a>
+<a href="#9295" id="9295">9295</a>
+<a href="#9296" id="9296">9296</a>
+<a href="#9297" id="9297">9297</a>
+<a href="#9298" id="9298">9298</a>
+<a href="#9299" id="9299">9299</a>
+<a href="#9300" id="9300">9300</a>
+<a href="#9301" id="9301">9301</a>
+<a href="#9302" id="9302">9302</a>
+<a href="#9303" id="9303">9303</a>
+<a href="#9304" id="9304">9304</a>
+<a href="#9305" id="9305">9305</a>
+<a href="#9306" id="9306">9306</a>
+<a href="#9307" id="9307">9307</a>
+<a href="#9308" id="9308">9308</a>
+<a href="#9309" id="9309">9309</a>
+<a href="#9310" id="9310">9310</a>
+<a href="#9311" id="9311">9311</a>
+<a href="#9312" id="9312">9312</a>
+<a href="#9313" id="9313">9313</a>
+<a href="#9314" id="9314">9314</a>
+<a href="#9315" id="9315">9315</a>
+<a href="#9316" id="9316">9316</a>
+<a href="#9317" id="9317">9317</a>
+<a href="#9318" id="9318">9318</a>
+<a href="#9319" id="9319">9319</a>
+<a href="#9320" id="9320">9320</a>
+<a href="#9321" id="9321">9321</a>
+<a href="#9322" id="9322">9322</a>
+<a href="#9323" id="9323">9323</a>
+<a href="#9324" id="9324">9324</a>
+<a href="#9325" id="9325">9325</a>
+<a href="#9326" id="9326">9326</a>
+<a href="#9327" id="9327">9327</a>
+<a href="#9328" id="9328">9328</a>
+<a href="#9329" id="9329">9329</a>
+<a href="#9330" id="9330">9330</a>
+<a href="#9331" id="9331">9331</a>
+<a href="#9332" id="9332">9332</a>
+<a href="#9333" id="9333">9333</a>
+<a href="#9334" id="9334">9334</a>
+<a href="#9335" id="9335">9335</a>
+<a href="#9336" id="9336">9336</a>
+<a href="#9337" id="9337">9337</a>
+<a href="#9338" id="9338">9338</a>
+<a href="#9339" id="9339">9339</a>
+<a href="#9340" id="9340">9340</a>
+<a href="#9341" id="9341">9341</a>
+<a href="#9342" id="9342">9342</a>
+<a href="#9343" id="9343">9343</a>
+<a href="#9344" id="9344">9344</a>
+<a href="#9345" id="9345">9345</a>
+<a href="#9346" id="9346">9346</a>
+<a href="#9347" id="9347">9347</a>
+<a href="#9348" id="9348">9348</a>
+<a href="#9349" id="9349">9349</a>
+<a href="#9350" id="9350">9350</a>
+<a href="#9351" id="9351">9351</a>
+<a href="#9352" id="9352">9352</a>
+<a href="#9353" id="9353">9353</a>
+<a href="#9354" id="9354">9354</a>
+<a href="#9355" id="9355">9355</a>
+<a href="#9356" id="9356">9356</a>
+<a href="#9357" id="9357">9357</a>
+<a href="#9358" id="9358">9358</a>
+<a href="#9359" id="9359">9359</a>
+<a href="#9360" id="9360">9360</a>
+<a href="#9361" id="9361">9361</a>
+<a href="#9362" id="9362">9362</a>
+<a href="#9363" id="9363">9363</a>
+<a href="#9364" id="9364">9364</a>
+<a href="#9365" id="9365">9365</a>
+<a href="#9366" id="9366">9366</a>
+<a href="#9367" id="9367">9367</a>
+<a href="#9368" id="9368">9368</a>
+<a href="#9369" id="9369">9369</a>
+<a href="#9370" id="9370">9370</a>
+<a href="#9371" id="9371">9371</a>
+<a href="#9372" id="9372">9372</a>
+<a href="#9373" id="9373">9373</a>
+<a href="#9374" id="9374">9374</a>
+<a href="#9375" id="9375">9375</a>
+<a href="#9376" id="9376">9376</a>
+<a href="#9377" id="9377">9377</a>
+<a href="#9378" id="9378">9378</a>
+<a href="#9379" id="9379">9379</a>
+<a href="#9380" id="9380">9380</a>
+<a href="#9381" id="9381">9381</a>
+<a href="#9382" id="9382">9382</a>
+<a href="#9383" id="9383">9383</a>
+<a href="#9384" id="9384">9384</a>
+<a href="#9385" id="9385">9385</a>
+<a href="#9386" id="9386">9386</a>
+<a href="#9387" id="9387">9387</a>
+<a href="#9388" id="9388">9388</a>
+<a href="#9389" id="9389">9389</a>
+<a href="#9390" id="9390">9390</a>
+<a href="#9391" id="9391">9391</a>
+<a href="#9392" id="9392">9392</a>
+<a href="#9393" id="9393">9393</a>
+<a href="#9394" id="9394">9394</a>
+<a href="#9395" id="9395">9395</a>
+<a href="#9396" id="9396">9396</a>
+<a href="#9397" id="9397">9397</a>
+<a href="#9398" id="9398">9398</a>
+<a href="#9399" id="9399">9399</a>
+<a href="#9400" id="9400">9400</a>
+<a href="#9401" id="9401">9401</a>
+<a href="#9402" id="9402">9402</a>
+<a href="#9403" id="9403">9403</a>
+<a href="#9404" id="9404">9404</a>
+<a href="#9405" id="9405">9405</a>
+<a href="#9406" id="9406">9406</a>
+<a href="#9407" id="9407">9407</a>
+<a href="#9408" id="9408">9408</a>
+<a href="#9409" id="9409">9409</a>
+<a href="#9410" id="9410">9410</a>
+<a href="#9411" id="9411">9411</a>
+<a href="#9412" id="9412">9412</a>
+<a href="#9413" id="9413">9413</a>
+<a href="#9414" id="9414">9414</a>
+<a href="#9415" id="9415">9415</a>
+<a href="#9416" id="9416">9416</a>
+<a href="#9417" id="9417">9417</a>
+<a href="#9418" id="9418">9418</a>
+<a href="#9419" id="9419">9419</a>
+<a href="#9420" id="9420">9420</a>
+<a href="#9421" id="9421">9421</a>
+<a href="#9422" id="9422">9422</a>
+<a href="#9423" id="9423">9423</a>
+<a href="#9424" id="9424">9424</a>
+<a href="#9425" id="9425">9425</a>
+<a href="#9426" id="9426">9426</a>
+<a href="#9427" id="9427">9427</a>
+<a href="#9428" id="9428">9428</a>
+<a href="#9429" id="9429">9429</a>
+<a href="#9430" id="9430">9430</a>
+<a href="#9431" id="9431">9431</a>
+<a href="#9432" id="9432">9432</a>
+<a href="#9433" id="9433">9433</a>
+<a href="#9434" id="9434">9434</a>
+<a href="#9435" id="9435">9435</a>
+<a href="#9436" id="9436">9436</a>
+<a href="#9437" id="9437">9437</a>
+<a href="#9438" id="9438">9438</a>
+<a href="#9439" id="9439">9439</a>
+<a href="#9440" id="9440">9440</a>
+<a href="#9441" id="9441">9441</a>
+<a href="#9442" id="9442">9442</a>
+<a href="#9443" id="9443">9443</a>
+<a href="#9444" id="9444">9444</a>
+<a href="#9445" id="9445">9445</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
 <span class="kw">pub use </span>stageleft::q;
 <span class="attr">#[doc(hidden)]
 </span><span class="kw">pub mod </span>runtime_support {
@@ -9258,9 +9457,7 @@
         <span class="attr">#[cfg(feature = <span class="string">"runtime_measure"</span>)]
         #[cfg(target_os = <span class="string">"linux"</span>)]
         </span><span class="kw">pub use </span>procfs::WithCurrentSystemInfo;
-        <span class="attr">#[cfg(feature = <span class="string">"runtime_measure"</span>)]
-        #[cfg(target_os = <span class="string">"linux"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::rewrites::analyze_perf::CPU_USAGE_PREFIX;
+        <span class="kw">pub use </span><span class="kw">crate</span>::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
         <span class="attr">#[cfg(not(feature = <span class="string">"runtime_measure"</span>))]
         </span><span class="kw">pub async fn </span>run(flow: Dfir&lt;<span class="lifetime">'_</span>&gt;) {
             dfir_rs::util::deploy::launch_flow(flow).<span class="kw">await</span>;
@@ -17597,6 +17794,56 @@
                 }
             }
         }
+        <span class="kw">pub fn </span>visit_debug_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>transform: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>DebugExpr)) {
+            <span class="kw">match </span><span class="self">self </span>{
+                HydroNode::Placeholder =&gt; <span class="macro">panic!</span>(),
+                HydroNode::Source { source, .. } =&gt; {
+                    <span class="kw">match </span>source {
+                        HydroSource::Stream(expr) | HydroSource::Iter(expr) =&gt; {
+                            transform(expr)
+                        }
+                        HydroSource::ExternalNetwork() | HydroSource::Spin() =&gt; {}
+                    }
+                }
+                HydroNode::CycleSource { .. }
+                | HydroNode::Tee { .. }
+                | HydroNode::Persist { .. }
+                | HydroNode::Unpersist { .. }
+                | HydroNode::Delta { .. }
+                | HydroNode::Chain { .. }
+                | HydroNode::CrossProduct { .. }
+                | HydroNode::CrossSingleton { .. }
+                | HydroNode::Join { .. }
+                | HydroNode::Difference { .. }
+                | HydroNode::AntiJoin { .. }
+                | HydroNode::DeferTick { .. }
+                | HydroNode::Enumerate { .. }
+                | HydroNode::Unique { .. }
+                | HydroNode::Sort { .. } =&gt; {}
+                HydroNode::Map { f, .. }
+                | HydroNode::FlatMap { f, .. }
+                | HydroNode::Filter { f, .. }
+                | HydroNode::FilterMap { f, .. }
+                | HydroNode::Inspect { f, .. }
+                | HydroNode::Reduce { f, .. }
+                | HydroNode::ReduceKeyed { f, .. } =&gt; {
+                    transform(f);
+                }
+                HydroNode::Fold { init, acc, .. }
+                | HydroNode::FoldKeyed { init, acc, .. } =&gt; {
+                    transform(init);
+                    transform(acc);
+                }
+                HydroNode::Network { serialize_fn, deserialize_fn, .. } =&gt; {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_fn) = serialize_fn {
+                        transform(serialize_fn);
+                    }
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_fn) = deserialize_fn {
+                        transform(deserialize_fn);
+                    }
+                }
+            }
+        }
         <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroNodeMetadata {
             <span class="kw">match </span><span class="self">self </span>{
                 HydroNode::Placeholder =&gt; <span class="macro">panic!</span>(),
@@ -17919,16 +18166,13 @@
     }
 }
 <span class="kw">pub mod </span>rewrites {
-    <span class="kw">pub mod </span>analyze_perf {
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span>std::collections::HashMap;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span>regex::Regex;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
-        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>parse_cpu_usage(measurement: String) -&gt; f64 {
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>analyze_perf {
+        <span class="kw">pub use </span>std::collections::HashMap;
+        <span class="kw">pub use </span>regex::Regex;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
+        <span class="kw">pub fn </span>parse_cpu_usage(measurement: String) -&gt; f64 {
             <span class="kw">let </span>regex = Regex::new(<span class="string">r"Total (\d+\.\d+)%"</span>).unwrap();
             regex
                 .captures_iter(<span class="kw-2">&amp;</span>measurement)
@@ -17938,7 +18182,6 @@
         }
         <span class="doccomment">/// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
         /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
-        </span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
         </span><span class="kw">pub fn </span>parse_perf(file: String) -&gt; HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt; {
             <span class="kw">let </span><span class="kw-2">mut </span>total_samples = <span class="number">0f64</span>;
             <span class="kw">let </span><span class="kw-2">mut </span>samples_per_operator = HashMap::new();
@@ -17975,8 +18218,7 @@
                 });
             samples_per_operator
         }
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>analyze_perf_leaf(
+        <span class="kw">pub fn </span>analyze_perf_leaf(
             leaf: <span class="kw-2">&amp;mut </span>HydroLeaf,
             id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
             next_stmt_id: usize,
@@ -17993,8 +18235,7 @@
                 }
             }
         }
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>analyze_perf_node(
+        <span class="kw">pub fn </span>analyze_perf_node(
             node: <span class="kw-2">&amp;mut </span>HydroNode,
             id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
             next_stmt_id: usize,
@@ -18011,8 +18252,7 @@
                 }
             }
         }
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>analyze_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
+        <span class="kw">pub fn </span>analyze_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
             <span class="kw">let </span>id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
             traverse_dfir(
                 ir,
@@ -18025,22 +18265,16 @@
             );
         }
     }
-    <span class="kw">pub mod </span>decoupler {
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span>proc_macro2::Span;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::LocationId;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::stream::{
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>decoupler {
+        <span class="kw">pub use </span>proc_macro2::Span;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::location::LocationId;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::stream::{
             deserialize_bincode_with_type, serialize_bincode_with_type,
         };
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::rewrites::decoupler::Decoupler;
-        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::decoupler::Decoupled;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>decouple_node(
+        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::decoupler::Decoupler;
+        <span class="kw">pub fn </span>decouple_node(
             node: <span class="kw-2">&amp;mut </span>HydroNode,
             decoupler: <span class="kw-2">&amp;</span>Decoupler,
             next_stmt_id: usize,
@@ -18064,8 +18298,7 @@
                     Span::call_site(),
                 );
                 <span class="kw">let </span>f: syn::Expr = <span class="macro">syn::parse_quote!</span>(
-                    | b | (ClusterId::&lt; hydro_lang::rewrites::decoupler::Decoupled
-                    &gt;::from_raw(# ident), b.clone())
+                    | b | (ClusterId::&lt; () &gt;::from_raw(# ident), b)
                 );
                 <span class="kw">let </span>mapped_node = HydroNode::Map {
                     f: f.into(),
@@ -18088,7 +18321,7 @@
                     instantiate_fn: DebugInstantiate::Building(),
                     deserialize_fn: <span class="prelude-val">Some</span>(
                             deserialize_bincode_with_type(
-                                <span class="prelude-val">Some</span>(stageleft::quote_type::&lt;Decoupled&gt;()),
+                                <span class="prelude-val">Some</span>(stageleft::quote_type::&lt;()&gt;()),
                                 output_type.clone(),
                             ),
                         )
@@ -18106,13 +18339,181 @@
             }
         }
         <span class="doccomment">/// Limitations: Cannot decouple across a cycle. Can only decouple clusters (not processes).
-        </span><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
         </span><span class="kw">pub fn </span>decouple(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], decoupler: <span class="kw-2">&amp;</span>Decoupler) {
             traverse_dfir(
                 ir,
                 |<span class="kw">_</span>, <span class="kw">_</span>| {},
                 |node, next_stmt_id| {
                     decouple_node(node, decoupler, next_stmt_id);
+                },
+            );
+        }
+    }
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>partitioner {
+        <span class="kw">pub use </span>std::collections::HashMap;
+        <span class="kw">pub use </span>syn::visit_mut::{<span class="self">self</span>, VisitMut};
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::partitioner::PartitionAttribute;
+        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::partitioner::Partitioner;
+        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::partitioner::ClusterSelfIdReplace;
+        <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+        </span><span class="kw">impl </span>VisitMut <span class="kw">for </span>ClusterSelfIdReplace {
+            <span class="kw">fn </span>visit_expr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, expr: <span class="kw-2">&amp;mut </span>syn::Expr) {
+                <span class="kw">if let </span>syn::Expr::Path(path_expr) = expr {
+                    <span class="kw">for </span>segment <span class="kw">in </span>path_expr.path.segments.iter_mut() {
+                        <span class="kw">let </span>ident = segment.ident.to_string();
+                        <span class="kw">let </span>prefix = <span class="macro">format!</span>(
+                            <span class="string">"__hydro_lang_cluster_self_id_{}"</span>,
+                            <span class="self">self</span>.partitioned_cluster_id,
+                        );
+                        <span class="kw">if </span>ident.starts_with(<span class="kw-2">&amp;</span>prefix) {
+                            <span class="kw">let </span>num_partitions = <span class="self">self</span>.num_partitions;
+                            <span class="kw">let </span>expr_content = std::mem::replace(
+                                expr,
+                                syn::Expr::PLACEHOLDER,
+                            );
+                            <span class="kw-2">*</span>expr = <span class="macro">syn::parse_quote!</span>(
+                                { # expr_content / # num_partitions <span class="kw">as </span>u32 }
+                            );
+                            <span class="macro">println!</span>(<span class="string">"Partitioning: Replaced CLUSTER_SELF_ID"</span>);
+                            <span class="kw">return</span>;
+                        }
+                    }
+                }
+                visit_mut::visit_expr_mut(<span class="self">self</span>, expr);
+            }
+        }
+        <span class="kw">pub use </span><span class="kw">crate</span>::rewrites::partitioner::ClusterMembersReplace;
+        <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+        </span><span class="kw">impl </span>VisitMut <span class="kw">for </span>ClusterMembersReplace {
+            <span class="kw">fn </span>visit_expr_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, expr: <span class="kw-2">&amp;mut </span>syn::Expr) {
+                <span class="kw">if let </span>syn::Expr::Unsafe(unsafe_expr) = expr {
+                    <span class="kw">for </span>stmt <span class="kw">in </span><span class="kw-2">&amp;mut </span>unsafe_expr.block.stmts {
+                        <span class="kw">if let </span>syn::Stmt::Expr(syn::Expr::Call(call_expr), <span class="kw">_</span>) = stmt {
+                            <span class="kw">for </span>arg <span class="kw">in </span>call_expr.args.iter_mut() {
+                                <span class="kw">if let </span>syn::Expr::Path(path_expr) = arg {
+                                    <span class="kw">for </span>segment <span class="kw">in </span>path_expr.path.segments.iter_mut() {
+                                        <span class="kw">let </span>ident = segment.ident.to_string();
+                                        <span class="kw">let </span>prefix = <span class="macro">format!</span>(
+                                            <span class="string">"__hydro_lang_cluster_ids_{}"</span>,
+                                            <span class="self">self</span>.partitioned_cluster_id,
+                                        );
+                                        <span class="kw">if </span>ident.starts_with(<span class="kw-2">&amp;</span>prefix) {
+                                            <span class="kw">let </span>num_partitions = <span class="self">self</span>.num_partitions;
+                                            <span class="kw">let </span>expr_content = std::mem::replace(
+                                                expr,
+                                                syn::Expr::PLACEHOLDER,
+                                            );
+                                            <span class="kw-2">*</span>expr = <span class="macro">syn::parse_quote!</span>(
+                                                { <span class="kw">let </span>all_ids = # expr_content; &amp; all_ids[<span class="number">0</span>..all_ids.len() /
+                                                # num_partitions] }
+                                            );
+                                            <span class="macro">println!</span>(<span class="string">"Partitioning: Replaced cluster members"</span>);
+                                            <span class="kw">return</span>;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                visit_mut::visit_expr_mut(<span class="self">self</span>, expr);
+            }
+        }
+        <span class="kw">pub fn </span>replace_membership_info(node: <span class="kw-2">&amp;mut </span>HydroNode, partitioner: <span class="kw-2">&amp;</span>Partitioner) {
+            <span class="kw">let </span>Partitioner { num_partitions, partitioned_cluster_id, .. } = <span class="kw-2">*</span>partitioner;
+            node.visit_debug_expr(|expr| {
+                <span class="kw">let </span><span class="kw-2">mut </span>visitor = ClusterMembersReplace {
+                    num_partitions,
+                    partitioned_cluster_id,
+                };
+                visitor.visit_expr_mut(<span class="kw-2">&amp;mut </span>expr.<span class="number">0</span>);
+            });
+            node.visit_debug_expr(|expr| {
+                <span class="kw">let </span><span class="kw-2">mut </span>visitor = ClusterSelfIdReplace {
+                    num_partitions,
+                    partitioned_cluster_id,
+                };
+                visitor.visit_expr_mut(<span class="kw-2">&amp;mut </span>expr.<span class="number">0</span>);
+            });
+        }
+        <span class="kw">pub fn </span>replace_sender_network(
+            node: <span class="kw-2">&amp;mut </span>HydroNode,
+            partitioner: <span class="kw-2">&amp;</span>Partitioner,
+            next_stmt_id: usize,
+        ) {
+            <span class="kw">let </span>Partitioner { nodes_to_partition, num_partitions, .. } = partitioner;
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(partition_attr) = nodes_to_partition.get(<span class="kw-2">&amp;</span>next_stmt_id) {
+                <span class="macro">println!</span>(<span class="string">"Partitioning node {} {}"</span>, next_stmt_id, node.print_root());
+                <span class="kw">let </span>node_content = std::mem::replace(node, HydroNode::Placeholder);
+                <span class="kw">let </span>metadata = node_content.metadata().clone();
+                <span class="kw">let </span>f: syn::Expr = <span class="kw">match </span>partition_attr {
+                    PartitionAttribute::All() =&gt; {
+                        <span class="macro">syn::parse_quote!</span>(
+                            | (orig_dest, item) | { <span class="kw">let </span>orig_dest_id = orig_dest.raw_id;
+                            <span class="kw">let </span>new_dest_id = (orig_dest_id * # num_partitions <span class="kw">as </span>u32) +
+                            (item <span class="kw">as </span>usize % # num_partitions) <span class="kw">as </span>u32; (ClusterId::&lt; ()
+                            &gt;::from_raw(new_dest_id), item) }
+                        )
+                    }
+                    PartitionAttribute::TupleIndex(tuple_index) =&gt; {
+                        <span class="kw">let </span>tuple_index_ident = syn::Index::from(<span class="kw-2">*</span>tuple_index);
+                        <span class="macro">syn::parse_quote!</span>(
+                            | (orig_dest, tuple) | { <span class="kw">let </span>orig_dest_id = orig_dest.raw_id;
+                            <span class="kw">let </span>new_dest_id = (orig_dest_id * # num_partitions <span class="kw">as </span>u32) +
+                            (tuple.# tuple_index_ident <span class="kw">as </span>usize % # num_partitions) <span class="kw">as
+                            </span>u32; (ClusterId::&lt; () &gt;::from_raw(new_dest_id), tuple) }
+                        )
+                    }
+                };
+                <span class="kw">let </span>mapped_node = HydroNode::Map {
+                    f: f.into(),
+                    input: Box::new(node_content),
+                    metadata,
+                };
+                <span class="kw-2">*</span>node = mapped_node;
+            }
+        }
+        <span class="kw">pub fn </span>replace_receiver_network(
+            node: <span class="kw-2">&amp;mut </span>HydroNode,
+            partitioner: <span class="kw-2">&amp;</span>Partitioner,
+        ) {
+            <span class="kw">let </span>Partitioner { num_partitions, partitioned_cluster_id, .. } = partitioner;
+            <span class="kw">if let </span>HydroNode::Network { input, metadata, .. } = node {
+                <span class="kw">if </span>input.metadata().location_kind.raw_id() == <span class="kw-2">*</span>partitioned_cluster_id {
+                    <span class="macro">println!</span>(<span class="string">"Rewriting network on receiver to remap location ids"</span>);
+                    <span class="kw">let </span>metadata = metadata.clone();
+                    <span class="kw">let </span>node_content = std::mem::replace(node, HydroNode::Placeholder);
+                    <span class="kw">let </span>f: syn::Expr = <span class="macro">syn::parse_quote!</span>(
+                        | (sender_id, b) | (ClusterId::&lt; <span class="kw">_ </span>&gt;::from_raw(sender_id.raw_id /
+                        # num_partitions <span class="kw">as </span>u32), b)
+                    );
+                    <span class="kw">let </span>mapped_node = HydroNode::Map {
+                        f: f.into(),
+                        input: Box::new(node_content),
+                        metadata: metadata.clone(),
+                    };
+                    <span class="kw-2">*</span>node = mapped_node;
+                }
+            }
+        }
+        <span class="kw">pub fn </span>partition_node(
+            node: <span class="kw-2">&amp;mut </span>HydroNode,
+            partitioner: <span class="kw-2">&amp;</span>Partitioner,
+            next_stmt_id: usize,
+        ) {
+            replace_membership_info(node, partitioner);
+            replace_sender_network(node, partitioner, next_stmt_id);
+            replace_receiver_network(node, partitioner);
+        }
+        <span class="doccomment">/// Limitations: Can only partition sends to clusters (not processes). Can only partition sends to 1 cluster at a time. Assumes that the partitioned attribute can be casted to usize.
+        </span><span class="kw">pub fn </span>partition(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], partitioner: <span class="kw-2">&amp;</span>Partitioner) {
+            traverse_dfir(
+                ir,
+                |<span class="kw">_</span>, <span class="kw">_</span>| {},
+                |node, next_stmt_id| {
+                    partition_node(node, partitioner, next_stmt_id);
                 },
             );
         }
@@ -18257,19 +18658,16 @@
             }
         }
     }
-    <span class="kw">pub mod </span>print_id {
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>print_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroLeaf, next_stmt_id: usize) {
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>print_id {
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub fn </span>print_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroLeaf, next_stmt_id: usize) {
             <span class="macro">println!</span>(<span class="string">"{} Hydro leaf {}"</span>, next_stmt_id, leaf.print_root());
         }
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>print_id_node(node: <span class="kw-2">&amp;mut </span>HydroNode, next_stmt_id: usize) {
+        <span class="kw">pub fn </span>print_id_node(node: <span class="kw-2">&amp;mut </span>HydroNode, next_stmt_id: usize) {
             <span class="macro">println!</span>(<span class="string">"{} Hydro node {}"</span>, next_stmt_id, node.print_root());
         }
-        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-        </span><span class="kw">pub fn </span>print_id(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
+        <span class="kw">pub fn </span>print_id(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
             traverse_dfir(ir, print_id_leaf, print_id_node);
         }
     }
