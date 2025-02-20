@@ -47,7 +47,7 @@ async fn main() {
 
     let num_original_nodes = 2;
     let partitioner = Partitioner {
-        nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
+        nodes_to_partition: HashMap::from([(7, PartitionAttribute::TupleIndex(1))]),
         num_partitions: 3,
         partitioned_cluster_id: cluster.id().raw_id(),
     };

@@ -1,23 +1,14 @@
-#[cfg(feature = "build")]
 use proc_macro2::Span;
 
-#[cfg(feature = "build")]
 use crate::ir::*;
-#[cfg(feature = "build")]
 use crate::location::LocationId;
-#[cfg(feature = "build")]
 use crate::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 
-#[cfg(feature = "build")]
 pub struct Decoupler {
     pub nodes_to_decouple: Vec<usize>,
     pub new_location: LocationId,
 }
 
-// Placeholder ClusterId type
-pub struct Decoupled {}
-
-#[cfg(feature = "build")]
 fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usize) {
     let metadata = node.metadata().clone();
     if decoupler.nodes_to_decouple.contains(&next_stmt_id) {
@@ -40,7 +31,7 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usiz
             Span::call_site(),
         );
         let f: syn::Expr = syn::parse_quote!(|b| (
-            ClusterId::<hydro_lang::rewrites::decoupler::Decoupled>::from_raw(#ident),
+            ClusterId::<()>::from_raw(#ident),
             b
         ));
         let mapped_node = HydroNode::Map {
@@ -63,7 +54,7 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usiz
                 .map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building(),
             deserialize_fn: Some(deserialize_bincode_with_type(
-                Some(stageleft::quote_type::<Decoupled>()),
+                Some(stageleft::quote_type::<()>()),
                 output_type.clone(),
             ))
             .map(|e| e.into()),
@@ -83,7 +74,6 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usiz
 }
 
 /// Limitations: Cannot decouple across a cycle. Can only decouple clusters (not processes).
-#[cfg(feature = "build")]
 pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
     traverse_dfir(
         ir,

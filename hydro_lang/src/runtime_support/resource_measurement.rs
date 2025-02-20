@@ -8,9 +8,7 @@ use dfir_rs::scheduled::graph::Dfir;
 #[cfg(target_os = "linux")]
 use procfs::WithCurrentSystemInfo;
 
-#[cfg(feature = "runtime_measure")]
-#[cfg(target_os = "linux")]
-use crate::rewrites::analyze_perf::CPU_USAGE_PREFIX;
+pub const CPU_USAGE_PREFIX: &str = "CPU:";
 
 #[cfg(not(feature = "runtime_measure"))]
 pub async fn run(flow: Dfir<'_>) {

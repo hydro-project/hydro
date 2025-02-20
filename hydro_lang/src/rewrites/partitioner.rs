@@ -1,37 +1,27 @@
-#[cfg(feature = "build")]
 use std::collections::HashMap;
 
-#[cfg(feature = "build")]
 use syn::visit_mut::{self, VisitMut};
 
-#[cfg(feature = "build")]
 use crate::ir::*;
 
 /// Fields that could be used for partitioning
-#[cfg(feature = "build")]
 pub enum PartitionAttribute {
     All(),
     TupleIndex(usize),
 }
 
-#[cfg(feature = "build")]
 pub struct Partitioner {
     pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
     pub num_partitions: usize,
     pub partitioned_cluster_id: usize,
 }
 
-// Placeholder ClusterId type
-pub struct Partitioned {}
-
 /// Replace CLUSTER_SELF_ID with the ID of the original node the partition is assigned to
-#[cfg(feature = "build")]
 pub struct ClusterSelfIdReplace {
     pub num_partitions: usize,
     pub partitioned_cluster_id: usize,
 }
 
-#[cfg(feature = "build")]
 impl VisitMut for ClusterSelfIdReplace {
     fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
         if let syn::Expr::Path(path_expr) = expr {
@@ -45,7 +35,7 @@ impl VisitMut for ClusterSelfIdReplace {
                     let num_partitions = self.num_partitions;
                     let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
                     *expr = syn::parse_quote!({
-                        #expr_content % #num_partitions as u32
+                        #expr_content / #num_partitions as u32
                     });
                     println!("Partitioning: Replaced CLUSTER_SELF_ID");
                     return;
@@ -57,41 +47,39 @@ impl VisitMut for ClusterSelfIdReplace {
 }
 
 /// Don't expose partition members to the cluster
-#[cfg(feature = "build")]
 pub struct ClusterMembersReplace {
     pub num_partitions: usize,
     pub partitioned_cluster_id: usize,
 }
 
-#[cfg(feature = "build")]
 impl VisitMut for ClusterMembersReplace {
     fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
         if let syn::Expr::Unsafe(unsafe_expr) = expr {
             for stmt in &mut unsafe_expr.block.stmts {
                 if let syn::Stmt::Expr(syn::Expr::Call(call_expr), _) = stmt {
-                        for arg in call_expr.args.iter_mut() {
-                            if let syn::Expr::Path(path_expr) = arg {
-                                for segment in path_expr.path.segments.iter_mut() {
-                                    let ident = segment.ident.to_string();
-                                    let prefix = format!(
-                                        "__hydro_lang_cluster_ids_{}",
-                                        self.partitioned_cluster_id
-                                    );
-                                    if ident.starts_with(&prefix) {
-                                        let num_partitions = self.num_partitions;
-                                        let expr_content =
-                                            std::mem::replace(expr, syn::Expr::PLACEHOLDER);
-                                        *expr = syn::parse_quote!({
-                                            let all_ids = #expr_content;
-                                            &all_ids[0..all_ids.len() / #num_partitions]
-                                        });
-                                        println!("Partitioning: Replaced cluster members");
-                                        // Don't need to visit children
-                                        return;
-                                    }
+                    for arg in call_expr.args.iter_mut() {
+                        if let syn::Expr::Path(path_expr) = arg {
+                            for segment in path_expr.path.segments.iter_mut() {
+                                let ident = segment.ident.to_string();
+                                let prefix = format!(
+                                    "__hydro_lang_cluster_ids_{}",
+                                    self.partitioned_cluster_id
+                                );
+                                if ident.starts_with(&prefix) {
+                                    let num_partitions = self.num_partitions;
+                                    let expr_content =
+                                        std::mem::replace(expr, syn::Expr::PLACEHOLDER);
+                                    *expr = syn::parse_quote!({
+                                        let all_ids = #expr_content;
+                                        &all_ids[0..all_ids.len() / #num_partitions]
+                                    });
+                                    println!("Partitioning: Replaced cluster members");
+                                    // Don't need to visit children
+                                    return;
                                 }
                             }
                         }
+                    }
                 }
             }
         }
@@ -99,7 +87,6 @@ impl VisitMut for ClusterMembersReplace {
     }
 }
 
-#[cfg(feature = "build")]
 fn replace_membership_info(node: &mut HydroNode, partitioner: &Partitioner) {
     let Partitioner {
         num_partitions,
@@ -123,7 +110,6 @@ fn replace_membership_info(node: &mut HydroNode, partitioner: &Partitioner) {
     });
 }
 
-#[cfg(feature = "build")]
 fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
     let Partitioner {
         nodes_to_partition,
@@ -143,7 +129,7 @@ fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_
                     let orig_dest_id = orig_dest.raw_id;
                     let new_dest_id = (orig_dest_id * #num_partitions as u32) + (item as usize % #num_partitions) as u32;
                     (
-                        ClusterId::<hydro_lang::rewrites::partitioner::Partitioned>::from_raw(new_dest_id),
+                        ClusterId::<()>::from_raw(new_dest_id),
                         item
                     )
                 })
@@ -154,7 +140,7 @@ fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_
                     let orig_dest_id = orig_dest.raw_id;
                     let new_dest_id = (orig_dest_id * #num_partitions as u32) + (tuple.#tuple_index_ident as usize % #num_partitions) as u32;
                     (
-                        ClusterId::<hydro_lang::rewrites::partitioner::Partitioned>::from_raw(new_dest_id),
+                        ClusterId::<()>::from_raw(new_dest_id),
                         tuple
                     )
                 })
@@ -171,7 +157,6 @@ fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_
     }
 }
 
-#[cfg(feature = "build")]
 fn replace_receiver_network(node: &mut HydroNode, partitioner: &Partitioner) {
     let Partitioner {
         num_partitions,
@@ -179,29 +164,31 @@ fn replace_receiver_network(node: &mut HydroNode, partitioner: &Partitioner) {
         ..
     } = partitioner;
 
-    if let HydroNode::Network { metadata, .. } = node {
-        if metadata.location_kind.raw_id() == *partitioned_cluster_id {
+    if let HydroNode::Network {
+        input, metadata, ..
+    } = node
+    {
+        if input.metadata().location_kind.raw_id() == *partitioned_cluster_id {
             println!("Rewriting network on receiver to remap location ids");
+
+            let metadata = metadata.clone();
+            let node_content = std::mem::replace(node, HydroNode::Placeholder);
+            let f: syn::Expr = syn::parse_quote!(|(sender_id, b)| (
+                ClusterId::<_>::from_raw(sender_id.raw_id / #num_partitions as u32),
+                b
+            ));
+
+            let mapped_node = HydroNode::Map {
+                f: f.into(),
+                input: Box::new(node_content),
+                metadata: metadata.clone(),
+            };
+
+            *node = mapped_node;
         }
-
-        let metadata = metadata.clone();
-        let node_content = std::mem::replace(node, HydroNode::Placeholder);
-        let f: syn::Expr = syn::parse_quote!(|(sender_id, b)| (
-            ClusterId::<_>::from_raw(sender_id.raw_id % #num_partitions as u32),
-            b
-        ));
-
-        let mapped_node = HydroNode::Map {
-            f: f.into(),
-            input: Box::new(node_content),
-            metadata: metadata.clone(),
-        };
-
-        *node = mapped_node;
     }
 }
 
-#[cfg(feature = "build")]
 fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
     replace_membership_info(node, partitioner);
     replace_sender_network(node, partitioner, next_stmt_id);
@@ -209,7 +196,6 @@ fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id:
 }
 
 /// Limitations: Can only partition sends to clusters (not processes). Can only partition sends to 1 cluster at a time. Assumes that the partitioned attribute can be casted to usize.
-#[cfg(feature = "build")]
 pub fn partition(ir: &mut [HydroLeaf], partitioner: &Partitioner) {
     traverse_dfir(
         ir,
