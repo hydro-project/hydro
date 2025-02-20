@@ -16,7 +16,6 @@ pub fn parse_cpu_usage(measurement: String) -> f64 {
 
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
-
 fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     let mut total_samples = 0f64;
     let mut samples_per_operator = HashMap::new();
