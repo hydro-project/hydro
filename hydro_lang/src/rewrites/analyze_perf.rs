@@ -1,15 +1,10 @@
-#[cfg(feature = "build")]
 use std::collections::HashMap;
 
-#[cfg(feature = "build")]
 use regex::Regex;
 
-#[cfg(feature = "build")]
 use crate::ir::*;
+pub use crate::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
 
-pub const CPU_USAGE_PREFIX: &str = "CPU:";
-
-#[cfg(feature = "build")]
 pub fn parse_cpu_usage(measurement: String) -> f64 {
     let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();
     regex
@@ -21,7 +16,6 @@ pub fn parse_cpu_usage(measurement: String) -> f64 {
 
 /// Returns a map from operator ID to a map of (DFIR operator name, percentage of total samples) pairs.
 /// The DFIR operator name is returned because a single Hydro operator can map to multiple DFIR operators
-#[cfg(feature = "build")]
 fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     let mut total_samples = 0f64;
     let mut samples_per_operator = HashMap::new();
@@ -63,7 +57,6 @@ fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     samples_per_operator
 }
 
-#[cfg(feature = "build")]
 fn analyze_perf_leaf(
     leaf: &mut HydroLeaf,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
@@ -82,7 +75,6 @@ fn analyze_perf_leaf(
     }
 }
 
-#[cfg(feature = "build")]
 fn analyze_perf_node(
     node: &mut HydroNode,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
@@ -101,7 +93,6 @@ fn analyze_perf_node(
     }
 }
 
-#[cfg(feature = "build")]
 pub fn analyze_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
     let id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(

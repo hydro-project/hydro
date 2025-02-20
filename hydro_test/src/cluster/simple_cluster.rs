@@ -68,10 +68,14 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::DeployCrateWrapper;
-    use hydro_lang::ClusterId;
-    use stageleft::q;
+    use hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime};
+    use hydro_lang::rewrites::partitioner::{self, PartitionAttribute, Partitioner};
+    use hydro_lang::rewrites::persist_pullup;
+    use hydro_lang::{ClusterId, Location};
+    use stageleft::{q, RuntimeData};
 
     #[tokio::test]
     async fn simple_cluster() {
@@ -236,6 +240,29 @@ mod tests {
                 );
                 assert_eq!(stdout.recv().await.unwrap(), expected_message);
             }
+        }
+    }
+
+    #[test]
+    fn partitioned_simple_cluster_ir() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let (_, cluster) = super::simple_cluster(&builder);
+        let partitioner = Partitioner {
+            nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
+            num_partitions: 3,
+            partitioned_cluster_id: cluster.id().raw_id(),
+        };
+        let built = builder
+            .optimize_with(persist_pullup::persist_pullup)
+            .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
+            .into_deploy::<DeployRuntime>();
+
+        insta::assert_debug_snapshot!(built.ir());
+
+        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).dfir() {
+            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
+                insta::assert_snapshot!(ir.surface_syntax_string());
+            });
         }
     }
 }
