@@ -249,6 +249,7 @@ declare_ops![
     assert_eq::ASSERT_EQ,
     batch::BATCH,
     chain::CHAIN,
+    _counter::_COUNTER,
     cross_join::CROSS_JOIN,
     cross_join_multiset::CROSS_JOIN_MULTISET,
     cross_singleton::CROSS_SINGLETON,
