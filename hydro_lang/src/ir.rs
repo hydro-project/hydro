@@ -621,7 +621,7 @@ pub enum HydroNode {
         tag: String,
         duration: DebugExpr,
         input: Box<HydroNode>,
-        metadata: HydroNodeMetadata
+        metadata: HydroNodeMetadata,
     },
 }
 
@@ -795,7 +795,7 @@ impl<'a> HydroNode {
             | HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. } 
+            | HydroNode::ReduceKeyed { input, .. }
             | HydroNode::Counter { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
@@ -1004,13 +1004,13 @@ impl<'a> HydroNode {
                 tag,
                 duration,
                 input,
-                metadata
+                metadata,
             } => HydroNode::Counter {
                 tag: tag.clone(),
                 duration: duration.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
-                metadata: metadata.clone()
-            }
+                metadata: metadata.clone(),
+            },
         }
     }
 
@@ -1849,7 +1849,12 @@ impl<'a> HydroNode {
                 (receiver_stream_ident, to_id)
             }
 
-            HydroNode::Counter { tag, duration, input, .. } => {
+            HydroNode::Counter {
+                tag,
+                duration,
+                input,
+                ..
+            } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
@@ -2021,7 +2026,9 @@ impl<'a> HydroNode {
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
             HydroNode::Network { to_location, .. } => format!("Network(to {:?})", to_location),
-            HydroNode::Counter { tag, duration, .. } => format!("Counter({:?}, {:?})", tag, duration),
+            HydroNode::Counter { tag, duration, .. } => {
+                format!("Counter({:?}, {:?})", tag, duration)
+            }
         }
     }
 }
