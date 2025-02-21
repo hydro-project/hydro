@@ -13,7 +13,7 @@ fn fib(n: u64) -> u64 {
     }
 }
 
-#[multiplatform_test(dfir, wasm)]
+#[multiplatform_test(dfir)]
 pub async fn test_fib() {
     let mut df: Dfir = dfir_syntax! {
         source_stream(iter_batches_stream(0..=40, 1))
@@ -30,7 +30,7 @@ pub async fn test_fib() {
     // _counter(nums): 40
 }
 
-#[multiplatform_test(dfir, wasm)]
+#[multiplatform_test(dfir)]
 pub async fn test_stream() {
     let mut df: Dfir = dfir_syntax! {
         source_stream(iter_batches_stream(0..=100_000, 1))
