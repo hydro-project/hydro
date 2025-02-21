@@ -260,6 +260,7 @@ pub trait Location<'a>: Clone {
 
         (
             ForwardRef {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,
