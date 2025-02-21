@@ -234,7 +234,6 @@ impl Context {
         for task in self.tasks_to_spawn.drain(..) {
             self.task_join_handles.push(tokio::task::spawn_local(task));
         }
-        self.tasks_to_spawn.shrink_to_fit();
     }
 
     /// Aborts all tasks spawned with [`Self::spawn_tasks`].
