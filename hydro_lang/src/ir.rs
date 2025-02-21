@@ -616,6 +616,13 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroNodeMetadata,
     },
+
+    Counter {
+        tag: String,
+        duration: DebugExpr,
+        input: Box<HydroNode>,
+        metadata: HydroNodeMetadata
+    },
 }
 
 pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
@@ -788,7 +795,8 @@ impl<'a> HydroNode {
             | HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. } => {
+            | HydroNode::ReduceKeyed { input, .. } 
+            | HydroNode::Counter { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
         }
@@ -992,6 +1000,17 @@ impl<'a> HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroNode::Counter {
+                tag,
+                duration,
+                input,
+                metadata
+            } => HydroNode::Counter {
+                tag: tag.clone(),
+                duration: duration.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone()
+            }
         }
     }
 
@@ -1829,6 +1848,35 @@ impl<'a> HydroNode {
 
                 (receiver_stream_ident, to_id)
             }
+
+            HydroNode::Counter { tag, duration, input, .. } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let counter_id = *next_stmt_id;
+                *next_stmt_id += 1;
+
+                let counter_ident =
+                    syn::Ident::new(&format!("stream_{}", counter_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #counter_ident = #input_ident -> _counter(#tag, #duration);
+                            },
+                            None,
+                            Some(&counter_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        node_callback(self, counter_id);
+                    }
+                }
+
+                (counter_ident, input_location_id)
+            }
         }
     }
 
@@ -1881,6 +1929,9 @@ impl<'a> HydroNode {
                     transform(deserialize_fn);
                 }
             }
+            HydroNode::Counter { duration, .. } => {
+                transform(duration);
+            }
         }
     }
 
@@ -1915,6 +1966,7 @@ impl<'a> HydroNode {
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
+            HydroNode::Counter { metadata, .. } => metadata,
         }
     }
 
@@ -1969,6 +2021,7 @@ impl<'a> HydroNode {
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
             HydroNode::Network { to_location, .. } => format!("Network(to {:?})", to_location),
+            HydroNode::Counter { tag, duration, .. } => format!("Counter({:?}, {:?})", tag, duration),
         }
     }
 }

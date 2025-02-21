@@ -5,7 +5,9 @@ use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
+use hydro_lang::rewrites::{insert_counter, print_id};
 use hydro_lang::rewrites::persist_pullup;
+use hydro_lang::q;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -41,9 +43,14 @@ async fn main() {
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
     let frequency = 128;
+    let counter_output_duration = q!(std::time::Duration::from_secs(1));
 
     let nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
+        .optimize_with(print_id::print_id)
+        .optimize_with(|ir | {
+            insert_counter::insert_counter(ir, counter_output_duration)
+        })
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment))
