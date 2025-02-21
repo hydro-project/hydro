@@ -7,8 +7,7 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
-use super::ops::next_iteration::NEXT_ITERATION;
-use super::ops::{DelayType, find_node_op_constraints};
+use super::ops::{DelayType, FloType, find_node_op_constraints};
 use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
@@ -139,10 +138,9 @@ fn find_subgraph_unionfind(
                 continue;
             }
             // Do not connect `next_iteration()`.
-            if partitioned_graph
-                .node_op_inst(dst)
-                .is_some_and(|op_inst| op_inst.op_constraints.name == NEXT_ITERATION.name)
-            {
+            if partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
+                Some(FloType::NextIteration) == op_inst.op_constraints.flo_type
+            }) {
                 continue;
             }
 

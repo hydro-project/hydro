@@ -1020,7 +1020,7 @@ impl FlatGraphBuilder {
             let filter_next_iteration = |&node_id: &GraphNodeId| {
                 self.flat_graph
                     .node_op_inst(node_id)
-                    .map(|op_inst| NEXT_ITERATION.name != op_inst.op_constraints.name)
+                    .map(|op_inst| Some(FloType::NextIteration) == op_inst.op_constraints.flo_type)
                     .unwrap_or(true)
             };
 
