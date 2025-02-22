@@ -114,4 +114,8 @@ async fn main() {
 
     println!("Leader {}", leader_usage_out.recv().await.unwrap());
     analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+
+    hydro_lang::ir::dbg_dedup_tee(|| {
+        println!("{:#?}", ir);
+    });
 }
