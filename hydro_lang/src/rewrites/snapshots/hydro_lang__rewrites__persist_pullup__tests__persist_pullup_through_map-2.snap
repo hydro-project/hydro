@@ -21,6 +21,8 @@ expression: optimized.ir()
                     output_type: Some(
                         i32,
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -30,7 +32,19 @@ expression: optimized.ir()
                 output_type: Some(
                     i32,
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                i32,
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

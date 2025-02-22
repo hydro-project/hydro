@@ -24,6 +24,8 @@ expression: built.ir()
                         output_type: Some(
                             std :: string :: String,
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -33,6 +35,8 @@ expression: built.ir()
                     output_type: Some(
                         (std :: string :: String , ()),
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -42,7 +46,19 @@ expression: built.ir()
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                (std :: string :: String , i32),
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

@@ -47,8 +47,8 @@ digraph {
             label="var stream_2"
             n3v1
         }
-        subgraph "cluster_sg_1v1_var_stream_3" {
-            label="var stream_3"
+        subgraph "cluster_sg_1v1_var_stream_4" {
+            label="var stream_4"
             n4v1
         }
     }
@@ -61,16 +61,16 @@ digraph {
         n7v1
         n8v1
         n9v1
-        subgraph "cluster_sg_2v1_var_stream_4" {
-            label="var stream_4"
-            n5v1
-        }
         subgraph "cluster_sg_2v1_var_stream_5" {
             label="var stream_5"
-            n6v1
+            n5v1
         }
         subgraph "cluster_sg_2v1_var_stream_6" {
             label="var stream_6"
+            n6v1
+        }
+        subgraph "cluster_sg_2v1_var_stream_7" {
+            label="var stream_7"
             n7v1
         }
     }

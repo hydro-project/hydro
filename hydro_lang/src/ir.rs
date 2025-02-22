@@ -1218,34 +1218,26 @@ impl<'a> HydroNode {
             }
 
             HydroNode::Tee { inner, .. } => {
-                let tee_ident =
-                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
-                let inner_location_id = if let Some(ret) =
+                let (ret_ident, inner_location_id) = if let Some((teed_from, inner_location_id)) =
                     built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                 {
-                    let (teed_from, inner_location_id) = ret.clone();
                     match builders_or_callback {
-                        BuildersOrCallback::Builders(graph_builders) => {
-                            let builder = graph_builders.entry(inner_location_id).or_default();
-                            builder.add_dfir(
-                                parse_quote! {
-                                    #tee_ident = #teed_from;
-                                },
-                                None,
-                                Some(&next_stmt_id.to_string()),
-                            );
-                        }
+                        BuildersOrCallback::Builders(_graph_builders) => {}
                         BuildersOrCallback::Callback(_, ref mut node_callback) => {
                             node_callback(self, next_stmt_id);
                         }
                     }
-                    inner_location_id
+
+                    (teed_from.clone(), *inner_location_id)
                 } else {
                     let (inner_ident, inner_location_id) = inner.0.borrow_mut().emit_core(
                         builders_or_callback,
                         built_tees,
                         next_stmt_id,
                     );
+
+                    let tee_ident =
+                        syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                     built_tees.insert(
                         inner.0.as_ref() as *const RefCell<HydroNode>,
@@ -1268,10 +1260,14 @@ impl<'a> HydroNode {
                         }
                     }
 
-                    inner_location_id
+                    (tee_ident, inner_location_id)
                 };
+
+                // we consume a stmt id regardless of if we emit the tee() operator,
+                // so that during rewrites we touch all recipients of the tee()
+
                 *next_stmt_id += 1;
-                (tee_ident, inner_location_id)
+                (ret_ident, inner_location_id)
             }
 
             HydroNode::Chain { first, second, .. } => {

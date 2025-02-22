@@ -10,7 +10,7 @@ use hydro_lang::q;
 use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
 use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
 use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
-use hydro_lang::rewrites::{insert_counter, persist_pullup, print_id};
+use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
