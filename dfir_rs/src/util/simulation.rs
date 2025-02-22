@@ -199,7 +199,7 @@ impl ProcessBuilderContext<'_> {
     pub fn new_outbox<T: 'static>(
         &mut self,
         interface: InterfaceName,
-    ) -> impl Sink<(T, Address), Error = Infallible> {
+    ) -> impl use<T> + Sink<(T, Address), Error = Infallible> {
         let (sender, receiver) = unbounded_channel::<(T, Address)>();
 
         let receiver = receiver.map(|(msg, addr)| (Box::new(msg) as Box<dyn Any>, addr));

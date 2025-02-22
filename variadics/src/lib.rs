@@ -17,6 +17,7 @@ use std::any::Any;
 
 use sealed::sealed;
 
+#[allow(edition_2024_expr_fragment_specifier)]
 #[doc = include_str!("../var_expr.md")]
 #[macro_export]
 macro_rules! var_expr {
@@ -498,7 +499,7 @@ where
     Rest: CopyRefVariadic,
 {
     fn copy_var(&self) -> Self::UnRefVar {
-        let var_args!(&item, ...rest) = self;
+        let &var_args!(&item, ...ref rest) = self;
         var_expr!(item, ...rest.copy_var())
     }
 }
@@ -509,7 +510,7 @@ where
     Rest: CopyRefVariadic,
 {
     fn copy_var(&self) -> Self::UnRefVar {
-        let var_args!(&mut item, ...rest) = self;
+        let &var_args!(&mut item, ...ref rest) = self;
         var_expr!(item, ...rest.copy_var())
     }
 }

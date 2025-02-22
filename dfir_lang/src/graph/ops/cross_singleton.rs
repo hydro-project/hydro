@@ -75,13 +75,15 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 #[inline(always)]
-                fn cross_singleton_guard<Singleton, Item>(
+                fn cross_singleton_guard<Singleton, Item, SingletonIter, Stream>(
                     mut singleton_state_mut: std::cell::RefMut<'_, Option<Singleton>>,
-                    mut singleton_input: impl Iterator<Item = Singleton>,
-                    stream_input: impl Iterator<Item = Item>,
-                ) -> impl Iterator<Item = (Item, Singleton)>
+                    mut singleton_input: SingletonIter,
+                    stream_input: Stream,
+                ) -> impl use<Item, Singleton, Stream, /*TODO: https://github.com/rust-lang/rust/issues/130043 */ SingletonIter> + Iterator<Item = (Item, Singleton)>
                 where
                     Singleton: ::std::clone::Clone,
+                    SingletonIter: Iterator<Item = Singleton>,
+                    Stream: Iterator<Item = Item>,
                 {
                     let singleton_value_opt = match &*singleton_state_mut {
                         ::std::option::Option::Some(singleton_value) => Some(singleton_value.clone()),

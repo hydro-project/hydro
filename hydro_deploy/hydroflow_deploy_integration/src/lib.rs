@@ -453,6 +453,7 @@ impl ConnectedSource for ConnectedDirect {
     type Stream = DynStream;
 
     fn into_source(mut self) -> DynStream {
+        #[allow(if_let_rescope)]
         if let Some(s) = self.stream_sink.take() {
             Box::pin(s)
         } else {
@@ -466,6 +467,7 @@ impl ConnectedSink for ConnectedDirect {
     type Sink = DynSink<Bytes>;
 
     fn into_sink(mut self) -> DynSink<Self::Input> {
+        #[allow(if_let_rescope)]
         if let Some(s) = self.stream_sink.take() {
             Box::pin(s)
         } else {
@@ -700,6 +702,7 @@ where
             Connection::AsClient(ClientConnection::Merge(m)) => {
                 let mut sources = Vec::new();
                 for port in m {
+                    #[allow(if_let_rescope)]
                     if let ClientConnection::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
@@ -731,6 +734,7 @@ where
             Connection::AsServer(BoundServer::Merge(m)) => {
                 let mut sources = Vec::new();
                 for port in m {
+                    #[allow(if_let_rescope)]
                     if let BoundServer::Tagged(pipe, id) = port {
                         sources.push((
                             Box::pin(
