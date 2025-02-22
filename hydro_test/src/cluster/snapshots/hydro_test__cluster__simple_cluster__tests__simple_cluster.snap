@@ -54,6 +54,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     & hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
+                                                cardinality: None,
+                                                cpu_usage: None,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -63,6 +65,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                             ),
+                                            cardinality: None,
+                                            cpu_usage: None,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -72,6 +76,8 @@ expression: built.ir()
                                         output_type: Some(
                                             hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                         ),
+                                        cardinality: None,
+                                        cpu_usage: None,
                                     },
                                 },
                                 right: Persist {
@@ -89,6 +95,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 i32,
                                             ),
+                                            cardinality: None,
+                                            cpu_usage: None,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -98,6 +106,8 @@ expression: built.ir()
                                         output_type: Some(
                                             i32,
                                         ),
+                                        cardinality: None,
+                                        cpu_usage: None,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -107,6 +117,8 @@ expression: built.ir()
                                     output_type: Some(
                                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                     ),
+                                    cardinality: None,
+                                    cpu_usage: None,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -116,6 +128,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                 ),
+                                cardinality: None,
+                                cpu_usage: None,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -125,6 +139,8 @@ expression: built.ir()
                             output_type: Some(
                                 (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                             ),
+                            cardinality: None,
+                            cpu_usage: None,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -134,6 +150,8 @@ expression: built.ir()
                         output_type: Some(
                             (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -143,6 +161,8 @@ expression: built.ir()
                     output_type: Some(
                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -152,7 +172,19 @@ expression: built.ir()
                 output_type: Some(
                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

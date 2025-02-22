@@ -7,9 +7,8 @@ use crate::deploy::deploy_graph::DeployCrateWrapper;
 use crate::deploy::HydroDeploy;
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
-use crate::rewrites::analyze_counter::{inject_count, parse_counter_usage, COUNTER_PREFIX};
-use crate::rewrites::analyze_perf::{analyze_perf, parse_cpu_usage, CPU_USAGE_PREFIX};
-use crate::rewrites::print_id::print_id;
+use crate::rewrites::analyze_counter::{inject_count, parse_counter_usage};
+use crate::rewrites::analyze_perf::{analyze_perf, parse_cpu_usage};
 
 pub async fn analyze_results(
     nodes: DeployResult<'static, HydroDeploy>,

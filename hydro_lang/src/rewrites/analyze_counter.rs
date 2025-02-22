@@ -19,7 +19,7 @@ fn inject_count_node(
     next_stmt_id: &mut usize,
     op_to_count: &HashMap<usize, usize>,
 ) {
-    if let Some(count) = op_to_count.get(&next_stmt_id) {
+    if let Some(count) = op_to_count.get(next_stmt_id) {
         let metadata = node.metadata_mut();
         metadata.cardinality = Some(*count);
     } else {

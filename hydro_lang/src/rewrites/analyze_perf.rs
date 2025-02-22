@@ -62,7 +62,7 @@ fn inject_perf_leaf(
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
     next_stmt_id: &mut usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
         leaf.metadata_mut().cpu_usage = Some(dfir_operator_and_samples.values().sum());
     }
 }
@@ -72,7 +72,7 @@ fn inject_perf_node(
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
     next_stmt_id: &mut usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
         node.metadata_mut().cpu_usage = Some(dfir_operator_and_samples.values().sum());
     }
 }

@@ -11,7 +11,7 @@ pub struct Decoupler {
 
 fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut usize) {
     let metadata = node.metadata().clone();
-    if decoupler.nodes_to_decouple.contains(&next_stmt_id) {
+    if decoupler.nodes_to_decouple.contains(next_stmt_id) {
         println!("Decoupling node {} {}", next_stmt_id, node.print_root());
 
         let output_debug_type = metadata.output_type.clone().unwrap();

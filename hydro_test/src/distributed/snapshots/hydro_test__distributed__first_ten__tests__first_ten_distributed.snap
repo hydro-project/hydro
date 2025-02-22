@@ -30,6 +30,8 @@ expression: built.ir()
                     output_type: Some(
                         std :: string :: String,
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -39,7 +41,19 @@ expression: built.ir()
                 output_type: Some(
                     std :: string :: String,
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                1,
+            ),
+            output_type: Some(
+                std :: string :: String,
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
     ForEach {
@@ -73,6 +87,8 @@ expression: built.ir()
                         output_type: Some(
                             u32,
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -82,6 +98,8 @@ expression: built.ir()
                     output_type: Some(
                         hydro_test :: distributed :: first_ten :: SendOverNetwork,
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -91,7 +109,19 @@ expression: built.ir()
                 output_type: Some(
                     hydro_test :: distributed :: first_ten :: SendOverNetwork,
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                2,
+            ),
+            output_type: Some(
+                hydro_test :: distributed :: first_ten :: SendOverNetwork,
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

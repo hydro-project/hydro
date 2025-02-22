@@ -66,6 +66,8 @@ expression: built.ir()
                                                                         output_type: Some(
                                                                             (),
                                                                         ),
+                                                                        cardinality: None,
+                                                                        cpu_usage: None,
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
@@ -75,6 +77,8 @@ expression: built.ir()
                                                                     output_type: Some(
                                                                         usize,
                                                                     ),
+                                                                    cardinality: None,
+                                                                    cpu_usage: None,
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
@@ -84,6 +88,8 @@ expression: built.ir()
                                                                 output_type: Some(
                                                                     (),
                                                                 ),
+                                                                cardinality: None,
+                                                                cpu_usage: None,
                                                             },
                                                         },
                                                         metadata: HydroIrMetadata {
@@ -93,6 +99,8 @@ expression: built.ir()
                                                             output_type: Some(
                                                                 (f64 , f64),
                                                             ),
+                                                            cardinality: None,
+                                                            cpu_usage: None,
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
@@ -102,6 +110,8 @@ expression: built.ir()
                                                         output_type: Some(
                                                             bool,
                                                         ),
+                                                        cardinality: None,
+                                                        cpu_usage: None,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
@@ -111,6 +121,8 @@ expression: built.ir()
                                                     output_type: Some(
                                                         bool,
                                                     ),
+                                                    cardinality: None,
+                                                    cpu_usage: None,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
@@ -120,6 +132,8 @@ expression: built.ir()
                                                 output_type: Some(
                                                     bool,
                                                 ),
+                                                cardinality: None,
+                                                cpu_usage: None,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
@@ -129,6 +143,8 @@ expression: built.ir()
                                             output_type: Some(
                                                 bool,
                                             ),
+                                            cardinality: None,
+                                            cpu_usage: None,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
@@ -138,6 +154,8 @@ expression: built.ir()
                                         output_type: Some(
                                             (u64 , u64),
                                         ),
+                                        cardinality: None,
+                                        cpu_usage: None,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
@@ -147,6 +165,8 @@ expression: built.ir()
                                     output_type: Some(
                                         (u64 , u64),
                                     ),
+                                    cardinality: None,
+                                    cpu_usage: None,
                                 },
                             },
                             metadata: HydroIrMetadata {
@@ -156,6 +176,8 @@ expression: built.ir()
                                 output_type: Some(
                                     (u64 , u64),
                                 ),
+                                cardinality: None,
+                                cpu_usage: None,
                             },
                         },
                         metadata: HydroIrMetadata {
@@ -165,6 +187,8 @@ expression: built.ir()
                             output_type: Some(
                                 (u64 , u64),
                             ),
+                            cardinality: None,
+                            cpu_usage: None,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -174,6 +198,8 @@ expression: built.ir()
                         output_type: Some(
                             (u64 , u64),
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
                 right: Map {
@@ -192,6 +218,8 @@ expression: built.ir()
                             output_type: Some(
                                 tokio :: time :: Instant,
                             ),
+                            cardinality: None,
+                            cpu_usage: None,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -201,6 +229,8 @@ expression: built.ir()
                         output_type: Some(
                             (),
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -210,6 +240,8 @@ expression: built.ir()
                     output_type: Some(
                         ((u64 , u64) , ()),
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -219,7 +251,19 @@ expression: built.ir()
                 output_type: Some(
                     (u64 , u64),
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                1,
+            ),
+            output_type: Some(
+                (u64 , u64),
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]
