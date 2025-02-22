@@ -27,7 +27,7 @@ expression: built.ir()
                     location_kind: Cluster(
                         0,
                     ),
-                    metadata: HydroNodeMetadata {
+                    metadata: HydroIrMetadata {
                         location_kind: Cluster(
                             0,
                         ),
@@ -36,7 +36,7 @@ expression: built.ir()
                         ),
                     },
                 },
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Cluster(
                         0,
                     ),
@@ -45,7 +45,7 @@ expression: built.ir()
                     ),
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Cluster(
                     0,
                 ),

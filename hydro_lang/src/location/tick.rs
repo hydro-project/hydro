@@ -10,7 +10,7 @@ use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
     TickCycle, TickCycleMarker,
 };
-use crate::ir::{HydroNode, HydroNodeMetadata, HydroSource};
+use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
 use crate::{Bounded, Optional, Singleton, Stream};
 
 #[sealed]
@@ -87,7 +87,7 @@ impl<'a, L: Location<'a>> Location<'a> for Tick<L> {
         self.l.next_node_id()
     }
 
-    fn new_node_metadata<T>(&self) -> HydroNodeMetadata {
+    fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         self.l.new_node_metadata::<T>()
     }
 }

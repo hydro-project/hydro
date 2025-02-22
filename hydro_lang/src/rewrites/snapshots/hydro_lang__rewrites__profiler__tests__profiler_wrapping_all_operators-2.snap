@@ -18,7 +18,7 @@ expression: "&pushed_down.ir()"
                         location_kind: Process(
                             0,
                         ),
-                        metadata: HydroNodeMetadata {
+                        metadata: HydroIrMetadata {
                             location_kind: Process(
                                 0,
                             ),
@@ -27,7 +27,7 @@ expression: "&pushed_down.ir()"
                             ),
                         },
                     },
-                    metadata: HydroNodeMetadata {
+                    metadata: HydroIrMetadata {
                         location_kind: Process(
                             0,
                         ),
@@ -36,7 +36,7 @@ expression: "&pushed_down.ir()"
                         ),
                     },
                 },
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
@@ -45,7 +45,7 @@ expression: "&pushed_down.ir()"
                     ),
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),

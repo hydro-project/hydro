@@ -1,5 +1,10 @@
 #[cfg(feature = "build")]
+pub mod analyze_counter;
+#[cfg(feature = "build")]
 pub mod analyze_perf;
+#[cfg(stageleft_runtime)]
+#[cfg(feature = "deploy")]
+pub mod analyze_perf_and_counters;
 #[cfg(feature = "build")]
 pub mod decoupler;
 #[cfg(feature = "build")]

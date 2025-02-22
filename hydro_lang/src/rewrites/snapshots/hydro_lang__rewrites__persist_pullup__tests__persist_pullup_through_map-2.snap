@@ -14,7 +14,7 @@ expression: optimized.ir()
                 location_kind: Process(
                     0,
                 ),
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
@@ -23,7 +23,7 @@ expression: optimized.ir()
                     ),
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),

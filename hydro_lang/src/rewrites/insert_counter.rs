@@ -4,7 +4,7 @@ use stageleft::Quoted;
 
 use crate::ir::*;
 
-fn insert_counter_node(node: &mut HydroNode, next_stmt_id: usize, duration: syn::Expr) {
+fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration: syn::Expr) {
     match node {
         HydroNode::Placeholder
         | HydroNode::Unpersist { .. }
@@ -16,6 +16,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: usize, duration: syn:
         | HydroNode::Persist { metadata, .. }
         | HydroNode::Delta { metadata, .. }
         | HydroNode::Chain { metadata, .. } // Can technically be derived by summing parent cardinalities
+        | HydroNode::CrossSingleton { metadata, .. }
         | HydroNode::CrossProduct { metadata, .. } // Can technically be derived by multiplying parent cardinalities
         | HydroNode::Join { metadata, .. }
         | HydroNode::Difference { metadata, .. }
@@ -24,6 +25,8 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: usize, duration: syn:
         | HydroNode::Filter { metadata, .. }
         | HydroNode::FilterMap { metadata, .. }
         | HydroNode::Unique { metadata, .. }
+        | HydroNode::Fold { metadata, .. } // Output 1 value per tick
+        | HydroNode::Reduce { metadata, .. } // Output 1 value per tick
         | HydroNode::FoldKeyed { metadata, .. }
         | HydroNode::ReduceKeyed { metadata, .. }
         | HydroNode::Network { metadata, .. }
@@ -38,17 +41,16 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: usize, duration: syn:
                 metadata: metadata.clone(),
             };
 
+            *next_stmt_id += 1;
+
             *node = counter;
         }
         HydroNode::Tee { .. } // Do nothing, we will count the parent of the Tee
-        | HydroNode::CrossSingleton { .. } // Singletons only ever include 1 value
         | HydroNode::Map { .. } // Equal to parent cardinality
         | HydroNode::DeferTick { .. } // Equal to parent cardinality
         | HydroNode::Enumerate { .. }
         | HydroNode::Inspect { .. }
         | HydroNode::Sort { .. }
-        | HydroNode::Fold { .. } // Output 1 value
-        | HydroNode::Reduce { .. } // Output 1 value
          => {}
     }
 }

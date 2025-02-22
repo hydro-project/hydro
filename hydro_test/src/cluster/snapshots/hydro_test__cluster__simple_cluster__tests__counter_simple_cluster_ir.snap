@@ -6,7 +6,7 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
         input: Counter {
-            tag: "8",
+            tag: "13",
             duration: stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: simple_cluster :: tests :: * ; std :: time :: Duration :: from_secs (1) }),
             input: Network {
                 from_key: None,
@@ -24,7 +24,7 @@ expression: built.ir()
                 input: Inspect {
                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < () > :: from_raw (__hydro_lang_cluster_self_id_1) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
                     input: Counter {
-                        tag: "6",
+                        tag: "10",
                         duration: stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: simple_cluster :: tests :: * ; std :: time :: Duration :: from_secs (1) }),
                         input: Network {
                             from_key: None,
@@ -42,11 +42,11 @@ expression: built.ir()
                             input: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) > ({ use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
                                 input: Counter {
-                                    tag: "4",
+                                    tag: "7",
                                     duration: stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: simple_cluster :: tests :: * ; std :: time :: Duration :: from_secs (1) }),
                                     input: Delta {
                                         inner: Counter {
-                                            tag: "3",
+                                            tag: "5",
                                             duration: stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: simple_cluster :: tests :: * ; std :: time :: Duration :: from_secs (1) }),
                                             input: CrossProduct {
                                                 left: Persist {
@@ -62,45 +62,53 @@ expression: built.ir()
                                                                 location_kind: Process(
                                                                     0,
                                                                 ),
-                                                                metadata: HydroNodeMetadata {
+                                                                metadata: HydroIrMetadata {
                                                                     location_kind: Process(
                                                                         0,
                                                                     ),
                                                                     output_type: Some(
                                                                         & hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                                     ),
+                                                                    cardinality: None,
+                                                                    cpu_usage: None,
                                                                 },
                                                             },
-                                                            metadata: HydroNodeMetadata {
+                                                            metadata: HydroIrMetadata {
                                                                 location_kind: Process(
                                                                     0,
                                                                 ),
                                                                 output_type: Some(
                                                                     & hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                                 ),
+                                                                cardinality: None,
+                                                                cpu_usage: None,
                                                             },
                                                         },
-                                                        metadata: HydroNodeMetadata {
+                                                        metadata: HydroIrMetadata {
                                                             location_kind: Process(
                                                                 0,
                                                             ),
                                                             output_type: Some(
                                                                 hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                             ),
+                                                            cardinality: None,
+                                                            cpu_usage: None,
                                                         },
                                                     },
-                                                    metadata: HydroNodeMetadata {
+                                                    metadata: HydroIrMetadata {
                                                         location_kind: Process(
                                                             0,
                                                         ),
                                                         output_type: Some(
                                                             hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                         ),
+                                                        cardinality: None,
+                                                        cpu_usage: None,
                                                     },
                                                 },
                                                 right: Persist {
                                                     inner: Counter {
-                                                        tag: "2",
+                                                        tag: "3",
                                                         duration: stageleft :: runtime_support :: type_hint :: < core :: time :: Duration > ({ use crate :: __staged :: cluster :: simple_cluster :: tests :: * ; std :: time :: Duration :: from_secs (1) }),
                                                         input: Source {
                                                             source: Iter(
@@ -109,122 +117,158 @@ expression: built.ir()
                                                             location_kind: Process(
                                                                 0,
                                                             ),
-                                                            metadata: HydroNodeMetadata {
+                                                            metadata: HydroIrMetadata {
                                                                 location_kind: Process(
                                                                     0,
                                                                 ),
                                                                 output_type: Some(
                                                                     i32,
                                                                 ),
+                                                                cardinality: None,
+                                                                cpu_usage: None,
                                                             },
                                                         },
-                                                        metadata: HydroNodeMetadata {
+                                                        metadata: HydroIrMetadata {
                                                             location_kind: Process(
                                                                 0,
                                                             ),
                                                             output_type: Some(
                                                                 i32,
                                                             ),
+                                                            cardinality: None,
+                                                            cpu_usage: None,
                                                         },
                                                     },
-                                                    metadata: HydroNodeMetadata {
+                                                    metadata: HydroIrMetadata {
                                                         location_kind: Process(
                                                             0,
                                                         ),
                                                         output_type: Some(
                                                             i32,
                                                         ),
+                                                        cardinality: None,
+                                                        cpu_usage: None,
                                                     },
                                                 },
-                                                metadata: HydroNodeMetadata {
+                                                metadata: HydroIrMetadata {
                                                     location_kind: Process(
                                                         0,
                                                     ),
                                                     output_type: Some(
                                                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                                     ),
+                                                    cardinality: None,
+                                                    cpu_usage: None,
                                                 },
                                             },
-                                            metadata: HydroNodeMetadata {
+                                            metadata: HydroIrMetadata {
                                                 location_kind: Process(
                                                     0,
                                                 ),
                                                 output_type: Some(
                                                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                                 ),
+                                                cardinality: None,
+                                                cpu_usage: None,
                                             },
                                         },
-                                        metadata: HydroNodeMetadata {
+                                        metadata: HydroIrMetadata {
                                             location_kind: Process(
                                                 0,
                                             ),
                                             output_type: Some(
                                                 (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                             ),
+                                            cardinality: None,
+                                            cpu_usage: None,
                                         },
                                     },
-                                    metadata: HydroNodeMetadata {
+                                    metadata: HydroIrMetadata {
                                         location_kind: Process(
                                             0,
                                         ),
                                         output_type: Some(
                                             (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                         ),
+                                        cardinality: None,
+                                        cpu_usage: None,
                                     },
                                 },
-                                metadata: HydroNodeMetadata {
+                                metadata: HydroIrMetadata {
                                     location_kind: Process(
                                         0,
                                     ),
                                     output_type: Some(
                                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                     ),
+                                    cardinality: None,
+                                    cpu_usage: None,
                                 },
                             },
-                            metadata: HydroNodeMetadata {
+                            metadata: HydroIrMetadata {
                                 location_kind: Cluster(
                                     1,
                                 ),
                                 output_type: Some(
                                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                 ),
+                                cardinality: None,
+                                cpu_usage: None,
                             },
                         },
-                        metadata: HydroNodeMetadata {
+                        metadata: HydroIrMetadata {
                             location_kind: Cluster(
                                 1,
                             ),
                             output_type: Some(
                                 (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
+                            cardinality: None,
+                            cpu_usage: None,
                         },
                     },
-                    metadata: HydroNodeMetadata {
+                    metadata: HydroIrMetadata {
                         location_kind: Cluster(
                             1,
                         ),
                         output_type: Some(
                             (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
                     output_type: Some(
                         (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),
                 output_type: Some(
                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

@@ -81,6 +81,7 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, TickCycleMarker> for Optional<T, 
                 ident,
                 location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             });
     }
 }
@@ -120,6 +121,7 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, ForwardRefMarker> for Optional<T,
                 ident,
                 location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             });
     }
 }
@@ -152,6 +154,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker> for
             expected_location,
             "locations do not match"
         );
+        let metadata = self.location.new_node_metadata::<T>();
         self.location
             .flow_state()
             .borrow_mut()
@@ -163,8 +166,9 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker> for
                 location_kind: self.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
-                    metadata: self.location.new_node_metadata::<T>(),
+                    metadata: metadata.clone(),
                 }),
+                metadata,
             });
     }
 }

@@ -17,7 +17,7 @@ expression: built.ir()
                     location_kind: Process(
                         0,
                     ),
-                    metadata: HydroNodeMetadata {
+                    metadata: HydroIrMetadata {
                         location_kind: Process(
                             0,
                         ),
@@ -26,7 +26,7 @@ expression: built.ir()
                         ),
                     },
                 },
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
@@ -35,7 +35,7 @@ expression: built.ir()
                     ),
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),
