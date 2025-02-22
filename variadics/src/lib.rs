@@ -17,7 +17,6 @@ use std::any::Any;
 
 use sealed::sealed;
 
-#[allow(edition_2024_expr_fragment_specifier)]
 #[doc = include_str!("../var_expr.md")]
 #[macro_export]
 macro_rules! var_expr {
