@@ -162,8 +162,9 @@ impl LaunchedHost for LaunchedLocalhost {
                 );
                 let dtrace_outfile = tempfile::NamedTempFile::new()?;
 
-                let mut command = Command::new("dtrace");
+                let mut command = Command::new("sudo");
                 command
+                    .arg("dtrace")
                     .arg("-o")
                     .arg(dtrace_outfile.as_ref())
                     .arg("-n")
