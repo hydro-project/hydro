@@ -1207,14 +1207,26 @@ impl<'a> HydroNode {
                 location_kind,
                 ..
             } => {
-                let location_id = match location_kind.root() {
+                let location_id = *match location_kind.root() {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
                     LocationId::ExternalProcess(_) => panic!(),
                 };
 
-                (ident.clone(), *location_id)
+                let ident = ident.clone();
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(_) => {}
+                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                // consume a stmt id even though we did not emit anything so that we can instrument this
+                *next_stmt_id += 1;
+
+                (ident, location_id)
             }
 
             HydroNode::Tee { inner, .. } => {
@@ -1222,7 +1234,7 @@ impl<'a> HydroNode {
                     built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                 {
                     match builders_or_callback {
-                        BuildersOrCallback::Builders(_graph_builders) => {}
+                        BuildersOrCallback::Builders(_) => {}
                         BuildersOrCallback::Callback(_, ref mut node_callback) => {
                             node_callback(self, next_stmt_id);
                         }
