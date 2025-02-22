@@ -196,14 +196,8 @@ impl HydroLeaf {
         seen_tees: &mut SeenTees,
     ) {
         match self {
-            HydroLeaf::ForEach {
-                f: _,
-                input,
-            }
-            | HydroLeaf::DestSink {
-                sink: _,
-                input,
-            }
+            HydroLeaf::ForEach { f: _, input }
+            | HydroLeaf::DestSink { sink: _, input }
             | HydroLeaf::CycleSink {
                 ident: _,
                 location_kind: _,
