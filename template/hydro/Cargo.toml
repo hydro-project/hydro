@@ -5,7 +5,8 @@ version = "0.0.0"
 edition = "2021"
 
 [features]
-default = ["stageleft_devel"]
+default = ["stageleft_devel", "deploy"]
+deploy = []
 stageleft_devel = []
 
 [dependencies]
