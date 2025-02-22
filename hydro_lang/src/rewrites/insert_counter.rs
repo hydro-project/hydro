@@ -41,6 +41,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
                 metadata: metadata.clone(),
             };
 
+            // when we emit this IR, the counter will bump the stmt id, so simulate that here
             *next_stmt_id += 1;
 
             *node = counter;

@@ -58,6 +58,4 @@ pub async fn analyze_results(
             }
         }
     }
-
-    // print_id(ir);
 }
