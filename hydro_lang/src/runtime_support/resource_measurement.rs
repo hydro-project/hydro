@@ -53,5 +53,13 @@ pub async fn run(flow: Dfir<'_>) {
         );
     }
 
+    #[cfg(not(target_os = "linux"))]
+    {
+        println!(
+            "{} Total {:.4}%, User {:.4}%, System {:.4}%",
+            CPU_USAGE_PREFIX, 100.0, 100.0, 0.0
+        );
+    }
+
     res.unwrap();
 }
