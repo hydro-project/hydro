@@ -3,6 +3,7 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use hydro_lang::*;
+use stats_ci::{Confidence, StatisticsOps};
 use tokio::time::Instant;
 
 pub struct Client {}
@@ -130,15 +131,20 @@ pub fn bench_client<'a>(
         .union(c_throughput_reset)
         .all_ticks()
         .fold(
-            q!(|| 0),
-            q!(|total, (batch_size, reset)| {
+            q!(|| (0, { stats_ci::mean::Arithmetic::new() })),
+            q!(|(total, stats), (batch_size, reset)| {
                 if reset {
+                    if *total > 0 {
+                        stats.extend(&[*total as f64]).unwrap();
+                    }
+
                     *total = 0;
                 } else {
                     *total += batch_size;
                 }
             }),
-        );
+        )
+        .map(q!(|(_, stats)| { stats }));
 
     unsafe {
         // SAFETY: intentionally sampling statistics
@@ -150,13 +156,37 @@ pub fn bench_client<'a>(
     .all_ticks()
     .for_each(q!(move |(latencies, throughput)| {
         let mut latencies_mut = latencies.borrow_mut();
-        if !latencies_mut.is_empty() {
-            let middle_idx = latencies_mut.len() / 2;
-            let (_, median, _) = latencies_mut.select_nth_unstable(middle_idx);
-            println!("Median latency: {}ms", median.as_micros() as f64 / 1000.0);
+
+        let confidence = Confidence::new(0.95);
+
+        latencies_mut.sort_unstable();
+        if let Ok(interval) =
+            stats_ci::quantile::ci_sorted_unchecked(confidence, latencies_mut.as_slice(), 0.5)
+        {
+            if let Some(lower) = interval.left() {
+                if let Some(upper) = interval.right() {
+                    println!(
+                        "Latency Median 95% interval: {:.2} - {:.2} ms",
+                        lower.as_micros() as f64 / 1000.0,
+                        upper.as_micros() as f64 / 1000.0
+                    );
+                }
+            }
         }
 
-        println!("Throughput: {} requests/s", throughput);
+        if throughput.sample_count() >= 2 {
+            // ci_mean crashes if there are fewer than two samples
+            if let Ok(interval) = throughput.ci_mean(confidence) {
+                if let Some(lower) = interval.left() {
+                    if let Some(upper) = interval.right() {
+                        println!(
+                            "Throughput 95% interval: {:.2} - {:.2} requests/s",
+                            lower, upper
+                        );
+                    }
+                }
+            }
+        }
     }));
     // End track statistics
 }
