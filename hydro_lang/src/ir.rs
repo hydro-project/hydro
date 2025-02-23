@@ -584,6 +584,15 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    PollFutures {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+    PollFuturesOrdered {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     Map {
         f: DebugExpr,
         input: Box<HydroNode>,
@@ -830,6 +839,8 @@ impl<'a> HydroNode {
             }
 
             HydroNode::Map { input, .. }
+            | HydroNode::PollFutures { input, .. }
+            | HydroNode::PollFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
@@ -948,6 +959,14 @@ impl<'a> HydroNode {
             HydroNode::AntiJoin { pos, neg, metadata } => HydroNode::AntiJoin {
                 pos: Box::new(pos.deep_clone(seen_tees)),
                 neg: Box::new(neg.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::PollFutures { input, metadata } => HydroNode::PollFutures {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::PollFuturesOrdered { input, metadata } => HydroNode::PollFuturesOrdered {
+                input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::Map { f, input, metadata } => HydroNode::Map {
@@ -1467,6 +1486,62 @@ impl<'a> HydroNode {
                 (stream_ident, pos_location_id)
             }
 
+            HydroNode::PollFutures { input, .. } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let futures_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #futures_ident = #input_ident -> poll_futures();
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (futures_ident, input_location_id)
+            }
+
+            HydroNode::PollFuturesOrdered { input, .. } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let futures_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #futures_ident = #input_ident -> poll_futures_ordered();
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (futures_ident, input_location_id)
+            }
+
             HydroNode::Map { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
@@ -1955,6 +2030,8 @@ impl<'a> HydroNode {
             | HydroNode::Chain { .. }
             | HydroNode::CrossProduct { .. }
             | HydroNode::CrossSingleton { .. }
+            | HydroNode::PollFutures { .. }
+            | HydroNode::PollFuturesOrdered { .. }
             | HydroNode::Join { .. }
             | HydroNode::Difference { .. }
             | HydroNode::AntiJoin { .. }
@@ -2010,6 +2087,8 @@ impl<'a> HydroNode {
             HydroNode::Join { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::PollFutures { metadata, .. } => metadata,
+            HydroNode::PollFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
@@ -2045,6 +2124,8 @@ impl<'a> HydroNode {
             HydroNode::Join { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::PollFutures { metadata, .. } => metadata,
+            HydroNode::PollFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
@@ -2100,6 +2181,8 @@ impl<'a> HydroNode {
             HydroNode::AntiJoin { pos, neg, .. } => {
                 format!("AntiJoin({}, {})", pos.print_root(), neg.print_root())
             }
+            HydroNode::PollFutures { .. } => "PollFutures()".to_string(),
+            HydroNode::PollFuturesOrdered { .. } => "PollFuturesOrdered()".to_string(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
             HydroNode::Filter { f, .. } => format!("Filter({:?})", f),
