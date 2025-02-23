@@ -40,7 +40,7 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_stream_2 ["var <tt>stream_2</tt>"]
         3v1
     end
-    subgraph sg_1v1_var_stream_3 ["var <tt>stream_3</tt>"]
+    subgraph sg_1v1_var_stream_4 ["var <tt>stream_4</tt>"]
         4v1
     end
 end
@@ -48,10 +48,10 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
     5v1
     6v1
     8v1
-    subgraph sg_2v1_var_stream_4 ["var <tt>stream_4</tt>"]
+    subgraph sg_2v1_var_stream_5 ["var <tt>stream_5</tt>"]
         5v1
     end
-    subgraph sg_2v1_var_stream_5 ["var <tt>stream_5</tt>"]
+    subgraph sg_2v1_var_stream_6 ["var <tt>stream_6</tt>"]
         6v1
     end
 end

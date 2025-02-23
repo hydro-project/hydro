@@ -189,9 +189,9 @@ fn replace_receiver_network(node: &mut HydroNode, partitioner: &Partitioner) {
     }
 }
 
-fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
+fn partition_node(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: &mut usize) {
     replace_membership_info(node, partitioner);
-    replace_sender_network(node, partitioner, next_stmt_id);
+    replace_sender_network(node, partitioner, *next_stmt_id);
     replace_receiver_network(node, partitioner);
 }
 

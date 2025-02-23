@@ -14,23 +14,37 @@ expression: optimized.ir()
                 location_kind: Process(
                     0,
                 ),
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
                     output_type: Some(
                         i32,
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),
                 output_type: Some(
                     i32,
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                i32,
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

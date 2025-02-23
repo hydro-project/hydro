@@ -56,113 +56,147 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
-                                                        metadata: HydroNodeMetadata {
+                                                        metadata: HydroIrMetadata {
                                                             location_kind: Process(
                                                                 0,
                                                             ),
                                                             output_type: Some(
                                                                 & str,
                                                             ),
+                                                            cardinality: None,
+                                                            cpu_usage: None,
                                                         },
                                                     },
-                                                    metadata: HydroNodeMetadata {
+                                                    metadata: HydroIrMetadata {
                                                         location_kind: Process(
                                                             0,
                                                         ),
                                                         output_type: Some(
                                                             std :: string :: String,
                                                         ),
+                                                        cardinality: None,
+                                                        cpu_usage: None,
                                                     },
                                                 },
-                                                metadata: HydroNodeMetadata {
+                                                metadata: HydroIrMetadata {
                                                     location_kind: Process(
                                                         0,
                                                     ),
                                                     output_type: Some(
                                                         (usize , std :: string :: String),
                                                     ),
+                                                    cardinality: None,
+                                                    cpu_usage: None,
                                                 },
                                             },
-                                            metadata: HydroNodeMetadata {
+                                            metadata: HydroIrMetadata {
                                                 location_kind: Process(
                                                     0,
                                                 ),
                                                 output_type: Some(
                                                     (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , std :: string :: String),
                                                 ),
+                                                cardinality: None,
+                                                cpu_usage: None,
                                             },
                                         },
-                                        metadata: HydroNodeMetadata {
+                                        metadata: HydroIrMetadata {
                                             location_kind: Cluster(
                                                 1,
                                             ),
                                             output_type: Some(
                                                 std :: string :: String,
                                             ),
+                                            cardinality: None,
+                                            cpu_usage: None,
                                         },
                                     },
-                                    metadata: HydroNodeMetadata {
+                                    metadata: HydroIrMetadata {
                                         location_kind: Cluster(
                                             1,
                                         ),
                                         output_type: Some(
                                             (std :: string :: String , ()),
                                         ),
+                                        cardinality: None,
+                                        cpu_usage: None,
                                     },
                                 },
-                                metadata: HydroNodeMetadata {
+                                metadata: HydroIrMetadata {
                                     location_kind: Cluster(
                                         1,
                                     ),
                                     output_type: Some(
                                         (std :: string :: String , i32),
                                     ),
+                                    cardinality: None,
+                                    cpu_usage: None,
                                 },
                             },
-                            metadata: HydroNodeMetadata {
+                            metadata: HydroIrMetadata {
                                 location_kind: Cluster(
                                     1,
                                 ),
                                 output_type: Some(
                                     (std :: string :: String , i32),
                                 ),
+                                cardinality: None,
+                                cpu_usage: None,
                             },
                         },
-                        metadata: HydroNodeMetadata {
+                        metadata: HydroIrMetadata {
                             location_kind: Process(
                                 0,
                             ),
                             output_type: Some(
                                 (std :: string :: String , i32),
                             ),
+                            cardinality: None,
+                            cpu_usage: None,
                         },
                     },
-                    metadata: HydroNodeMetadata {
+                    metadata: HydroIrMetadata {
                         location_kind: Process(
                             0,
                         ),
                         output_type: Some(
                             (std :: string :: String , i32),
                         ),
+                        cardinality: None,
+                        cpu_usage: None,
                     },
                 },
-                metadata: HydroNodeMetadata {
+                metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
                     output_type: Some(
                         (std :: string :: String , i32),
                     ),
+                    cardinality: None,
+                    cpu_usage: None,
                 },
             },
-            metadata: HydroNodeMetadata {
+            metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
+                cardinality: None,
+                cpu_usage: None,
             },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            output_type: Some(
+                (std :: string :: String , i32),
+            ),
+            cardinality: None,
+            cpu_usage: None,
         },
     },
 ]

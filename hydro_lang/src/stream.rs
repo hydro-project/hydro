@@ -142,6 +142,7 @@ impl<'a, T, L: Location<'a>, Order> CycleComplete<'a, TickCycleMarker>
                 ident,
                 location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             });
     }
 }
@@ -189,8 +190,9 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> CycleComplete<'a, ForwardRefMark
                 location_kind: self.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
-                    metadata,
+                    metadata: metadata.clone(),
                 }),
+                metadata,
             });
     }
 }
@@ -1664,9 +1666,10 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
             .push(HydroLeaf::ForEach {
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
-                    metadata,
+                    metadata: metadata.clone(),
                 }),
                 f,
+                metadata,
             });
     }
 
@@ -1683,6 +1686,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
             .push(HydroLeaf::DestSink {
                 sink: sink.splice_typed_ctx(&self.location).into(),
                 input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             });
     }
 }
@@ -1850,8 +1854,9 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata,
+                metadata: metadata.clone(),
             }),
+            metadata,
         });
 
         ExternalBincodeStream {
@@ -1915,8 +1920,9 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
-                metadata,
+                metadata: metadata.clone(),
             }),
+            metadata,
         });
 
         ExternalBytesPort {

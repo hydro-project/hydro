@@ -63,16 +63,16 @@ digraph {
         n6v1
         n7v1
         n8v1
-        subgraph "cluster_sg_2v1_var_stream_5" {
-            label="var stream_5"
-            n6v1
-        }
-        subgraph "cluster_sg_2v1_var_stream_6" {
-            label="var stream_6"
-            n7v1
-        }
         subgraph "cluster_sg_2v1_var_stream_7" {
             label="var stream_7"
+            n6v1
+        }
+        subgraph "cluster_sg_2v1_var_stream_8" {
+            label="var stream_8"
+            n7v1
+        }
+        subgraph "cluster_sg_2v1_var_stream_9" {
+            label="var stream_9"
             n8v1
         }
     }
@@ -88,33 +88,33 @@ digraph {
         n11v1
         n12v1
         n13v1
-        subgraph "cluster_sg_3v1_var_stream_1" {
-            label="var stream_1"
-            n2v1
-        }
         subgraph "cluster_sg_3v1_var_stream_10" {
             label="var stream_10"
+            n9v1
+        }
+        subgraph "cluster_sg_3v1_var_stream_12" {
+            label="var stream_12"
+            n10v1
+        }
+        subgraph "cluster_sg_3v1_var_stream_13" {
+            label="var stream_13"
             n11v1
         }
-        subgraph "cluster_sg_3v1_var_stream_11" {
-            label="var stream_11"
+        subgraph "cluster_sg_3v1_var_stream_14" {
+            label="var stream_14"
             n12v1
         }
         subgraph "cluster_sg_3v1_var_stream_2" {
             label="var stream_2"
-            n3v1
+            n2v1
         }
         subgraph "cluster_sg_3v1_var_stream_3" {
             label="var stream_3"
+            n3v1
+        }
+        subgraph "cluster_sg_3v1_var_stream_5" {
+            label="var stream_5"
             n4v1
-        }
-        subgraph "cluster_sg_3v1_var_stream_8" {
-            label="var stream_8"
-            n9v1
-        }
-        subgraph "cluster_sg_3v1_var_stream_9" {
-            label="var stream_9"
-            n10v1
         }
     }
     subgraph "cluster n4v1" {
@@ -128,8 +128,8 @@ digraph {
         style=filled
         label = "sg_5v1\nstratum 0"
         n5v1
-        subgraph "cluster_sg_5v1_var_stream_4" {
-            label="var stream_4"
+        subgraph "cluster_sg_5v1_var_stream_6" {
+            label="var stream_6"
             n5v1
         }
     }

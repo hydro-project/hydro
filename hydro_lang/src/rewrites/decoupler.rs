@@ -9,9 +9,9 @@ pub struct Decoupler {
     pub new_location: LocationId,
 }
 
-fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usize) {
+fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut usize) {
     let metadata = node.metadata().clone();
-    if decoupler.nodes_to_decouple.contains(&next_stmt_id) {
+    if decoupler.nodes_to_decouple.contains(next_stmt_id) {
         println!("Decoupling node {} {}", next_stmt_id, node.print_root());
 
         let output_debug_type = metadata.output_type.clone().unwrap();
@@ -41,9 +41,11 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: usiz
         };
 
         // Set up the network node
-        let network_metadata = HydroNodeMetadata {
+        let network_metadata = HydroIrMetadata {
             location_kind: decoupler.new_location.clone(),
             output_type: Some(output_debug_type.clone()),
+            cardinality: None,
+            cpu_usage: None,
         };
         let output_type = output_debug_type.0;
         let network_node = HydroNode::Network {

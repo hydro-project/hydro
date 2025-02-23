@@ -1,11 +1,16 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
+use hydro_lang::ir::deep_clone;
+use hydro_lang::q;
+use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
 use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-use hydro_lang::rewrites::persist_pullup;
+use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
+use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -41,9 +46,13 @@ async fn main() {
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
     let frequency = 128;
+    let counter_output_duration = q!(std::time::Duration::from_secs(1));
 
-    let nodes = builder
+    let optimized = builder
         .optimize_with(persist_pullup::persist_pullup)
+        .optimize_with(|ir| insert_counter::insert_counter(ir, counter_output_duration));
+    let mut ir = deep_clone(optimized.ir());
+    let nodes = optimized
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment))
@@ -84,9 +93,16 @@ async fn main() {
         .get_process(&leader)
         .stdout_filter(CPU_USAGE_PREFIX)
         .await;
-    let mut clusters_usage_out = vec![];
-    for worker in nodes.get_cluster(&cluster).members() {
-        clusters_usage_out.push(worker.stdout_filter(CPU_USAGE_PREFIX).await);
+    let mut usage_out = HashMap::new();
+    let mut cardinality_out = HashMap::new();
+    for (id, name, cluster) in nodes.get_all_clusters() {
+        for (idx, node) in cluster.members().iter().enumerate() {
+            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
+            usage_out.insert((id.clone(), name.clone(), idx), out);
+
+            let out = node.stdout_filter(COUNTER_PREFIX).await;
+            cardinality_out.insert((id.clone(), name.clone(), idx), out);
+        }
     }
 
     deployment
@@ -97,7 +113,9 @@ async fn main() {
         .unwrap();
 
     println!("Leader {}", leader_usage_out.recv().await.unwrap());
-    for mut cluster_usage_out in clusters_usage_out {
-        println!("Worker {}", cluster_usage_out.recv().await.unwrap());
-    }
+    analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+
+    hydro_lang::ir::dbg_dedup_tee(|| {
+        println!("{:#?}", ir);
+    });
 }

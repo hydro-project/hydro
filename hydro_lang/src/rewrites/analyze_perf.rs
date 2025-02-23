@@ -57,39 +57,23 @@ fn parse_perf(file: String) -> HashMap<usize, HashMap<String, f64>> {
     samples_per_operator
 }
 
-fn analyze_perf_leaf(
+fn inject_perf_leaf(
     leaf: &mut HydroLeaf,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
-    next_stmt_id: usize,
+    next_stmt_id: &mut usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
-        for (dfir_operator, samples) in dfir_operator_and_samples {
-            println!(
-                "{} Hydro leaf {}: {} {:.02}%",
-                next_stmt_id,
-                leaf.print_root(),
-                dfir_operator,
-                samples * 100f64
-            );
-        }
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+        leaf.metadata_mut().cpu_usage = Some(dfir_operator_and_samples.values().sum());
     }
 }
 
-fn analyze_perf_node(
+fn inject_perf_node(
     node: &mut HydroNode,
     id_to_usage: &HashMap<usize, HashMap<String, f64>>,
-    next_stmt_id: usize,
+    next_stmt_id: &mut usize,
 ) {
-    if let Some(dfir_operator_and_samples) = id_to_usage.get(&next_stmt_id) {
-        for (dfir_operator, samples) in dfir_operator_and_samples {
-            println!(
-                "{} Hydro node {}: {} {:.02}%",
-                next_stmt_id,
-                node.print_root(),
-                dfir_operator,
-                samples * 100f64
-            );
-        }
+    if let Some(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+        node.metadata_mut().cpu_usage = Some(dfir_operator_and_samples.values().sum());
     }
 }
 
@@ -98,10 +82,10 @@ pub fn analyze_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
     traverse_dfir(
         ir,
         |leaf, next_stmt_id| {
-            analyze_perf_leaf(leaf, &id_to_usage, next_stmt_id);
+            inject_perf_leaf(leaf, &id_to_usage, next_stmt_id);
         },
         |node, next_stmt_id| {
-            analyze_perf_node(node, &id_to_usage, next_stmt_id);
+            inject_perf_node(node, &id_to_usage, next_stmt_id);
         },
     );
 }

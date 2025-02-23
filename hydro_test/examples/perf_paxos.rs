@@ -6,8 +6,11 @@ use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::ir::deep_clone;
-use hydro_lang::rewrites::analyze_perf::{analyze_perf, parse_cpu_usage, CPU_USAGE_PREFIX};
-use hydro_lang::rewrites::persist_pullup;
+use hydro_lang::q;
+use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
+use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
+use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
+use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
@@ -96,7 +99,13 @@ async fn main() {
         },
     );
 
-    let optimized = builder.optimize_with(persist_pullup::persist_pullup);
+    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+
+    let optimized = builder
+        .optimize_with(persist_pullup::persist_pullup)
+        .optimize_with(|leaf| {
+            insert_counter::insert_counter(leaf, counter_output_duration);
+        });
     let mut ir = deep_clone(optimized.ir());
     let nodes = optimized
         .with_cluster(
@@ -119,12 +128,16 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    // Get stdout for each process to capture their CPU usage later
+    // Get stdout for each process to capture their CPU usage and cardinality later
     let mut usage_out = HashMap::new();
+    let mut cardinality_out = HashMap::new();
     for (id, name, cluster) in nodes.get_all_clusters() {
         for (idx, node) in cluster.members().iter().enumerate() {
             let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
             usage_out.insert((id.clone(), name.clone(), idx), out);
+
+            let out = node.stdout_filter(COUNTER_PREFIX).await;
+            cardinality_out.insert((id.clone(), name.clone(), idx), out);
         }
     }
 
@@ -135,34 +148,8 @@ async fn main() {
         .await
         .unwrap();
 
-    // Re-analyze the IR using perf data from each node
-    for (id, name, cluster) in nodes.get_all_clusters() {
-        // Iterate through nodes' usages and keep the max usage one
-        let mut max_usage = None;
-        for (idx, _) in cluster.members().iter().enumerate() {
-            let measurement = usage_out
-                .get_mut(&(id.clone(), name.clone(), idx))
-                .unwrap()
-                .recv()
-                .await
-                .unwrap();
-            println!("{} {} {}", &name, idx, measurement);
-            let usage = parse_cpu_usage(measurement);
-            if let Some((prev_usage, _)) = max_usage {
-                if usage > prev_usage {
-                    max_usage = Some((usage, idx));
-                }
-            } else {
-                max_usage = Some((usage, idx));
-            }
-        }
-
-        if let Some((usage, idx)) = max_usage {
-            if let Some(perf_results) = cluster.members().get(idx).unwrap().tracing_results().await
-            {
-                println!("{}: {}", &name, usage);
-                analyze_perf(&mut ir, perf_results.folded_data);
-            }
-        }
-    }
+    analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    hydro_lang::ir::dbg_dedup_tee(|| {
+        println!("{:#?}", ir);
+    });
 }
