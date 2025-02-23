@@ -250,7 +250,7 @@ pub fn entry(
                     runtime_data_params.push(quote! {
                         #pat: #runtime_tpe
                     });
-                    runtime_data_locals.push(quote!(##pat));
+                    runtime_data_locals.push(quote!(# #pat));
 
                     out.push(quote_spanned! {input.span()=>
                         let #pat: &#root::internal::syn::Expr = &input_parsed[#i];

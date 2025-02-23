@@ -203,20 +203,12 @@ impl HydroLeaf {
         seen_tees: &mut SeenTees,
     ) {
         match self {
-            HydroLeaf::ForEach {
-                f: _,
-                ref mut input,
-                ..
-            }
-            | HydroLeaf::DestSink {
-                sink: _,
-                ref mut input,
-                ..
-            }
+            HydroLeaf::ForEach { f: _, input, .. }
+            | HydroLeaf::DestSink { sink: _, input, .. }
             | HydroLeaf::CycleSink {
                 ident: _,
                 location_kind: _,
-                ref mut input,
+                input,
                 ..
             } => {
                 transform(input, seen_tees);
@@ -299,7 +291,7 @@ impl HydroLeaf {
                                 Some(&next_stmt_id.to_string()),
                             );
                     }
-                    BuildersOrCallback::Callback(ref mut leaf_callback, _) => {
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
@@ -324,7 +316,7 @@ impl HydroLeaf {
                                 Some(&next_stmt_id.to_string()),
                             );
                     }
-                    BuildersOrCallback::Callback(ref mut leaf_callback, _) => {
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, next_stmt_id);
                     }
                 }
@@ -1102,7 +1094,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1134,7 +1126,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1191,7 +1183,7 @@ impl<'a> HydroNode {
                             let builder = graph_builders.entry(location_id).or_default();
                             builder.add_dfir(source_stmt, None, Some(&next_stmt_id.to_string()));
                         }
-                        BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        BuildersOrCallback::Callback(_, node_callback) => {
                             node_callback(self, next_stmt_id);
                         }
                     }
@@ -1218,7 +1210,7 @@ impl<'a> HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(_) => {}
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1235,7 +1227,7 @@ impl<'a> HydroNode {
                 {
                     match builders_or_callback {
                         BuildersOrCallback::Builders(_) => {}
-                        BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        BuildersOrCallback::Callback(_, node_callback) => {
                             node_callback(self, next_stmt_id);
                         }
                     }
@@ -1267,7 +1259,7 @@ impl<'a> HydroNode {
                                 Some(&next_stmt_id.to_string()),
                             );
                         }
-                        BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        BuildersOrCallback::Callback(_, node_callback) => {
                             node_callback(self, next_stmt_id);
                         }
                     }
@@ -1309,7 +1301,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1346,7 +1338,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1409,7 +1401,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1465,7 +1457,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1493,7 +1485,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1521,7 +1513,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1549,7 +1541,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1577,7 +1569,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1605,7 +1597,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1633,7 +1625,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1668,7 +1660,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1696,7 +1688,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1724,7 +1716,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1775,7 +1767,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1822,7 +1814,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1901,7 +1893,7 @@ impl<'a> HydroNode {
                             );
                         }
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }
@@ -1934,7 +1926,7 @@ impl<'a> HydroNode {
                             Some(&next_stmt_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
                     }
                 }

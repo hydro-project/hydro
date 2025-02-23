@@ -955,7 +955,7 @@ impl Dfir<'_> {
     }
 
     /// Alias for [`Context::join_tasks`].
-    pub fn join_tasks(&mut self) -> impl '_ + Future {
+    pub fn join_tasks(&mut self) -> impl use<'_> + Future {
         self.context.join_tasks()
     }
 }
