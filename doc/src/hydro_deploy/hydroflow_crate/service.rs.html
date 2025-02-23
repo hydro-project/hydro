@@ -356,7 +356,9 @@
 <a href="#355" id="355">355</a>
 <a href="#356" id="356">356</a>
 <a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::path::PathBuf;
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -535,7 +537,9 @@
         <span class="self">self</span>.launched_binary.as_ref().unwrap().exit_code()
     }
 
-    <span class="kw">fn </span>build(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>BuildOutput, BuildError&gt;&gt; {
+    <span class="kw">fn </span>build(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+    ) -&gt; <span class="kw">impl use</span>&lt;&gt; + <span class="lifetime">'static </span>+ Future&lt;Output = <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>BuildOutput, BuildError&gt;&gt; {
         <span class="comment">// Memoized, so no caching in `self` is needed.
         </span>build_crate_memoized(<span class="self">self</span>.build_params.clone())
     }

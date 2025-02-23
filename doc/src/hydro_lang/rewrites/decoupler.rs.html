@@ -83,7 +83,9 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Span;
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Span;
 
 <span class="kw">use </span><span class="kw">crate</span>::ir::<span class="kw-2">*</span>;
 <span class="kw">use </span><span class="kw">crate</span>::location::LocationId;
@@ -94,9 +96,9 @@
     <span class="kw">pub </span>new_location: LocationId,
 }
 
-<span class="kw">fn </span>decouple_node(node: <span class="kw-2">&amp;mut </span>HydroNode, decoupler: <span class="kw-2">&amp;</span>Decoupler, next_stmt_id: usize) {
+<span class="kw">fn </span>decouple_node(node: <span class="kw-2">&amp;mut </span>HydroNode, decoupler: <span class="kw-2">&amp;</span>Decoupler, next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
     <span class="kw">let </span>metadata = node.metadata().clone();
-    <span class="kw">if </span>decoupler.nodes_to_decouple.contains(<span class="kw-2">&amp;</span>next_stmt_id) {
+    <span class="kw">if </span>decoupler.nodes_to_decouple.contains(next_stmt_id) {
         <span class="macro">println!</span>(<span class="string">"Decoupling node {} {}"</span>, next_stmt_id, node.print_root());
 
         <span class="kw">let </span>output_debug_type = metadata.output_type.clone().unwrap();
@@ -126,9 +128,11 @@
         };
 
         <span class="comment">// Set up the network node
-        </span><span class="kw">let </span>network_metadata = HydroNodeMetadata {
+        </span><span class="kw">let </span>network_metadata = HydroIrMetadata {
             location_kind: decoupler.new_location.clone(),
             output_type: <span class="prelude-val">Some</span>(output_debug_type.clone()),
+            cardinality: <span class="prelude-val">None</span>,
+            cpu_usage: <span class="prelude-val">None</span>,
         };
         <span class="kw">let </span>output_type = output_debug_type.<span class="number">0</span>;
         <span class="kw">let </span>network_node = HydroNode::Network {

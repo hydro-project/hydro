@@ -266,7 +266,26 @@
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 <span class="kw">use </span>stageleft::IntoQuotedMut;
 
@@ -341,7 +360,7 @@
     <span class="kw">use </span>hydro_deploy::Deployment;
     <span class="kw">use </span>hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime};
     <span class="kw">use </span>hydro_lang::rewrites::partitioner::{<span class="self">self</span>, PartitionAttribute, Partitioner};
-    <span class="kw">use </span>hydro_lang::rewrites::persist_pullup;
+    <span class="kw">use </span>hydro_lang::rewrites::{insert_counter, persist_pullup};
     <span class="kw">use </span>hydro_lang::{ClusterId, Location};
     <span class="kw">use </span>stageleft::{q, RuntimeData};
 
@@ -523,6 +542,25 @@
         <span class="kw">let </span>built = builder
             .optimize_with(persist_pullup::persist_pullup)
             .optimize_with(|leaves| partitioner::partition(leaves, <span class="kw-2">&amp;</span>partitioner))
+            .into_deploy::&lt;DeployRuntime&gt;();
+
+        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
+
+        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>)).dfir() {
+            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
+                <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
+            });
+        }
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>counter_simple_cluster_ir() {
+        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
+        <span class="kw">let _ </span>= <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
+        <span class="kw">let </span>counter_output_duration = <span class="macro">q!</span>(std::time::Duration::from_secs(<span class="number">1</span>));
+        <span class="kw">let </span>built = builder
+            .optimize_with(persist_pullup::persist_pullup)
+            .optimize_with(|leaves| insert_counter::insert_counter(leaves, counter_output_duration))
             .into_deploy::&lt;DeployRuntime&gt;();
 
         <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());

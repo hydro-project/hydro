@@ -55,7 +55,9 @@
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
 <a href="#56" id="56">56</a>
-<a href="#57" id="57">57</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"runtime_measure"</span>)]
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"runtime_measure"</span>)]
 </span><span class="kw">use </span>std::panic::AssertUnwindSafe;
 
 <span class="attr">#[cfg(feature = <span class="string">"runtime_measure"</span>)]
@@ -66,6 +68,8 @@
 </span><span class="kw">use </span>procfs::WithCurrentSystemInfo;
 
 <span class="kw">pub const </span>CPU_USAGE_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"CPU:"</span>;
+<span class="comment">// Should remain consistent with dfir_lang/src/graph/ops/_counter.rs
+</span><span class="kw">pub const </span>COUNTER_PREFIX: <span class="kw-2">&amp;</span>str = <span class="string">"_counter"</span>;
 
 <span class="attr">#[cfg(not(feature = <span class="string">"runtime_measure"</span>))]
 </span><span class="kw">pub async fn </span>run(flow: Dfir&lt;<span class="lifetime">'_</span>&gt;) {

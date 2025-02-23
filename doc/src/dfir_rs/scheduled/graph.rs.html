@@ -2045,7 +2045,7 @@
     }
 
     <span class="doccomment">/// Alias for [`Context::join_tasks`].
-    </span><span class="kw">pub fn </span>join_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span><span class="lifetime">'_ </span>+ Future {
+    </span><span class="kw">pub fn </span>join_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl use</span>&lt;<span class="lifetime">'_</span>&gt; + Future {
         <span class="self">self</span>.context.join_tasks()
     }
 }

@@ -672,7 +672,7 @@
                     runtime_data_params.push(<span class="macro">quote!</span> {
                         #pat: #runtime_tpe
                     });
-                    runtime_data_locals.push(<span class="macro">quote!</span>(##pat));
+                    runtime_data_locals.push(<span class="macro">quote!</span>(# #pat));
 
                     out.push(<span class="macro">quote_spanned!</span> {input.span()=&gt;
                         <span class="kw">let </span>#pat: <span class="kw-2">&amp;</span>#root::internal::syn::Expr = <span class="kw-2">&amp;</span>input_parsed[#i];

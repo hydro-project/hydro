@@ -2164,7 +2164,13 @@
 <a href="#2163" id="2163">2163</a>
 <a href="#2164" id="2164">2164</a>
 <a href="#2165" id="2165">2165</a>
-<a href="#2166" id="2166">2166</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+<a href="#2166" id="2166">2166</a>
+<a href="#2167" id="2167">2167</a>
+<a href="#2168" id="2168">2168</a>
+<a href="#2169" id="2169">2169</a>
+<a href="#2170" id="2170">2170</a>
+<a href="#2171" id="2171">2171</a>
+<a href="#2172" id="2172">2172</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::hash::Hash;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::ops::Deref;
@@ -2308,6 +2314,7 @@
                 ident,
                 location_kind: <span class="self">self</span>.location_kind(),
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
             });
     }
 }
@@ -2355,8 +2362,9 @@
                 location_kind: <span class="self">self</span>.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                    metadata,
+                    metadata: metadata.clone(),
                 }),
+                metadata,
             });
     }
 }
@@ -3830,9 +3838,10 @@
             .push(HydroLeaf::ForEach {
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                    metadata,
+                    metadata: metadata.clone(),
                 }),
                 f,
+                metadata,
             });
     }
 
@@ -3849,6 +3858,7 @@
             .push(HydroLeaf::DestSink {
                 sink: sink.splice_typed_ctx(<span class="kw-2">&amp;</span><span class="self">self</span>.location).into(),
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
             });
     }
 }
@@ -4016,8 +4026,9 @@
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: <span class="prelude-val">None</span>,
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                metadata,
+                metadata: metadata.clone(),
             }),
+            metadata,
         });
 
         ExternalBincodeStream {
@@ -4081,8 +4092,9 @@
                 instantiate_fn: DebugInstantiate::Building(),
                 deserialize_fn: <span class="prelude-val">None</span>,
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                metadata,
+                metadata: metadata.clone(),
             }),
+            metadata,
         });
 
         ExternalBytesPort {

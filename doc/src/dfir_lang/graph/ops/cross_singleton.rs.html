@@ -113,7 +113,9 @@
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
 <a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -190,13 +192,15 @@
         <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="kw">let </span>#ident = {
                 <span class="attr">#[inline(always)]
-                </span><span class="kw">fn </span>cross_singleton_guard&lt;Singleton, Item&gt;(
+                </span><span class="kw">fn </span>cross_singleton_guard&lt;Singleton, Item, SingletonIter, Stream&gt;(
                     <span class="kw-2">mut </span>singleton_state_mut: std::cell::RefMut&lt;<span class="lifetime">'_</span>, <span class="prelude-ty">Option</span>&lt;Singleton&gt;&gt;,
-                    <span class="kw-2">mut </span>singleton_input: <span class="kw">impl </span>Iterator&lt;Item = Singleton&gt;,
-                    stream_input: <span class="kw">impl </span>Iterator&lt;Item = Item&gt;,
-                ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (Item, Singleton)&gt;
+                    <span class="kw-2">mut </span>singleton_input: SingletonIter,
+                    stream_input: Stream,
+                ) -&gt; <span class="kw">impl use</span>&lt;Item, Singleton, Stream, <span class="comment">/*TODO: https://github.com/rust-lang/rust/issues/130043 */ </span>SingletonIter&gt; + Iterator&lt;Item = (Item, Singleton)&gt;
                 <span class="kw">where
                     </span>Singleton: ::std::clone::Clone,
+                    SingletonIter: Iterator&lt;Item = Singleton&gt;,
+                    Stream: Iterator&lt;Item = Item&gt;,
                 {
                     <span class="kw">let </span>singleton_value_opt = <span class="kw">match </span><span class="kw-2">&amp;*</span>singleton_state_mut {
                         ::std::option::Option::Some(singleton_value) =&gt; <span class="prelude-val">Some</span>(singleton_value.clone()),

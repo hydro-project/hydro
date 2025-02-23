@@ -205,7 +205,7 @@
             <span class="kw">let </span>#ident = {
                 <span class="comment">// TODO(mingwei): performance issue - get_mut_default and std::mem::take reset the vecs, reallocs heap.
                 </span><span class="kw">let </span><span class="kw-2">mut </span>zipbuf_borrow = #context.state_ref(#zipbuf_ident).borrow_mut();
-                <span class="kw">let </span>(<span class="kw-2">ref mut </span>lhs_buf, <span class="kw-2">ref mut </span>rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
+                <span class="kw">let </span>(lhs_buf, rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
                 #root::itertools::Itertools::zip_longest(
                     ::std::mem::take(lhs_buf).into_iter().chain(#lhs),
                     ::std::mem::take(rhs_buf).into_iter().chain(#rhs),
@@ -215,7 +215,7 @@
                             <span class="prelude-val">Some</span>((lhs, rhs))
                         } <span class="kw">else </span>{
                             <span class="kw">let </span><span class="kw-2">mut </span>zipbuf_burrow = #context.state_ref(#zipbuf_ident).borrow_mut();
-                            <span class="kw">let </span>(<span class="kw-2">ref mut </span>lhs_buf, <span class="kw-2">ref mut </span>rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
+                            <span class="kw">let </span>(lhs_buf, rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
                             <span class="kw">match </span>either {
                                 #root::itertools::EitherOrBoth::Left(lhs) =&gt; lhs_buf.push(lhs),
                                 #root::itertools::EitherOrBoth::Right(rhs) =&gt; rhs_buf.push(rhs),

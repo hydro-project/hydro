@@ -160,11 +160,42 @@
 <a href="#159" id="159">159</a>
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::rc::Rc;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<span class="kw">use </span>stats_ci::{Confidence, StatisticsOps};
 <span class="kw">use </span>tokio::time::Instant;
 
 <span class="kw">pub struct </span>Client {}
@@ -292,15 +323,20 @@
         .union(c_throughput_reset)
         .all_ticks()
         .fold(
-            <span class="macro">q!</span>(|| <span class="number">0</span>),
-            <span class="macro">q!</span>(|total, (batch_size, reset)| {
+            <span class="macro">q!</span>(|| (<span class="number">0</span>, { stats_ci::mean::Arithmetic::new() })),
+            <span class="macro">q!</span>(|(total, stats), (batch_size, reset)| {
                 <span class="kw">if </span>reset {
+                    <span class="kw">if </span><span class="kw-2">*</span>total &gt; <span class="number">0 </span>{
+                        stats.extend(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>total <span class="kw">as </span>f64]).unwrap();
+                    }
+
                     <span class="kw-2">*</span>total = <span class="number">0</span>;
                 } <span class="kw">else </span>{
                     <span class="kw-2">*</span>total += batch_size;
                 }
             }),
-        );
+        )
+        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, stats)| { stats }));
 
     <span class="kw">unsafe </span>{
         <span class="comment">// SAFETY: intentionally sampling statistics
@@ -312,13 +348,37 @@
     .all_ticks()
     .for_each(<span class="macro">q!</span>(<span class="kw">move </span>|(latencies, throughput)| {
         <span class="kw">let </span><span class="kw-2">mut </span>latencies_mut = latencies.borrow_mut();
-        <span class="kw">if </span>!latencies_mut.is_empty() {
-            <span class="kw">let </span>middle_idx = latencies_mut.len() / <span class="number">2</span>;
-            <span class="kw">let </span>(<span class="kw">_</span>, median, <span class="kw">_</span>) = latencies_mut.select_nth_unstable(middle_idx);
-            <span class="macro">println!</span>(<span class="string">"Median latency: {}ms"</span>, median.as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>);
+
+        <span class="kw">let </span>confidence = Confidence::new(<span class="number">0.95</span>);
+
+        latencies_mut.sort_unstable();
+        <span class="kw">if let </span><span class="prelude-val">Ok</span>(interval) =
+            stats_ci::quantile::ci_sorted_unchecked(confidence, latencies_mut.as_slice(), <span class="number">0.5</span>)
+        {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(lower) = interval.left() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(upper) = interval.right() {
+                    <span class="macro">println!</span>(
+                        <span class="string">"Latency Median 95% interval: {:.2} - {:.2} ms"</span>,
+                        lower.as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0</span>,
+                        upper.as_micros() <span class="kw">as </span>f64 / <span class="number">1000.0
+                    </span>);
+                }
+            }
         }
 
-        <span class="macro">println!</span>(<span class="string">"Throughput: {} requests/s"</span>, throughput);
+        <span class="kw">if </span>throughput.sample_count() &gt;= <span class="number">2 </span>{
+            <span class="comment">// ci_mean crashes if there are fewer than two samples
+            </span><span class="kw">if let </span><span class="prelude-val">Ok</span>(interval) = throughput.ci_mean(confidence) {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(lower) = interval.left() {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(upper) = interval.right() {
+                        <span class="macro">println!</span>(
+                            <span class="string">"Throughput 95% interval: {:.2} - {:.2} requests/s"</span>,
+                            lower, upper
+                        );
+                    }
+                }
+            }
+        }
     }));
     <span class="comment">// End track statistics
 </span>}

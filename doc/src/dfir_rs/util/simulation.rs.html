@@ -639,7 +639,7 @@
     </span><span class="kw">pub fn </span>new_outbox&lt;T: <span class="lifetime">'static</span>&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         interface: InterfaceName,
-    ) -&gt; <span class="kw">impl </span>Sink&lt;(T, Address), Error = Infallible&gt; {
+    ) -&gt; <span class="kw">impl use</span>&lt;T&gt; + Sink&lt;(T, Address), Error = Infallible&gt; {
         <span class="kw">let </span>(sender, receiver) = unbounded_channel::&lt;(T, Address)&gt;();
 
         <span class="kw">let </span>receiver = receiver.map(|(msg, addr)| (Box::new(msg) <span class="kw">as </span>Box&lt;<span class="kw">dyn </span>Any&gt;, addr));

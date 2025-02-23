@@ -396,9 +396,9 @@
     }
 }
 
-<span class="kw">fn </span>partition_node(node: <span class="kw-2">&amp;mut </span>HydroNode, partitioner: <span class="kw-2">&amp;</span>Partitioner, next_stmt_id: usize) {
+<span class="kw">fn </span>partition_node(node: <span class="kw-2">&amp;mut </span>HydroNode, partitioner: <span class="kw-2">&amp;</span>Partitioner, next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
     replace_membership_info(node, partitioner);
-    replace_sender_network(node, partitioner, next_stmt_id);
+    replace_sender_network(node, partitioner, <span class="kw-2">*</span>next_stmt_id);
     replace_receiver_network(node, partitioner);
 }
 

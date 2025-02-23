@@ -1519,7 +1519,7 @@
     Rest: CopyRefVariadic,
 {
     <span class="kw">fn </span>copy_var(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::UnRefVar {
-        <span class="kw">let </span><span class="macro">var_args!</span>(<span class="kw-2">&amp;</span>item, ...rest) = <span class="self">self</span>;
+        <span class="kw">let </span><span class="kw-2">&amp;</span><span class="macro">var_args!</span>(<span class="kw-2">&amp;</span>item, ...<span class="kw-2">ref </span>rest) = <span class="self">self</span>;
         <span class="macro">var_expr!</span>(item, ...rest.copy_var())
     }
 }
@@ -1530,7 +1530,7 @@
     Rest: CopyRefVariadic,
 {
     <span class="kw">fn </span>copy_var(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::UnRefVar {
-        <span class="kw">let </span><span class="macro">var_args!</span>(<span class="kw-2">&amp;mut </span>item, ...rest) = <span class="self">self</span>;
+        <span class="kw">let </span><span class="kw-2">&amp;</span><span class="macro">var_args!</span>(<span class="kw-2">&amp;mut </span>item, ...<span class="kw-2">ref </span>rest) = <span class="self">self</span>;
         <span class="macro">var_expr!</span>(item, ...rest.copy_var())
     }
 }

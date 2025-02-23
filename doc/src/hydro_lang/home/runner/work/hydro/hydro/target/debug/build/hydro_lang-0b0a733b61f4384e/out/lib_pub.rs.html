@@ -9443,7 +9443,317 @@
 <a href="#9442" id="9442">9442</a>
 <a href="#9443" id="9443">9443</a>
 <a href="#9444" id="9444">9444</a>
-<a href="#9445" id="9445">9445</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
+<a href="#9445" id="9445">9445</a>
+<a href="#9446" id="9446">9446</a>
+<a href="#9447" id="9447">9447</a>
+<a href="#9448" id="9448">9448</a>
+<a href="#9449" id="9449">9449</a>
+<a href="#9450" id="9450">9450</a>
+<a href="#9451" id="9451">9451</a>
+<a href="#9452" id="9452">9452</a>
+<a href="#9453" id="9453">9453</a>
+<a href="#9454" id="9454">9454</a>
+<a href="#9455" id="9455">9455</a>
+<a href="#9456" id="9456">9456</a>
+<a href="#9457" id="9457">9457</a>
+<a href="#9458" id="9458">9458</a>
+<a href="#9459" id="9459">9459</a>
+<a href="#9460" id="9460">9460</a>
+<a href="#9461" id="9461">9461</a>
+<a href="#9462" id="9462">9462</a>
+<a href="#9463" id="9463">9463</a>
+<a href="#9464" id="9464">9464</a>
+<a href="#9465" id="9465">9465</a>
+<a href="#9466" id="9466">9466</a>
+<a href="#9467" id="9467">9467</a>
+<a href="#9468" id="9468">9468</a>
+<a href="#9469" id="9469">9469</a>
+<a href="#9470" id="9470">9470</a>
+<a href="#9471" id="9471">9471</a>
+<a href="#9472" id="9472">9472</a>
+<a href="#9473" id="9473">9473</a>
+<a href="#9474" id="9474">9474</a>
+<a href="#9475" id="9475">9475</a>
+<a href="#9476" id="9476">9476</a>
+<a href="#9477" id="9477">9477</a>
+<a href="#9478" id="9478">9478</a>
+<a href="#9479" id="9479">9479</a>
+<a href="#9480" id="9480">9480</a>
+<a href="#9481" id="9481">9481</a>
+<a href="#9482" id="9482">9482</a>
+<a href="#9483" id="9483">9483</a>
+<a href="#9484" id="9484">9484</a>
+<a href="#9485" id="9485">9485</a>
+<a href="#9486" id="9486">9486</a>
+<a href="#9487" id="9487">9487</a>
+<a href="#9488" id="9488">9488</a>
+<a href="#9489" id="9489">9489</a>
+<a href="#9490" id="9490">9490</a>
+<a href="#9491" id="9491">9491</a>
+<a href="#9492" id="9492">9492</a>
+<a href="#9493" id="9493">9493</a>
+<a href="#9494" id="9494">9494</a>
+<a href="#9495" id="9495">9495</a>
+<a href="#9496" id="9496">9496</a>
+<a href="#9497" id="9497">9497</a>
+<a href="#9498" id="9498">9498</a>
+<a href="#9499" id="9499">9499</a>
+<a href="#9500" id="9500">9500</a>
+<a href="#9501" id="9501">9501</a>
+<a href="#9502" id="9502">9502</a>
+<a href="#9503" id="9503">9503</a>
+<a href="#9504" id="9504">9504</a>
+<a href="#9505" id="9505">9505</a>
+<a href="#9506" id="9506">9506</a>
+<a href="#9507" id="9507">9507</a>
+<a href="#9508" id="9508">9508</a>
+<a href="#9509" id="9509">9509</a>
+<a href="#9510" id="9510">9510</a>
+<a href="#9511" id="9511">9511</a>
+<a href="#9512" id="9512">9512</a>
+<a href="#9513" id="9513">9513</a>
+<a href="#9514" id="9514">9514</a>
+<a href="#9515" id="9515">9515</a>
+<a href="#9516" id="9516">9516</a>
+<a href="#9517" id="9517">9517</a>
+<a href="#9518" id="9518">9518</a>
+<a href="#9519" id="9519">9519</a>
+<a href="#9520" id="9520">9520</a>
+<a href="#9521" id="9521">9521</a>
+<a href="#9522" id="9522">9522</a>
+<a href="#9523" id="9523">9523</a>
+<a href="#9524" id="9524">9524</a>
+<a href="#9525" id="9525">9525</a>
+<a href="#9526" id="9526">9526</a>
+<a href="#9527" id="9527">9527</a>
+<a href="#9528" id="9528">9528</a>
+<a href="#9529" id="9529">9529</a>
+<a href="#9530" id="9530">9530</a>
+<a href="#9531" id="9531">9531</a>
+<a href="#9532" id="9532">9532</a>
+<a href="#9533" id="9533">9533</a>
+<a href="#9534" id="9534">9534</a>
+<a href="#9535" id="9535">9535</a>
+<a href="#9536" id="9536">9536</a>
+<a href="#9537" id="9537">9537</a>
+<a href="#9538" id="9538">9538</a>
+<a href="#9539" id="9539">9539</a>
+<a href="#9540" id="9540">9540</a>
+<a href="#9541" id="9541">9541</a>
+<a href="#9542" id="9542">9542</a>
+<a href="#9543" id="9543">9543</a>
+<a href="#9544" id="9544">9544</a>
+<a href="#9545" id="9545">9545</a>
+<a href="#9546" id="9546">9546</a>
+<a href="#9547" id="9547">9547</a>
+<a href="#9548" id="9548">9548</a>
+<a href="#9549" id="9549">9549</a>
+<a href="#9550" id="9550">9550</a>
+<a href="#9551" id="9551">9551</a>
+<a href="#9552" id="9552">9552</a>
+<a href="#9553" id="9553">9553</a>
+<a href="#9554" id="9554">9554</a>
+<a href="#9555" id="9555">9555</a>
+<a href="#9556" id="9556">9556</a>
+<a href="#9557" id="9557">9557</a>
+<a href="#9558" id="9558">9558</a>
+<a href="#9559" id="9559">9559</a>
+<a href="#9560" id="9560">9560</a>
+<a href="#9561" id="9561">9561</a>
+<a href="#9562" id="9562">9562</a>
+<a href="#9563" id="9563">9563</a>
+<a href="#9564" id="9564">9564</a>
+<a href="#9565" id="9565">9565</a>
+<a href="#9566" id="9566">9566</a>
+<a href="#9567" id="9567">9567</a>
+<a href="#9568" id="9568">9568</a>
+<a href="#9569" id="9569">9569</a>
+<a href="#9570" id="9570">9570</a>
+<a href="#9571" id="9571">9571</a>
+<a href="#9572" id="9572">9572</a>
+<a href="#9573" id="9573">9573</a>
+<a href="#9574" id="9574">9574</a>
+<a href="#9575" id="9575">9575</a>
+<a href="#9576" id="9576">9576</a>
+<a href="#9577" id="9577">9577</a>
+<a href="#9578" id="9578">9578</a>
+<a href="#9579" id="9579">9579</a>
+<a href="#9580" id="9580">9580</a>
+<a href="#9581" id="9581">9581</a>
+<a href="#9582" id="9582">9582</a>
+<a href="#9583" id="9583">9583</a>
+<a href="#9584" id="9584">9584</a>
+<a href="#9585" id="9585">9585</a>
+<a href="#9586" id="9586">9586</a>
+<a href="#9587" id="9587">9587</a>
+<a href="#9588" id="9588">9588</a>
+<a href="#9589" id="9589">9589</a>
+<a href="#9590" id="9590">9590</a>
+<a href="#9591" id="9591">9591</a>
+<a href="#9592" id="9592">9592</a>
+<a href="#9593" id="9593">9593</a>
+<a href="#9594" id="9594">9594</a>
+<a href="#9595" id="9595">9595</a>
+<a href="#9596" id="9596">9596</a>
+<a href="#9597" id="9597">9597</a>
+<a href="#9598" id="9598">9598</a>
+<a href="#9599" id="9599">9599</a>
+<a href="#9600" id="9600">9600</a>
+<a href="#9601" id="9601">9601</a>
+<a href="#9602" id="9602">9602</a>
+<a href="#9603" id="9603">9603</a>
+<a href="#9604" id="9604">9604</a>
+<a href="#9605" id="9605">9605</a>
+<a href="#9606" id="9606">9606</a>
+<a href="#9607" id="9607">9607</a>
+<a href="#9608" id="9608">9608</a>
+<a href="#9609" id="9609">9609</a>
+<a href="#9610" id="9610">9610</a>
+<a href="#9611" id="9611">9611</a>
+<a href="#9612" id="9612">9612</a>
+<a href="#9613" id="9613">9613</a>
+<a href="#9614" id="9614">9614</a>
+<a href="#9615" id="9615">9615</a>
+<a href="#9616" id="9616">9616</a>
+<a href="#9617" id="9617">9617</a>
+<a href="#9618" id="9618">9618</a>
+<a href="#9619" id="9619">9619</a>
+<a href="#9620" id="9620">9620</a>
+<a href="#9621" id="9621">9621</a>
+<a href="#9622" id="9622">9622</a>
+<a href="#9623" id="9623">9623</a>
+<a href="#9624" id="9624">9624</a>
+<a href="#9625" id="9625">9625</a>
+<a href="#9626" id="9626">9626</a>
+<a href="#9627" id="9627">9627</a>
+<a href="#9628" id="9628">9628</a>
+<a href="#9629" id="9629">9629</a>
+<a href="#9630" id="9630">9630</a>
+<a href="#9631" id="9631">9631</a>
+<a href="#9632" id="9632">9632</a>
+<a href="#9633" id="9633">9633</a>
+<a href="#9634" id="9634">9634</a>
+<a href="#9635" id="9635">9635</a>
+<a href="#9636" id="9636">9636</a>
+<a href="#9637" id="9637">9637</a>
+<a href="#9638" id="9638">9638</a>
+<a href="#9639" id="9639">9639</a>
+<a href="#9640" id="9640">9640</a>
+<a href="#9641" id="9641">9641</a>
+<a href="#9642" id="9642">9642</a>
+<a href="#9643" id="9643">9643</a>
+<a href="#9644" id="9644">9644</a>
+<a href="#9645" id="9645">9645</a>
+<a href="#9646" id="9646">9646</a>
+<a href="#9647" id="9647">9647</a>
+<a href="#9648" id="9648">9648</a>
+<a href="#9649" id="9649">9649</a>
+<a href="#9650" id="9650">9650</a>
+<a href="#9651" id="9651">9651</a>
+<a href="#9652" id="9652">9652</a>
+<a href="#9653" id="9653">9653</a>
+<a href="#9654" id="9654">9654</a>
+<a href="#9655" id="9655">9655</a>
+<a href="#9656" id="9656">9656</a>
+<a href="#9657" id="9657">9657</a>
+<a href="#9658" id="9658">9658</a>
+<a href="#9659" id="9659">9659</a>
+<a href="#9660" id="9660">9660</a>
+<a href="#9661" id="9661">9661</a>
+<a href="#9662" id="9662">9662</a>
+<a href="#9663" id="9663">9663</a>
+<a href="#9664" id="9664">9664</a>
+<a href="#9665" id="9665">9665</a>
+<a href="#9666" id="9666">9666</a>
+<a href="#9667" id="9667">9667</a>
+<a href="#9668" id="9668">9668</a>
+<a href="#9669" id="9669">9669</a>
+<a href="#9670" id="9670">9670</a>
+<a href="#9671" id="9671">9671</a>
+<a href="#9672" id="9672">9672</a>
+<a href="#9673" id="9673">9673</a>
+<a href="#9674" id="9674">9674</a>
+<a href="#9675" id="9675">9675</a>
+<a href="#9676" id="9676">9676</a>
+<a href="#9677" id="9677">9677</a>
+<a href="#9678" id="9678">9678</a>
+<a href="#9679" id="9679">9679</a>
+<a href="#9680" id="9680">9680</a>
+<a href="#9681" id="9681">9681</a>
+<a href="#9682" id="9682">9682</a>
+<a href="#9683" id="9683">9683</a>
+<a href="#9684" id="9684">9684</a>
+<a href="#9685" id="9685">9685</a>
+<a href="#9686" id="9686">9686</a>
+<a href="#9687" id="9687">9687</a>
+<a href="#9688" id="9688">9688</a>
+<a href="#9689" id="9689">9689</a>
+<a href="#9690" id="9690">9690</a>
+<a href="#9691" id="9691">9691</a>
+<a href="#9692" id="9692">9692</a>
+<a href="#9693" id="9693">9693</a>
+<a href="#9694" id="9694">9694</a>
+<a href="#9695" id="9695">9695</a>
+<a href="#9696" id="9696">9696</a>
+<a href="#9697" id="9697">9697</a>
+<a href="#9698" id="9698">9698</a>
+<a href="#9699" id="9699">9699</a>
+<a href="#9700" id="9700">9700</a>
+<a href="#9701" id="9701">9701</a>
+<a href="#9702" id="9702">9702</a>
+<a href="#9703" id="9703">9703</a>
+<a href="#9704" id="9704">9704</a>
+<a href="#9705" id="9705">9705</a>
+<a href="#9706" id="9706">9706</a>
+<a href="#9707" id="9707">9707</a>
+<a href="#9708" id="9708">9708</a>
+<a href="#9709" id="9709">9709</a>
+<a href="#9710" id="9710">9710</a>
+<a href="#9711" id="9711">9711</a>
+<a href="#9712" id="9712">9712</a>
+<a href="#9713" id="9713">9713</a>
+<a href="#9714" id="9714">9714</a>
+<a href="#9715" id="9715">9715</a>
+<a href="#9716" id="9716">9716</a>
+<a href="#9717" id="9717">9717</a>
+<a href="#9718" id="9718">9718</a>
+<a href="#9719" id="9719">9719</a>
+<a href="#9720" id="9720">9720</a>
+<a href="#9721" id="9721">9721</a>
+<a href="#9722" id="9722">9722</a>
+<a href="#9723" id="9723">9723</a>
+<a href="#9724" id="9724">9724</a>
+<a href="#9725" id="9725">9725</a>
+<a href="#9726" id="9726">9726</a>
+<a href="#9727" id="9727">9727</a>
+<a href="#9728" id="9728">9728</a>
+<a href="#9729" id="9729">9729</a>
+<a href="#9730" id="9730">9730</a>
+<a href="#9731" id="9731">9731</a>
+<a href="#9732" id="9732">9732</a>
+<a href="#9733" id="9733">9733</a>
+<a href="#9734" id="9734">9734</a>
+<a href="#9735" id="9735">9735</a>
+<a href="#9736" id="9736">9736</a>
+<a href="#9737" id="9737">9737</a>
+<a href="#9738" id="9738">9738</a>
+<a href="#9739" id="9739">9739</a>
+<a href="#9740" id="9740">9740</a>
+<a href="#9741" id="9741">9741</a>
+<a href="#9742" id="9742">9742</a>
+<a href="#9743" id="9743">9743</a>
+<a href="#9744" id="9744">9744</a>
+<a href="#9745" id="9745">9745</a>
+<a href="#9746" id="9746">9746</a>
+<a href="#9747" id="9747">9747</a>
+<a href="#9748" id="9748">9748</a>
+<a href="#9749" id="9749">9749</a>
+<a href="#9750" id="9750">9750</a>
+<a href="#9751" id="9751">9751</a>
+<a href="#9752" id="9752">9752</a>
+<a href="#9753" id="9753">9753</a>
+<a href="#9754" id="9754">9754</a>
+<a href="#9755" id="9755">9755</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
 <span class="kw">pub use </span>stageleft::q;
 <span class="attr">#[doc(hidden)]
 </span><span class="kw">pub mod </span>runtime_support {
@@ -9458,6 +9768,7 @@
         #[cfg(target_os = <span class="string">"linux"</span>)]
         </span><span class="kw">pub use </span>procfs::WithCurrentSystemInfo;
         <span class="kw">pub use </span><span class="kw">crate</span>::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
+        <span class="kw">pub use </span><span class="kw">crate</span>::runtime_support::resource_measurement::COUNTER_PREFIX;
         <span class="attr">#[cfg(not(feature = <span class="string">"runtime_measure"</span>))]
         </span><span class="kw">pub async fn </span>run(flow: Dfir&lt;<span class="lifetime">'_</span>&gt;) {
             dfir_rs::util::deploy::launch_flow(flow).<span class="kw">await</span>;
@@ -9672,6 +9983,7 @@
                     ident,
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -9711,8 +10023,9 @@
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(HydroNode::Unpersist {
                         inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata,
+                        metadata: metadata.clone(),
                     }),
+                    metadata,
                 });
         }
     }
@@ -11132,9 +11445,10 @@
                 .push(HydroLeaf::ForEach {
                     input: Box::new(HydroNode::Unpersist {
                         inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata,
+                        metadata: metadata.clone(),
                     }),
                     f,
+                    metadata,
                 });
         }
         <span class="kw">pub fn </span>dest_sink&lt;S: Unpin + futures::Sink&lt;T&gt; + <span class="lifetime">'a</span>&gt;(
@@ -11150,6 +11464,7 @@
                 .push(HydroLeaf::DestSink {
                     sink: sink.splice_typed_ctx(<span class="kw-2">&amp;</span><span class="self">self</span>.location).into(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -11319,8 +11634,9 @@
                         instantiate_fn: DebugInstantiate::Building(),
                         deserialize_fn: <span class="prelude-val">None</span>,
                         input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata,
+                        metadata: metadata.clone(),
                     }),
+                    metadata,
                 });
             ExternalBincodeStream {
                 process_id: other.id,
@@ -11394,8 +11710,9 @@
                         instantiate_fn: DebugInstantiate::Building(),
                         deserialize_fn: <span class="prelude-val">None</span>,
                         input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata,
+                        metadata: metadata.clone(),
                     }),
+                    metadata,
                 });
             ExternalBytesPort {
                 process_id: other.id,
@@ -11733,6 +12050,7 @@
                     ident,
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -11767,6 +12085,7 @@
                     ident,
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -11794,6 +12113,7 @@
     <span class="kw">for </span>Singleton&lt;T, L, B&gt; {
         <span class="kw">fn </span>complete(<span class="self">self</span>, ident: syn::Ident, expected_location: LocationId) {
             <span class="macro">assert_eq!</span>(<span class="self">self</span>.location.id(), expected_location, <span class="string">"locations do not match"</span>);
+            <span class="kw">let </span>metadata = <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;();
             <span class="self">self</span>.location
                 .flow_state()
                 .borrow_mut()
@@ -11805,8 +12125,9 @@
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(HydroNode::Unpersist {
                         inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+                        metadata: metadata.clone(),
                     }),
+                    metadata,
                 });
         }
     }
@@ -12247,6 +12568,7 @@
                     ident,
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -12281,6 +12603,7 @@
                     ident,
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
                 });
         }
     }
@@ -12308,6 +12631,7 @@
     <span class="kw">for </span>Optional&lt;T, L, B&gt; {
         <span class="kw">fn </span>complete(<span class="self">self</span>, ident: syn::Ident, expected_location: LocationId) {
             <span class="macro">assert_eq!</span>(<span class="self">self</span>.location.id(), expected_location, <span class="string">"locations do not match"</span>);
+            <span class="kw">let </span>metadata = <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;();
             <span class="self">self</span>.location
                 .flow_state()
                 .borrow_mut()
@@ -12319,8 +12643,9 @@
                     location_kind: <span class="self">self</span>.location_kind(),
                     input: Box::new(HydroNode::Unpersist {
                         inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                        metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+                        metadata: metadata.clone(),
                     }),
+                    metadata,
                 });
         }
     }
@@ -12789,7 +13114,7 @@
     <span class="kw">pub use </span>stageleft::{q, QuotedWithContext};
     <span class="kw">pub use </span><span class="kw">super</span>::builder::FlowState;
     <span class="kw">pub use </span><span class="kw">crate</span>::__staged::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::{DebugType, HydroNode, HydroNodeMetadata, HydroSource};
+    <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::{DebugType, HydroIrMetadata, HydroNode, HydroSource};
     <span class="kw">pub use </span><span class="kw">crate</span>::__staged::{Singleton, Stream, Unbounded};
     <span class="kw">pub mod </span>external_process {
         <span class="kw">pub use </span>std::marker::PhantomData;
@@ -13277,7 +13602,7 @@
             CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef,
             ForwardRefMarker, TickCycle, TickCycleMarker,
         };
-        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::{HydroNode, HydroNodeMetadata, HydroSource};
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::{HydroIrMetadata, HydroNode, HydroSource};
         <span class="kw">pub use </span><span class="kw">crate</span>::__staged::{Bounded, Optional, Singleton, Stream};
         <span class="kw">pub use </span><span class="kw">crate</span>::location::tick::NoTick;
         <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
@@ -13335,7 +13660,7 @@
             <span class="kw">fn </span>next_node_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
                 <span class="self">self</span>.l.next_node_id()
             }
-            <span class="kw">fn </span>new_node_metadata&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroNodeMetadata {
+            <span class="kw">fn </span>new_node_metadata&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroIrMetadata {
                 <span class="self">self</span>.l.new_node_metadata::&lt;T&gt;()
             }
         }
@@ -16336,32 +16661,35 @@
             seen_tees: <span class="kw-2">&amp;mut </span>SeenTees,
         ) {
             <span class="kw">match </span><span class="self">self </span>{
-                HydroLeaf::ForEach { f: <span class="kw">_</span>, <span class="kw-2">ref mut </span>input }
-                | HydroLeaf::DestSink { sink: <span class="kw">_</span>, <span class="kw-2">ref mut </span>input }
-                | HydroLeaf::CycleSink { ident: <span class="kw">_</span>, location_kind: <span class="kw">_</span>, <span class="kw-2">ref mut </span>input } =&gt; {
+                HydroLeaf::ForEach { f: <span class="kw">_</span>, input, .. }
+                | HydroLeaf::DestSink { sink: <span class="kw">_</span>, input, .. }
+                | HydroLeaf::CycleSink { ident: <span class="kw">_</span>, location_kind: <span class="kw">_</span>, input, .. } =&gt; {
                     transform(input, seen_tees);
                 }
             }
         }
         <span class="kw">pub fn </span>deep_clone(<span class="kw-2">&amp;</span><span class="self">self</span>, seen_tees: <span class="kw-2">&amp;mut </span>SeenTees) -&gt; HydroLeaf {
             <span class="kw">match </span><span class="self">self </span>{
-                HydroLeaf::ForEach { f, input } =&gt; {
+                HydroLeaf::ForEach { f, input, metadata } =&gt; {
                     HydroLeaf::ForEach {
                         f: f.clone(),
                         input: Box::new(input.deep_clone(seen_tees)),
+                        metadata: metadata.clone(),
                     }
                 }
-                HydroLeaf::DestSink { sink, input } =&gt; {
+                HydroLeaf::DestSink { sink, input, metadata } =&gt; {
                     HydroLeaf::DestSink {
                         sink: sink.clone(),
                         input: Box::new(input.deep_clone(seen_tees)),
+                        metadata: metadata.clone(),
                     }
                 }
-                HydroLeaf::CycleSink { ident, location_kind, input } =&gt; {
+                HydroLeaf::CycleSink { ident, location_kind, input, metadata } =&gt; {
                     HydroLeaf::CycleSink {
                         ident: ident.clone(),
                         location_kind: location_kind.clone(),
                         input: Box::new(input.deep_clone(seen_tees)),
+                        metadata: metadata.clone(),
                     }
                 }
             }
@@ -16375,8 +16703,8 @@
         ) {
             <span class="self">self</span>.emit_core(
                 <span class="kw-2">&amp;mut </span>BuildersOrCallback::Builders::&lt;
-                    <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroLeaf, usize),
-                    <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroNode, usize),
+                    <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroLeaf, <span class="kw-2">&amp;mut </span>usize),
+                    <span class="kw">fn</span>(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>usize),
                 &gt;(graph_builders),
                 built_tees,
                 next_stmt_id,
@@ -16386,18 +16714,16 @@
         </span><span class="kw">pub fn </span>emit_core(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             builders_or_callback: <span class="kw-2">&amp;mut </span>BuildersOrCallback&lt;
-                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, usize),
-                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, usize),
+                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, <span class="kw-2">&amp;mut </span>usize),
+                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>usize),
             &gt;,
             built_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, (syn::Ident, usize)&gt;,
             next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
         ) {
             <span class="kw">match </span><span class="self">self </span>{
-                HydroLeaf::ForEach { f, input } =&gt; {
+                HydroLeaf::ForEach { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>stream_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">match </span>builders_or_callback {
                         BuildersOrCallback::Builders(graph_builders) =&gt; {
                             graph_builders
@@ -16408,19 +16734,18 @@
                                         # input_ident -&gt; for_each(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw-2">ref mut </span>leaf_callback, <span class="kw">_</span>) =&gt; {
-                            leaf_callback(<span class="self">self</span>, stream_id);
+                        BuildersOrCallback::Callback(leaf_callback, <span class="kw">_</span>) =&gt; {
+                            leaf_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                 }
-                HydroLeaf::DestSink { sink, input } =&gt; {
+                HydroLeaf::DestSink { sink, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>stream_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">match </span>builders_or_callback {
                         BuildersOrCallback::Builders(graph_builders) =&gt; {
                             graph_builders
@@ -16431,15 +16756,16 @@
                                         # input_ident -&gt; dest_sink(# sink);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw-2">ref mut </span>leaf_callback, <span class="kw">_</span>) =&gt; {
-                            leaf_callback(<span class="self">self</span>, stream_id);
+                        BuildersOrCallback::Callback(leaf_callback, <span class="kw">_</span>) =&gt; {
+                            leaf_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                 }
-                HydroLeaf::CycleSink { ident, location_kind, input } =&gt; {
+                HydroLeaf::CycleSink { ident, location_kind, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
                     <span class="kw">let </span>location_id = <span class="kw">match </span>location_kind.root() {
@@ -16471,6 +16797,20 @@
                 }
             }
         }
+        <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrMetadata {
+            <span class="kw">match </span><span class="self">self </span>{
+                HydroLeaf::ForEach { metadata, .. }
+                | HydroLeaf::DestSink { metadata, .. }
+                | HydroLeaf::CycleSink { metadata, .. } =&gt; metadata,
+            }
+        }
+        <span class="kw">pub fn </span>metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrMetadata {
+            <span class="kw">match </span><span class="self">self </span>{
+                HydroLeaf::ForEach { metadata, .. }
+                | HydroLeaf::DestSink { metadata, .. }
+                | HydroLeaf::CycleSink { metadata, .. } =&gt; metadata,
+            }
+        }
         <span class="kw">pub fn </span>print_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
             <span class="kw">match </span><span class="self">self </span>{
                 HydroLeaf::ForEach { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ForEach({:?})"</span>, f),
@@ -16492,8 +16832,8 @@
     <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
     </span><span class="kw">pub fn </span>traverse_dfir(
         ir: <span class="kw-2">&amp;mut </span>[HydroLeaf],
-        transform_leaf: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, usize),
-        transform_node: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, usize),
+        transform_leaf: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, <span class="kw-2">&amp;mut </span>usize),
+        transform_node: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>usize),
     ) {
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="number">0</span>;
@@ -16577,7 +16917,19 @@
             <span class="self">self</span>.<span class="number">0</span>.borrow_mut().hash(state);
         }
     }
-    <span class="kw">pub use </span><span class="kw">crate</span>::ir::HydroNodeMetadata;
+    <span class="kw">pub use </span><span class="kw">crate</span>::ir::HydroIrMetadata;
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    </span><span class="kw">impl </span>Hash <span class="kw">for </span>HydroIrMetadata {
+        <span class="kw">fn </span>hash&lt;H: Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;mut </span>H) {}
+    }
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    </span><span class="kw">impl </span>PartialEq <span class="kw">for </span>HydroIrMetadata {
+        <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
+            <span class="bool-val">true
+        </span>}
+    }
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    </span><span class="kw">impl </span>Eq <span class="kw">for </span>HydroIrMetadata {}
     <span class="kw">pub use </span><span class="kw">crate</span>::ir::HydroNode;
     <span class="kw">pub type </span>SeenTees = HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, Rc&lt;RefCell&lt;HydroNode&gt;&gt;&gt;;
     <span class="kw">pub type </span>SeenTeeLocations = HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, LocationId&gt;;
@@ -16746,7 +17098,8 @@
                 | HydroNode::Fold { input, .. }
                 | HydroNode::FoldKeyed { input, .. }
                 | HydroNode::Reduce { input, .. }
-                | HydroNode::ReduceKeyed { input, .. } =&gt; {
+                | HydroNode::ReduceKeyed { input, .. }
+                | HydroNode::Counter { input, .. } =&gt; {
                     transform(input.as_mut(), seen_tees);
                 }
             }
@@ -16962,14 +17315,22 @@
                         metadata: metadata.clone(),
                     }
                 }
+                HydroNode::Counter { tag, duration, input, metadata } =&gt; {
+                    HydroNode::Counter {
+                        tag: tag.clone(),
+                        duration: duration.clone(),
+                        input: Box::new(input.deep_clone(seen_tees)),
+                        metadata: metadata.clone(),
+                    }
+                }
             }
         }
         <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
         </span><span class="kw">pub fn </span>emit_core(
             <span class="kw-2">&amp;mut </span><span class="self">self</span>,
             builders_or_callback: <span class="kw-2">&amp;mut </span>BuildersOrCallback&lt;
-                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, usize),
-                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, usize),
+                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroLeaf, <span class="kw-2">&amp;mut </span>usize),
+                <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>HydroNode, <span class="kw-2">&amp;mut </span>usize),
             &gt;,
             built_tees: <span class="kw-2">&amp;mut </span>HashMap&lt;<span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;, (syn::Ident, usize)&gt;,
             next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
@@ -16979,10 +17340,8 @@
                 HydroNode::Persist { inner, .. } =&gt; {
                     <span class="kw">let </span>(inner_ident, location) = inner
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>persist_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>persist_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, persist_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -16994,13 +17353,14 @@
                                         # persist_ident = # inner_ident -&gt; persist::&lt;<span class="lifetime">'static </span>&gt; ();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>persist_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, persist_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (persist_ident, location)
                 }
                 HydroNode::Unpersist { .. } =&gt; {
@@ -17011,10 +17371,8 @@
                 HydroNode::Delta { inner, .. } =&gt; {
                     <span class="kw">let </span>(inner_ident, location) = inner
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>delta_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>delta_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, delta_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17026,13 +17384,14 @@
                                         # delta_ident = # inner_ident -&gt; multiset_delta();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>delta_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, delta_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (delta_ident, location)
                 }
                 HydroNode::Source { source, location_kind, .. } =&gt; {
@@ -17045,10 +17404,8 @@
                     <span class="kw">if let </span>HydroSource::ExternalNetwork() = source {
                         (syn::Ident::new(<span class="string">"DUMMY"</span>, Span::call_site()), location_id)
                     } <span class="kw">else </span>{
-                        <span class="kw">let </span>source_id = <span class="kw-2">*</span>next_stmt_id;
-                        <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                         <span class="kw">let </span>source_ident = syn::Ident::new(
-                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, source_id),
+                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                             Span::call_site(),
                         );
                         <span class="kw">let </span>source_stmt = <span class="kw">match </span>source {
@@ -17075,38 +17432,56 @@
                                     .entry(location_id)
                                     .or_default();
                                 builder
-                                    .add_dfir(source_stmt, <span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>source_id.to_string()));
+                                    .add_dfir(
+                                        source_stmt,
+                                        <span class="prelude-val">None</span>,
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
+                                    );
                             }
-                            BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                                node_callback(<span class="self">self</span>, source_id);
+                            BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                                node_callback(<span class="self">self</span>, next_stmt_id);
                             }
                         }
+                        <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                         (source_ident, location_id)
                     }
                 }
                 HydroNode::CycleSource { ident, location_kind, .. } =&gt; {
-                    <span class="kw">let </span>location_id = <span class="kw">match </span>location_kind.root() {
+                    <span class="kw">let </span>location_id = <span class="kw-2">*</span><span class="kw">match </span>location_kind.root() {
                         LocationId::Process(id) =&gt; id,
                         LocationId::Cluster(id) =&gt; id,
                         LocationId::Tick(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
                         LocationId::ExternalProcess(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
                     };
-                    (ident.clone(), <span class="kw-2">*</span>location_id)
+                    <span class="kw">let </span>ident = ident.clone();
+                    <span class="kw">match </span>builders_or_callback {
+                        BuildersOrCallback::Builders(<span class="kw">_</span>) =&gt; {}
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
+                        }
+                    }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
+                    (ident, location_id)
                 }
                 HydroNode::Tee { inner, .. } =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(ret) = built_tees
-                        .get(<span class="kw-2">&amp;</span>(inner.<span class="number">0</span>.as_ref() <span class="kw">as </span><span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;))
+                    <span class="kw">let </span>(ret_ident, inner_location_id) = <span class="kw">if let </span><span class="prelude-val">Some</span>(
+                        (teed_from, inner_location_id),
+                    ) = built_tees.get(<span class="kw-2">&amp;</span>(inner.<span class="number">0</span>.as_ref() <span class="kw">as </span><span class="kw-2">*const </span>RefCell&lt;HydroNode&gt;))
                     {
-                        ret.clone()
+                        <span class="kw">match </span>builders_or_callback {
+                            BuildersOrCallback::Builders(<span class="kw">_</span>) =&gt; {}
+                            BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                                node_callback(<span class="self">self</span>, next_stmt_id);
+                            }
+                        }
+                        (teed_from.clone(), <span class="kw-2">*</span>inner_location_id)
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>(inner_ident, inner_location_id) = inner
                             .<span class="number">0
                             </span>.borrow_mut()
                             .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                        <span class="kw">let </span>tee_id = <span class="kw-2">*</span>next_stmt_id;
-                        <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                         <span class="kw">let </span>tee_ident = syn::Ident::new(
-                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, tee_id),
+                            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                             Span::call_site(),
                         );
                         built_tees
@@ -17125,15 +17500,17 @@
                                             # tee_ident = # inner_ident -&gt; tee();
                                         },
                                         <span class="prelude-val">None</span>,
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>tee_id.to_string()),
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                     );
                             }
-                            BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                                node_callback(<span class="self">self</span>, tee_id);
+                            BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                                node_callback(<span class="self">self</span>, next_stmt_id);
                             }
                         }
                         (tee_ident, inner_location_id)
-                    }
+                    };
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
+                    (ret_ident, inner_location_id)
                 }
                 HydroNode::Chain { first, second, .. } =&gt; {
                     <span class="kw">let </span>(first_ident, first_location_id) = first
@@ -17145,10 +17522,8 @@
                         second_location_id,
                         <span class="string">"chain inputs must be in the same location"</span>,
                     );
-                    <span class="kw">let </span>chain_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>chain_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, chain_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17163,13 +17538,14 @@
                                         # second_ident -&gt; [<span class="number">1</span>] # chain_ident;
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>chain_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, chain_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (chain_ident, first_location_id)
                 }
                 HydroNode::CrossSingleton { left, right, .. } =&gt; {
@@ -17182,10 +17558,8 @@
                         right_location_id,
                         <span class="string">"cross_singleton inputs must be in the same location"</span>,
                     );
-                    <span class="kw">let </span>cross_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>cross_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, cross_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17200,13 +17574,14 @@
                                         cross_ident; # right_ident -&gt; [single] # cross_ident;
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>cross_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, cross_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (cross_ident, left_location_id)
                 }
                 HydroNode::CrossProduct { .. } | HydroNode::Join { .. } =&gt; {
@@ -17249,10 +17624,8 @@
                         right_location_id,
                         <span class="string">"join / cross product inputs must be in the same location"</span>,
                     );
-                    <span class="kw">let </span>stream_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>stream_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, stream_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17268,13 +17641,14 @@
                                         right_ident -&gt; [<span class="number">1</span>] # stream_ident;
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, stream_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (stream_ident, left_location_id)
                 }
                 HydroNode::Difference { .. } | HydroNode::AntiJoin { .. } =&gt; {
@@ -17308,10 +17682,8 @@
                         neg_location_id,
                         <span class="string">"difference / anti join inputs must be in the same location"</span>,
                     );
-                    <span class="kw">let </span>stream_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>stream_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, stream_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17327,22 +17699,21 @@
                                         stream_ident;
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, stream_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (stream_ident, pos_location_id)
                 }
                 HydroNode::Map { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>map_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>map_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, map_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17356,22 +17727,21 @@
                                         # map_ident = # input_ident -&gt; map(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>map_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, map_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (map_ident, input_location_id)
                 }
                 HydroNode::FlatMap { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>flat_map_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>flat_map_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, flat_map_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17385,22 +17755,21 @@
                                         # flat_map_ident = # input_ident -&gt; flat_map(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>flat_map_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, flat_map_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (flat_map_ident, input_location_id)
                 }
                 HydroNode::Filter { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>filter_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>filter_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, filter_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17414,22 +17783,21 @@
                                         # filter_ident = # input_ident -&gt; filter(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>filter_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, filter_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (filter_ident, input_location_id)
                 }
                 HydroNode::FilterMap { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>filter_map_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>filter_map_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, filter_map_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17443,22 +17811,21 @@
                                         # filter_map_ident = # input_ident -&gt; filter_map(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>filter_map_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, filter_map_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (filter_map_ident, input_location_id)
                 }
                 HydroNode::Sort { input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>sort_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>sort_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, sort_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17472,22 +17839,21 @@
                                         # sort_ident = # input_ident -&gt; sort();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>sort_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, sort_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (sort_ident, input_location_id)
                 }
                 HydroNode::DeferTick { input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>defer_tick_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>defer_tick_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, defer_tick_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17501,22 +17867,21 @@
                                         # defer_tick_ident = # input_ident -&gt; defer_tick_lazy();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>defer_tick_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, defer_tick_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (defer_tick_ident, input_location_id)
                 }
                 HydroNode::Enumerate { is_static, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>enumerate_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>enumerate_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, enumerate_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17536,22 +17901,21 @@
                                         &gt; ();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>enumerate_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, enumerate_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (enumerate_ident, input_location_id)
                 }
                 HydroNode::Inspect { f, input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>inspect_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>inspect_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, inspect_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17565,22 +17929,21 @@
                                         # inspect_ident = # input_ident -&gt; inspect(# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>inspect_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, inspect_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (inspect_ident, input_location_id)
                 }
                 HydroNode::Unique { input, .. } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>unique_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>unique_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, unique_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17594,13 +17957,14 @@
                                         # unique_ident = # input_ident -&gt; unique::&lt;<span class="lifetime">'tick </span>&gt; ();
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>unique_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, unique_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (unique_ident, input_location_id)
                 }
                 HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } =&gt; {
@@ -17627,10 +17991,8 @@
                     };
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>fold_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>fold_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, fold_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17645,13 +18007,14 @@
                                         init, # acc);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>fold_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, fold_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (fold_ident, input_location_id)
                 }
                 HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } =&gt; {
@@ -17678,10 +18041,8 @@
                     };
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>reduce_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>reduce_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, reduce_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17696,13 +18057,14 @@
                                         (# f);
                                     },
                                     <span class="prelude-val">None</span>,
-                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>reduce_id.to_string()),
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                 );
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, reduce_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (reduce_ident, input_location_id)
                 }
                 HydroNode::Network {
@@ -17717,8 +18079,6 @@
                 } =&gt; {
                     <span class="kw">let </span>(input_ident, input_location_id) = input
                         .emit_core(builders_or_callback, built_tees, next_stmt_id);
-                    <span class="kw">let </span>stream_id = <span class="kw-2">*</span>next_stmt_id;
-                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     <span class="kw">let </span>to_id = <span class="kw">match </span><span class="kw-2">*</span>to_location {
                         LocationId::Process(id) =&gt; id,
                         LocationId::Cluster(id) =&gt; id,
@@ -17726,7 +18086,7 @@
                         LocationId::ExternalProcess(id) =&gt; id,
                     };
                     <span class="kw">let </span>receiver_stream_ident = syn::Ident::new(
-                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, stream_id),
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
                         Span::call_site(),
                     );
                     <span class="kw">match </span>builders_or_callback {
@@ -17750,7 +18110,7 @@
                                             sink_expr);
                                         },
                                         <span class="prelude-val">None</span>,
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                     );
                             } <span class="kw">else </span>{
                                 sender_builder
@@ -17759,7 +18119,7 @@
                                             # input_ident -&gt; dest_sink(# sink_expr);
                                         },
                                         <span class="prelude-val">None</span>,
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                     );
                             }
                             <span class="kw">let </span>receiver_builder = graph_builders
@@ -17773,7 +18133,7 @@
                                             map(# deserialize_pipeline);
                                         },
                                         <span class="prelude-val">None</span>,
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                     );
                             } <span class="kw">else </span>{
                                 receiver_builder
@@ -17782,15 +18142,45 @@
                                             # receiver_stream_ident = source_stream(# source_expr);
                                         },
                                         <span class="prelude-val">None</span>,
-                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>stream_id.to_string()),
+                                        <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
                                     );
                             }
                         }
-                        BuildersOrCallback::Callback(<span class="kw">_</span>, <span class="kw-2">ref mut </span>node_callback) =&gt; {
-                            node_callback(<span class="self">self</span>, stream_id);
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
                         }
                     }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
                     (receiver_stream_ident, to_id)
+                }
+                HydroNode::Counter { tag, duration, input, .. } =&gt; {
+                    <span class="kw">let </span>(input_ident, input_location_id) = input
+                        .emit_core(builders_or_callback, built_tees, next_stmt_id);
+                    <span class="kw">let </span>counter_ident = syn::Ident::new(
+                        <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"stream_{}"</span>, <span class="kw-2">*</span>next_stmt_id),
+                        Span::call_site(),
+                    );
+                    <span class="kw">match </span>builders_or_callback {
+                        BuildersOrCallback::Builders(graph_builders) =&gt; {
+                            <span class="kw">let </span>builder = graph_builders
+                                .entry(input_location_id)
+                                .or_default();
+                            builder
+                                .add_dfir(
+                                    <span class="macro">parse_quote!</span> {
+                                        # counter_ident = # input_ident -&gt; _counter(# tag, #
+                                        duration);
+                                    },
+                                    <span class="prelude-val">None</span>,
+                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
+                                );
+                        }
+                        BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+                            node_callback(<span class="self">self</span>, next_stmt_id);
+                        }
+                    }
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
+                    (counter_ident, input_location_id)
                 }
             }
         }
@@ -17842,9 +18232,12 @@
                         transform(deserialize_fn);
                     }
                 }
+                HydroNode::Counter { duration, .. } =&gt; {
+                    transform(duration);
+                }
             }
         }
-        <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroNodeMetadata {
+        <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrMetadata {
             <span class="kw">match </span><span class="self">self </span>{
                 HydroNode::Placeholder =&gt; <span class="macro">panic!</span>(),
                 HydroNode::Source { metadata, .. } =&gt; metadata,
@@ -17873,6 +18266,39 @@
                 HydroNode::Reduce { metadata, .. } =&gt; metadata,
                 HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
                 HydroNode::Network { metadata, .. } =&gt; metadata,
+                HydroNode::Counter { metadata, .. } =&gt; metadata,
+            }
+        }
+        <span class="kw">pub fn </span>metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrMetadata {
+            <span class="kw">match </span><span class="self">self </span>{
+                HydroNode::Placeholder =&gt; <span class="macro">panic!</span>(),
+                HydroNode::Source { metadata, .. } =&gt; metadata,
+                HydroNode::CycleSource { metadata, .. } =&gt; metadata,
+                HydroNode::Tee { metadata, .. } =&gt; metadata,
+                HydroNode::Persist { metadata, .. } =&gt; metadata,
+                HydroNode::Unpersist { metadata, .. } =&gt; metadata,
+                HydroNode::Delta { metadata, .. } =&gt; metadata,
+                HydroNode::Chain { metadata, .. } =&gt; metadata,
+                HydroNode::CrossProduct { metadata, .. } =&gt; metadata,
+                HydroNode::CrossSingleton { metadata, .. } =&gt; metadata,
+                HydroNode::Join { metadata, .. } =&gt; metadata,
+                HydroNode::Difference { metadata, .. } =&gt; metadata,
+                HydroNode::AntiJoin { metadata, .. } =&gt; metadata,
+                HydroNode::Map { metadata, .. } =&gt; metadata,
+                HydroNode::FlatMap { metadata, .. } =&gt; metadata,
+                HydroNode::Filter { metadata, .. } =&gt; metadata,
+                HydroNode::FilterMap { metadata, .. } =&gt; metadata,
+                HydroNode::DeferTick { metadata, .. } =&gt; metadata,
+                HydroNode::Enumerate { metadata, .. } =&gt; metadata,
+                HydroNode::Inspect { metadata, .. } =&gt; metadata,
+                HydroNode::Unique { metadata, .. } =&gt; metadata,
+                HydroNode::Sort { metadata, .. } =&gt; metadata,
+                HydroNode::Fold { metadata, .. } =&gt; metadata,
+                HydroNode::FoldKeyed { metadata, .. } =&gt; metadata,
+                HydroNode::Reduce { metadata, .. } =&gt; metadata,
+                HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
+                HydroNode::Network { metadata, .. } =&gt; metadata,
+                HydroNode::Counter { metadata, .. } =&gt; metadata,
             }
         }
         <span class="kw">pub fn </span>print_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
@@ -17933,6 +18359,9 @@
                 HydroNode::ReduceKeyed { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ReduceKeyed({:?})"</span>, f),
                 HydroNode::Network { to_location, .. } =&gt; {
                     <span class="macro">format!</span>(<span class="string">"Network(to {:?})"</span>, to_location)
+                }
+                HydroNode::Counter { tag, duration, .. } =&gt; {
+                    <span class="macro">format!</span>(<span class="string">"Counter({:?}, {:?})"</span>, tag, duration)
                 }
             }
         }
@@ -18167,6 +18596,55 @@
 }
 <span class="kw">pub mod </span>rewrites {
     <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>analyze_counter {
+        <span class="kw">pub use </span>std::collections::HashMap;
+        <span class="kw">pub use </span>regex::Regex;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::runtime_support::resource_measurement::COUNTER_PREFIX;
+        <span class="doccomment">/// Returns (op_id, count)
+        </span><span class="kw">pub fn </span>parse_counter_usage(measurement: String) -&gt; (usize, usize) {
+            <span class="kw">let </span>regex = Regex::new(<span class="string">r"\((\d+)\): (\d+)"</span>).unwrap();
+            <span class="kw">let </span>matches = regex.captures_iter(<span class="kw-2">&amp;</span>measurement).last().unwrap();
+            <span class="kw">let </span>op_id = matches[<span class="number">1</span>].parse::&lt;usize&gt;().unwrap();
+            <span class="kw">let </span>count = matches[<span class="number">2</span>].parse::&lt;usize&gt;().unwrap();
+            (op_id, count)
+        }
+        <span class="kw">pub fn </span>inject_count_node(
+            node: <span class="kw-2">&amp;mut </span>HydroNode,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
+            op_to_count: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;,
+        ) {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(count) = op_to_count.get(next_stmt_id) {
+                <span class="kw">let </span>metadata = node.metadata_mut();
+                metadata.cardinality = <span class="prelude-val">Some</span>(<span class="kw-2">*</span>count);
+            } <span class="kw">else </span>{
+                <span class="kw">match </span>node {
+                    HydroNode::Tee { inner, metadata, .. } =&gt; {
+                        metadata.cardinality = inner.<span class="number">0</span>.borrow().metadata().cardinality;
+                    }
+                    HydroNode::Map { input, metadata, .. }
+                    | HydroNode::DeferTick { input, metadata, .. }
+                    | HydroNode::Enumerate { input, metadata, .. }
+                    | HydroNode::Inspect { input, metadata, .. }
+                    | HydroNode::Sort { input, metadata, .. }
+                    | HydroNode::Counter { input, metadata, .. } =&gt; {
+                        metadata.cardinality = input.metadata().cardinality;
+                    }
+                    <span class="kw">_ </span>=&gt; {}
+                }
+            }
+        }
+        <span class="kw">pub fn </span>inject_count(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], op_to_count: <span class="kw-2">&amp;</span>HashMap&lt;usize, usize&gt;) {
+            traverse_dfir(
+                ir,
+                |<span class="kw">_</span>, <span class="kw">_</span>| {},
+                |node, next_stmt_id| {
+                    inject_count_node(node, next_stmt_id, op_to_count);
+                },
+            );
+        }
+    }
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
     </span><span class="kw">pub mod </span>analyze_perf {
         <span class="kw">pub use </span>std::collections::HashMap;
         <span class="kw">pub use </span>regex::Regex;
@@ -18218,38 +18696,26 @@
                 });
             samples_per_operator
         }
-        <span class="kw">pub fn </span>analyze_perf_leaf(
+        <span class="kw">pub fn </span>inject_perf_leaf(
             leaf: <span class="kw-2">&amp;mut </span>HydroLeaf,
             id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
-            next_stmt_id: usize,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
         ) {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(dfir_operator_and_samples) = id_to_usage.get(<span class="kw-2">&amp;</span>next_stmt_id) {
-                <span class="kw">for </span>(dfir_operator, samples) <span class="kw">in </span>dfir_operator_and_samples {
-                    <span class="macro">println!</span>(
-                        <span class="string">"{} Hydro leaf {}: {} {:.02}%"</span>,
-                        next_stmt_id,
-                        leaf.print_root(),
-                        dfir_operator,
-                        samples * <span class="number">100f64</span>,
-                    );
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+                leaf.metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(
+                    dfir_operator_and_samples.values().sum(),
+                );
             }
         }
-        <span class="kw">pub fn </span>analyze_perf_node(
+        <span class="kw">pub fn </span>inject_perf_node(
             node: <span class="kw-2">&amp;mut </span>HydroNode,
             id_to_usage: <span class="kw-2">&amp;</span>HashMap&lt;usize, HashMap&lt;String, f64&gt;&gt;,
-            next_stmt_id: usize,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
         ) {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(dfir_operator_and_samples) = id_to_usage.get(<span class="kw-2">&amp;</span>next_stmt_id) {
-                <span class="kw">for </span>(dfir_operator, samples) <span class="kw">in </span>dfir_operator_and_samples {
-                    <span class="macro">println!</span>(
-                        <span class="string">"{} Hydro node {}: {} {:.02}%"</span>,
-                        next_stmt_id,
-                        node.print_root(),
-                        dfir_operator,
-                        samples * <span class="number">100f64</span>,
-                    );
-                }
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(dfir_operator_and_samples) = id_to_usage.get(next_stmt_id) {
+                node.metadata_mut().cpu_usage = <span class="prelude-val">Some</span>(
+                    dfir_operator_and_samples.values().sum(),
+                );
             }
         }
         <span class="kw">pub fn </span>analyze_perf(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf], folded_data: Vec&lt;u8&gt;) {
@@ -18257,12 +18723,79 @@
             traverse_dfir(
                 ir,
                 |leaf, next_stmt_id| {
-                    analyze_perf_leaf(leaf, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
+                    inject_perf_leaf(leaf, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
                 },
                 |node, next_stmt_id| {
-                    analyze_perf_node(node, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
+                    inject_perf_node(node, <span class="kw-2">&amp;</span>id_to_usage, next_stmt_id);
                 },
             );
+        }
+    }
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    #[cfg(stageleft_runtime)]
+    #[cfg(feature = <span class="string">"deploy"</span>)]
+    </span><span class="kw">pub mod </span>analyze_perf_and_counters {
+        <span class="kw">use </span>std::collections::HashMap;
+        <span class="kw">use </span>tokio::sync::mpsc::UnboundedReceiver;
+        <span class="kw">use </span><span class="kw">crate</span>::builder::deploy::DeployResult;
+        <span class="kw">use </span><span class="kw">crate</span>::deploy::deploy_graph::DeployCrateWrapper;
+        <span class="kw">use </span><span class="kw">crate</span>::deploy::HydroDeploy;
+        <span class="kw">use </span><span class="kw">crate</span>::ir::HydroLeaf;
+        <span class="kw">use </span><span class="kw">crate</span>::location::LocationId;
+        <span class="kw">use </span><span class="kw">crate</span>::rewrites::analyze_counter::{inject_count, parse_counter_usage};
+        <span class="kw">use </span><span class="kw">crate</span>::rewrites::analyze_perf::{analyze_perf, parse_cpu_usage};
+        <span class="kw">pub async fn </span>analyze_results(
+            nodes: DeployResult&lt;<span class="lifetime">'static</span>, HydroDeploy&gt;,
+            ir: <span class="kw-2">&amp;mut </span>[HydroLeaf],
+            usage_out: <span class="kw-2">&amp;mut </span>HashMap&lt;
+                (LocationId, String, usize),
+                UnboundedReceiver&lt;String&gt;,
+            &gt;,
+            cardinality_out: <span class="kw-2">&amp;mut </span>HashMap&lt;
+                (LocationId, String, usize),
+                UnboundedReceiver&lt;String&gt;,
+            &gt;,
+        ) {
+            <span class="kw">for </span>(id, name, cluster) <span class="kw">in </span>nodes.get_all_clusters() {
+                <span class="kw">let </span><span class="kw-2">mut </span>max_usage = <span class="prelude-val">None</span>;
+                <span class="kw">for </span>(idx, <span class="kw">_</span>) <span class="kw">in </span>cluster.members().iter().enumerate() {
+                    <span class="kw">let </span>measurement = usage_out
+                        .get_mut(<span class="kw-2">&amp;</span>(id.clone(), name.clone(), idx))
+                        .unwrap()
+                        .recv()
+                        .<span class="kw">await
+                        </span>.unwrap();
+                    <span class="kw">let </span>usage = parse_cpu_usage(measurement);
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>((prev_usage, <span class="kw">_</span>)) = max_usage {
+                        <span class="kw">if </span>usage &gt; prev_usage {
+                            max_usage = <span class="prelude-val">Some</span>((usage, idx));
+                        }
+                    } <span class="kw">else </span>{
+                        max_usage = <span class="prelude-val">Some</span>((usage, idx));
+                    }
+                }
+                <span class="kw">if let </span><span class="prelude-val">Some</span>((usage, idx)) = max_usage {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(perf_results) = cluster
+                        .members()
+                        .get(idx)
+                        .unwrap()
+                        .tracing_results()
+                        .<span class="kw">await
+                    </span>{
+                        <span class="macro">println!</span>(<span class="string">"{}: {}"</span>, <span class="kw-2">&amp;</span>name, usage);
+                        analyze_perf(ir, perf_results.folded_data);
+                        <span class="kw">let </span>node_cardinality = cardinality_out
+                            .get_mut(<span class="kw-2">&amp;</span>(id.clone(), name.clone(), idx))
+                            .unwrap();
+                        <span class="kw">let </span><span class="kw-2">mut </span>op_to_counter = HashMap::new();
+                        <span class="kw">while let </span><span class="prelude-val">Some</span>(measurement) = node_cardinality.recv().<span class="kw">await </span>{
+                            <span class="kw">let </span>(op_id, count) = parse_counter_usage(measurement);
+                            op_to_counter.insert(op_id, count);
+                        }
+                        inject_count(ir, <span class="kw-2">&amp;</span>op_to_counter);
+                    }
+                }
+            }
         }
     }
     <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
@@ -18277,10 +18810,10 @@
         <span class="kw">pub fn </span>decouple_node(
             node: <span class="kw-2">&amp;mut </span>HydroNode,
             decoupler: <span class="kw-2">&amp;</span>Decoupler,
-            next_stmt_id: usize,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
         ) {
             <span class="kw">let </span>metadata = node.metadata().clone();
-            <span class="kw">if </span>decoupler.nodes_to_decouple.contains(<span class="kw-2">&amp;</span>next_stmt_id) {
+            <span class="kw">if </span>decoupler.nodes_to_decouple.contains(next_stmt_id) {
                 <span class="macro">println!</span>(<span class="string">"Decoupling node {} {}"</span>, next_stmt_id, node.print_root());
                 <span class="kw">let </span>output_debug_type = metadata.output_type.clone().unwrap();
                 <span class="kw">let </span>parent_id = <span class="kw">match </span>metadata.location_kind {
@@ -18305,9 +18838,11 @@
                     input: Box::new(node_content),
                     metadata: metadata.clone(),
                 };
-                <span class="kw">let </span>network_metadata = HydroNodeMetadata {
+                <span class="kw">let </span>network_metadata = HydroIrMetadata {
                     location_kind: decoupler.new_location.clone(),
                     output_type: <span class="prelude-val">Some</span>(output_debug_type.clone()),
+                    cardinality: <span class="prelude-val">None</span>,
+                    cpu_usage: <span class="prelude-val">None</span>,
                 };
                 <span class="kw">let </span>output_type = output_debug_type.<span class="number">0</span>;
                 <span class="kw">let </span>network_node = HydroNode::Network {
@@ -18345,6 +18880,77 @@
                 |<span class="kw">_</span>, <span class="kw">_</span>| {},
                 |node, next_stmt_id| {
                     decouple_node(node, decoupler, next_stmt_id);
+                },
+            );
+        }
+    }
+    <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+    </span><span class="kw">pub mod </span>insert_counter {
+        <span class="kw">pub use </span>std::time::Duration;
+        <span class="kw">pub use </span>stageleft::Quoted;
+        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
+        <span class="kw">pub fn </span>insert_counter_node(
+            node: <span class="kw-2">&amp;mut </span>HydroNode,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
+            duration: syn::Expr,
+        ) {
+            <span class="kw">match </span>node {
+                HydroNode::Placeholder
+                | HydroNode::Unpersist { .. }
+                | HydroNode::Counter { .. } =&gt; {
+                    <span class="macro">std::panic!</span>(
+                        <span class="string">"Unexpected {:?} found in insert_counter_node"</span>,
+                        node.print_root(),
+                    );
+                }
+                HydroNode::Source { metadata, .. }
+                | HydroNode::CycleSource { metadata, .. }
+                | HydroNode::Persist { metadata, .. }
+                | HydroNode::Delta { metadata, .. }
+                | HydroNode::Chain { metadata, .. }
+                | HydroNode::CrossSingleton { metadata, .. }
+                | HydroNode::CrossProduct { metadata, .. }
+                | HydroNode::Join { metadata, .. }
+                | HydroNode::Difference { metadata, .. }
+                | HydroNode::AntiJoin { metadata, .. }
+                | HydroNode::FlatMap { metadata, .. }
+                | HydroNode::Filter { metadata, .. }
+                | HydroNode::FilterMap { metadata, .. }
+                | HydroNode::Unique { metadata, .. }
+                | HydroNode::Fold { metadata, .. }
+                | HydroNode::Reduce { metadata, .. }
+                | HydroNode::FoldKeyed { metadata, .. }
+                | HydroNode::ReduceKeyed { metadata, .. }
+                | HydroNode::Network { metadata, .. } =&gt; {
+                    <span class="kw">let </span>metadata = metadata.clone();
+                    <span class="kw">let </span>node_content = std::mem::replace(node, HydroNode::Placeholder);
+                    <span class="kw">let </span>counter = HydroNode::Counter {
+                        tag: next_stmt_id.to_string(),
+                        duration: duration.into(),
+                        input: Box::new(node_content),
+                        metadata: metadata.clone(),
+                    };
+                    <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
+                    <span class="kw-2">*</span>node = counter;
+                }
+                HydroNode::Tee { .. }
+                | HydroNode::Map { .. }
+                | HydroNode::DeferTick { .. }
+                | HydroNode::Enumerate { .. }
+                | HydroNode::Inspect { .. }
+                | HydroNode::Sort { .. } =&gt; {}
+            }
+        }
+        <span class="kw">pub fn </span>insert_counter(
+            ir: <span class="kw-2">&amp;mut </span>[HydroLeaf],
+            duration: <span class="kw">impl </span>Quoted&lt;<span class="lifetime">'static</span>, Duration&gt;,
+        ) {
+            <span class="kw">let </span>duration = duration.splice_typed();
+            traverse_dfir(
+                ir,
+                |<span class="kw">_</span>, <span class="kw">_</span>| {},
+                |node, next_stmt_id| {
+                    insert_counter_node(node, next_stmt_id, duration.clone());
                 },
             );
         }
@@ -18501,10 +19107,10 @@
         <span class="kw">pub fn </span>partition_node(
             node: <span class="kw-2">&amp;mut </span>HydroNode,
             partitioner: <span class="kw-2">&amp;</span>Partitioner,
-            next_stmt_id: usize,
+            next_stmt_id: <span class="kw-2">&amp;mut </span>usize,
         ) {
             replace_membership_info(node, partitioner);
-            replace_sender_network(node, partitioner, next_stmt_id);
+            replace_sender_network(node, partitioner, <span class="kw-2">*</span>next_stmt_id);
             replace_receiver_network(node, partitioner);
         }
         <span class="doccomment">/// Limitations: Can only partition sends to clusters (not processes). Can only partition sends to 1 cluster at a time. Assumes that the partitioned attribute can be casted to usize.
@@ -18661,11 +19267,25 @@
     <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
     </span><span class="kw">pub mod </span>print_id {
         <span class="kw">pub use </span><span class="kw">crate</span>::__staged::ir::<span class="kw-2">*</span>;
-        <span class="kw">pub fn </span>print_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroLeaf, next_stmt_id: usize) {
-            <span class="macro">println!</span>(<span class="string">"{} Hydro leaf {}"</span>, next_stmt_id, leaf.print_root());
+        <span class="kw">pub fn </span>print_id_leaf(leaf: <span class="kw-2">&amp;mut </span>HydroLeaf, next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
+            <span class="kw">let </span>metadata = leaf.metadata();
+            <span class="macro">println!</span>(
+                <span class="string">"{} Leaf {}, Cardinality {:?}, Usage {:?}"</span>,
+                next_stmt_id,
+                leaf.print_root(),
+                metadata.cardinality,
+                metadata.cpu_usage,
+            );
         }
-        <span class="kw">pub fn </span>print_id_node(node: <span class="kw-2">&amp;mut </span>HydroNode, next_stmt_id: usize) {
-            <span class="macro">println!</span>(<span class="string">"{} Hydro node {}"</span>, next_stmt_id, node.print_root());
+        <span class="kw">pub fn </span>print_id_node(node: <span class="kw-2">&amp;mut </span>HydroNode, next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
+            <span class="kw">let </span>metadata = node.metadata();
+            <span class="macro">println!</span>(
+                <span class="string">"{} Node {}, Cardinality {:?}, Usage {:?}"</span>,
+                next_stmt_id,
+                node.print_root(),
+                metadata.cardinality,
+                metadata.cpu_usage,
+            );
         }
         <span class="kw">pub fn </span>print_id(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
             traverse_dfir(ir, print_id_leaf, print_id_node);

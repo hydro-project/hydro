@@ -298,7 +298,7 @@
     CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
     TickCycle, TickCycleMarker,
 };
-<span class="kw">use </span><span class="kw">crate</span>::ir::{HydroNode, HydroNodeMetadata, HydroSource};
+<span class="kw">use </span><span class="kw">crate</span>::ir::{HydroIrMetadata, HydroNode, HydroSource};
 <span class="kw">use crate</span>::{Bounded, Optional, Singleton, Stream};
 
 <span class="attr">#[sealed]
@@ -375,7 +375,7 @@
         <span class="self">self</span>.l.next_node_id()
     }
 
-    <span class="kw">fn </span>new_node_metadata&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroNodeMetadata {
+    <span class="kw">fn </span>new_node_metadata&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroIrMetadata {
         <span class="self">self</span>.l.new_node_metadata::&lt;T&gt;()
     }
 }

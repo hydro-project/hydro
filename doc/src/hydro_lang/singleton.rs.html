@@ -571,7 +571,11 @@
 <a href="#570" id="570">570</a>
 <a href="#571" id="571">571</a>
 <a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+<a href="#573" id="573">573</a>
+<a href="#574" id="574">574</a>
+<a href="#575" id="575">575</a>
+<a href="#576" id="576">576</a>
+<a href="#577" id="577">577</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::rc::Rc;
@@ -660,6 +664,7 @@
                 ident,
                 location_kind: <span class="self">self</span>.location_kind(),
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
             });
     }
 }
@@ -701,6 +706,7 @@
                 ident,
                 location_kind: <span class="self">self</span>.location_kind(),
                 input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+                metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
             });
     }
 }
@@ -735,6 +741,7 @@
             expected_location,
             <span class="string">"locations do not match"
         </span>);
+        <span class="kw">let </span>metadata = <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;();
         <span class="self">self</span>.location
             .flow_state()
             .borrow_mut()
@@ -746,8 +753,9 @@
                 location_kind: <span class="self">self</span>.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(<span class="self">self</span>.ir_node.into_inner()),
-                    metadata: <span class="self">self</span>.location.new_node_metadata::&lt;T&gt;(),
+                    metadata: metadata.clone(),
                 }),
+                metadata,
             });
     }
 }

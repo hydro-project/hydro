@@ -8,10 +8,24 @@
 <a href="#7" id="7">7</a>
 <a href="#8" id="8">8</a>
 <a href="#9" id="9">9</a>
-<a href="#10" id="10">10</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a></pre></div><pre class="rust"><code><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>analyze_counter;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">pub mod </span>analyze_perf;
+<span class="attr">#[cfg(stageleft_runtime)]
+#[cfg(feature = <span class="string">"deploy"</span>)]
+</span><span class="kw">pub mod </span>analyze_perf_and_counters;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">pub mod </span>decoupler;
+<span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+</span><span class="kw">pub mod </span>insert_counter;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">pub mod </span>partitioner;
 <span class="kw">pub mod </span>persist_pullup;
