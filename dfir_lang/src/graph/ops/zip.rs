@@ -87,7 +87,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 // TODO(mingwei): performance issue - get_mut_default and std::mem::take reset the vecs, reallocs heap.
                 let mut zipbuf_borrow = #context.state_ref(#zipbuf_ident).borrow_mut();
-                let (ref mut lhs_buf, ref mut rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
+                let (lhs_buf, rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
                 #root::itertools::Itertools::zip_longest(
                     ::std::mem::take(lhs_buf).into_iter().chain(#lhs),
                     ::std::mem::take(rhs_buf).into_iter().chain(#rhs),
@@ -97,7 +97,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
                             Some((lhs, rhs))
                         } else {
                             let mut zipbuf_burrow = #context.state_ref(#zipbuf_ident).borrow_mut();
-                            let (ref mut lhs_buf, ref mut rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
+                            let (lhs_buf, rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
                             match either {
                                 #root::itertools::EitherOrBoth::Left(lhs) => lhs_buf.push(lhs),
                                 #root::itertools::EitherOrBoth::Right(rhs) => rhs_buf.push(rhs),

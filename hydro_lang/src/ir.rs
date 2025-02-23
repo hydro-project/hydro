@@ -196,18 +196,12 @@ impl HydroLeaf {
         seen_tees: &mut SeenTees,
     ) {
         match self {
-            HydroLeaf::ForEach {
-                f: _,
-                ref mut input,
-            }
-            | HydroLeaf::DestSink {
-                sink: _,
-                ref mut input,
-            }
+            HydroLeaf::ForEach { f: _, input }
+            | HydroLeaf::DestSink { sink: _, input }
             | HydroLeaf::CycleSink {
                 ident: _,
                 location_kind: _,
-                ref mut input,
+                input,
             } => {
                 transform(input, seen_tees);
             }
@@ -277,7 +271,7 @@ impl HydroLeaf {
                                 Some(&stream_id.to_string()),
                             );
                     }
-                    BuildersOrCallback::Callback(ref mut leaf_callback, _) => {
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, stream_id);
                     }
                 }
@@ -303,7 +297,7 @@ impl HydroLeaf {
                                 Some(&stream_id.to_string()),
                             );
                     }
-                    BuildersOrCallback::Callback(ref mut leaf_callback, _) => {
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
                         leaf_callback(self, stream_id);
                     }
                 }
@@ -1031,7 +1025,7 @@ impl<'a> HydroNode {
                             Some(&persist_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, persist_id);
                     }
                 }
@@ -1064,7 +1058,7 @@ impl<'a> HydroNode {
                             Some(&delta_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, delta_id);
                     }
                 }
@@ -1122,7 +1116,7 @@ impl<'a> HydroNode {
                             let builder = graph_builders.entry(location_id).or_default();
                             builder.add_dfir(source_stmt, None, Some(&source_id.to_string()));
                         }
-                        BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        BuildersOrCallback::Callback(_, node_callback) => {
                             node_callback(self, source_id);
                         }
                     }
@@ -1179,7 +1173,7 @@ impl<'a> HydroNode {
                                 Some(&tee_id.to_string()),
                             );
                         }
-                        BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                        BuildersOrCallback::Callback(_, node_callback) => {
                             node_callback(self, tee_id);
                         }
                     }
@@ -1218,7 +1212,7 @@ impl<'a> HydroNode {
                             Some(&chain_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, chain_id);
                     }
                 }
@@ -1256,7 +1250,7 @@ impl<'a> HydroNode {
                             Some(&cross_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, cross_id);
                     }
                 }
@@ -1320,7 +1314,7 @@ impl<'a> HydroNode {
                             Some(&stream_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, stream_id);
                     }
                 }
@@ -1377,7 +1371,7 @@ impl<'a> HydroNode {
                             Some(&stream_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, stream_id);
                     }
                 }
@@ -1405,7 +1399,7 @@ impl<'a> HydroNode {
                             Some(&map_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, map_id);
                     }
                 }
@@ -1434,7 +1428,7 @@ impl<'a> HydroNode {
                             Some(&flat_map_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, flat_map_id);
                     }
                 }
@@ -1463,7 +1457,7 @@ impl<'a> HydroNode {
                             Some(&filter_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, filter_id);
                     }
                 }
@@ -1492,7 +1486,7 @@ impl<'a> HydroNode {
                             Some(&filter_map_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, filter_map_id);
                     }
                 }
@@ -1520,7 +1514,7 @@ impl<'a> HydroNode {
                             Some(&sort_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, sort_id);
                     }
                 }
@@ -1549,7 +1543,7 @@ impl<'a> HydroNode {
                             Some(&defer_tick_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, defer_tick_id);
                     }
                 }
@@ -1585,7 +1579,7 @@ impl<'a> HydroNode {
                             Some(&enumerate_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, enumerate_id);
                     }
                 }
@@ -1614,7 +1608,7 @@ impl<'a> HydroNode {
                             Some(&inspect_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, inspect_id);
                     }
                 }
@@ -1643,7 +1637,7 @@ impl<'a> HydroNode {
                             Some(&unique_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, unique_id);
                     }
                 }
@@ -1694,7 +1688,7 @@ impl<'a> HydroNode {
                             Some(&fold_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, fold_id);
                     }
                 }
@@ -1742,7 +1736,7 @@ impl<'a> HydroNode {
                             Some(&reduce_id.to_string()),
                         );
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, reduce_id);
                     }
                 }
@@ -1822,7 +1816,7 @@ impl<'a> HydroNode {
                             );
                         }
                     }
-                    BuildersOrCallback::Callback(_, ref mut node_callback) => {
+                    BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, stream_id);
                     }
                 }

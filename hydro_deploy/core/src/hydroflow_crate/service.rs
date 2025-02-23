@@ -177,7 +177,9 @@ impl HydroflowCrateService {
         self.launched_binary.as_ref().unwrap().exit_code()
     }
 
-    fn build(&self) -> impl Future<Output = Result<&'static BuildOutput, BuildError>> {
+    fn build(
+        &self,
+    ) -> impl use<> + 'static + Future<Output = Result<&'static BuildOutput, BuildError>> {
         // Memoized, so no caching in `self` is needed.
         build_crate_memoized(self.build_params.clone())
     }
