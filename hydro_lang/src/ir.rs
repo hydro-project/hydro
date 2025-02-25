@@ -378,6 +378,16 @@ impl HydroLeaf {
         }
     }
 
+    pub fn input_metadata_mut(&mut self) -> Vec<&mut HydroIrMetadata> {
+        match self {
+            HydroLeaf::ForEach { input, .. }
+            | HydroLeaf::DestSink { input, .. }
+            | HydroLeaf::CycleSink { input, .. } => {
+                vec![input.metadata_mut()]
+            }
+        }
+    }
+
     pub fn print_root(&self) -> String {
         match self {
             HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
@@ -495,6 +505,7 @@ pub struct HydroIrMetadata {
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
+    pub id: Option<usize>,
 }
 
 // HydroIrMetadata shouldn't be used to hash or compare
@@ -2060,6 +2071,52 @@ impl<'a> HydroNode {
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
+        }
+    }
+
+    pub fn input_metadata_mut(&mut self) -> Vec<&mut HydroIrMetadata> {
+        match self {
+            HydroNode::Placeholder => {
+                panic!()
+            }
+            HydroNode::Source { .. }
+            | HydroNode::CycleSource { .. } // CycleSource and Tee should calculate input metadata in separate special ways
+            | HydroNode::Tee { .. } => {
+                vec![]
+            }
+            HydroNode::Persist { inner, .. }
+            | HydroNode::Unpersist { inner, .. }
+            | HydroNode::Delta { inner, .. } => {
+                vec![inner.metadata_mut()]
+            }
+            HydroNode::Chain { first, second, .. } => {
+                vec![first.metadata_mut(), second.metadata_mut()]
+            }
+            HydroNode::CrossProduct { left, right, .. }
+            | HydroNode::CrossSingleton { left, right, .. }
+            | HydroNode::Join { left, right, .. } => {
+                vec![left.metadata_mut(), right.metadata_mut()]
+            }
+            HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
+                vec![pos.metadata_mut(), neg.metadata_mut()]
+            }
+            HydroNode::Map { input, .. }
+            | HydroNode::FlatMap { input, .. }
+            | HydroNode::Filter { input, .. }
+            | HydroNode::FilterMap { input, .. }
+            | HydroNode::Sort { input, .. }
+            | HydroNode::DeferTick { input, .. }
+            | HydroNode::Enumerate { input, .. }
+            | HydroNode::Inspect { input, .. }
+            | HydroNode::Unique { input, .. }
+            | HydroNode::Network { input, .. }
+            | HydroNode::Fold { input, .. }
+            | HydroNode::FoldKeyed { input, .. }
+            | HydroNode::Reduce { input, .. }
+            | HydroNode::ReduceKeyed { input, .. }
+            | HydroNode::Counter { input, .. } => {
+                vec![input.metadata_mut()]
+            }
         }
     }
 

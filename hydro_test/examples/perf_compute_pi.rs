@@ -93,17 +93,7 @@ async fn main() {
         .get_process(&leader)
         .stdout_filter(CPU_USAGE_PREFIX)
         .await;
-    let mut usage_out = HashMap::new();
-    let mut cardinality_out = HashMap::new();
-    for (id, name, cluster) in nodes.get_all_clusters() {
-        for (idx, node) in cluster.members().iter().enumerate() {
-            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
-            usage_out.insert((id.clone(), name.clone(), idx), out);
-
-            let out = node.stdout_filter(COUNTER_PREFIX).await;
-            cardinality_out.insert((id.clone(), name.clone(), idx), out);
-        }
-    }
+    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(nodes).await;
 
     deployment
         .start_until(async {

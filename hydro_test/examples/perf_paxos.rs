@@ -7,9 +7,7 @@ use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
-use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
-use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
+use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_results, track_usage_cardinality};
 use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
@@ -128,18 +126,7 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    // Get stdout for each process to capture their CPU usage and cardinality later
-    let mut usage_out = HashMap::new();
-    let mut cardinality_out = HashMap::new();
-    for (id, name, cluster) in nodes.get_all_clusters() {
-        for (idx, node) in cluster.members().iter().enumerate() {
-            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
-            usage_out.insert((id.clone(), name.clone(), idx), out);
-
-            let out = node.stdout_filter(COUNTER_PREFIX).await;
-            cardinality_out.insert((id.clone(), name.clone(), idx), out);
-        }
-    }
+    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(nodes).await;
 
     deployment
         .start_until(async {

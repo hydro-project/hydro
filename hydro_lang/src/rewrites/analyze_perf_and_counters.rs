@@ -7,8 +7,30 @@ use crate::deploy::deploy_graph::DeployCrateWrapper;
 use crate::deploy::HydroDeploy;
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
-use crate::rewrites::analyze_counter::{inject_count, parse_counter_usage};
-use crate::rewrites::analyze_perf::{analyze_perf, parse_cpu_usage};
+use crate::rewrites::populate_metadata::{
+    analyze_perf, inject_count, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
+    CPU_USAGE_PREFIX,
+};
+
+pub async fn track_usage_cardinality(
+    nodes: DeployResult<'static, HydroDeploy>,
+) -> (
+    HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
+    HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
+) {
+    let mut usage_out = HashMap::new();
+    let mut cardinality_out = HashMap::new();
+    for (id, name, cluster) in nodes.get_all_clusters() {
+        for (idx, node) in cluster.members().iter().enumerate() {
+            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
+            usage_out.insert((id.clone(), name.clone(), idx), out);
+
+            let out = node.stdout_filter(COUNTER_PREFIX).await;
+            cardinality_out.insert((id.clone(), name.clone(), idx), out);
+        }
+    }
+    (usage_out, cardinality_out)
+}
 
 pub async fn analyze_results(
     nodes: DeployResult<'static, HydroDeploy>,
