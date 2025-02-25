@@ -15,7 +15,7 @@ async fn single_batch_test() {
             sleep(Duration::from_millis(100)).await;
             x
         })
-        -> poll_futures()
+        -> resolve_futures()
         -> for_each(|x| result_send.send(x).unwrap());
     };
 
@@ -44,7 +44,7 @@ async fn multi_batch_test() {
             sleep(Duration::from_millis(10*x)).await;
             x
         })
-        -> poll_futures()
+        -> resolve_futures()
         -> for_each(|x| result_send.send(x).unwrap());
     };
 
@@ -75,7 +75,7 @@ async fn pusherator_test() {
         ins -> map(|x| async move {
             sleep(Duration::from_millis(10*x)).await;
             x
-        }) -> poll_futures() -> for_each(|x| result_send.send(x).unwrap());
+        }) -> resolve_futures() -> for_each(|x| result_send.send(x).unwrap());
     };
 
     let handle = tokio::task::spawn(async move {

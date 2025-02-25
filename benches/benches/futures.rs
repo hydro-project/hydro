@@ -46,7 +46,7 @@ fn benchmark_immediately_available(c: &mut Criterion) {
                         x
                     })
                     -> defer_tick()
-                    -> poll_futures()
+                    -> resolve_futures()
                     -> for_each(|_| {});
                 };
 
@@ -85,7 +85,7 @@ fn benchmark_delayed(c: &mut Criterion) {
         let df = {
             dfir_syntax! {
                 source_iter(futs)
-                -> poll_futures()
+                -> resolve_futures()
                 -> for_each(|_| {});
             }
         };

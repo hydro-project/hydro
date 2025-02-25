@@ -1583,30 +1583,34 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # use dfir_rs::futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    ///         let tick = process.tick();
-    ///         process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
-    ///             .map(q!(|x| async move {
-    ///                 // tokio::time::sleep works, import then just sleep does not, unsure why
-    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    ///                 x
-    ///             }))
-    ///             .poll_futures()
-    ///         // 1, 2, 3, 4, 5, 6, 7, 8, 9
+    /// let tick = process.tick();
+    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         // tokio::time::sleep works, import then just sleep does not, unsure why
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures()
     /// #   },
     /// #   |mut stream| async move {
+    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9
+    /// #       let mut output = HashSet::new();
+    /// #       for _ in 1..10 {
+    /// #           output.insert(stream.next().await.unwrap());
+    /// #       }
     /// #       assert_eq!(
-    /// #           HashSet::<i32>::from_iter(1..10),
-    /// #           HashSet::from_iter(vec![stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap()])
+    /// #           output,
+    /// #           HashSet::<i32>::from_iter(1..10)
     /// #       );
     /// #   },
     /// # ));
-    pub fn poll_futures<T2>(self) -> Stream<T2, L, B, NoOrder>
+    pub fn resolve_futures<T2>(self) -> Stream<T2, L, B, NoOrder>
     where
         T: Future<Output = T2>,
     {
         Stream::new(
             self.location.clone(),
-            HydroNode::PollFutures {
+            HydroNode::ResolveFutures {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T2>(),
             },
@@ -1622,30 +1626,34 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # use dfir_rs::futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    ///         let tick = process.tick();
-    ///         process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
-    ///             .map(q!(|x| async move {
-    ///                 // tokio::time::sleep works, import then just sleep does not, unsure why
-    ///                 tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    ///                 x
-    ///             }))
-    ///             .poll_futures_ordered()
-    ///             // 2, 3, 1, 9, 6, 5, 4, 7, 8
+    /// let tick = process.tick();
+    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         // tokio::time::sleep works, import then just sleep does not, unsure why
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures_ordered()
     /// #   },
     /// #   |mut stream| async move {
+    /// // 2, 3, 1, 9, 6, 5, 4, 7, 8
+    /// #       let mut output = Vec::new();
+    /// #       for _ in 1..10 {
+    /// #           output.push(stream.next().await.unwrap());
+    /// #       }
     /// #       assert_eq!(
-    /// #           vec![2, 3, 1, 9, 6, 5, 4, 7, 8],
-    /// #           vec![stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap()]
+    /// #           output,
+    /// #           vec![2, 3, 1, 9, 6, 5, 4, 7, 8]
     /// #       );
     /// #   },
     /// # ));
-    pub fn poll_futures_ordered<T2>(self) -> Stream<T2, L, B, Order>
+    pub fn resolve_futures_ordered<T2>(self) -> Stream<T2, L, B, Order>
     where
         T: Future<Output = T2>,
     {
         Stream::new(
             self.location.clone(),
-            HydroNode::PollFuturesOrdered {
+            HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T2>(),
             },
@@ -1668,7 +1676,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     //                     tokio::time::sleep(Duration::from_millis(10)).await;
     //                     x
     //                 }))
-    //                 .poll_futures()
+    //                 .resolve_futures()
     //         },
     //         |stream| async move {
 
