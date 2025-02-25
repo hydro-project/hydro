@@ -286,7 +286,11 @@
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
 <a href="#287" id="287">287</a>
-<a href="#288" id="288">288</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::marker::PhantomData;
 
 <span class="kw">use </span>proc_macro2::Span;
 <span class="kw">use </span>sealed::sealed;
@@ -464,6 +468,7 @@
 
         (
             ForwardRef {
+                completed: <span class="bool-val">false</span>,
                 ident: ident.clone(),
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,
@@ -495,6 +500,7 @@
 
         (
             ForwardRef {
+                completed: <span class="bool-val">false</span>,
                 ident: ident.clone(),
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,
@@ -529,6 +535,7 @@
 
         (
             TickCycle {
+                completed: <span class="bool-val">false</span>,
                 ident: ident.clone(),
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,
@@ -566,6 +573,7 @@
 
         (
             TickCycle {
+                completed: <span class="bool-val">false</span>,
                 ident: ident.clone(),
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,

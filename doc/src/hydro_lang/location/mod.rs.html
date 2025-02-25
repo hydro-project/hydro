@@ -270,7 +270,8 @@
 <a href="#269" id="269">269</a>
 <a href="#270" id="270">270</a>
 <a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::time::Duration;
 
@@ -534,6 +535,7 @@
 
         (
             ForwardRef {
+                completed: <span class="bool-val">false</span>,
                 ident: ident.clone(),
                 expected_location: <span class="self">self</span>.id(),
                 _phantom: PhantomData,

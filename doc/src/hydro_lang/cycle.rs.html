@@ -53,7 +53,27 @@
 <a href="#52" id="52">52</a>
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
-<a href="#55" id="55">55</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::location::{Location, LocationId};
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a></pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::location::{Location, LocationId};
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 
 <span class="kw">pub enum </span>ForwardRefMarker {}
@@ -84,28 +104,48 @@
 ///
 /// See [`crate::FlowBuilder`] for an explainer on the type parameters.
 </span><span class="kw">pub struct </span>ForwardRef&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) completed: bool,
     <span class="kw">pub</span>(<span class="kw">crate</span>) ident: syn::Ident,
     <span class="kw">pub</span>(<span class="kw">crate</span>) expected_location: LocationId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, S&gt;,
 }
 
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;&gt; Drop <span class="kw">for </span>ForwardRef&lt;<span class="lifetime">'a</span>, S&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.completed {
+            <span class="macro">panic!</span>(<span class="string">"ForwardRef dropped without being completed"</span>);
+        }
+    }
+}
+
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;&gt; ForwardRef&lt;<span class="lifetime">'a</span>, S&gt; {
-    <span class="kw">pub fn </span>complete(<span class="self">self</span>, stream: S) {
-        <span class="kw">let </span>ident = <span class="self">self</span>.ident;
-        S::complete(stream, ident, <span class="self">self</span>.expected_location)
+    <span class="kw">pub fn </span>complete(<span class="kw-2">mut </span><span class="self">self</span>, stream: S) {
+        <span class="self">self</span>.completed = <span class="bool-val">true</span>;
+        <span class="kw">let </span>ident = <span class="self">self</span>.ident.clone();
+        S::complete(stream, ident, <span class="self">self</span>.expected_location.clone())
     }
 }
 
 <span class="kw">pub struct </span>TickCycle&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, TickCycleMarker&gt; + DeferTick&gt; {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) completed: bool,
     <span class="kw">pub</span>(<span class="kw">crate</span>) ident: syn::Ident,
     <span class="kw">pub</span>(<span class="kw">crate</span>) expected_location: LocationId,
     <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, S&gt;,
 }
 
+<span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, TickCycleMarker&gt; + DeferTick&gt; Drop <span class="kw">for </span>TickCycle&lt;<span class="lifetime">'a</span>, S&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.completed {
+            <span class="macro">panic!</span>(<span class="string">"TickCycle dropped without being completed"</span>);
+        }
+    }
+}
+
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, TickCycleMarker&gt; + DeferTick&gt; TickCycle&lt;<span class="lifetime">'a</span>, S&gt; {
-    <span class="kw">pub fn </span>complete_next_tick(<span class="self">self</span>, stream: S) {
-        <span class="kw">let </span>ident = <span class="self">self</span>.ident;
-        S::complete(stream.defer_tick(), ident, <span class="self">self</span>.expected_location)
+    <span class="kw">pub fn </span>complete_next_tick(<span class="kw-2">mut </span><span class="self">self</span>, stream: S) {
+        <span class="self">self</span>.completed = <span class="bool-val">true</span>;
+        <span class="kw">let </span>ident = <span class="self">self</span>.ident.clone();
+        S::complete(stream.defer_tick(), ident, <span class="self">self</span>.expected_location.clone())
     }
 }
 </code></pre></div></section></main></body></html>

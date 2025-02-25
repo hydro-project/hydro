@@ -9753,7 +9753,30 @@
 <a href="#9752" id="9752">9752</a>
 <a href="#9753" id="9753">9753</a>
 <a href="#9754" id="9754">9754</a>
-<a href="#9755" id="9755">9755</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
+<a href="#9755" id="9755">9755</a>
+<a href="#9756" id="9756">9756</a>
+<a href="#9757" id="9757">9757</a>
+<a href="#9758" id="9758">9758</a>
+<a href="#9759" id="9759">9759</a>
+<a href="#9760" id="9760">9760</a>
+<a href="#9761" id="9761">9761</a>
+<a href="#9762" id="9762">9762</a>
+<a href="#9763" id="9763">9763</a>
+<a href="#9764" id="9764">9764</a>
+<a href="#9765" id="9765">9765</a>
+<a href="#9766" id="9766">9766</a>
+<a href="#9767" id="9767">9767</a>
+<a href="#9768" id="9768">9768</a>
+<a href="#9769" id="9769">9769</a>
+<a href="#9770" id="9770">9770</a>
+<a href="#9771" id="9771">9771</a>
+<a href="#9772" id="9772">9772</a>
+<a href="#9773" id="9773">9773</a>
+<a href="#9774" id="9774">9774</a>
+<a href="#9775" id="9775">9775</a>
+<a href="#9776" id="9776">9776</a>
+<a href="#9777" id="9777">9777</a>
+<a href="#9778" id="9778">9778</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>dfir_rs;
 <span class="kw">pub use </span>stageleft::q;
 <span class="attr">#[doc(hidden)]
 </span><span class="kw">pub mod </span>runtime_support {
@@ -13738,6 +13761,7 @@
                 );
                 (
                     ForwardRef {
+                        completed: <span class="bool-val">false</span>,
                         ident: ident.clone(),
                         expected_location: <span class="self">self</span>.id(),
                         _phantom: PhantomData,
@@ -13770,6 +13794,7 @@
                 );
                 (
                     ForwardRef {
+                        completed: <span class="bool-val">false</span>,
                         ident: ident.clone(),
                         expected_location: <span class="self">self</span>.id(),
                         _phantom: PhantomData,
@@ -13805,6 +13830,7 @@
                 );
                 (
                     TickCycle {
+                        completed: <span class="bool-val">false</span>,
                         ident: ident.clone(),
                         expected_location: <span class="self">self</span>.id(),
                         _phantom: PhantomData,
@@ -13841,6 +13867,7 @@
                 );
                 (
                     TickCycle {
+                        completed: <span class="bool-val">false</span>,
                         ident: ident.clone(),
                         expected_location: <span class="self">self</span>.id(),
                         _phantom: PhantomData,
@@ -15654,18 +15681,37 @@
     <span class="kw">pub use </span><span class="kw">crate</span>::cycle::CycleCollectionWithInitial;
     <span class="kw">pub use </span><span class="kw">crate</span>::cycle::ForwardRef;
     <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    </span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;&gt; Drop <span class="kw">for </span>ForwardRef&lt;<span class="lifetime">'a</span>, S&gt; {
+        <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+            <span class="kw">if </span>!<span class="self">self</span>.completed {
+                <span class="macro">panic!</span>(<span class="string">"ForwardRef dropped without being completed"</span>);
+            }
+        }
+    }
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
     </span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, ForwardRefMarker&gt;&gt; ForwardRef&lt;<span class="lifetime">'a</span>, S&gt; {
-        <span class="kw">pub fn </span>complete(<span class="self">self</span>, stream: S) {
-            <span class="kw">let </span>ident = <span class="self">self</span>.ident;
-            S::complete(stream, ident, <span class="self">self</span>.expected_location)
+        <span class="kw">pub fn </span>complete(<span class="kw-2">mut </span><span class="self">self</span>, stream: S) {
+            <span class="self">self</span>.completed = <span class="bool-val">true</span>;
+            <span class="kw">let </span>ident = <span class="self">self</span>.ident.clone();
+            S::complete(stream, ident, <span class="self">self</span>.expected_location.clone())
         }
     }
     <span class="kw">pub use </span><span class="kw">crate</span>::cycle::TickCycle;
     <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
+    </span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, TickCycleMarker&gt; + DeferTick&gt; Drop
+    <span class="kw">for </span>TickCycle&lt;<span class="lifetime">'a</span>, S&gt; {
+        <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+            <span class="kw">if </span>!<span class="self">self</span>.completed {
+                <span class="macro">panic!</span>(<span class="string">"TickCycle dropped without being completed"</span>);
+            }
+        }
+    }
+    <span class="attr">#[cfg(all(stageleft_macro, not(stageleft_macro)))]
     </span><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, S: CycleComplete&lt;<span class="lifetime">'a</span>, TickCycleMarker&gt; + DeferTick&gt; TickCycle&lt;<span class="lifetime">'a</span>, S&gt; {
-        <span class="kw">pub fn </span>complete_next_tick(<span class="self">self</span>, stream: S) {
-            <span class="kw">let </span>ident = <span class="self">self</span>.ident;
-            S::complete(stream.defer_tick(), ident, <span class="self">self</span>.expected_location)
+        <span class="kw">pub fn </span>complete_next_tick(<span class="kw-2">mut </span><span class="self">self</span>, stream: S) {
+            <span class="self">self</span>.completed = <span class="bool-val">true</span>;
+            <span class="kw">let </span>ident = <span class="self">self</span>.ident.clone();
+            S::complete(stream.defer_tick(), ident, <span class="self">self</span>.expected_location.clone())
         }
     }
 }
