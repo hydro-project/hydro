@@ -306,57 +306,42 @@ impl<'a> Dfir<'a> {
                     // iteration count, then we need to increment the iteration count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
-                    let mut allow_iter = false;
-                    let curr_iter_count = if let Some(&LoopData {
-                        loop_nonce: _loop_loop_nonce,
+                    let LoopData {
                         iter_count: loop_iter_count,
                         allow_another_iteration,
-                    }) = self.loop_data.get(loop_id)
-                    {
-                        allow_iter = allow_another_iteration;
-                        let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+                    } = &mut self.loop_data[loop_id];
 
-                        // If the loop nonce is the same as the previous execution, then we are in
-                        // the same loop execution.
-                        // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
-                        // always in the same (singular) loop execution.
+                    let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+
+                    // If the loop nonce is the same as the previous execution, then we are in
+                    // the same loop execution.
+                    // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
+                    // always in the same (singular) loop execution.
+                    let curr_iter_count =
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
                             // If the iteration count is the same as the previous execution, then
                             // we are on the next iteration.
-                            if loop_iter_count == prev_iter_count {
+                            if loop_iter_count.is_none_or(|n| n == prev_iter_count) {
                                 // If not true, then we shall not run the next iteration.
-                                if !allow_another_iteration {
+                                if !std::mem::take(allow_another_iteration) {
                                     tracing::trace!(
                                         "Loop will not continue to next iteration, skipping."
                                     );
                                     continue 'pop;
                                 }
-                                allow_iter = false;
-                                loop_iter_count + 1
+                                // Increment `loop_iter_count` or set it to 0.
+                                loop_iter_count.map_or(0, |n| n + 1)
                             } else {
-                                // Otherwise update the iteration count to match the loop.
-                                debug_assert!(prev_iter_count < loop_iter_count);
-                                loop_iter_count
+                                // Otherwise update the local iteration count to match the loop.
+                                debug_assert!(loop_iter_count.is_some_and(|n| prev_iter_count < n));
+                                loop_iter_count.unwrap()
                             }
                         } else {
                             // We are in a new loop execution.
                             0
-                        }
-                    } else {
-                        // We are in a new loop execution.
-                        0
-                    };
-
+                        };
+                    *loop_iter_count = Some(curr_iter_count);
                     self.context.loop_iter_count = curr_iter_count;
-                    // Update the loop data.
-                    self.loop_data.insert(
-                        loop_id,
-                        LoopData {
-                            loop_nonce: curr_loop_nonce.unwrap_or_default(),
-                            iter_count: curr_iter_count,
-                            allow_another_iteration: allow_iter,
-                        },
-                    );
                     sg_data.last_loop_nonce =
                         (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
                 }
@@ -966,6 +951,13 @@ impl<'a> Dfir<'a> {
     pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
         let depth = parent.map_or(0, |p| self.context.loop_depth[p] + 1);
         let loop_id = self.context.loop_depth.insert(depth);
+        self.loop_data.insert(
+            loop_id,
+            LoopData {
+                iter_count: None,
+                allow_another_iteration: true,
+            },
+        );
         loop_id
     }
 }
@@ -1120,10 +1112,8 @@ impl<'a> SubgraphData<'a> {
 }
 
 pub(crate) struct LoopData {
-    /// Loop execution nonce.
-    loop_nonce: usize,
     /// Count of iterations of this loop.
-    iter_count: usize,
+    iter_count: Option<usize>,
     /// If the loop has reason to do another iteration.
     allow_another_iteration: bool,
 }

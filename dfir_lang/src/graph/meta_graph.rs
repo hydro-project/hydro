@@ -453,9 +453,9 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree, excluding ref-edges and edges which enter/exit loops.
+        // In-degree, excluding ref-edges.
         let inn_degree = self.node_predecessor_nodes(node_id).count();
-        // Out-degree excluding ref-edges and loop-crossing edges.
+        // Out-degree excluding ref-edges.
         let out_degree = self.node_successor_nodes(node_id).count();
 
         match (inn_degree, out_degree) {
