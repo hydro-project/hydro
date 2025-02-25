@@ -1,11 +1,11 @@
 use syn::Ident;
 
 use super::{
-    poll_futures::poll_futures_writer, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
+    resolve_futures::resolve_futures_writer, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
 };
 
-pub const POLL_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
-    name: "poll_futures_ordered",
+pub const RESOLVE_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
+    name: "resolve_futures_ordered",
     categories: &[OperatorCategory::Map],
     hard_range_inn: RANGE_1,
     soft_range_inn: RANGE_1,
@@ -20,7 +20,7 @@ pub const POLL_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: move |wc, _| poll_futures_writer(Ident::new("FuturesOrdered", wc.op_span),
+    write_fn: move |wc, _| resolve_futures_writer(Ident::new("FuturesOrdered", wc.op_span),
     Ident::new("push_back", wc.op_span), 
     wc)
 };

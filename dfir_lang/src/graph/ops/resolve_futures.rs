@@ -5,8 +5,8 @@ use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1
 };
 
-pub const POLL_FUTURES: OperatorConstraints = OperatorConstraints {
-    name: "poll_futures",
+pub const RESOLVE_FUTURES: OperatorConstraints = OperatorConstraints {
+    name: "resolve_futures",
     categories: &[OperatorCategory::Map],
     hard_range_inn: RANGE_1,
     soft_range_inn: RANGE_1,
@@ -21,13 +21,13 @@ pub const POLL_FUTURES: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: move |wc, _| poll_futures_writer(
+    write_fn: move |wc, _| resolve_futures_writer(
         Ident::new("FuturesUnordered", wc.op_span), 
         Ident::new("push", wc.op_span),
         wc)
 };
 
-pub fn poll_futures_writer(future_type: Ident, push_fn: Ident, wc @ &WriteContextArgs {
+pub fn resolve_futures_writer(future_type: Ident, push_fn: Ident, wc @ &WriteContextArgs {
     root,
     context,
     op_span,

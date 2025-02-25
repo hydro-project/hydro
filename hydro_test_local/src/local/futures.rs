@@ -21,7 +21,7 @@ pub fn unordered<'a>(
             tokio::time::sleep(Duration::from_millis(10)).await;
             x
         }))
-        .poll_futures()
+        .resolve_futures()
         .for_each(q!(|x| output.send(x).unwrap()));
 
     flow.compile_no_network::<SingleProcessGraph>()
@@ -41,7 +41,7 @@ pub fn ordered<'a>(
             tokio::time::sleep(Duration::from_millis(10)).await;
             x
         }))
-        .poll_futures_ordered()
+        .resolve_futures_ordered()
         .for_each(q!(|x| output.send(x).unwrap()));
 
     flow.compile_no_network::<SingleProcessGraph>()
