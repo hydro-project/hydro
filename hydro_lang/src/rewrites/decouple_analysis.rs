@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 use grb::prelude::*;
 
-use crate::__staged::cycle;
 use crate::ir::*;
 use crate::location::LocationId;
 
@@ -14,7 +13,8 @@ struct ModelMetadata {
     // Model variables to construct final cost function
     model: Model,
     stmt_id_to_metadata: HashMap<usize, HydroIrMetadata>,
-    ops_with_same_tick: HashMap<usize, Vec<usize>>, // (tick_id, op_id)
+    ops_with_same_tick: HashMap<usize, Vec<usize>>, // tick_id: vec of op_id
+    tees_with_same_inner: HashMap<usize, (Vec<usize>, usize)>, // inner_id: (vec of Tee op_id, cardinality)
     potential_decoupling_network_cardinalities: Vec<(usize, usize, usize)>, /* (operator ID, input ID, cardinality) */
 }
 
@@ -98,11 +98,12 @@ fn decouple_analysis_leaf(
 
 fn decouple_analysis_node(
     node: &mut HydroNode,
-    _next_stmt_id: &mut usize,
+    next_stmt_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     let ModelMetadata {
         cluster_to_decouple,
+        tees_with_same_inner,
         ..
     } = &mut *model_metadata.borrow_mut();
 
@@ -113,8 +114,13 @@ fn decouple_analysis_node(
 
     add_var_and_metadata(&node.metadata(), model_metadata);
     match node {
-        HydroNode::Tee { .. } => {
-            todo!("special tee logic")
+        HydroNode::Tee { inner, .. } => {
+            let inner_node = inner.0.borrow();
+            let inner_metadata = inner_node.metadata();
+            let entry = tees_with_same_inner
+                .entry(inner_metadata.id.unwrap())
+                .or_insert_with(|| (vec![], inner_metadata.cardinality.unwrap()));
+            entry.0.push(*next_stmt_id);
         }
         HydroNode::CycleSource { .. } => {
             // Do nothing, will be handled later
@@ -184,7 +190,7 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
             + *decoupling_recv_overhead * *cardinality as f64 * op_or_input_var;
 
         if let Some(source_id) = cycle_sink_to_sources.get(op) {
-            // If the op is a CycleSInk, then decoupling above the sink = decoupling above the source as well, so factor that overhead in too
+            // If the op is a CycleSink, then decoupling above the sink = decoupling above the source as well, so factor that overhead in too
             let source_var = var_for_op_id(model, *source_id);
 
             let source_or_input_var = add_binvar!(model, bounds: ..).unwrap();
@@ -198,6 +204,8 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
                 + *decoupling_recv_overhead * *cardinality as f64 * source_or_input_var;
         }
     }
+
+    todo!("Calculate overhead of decoupling any set of Tees from its inner. Use XOR");
 
     // Create vars that store the CPU usage of each node
     let orig_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();
@@ -235,6 +243,7 @@ pub fn decouple_analysis(ir: &mut [HydroLeaf], modelname: &str, cluster_to_decou
         model: Model::new(modelname).unwrap(),
         stmt_id_to_metadata: HashMap::new(),
         ops_with_same_tick: HashMap::new(),
+        tees_with_same_inner: HashMap::new(),
         potential_decoupling_network_cardinalities: vec![],
     });
 
