@@ -8,7 +8,7 @@ use crate::deploy::HydroDeploy;
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
 use crate::rewrites::populate_metadata::{
-    analyze_perf, inject_count, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
+    inject_perf, inject_count, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
     CPU_USAGE_PREFIX,
 };
 
@@ -64,7 +64,7 @@ pub async fn analyze_results(
                 println!("{}: {}", &name, usage);
 
                 // Inject perf usages into metadata
-                analyze_perf(ir, perf_results.folded_data);
+                inject_perf(ir, perf_results.folded_data);
 
                 // Get cardinality data. Allow later values to overwrite earlier ones
                 let node_cardinality = cardinality_out

@@ -17,3 +17,5 @@ pub mod populate_metadata;
 #[cfg(feature = "build")]
 pub mod print_id;
 pub mod properties;
+#[cfg(feature = "build")]
+pub mod remove_counter;

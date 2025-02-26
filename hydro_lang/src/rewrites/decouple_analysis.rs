@@ -113,14 +113,19 @@ fn decouple_analysis_node(
     }
 
     add_var_and_metadata(&node.metadata(), model_metadata);
+    // Add metadata for calculating decoupling overhead, special cases for Tee and CycleSource
     match node {
         HydroNode::Tee { inner, .. } => {
             let inner_node = inner.0.borrow();
             let inner_metadata = inner_node.metadata();
-            let entry = tees_with_same_inner
-                .entry(inner_metadata.id.unwrap())
-                .or_insert_with(|| (vec![], inner_metadata.cardinality.unwrap()));
-            entry.0.push(*next_stmt_id);
+            if cluster_to_decouple == inner_metadata.location_kind.root() {
+                if let Some(inner_cardinality) = inner_metadata.cardinality {
+                    let entry = tees_with_same_inner
+                        .entry(inner_metadata.id.unwrap())
+                        .or_insert_with(|| (vec![], inner_cardinality));
+                    entry.0.push(*next_stmt_id);
+                }
+            }
         }
         HydroNode::CycleSource { .. } => {
             // Do nothing, will be handled later
@@ -139,6 +144,7 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
         model,
         stmt_id_to_metadata,
         ops_with_same_tick,
+        tees_with_same_inner,
         potential_decoupling_network_cardinalities,
         ..
     } = &mut *model_metadata.borrow_mut();
@@ -204,8 +210,46 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
                 + *decoupling_recv_overhead * *cardinality as f64 * source_or_input_var;
         }
     }
+    // Calculate overhead of decoupling any set of Tees from its inner. Only penalize decoupling once for decoupling any number of Tees.
+    for (tee_inner, (ops, cardinality)) in tees_with_same_inner {
+        let tee_inner_var = var_for_op_id(model, *tee_inner);
+        let mut op_vars = ops
+            .iter()
+            .map(|op| var_for_op_id(model, *op))
+            .collect::<Vec<_>>();
+        op_vars.push(tee_inner_var);
 
-    todo!("Calculate overhead of decoupling any set of Tees from its inner. Use XOR");
+        // Variable that is 0 if the inner and any Tees are on the decoupled node
+        let min_tee_or_inner_var = add_binvar!(model, bounds: ..).unwrap();
+        model
+            .add_genconstr_min(&format!("tee_inner_min{}", tee_inner), min_tee_or_inner_var, op_vars.clone(), None)
+            .unwrap();
+        // Variable that is 1 if the inner and any Tees are on the original node
+        let max_tee_or_inner_var = add_binvar!(model, bounds: ..).unwrap();
+        model
+            .add_genconstr_max(&format!("tee_inner_max{}", tee_inner), max_tee_or_inner_var, op_vars, None)
+            .unwrap();
+        // Variable that is 1 or -1 if the inner and any Tees are on different nodes
+        let tee_diff_var = add_intvar!(model, bounds: ..).unwrap();
+        model
+            .add_constr(
+                &format!("tee_inner_diff_{}", tee_inner),
+                c!(tee_diff_var == max_tee_or_inner_var - min_tee_or_inner_var),
+            )
+            .unwrap();
+        // Variable that is 1 if the inner and any Tees are on different nodes, 0 otherwise
+        let decoupled_tee_var = add_binvar!(model, bounds: ..).unwrap();
+        model.add_genconstr_abs(
+            &format!("tee_inner_decoupled_{}", tee_inner),
+            decoupled_tee_var,
+            tee_diff_var,
+        );
+
+        orig_node_cpu_expr =
+            orig_node_cpu_expr + *decoupling_send_overhead * *cardinality as f64 * decoupled_tee_var;
+        decoupled_node_cpu_expr = decoupled_node_cpu_expr
+            + *decoupling_recv_overhead * *cardinality as f64 * decoupled_tee_var;
+    }
 
     // Create vars that store the CPU usage of each node
     let orig_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();

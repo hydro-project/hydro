@@ -137,7 +137,7 @@ fn inject_perf_node(
     }
 }
 
-pub fn analyze_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
+pub fn inject_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
     let id_to_usage = parse_perf(String::from_utf8(folded_data).unwrap());
     traverse_dfir(
         ir,
