@@ -1,8 +1,9 @@
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
+use hydro_lang::Location;
 use hydro_lang::q;
-use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_cluster_results, analyze_process_results, get_usage, perf_cluster_specs, perf_process_specs, track_cluster_usage_cardinality, track_process_usage_cardinality};
-use hydro_lang::rewrites::{insert_counter, persist_pullup};
+use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_cluster_results, analyze_process_results, cleanup_after_analysis, get_usage, perf_cluster_specs, perf_process_specs, track_cluster_usage_cardinality, track_process_usage_cardinality};
+use hydro_lang::rewrites::{insert_counter, link_cycles, persist_pullup, decouple_analysis};
 
 // run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 #[tokio::main]
@@ -45,8 +46,13 @@ async fn main() {
 
     analyze_process_results(leader_process, &mut ir, get_usage(&mut leader_usage_out).await, &mut leader_cardinality_out).await;
     analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    cleanup_after_analysis(&mut ir);
 
     hydro_lang::ir::dbg_dedup_tee(|| {
         println!("{:#?}", ir);
     });
+
+    // Create a mapping from each CycleSink to its corresponding CycleSource
+    let cycle_sink_to_sources = link_cycles::link_cycles(&mut ir);
+    decouple_analysis::decouple_analysis(&mut ir, "perf_compute_pi_cluster", &cluster.id(), &cycle_sink_to_sources);
 }

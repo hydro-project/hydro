@@ -17,6 +17,9 @@ use crate::rewrites::populate_metadata::{
     CPU_USAGE_PREFIX,
 };
 
+use super::populate_metadata::inject_id;
+use super::remove_counter::remove_counter;
+
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 pub fn perf_process_specs(
@@ -113,7 +116,6 @@ pub async fn analyze_process_results(
             let (op_id, count) = parse_counter_usage(measurement);
             op_to_counter.insert(op_id, count);
         }
-
         inject_count(ir, &op_to_counter);
     }
 }
@@ -150,4 +152,11 @@ pub async fn analyze_cluster_results(
 pub async fn get_usage(usage_out: &mut UnboundedReceiver<String>) -> f64 {
     let measurement = usage_out.recv().await.unwrap();
     parse_cpu_usage(measurement)
+}
+
+pub fn cleanup_after_analysis(ir: &mut [HydroLeaf]) {
+    // Remove HydroNode::Counter (since we don't want to consider decoupling those)
+    remove_counter(ir);
+    // Inject new next_stmt_id into metadata (old ones are invalid after removing the counter)
+    inject_id(ir);
 }
