@@ -9,7 +9,7 @@ use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
 use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
 use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
+use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_results, track_usage_cardinality};
 use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use tokio::sync::RwLock;
 
@@ -93,7 +93,7 @@ async fn main() {
         .get_process(&leader)
         .stdout_filter(CPU_USAGE_PREFIX)
         .await;
-    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(nodes).await;
+    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(&nodes).await;
 
     deployment
         .start_until(async {
@@ -103,7 +103,7 @@ async fn main() {
         .unwrap();
 
     println!("Leader {}", leader_usage_out.recv().await.unwrap());
-    analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    analyze_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
 
     hydro_lang::ir::dbg_dedup_tee(|| {
         println!("{:#?}", ir);

@@ -126,7 +126,7 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(nodes).await;
+    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(&nodes).await;
 
     deployment
         .start_until(async {
@@ -135,7 +135,7 @@ async fn main() {
         .await
         .unwrap();
 
-    analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    analyze_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
     hydro_lang::ir::dbg_dedup_tee(|| {
         println!("{:#?}", ir);
     });

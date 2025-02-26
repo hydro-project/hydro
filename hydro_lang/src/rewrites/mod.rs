@@ -6,6 +6,8 @@ pub mod decouple_analysis;
 #[cfg(feature = "build")]
 pub mod decoupler;
 #[cfg(feature = "build")]
+pub mod link_cycles;
+#[cfg(feature = "build")]
 pub mod insert_counter;
 #[cfg(feature = "build")]
 pub mod partitioner;

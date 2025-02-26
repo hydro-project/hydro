@@ -13,7 +13,7 @@ use crate::rewrites::populate_metadata::{
 };
 
 pub async fn track_usage_cardinality(
-    nodes: DeployResult<'static, HydroDeploy>,
+    nodes: &DeployResult<'static, HydroDeploy>,
 ) -> (
     HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
@@ -33,7 +33,7 @@ pub async fn track_usage_cardinality(
 }
 
 pub async fn analyze_results(
-    nodes: DeployResult<'static, HydroDeploy>,
+    nodes: &DeployResult<'static, HydroDeploy>,
     ir: &mut [HydroLeaf],
     usage_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     cardinality_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
