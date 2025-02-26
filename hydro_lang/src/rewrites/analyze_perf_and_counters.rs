@@ -7,18 +7,17 @@ use hydro_deploy::{Deployment, Host};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::RwLock;
 
+use super::populate_metadata::inject_id;
+use super::remove_counter::remove_counter;
 use crate::builder::deploy::DeployResult;
 use crate::deploy::deploy_graph::DeployCrateWrapper;
 use crate::deploy::{HydroDeploy, TrybuildHost};
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
 use crate::rewrites::populate_metadata::{
-    inject_perf, inject_count, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
+    inject_count, inject_perf, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
     CPU_USAGE_PREFIX,
 };
-
-use super::populate_metadata::inject_id;
-use super::remove_counter::remove_counter;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -27,7 +26,9 @@ pub fn perf_process_specs(
     deployment: &mut Deployment,
     process_name: &str,
 ) -> TrybuildHost {
-    perf_cluster_specs(host_arg, deployment, process_name, 1).into_iter().nth(0).unwrap()
+    perf_cluster_specs(host_arg, deployment, process_name, 1)
+        .into_iter().next()
+        .unwrap()
 }
 
 pub fn perf_cluster_specs(
@@ -78,7 +79,10 @@ pub fn perf_cluster_specs(
 pub async fn track_process_usage_cardinality(
     process: &impl DeployCrateWrapper,
 ) -> (UnboundedReceiver<String>, UnboundedReceiver<String>) {
-    (process.stdout_filter(CPU_USAGE_PREFIX).await, process.stdout_filter(COUNTER_PREFIX).await)
+    (
+        process.stdout_filter(CPU_USAGE_PREFIX).await,
+        process.stdout_filter(COUNTER_PREFIX).await,
+    )
 }
 
 pub async fn track_cluster_usage_cardinality(
@@ -91,7 +95,8 @@ pub async fn track_cluster_usage_cardinality(
     let mut cardinality_out = HashMap::new();
     for (id, name, cluster) in nodes.get_all_clusters() {
         for (idx, node) in cluster.members().iter().enumerate() {
-            let (node_usage_out, node_cardinality_out) = track_process_usage_cardinality(node).await;
+            let (node_usage_out, node_cardinality_out) =
+                track_process_usage_cardinality(node).await;
             usage_out.insert((id.clone(), name.clone(), idx), node_usage_out);
             cardinality_out.insert((id.clone(), name.clone(), idx), node_cardinality_out);
         }
@@ -130,7 +135,8 @@ pub async fn analyze_cluster_results(
         // Iterate through nodes' usages and keep the max usage one
         let mut max_usage = None;
         for (idx, _) in cluster.members().iter().enumerate() {
-            let usage = get_usage(usage_out.get_mut(&(id.clone(), name.clone(), idx)).unwrap()).await;
+            let usage =
+                get_usage(usage_out.get_mut(&(id.clone(), name.clone(), idx)).unwrap()).await;
             if let Some((prev_usage, _)) = max_usage {
                 if usage > prev_usage {
                     max_usage = Some((usage, idx));
@@ -142,9 +148,15 @@ pub async fn analyze_cluster_results(
 
         if let Some((usage, idx)) = max_usage {
             let node_cardinality = cardinality_out
-                    .get_mut(&(id.clone(), name.clone(), idx))
-                    .unwrap();
-            analyze_process_results( cluster.members().get(idx).unwrap(), ir, usage, node_cardinality).await;
+                .get_mut(&(id.clone(), name.clone(), idx))
+                .unwrap();
+            analyze_process_results(
+                cluster.members().get(idx).unwrap(),
+                ir,
+                usage,
+                node_cardinality,
+            )
+            .await;
         }
     }
 }

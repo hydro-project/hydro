@@ -16,7 +16,7 @@ struct ModelMetadata {
     stmt_id_to_var: HashMap<usize, Var>,
     stmt_id_to_metadata: HashMap<usize, HydroIrMetadata>,
     ops_with_same_tick: HashMap<usize, Vec<usize>>, // tick_id: vec of op_id
-    tees_with_same_inner: HashMap<usize, (Vec<usize>, usize)>, // inner_id: (vec of Tee op_id, cardinality)
+    tees_with_same_inner: HashMap<usize, (Vec<usize>, usize)>, /* inner_id: (vec of Tee op_id, cardinality) */
     potential_decoupling_network_cardinalities: Vec<(usize, usize, usize)>, /* (operator ID, input ID, cardinality) */
 }
 
@@ -38,7 +38,10 @@ fn add_var_and_metadata(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mod
 }
 
 // Store how much data we would need to send if we decoupled above this
-fn add_decoupling_overhead(input_metadatas: Vec<&mut HydroIrMetadata>, model_metadata: &RefCell<ModelMetadata>) {
+fn add_decoupling_overhead(
+    input_metadatas: Vec<&mut HydroIrMetadata>,
+    model_metadata: &RefCell<ModelMetadata>,
+) {
     let ModelMetadata {
         cluster_to_decouple,
         potential_decoupling_network_cardinalities,
@@ -64,8 +67,7 @@ fn add_decoupling_overhead(input_metadatas: Vec<&mut HydroIrMetadata>, model_met
 // Store the tick that an op is constrained to
 fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<ModelMetadata>) {
     let ModelMetadata {
-        ops_with_same_tick,
-        ..
+        ops_with_same_tick, ..
     } = &mut *model_metadata.borrow_mut();
     if let LocationId::Tick(tick_id, _) = metadata.location_kind {
         ops_with_same_tick
@@ -85,9 +87,9 @@ fn decouple_analysis_leaf(
         return;
     }
 
-    add_var_and_metadata(&leaf.metadata(), model_metadata);
+    add_var_and_metadata(leaf.metadata(), model_metadata);
     add_decoupling_overhead(leaf.input_metadata_mut(), model_metadata);
-    add_tick_constraint(&leaf.metadata(), model_metadata);
+    add_tick_constraint(leaf.metadata(), model_metadata);
 }
 
 fn decouple_analysis_node(
@@ -100,7 +102,7 @@ fn decouple_analysis_node(
         return;
     }
 
-    add_var_and_metadata(&node.metadata(), model_metadata);
+    add_var_and_metadata(node.metadata(), model_metadata);
     // Add metadata for calculating decoupling overhead, special cases for Tee and CycleSource
     match node {
         HydroNode::Tee { inner, .. } => {
@@ -126,20 +128,25 @@ fn decouple_analysis_node(
             add_decoupling_overhead(node.input_metadata_mut(), model_metadata);
         }
     }
-    add_tick_constraint(&node.metadata(), model_metadata);
+    add_tick_constraint(node.metadata(), model_metadata);
 }
 
 // Return a variable representing whether op1 and op2 are assigned to different machines
-fn add_decoupled_var(model: &mut Model, op1: usize, op2: usize, stmt_id_to_var: &HashMap<usize, Var>) -> Var {
+fn add_decoupled_var(
+    model: &mut Model,
+    op1: usize,
+    op2: usize,
+    stmt_id_to_var: &HashMap<usize, Var>,
+) -> Var {
     let op1_var = stmt_id_to_var.get(&op1).unwrap();
     let op2_var = stmt_id_to_var.get(&op2).unwrap();
     let diff_var = add_intvar!(model, bounds: ..).unwrap();
     model
         .add_constr(
             &format!("{}_{}_diff", op1, op2),
-            c!(diff_var == *op1_var - *op2_var),
+            c!(diff_var == (*op1_var - *op2_var)),
         )
-        .unwrap(); 
+        .unwrap();
     // Variable that is 1 if op and input are on different nodes
     let decoupled_var = add_binvar!(model, bounds: ..).unwrap();
     model
@@ -152,7 +159,10 @@ fn add_decoupled_var(model: &mut Model, op1: usize, op2: usize, stmt_id_to_var: 
     decoupled_var
 }
 
-fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to_sources: &HashMap<usize, usize>) {
+fn construct_objective_fn(
+    model_metadata: &RefCell<ModelMetadata>,
+    cycle_sink_to_sources: &HashMap<usize, usize>,
+) {
     let ModelMetadata {
         decoupling_send_overhead,
         decoupling_recv_overhead,
@@ -169,13 +179,14 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
     model.update().unwrap();
 
     // Add tick constraints
-    for (_, ops) in ops_with_same_tick {
+    for ops in ops_with_same_tick.values_mut() {
         let mut prev_op: Option<usize> = None;
         for op_id in ops {
             if let Some(prev_op_id) = prev_op {
                 let prev_op_var = stmt_id_to_var.get(&prev_op_id).unwrap();
                 let op_var = stmt_id_to_var.get(op_id).unwrap();
-                model.add_constr(
+                model
+                    .add_constr(
                         &format!("tick_constraint_{}_{}", prev_op_id, op_id),
                         c!(prev_op_var == op_var),
                     )
@@ -201,17 +212,18 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
     // Calculate overheads
     for (op, input, cardinality) in potential_decoupling_network_cardinalities {
         // Penalize if the op and input are on different nodes
-        let op_input_decoupled_var = add_decoupled_var(model, *op, *input, &stmt_id_to_var);
-        orig_node_cpu_expr =
-            orig_node_cpu_expr + *decoupling_send_overhead * *cardinality as f64 * op_input_decoupled_var;
+        let op_input_decoupled_var = add_decoupled_var(model, *op, *input, stmt_id_to_var);
+        orig_node_cpu_expr = orig_node_cpu_expr
+            + *decoupling_send_overhead * *cardinality as f64 * op_input_decoupled_var;
         decoupled_node_cpu_expr = decoupled_node_cpu_expr
             + *decoupling_recv_overhead * *cardinality as f64 * op_input_decoupled_var;
 
         if let Some(source_id) = cycle_sink_to_sources.get(op) {
             // If the op is a CycleSink, then decoupling above the sink = decoupling above the source as well, so factor that overhead in too
-            let source_input_decoupled_var = add_decoupled_var(model, *source_id, *input, &stmt_id_to_var);
-            orig_node_cpu_expr =
-                orig_node_cpu_expr + *decoupling_send_overhead * *cardinality as f64 * source_input_decoupled_var;
+            let source_input_decoupled_var =
+                add_decoupled_var(model, *source_id, *input, stmt_id_to_var);
+            orig_node_cpu_expr = orig_node_cpu_expr
+                + *decoupling_send_overhead * *cardinality as f64 * source_input_decoupled_var;
             decoupled_node_cpu_expr = decoupled_node_cpu_expr
                 + *decoupling_recv_overhead * *cardinality as f64 * source_input_decoupled_var;
         }
@@ -222,16 +234,18 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
         let any_decoupled_var = add_binvar!(model, bounds: ..).unwrap();
 
         for op in ops {
-            let op_inner_decoupled_var = add_decoupled_var(model, *op, *tee_inner, &stmt_id_to_var);
+            let op_inner_decoupled_var = add_decoupled_var(model, *op, *tee_inner, stmt_id_to_var);
             // any_decoupled_var is at least decoupled_var
-            model.add_constr(
-                &format!("tee{}_inner{}_any_decoupled", op, tee_inner),
-                c!(any_decoupled_var >= op_inner_decoupled_var),
-            ).unwrap();
+            model
+                .add_constr(
+                    &format!("tee{}_inner{}_any_decoupled", op, tee_inner),
+                    c!(any_decoupled_var >= op_inner_decoupled_var),
+                )
+                .unwrap();
         }
 
-        orig_node_cpu_expr =
-            orig_node_cpu_expr + *decoupling_send_overhead * *cardinality as f64 * any_decoupled_var;
+        orig_node_cpu_expr = orig_node_cpu_expr
+            + *decoupling_send_overhead * *cardinality as f64 * any_decoupled_var;
         decoupled_node_cpu_expr = decoupled_node_cpu_expr
             + *decoupling_recv_overhead * *cardinality as f64 * any_decoupled_var;
     }
@@ -251,19 +265,31 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
 
     // Which node has the highest CPU usage?
     let highest_cpu = add_ctsvar!(model, bounds: ..).unwrap();
-    model.add_constr("higher_than_orig_cpu", c!(highest_cpu >= orig_node_cpu_var)).unwrap();
     model
-        .add_constr("higher_than_decoupled_cpu", c!(highest_cpu >= decoupled_node_cpu_var))
+        .add_constr("higher_than_orig_cpu", c!(highest_cpu >= orig_node_cpu_var))
+        .unwrap();
+    model
+        .add_constr(
+            "higher_than_decoupled_cpu",
+            c!(highest_cpu >= decoupled_node_cpu_var),
+        )
         .unwrap();
 
     // Minimize the CPU usage of that node
     model.set_objective(highest_cpu, Minimize).unwrap();
 }
 
-pub fn decouple_analysis(ir: &mut [HydroLeaf], modelname: &str, cluster_to_decouple: &LocationId, send_overhead: f64, recv_overhead: f64, cycle_sink_to_sources: &HashMap<usize, usize>) {
+pub fn decouple_analysis(
+    ir: &mut [HydroLeaf],
+    modelname: &str,
+    cluster_to_decouple: &LocationId,
+    send_overhead: f64,
+    recv_overhead: f64,
+    cycle_sink_to_sources: &HashMap<usize, usize>,
+) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
-        decoupling_send_overhead: send_overhead, 
+        decoupling_send_overhead: send_overhead,
         decoupling_recv_overhead: recv_overhead,
         model: Model::new(modelname).unwrap(),
         stmt_id_to_var: HashMap::new(),
@@ -292,9 +318,13 @@ pub fn decouple_analysis(ir: &mut [HydroLeaf], modelname: &str, cluster_to_decou
     } = &mut *model_metadata.borrow_mut();
     model.optimize().unwrap();
 
-    println!("We're decoupling the following operators:");    
+    println!("We're decoupling the following operators:");
     for (stmt_id, _) in stmt_id_to_metadata.iter() {
-        if model.get_obj_attr(attr::X, stmt_id_to_var.get(stmt_id).unwrap()).unwrap() == 0.0 {
+        if model
+            .get_obj_attr(attr::X, stmt_id_to_var.get(stmt_id).unwrap())
+            .unwrap()
+            == 0.0
+        {
             println!("{}", stmt_id);
         }
     }

@@ -7,9 +7,5 @@ fn remove_counter_node(node: &mut HydroNode, _next_stmt_id: &mut usize) {
 }
 
 pub fn remove_counter(ir: &mut [HydroLeaf]) {
-    traverse_dfir(
-        ir,
-        |_, _| {},
-        remove_counter_node,
-    );
+    traverse_dfir(ir, |_, _| {}, remove_counter_node);
 }

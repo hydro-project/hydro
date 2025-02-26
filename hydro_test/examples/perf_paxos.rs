@@ -1,8 +1,9 @@
 use hydro_deploy::Deployment;
-use hydro_lang::deploy::DeployCrateWrapper;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
-use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_cluster_results, track_cluster_usage_cardinality, perf_cluster_specs};
+use hydro_lang::rewrites::analyze_perf_and_counters::{
+    analyze_cluster_results, perf_cluster_specs, track_cluster_usage_cardinality,
+};
 use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
