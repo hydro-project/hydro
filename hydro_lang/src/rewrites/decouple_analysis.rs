@@ -251,24 +251,20 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
 
     // Which node has the highest CPU usage?
     let highest_cpu = add_ctsvar!(model, bounds: ..).unwrap();
+    model.add_constr("higher_than_orig_cpu", c!(highest_cpu >= orig_node_cpu_var)).unwrap();
     model
-        .add_genconstr_max(
-            "highest_cpu",
-            highest_cpu,
-            [orig_node_cpu_var, decoupled_node_cpu_var],
-            None,
-        )
+        .add_constr("higher_than_decoupled_cpu", c!(highest_cpu >= decoupled_node_cpu_var))
         .unwrap();
 
     // Minimize the CPU usage of that node
     model.set_objective(highest_cpu, Minimize).unwrap();
 }
 
-pub fn decouple_analysis(ir: &mut [HydroLeaf], modelname: &str, cluster_to_decouple: &LocationId, cycle_sink_to_sources: &HashMap<usize, usize>) {
+pub fn decouple_analysis(ir: &mut [HydroLeaf], modelname: &str, cluster_to_decouple: &LocationId, send_overhead: f64, recv_overhead: f64, cycle_sink_to_sources: &HashMap<usize, usize>) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
-        decoupling_send_overhead: 0.001, // TODO: Calculate
-        decoupling_recv_overhead: 0.001,
+        decoupling_send_overhead: send_overhead, 
+        decoupling_recv_overhead: recv_overhead,
         model: Model::new(modelname).unwrap(),
         stmt_id_to_var: HashMap::new(),
         stmt_id_to_metadata: HashMap::new(),

@@ -10,4 +10,7 @@ perf.data
 perf.data.old
 flamegraph.svg
 
+# Gurobi ILP output
+gurobi.log
+
 /rustc-ice-*.txt

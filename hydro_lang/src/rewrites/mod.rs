@@ -1,6 +1,8 @@
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
 pub mod analyze_perf_and_counters;
+#[cfg(feature = "deploy")]
+pub mod analyze_send_recv_overheads;
 #[cfg(feature = "build")]
 pub mod decouple_analysis;
 #[cfg(feature = "build")]
