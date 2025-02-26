@@ -1,63 +1,10 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
-use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
+use hydro_deploy::Deployment;
+use hydro_lang::deploy::DeployCrateWrapper;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
-use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_results, track_usage_cardinality};
+use hydro_lang::rewrites::analyze_perf_and_counters::{analyze_cluster_results, track_cluster_usage_cardinality, perf_cluster_specs};
 use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-use tokio::sync::RwLock;
-
-type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
-
-fn cluster_specs(
-    host_arg: &str,
-    deployment: &mut Deployment,
-    cluster_name: &str,
-    num_nodes: usize,
-) -> Vec<TrybuildHost> {
-    let create_host: HostCreator = if host_arg == "gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
-
-        Box::new(move |deployment| -> Arc<dyn Host> {
-            let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
-            deployment
-                .GcpComputeEngineHost()
-                .project(&project)
-                .machine_type("n2-highcpu-2")
-                .image("debian-cloud/debian-11")
-                .region("us-west1-a")
-                .network(network.clone())
-                .startup_script(startup_script)
-                .add()
-        })
-    } else {
-        let localhost = deployment.Localhost();
-        Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
-    };
-
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
-
-    (0..num_nodes)
-        .map(|idx| {
-            TrybuildHost::new(create_host(deployment))
-                .additional_hydro_features(vec!["runtime_measure".to_string()])
-                .rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
-                        .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
-                        .frequency(128)
-                        .build(),
-                )
-        })
-        .collect()
-}
 
 #[tokio::main]
 async fn main() {
@@ -108,25 +55,25 @@ async fn main() {
     let nodes = optimized
         .with_cluster(
             &proposers,
-            cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
+            perf_cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
         )
         .with_cluster(
             &acceptors,
-            cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
+            perf_cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
         )
         .with_cluster(
             &clients,
-            cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+            perf_cluster_specs(&host_arg, &mut deployment, "client", num_clients),
         )
         .with_cluster(
             &replicas,
-            cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+            perf_cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
         )
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
 
-    let (mut usage_out, mut cardinality_out) = track_usage_cardinality(&nodes).await;
+    let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
 
     deployment
         .start_until(async {
@@ -135,7 +82,7 @@ async fn main() {
         .await
         .unwrap();
 
-    analyze_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
     hydro_lang::ir::dbg_dedup_tee(|| {
         println!("{:#?}", ir);
     });

@@ -243,7 +243,7 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>, cycle_sink_to
             &format!("tee_inner_decoupled_{}", tee_inner),
             decoupled_tee_var,
             tee_diff_var,
-        );
+        ).unwrap();
 
         orig_node_cpu_expr =
             orig_node_cpu_expr + *decoupling_send_overhead * *cardinality as f64 * decoupled_tee_var;

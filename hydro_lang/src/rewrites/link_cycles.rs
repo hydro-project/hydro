@@ -38,7 +38,7 @@ pub fn link_cycles(ir: &mut [HydroLeaf]) -> HashMap<usize, usize> {
         if let Some(source_id) = sources.get(&sink_ident) {
             sink_to_source.insert(sink_id, *source_id);
         } else {
-            panic!("No source found for CycleSink {}, Id {}", sink_ident, sink_id);
+            std::panic!("No source found for CycleSink {}, Id {}", sink_ident, sink_id);
         }
     }
     sink_to_source
