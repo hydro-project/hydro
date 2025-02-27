@@ -12,20 +12,20 @@ use dfir_rs::scheduled::graph::Dfir;
 use lattices::set_union::SetUnion;
 use lattices::{IsTop, Max, Pair};
 use lazy_static::lazy_static;
-use prometheus::{register_int_counter, IntCounter};
+use prometheus::{IntCounter, register_int_counter};
 use rand::seq::IteratorRandom;
 use rand::thread_rng;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use tracing::{info, trace};
 
+use crate::GossipMessage::{Ack, Nack};
 use crate::lattices::BoundedSetLattice;
 use crate::membership::{MemberData, MemberId};
 use crate::model::{
-    delete_row, upsert_row, Clock, NamespaceMap, Namespaces, RowKey, RowValue, TableMap, TableName,
+    Clock, NamespaceMap, Namespaces, RowKey, RowValue, TableMap, TableName, delete_row, upsert_row,
 };
 use crate::util::{ClientRequestWithAddress, GossipRequestWithAddress};
-use crate::GossipMessage::{Ack, Nack};
 use crate::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
 
 /// A trait that represents an abstract network address. In production, this will typically be

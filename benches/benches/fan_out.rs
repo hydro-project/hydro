@@ -1,4 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::handoff::Iter;
 use dfir_rs::scheduled::query::Query as Q;

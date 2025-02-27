@@ -1,10 +1,10 @@
 use std::hint::black_box;
 
-use criterion::{criterion_group, criterion_main, Criterion};
-use dfir_rs::compiled::pull::{symmetric_hash_join_into_iter, HalfSetJoinState};
+use criterion::{Criterion, criterion_group, criterion_main};
+use dfir_rs::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_iter};
+use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 fn ops(c: &mut Criterion) {
     let mut rng = StdRng::from_entropy();

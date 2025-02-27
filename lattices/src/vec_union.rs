@@ -164,9 +164,9 @@ mod test {
     use std::collections::HashSet;
 
     use super::*;
+    use crate::Max;
     use crate::set_union::SetUnionHashSet;
     use crate::test::{cartesian_power, check_all};
-    use crate::Max;
 
     #[test]
     fn basic() {

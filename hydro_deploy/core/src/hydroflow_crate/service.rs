@@ -3,14 +3,14 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use futures::Future;
 use hydroflow_deploy_integration::{InitConfig, ServerPort};
 use serde::Serialize;
-use tokio::sync::{mpsc, RwLock};
+use tokio::sync::{RwLock, mpsc};
 
-use super::build::{build_crate_memoized, BuildError, BuildOutput, BuildParams};
+use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
 use super::ports::{self, HydroflowPortConfig, HydroflowSink, SourcePath};
 use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;

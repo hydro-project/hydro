@@ -11,7 +11,7 @@ pub struct Client {}
 pub fn bench_client<'a>(
     clients: &Cluster<'a, Client>,
     transaction_cycle: impl FnOnce(
-        Stream<(u32, u32), Cluster<'a, Client>, Unbounded>,
+        Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder>,
     ) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
     median_latency_window_size: usize,
@@ -30,7 +30,7 @@ pub fn bench_client<'a>(
         ))));
 
     let (c_to_proposers_complete_cycle, c_to_proposers) =
-        clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
+        clients.forward_ref::<Stream<_, _, _, NoOrder>>();
     let c_received_quorum_payloads = unsafe {
         // SAFETY: because the transaction processor is required to handle arbitrary reordering
         // across *different* keys, we are safe because delaying a transaction result for a key
@@ -45,12 +45,7 @@ pub fn bench_client<'a>(
         .map(q!(|payload| (payload.0, payload.1 + 1)));
     c_to_proposers_complete_cycle.complete(
         c_new_payloads_on_start
-            .chain(unsafe {
-                // SAFETY: we don't send a new write for the same key until the previous one is committed,
-                // so this contains only a single write per key, and we don't care about order
-                // across keys
-                c_new_payloads_when_committed.assume_ordering::<TotalOrder>()
-            })
+            .chain(c_new_payloads_when_committed)
             .all_ticks(),
     );
 

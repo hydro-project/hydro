@@ -13,8 +13,8 @@ use tokio::sync::RwLock;
 
 use super::gcp::GcpNetwork;
 use super::{
-    progress, CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool,
-    ResourceResult, Service,
+    CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
+    Service, progress,
 };
 use crate::{AzureHost, ServiceBuilder};
 

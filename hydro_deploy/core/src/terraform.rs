@@ -5,7 +5,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, ChildStdout, Command};
 use std::sync::{Arc, RwLock};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_process::Stdio;
 use serde::{Deserialize, Serialize};
 use tempfile::TempDir;

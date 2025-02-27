@@ -2,14 +2,14 @@ use std::collections::{HashMap, HashSet};
 
 use dfir_rs::util::collect_ready;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
-use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
+use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
+use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
 use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
-use lattices::GhtType;
 use multiplatform_test::multiplatform_test;
-use variadics::variadic_collections::VariadicHashSet;
 use variadics::CloneVariadic;
+use variadics::variadic_collections::VariadicHashSet;
 
 #[multiplatform_test]
 pub fn test_cartesian_product() {

@@ -10,8 +10,8 @@ use memo_map::MemoMap;
 use nanoid::nanoid;
 use tokio::sync::OnceCell;
 
-use crate::progress::ProgressTracker;
 use crate::HostTargetType;
+use crate::progress::ProgressTracker;
 
 /// Build parameters for [`build_crate_memoized`].
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -139,16 +139,18 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     let reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
                     let mut stderr_reader = std::io::BufReader::new(spawned.stderr.take().unwrap());
-                    std::thread::spawn(move || loop {
-                        let mut buf = String::new();
-                        if let Ok(size) = stderr_reader.read_line(&mut buf) {
-                            if size == 0 {
-                                break;
+                    std::thread::spawn(move || {
+                        loop {
+                            let mut buf = String::new();
+                            if let Ok(size) = stderr_reader.read_line(&mut buf) {
+                                if size == 0 {
+                                    break;
+                                } else {
+                                    set_msg(buf.trim().to_string());
+                                }
                             } else {
-                                set_msg(buf.trim().to_string());
+                                break;
                             }
-                        } else {
-                            break;
                         }
                     });
 

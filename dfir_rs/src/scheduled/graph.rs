@@ -18,14 +18,14 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
-use super::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
+use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
 use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
+use crate::Never;
 use crate::scheduled::ticks::{TickDuration, TickInstant};
 use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
-use crate::Never;
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 #[derive(Default)]
@@ -516,7 +516,9 @@ impl<'a> Dfir<'a> {
 
             // After incrementing, exit if we made a full loop around the strata.
             if new_tick_started && end_stratum == self.context.current_stratum {
-                tracing::trace!("Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`.");
+                tracing::trace!(
+                    "Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`."
+                );
                 // Note: if current stratum had work, the very first loop iteration would've
                 // returned true. Therefore we can return false without checking.
                 // Also means nothing was done so we can reset the stratum to zero and wait for

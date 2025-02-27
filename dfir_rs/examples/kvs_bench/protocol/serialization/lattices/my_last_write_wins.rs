@@ -5,8 +5,8 @@ use serde::de::{DeserializeSeed, Visitor};
 use serde::{Serialize, Serializer};
 
 use crate::buffer_pool::BufferPool;
-use crate::protocol::serialization::lattices::with_bot::{WithBotDeserializer, WithBotWrapper};
 use crate::protocol::MyLastWriteWins;
+use crate::protocol::serialization::lattices::with_bot::{WithBotDeserializer, WithBotWrapper};
 
 #[repr(transparent)]
 pub struct MyLastWriteWinsWrapper<'a, const SIZE: usize>(pub &'a MyLastWriteWins<SIZE>);

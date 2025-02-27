@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use stageleft::{q, IntoQuotedMut, QuotedWithContext};
+use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{
@@ -12,7 +12,7 @@ use crate::cycle::{
 };
 use crate::ir::{HydroLeaf, HydroNode, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{check_matching_location, Location, LocationId, NoTick, Tick};
+use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::{Bounded, Optional, Stream, Unbounded};
 
 pub struct Singleton<T, L, B> {
@@ -332,11 +332,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
     where
         Self: ZipResult<
-            'a,
-            Optional<(), L, Bounded>,
-            Location = L,
-            Out = Optional<(T, ()), L, Bounded>,
-        >,
+                'a,
+                Optional<(), L, Bounded>,
+                Location = L,
+                Out = Optional<(T, ()), L, Bounded>,
+            >,
     {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
@@ -344,11 +344,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     pub fn continue_unless<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded>
     where
         Singleton<T, L, B>: ZipResult<
-            'a,
-            Optional<(), L, Bounded>,
-            Location = L,
-            Out = Optional<(T, ()), L, Bounded>,
-        >,
+                'a,
+                Optional<(), L, Bounded>,
+                Location = L,
+                Out = Optional<(T, ()), L, Bounded>,
+            >,
     {
         self.continue_if(other.into_stream().count().filter(q!(|c| *c == 0)))
     }

@@ -6,11 +6,11 @@ use dfir_rs::util::multiset::HashMultiSet;
 use dfir_rs::util::{
     collect_ready_async, deserialize_from_bytes, serialize_to_bytes, unbounded_channel,
 };
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::error::SendError;
 
 use crate::protocol::{QueryResponse, Timestamped, TopolotreeMessage};
-use crate::{run_topolotree, OperationPayload, Payload};
+use crate::{OperationPayload, Payload, run_topolotree};
 
 type InputSendResult = Result<(), SendError<Result<(u32, BytesMut), std::io::Error>>>;
 

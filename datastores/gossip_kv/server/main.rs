@@ -13,13 +13,13 @@ use dfir_rs::tokio_stream::wrappers::IntervalStream;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 use dfir_rs::{bincode, bytes, tokio};
 use gossip_kv::membership::{MemberDataBuilder, Protocol};
-use gossip_kv::server::{server, SeedNode};
-use prometheus::{gather, Encoder, TextEncoder};
+use gossip_kv::server::{SeedNode, server};
+use prometheus::{Encoder, TextEncoder, gather};
 use serde::Serialize;
 use tracing::{error, info, trace};
 use warp::Filter;
 
-use crate::config::{setup_settings_watch, SeedNodeSettings};
+use crate::config::{SeedNodeSettings, setup_settings_watch};
 use crate::membership::member_name;
 
 mod config;

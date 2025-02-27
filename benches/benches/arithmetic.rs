@@ -1,7 +1,7 @@
 use std::sync::mpsc::channel;
 use std::thread;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Inspect, Map, ToStream};

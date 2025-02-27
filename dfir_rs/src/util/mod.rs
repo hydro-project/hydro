@@ -101,7 +101,10 @@ where
     C: FromIterator<S::Item>,
     S: Stream,
 {
-    assert!(tokio::runtime::Handle::try_current().is_err(), "Calling `collect_ready` from an async runtime may cause incorrect results, use `collect_ready_async` instead.");
+    assert!(
+        tokio::runtime::Handle::try_current().is_err(),
+        "Calling `collect_ready` from an async runtime may cause incorrect results, use `collect_ready_async` instead."
+    );
     ready_iter(stream).collect()
 }
 

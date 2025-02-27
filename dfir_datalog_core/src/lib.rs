@@ -3,13 +3,13 @@ use std::ops::Deref;
 
 pub use dfir_lang::diagnostic;
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph, DfirGraph, FlatGraphBuilder};
+use dfir_lang::graph::{DfirGraph, FlatGraphBuilder, eliminate_extra_unions_tees, partition_graph};
 use dfir_lang::parse::{
     DfirStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
 };
 use proc_macro2::{Span, TokenStream};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
-use syn::{parse_quote, parse_quote_spanned, Token};
+use syn::{Token, parse_quote, parse_quote_spanned};
 
 mod grammar;
 mod join_plan;
@@ -19,7 +19,7 @@ use grammar::datalog::{
     Aggregation, Atom, Declaration, Ident, IntExpr, Program, Rule, RuleType, TargetExpr,
 };
 use join_plan::{IntermediateJoinNode, JoinPlan};
-use util::{repeat_tuple, Counter};
+use util::{Counter, repeat_tuple};
 
 static MAGIC_RELATIONS: [&str; 1] = ["less_than"];
 

@@ -10,7 +10,7 @@ use quote::quote_spanned;
 use serde::{Deserialize, Serialize};
 use slotmap::Key;
 use syn::punctuated::Punctuated;
-use syn::{parse_quote_spanned, Expr, Token};
+use syn::{Expr, Token, parse_quote_spanned};
 
 use super::{
     GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance, PortIndexValue,
@@ -479,7 +479,10 @@ pub enum Persistence {
 
 /// Helper which creates a error message string literal for when the Tokio runtime is not found.
 fn make_missing_runtime_msg(op_name: &str) -> Literal {
-    Literal::string(&format!("`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method.", op_name))
+    Literal::string(&format!(
+        "`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method.",
+        op_name
+    ))
 }
 
 /// Operator categories, for docs.

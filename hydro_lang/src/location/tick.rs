@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use proc_macro2::Span;
 use sealed::sealed;
-use stageleft::{q, QuotedWithContext};
+use stageleft::{QuotedWithContext, q};
 
 use super::{Cluster, Location, LocationId, Process};
 use crate::builder::FlowState;

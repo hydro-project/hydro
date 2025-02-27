@@ -7,8 +7,8 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
-use super::ops::{find_node_op_constraints, DelayType};
-use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
+use super::ops::{DelayType, find_node_op_constraints};
+use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
 
@@ -475,7 +475,11 @@ fn find_subgraph_strata(
                 // Indicates an unbroken negative cycle.
                 // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydro/issues/1115#issuecomment-2018385033
                 if dst_stratum <= src_stratum {
-                    return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
+                    return Err(Diagnostic::spanned(
+                        dst_port.span(),
+                        Level::Error,
+                        "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator.",
+                    ));
                 }
             }
             DelayType::MonotoneAccum => {

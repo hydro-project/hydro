@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use timely::dataflow::channels::pact::Pipeline;
 use timely::dataflow::operators::{Operator, ToStream};
 

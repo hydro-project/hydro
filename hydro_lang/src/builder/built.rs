@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
 
-use dfir_lang::graph::{eliminate_extra_unions_tees, DfirGraph};
+use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees};
 
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy};
-use crate::ir::{emit, HydroLeaf};
+use crate::ir::{HydroLeaf, emit};
 use crate::location::{Cluster, ExternalProcess, Process};
 use crate::staging_util::Invariant;
 
@@ -23,7 +23,9 @@ pub struct BuiltFlow<'a> {
 impl Drop for BuiltFlow<'_> {
     fn drop(&mut self) {
         if !self.used {
-            panic!("Dropped BuiltFlow without instantiating, you may have forgotten to call `compile` or `deploy`.");
+            panic!(
+                "Dropped BuiltFlow without instantiating, you may have forgotten to call `compile` or `deploy`."
+            );
         }
     }
 }

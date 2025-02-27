@@ -79,8 +79,8 @@ mod tests {
 
     use dfir_rs::lattices::Merge;
 
-    use crate::model::{delete_row, upsert_row, Clock, Namespaces, RowKey, TableName};
     use crate::Namespace::System;
+    use crate::model::{Clock, Namespaces, RowKey, TableName, delete_row, upsert_row};
 
     #[test]
     fn test_table_map() {

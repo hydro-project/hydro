@@ -4,7 +4,7 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 
 use crate::protocol::Message;
-use crate::{default_server_address, Opts};
+use crate::{Opts, default_server_address};
 
 fn pretty_print_msg(nickname: String, message: String, ts: DateTime<Utc>) {
     println!(
