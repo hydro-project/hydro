@@ -33,6 +33,7 @@ members = [
     "variadics_macro",
     "website_playground",
 ]
+exclude = ["template"]
 
 resolver = "2"
 

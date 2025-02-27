@@ -1,11 +1,13 @@
-use crate::helpers::print_graph;
-use crate::protocol::Message;
-use crate::DEFAULT_SERVER_ADDRESS;
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
-use std::net::SocketAddr;
+
+use crate::DEFAULT_SERVER_ADDRESS;
+use crate::helpers::print_graph;
+use crate::protocol::Message;
 
 /// Runs the server. The server is a long-running process that listens for messages and echoes
 /// them back the client.
