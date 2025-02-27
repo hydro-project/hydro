@@ -412,7 +412,11 @@ impl<
             .skip(1)
             .cloned()
             .collect::<Vec<_>>();
-        let module_path = if module_path_segments.is_empty() {
+        let module_path = if module_path_segments.is_empty()
+            || module_path_segments
+                .iter()
+                .any(|segment| segment.ident.to_string().starts_with("__doctest"))
+        {
             None
         } else {
             Some(syn::Path {
