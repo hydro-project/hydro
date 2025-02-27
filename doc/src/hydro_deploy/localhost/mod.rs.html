@@ -265,8 +265,7 @@
 <a href="#264" id="264">264</a>
 <a href="#265" id="265">265</a>
 <a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<a href="#267" id="267">267</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::net::SocketAddr;
 <span class="kw">use </span>std::ops::Deref;
@@ -430,6 +429,15 @@
                 );
                 <span class="kw">let </span>dtrace_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
 
+                <span class="comment">// TODO(mingwei): use std `intersperse` when stabilized.
+                </span><span class="kw">let </span>inner_command = itertools::Itertools::intersperse(
+                    std::iter::once(binary.bin_path.to_str().unwrap())
+                        .chain(args.iter().map(Deref::deref))
+                        .map(|s| shell_escape::unix::escape(s.into())),
+                    Cow::Borrowed(<span class="string">" "</span>),
+                )
+                .collect::&lt;String&gt;();
+
                 <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"dtrace"</span>);
                 command
                     .arg(<span class="string">"-o"</span>)
@@ -440,17 +448,7 @@
                         tracing.frequency
                     ))
                     .arg(<span class="string">"-c"</span>)
-                    .arg({
-                        <span class="comment">// TODO(mingwei): use std `intersperse` when stabilized.
-                        </span><span class="kw">let </span>inner_command = itertools::Itertools::intersperse(
-                            std::iter::once(binary.bin_path.to_str().unwrap())
-                                .chain(args.iter().map(Deref::deref))
-                                .map(|s| shell_escape::unix::escape(s.into())),
-                            Cow::Borrowed(<span class="string">" "</span>),
-                        )
-                        .collect::&lt;String&gt;();
-                        <span class="kw-2">&amp;*</span>shell_escape::unix::escape(inner_command.into())
-                    });
+                    .arg(<span class="kw-2">&amp;*</span>shell_escape::unix::escape(inner_command.into()));
                 (<span class="prelude-val">Some</span>(dtrace_outfile), command)
             }
             <span class="comment">// else if cfg!(target_family = "windows") {
