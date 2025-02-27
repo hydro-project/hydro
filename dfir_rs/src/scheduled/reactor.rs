@@ -1,7 +1,7 @@
 //! Module for [`Reactor`].
 
-use tokio::sync::mpsc::error::SendError;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc::error::SendError;
 
 use super::SubgraphId;
 

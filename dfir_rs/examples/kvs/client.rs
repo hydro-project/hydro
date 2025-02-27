@@ -3,9 +3,9 @@ use std::net::SocketAddr;
 use dfir_rs::dfir_syntax;
 use dfir_rs::util::{UdpSink, UdpStream};
 
+use crate::Opts;
 use crate::helpers::parse_command;
 use crate::protocol::KvsResponse;
-use crate::Opts;
 
 pub(crate) async fn run_client(
     outbound: UdpSink,

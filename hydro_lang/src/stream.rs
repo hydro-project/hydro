@@ -6,9 +6,9 @@ use std::rc::Rc;
 
 use dfir_rs::bytes::Bytes;
 use dfir_rs::futures;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
-use stageleft::{q, IntoQuotedMut, QuotedWithContext};
+use serde::de::DeserializeOwned;
+use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 use tokio::time::Instant;
 
@@ -18,7 +18,7 @@ use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
-    check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
+    CanSend, ExternalProcess, Location, LocationId, NoTick, Tick, check_matching_location,
 };
 use crate::staging_util::get_this_crate;
 use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
@@ -2127,8 +2127,8 @@ mod tests {
     use serde::{Deserialize, Serialize};
     use stageleft::q;
 
-    use crate::location::Location;
     use crate::FlowBuilder;
+    use crate::location::Location;
 
     struct P1 {}
     struct P2 {}

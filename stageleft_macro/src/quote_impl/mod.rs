@@ -1,5 +1,5 @@
 use proc_macro2::{Span, TokenStream};
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 use syn::visit_mut::VisitMut;
 
 use self::free_variable::FreeVariableVisitor;

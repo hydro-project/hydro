@@ -5,8 +5,8 @@ use std::pin::Pin;
 use dfir_lang::graph::DfirGraph;
 use dfir_rs::bytes::Bytes;
 use dfir_rs::futures::{Sink, Stream};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;
 
 pub mod macro_runtime;
@@ -182,14 +182,14 @@ pub trait Deploy<'a> {
 }
 
 impl<
-        'a,
-        T: Deploy<'a, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R>,
-        N: Node<Meta = M>,
-        C: Node<Meta = M>,
-        E: Node<Meta = M>,
-        M: Default,
-        R,
-    > LocalDeploy<'a> for T
+    'a,
+    T: Deploy<'a, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R>,
+    N: Node<Meta = M>,
+    C: Node<Meta = M>,
+    E: Node<Meta = M>,
+    M: Default,
+    R,
+> LocalDeploy<'a> for T
 {
     type Process = N;
     type Cluster = C;

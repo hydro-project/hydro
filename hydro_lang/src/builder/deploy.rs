@@ -6,8 +6,8 @@ use std::pin::Pin;
 use dfir_rs::bytes::Bytes;
 use dfir_rs::futures::{Sink, Stream};
 use proc_macro2::Span;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;
 
 use super::built::build_inner;
@@ -46,7 +46,9 @@ pub struct DeployFlow<'a, D: LocalDeploy<'a>> {
 impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
     fn drop(&mut self) {
         if !self.used {
-            panic!("Dropped DeployFlow without instantiating, you may have forgotten to call `compile` or `deploy`.");
+            panic!(
+                "Dropped DeployFlow without instantiating, you may have forgotten to call `compile` or `deploy`."
+            );
         }
     }
 }

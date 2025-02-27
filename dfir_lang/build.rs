@@ -1,12 +1,12 @@
 use std::convert::identity;
-use std::env::{var, VarError};
+use std::env::{VarError, var};
 use std::fs::File;
 use std::io::{BufWriter, Error, ErrorKind, Result, Write};
 use std::path::PathBuf;
 
-use rustc_version::{version_meta, Channel};
+use rustc_version::{Channel, version_meta};
 use syn::{
-    parse_quote, AttrStyle, Expr, ExprLit, Ident, Item, Lit, Member, Meta, MetaNameValue, Path,
+    AttrStyle, Expr, ExprLit, Ident, Item, Lit, Member, Meta, MetaNameValue, Path, parse_quote,
 };
 
 const OPS_PATH: &str = "src/graph/ops";

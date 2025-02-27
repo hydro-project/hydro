@@ -4,7 +4,7 @@ use std::io::{BufRead, BufReader, Cursor};
 use std::rc::Rc;
 use std::sync::LazyLock;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph_ext::GraphExt;
 use differential_dataflow::input::Input;

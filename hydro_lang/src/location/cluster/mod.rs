@@ -4,11 +4,11 @@ use std::marker::PhantomData;
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use stageleft::runtime_support::FreeVariableWithContext;
-use stageleft::{quote_type, QuotedWithContext};
+use stageleft::{QuotedWithContext, quote_type};
 
 use super::{Location, LocationId};
 use crate::builder::FlowState;
-use crate::staging_util::{get_this_crate, Invariant};
+use crate::staging_util::{Invariant, get_this_crate};
 
 pub mod cluster_id;
 pub use cluster_id::ClusterId;

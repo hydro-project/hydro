@@ -68,7 +68,9 @@ pub struct FlowBuilder<'a> {
 impl Drop for FlowBuilder<'_> {
     fn drop(&mut self) {
         if !self.finalized {
-            panic!("Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`.");
+            panic!(
+                "Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
+            );
         }
     }
 }

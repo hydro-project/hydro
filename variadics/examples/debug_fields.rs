@@ -2,7 +2,7 @@
 
 use std::fmt::{Debug, DebugTuple, Formatter, Result};
 
-use variadics::{var_args, var_expr, var_type, Variadic};
+use variadics::{Variadic, var_args, var_expr, var_type};
 
 #[sealed::sealed]
 pub trait DebugVariadicTrait {

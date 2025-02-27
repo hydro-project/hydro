@@ -3,7 +3,7 @@ use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::bind_udp_bytes;
 
 use crate::protocol::{Message, MessageWithAddr};
-use crate::{default_server_address, Opts};
+use crate::{Opts, default_server_address};
 
 pub(crate) async fn run_server(opts: Opts) {
     println!("Server live!");

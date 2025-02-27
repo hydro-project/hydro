@@ -4,13 +4,13 @@
 )]
 
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{build_hfcode, partition_graph, FlatGraphBuilder};
+use dfir_lang::graph::{FlatGraphBuilder, build_hfcode, partition_graph};
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, parse_quote, Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant,
-    WherePredicate,
+    Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant, WherePredicate, parse_macro_input,
+    parse_quote,
 };
 
 /// Create a runnable graph instance using DFIR's custom syntax.
@@ -33,7 +33,7 @@ pub fn dfir_syntax_noemit(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 }
 
 fn root() -> proc_macro2::TokenStream {
-    use std::env::{var as env_var, VarError};
+    use std::env::{VarError, var as env_var};
 
     let root_crate =
         proc_macro_crate::crate_name("dfir_rs").expect("dfir_rs should be present in `Cargo.toml`");

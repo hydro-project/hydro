@@ -10,12 +10,12 @@ use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
-use crate::protocol::{Message, MessageWithAddr};
 use crate::Role::{
     Client, GossipingServer1, GossipingServer2, GossipingServer3, GossipingServer4,
     GossipingServer5, Server,
 };
-use crate::{default_server_address, Opts, Role};
+use crate::protocol::{Message, MessageWithAddr};
+use crate::{Opts, Role, default_server_address};
 
 #[derive(PartialEq, Eq, Clone, Serialize, Deserialize, Debug, Hash)]
 pub struct ChatMessage {

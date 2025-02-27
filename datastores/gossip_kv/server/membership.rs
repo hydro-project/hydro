@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use gossip_kv::membership::MemberId;
 use rand::distributions::Distribution;
-use rand::{thread_rng, Rng};
+use rand::{Rng, thread_rng};
 
 /// This is a simple distribution that generates a random lower-case alphanumeric
 struct LowercaseAlphanumeric;

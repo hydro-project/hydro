@@ -6,10 +6,10 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 
 use cc_traits::{
+    Collection, CollectionMut, CollectionRef, Get, GetKeyValue, GetKeyValueMut, GetMut, Iter,
+    IterMut, Keyed, KeyedRef, Len, MapIter, MapIterMut, SimpleCollectionRef, SimpleKeyedRef,
     covariant_item_mut, covariant_item_ref, covariant_key_ref, simple_collection_ref,
-    simple_keyed_ref, Collection, CollectionMut, CollectionRef, Get, GetKeyValue, GetKeyValueMut,
-    GetMut, Iter, IterMut, Keyed, KeyedRef, Len, MapIter, MapIterMut, SimpleCollectionRef,
-    SimpleKeyedRef,
+    simple_keyed_ref,
 };
 
 /// Trait for transforming the values of a map without changing the overall type of the data structure.
