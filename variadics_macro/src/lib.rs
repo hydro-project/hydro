@@ -5,7 +5,7 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
-use syn::{parse_macro_input, LitInt};
+use syn::{LitInt, parse_macro_input};
 
 struct InputLen {
     input: Ident,

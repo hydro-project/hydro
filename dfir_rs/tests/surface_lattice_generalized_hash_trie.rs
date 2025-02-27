@@ -1,7 +1,7 @@
 use dfir_rs::dfir_syntax;
-use dfir_rs::lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
-use dfir_rs::lattices::ght::GeneralizedHashTrieNode;
 use dfir_rs::lattices::GhtType;
+use dfir_rs::lattices::ght::GeneralizedHashTrieNode;
+use dfir_rs::lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
 use dfir_rs::util::collect_ready;
 use dfir_rs::variadics::{var_expr, var_type};
 use variadics::variadic_collections::VariadicHashSet; // Import the Insert trait

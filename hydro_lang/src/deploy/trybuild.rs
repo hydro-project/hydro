@@ -1,14 +1,14 @@
 use std::fs;
 use std::path::PathBuf;
 
-use dfir_lang::graph::{partition_graph, DfirGraph};
+use dfir_lang::graph::{DfirGraph, partition_graph};
 use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
 use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
-use trybuild_internals_api::{dependencies, features, path, Runner};
+use trybuild_internals_api::{Runner, dependencies, features, path};
 
 use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
 

@@ -7,7 +7,7 @@ use std::pin::Pin;
 use std::rc::{Rc, Weak};
 use std::task::{Context, Poll, Waker};
 
-use futures::{ready, Sink, Stream};
+use futures::{Sink, Stream, ready};
 use smallvec::SmallVec;
 #[doc(inline)]
 pub use tokio::sync::mpsc::error::{SendError, TrySendError};

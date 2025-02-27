@@ -10,8 +10,8 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
-use super::ops::defer_tick::DEFER_TICK;
 use super::ops::FloType;
+use super::ops::defer_tick::DEFER_TICK;
 use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms;

@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use dfir_macro::dfir_syntax;
 use dfir_rs::util::collect_ready;
-use lattices::collections::SingletonMap;
 use lattices::DeepReveal;
+use lattices::collections::SingletonMap;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]

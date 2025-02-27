@@ -4,7 +4,7 @@ use dfir_rs::util::deploy::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
 };
 use serde::{Deserialize, Serialize};
-use stageleft::{q, QuotedWithContext, RuntimeData};
+use stageleft::{QuotedWithContext, RuntimeData, q};
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct HydroMeta {

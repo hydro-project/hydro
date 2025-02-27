@@ -8,20 +8,20 @@ use std::iter::FusedIterator;
 
 use itertools::Itertools;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
-    find_op_op_constraints, null_write_iterator_fn, DelayType, OperatorWriteOutput,
-    WriteContextArgs, OPERATORS,
+    DelayType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
+    null_write_iterator_fn,
 };
 use super::{
-    change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
-    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
+    CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
+    GraphSubgraphId, HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR, OperatorInstance, PortIndexValue,
+    Varname, change_spans, get_operator_generics,
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
@@ -130,11 +130,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successors(src)
     }
 
@@ -143,11 +143,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessors(dst)
     }
 
@@ -156,11 +156,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphEdgeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphEdgeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successor_edges(src)
     }
 
@@ -169,11 +169,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphEdgeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphEdgeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessor_edges(dst)
     }
 
@@ -182,11 +182,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphNodeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphNodeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successor_vertices(src)
     }
 
@@ -195,11 +195,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphNodeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphNodeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessor_vertices(dst)
     }
 
@@ -628,10 +628,10 @@ impl DfirGraph {
     pub fn edges(
         &self,
     ) -> impl '_
-           + ExactSizeIterator<Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))>
-           + FusedIterator
-           + Clone
-           + Debug {
+    + ExactSizeIterator<Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))>
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.edges()
     }
 

@@ -1,8 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, BatchSize, Criterion};
+use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
+use rand::SeedableRng;
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
-use rand::SeedableRng;
 
 fn ops(c: &mut Criterion) {
     let mut rng = StdRng::from_entropy();

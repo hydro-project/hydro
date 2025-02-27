@@ -13,9 +13,9 @@ use dfir_lang::graph::FlatGraphBuilder;
 #[cfg(feature = "build")]
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
+use quote::ToTokens;
 #[cfg(feature = "build")]
 use quote::quote;
-use quote::ToTokens;
 #[cfg(feature = "build")]
 use syn::parse_quote;
 
@@ -1105,7 +1105,9 @@ impl<'a> HydroNode {
             }
 
             HydroNode::Unpersist { .. } => {
-                panic!("Unpersist is a marker node and should have been optimized away. This is likely a compiler bug.")
+                panic!(
+                    "Unpersist is a marker node and should have been optimized away. This is likely a compiler bug."
+                )
             }
 
             HydroNode::Delta { inner, .. } => {

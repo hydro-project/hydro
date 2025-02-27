@@ -6,11 +6,11 @@ use std::fs::File;
 use std::io::{BufWriter, Result, Write};
 use std::path::{Path, PathBuf};
 
-use dfir_lang::graph::ops::{PortListSpec, OPERATORS};
 use dfir_lang::graph::PortIndexValue;
+use dfir_lang::graph::ops::{OPERATORS, PortListSpec};
 use itertools::Itertools;
 use quote::ToTokens;
-use rustc_version::{version_meta, Channel};
+use rustc_version::{Channel, version_meta};
 
 const FILENAME: &str = "surface_ops_gen.md";
 

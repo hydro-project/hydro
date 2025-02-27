@@ -114,11 +114,11 @@ impl<T> IsTop for Conflict<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::WithBot;
     use crate::test::{
         check_all, check_lattice_is_bot, check_lattice_is_top, check_lattice_ord,
         check_lattice_properties, check_partial_ord_properties,
     };
-    use crate::WithBot;
 
     #[test]
     fn consistency() {

@@ -831,23 +831,27 @@ pub fn test_assert_eq() {
 
 #[multiplatform_test(test)]
 pub fn test_assert_failures() {
-    assert!(std::panic::catch_unwind(|| {
-        let mut df = dfir_syntax! {
-            source_iter([0]) -> assert_eq([1]);
-        };
+    assert!(
+        std::panic::catch_unwind(|| {
+            let mut df = dfir_syntax! {
+                source_iter([0]) -> assert_eq([1]);
+            };
 
-        df.run_available();
-    })
-    .is_err());
+            df.run_available();
+        })
+        .is_err()
+    );
 
-    assert!(std::panic::catch_unwind(|| {
-        let mut df = dfir_syntax! {
-            source_iter([0]) -> assert_eq([1]) -> null();
-        };
+    assert!(
+        std::panic::catch_unwind(|| {
+            let mut df = dfir_syntax! {
+                source_iter([0]) -> assert_eq([1]) -> null();
+            };
 
-        df.run_available();
-    })
-    .is_err());
+            df.run_available();
+        })
+        .is_err()
+    );
 }
 
 #[multiplatform_test]

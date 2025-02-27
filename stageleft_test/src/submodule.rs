@@ -1,4 +1,4 @@
-use stageleft::{q, BorrowBounds, Quoted};
+use stageleft::{BorrowBounds, Quoted, q};
 
 struct PrivateStruct {
     a: u32,

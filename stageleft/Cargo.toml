@@ -2,11 +2,11 @@
 name = "stageleft"
 publish = true
 version = "0.6.0"
-edition = "2021"
-license = "Apache-2.0"
 documentation = "https://docs.rs/stageleft/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Type-safe staged programming for Rust"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true

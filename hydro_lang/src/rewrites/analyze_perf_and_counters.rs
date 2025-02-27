@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::builder::deploy::DeployResult;
-use crate::deploy::deploy_graph::DeployCrateWrapper;
 use crate::deploy::HydroDeploy;
+use crate::deploy::deploy_graph::DeployCrateWrapper;
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
 use crate::rewrites::analyze_counter::{inject_count, parse_counter_usage};
