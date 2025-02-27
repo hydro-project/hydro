@@ -2,11 +2,11 @@
 name = "multiplatform_test"
 publish = true
 version = "0.4.0"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/multiplatform_test/"
-repository = "https://github.com/hydro-project/hydro"
 description = "A simple attribute macro to combine `#[test]` and `#[wasm_bindgen_test]`"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true

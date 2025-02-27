@@ -36,6 +36,11 @@ members = [
 
 resolver = "2"
 
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/hydro-project/hydro"
+
 [profile.release]
 strip = true      # Strip symbols from the binary
 # Previously this was "z" to minimize docker binary size while sacrificing performance. But "z"
@@ -57,25 +62,11 @@ debug-assertions = false
 opt-level = "s"
 
 [workspace.lints.rust]
-unused_qualifications = "warn"
-unsafe_op_in_unsafe_fn = "warn"
-
-# Lints for upgrading to the 2024 edition
-boxed_slice_into_iter = "warn"
-dependency_on_unit_never_type_fallback = "warn"
-deprecated_safe_2024 = "warn"
-edition_2024_expr_fragment_specifier = "allow" # ALLOW
-if_let_rescope = "allow" # ALLOW
 impl_trait_overcaptures = "warn"
-keyword_idents_2024 = "warn"
-missing_unsafe_on_extern = "warn"
-never_type_fallback_flowing_into_unsafe = "warn"
-rust_2024_guarded_string_incompatible_syntax = "warn"
-rust_2024_incompatible_pat = "warn"
-rust_2024_prelude_collisions = "warn"
-static_mut_refs = "warn"
-tail_expr_drop_order = "allow" # ALLOW
-unsafe_attr_outside_unsafe = "warn"
+missing_unsafe_on_extern = "deny"
+unsafe_attr_outside_unsafe = "deny"
+unsafe_op_in_unsafe_fn = "warn"
+unused_qualifications = "warn"
 
 [workspace.lints.clippy]
 allow_attributes = "warn"

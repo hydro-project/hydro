@@ -2,11 +2,11 @@
 name = "hydro_std"
 publish = true
 version = "0.11.0"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/hydro_plus/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Standard library of distributed systems building blocks for Hydro"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true

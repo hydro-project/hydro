@@ -2,11 +2,11 @@
 name = "variadics"
 publish = true
 version = "0.0.8"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/variadics/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Variadic generics on stable Rust using tuple lists"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true

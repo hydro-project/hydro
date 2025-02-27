@@ -2,11 +2,11 @@
 name = "lattices_macro"
 publish = true
 version = "0.5.8"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/lattices/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Procedural macros for the `lattices` crate."
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true

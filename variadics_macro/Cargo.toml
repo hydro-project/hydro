@@ -2,11 +2,11 @@
 name = "variadics_macro"
 publish = true
 version = "0.5.6"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/variadics/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Procedural macros for the `variadics` crate."
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lib]
 proc-macro = true

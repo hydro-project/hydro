@@ -2,11 +2,11 @@
 name = "dfir_datalog_core"
 publish = true
 version = "0.11.0"
-edition = "2024"
-license = "Apache-2.0"
 documentation = "https://docs.rs/dfir_datalog_core/"
-repository = "https://github.com/hydro-project/hydro"
 description = "Datalog implementation for DFIR"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 [lints]
 workspace = true
