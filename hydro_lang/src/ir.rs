@@ -1,4 +1,5 @@
 use core::panic;
+use std::any::Any;
 use std::cell::RefCell;
 #[cfg(feature = "build")]
 use std::collections::BTreeMap;
@@ -505,6 +506,7 @@ pub struct HydroIrMetadata {
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
+    pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
 }
 
@@ -1877,7 +1879,8 @@ impl<'a> HydroNode {
                                     #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                // operator tag separates send and receive, which otherwise have the same next_stmt_id
+                                Some(&format!("send{}", next_stmt_id)),
                             );
                         } else {
                             sender_builder.add_dfir(
@@ -1885,7 +1888,7 @@ impl<'a> HydroNode {
                                     #input_ident -> dest_sink(#sink_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&format!("send{}", next_stmt_id)),
                             );
                         }
 
@@ -1893,14 +1896,14 @@ impl<'a> HydroNode {
                         if let Some(deserialize_pipeline) = deserialize_pipeline {
                             receiver_builder.add_dfir(parse_quote! {
                                 #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                            }, None, Some(&next_stmt_id.to_string()));
+                            }, None, Some(&format!("recv{}", next_stmt_id)));
                         } else {
                             receiver_builder.add_dfir(
                                 parse_quote! {
                                     #receiver_stream_ident = source_stream(#source_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&format!("recv{}", next_stmt_id)),
                             );
                         }
                     }

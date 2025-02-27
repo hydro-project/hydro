@@ -46,6 +46,7 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
             output_type: Some(output_debug_type.clone()),
             cardinality: None,
             cpu_usage: None,
+            network_recv_cpu_usage: None,
             id: None,
         };
         let output_type = output_debug_type.0;

@@ -94,6 +94,7 @@ pub trait Location<'a>: Clone {
             output_type: Some(DebugType(stageleft::quote_type::<T>())),
             cardinality: None,
             cpu_usage: None,
+            network_recv_cpu_usage: None,
             id: None,
         }
     }
