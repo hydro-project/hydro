@@ -2,7 +2,7 @@
 name = "hydroflow_deploy_integration"
 publish = true
 version = "0.11.0"
-edition = "2021"
+edition = "2024"
 license = "Apache-2.0"
 documentation = "https://docs.rs/hydroflow_deploy_integration/"
 repository = "https://github.com/hydro-project/hydro"
