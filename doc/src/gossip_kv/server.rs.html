@@ -772,20 +772,20 @@
 <span class="kw">use </span>lattices::set_union::SetUnion;
 <span class="kw">use </span>lattices::{IsTop, Max, Pair};
 <span class="kw">use </span>lazy_static::lazy_static;
-<span class="kw">use </span>prometheus::{register_int_counter, IntCounter};
+<span class="kw">use </span>prometheus::{IntCounter, register_int_counter};
 <span class="kw">use </span>rand::seq::IteratorRandom;
 <span class="kw">use </span>rand::thread_rng;
 <span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tracing::{info, trace};
 
+<span class="kw">use </span><span class="kw">crate</span>::GossipMessage::{Ack, Nack};
 <span class="kw">use </span><span class="kw">crate</span>::lattices::BoundedSetLattice;
 <span class="kw">use </span><span class="kw">crate</span>::membership::{MemberData, MemberId};
 <span class="kw">use </span><span class="kw">crate</span>::model::{
-    delete_row, upsert_row, Clock, NamespaceMap, Namespaces, RowKey, RowValue, TableMap, TableName,
+    Clock, NamespaceMap, Namespaces, RowKey, RowValue, TableMap, TableName, delete_row, upsert_row,
 };
 <span class="kw">use </span><span class="kw">crate</span>::util::{ClientRequestWithAddress, GossipRequestWithAddress};
-<span class="kw">use </span><span class="kw">crate</span>::GossipMessage::{Ack, Nack};
 <span class="kw">use crate</span>::{ClientRequest, ClientResponse, GossipMessage, Key, Namespace};
 
 <span class="doccomment">/// A trait that represents an abstract network address. In production, this will typically be

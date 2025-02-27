@@ -153,9 +153,9 @@
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use </span>hydro_lang::Location;
     <span class="kw">use </span>hydro_lang::deploy::DeployRuntime;
     <span class="kw">use </span>hydro_lang::rewrites::{decoupler, persist_pullup};
-    <span class="kw">use </span>hydro_lang::Location;
     <span class="kw">use </span>stageleft::RuntimeData;
 
     <span class="kw">struct </span>DecoupledCluster {}

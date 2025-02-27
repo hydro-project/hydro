@@ -283,8 +283,8 @@
 <span class="kw">use </span>dfir_lang::graph::DfirGraph;
 <span class="kw">use </span>dfir_rs::bytes::Bytes;
 <span class="kw">use </span>dfir_rs::futures::{Sink, Stream};
-<span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>stageleft::QuotedWithContext;
 
 <span class="kw">pub mod </span>macro_runtime;
@@ -460,14 +460,14 @@
 }
 
 <span class="kw">impl</span>&lt;
-        <span class="lifetime">'a</span>,
-        T: Deploy&lt;<span class="lifetime">'a</span>, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R&gt;,
-        N: Node&lt;Meta = M&gt;,
-        C: Node&lt;Meta = M&gt;,
-        E: Node&lt;Meta = M&gt;,
-        M: Default,
-        R,
-    &gt; LocalDeploy&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>T
+    <span class="lifetime">'a</span>,
+    T: Deploy&lt;<span class="lifetime">'a</span>, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R&gt;,
+    N: Node&lt;Meta = M&gt;,
+    C: Node&lt;Meta = M&gt;,
+    E: Node&lt;Meta = M&gt;,
+    M: Default,
+    R,
+&gt; LocalDeploy&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>T
 {
     <span class="kw">type </span>Process = N;
     <span class="kw">type </span>Cluster = C;

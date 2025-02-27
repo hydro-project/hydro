@@ -483,13 +483,13 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::rc::Rc;
 
+    <span class="kw">use </span><span class="kw">super</span>::Pusherator;
     <span class="kw">use </span><span class="kw">super</span>::filter::Filter;
     <span class="kw">use </span><span class="kw">super</span>::for_each::ForEach;
     <span class="kw">use </span><span class="kw">super</span>::map::Map;
     <span class="kw">use </span><span class="kw">super</span>::partition::Partition;
     <span class="kw">use </span><span class="kw">super</span>::pivot::Pivot;
     <span class="kw">use </span><span class="kw">super</span>::tee::Tee;
-    <span class="kw">use </span><span class="kw">super</span>::Pusherator;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>linear_chains() {

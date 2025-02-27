@@ -130,7 +130,7 @@
 
 <span class="kw">use </span>stageleft::<span class="kw-2">*</span>;
 
-<span class="kw">use </span><span class="kw">crate</span>::ir::{transform_bottom_up, HydroLeaf, HydroNode};
+<span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, transform_bottom_up};
 
 <span class="doccomment">/// Structure for tracking expressions known to have particular algebraic properties.
 ///
@@ -205,9 +205,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::FlowBuilder;
     <span class="kw">use </span><span class="kw">crate</span>::deploy::SingleProcessGraph;
     <span class="kw">use </span><span class="kw">crate</span>::location::Location;
-    <span class="kw">use </span><span class="kw">crate</span>::FlowBuilder;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_property_database() {

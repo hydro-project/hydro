@@ -363,14 +363,14 @@
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use </span>anyhow::{bail, Context, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>anyhow::{Context, <span class="prelude-ty">Result</span>, bail};
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>futures::Future;
 <span class="kw">use </span>hydroflow_deploy_integration::{InitConfig, ServerPort};
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>tokio::sync::{mpsc, RwLock};
+<span class="kw">use </span>tokio::sync::{RwLock, mpsc};
 
-<span class="kw">use </span><span class="kw">super</span>::build::{build_crate_memoized, BuildError, BuildOutput, BuildParams};
+<span class="kw">use </span><span class="kw">super</span>::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
 <span class="kw">use </span><span class="kw">super</span>::ports::{<span class="self">self</span>, HydroflowPortConfig, HydroflowSink, SourcePath};
 <span class="kw">use </span><span class="kw">super</span>::tracing_options::TracingOptions;
 <span class="kw">use </span><span class="kw">crate</span>::progress::ProgressTracker;

@@ -104,15 +104,15 @@
 <a href="#103" id="103">103</a>
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::hash_map::Entry;
-<span class="kw">use </span>std::collections::VecDeque;
+<a href="#106" id="106">106</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::VecDeque;
+<span class="kw">use </span>std::collections::hash_map::Entry;
 
 <span class="kw">use </span><span class="kw">super</span>::HalfJoinState;
 <span class="kw">use </span><span class="kw">crate</span>::util::clear::Clear;
 
 <span class="kw">type </span>HashMap&lt;K, V&gt; = rustc_hash::FxHashMap&lt;K, V&gt;;
 
-<span class="kw">use </span>smallvec::{smallvec, SmallVec};
+<span class="kw">use </span>smallvec::{SmallVec, smallvec};
 
 <span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>HalfSetJoinState&lt;Key, ValBuild, ValProbe&gt; {

@@ -274,14 +274,14 @@
 <span class="kw">use </span>std::process::{ExitStatus, Stdio};
 <span class="kw">use </span>std::sync::{Arc, Mutex};
 
-<span class="kw">use </span>anyhow::{bail, <span class="prelude-ty">Result</span>};
+<span class="kw">use </span>anyhow::{<span class="prelude-ty">Result</span>, bail};
 <span class="kw">use </span>async_process::Command;
 <span class="kw">use </span>async_trait::async_trait;
 <span class="kw">use </span>futures::io::BufReader <span class="kw">as </span>FuturesBufReader;
 <span class="kw">use </span>futures::{AsyncBufReadExt <span class="kw">as _</span>, AsyncWriteExt <span class="kw">as _</span>};
+<span class="kw">use </span>inferno::collapse::Collapse;
 <span class="kw">use </span>inferno::collapse::dtrace::Folder <span class="kw">as </span>DtraceFolder;
 <span class="kw">use </span>inferno::collapse::perf::Folder <span class="kw">as </span>PerfFolder;
-<span class="kw">use </span>inferno::collapse::Collapse;
 <span class="kw">use </span>tempfile::NamedTempFile;
 <span class="kw">use </span>tokio::io::{AsyncBufReadExt <span class="kw">as _</span>, BufReader <span class="kw">as </span>TokioBufReader};
 <span class="kw">use </span>tokio::sync::{mpsc, oneshot};

@@ -204,13 +204,13 @@
 <span class="kw">use </span>dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 <span class="kw">use </span>dfir_rs::{bincode, bytes, tokio};
 <span class="kw">use </span>gossip_kv::membership::{MemberDataBuilder, Protocol};
-<span class="kw">use </span>gossip_kv::server::{server, SeedNode};
-<span class="kw">use </span>prometheus::{gather, Encoder, TextEncoder};
+<span class="kw">use </span>gossip_kv::server::{SeedNode, server};
+<span class="kw">use </span>prometheus::{Encoder, TextEncoder, gather};
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>tracing::{error, info, trace};
 <span class="kw">use </span>warp::Filter;
 
-<span class="kw">use </span><span class="kw">crate</span>::config::{setup_settings_watch, SeedNodeSettings};
+<span class="kw">use </span><span class="kw">crate</span>::config::{SeedNodeSettings, setup_settings_watch};
 <span class="kw">use </span><span class="kw">crate</span>::membership::member_name;
 
 <span class="kw">mod </span>config;

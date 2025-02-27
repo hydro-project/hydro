@@ -941,7 +941,9 @@
 <a href="#940" id="940">940</a>
 <a href="#941" id="941">941</a>
 <a href="#942" id="942">942</a>
-<a href="#943" id="943">943</a></pre></div><pre class="rust"><code><span class="doccomment">//! Tests for the GHT code
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a></pre></div><pre class="rust"><code><span class="doccomment">//! Tests for the GHT code
 </span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::collections::HashSet;
@@ -950,8 +952,8 @@
     </span><span class="kw">fn </span>basic_test() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="comment">// Example usage
         </span><span class="kw">type </span>MyTrie1 = <span class="macro">GhtType!</span>(u32, u32 =&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str: VariadicCountedHashSet);
@@ -982,8 +984,8 @@
     </span><span class="kw">fn </span>test_ght_node_type_macro() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="comment">// 0 =&gt; 1
         </span><span class="kw">type </span>LilTrie = <span class="macro">GhtType!</span>(() =&gt; u32: VariadicCountedHashSet);
@@ -1031,8 +1033,8 @@
     </span><span class="kw">fn </span>test_insert() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u16, u32 =&gt; u64: VariadicCountedHashSet);
         <span class="kw">let </span><span class="kw-2">mut </span>htrie = MyGht::default();
@@ -1062,8 +1064,8 @@
     </span><span class="kw">fn </span>test_scale() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(bool, usize, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str =&gt; i32: VariadicCountedHashSet);
         <span class="kw">let </span><span class="kw-2">mut </span>htrie = MyGht::new_from(<span class="macro">vec!</span>[<span class="macro">var_expr!</span>(<span class="bool-val">true</span>, <span class="number">1</span>, <span class="string">"hello"</span>, -<span class="number">5</span>)]);
@@ -1076,10 +1078,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_contains() {
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u16, u32 =&gt; u64: VariadicCountedHashSet);
         <span class="kw">let </span>htrie = MyGht::new_from(<span class="macro">vec!</span>[<span class="macro">var_expr!</span>(<span class="number">42_u16</span>, <span class="number">314_u32</span>, <span class="number">43770_u64</span>)]);
@@ -1094,10 +1096,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_get() {
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u32, u32 =&gt; u32: VariadicCountedHashSet);
         <span class="kw">let </span>ht_root = MyGht::new_from(<span class="macro">vec!</span>[<span class="macro">var_expr!</span>(<span class="number">42</span>, <span class="number">314</span>, <span class="number">43770</span>)]);
@@ -1115,8 +1117,8 @@
     </span><span class="kw">fn </span>test_iter() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u32, u32 =&gt; u32: VariadicCountedHashSet);
         <span class="kw">let </span>ht_root = MyGht::new_from(<span class="macro">vec!</span>[<span class="macro">var_expr!</span>(<span class="number">42</span>, <span class="number">314</span>, <span class="number">43770</span>)]);
         <span class="kw">let </span>inner_key = ht_root.iter().next().unwrap();
@@ -1133,10 +1135,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_recursive_iter() {
-        <span class="kw">use </span>variadics::{var_expr, var_type, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr, var_type};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u32, u32 =&gt; u32: VariadicCountedHashSet);
         <span class="kw">type </span>InputType = <span class="macro">var_type!</span>(u32, u32, u32);
@@ -1194,10 +1196,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_prefix_iter() {
-        <span class="kw">use </span>variadics::{var_expr, var_type, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr, var_type};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u8, u16 =&gt; u32: VariadicCountedHashSet);
         <span class="kw">type </span>InputType = <span class="macro">var_type!</span>(u8, u16, u32);
@@ -1222,7 +1224,7 @@
         <span class="kw">let </span>result = input
             .iter()
             .filter(|t: &amp;&amp;InputType| t.<span class="number">0 </span>== <span class="number">42</span>)
-            .map(|t: <span class="kw-2">&amp;</span>InputType| <span class="macro">var_expr!</span>(<span class="kw-2">&amp;</span>t.<span class="number">0</span>, <span class="kw-2">&amp;</span>t.<span class="number">1 </span>.<span class="number">0</span>, <span class="kw-2">&amp;</span>t.<span class="number">1 </span>.<span class="number">1 </span>.<span class="number">0</span>))
+            .map(|t: <span class="kw-2">&amp;</span>InputType| <span class="macro">var_expr!</span>(<span class="kw-2">&amp;</span>t.<span class="number">0</span>, <span class="kw-2">&amp;</span>t.<span class="number">1.0</span>, <span class="kw-2">&amp;</span>t.<span class="number">1.1</span>.<span class="number">0</span>))
             .collect();
         <span class="macro">assert_eq!</span>(v, result);
 
@@ -1233,10 +1235,10 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_prefix_iter_complex() {
-        <span class="kw">use </span>variadics::{var_expr, var_type, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr, var_type};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(bool, u32, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str =&gt; i32: VariadicCountedHashSet);
         <span class="kw">type </span>InputType = <span class="macro">var_type!</span>(bool, u32, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, i32);
@@ -1356,8 +1358,8 @@
     </span><span class="kw">fn </span>test_cartesian_bimorphism() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::lattice::GhtCartesianProductBimorphism;
         <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::lattice::GhtCartesianProductBimorphism;
         <span class="kw">use crate</span>::{GhtType, LatticeBimorphism};
 
         <span class="kw">type </span>MyGhtA = <span class="macro">GhtType!</span>(u32, u64 =&gt; u16, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str: VariadicHashSet);
@@ -1459,11 +1461,11 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_ght_with_tuple_macro() {
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
         <span class="kw">use </span>variadics_macro::tuple;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
 
         <span class="kw">type </span>MyRoot = <span class="macro">GhtType!</span>(u16, u32 =&gt; u64: VariadicCountedHashSet);
 
@@ -1481,8 +1483,8 @@
 
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         <span class="kw">const </span>MATCHES: u32 = <span class="number">1000</span>;
         <span class="kw">type </span>MyGht = <span class="macro">GhtType!</span>(u32 =&gt; u32: VariadicCountedHashSet);
@@ -1592,8 +1594,8 @@
     </span><span class="kw">fn </span>clover_generic_join() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
 
         <span class="kw">const </span>MATCHES: usize = <span class="number">1000</span>;
         <span class="kw">let </span>(r_iter, s_iter, t_iter) = clover_setup(MATCHES);
@@ -1623,8 +1625,8 @@
     </span><span class="kw">fn </span>clover_factorized_join() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
 
         <span class="kw">const </span>MATCHES: usize = <span class="number">1000</span>;
         <span class="kw">let </span>(r_iter, s_iter, t_iter) = clover_setup(MATCHES);
@@ -1655,9 +1657,9 @@
     </span><span class="kw">fn </span>test_force() {
         <span class="kw">use </span>variadics::var_expr;
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtForestNode;
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::GhtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtForestNode;
 
         <span class="kw">type </span>LeafType = <span class="macro">GhtType!</span>(() =&gt; u16, u32, u64: VariadicCountedHashSet);
         <span class="kw">let </span>n = LeafType::new_from(<span class="macro">vec!</span>[
@@ -1714,11 +1716,11 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_colt_little_get() {
         <span class="kw">use </span>variadics::variadic_collections::VariadicCollection;
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
 
-        <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtGet;
-        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
         <span class="kw">use </span><span class="kw">crate</span>::ColtType;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::GeneralizedHashTrieNode;
+        <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtGet;
 
         <span class="kw">type </span>MyForest = <span class="macro">ColtType!</span>(u8);
 
@@ -1740,11 +1742,11 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_colt_get() {
         <span class="kw">use </span>variadics::variadic_collections::VariadicCollection;
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
 
+        <span class="kw">use </span><span class="kw">crate</span>::ColtType;
         <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtGet;
         <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtGet};
-        <span class="kw">use </span><span class="kw">crate</span>::ColtType;
 
         <span class="kw">type </span>MyForest = <span class="macro">ColtType!</span>(u8, u16, u32, u64);
         <span class="kw">let </span><span class="kw-2">mut </span>forest = MyForest::default();
@@ -1766,7 +1768,7 @@
                 get_result3.<span class="number">0</span>.elements.iter().next(),
                 <span class="prelude-val">Some</span>(<span class="macro">var_expr!</span>(<span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>).as_ref_var())
             );
-            <span class="macro">assert_eq!</span>(get_result3.<span class="number">1 </span>.<span class="number">0</span>.children.len(), <span class="number">0</span>);
+            <span class="macro">assert_eq!</span>(get_result3.<span class="number">1.0</span>.children.len(), <span class="number">0</span>);
         }
         {
             <span class="kw">let </span>get_result = ColtGet::get(forest.as_mut_var(), <span class="kw-2">&amp;</span><span class="number">3</span>);
@@ -1777,20 +1779,20 @@
                 get_result2.<span class="number">0</span>.elements.iter().next(),
                 <span class="prelude-val">Some</span>(<span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>, <span class="number">3</span>).as_ref_var())
             );
-            <span class="macro">assert_eq!</span>(get_result2.<span class="number">1 </span>.<span class="number">0</span>.children.len(), <span class="number">0</span>);
+            <span class="macro">assert_eq!</span>(get_result2.<span class="number">1.0</span>.children.len(), <span class="number">0</span>);
         }
         <span class="macro">assert!</span>(forest.<span class="number">0</span>.forced);
-        <span class="macro">assert_eq!</span>(<span class="number">3</span>, forest.<span class="number">1 </span>.<span class="number">0</span>.children.len()); <span class="comment">// keys 1, 2 and 3
-        </span><span class="macro">assert_eq!</span>(<span class="number">0</span>, forest.<span class="number">1 </span>.<span class="number">0</span>.get(<span class="kw-2">&amp;</span><span class="number">1</span>).unwrap().elements.len());
-        <span class="macro">assert_eq!</span>(<span class="number">1</span>, forest.<span class="number">1 </span>.<span class="number">0</span>.get(<span class="kw-2">&amp;</span><span class="number">2</span>).unwrap().elements.len());
-        <span class="macro">assert_eq!</span>(<span class="number">0</span>, forest.<span class="number">1 </span>.<span class="number">0</span>.get(<span class="kw-2">&amp;</span><span class="number">3</span>).unwrap().elements.len());
-        <span class="macro">assert_eq!</span>(<span class="number">2</span>, forest.<span class="number">1 </span>.<span class="number">1 </span>.<span class="number">0</span>.children.len()); <span class="comment">// keys 1 and 3
+        <span class="macro">assert_eq!</span>(<span class="number">3</span>, forest.<span class="number">1.0</span>.children.len()); <span class="comment">// keys 1, 2 and 3
+        </span><span class="macro">assert_eq!</span>(<span class="number">0</span>, forest.<span class="number">1.0</span>.get(<span class="kw-2">&amp;</span><span class="number">1</span>).unwrap().elements.len());
+        <span class="macro">assert_eq!</span>(<span class="number">1</span>, forest.<span class="number">1.0</span>.get(<span class="kw-2">&amp;</span><span class="number">2</span>).unwrap().elements.len());
+        <span class="macro">assert_eq!</span>(<span class="number">0</span>, forest.<span class="number">1.0</span>.get(<span class="kw-2">&amp;</span><span class="number">3</span>).unwrap().elements.len());
+        <span class="macro">assert_eq!</span>(<span class="number">2</span>, forest.<span class="number">1.1</span>.<span class="number">0</span>.children.len()); <span class="comment">// keys 1 and 3
         </span><span class="macro">assert_eq!</span>(
             <span class="number">0</span>,
             forest
                 .<span class="number">1
-                 </span>.<span class="number">1
-                 </span>.<span class="number">0
+                </span>.<span class="number">1
+                </span>.<span class="number">0
                 </span>.get(<span class="kw-2">&amp;</span><span class="number">1</span>)
                 .unwrap()
                 .get(<span class="kw-2">&amp;</span><span class="number">1</span>)
@@ -1798,13 +1800,13 @@
                 .elements
                 .len()
         );
-        <span class="macro">assert!</span>(forest.<span class="number">1 </span>.<span class="number">1 </span>.<span class="number">0</span>.get(<span class="kw-2">&amp;</span><span class="number">2</span>).is_none());
+        <span class="macro">assert!</span>(forest.<span class="number">1.1</span>.<span class="number">0</span>.get(<span class="kw-2">&amp;</span><span class="number">2</span>).is_none());
         <span class="macro">assert_eq!</span>(
             <span class="number">1</span>,
             forest
                 .<span class="number">1
-                 </span>.<span class="number">1
-                 </span>.<span class="number">0
+                </span>.<span class="number">1
+                </span>.<span class="number">0
                 </span>.get(<span class="kw-2">&amp;</span><span class="number">3</span>)
                 .unwrap()
                 .get(<span class="kw-2">&amp;</span><span class="number">3</span>)
@@ -1816,9 +1818,9 @@
             <span class="number">1</span>,
             forest
                 .<span class="number">1
-                 </span>.<span class="number">1
-                 </span>.<span class="number">1
-                 </span>.<span class="number">0
+                </span>.<span class="number">1
+                </span>.<span class="number">1
+                </span>.<span class="number">0
                 </span>.get(<span class="kw-2">&amp;</span><span class="number">1</span>)
                 .unwrap()
                 .get(<span class="kw-2">&amp;</span><span class="number">1</span>)
@@ -1833,7 +1835,7 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_colt_scale() {
         <span class="kw">use </span>variadics::variadic_collections::VariadicCollection;
-        <span class="kw">use </span>variadics::{var_expr, VariadicExt};
+        <span class="kw">use </span>variadics::{VariadicExt, var_expr};
 
         <span class="kw">use </span><span class="kw">crate</span>::ght::colt::ColtGet;
         <span class="kw">use </span><span class="kw">crate</span>::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
@@ -1862,13 +1864,15 @@
             <span class="macro">assert_eq!</span>(result.<span class="number">0</span>.elements.len(), <span class="number">0</span>);
         }
         <span class="comment">// check: prefix (3, true) is now found in the third trie: forest.1.1.0
-        </span><span class="macro">assert!</span>(forest
-            .<span class="number">1
-             </span>.<span class="number">1
-             </span>.<span class="number">0
-            </span>.prefix_iter(<span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">true</span>).as_ref_var())
-            .next()
-            .is_some());
+        </span><span class="macro">assert!</span>(
+            forest
+                .<span class="number">1
+                </span>.<span class="number">1
+                </span>.<span class="number">0
+                </span>.prefix_iter(<span class="macro">var_expr!</span>(<span class="number">3</span>, <span class="bool-val">true</span>).as_ref_var())
+                .next()
+                .is_some()
+        );
         {
             <span class="kw">let </span>result = forest.as_mut_var().get(<span class="kw-2">&amp;</span><span class="number">3</span>);
             <span class="kw">let </span>result2 = result.get(<span class="kw-2">&amp;</span><span class="bool-val">true</span>);

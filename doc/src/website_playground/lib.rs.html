@@ -275,7 +275,9 @@
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a></pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a></pre></div><pre class="rust"><code><span class="kw">mod </span>utils;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::task::{Context, Poll};
@@ -283,7 +285,7 @@
 
 <span class="kw">use </span>dfir_datalog_core::gen_dfir_graph;
 <span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
-<span class="kw">use </span>dfir_lang::graph::{build_hfcode, partition_graph, WriteConfig};
+<span class="kw">use </span>dfir_lang::graph::{WriteConfig, build_hfcode, partition_graph};
 <span class="kw">use </span>dfir_rs::datalog;
 <span class="kw">use </span>dfir_rs::scheduled::graph::Dfir;
 <span class="kw">use </span>proc_macro2::{LineColumn, Span};
@@ -486,12 +488,14 @@
         },
         <span class="prelude-val">Err</span>(err) =&gt; DfirResult {
             output: <span class="prelude-val">None</span>,
-            diagnostics: <span class="macro">vec!</span>[Diagnostic {
-                span: Span::call_site(),
-                level: Level::Error,
-                message: <span class="macro">format!</span>(<span class="string">"Error: Could not parse input: {}"</span>, err),
-            }
-            .into()],
+            diagnostics: <span class="macro">vec!</span>[
+                Diagnostic {
+                    span: Span::call_site(),
+                    level: Level::Error,
+                    message: <span class="macro">format!</span>(<span class="string">"Error: Could not parse input: {}"</span>, err),
+                }
+                .into(),
+            ],
         },
     };
 

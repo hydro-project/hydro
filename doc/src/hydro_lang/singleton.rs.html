@@ -580,7 +580,7 @@
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::rc::Rc;
 
-<span class="kw">use </span>stageleft::{q, IntoQuotedMut, QuotedWithContext};
+<span class="kw">use </span>stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 <span class="kw">use </span><span class="kw">crate</span>::builder::FLOW_USED_MESSAGE;
 <span class="kw">use </span><span class="kw">crate</span>::cycle::{
@@ -589,7 +589,7 @@
 };
 <span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, TeeNode};
 <span class="kw">use </span><span class="kw">crate</span>::location::tick::{Atomic, NoAtomic};
-<span class="kw">use </span><span class="kw">crate</span>::location::{check_matching_location, Location, LocationId, NoTick, Tick};
+<span class="kw">use </span><span class="kw">crate</span>::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 <span class="kw">use crate</span>::{Bounded, Optional, Stream, Unbounded};
 
 <span class="kw">pub struct </span>Singleton&lt;T, L, B&gt; {
@@ -909,11 +909,11 @@
     <span class="kw">pub fn </span>continue_if&lt;U&gt;(<span class="self">self</span>, signal: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt;
     <span class="kw">where
         </span><span class="self">Self</span>: ZipResult&lt;
-            <span class="lifetime">'a</span>,
-            Optional&lt;(), L, Bounded&gt;,
-            Location = L,
-            Out = Optional&lt;(T, ()), L, Bounded&gt;,
-        &gt;,
+                <span class="lifetime">'a</span>,
+                Optional&lt;(), L, Bounded&gt;,
+                Location = L,
+                Out = Optional&lt;(T, ()), L, Bounded&gt;,
+            &gt;,
     {
         <span class="self">self</span>.zip(signal.map(<span class="macro">q!</span>(|_u| ()))).map(<span class="macro">q!</span>(|(d, _signal)| d))
     }
@@ -921,11 +921,11 @@
     <span class="kw">pub fn </span>continue_unless&lt;U&gt;(<span class="self">self</span>, other: Optional&lt;U, L, Bounded&gt;) -&gt; Optional&lt;T, L, Bounded&gt;
     <span class="kw">where
         </span>Singleton&lt;T, L, B&gt;: ZipResult&lt;
-            <span class="lifetime">'a</span>,
-            Optional&lt;(), L, Bounded&gt;,
-            Location = L,
-            Out = Optional&lt;(T, ()), L, Bounded&gt;,
-        &gt;,
+                <span class="lifetime">'a</span>,
+                Optional&lt;(), L, Bounded&gt;,
+                Location = L,
+                Out = Optional&lt;(T, ()), L, Bounded&gt;,
+            &gt;,
     {
         <span class="self">self</span>.continue_if(other.into_stream().count().filter(<span class="macro">q!</span>(|c| <span class="kw-2">*</span>c == <span class="number">0</span>)))
     }

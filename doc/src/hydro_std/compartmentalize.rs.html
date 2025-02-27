@@ -119,8 +119,8 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a></pre></div><pre class="rust"><code><span class="kw">use </span>dfir_rs::serde::de::DeserializeOwned;
-<span class="kw">use </span>dfir_rs::serde::Serialize;
+<a href="#121" id="121">121</a></pre></div><pre class="rust"><code><span class="kw">use </span>dfir_rs::serde::Serialize;
+<span class="kw">use </span>dfir_rs::serde::de::DeserializeOwned;
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>location::{CanSend, NoTick};
 <span class="kw">use </span>stageleft::IntoQuotedMut;
@@ -138,9 +138,9 @@
             CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, In&lt;T&gt; = (ClusterId&lt;C2&gt;, T), Out&lt;T&gt; = (Tag, T)&gt;,
         T: Clone + Serialize + DeserializeOwned,
         Order: MinOrder&lt;
-            &lt;Cluster&lt;<span class="lifetime">'a</span>, C1&gt; <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
-            Min = NoOrder,
-        &gt;;
+                &lt;Cluster&lt;<span class="lifetime">'a</span>, C1&gt; <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
+                Min = NoOrder,
+            &gt;;
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, C1, C2, Order&gt; PartitionStream&lt;<span class="lifetime">'a</span>, T, C1, C2, Order&gt;
@@ -157,9 +157,9 @@
             CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;, In&lt;T&gt; = (ClusterId&lt;C2&gt;, T), Out&lt;T&gt; = (Tag, T)&gt;,
         T: Clone + Serialize + DeserializeOwned,
         Order: MinOrder&lt;
-            &lt;Cluster&lt;<span class="lifetime">'a</span>, C1&gt; <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
-            Min = NoOrder,
-        &gt;,
+                &lt;Cluster&lt;<span class="lifetime">'a</span>, C1&gt; <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Cluster&lt;<span class="lifetime">'a</span>, C2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
+                Min = NoOrder,
+            &gt;,
     {
         <span class="self">self</span>.map(dist_policy).send_bincode_anonymous(other)
     }
@@ -217,9 +217,9 @@
         </span>L::Root: CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;, In&lt;T&gt; = T, Out&lt;T&gt; = T&gt;,
         T: Clone + Serialize + DeserializeOwned,
         Order: MinOrder&lt;
-            &lt;L::Root <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
-            Min = Order,
-        &gt;;
+                &lt;L::Root <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
+                Min = Order,
+            &gt;;
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B, Order&gt; DecoupleProcessStream&lt;<span class="lifetime">'a</span>, T, L, B, Order&gt;
@@ -233,9 +233,9 @@
         </span>L::Root: CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;, In&lt;T&gt; = T, Out&lt;T&gt; = T&gt;,
         T: Clone + Serialize + DeserializeOwned,
         Order: MinOrder&lt;
-            &lt;L::Root <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
-            Min = Order,
-        &gt;,
+                &lt;L::Root <span class="kw">as </span>CanSend&lt;<span class="lifetime">'a</span>, Process&lt;<span class="lifetime">'a</span>, P2&gt;&gt;&gt;::OutStrongestOrder&lt;Order&gt;,
+                Min = Order,
+            &gt;,
     {
         <span class="self">self</span>.send_bincode::&lt;Process&lt;<span class="lifetime">'a</span>, P2&gt;, T&gt;(other)
     }

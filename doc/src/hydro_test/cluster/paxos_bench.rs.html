@@ -106,8 +106,8 @@
 <a href="#105" id="105">105</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>hydro_std::quorum::collect_quorum;
 
-<span class="kw">use </span><span class="kw">super</span>::bench_client::{bench_client, Client};
-<span class="kw">use </span><span class="kw">super</span>::kv_replica::{kv_replica, KvPayload, Replica};
+<span class="kw">use </span><span class="kw">super</span>::bench_client::{Client, bench_client};
+<span class="kw">use </span><span class="kw">super</span>::kv_replica::{KvPayload, Replica, kv_replica};
 <span class="kw">use </span><span class="kw">super</span>::paxos_with_client::PaxosLike;
 
 <span class="kw">pub fn </span>paxos_bench&lt;<span class="lifetime">'a</span>, Paxos: PaxosLike&lt;<span class="lifetime">'a</span>&gt;&gt;(

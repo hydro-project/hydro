@@ -492,13 +492,13 @@
 <span class="kw">use </span>nanoid::nanoid;
 <span class="kw">use </span>serde_json::json;
 
-<span class="kw">use </span><span class="kw">super</span>::terraform::{TerraformOutput, TerraformProvider, TERRAFORM_ALPHABET};
+<span class="kw">use </span><span class="kw">super</span>::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 <span class="kw">use super</span>::{
     ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult,
     ServerStrategy,
 };
-<span class="kw">use </span><span class="kw">crate</span>::ssh::LaunchedSshHost;
 <span class="kw">use </span><span class="kw">crate</span>::HostStrategyGetter;
+<span class="kw">use </span><span class="kw">crate</span>::ssh::LaunchedSshHost;
 
 <span class="kw">pub struct </span>LaunchedVirtualMachine {
     resource_result: Arc&lt;ResourceResult&gt;,

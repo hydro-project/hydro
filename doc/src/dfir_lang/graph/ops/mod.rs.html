@@ -567,7 +567,10 @@
 <a href="#566" id="566">566</a>
 <a href="#567" id="567">567</a>
 <a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
+<a href="#569" id="569">569</a>
+<a href="#570" id="570">570</a>
+<a href="#571" id="571">571</a>
+<a href="#572" id="572">572</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
 
 </span><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::{Debug, Display};
@@ -579,7 +582,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>slotmap::Key;
 <span class="kw">use </span>syn::punctuated::Punctuated;
-<span class="kw">use </span>syn::{parse_quote_spanned, Expr, Token};
+<span class="kw">use </span>syn::{Expr, Token, parse_quote_spanned};
 
 <span class="kw">use super</span>::{
     GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance, PortIndexValue,
@@ -1048,7 +1051,10 @@
 
 <span class="doccomment">/// Helper which creates a error message string literal for when the Tokio runtime is not found.
 </span><span class="kw">fn </span>make_missing_runtime_msg(op_name: <span class="kw-2">&amp;</span>str) -&gt; Literal {
-    Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method."</span>, op_name))
+    Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+        <span class="string">"`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method."</span>,
+        op_name
+    ))
 }
 
 <span class="doccomment">/// Operator categories, for docs.

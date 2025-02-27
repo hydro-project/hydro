@@ -224,12 +224,12 @@
 
 <span class="kw">use </span>futures::Stream;
 
+<span class="kw">use </span><span class="kw">super</span>::SubgraphId;
 <span class="kw">use </span><span class="kw">super</span>::context::Context;
 <span class="kw">use </span><span class="kw">super</span>::graph::Dfir;
 <span class="kw">use </span><span class="kw">super</span>::handoff::{CanReceive, Handoff};
 <span class="kw">use </span><span class="kw">super</span>::input::Input;
 <span class="kw">use </span><span class="kw">super</span>::port::{RecvCtx, RecvPort, SendCtx, SendPort};
-<span class="kw">use </span><span class="kw">super</span>::SubgraphId;
 
 <span class="macro">macro_rules!</span> subgraph_ext {
     (

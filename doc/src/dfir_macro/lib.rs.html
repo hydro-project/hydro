@@ -366,13 +366,13 @@
 )]
 
 </span><span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
-<span class="kw">use </span>dfir_lang::graph::{build_hfcode, partition_graph, FlatGraphBuilder};
+<span class="kw">use </span>dfir_lang::graph::{FlatGraphBuilder, build_hfcode, partition_graph};
 <span class="kw">use </span>dfir_lang::parse::DfirCode;
 <span class="kw">use </span>proc_macro2::{Ident, Literal, Span};
 <span class="kw">use </span>quote::{format_ident, quote};
 <span class="kw">use </span>syn::{
-    parse_macro_input, parse_quote, Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant,
-    WherePredicate,
+    Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant, WherePredicate, parse_macro_input,
+    parse_quote,
 };
 
 <span class="doccomment">/// Create a runnable graph instance using DFIR's custom syntax.
@@ -395,7 +395,7 @@
 }
 
 <span class="kw">fn </span>root() -&gt; proc_macro2::TokenStream {
-    <span class="kw">use </span>std::env::{var <span class="kw">as </span>env_var, VarError};
+    <span class="kw">use </span>std::env::{VarError, var <span class="kw">as </span>env_var};
 
     <span class="kw">let </span>root_crate =
         proc_macro_crate::crate_name(<span class="string">"dfir_rs"</span>).expect(<span class="string">"dfir_rs should be present in `Cargo.toml`"</span>);

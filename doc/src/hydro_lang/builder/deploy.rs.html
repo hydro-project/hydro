@@ -379,7 +379,9 @@
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
 <a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::pin::Pin;
@@ -387,8 +389,8 @@
 <span class="kw">use </span>dfir_rs::bytes::Bytes;
 <span class="kw">use </span>dfir_rs::futures::{Sink, Stream};
 <span class="kw">use </span>proc_macro2::Span;
-<span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::Serialize;
+<span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>stageleft::QuotedWithContext;
 
 <span class="kw">use </span><span class="kw">super</span>::built::build_inner;
@@ -427,7 +429,9 @@
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt; Drop <span class="kw">for </span>DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span>!<span class="self">self</span>.used {
-            <span class="macro">panic!</span>(<span class="string">"Dropped DeployFlow without instantiating, you may have forgotten to call `compile` or `deploy`."</span>);
+            <span class="macro">panic!</span>(
+                <span class="string">"Dropped DeployFlow without instantiating, you may have forgotten to call `compile` or `deploy`."
+            </span>);
         }
     }
 }

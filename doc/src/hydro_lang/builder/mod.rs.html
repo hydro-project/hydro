@@ -247,7 +247,9 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
-<a href="#249" id="249">249</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::type_name;
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::type_name;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -317,7 +319,9 @@
 <span class="kw">impl </span>Drop <span class="kw">for </span>FlowBuilder&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span>!<span class="self">self</span>.finalized {
-            <span class="macro">panic!</span>(<span class="string">"Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."</span>);
+            <span class="macro">panic!</span>(
+                <span class="string">"Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
+            </span>);
         }
     }
 }

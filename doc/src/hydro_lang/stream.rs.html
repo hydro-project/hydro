@@ -2178,9 +2178,9 @@
 
 <span class="kw">use </span>dfir_rs::bytes::Bytes;
 <span class="kw">use </span>dfir_rs::futures;
-<span class="kw">use </span>serde::de::DeserializeOwned;
 <span class="kw">use </span>serde::Serialize;
-<span class="kw">use </span>stageleft::{q, IntoQuotedMut, QuotedWithContext};
+<span class="kw">use </span>serde::de::DeserializeOwned;
+<span class="kw">use </span>stageleft::{IntoQuotedMut, QuotedWithContext, q};
 <span class="kw">use </span>syn::parse_quote;
 <span class="kw">use </span>tokio::time::Instant;
 
@@ -2190,7 +2190,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 <span class="kw">use </span><span class="kw">crate</span>::location::tick::{Atomic, NoAtomic};
 <span class="kw">use </span><span class="kw">crate</span>::location::{
-    check_matching_location, CanSend, ExternalProcess, Location, LocationId, NoTick, Tick,
+    CanSend, ExternalProcess, Location, LocationId, NoTick, Tick, check_matching_location,
 };
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::get_this_crate;
 <span class="kw">use crate</span>::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
@@ -4299,8 +4299,8 @@
     <span class="kw">use </span>serde::{Deserialize, Serialize};
     <span class="kw">use </span>stageleft::q;
 
-    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
     <span class="kw">use </span><span class="kw">crate</span>::FlowBuilder;
+    <span class="kw">use </span><span class="kw">crate</span>::location::Location;
 
     <span class="kw">struct </span>P1 {}
     <span class="kw">struct </span>P2 {}

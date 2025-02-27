@@ -2295,7 +2295,9 @@
 <a href="#2294" id="2294">2294</a>
 <a href="#2295" id="2295">2295</a>
 <a href="#2296" id="2296">2296</a>
-<a href="#2297" id="2297">2297</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
+<a href="#2297" id="2297">2297</a>
+<a href="#2298" id="2298">2298</a>
+<a href="#2299" id="2299">2299</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
@@ -2310,9 +2312,9 @@
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>proc_macro2::Span;
 <span class="kw">use </span>proc_macro2::TokenStream;
+<span class="kw">use </span>quote::ToTokens;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>quote::quote;
-<span class="kw">use </span>quote::ToTokens;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>syn::parse_quote;
 
@@ -3402,7 +3404,9 @@
             }
 
             HydroNode::Unpersist { .. } =&gt; {
-                <span class="macro">panic!</span>(<span class="string">"Unpersist is a marker node and should have been optimized away. This is likely a compiler bug."</span>)
+                <span class="macro">panic!</span>(
+                    <span class="string">"Unpersist is a marker node and should have been optimized away. This is likely a compiler bug."
+                </span>)
             }
 
             HydroNode::Delta { inner, .. } =&gt; {

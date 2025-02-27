@@ -1279,13 +1279,13 @@
 
 <span class="kw">pub use </span>dfir_lang::diagnostic;
 <span class="kw">use </span>dfir_lang::diagnostic::{Diagnostic, Level};
-<span class="kw">use </span>dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph, DfirGraph, FlatGraphBuilder};
+<span class="kw">use </span>dfir_lang::graph::{DfirGraph, FlatGraphBuilder, eliminate_extra_unions_tees, partition_graph};
 <span class="kw">use </span>dfir_lang::parse::{
     DfirStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
 };
 <span class="kw">use </span>proc_macro2::{Span, TokenStream};
 <span class="kw">use </span>rust_sitter::errors::{ParseError, ParseErrorReason};
-<span class="kw">use </span>syn::{parse_quote, parse_quote_spanned, Token};
+<span class="kw">use </span>syn::{Token, parse_quote, parse_quote_spanned};
 
 <span class="kw">mod </span>grammar;
 <span class="kw">mod </span>join_plan;
@@ -1295,7 +1295,7 @@
     Aggregation, Atom, Declaration, Ident, IntExpr, Program, Rule, RuleType, TargetExpr,
 };
 <span class="kw">use </span>join_plan::{IntermediateJoinNode, JoinPlan};
-<span class="kw">use </span>util::{repeat_tuple, Counter};
+<span class="kw">use </span>util::{Counter, repeat_tuple};
 
 <span class="kw">static </span>MAGIC_RELATIONS: [<span class="kw-2">&amp;</span>str; <span class="number">1</span>] = [<span class="string">"less_than"</span>];
 

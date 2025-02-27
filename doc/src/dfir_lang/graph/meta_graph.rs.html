@@ -1699,20 +1699,20 @@
 
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>proc_macro2::{Ident, Literal, Span, TokenStream};
-<span class="kw">use </span>quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+<span class="kw">use </span>quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 <span class="kw">use </span>syn::spanned::Spanned;
 
 <span class="kw">use </span><span class="kw">super</span>::graph_write::{Dot, GraphWrite, Mermaid};
 <span class="kw">use </span><span class="kw">super</span>::ops::{
-    find_op_op_constraints, null_write_iterator_fn, DelayType, OperatorWriteOutput,
-    WriteContextArgs, OPERATORS,
+    DelayType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
+    null_write_iterator_fn,
 };
 <span class="kw">use super</span>::{
-    change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
-    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
+    CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
+    GraphSubgraphId, HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR, OperatorInstance, PortIndexValue,
+    Varname, change_spans, get_operator_generics,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span><span class="kw">crate</span>::pretty_span::{PrettyRowCol, PrettySpan};
@@ -1821,11 +1821,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = (GraphEdgeId, GraphNodeId)&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = (GraphEdgeId, GraphNodeId)&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.successors(src)
     }
 
@@ -1834,11 +1834,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         dst: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = (GraphEdgeId, GraphNodeId)&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = (GraphEdgeId, GraphNodeId)&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.predecessors(dst)
     }
 
@@ -1847,11 +1847,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = GraphEdgeId&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = GraphEdgeId&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.successor_edges(src)
     }
 
@@ -1860,11 +1860,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         dst: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = GraphEdgeId&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = GraphEdgeId&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.predecessor_edges(dst)
     }
 
@@ -1873,11 +1873,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         src: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = GraphNodeId&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = GraphNodeId&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.successor_vertices(src)
     }
 
@@ -1886,11 +1886,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         dst: GraphNodeId,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ DoubleEndedIterator&lt;Item = GraphNodeId&gt;
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ DoubleEndedIterator&lt;Item = GraphNodeId&gt;
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.predecessor_vertices(dst)
     }
 
@@ -2319,10 +2319,10 @@
     </span><span class="kw">pub fn </span>edges(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="kw">impl </span><span class="lifetime">'_
-           </span>+ ExactSizeIterator&lt;Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))&gt;
-           + FusedIterator
-           + Clone
-           + Debug {
+    </span>+ ExactSizeIterator&lt;Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))&gt;
+    + FusedIterator
+    + Clone
+    + Debug {
         <span class="self">self</span>.graph.edges()
     }
 

@@ -234,7 +234,7 @@
 <span class="kw">use </span>gossip_kv::membership::{MemberDataBuilder, Protocol};
 <span class="kw">use </span>gossip_kv::{ClientRequest, GossipMessage};
 <span class="kw">use </span>governor::{Quota, RateLimiter};
-<span class="kw">use </span>prometheus::{gather, Encoder, TextEncoder};
+<span class="kw">use </span>prometheus::{Encoder, TextEncoder, gather};
 <span class="kw">use </span>tokio::sync::mpsc::UnboundedSender;
 <span class="kw">use </span>tokio::task;
 <span class="kw">use </span>tracing::{error, info, trace};
@@ -244,9 +244,9 @@
 
 <span class="kw">use </span>dfir_rs::futures::sink::drain;
 <span class="kw">use </span>dfir_rs::futures::stream;
-<span class="kw">use </span>dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
 <span class="kw">use </span>dfir_rs::tokio_stream::StreamExt;
-<span class="kw">use </span>gossip_kv::server::{server, SeedNode};
+<span class="kw">use </span>dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
+<span class="kw">use </span>gossip_kv::server::{SeedNode, server};
 <span class="kw">use </span>lattices::cc_traits::Iter;
 
 <span class="kw">const </span>UNKNOWN_ADDRESS: LoadTestAddress = <span class="number">9999999999</span>;

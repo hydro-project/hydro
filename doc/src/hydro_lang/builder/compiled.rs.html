@@ -133,12 +133,12 @@
 <a href="#132" id="132">132</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 <span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">use </span>dfir_lang::graph::{partition_graph, DfirGraph};
+<span class="kw">use </span>dfir_lang::graph::{DfirGraph, partition_graph};
 <span class="kw">use </span>dfir_rs::scheduled::graph::Dfir;
 <span class="kw">use </span>proc_macro2::TokenStream;
 <span class="kw">use </span>quote::quote;
-<span class="kw">use </span>stageleft::runtime_support::FreeVariableWithContext;
 <span class="kw">use </span>stageleft::QuotedWithContext;
+<span class="kw">use </span>stageleft::runtime_support::FreeVariableWithContext;
 
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 

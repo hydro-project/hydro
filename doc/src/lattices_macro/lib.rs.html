@@ -549,13 +549,13 @@
 <span class="kw">use </span>syn::punctuated::Punctuated;
 <span class="kw">use </span>syn::visit_mut::VisitMut;
 <span class="kw">use </span>syn::{
-    parse_macro_input, Field, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, ItemStruct,
-    Member, Token, WhereClause, WherePredicate,
+    Field, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, ItemStruct, Member, Token,
+    WhereClause, WherePredicate, parse_macro_input,
 };
 
 <span class="doccomment">/// Tokens to reference the `lattices` crate.
 </span><span class="kw">fn </span>root() -&gt; TokenStream {
-    <span class="kw">use </span>std::env::{var <span class="kw">as </span>env_var, VarError};
+    <span class="kw">use </span>std::env::{VarError, var <span class="kw">as </span>env_var};
 
     <span class="kw">use </span>proc_macro_crate::FoundCrate;
 

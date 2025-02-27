@@ -285,7 +285,10 @@
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
 <a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 <span class="kw">use </span>stageleft::IntoQuotedMut;
 
@@ -362,7 +365,7 @@
     <span class="kw">use </span>hydro_lang::rewrites::partitioner::{<span class="self">self</span>, PartitionAttribute, Partitioner};
     <span class="kw">use </span>hydro_lang::rewrites::{insert_counter, persist_pullup};
     <span class="kw">use </span>hydro_lang::{ClusterId, Location};
-    <span class="kw">use </span>stageleft::{q, RuntimeData};
+    <span class="kw">use </span>stageleft::{RuntimeData, q};
 
     <span class="attr">#[tokio::test]
     </span><span class="kw">async fn </span>simple_cluster() {
@@ -397,7 +400,10 @@
             <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..<span class="number">5 </span>{
                 <span class="macro">assert_eq!</span>(
                     stdout.recv().<span class="kw">await</span>.unwrap(),
-                    <span class="macro">format!</span>(<span class="string">"cluster received: (ClusterId::&lt;()&gt;({}), {}) (self cluster id: ClusterId::&lt;()&gt;({}))"</span>, i, j, i)
+                    <span class="macro">format!</span>(
+                        <span class="string">"cluster received: (ClusterId::&lt;()&gt;({}), {}) (self cluster id: ClusterId::&lt;()&gt;({}))"</span>,
+                        i, j, i
+                    )
                 );
             }
         }

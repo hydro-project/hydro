@@ -79,13 +79,13 @@
 <a href="#78" id="78">78</a>
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>stageleft::{q, BorrowBounds, IntoQuotedOnce, Quoted, RuntimeData};
+<a href="#81" id="81">81</a></pre></div><pre class="rust"><code><span class="kw">pub use </span>stageleft::{BorrowBounds, IntoQuotedOnce, Quoted, RuntimeData, q};
 <span class="kw">pub mod </span>features {
     <span class="attr">#[cfg(feature = <span class="string">"test_feature"</span>)]
     </span><span class="kw">pub use </span><span class="kw">crate</span>::features::Test;
 }
 <span class="kw">pub mod </span>submodule {
-    <span class="kw">pub use </span>stageleft::{q, BorrowBounds, Quoted};
+    <span class="kw">pub use </span>stageleft::{BorrowBounds, Quoted, q};
     <span class="kw">pub struct </span>PrivateStruct {
         <span class="kw">pub </span>a: u32,
     }

@@ -227,8 +227,8 @@
 
 <span class="kw">use </span>byteorder::{NetworkEndian, WriteBytesExt};
 <span class="kw">use </span>futures::{Sink, StreamExt};
-<span class="kw">use </span>tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 <span class="kw">use </span>tokio::net::TcpStream;
+<span class="kw">use </span>tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 <span class="kw">use </span>tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 <span class="kw">use </span><span class="kw">super</span>::graph::Dfir;

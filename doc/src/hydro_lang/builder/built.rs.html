@@ -164,15 +164,17 @@
 <a href="#163" id="163">163</a>
 <a href="#164" id="164">164</a>
 <a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">use </span>dfir_lang::graph::{eliminate_extra_unions_tees, DfirGraph};
+<span class="kw">use </span>dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees};
 
 <span class="kw">use </span><span class="kw">super</span>::compiled::CompiledFlow;
 <span class="kw">use </span><span class="kw">super</span>::deploy::{DeployFlow, DeployResult};
 <span class="kw">use </span><span class="kw">crate</span>::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy};
-<span class="kw">use </span><span class="kw">crate</span>::ir::{emit, HydroLeaf};
+<span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, emit};
 <span class="kw">use </span><span class="kw">crate</span>::location::{Cluster, ExternalProcess, Process};
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 
@@ -189,7 +191,9 @@
 <span class="kw">impl </span>Drop <span class="kw">for </span>BuiltFlow&lt;<span class="lifetime">'_</span>&gt; {
     <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="kw">if </span>!<span class="self">self</span>.used {
-            <span class="macro">panic!</span>(<span class="string">"Dropped BuiltFlow without instantiating, you may have forgotten to call `compile` or `deploy`."</span>);
+            <span class="macro">panic!</span>(
+                <span class="string">"Dropped BuiltFlow without instantiating, you may have forgotten to call `compile` or `deploy`."
+            </span>);
         }
     }
 }

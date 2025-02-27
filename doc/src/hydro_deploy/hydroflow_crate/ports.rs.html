@@ -528,7 +528,10 @@
 <a href="#527" id="527">527</a>
 <a href="#528" id="528">528</a>
 <a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
 <span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::sync::{Arc, Weak};
@@ -776,7 +779,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>from_write = from.try_write().unwrap();
 
         <span class="comment">// TODO(shadaj): if already in this map, we want to broadcast
-        </span><span class="macro">assert!</span>(!from_write.port_to_server.contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>.port), <span class="string">"The port configuration is incorrect, for example, are you using a ConnectedDirect instead of a ConnectedDemux?"</span>);
+        </span><span class="macro">assert!</span>(
+            !from_write.port_to_server.contains_key(<span class="kw-2">&amp;</span><span class="self">self</span>.port),
+            <span class="string">"The port configuration is incorrect, for example, are you using a ConnectedDirect instead of a ConnectedDemux?"
+        </span>);
         from_write.port_to_server.insert(<span class="self">self</span>.port.clone(), config);
     }
 

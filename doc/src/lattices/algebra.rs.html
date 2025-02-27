@@ -1077,7 +1077,45 @@
 <a href="#1076" id="1076">1076</a>
 <a href="#1077" id="1077">1077</a>
 <a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::test::cartesian_power;
 
@@ -1597,14 +1635,18 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_nonzero_inverse() {
         <span class="comment">// Test that addition and subtraction has a nonzero inverse and that multiplication does not.
-        </span><span class="macro">assert!</span>(nonzero_inverse(TEST_ITEMS, u32::wrapping_add, <span class="number">0</span>, <span class="number">0</span>, |x| {
-            <span class="number">0u32</span>.wrapping_sub(x)
-        })
-        .is_ok());
-        <span class="macro">assert!</span>(nonzero_inverse(TEST_ITEMS, u32::wrapping_sub, <span class="number">0</span>, <span class="number">0</span>, |x| {
-            <span class="number">0u32</span>.wrapping_add(x)
-        })
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            nonzero_inverse(TEST_ITEMS, u32::wrapping_add, <span class="number">0</span>, <span class="number">0</span>, |x| {
+                <span class="number">0u32</span>.wrapping_sub(x)
+            })
+            .is_ok()
+        );
+        <span class="macro">assert!</span>(
+            nonzero_inverse(TEST_ITEMS, u32::wrapping_sub, <span class="number">0</span>, <span class="number">0</span>, |x| {
+                <span class="number">0u32</span>.wrapping_add(x)
+            })
+            .is_ok()
+        );
         <span class="macro">assert!</span>(
             right_distributes(TEST_ITEMS_NONZERO, u32::wrapping_div, u32::wrapping_mul).is_err()
         );
@@ -1629,64 +1671,70 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_commutative_ring() {
         <span class="comment">// Test that (Z, +, *) is a commutative ring.
-        </span><span class="macro">assert!</span>(commutative_ring(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>u32::wrapping_add,
-            <span class="kw-2">&amp;</span>u32::wrapping_mul,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
-        )
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            commutative_ring(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>u32::wrapping_add,
+                <span class="kw-2">&amp;</span>u32::wrapping_mul,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
+            )
+            .is_ok()
+        );
 
         <span class="comment">// Test that (Z, +, ^) is not a commutative ring.
-        </span><span class="macro">assert!</span>(commutative_ring(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>u32::wrapping_add,
-            <span class="kw-2">&amp;</span>u32::wrapping_pow,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
-        )
-        .is_err());
+        </span><span class="macro">assert!</span>(
+            commutative_ring(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>u32::wrapping_add,
+                <span class="kw-2">&amp;</span>u32::wrapping_pow,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
+            )
+            .is_err()
+        );
 
         <span class="comment">// Test that matrix multiplication is not a commutative ring.
-        </span><span class="macro">assert!</span>(commutative_ring(
-            <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
-            <span class="kw-2">&amp;</span>|a, b| {
-                [
-                    [a[<span class="number">0</span>][<span class="number">0</span>] + b[<span class="number">0</span>][<span class="number">0</span>], a[<span class="number">0</span>][<span class="number">1</span>] + b[<span class="number">0</span>][<span class="number">1</span>]],
-                    [a[<span class="number">1</span>][<span class="number">0</span>] + b[<span class="number">1</span>][<span class="number">0</span>], a[<span class="number">1</span>][<span class="number">0</span>] + b[<span class="number">1</span>][<span class="number">1</span>]],
-                ]
-            },
-            <span class="kw-2">&amp;</span>|a, b| {
-                [
+        </span><span class="macro">assert!</span>(
+            commutative_ring(
+                <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
+                <span class="kw-2">&amp;</span>|a, b| {
                     [
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
+                        [a[<span class="number">0</span>][<span class="number">0</span>] + b[<span class="number">0</span>][<span class="number">0</span>], a[<span class="number">0</span>][<span class="number">1</span>] + b[<span class="number">0</span>][<span class="number">1</span>]],
+                        [a[<span class="number">1</span>][<span class="number">0</span>] + b[<span class="number">1</span>][<span class="number">0</span>], a[<span class="number">1</span>][<span class="number">0</span>] + b[<span class="number">1</span>][<span class="number">1</span>]],
+                    ]
+                },
+                <span class="kw-2">&amp;</span>|a, b| {
                     [
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                ]
-            },
-            [[<span class="number">0</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">0</span>]],
-            [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
-            <span class="kw-2">&amp;</span>|a| {
-                [
+                        [
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                        [
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                    ]
+                },
+                [[<span class="number">0</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">0</span>]],
+                [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
+                <span class="kw-2">&amp;</span>|a| {
                     [
-                        -a[<span class="number">0</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                        -a[<span class="number">0</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                    ],
-                    [
-                        -a[<span class="number">1</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                        -a[<span class="number">1</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                    ],
-                ]
-            },
-        )
-        .is_err());
+                        [
+                            -a[<span class="number">0</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                            -a[<span class="number">0</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                        ],
+                        [
+                            -a[<span class="number">1</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                            -a[<span class="number">1</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                        ],
+                    ]
+                },
+            )
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -1721,23 +1769,25 @@
         </span><span class="macro">assert!</span>(semigroup(TEST_ITEMS, <span class="kw-2">&amp;</span>u32::wrapping_mul).is_ok());
         <span class="comment">// Test that ({true, false}, ∧) is a semigroup.
         </span><span class="macro">assert!</span>(semigroup(TEST_BOOLS, <span class="kw-2">&amp;</span>|a, b| a &amp; b).is_ok()); <span class="comment">// logical AND
-                                                               // Test that matrix multiplication is a semigroup.
-        </span><span class="macro">assert!</span>(semigroup(
-            <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
-            <span class="kw-2">&amp;</span>|a, b| {
-                [
+        // Test that matrix multiplication is a semigroup.
+        </span><span class="macro">assert!</span>(
+            semigroup(
+                <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
+                <span class="kw-2">&amp;</span>|a, b| {
                     [
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                    [
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                ]
-            },
-        )
-        .is_ok());
+                        [
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                        [
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                    ]
+                },
+            )
+            .is_ok()
+        );
         <span class="comment">// Test that set of all natural numbers N = {0, 1, 2, ...} is not a semigroup under exponentiation.
         </span><span class="macro">assert!</span>(semigroup(TEST_ITEMS, <span class="kw-2">&amp;</span>u32::wrapping_pow).is_err());
     }
@@ -1787,24 +1837,28 @@
     </span><span class="kw">fn </span>test_bilinearity() {
         <span class="comment">// Test that multiplication over the (Z,+) group is bilinear
         // but exponentiation over the (Z,+) group is not bilinear
-        </span><span class="macro">assert!</span>(bilinearity(
-            TEST_ITEMS,
-            TEST_ITEMS,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_mul
-        )
-        .is_ok());
-        <span class="macro">assert!</span>(bilinearity(
-            TEST_ITEMS,
-            TEST_ITEMS,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::pow
-        )
-        .is_err());
+        </span><span class="macro">assert!</span>(
+            bilinearity(
+                TEST_ITEMS,
+                TEST_ITEMS,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_mul
+            )
+            .is_ok()
+        );
+        <span class="macro">assert!</span>(
+            bilinearity(
+                TEST_ITEMS,
+                TEST_ITEMS,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::pow
+            )
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -1816,9 +1870,11 @@
         <span class="comment">// Test that (Z/14Z, +) form a group.
         </span><span class="macro">assert!</span>(group(TEST_ITEMS, <span class="kw-2">&amp;</span>modulo_add_14, <span class="number">0</span>, <span class="kw-2">&amp;</span>modulo_sub_14).is_ok());
         <span class="comment">// Test that (Z, *) do not form a group since it has no inverse.
-        </span><span class="macro">assert!</span>(group(TEST_ITEMS_NONZERO, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">1</span>, <span class="kw-2">&amp;</span>|x| <span class="number">1u32
-            </span>.wrapping_div(x))
-        .is_err());
+        </span><span class="macro">assert!</span>(
+            group(TEST_ITEMS_NONZERO, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">1</span>, <span class="kw-2">&amp;</span>|x| <span class="number">1u32
+                </span>.wrapping_div(x))
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -1836,35 +1892,37 @@
             .is_err()
         );
         <span class="comment">// Test that matrix multiplication is not an abelian group.
-        </span><span class="macro">assert!</span>(abelian_group(
-            <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
-            <span class="kw-2">&amp;</span>|a, b| {
-                [
+        </span><span class="macro">assert!</span>(
+            abelian_group(
+                <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
+                <span class="kw-2">&amp;</span>|a, b| {
                     [
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
+                        [
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                        [
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                    ]
+                },
+                [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
+                <span class="kw-2">&amp;</span>|a| {
                     [
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                ]
-            },
-            [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
-            <span class="kw-2">&amp;</span>|a| {
-                [
-                    [
-                        -a[<span class="number">0</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                        -a[<span class="number">0</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                    ],
-                    [
-                        -a[<span class="number">1</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                        -a[<span class="number">1</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
-                    ],
-                ]
-            },
-        )
-        .is_err());
+                        [
+                            -a[<span class="number">0</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                            -a[<span class="number">0</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                        ],
+                        [
+                            -a[<span class="number">1</span>][<span class="number">0</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                            -a[<span class="number">1</span>][<span class="number">1</span>] / (a[<span class="number">0</span>][<span class="number">0</span>] * a[<span class="number">1</span>][<span class="number">1</span>] - a[<span class="number">0</span>][<span class="number">1</span>] * a[<span class="number">1</span>][<span class="number">1</span>]),
+                        ],
+                    ]
+                },
+            )
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -1875,23 +1933,25 @@
         </span><span class="macro">assert!</span>(monoid(TEST_ITEMS_NONZERO, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">1</span>).is_ok());
         <span class="macro">assert!</span>(monoid(TEST_ITEMS, <span class="kw-2">&amp;</span>u32::wrapping_mul, <span class="number">1</span>).is_ok());
         <span class="comment">// Test that the set of nxn matrix with matrix multiplication is a monoid.
-        </span><span class="macro">assert!</span>(monoid(
-            <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
-            <span class="kw-2">&amp;</span>|a, b| {
-                [
+        </span><span class="macro">assert!</span>(
+            monoid(
+                <span class="kw-2">&amp;</span>[[[<span class="number">1</span>, <span class="number">2</span>], [<span class="number">3</span>, <span class="number">4</span>]], [[<span class="number">5</span>, <span class="number">6</span>], [<span class="number">7</span>, <span class="number">8</span>]], [[<span class="number">9</span>, <span class="number">10</span>], [<span class="number">11</span>, <span class="number">12</span>]]],
+                <span class="kw-2">&amp;</span>|a, b| {
                     [
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                    [
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
-                        a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
-                    ],
-                ]
-            },
-            [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
-        )
-        .is_ok());
+                        [
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">0</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">0</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                        [
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">0</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">0</span>],
+                            a[<span class="number">1</span>][<span class="number">0</span>] * b[<span class="number">0</span>][<span class="number">1</span>] + a[<span class="number">1</span>][<span class="number">1</span>] * b[<span class="number">1</span>][<span class="number">1</span>],
+                        ],
+                    ]
+                },
+                [[<span class="number">1</span>, <span class="number">0</span>], [<span class="number">0</span>, <span class="number">1</span>]],
+            )
+            .is_ok()
+        );
         <span class="comment">// Test that N+ = N − {0} is not a monoid with respect to addition since it doesn't have an identity element (0 is missing).
         </span><span class="macro">assert!</span>(monoid(TEST_ITEMS_NONZERO, <span class="kw-2">&amp;</span>u32::wrapping_add, <span class="number">1</span>).is_err());
     }
@@ -1984,25 +2044,29 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_integral_domain() {
         <span class="comment">// The ring of integers modulo a prime number is an integral domain.
-        </span><span class="macro">assert!</span>(integral_domain(
-            TEST_MOD_PRIME_7,
-            <span class="kw-2">&amp;</span>modulo_add_7,
-            <span class="kw-2">&amp;</span>modulo_mult_7,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>modulo_sub_7,
-        )
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            integral_domain(
+                TEST_MOD_PRIME_7,
+                <span class="kw-2">&amp;</span>modulo_add_7,
+                <span class="kw-2">&amp;</span>modulo_mult_7,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>modulo_sub_7,
+            )
+            .is_ok()
+        );
         <span class="comment">// The ring of integers modulo a composite number is not an integral domain.
-        </span><span class="macro">assert!</span>(integral_domain(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>modulo_add_14,
-            <span class="kw-2">&amp;</span>modulo_mult_14,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>modulo_sub_14,
-        )
-        .is_err());
+        </span><span class="macro">assert!</span>(
+            integral_domain(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>modulo_add_14,
+                <span class="kw-2">&amp;</span>modulo_mult_14,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>modulo_sub_14,
+            )
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -2010,17 +2074,19 @@
         <span class="comment">// Test that GF2 (0, 1, XOR, AND) is a field and  +, x, 0, 1, - is not a field (no multiplicative inverses)
         // Note GF2 is the Galois Field with 2 elements.
 
-        </span><span class="macro">assert!</span>(field(
-            TEST_BOOLS,
-            <span class="kw-2">&amp;</span>|a, b| a ^ b, <span class="comment">// logical XOR
-            </span><span class="kw-2">&amp;</span>|a, b| a &amp; b, <span class="comment">// a &amp; b, // logical AND
-            </span><span class="bool-val">false</span>,
-            <span class="bool-val">true</span>,
-            <span class="kw-2">&amp;</span>|x| x, <span class="comment">// XOR(x,x) = false, the identity for XOR
-            </span><span class="kw-2">&amp;</span>|_x| <span class="bool-val">true </span><span class="comment">/* AND(x,true) = true, the identity for AND. Note that the inverse doesn't need to work for the additive identity (false)
-                        */
-        </span>)
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            field(
+                TEST_BOOLS,
+                <span class="kw-2">&amp;</span>|a, b| a ^ b, <span class="comment">// logical XOR
+                </span><span class="kw-2">&amp;</span>|a, b| a &amp; b, <span class="comment">// a &amp; b, // logical AND
+                </span><span class="bool-val">false</span>,
+                <span class="bool-val">true</span>,
+                <span class="kw-2">&amp;</span>|x| x, <span class="comment">// XOR(x,x) = false, the identity for XOR
+                </span><span class="kw-2">&amp;</span>|_x| <span class="bool-val">true </span><span class="comment">/* AND(x,true) = true, the identity for AND. Note that the inverse doesn't need to work for the additive identity (false)
+                            */
+            </span>)
+            .is_ok()
+        );
 
         <span class="macro">assert!</span>(field(
             TEST_ITEMS,
@@ -2037,24 +2103,28 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_ring() {
         <span class="comment">// Test that +, x, 0, 1, - are a ring and +, x, 0, 5 are not (5 isn't a multiplicative identity)
-        </span><span class="macro">assert!</span>(ring(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>u32::wrapping_add,
-            <span class="kw-2">&amp;</span>u32::wrapping_mul,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
-        )
-        .is_ok());
-        <span class="macro">assert!</span>(ring(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>u32::wrapping_add,
-            <span class="kw-2">&amp;</span>u32::wrapping_mul,
-            <span class="number">0</span>,
-            <span class="number">5</span>,
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
-        )
-        .is_err());
+        </span><span class="macro">assert!</span>(
+            ring(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>u32::wrapping_add,
+                <span class="kw-2">&amp;</span>u32::wrapping_mul,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
+            )
+            .is_ok()
+        );
+        <span class="macro">assert!</span>(
+            ring(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>u32::wrapping_add,
+                <span class="kw-2">&amp;</span>u32::wrapping_mul,
+                <span class="number">0</span>,
+                <span class="number">5</span>,
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
+            )
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
@@ -2066,51 +2136,57 @@
         </span><span class="macro">assert!</span>(semiring(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>], <span class="kw-2">&amp;</span>|x, y| x | y, <span class="kw-2">&amp;</span>|x, y| x &amp; y, <span class="bool-val">false</span>, <span class="bool-val">true</span>).is_ok());
 
         <span class="comment">// Test min plus semiring. + is min and x is plus. Also known as the "tropical semiring"
-        </span><span class="macro">assert!</span>(semiring(
-            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
-            <span class="kw-2">&amp;</span>f64::min,
-            <span class="kw-2">&amp;</span>|x, y| x + y,
-            f64::INFINITY,
-            <span class="number">0.0</span>,
-        )
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            semiring(
+                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
+                <span class="kw-2">&amp;</span>f64::min,
+                <span class="kw-2">&amp;</span>|x, y| x + y,
+                f64::INFINITY,
+                <span class="number">0.0</span>,
+            )
+            .is_ok()
+        );
 
         <span class="comment">// Test max plus semiring. + is max and x is plus.
-        </span><span class="macro">assert!</span>(semiring(
-            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::NEG_INFINITY],
-            <span class="kw-2">&amp;</span>f64::max,
-            <span class="kw-2">&amp;</span>|x, y| x + y,
-            f64::NEG_INFINITY,
-            <span class="number">0.0</span>,
-        )
-        .is_ok());
+        </span><span class="macro">assert!</span>(
+            semiring(
+                <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::NEG_INFINITY],
+                <span class="kw-2">&amp;</span>f64::max,
+                <span class="kw-2">&amp;</span>|x, y| x + y,
+                f64::NEG_INFINITY,
+                <span class="number">0.0</span>,
+            )
+            .is_ok()
+        );
 
         <span class="comment">// Test sets of strings semiring with union as + and concatenation as x
-        </span><span class="macro">assert!</span>(semiring(
-            <span class="kw-2">&amp;</span>[
+        </span><span class="macro">assert!</span>(
+            semiring(
+                <span class="kw-2">&amp;</span>[
+                    HashSet::from([]),
+                    HashSet::from([<span class="string">""</span>.to_owned()]),
+                    HashSet::from([<span class="string">"a"</span>.to_owned()]),
+                    HashSet::from([<span class="string">"aa"</span>.to_owned(), <span class="string">"bb"</span>.to_owned()]),
+                    HashSet::from([<span class="string">"ab"</span>.to_owned(), <span class="string">"bb"</span>.to_owned(), <span class="string">"cc"</span>.to_owned()]),
+                    HashSet::from([<span class="string">"ba"</span>.to_owned()]),
+                    HashSet::from([<span class="string">"bb"</span>.to_owned()]),
+                ],
+                <span class="kw-2">&amp;</span>|x, y| x.union(<span class="kw-2">&amp;</span>y).cloned().collect(),
+                <span class="kw-2">&amp;</span>|x, y| {
+                    <span class="kw">let </span><span class="kw-2">mut </span>new_set = HashSet::new();
+
+                    <span class="kw">for </span>a <span class="kw">in </span>x.iter() {
+                        <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
+                            new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
+                        }
+                    }
+                    new_set
+                },
                 HashSet::from([]),
                 HashSet::from([<span class="string">""</span>.to_owned()]),
-                HashSet::from([<span class="string">"a"</span>.to_owned()]),
-                HashSet::from([<span class="string">"aa"</span>.to_owned(), <span class="string">"bb"</span>.to_owned()]),
-                HashSet::from([<span class="string">"ab"</span>.to_owned(), <span class="string">"bb"</span>.to_owned(), <span class="string">"cc"</span>.to_owned()]),
-                HashSet::from([<span class="string">"ba"</span>.to_owned()]),
-                HashSet::from([<span class="string">"bb"</span>.to_owned()]),
-            ],
-            <span class="kw-2">&amp;</span>|x, y| x.union(<span class="kw-2">&amp;</span>y).cloned().collect(),
-            <span class="kw-2">&amp;</span>|x, y| {
-                <span class="kw">let </span><span class="kw-2">mut </span>new_set = HashSet::new();
-
-                <span class="kw">for </span>a <span class="kw">in </span>x.iter() {
-                    <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
-                        new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
-                    }
-                }
-                new_set
-            },
-            HashSet::from([]),
-            HashSet::from([<span class="string">""</span>.to_owned()]),
-        )
-        .is_ok());
+            )
+            .is_ok()
+        );
     }
 
     <span class="attr">#[test]

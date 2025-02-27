@@ -230,7 +230,9 @@
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::error::Error;
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::error::Error;
 <span class="kw">use </span>std::fmt::Display;
 <span class="kw">use </span>std::io::BufRead;
 <span class="kw">use </span>std::path::{Path, PathBuf};
@@ -242,8 +244,8 @@
 <span class="kw">use </span>nanoid::nanoid;
 <span class="kw">use </span>tokio::sync::OnceCell;
 
-<span class="kw">use </span><span class="kw">crate</span>::progress::ProgressTracker;
 <span class="kw">use </span><span class="kw">crate</span>::HostTargetType;
+<span class="kw">use </span><span class="kw">crate</span>::progress::ProgressTracker;
 
 <span class="doccomment">/// Build parameters for [`build_crate_memoized`].
 </span><span class="attr">#[derive(PartialEq, Eq, Hash, Clone)]
@@ -371,16 +373,18 @@
 
                     <span class="kw">let </span>reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
                     <span class="kw">let </span><span class="kw-2">mut </span>stderr_reader = std::io::BufReader::new(spawned.stderr.take().unwrap());
-                    std::thread::spawn(<span class="kw">move </span>|| <span class="kw">loop </span>{
-                        <span class="kw">let </span><span class="kw-2">mut </span>buf = String::new();
-                        <span class="kw">if let </span><span class="prelude-val">Ok</span>(size) = stderr_reader.read_line(<span class="kw-2">&amp;mut </span>buf) {
-                            <span class="kw">if </span>size == <span class="number">0 </span>{
-                                <span class="kw">break</span>;
+                    std::thread::spawn(<span class="kw">move </span>|| {
+                        <span class="kw">loop </span>{
+                            <span class="kw">let </span><span class="kw-2">mut </span>buf = String::new();
+                            <span class="kw">if let </span><span class="prelude-val">Ok</span>(size) = stderr_reader.read_line(<span class="kw-2">&amp;mut </span>buf) {
+                                <span class="kw">if </span>size == <span class="number">0 </span>{
+                                    <span class="kw">break</span>;
+                                } <span class="kw">else </span>{
+                                    set_msg(buf.trim().to_string());
+                                }
                             } <span class="kw">else </span>{
-                                set_msg(buf.trim().to_string());
+                                <span class="kw">break</span>;
                             }
-                        } <span class="kw">else </span>{
-                            <span class="kw">break</span>;
                         }
                     });
 

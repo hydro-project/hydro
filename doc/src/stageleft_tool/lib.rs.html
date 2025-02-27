@@ -432,7 +432,7 @@
 <span class="kw">use </span>sha2::{Digest, Sha256};
 <span class="kw">use </span>syn::visit::Visit;
 <span class="kw">use </span>syn::visit_mut::VisitMut;
-<span class="kw">use </span>syn::{parse_quote, UsePath, Visibility};
+<span class="kw">use </span>syn::{UsePath, Visibility, parse_quote};
 
 <span class="kw">struct </span>GenMacroVistor {
     exported_macros: BTreeSet&lt;(String, String)&gt;,

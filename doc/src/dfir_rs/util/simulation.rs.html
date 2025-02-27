@@ -435,10 +435,7 @@
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
 <a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Hydro/DFIR Deterministic Simulation Testing Framework
+<a href="#437" id="437">437</a></pre></div><pre class="rust"><code><span class="doccomment">//! # Hydro/DFIR Deterministic Simulation Testing Framework
 //!
 //! This module provides a deterministic simulation testing framework for testing Hydro/DFIR
 //! processes.
@@ -514,11 +511,11 @@
 <span class="kw">use </span>std::future::ready;
 <span class="kw">use </span>std::pin::Pin;
 
-<span class="kw">use </span>futures::{sink, Sink, SinkExt, StreamExt};
+<span class="kw">use </span>futures::{Sink, SinkExt, StreamExt, sink};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>tokio::sync::mpsc::UnboundedSender;
-<span class="kw">use </span>tokio_stream::wrappers::UnboundedReceiverStream;
 <span class="kw">use </span>tokio_stream::Stream;
+<span class="kw">use </span>tokio_stream::wrappers::UnboundedReceiverStream;
 <span class="kw">use </span>tracing::trace;
 
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::graph::Dfir;
@@ -779,16 +776,13 @@
                 } <span class="kw">else </span>{
                     <span class="macro">trace!</span>(
                         <span class="string">"No interface named {:?} found on host {:?}. Dropping message {:?}."</span>,
-                        addr.interface,
-                        addr.host,
-                        msg
+                        addr.interface, addr.host, msg
                     );
                 }
             } <span class="kw">else </span>{
                 <span class="macro">trace!</span>(
                     <span class="string">"No host named {:?} found. Dropping message {:?}."</span>,
-                    addr.host,
-                    msg
+                    addr.host, msg
                 );
             }
         }

@@ -78,8 +78,8 @@
 <span class="kw">use </span>std::rc::Rc;
 <span class="kw">use </span>std::sync::mpsc::SyncSender;
 
-<span class="kw">use </span><span class="kw">super</span>::reactor::Reactor;
 <span class="kw">use </span><span class="kw">super</span>::SubgraphId;
+<span class="kw">use </span><span class="kw">super</span>::reactor::Reactor;
 
 <span class="kw">pub trait </span>Give&lt;T&gt; {
     <span class="kw">fn </span>give(<span class="kw-2">&amp;</span><span class="self">self</span>, t: T) -&gt; bool;

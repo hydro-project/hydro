@@ -1088,7 +1088,9 @@
 <a href="#1087" id="1087">1087</a>
 <a href="#1088" id="1088">1088</a>
 <a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
+<a href="#1092" id="1092">1092</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
 
 </span><span class="kw">use </span>std::any::Any;
 <span class="kw">use </span>std::borrow::Cow;
@@ -1108,14 +1110,14 @@
 <span class="kw">use </span><span class="kw">super</span>::context::Context;
 <span class="kw">use </span><span class="kw">super</span>::handoff::handoff_list::PortList;
 <span class="kw">use </span><span class="kw">super</span>::handoff::{Handoff, HandoffMeta, TeeingHandoff};
-<span class="kw">use </span><span class="kw">super</span>::port::{RecvCtx, RecvPort, SendCtx, SendPort, RECV, SEND};
+<span class="kw">use </span><span class="kw">super</span>::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 <span class="kw">use </span><span class="kw">super</span>::reactor::Reactor;
 <span class="kw">use </span><span class="kw">super</span>::state::StateHandle;
 <span class="kw">use </span><span class="kw">super</span>::subgraph::Subgraph;
 <span class="kw">use super</span>::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
+<span class="kw">use </span><span class="kw">crate</span>::Never;
 <span class="kw">use </span><span class="kw">crate</span>::scheduled::ticks::{TickDuration, TickInstant};
 <span class="kw">use </span><span class="kw">crate</span>::util::slot_vec::{SecondarySlotVec, SlotVec};
-<span class="kw">use </span><span class="kw">crate</span>::Never;
 
 <span class="doccomment">/// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
 </span><span class="attr">#[derive(Default)]
@@ -1606,7 +1608,9 @@
 
             <span class="comment">// After incrementing, exit if we made a full loop around the strata.
             </span><span class="kw">if </span>new_tick_started &amp;&amp; end_stratum == <span class="self">self</span>.context.current_stratum {
-                <span class="macro">tracing::trace!</span>(<span class="string">"Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`."</span>);
+                <span class="macro">tracing::trace!</span>(
+                    <span class="string">"Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`."
+                </span>);
                 <span class="comment">// Note: if current stratum had work, the very first loop iteration would've
                 // returned true. Therefore we can return false without checking.
                 // Also means nothing was done so we can reset the stratum to zero and wait for

@@ -775,9 +775,9 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::NaiveLatticeOrd;
     <span class="kw">use </span><span class="kw">crate</span>::set_union::{SetUnion, SetUnionHashSet, SetUnionSingletonSet};
     <span class="kw">use </span><span class="kw">crate</span>::test::check_all;
-    <span class="kw">use </span><span class="kw">crate</span>::NaiveLatticeOrd;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_map_union() {

@@ -647,14 +647,14 @@
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::rc::Rc;
 
-<span class="kw">use </span>stageleft::{q, IntoQuotedMut, QuotedWithContext};
+<span class="kw">use </span>stageleft::{IntoQuotedMut, QuotedWithContext, q};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use </span><span class="kw">crate</span>::builder::FLOW_USED_MESSAGE;
 <span class="kw">use </span><span class="kw">crate</span>::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 <span class="kw">use </span><span class="kw">crate</span>::ir::{HydroLeaf, HydroNode, HydroSource, TeeNode};
 <span class="kw">use </span><span class="kw">crate</span>::location::tick::{Atomic, NoAtomic};
-<span class="kw">use </span><span class="kw">crate</span>::location::{check_matching_location, LocationId, NoTick};
+<span class="kw">use </span><span class="kw">crate</span>::location::{LocationId, NoTick, check_matching_location};
 <span class="kw">use </span><span class="kw">crate</span>::singleton::ZipResult;
 <span class="kw">use </span><span class="kw">crate</span>::stream::NoOrder;
 <span class="kw">use crate</span>::{Bounded, Location, Singleton, Stream, Tick, Unbounded};
@@ -1105,11 +1105,11 @@
     <span class="kw">pub fn </span>then&lt;U&gt;(<span class="self">self</span>, value: Singleton&lt;U, L, Bounded&gt;) -&gt; Optional&lt;U, L, Bounded&gt;
     <span class="kw">where
         </span>Singleton&lt;U, L, Bounded&gt;: ZipResult&lt;
-            <span class="lifetime">'a</span>,
-            Optional&lt;(), L, Bounded&gt;,
-            Location = L,
-            Out = Optional&lt;(U, ()), L, Bounded&gt;,
-        &gt;,
+                <span class="lifetime">'a</span>,
+                Optional&lt;(), L, Bounded&gt;,
+                Location = L,
+                Out = Optional&lt;(U, ()), L, Bounded&gt;,
+            &gt;,
     {
         value.continue_if(<span class="self">self</span>)
     }

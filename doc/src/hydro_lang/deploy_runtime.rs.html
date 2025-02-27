@@ -165,7 +165,7 @@
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
 };
 <span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>stageleft::{q, QuotedWithContext, RuntimeData};
+<span class="kw">use </span>stageleft::{QuotedWithContext, RuntimeData, q};
 
 <span class="attr">#[derive(Default, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>HydroMeta {

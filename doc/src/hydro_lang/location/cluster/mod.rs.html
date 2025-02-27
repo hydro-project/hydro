@@ -167,11 +167,11 @@
 <span class="kw">use </span>proc_macro2::{Span, TokenStream};
 <span class="kw">use </span>quote::quote;
 <span class="kw">use </span>stageleft::runtime_support::FreeVariableWithContext;
-<span class="kw">use </span>stageleft::{quote_type, QuotedWithContext};
+<span class="kw">use </span>stageleft::{QuotedWithContext, quote_type};
 
 <span class="kw">use super</span>::{Location, LocationId};
 <span class="kw">use </span><span class="kw">crate</span>::builder::FlowState;
-<span class="kw">use </span><span class="kw">crate</span>::staging_util::{get_this_crate, Invariant};
+<span class="kw">use </span><span class="kw">crate</span>::staging_util::{Invariant, get_this_crate};
 
 <span class="kw">pub mod </span>cluster_id;
 <span class="kw">pub use </span>cluster_id::ClusterId;

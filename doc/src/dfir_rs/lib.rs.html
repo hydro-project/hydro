@@ -88,8 +88,8 @@
 </span><span class="kw">pub use </span>dfir_datalog::<span class="kw-2">*</span>;
 <span class="attr">#[cfg(feature = <span class="string">"dfir_macro"</span>)]
 </span><span class="kw">pub use </span>dfir_macro::{
-    dfir_main <span class="kw">as </span>main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test <span class="kw">as </span>test,
-    monotonic_fn, morphism, DemuxEnum,
+    DemuxEnum, dfir_main <span class="kw">as </span>main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test <span class="kw">as </span>test,
+    monotonic_fn, morphism,
 };
 
 <span class="comment">// TODO(mingwei): Use the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)

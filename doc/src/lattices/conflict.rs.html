@@ -261,11 +261,11 @@
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use </span><span class="kw">crate</span>::WithBot;
     <span class="kw">use </span><span class="kw">crate</span>::test::{
         check_all, check_lattice_is_bot, check_lattice_is_top, check_lattice_ord,
         check_lattice_properties, check_partial_ord_properties,
     };
-    <span class="kw">use </span><span class="kw">crate</span>::WithBot;
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>consistency() {

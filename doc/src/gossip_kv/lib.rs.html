@@ -286,8 +286,8 @@
 
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 
-<span class="kw">use </span><span class="kw">crate</span>::model::{Clock, Namespaces};
 <span class="kw">use </span><span class="kw">crate</span>::KeyParseError::InvalidNamespace;
+<span class="kw">use </span><span class="kw">crate</span>::model::{Clock, Namespaces};
 
 <span class="doccomment">/// The namespace of the key of an entry in the key-value store.
 </span><span class="attr">#[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize, Hash)]
