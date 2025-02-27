@@ -66,7 +66,6 @@ opt-level = "s"
 impl_trait_overcaptures = "warn"
 missing_unsafe_on_extern = "deny"
 unsafe_attr_outside_unsafe = "deny"
-unsafe_op_in_unsafe_fn = "warn"
 unused_qualifications = "warn"
 
 [workspace.lints.clippy]
