@@ -32,11 +32,13 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
             let paxos = create_paxos(replica_checkpoint);
 
             let sequenced_payloads = unsafe {
-                // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
-                // the order of writes to the same key
-
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                paxos.with_client(&clients, payloads)
+                paxos.with_client(&clients, {
+                    // SAFETY: We don't send a new write for the same key until the previous one is committed,
+                    // and clients "own" specific keys, so this contains only a single write per key across clients.
+                    // Therefore, we don't care about order across keys
+                    payloads.assume_ordering::<TotalOrder>()
+                })
             };
 
             let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);

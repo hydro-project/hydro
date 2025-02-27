@@ -32,7 +32,9 @@ pub trait PaxosLike<'a>: Sized {
 
     /// # Safety
     /// During leader-reelection, the latest known leader may be stale, which may
-    /// result in non-deterministic dropping of payloads.
+    /// result in non-deterministic dropping of payloads. Payload order from *each*
+    /// client will be preserved, but payloads across clients will be non-deterministically
+    /// interleaved.
     #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
     unsafe fn with_client<C: 'a, P: PaxosPayload>(
         self,
