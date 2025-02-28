@@ -971,16 +971,18 @@ mod test {
             .is_ok()
         );
 
-        assert!(field(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_mul,
-            0,
-            1,
-            &|x| 0u32.wrapping_sub(x),
-            &|x| 0u32.wrapping_sub(x) //Note there is no valid inverse function for multiplication over the integers so we just pick some function
-        )
-        .is_err());
+        assert!(
+            field(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_mul,
+                0,
+                1,
+                &|x| 0u32.wrapping_sub(x),
+                &|x| 0u32.wrapping_sub(x) //Note there is no valid inverse function for multiplication over the integers so we just pick some function
+            )
+            .is_err()
+        );
     }
 
     #[test]

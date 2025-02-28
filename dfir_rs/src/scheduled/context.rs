@@ -56,6 +56,7 @@ pub struct Context {
 
     /// If the current subgraph wants to reschedule the current loop block (in the current tick).
     pub(super) reschedule_loop_block: Cell<bool>,
+    pub(super) allow_another_iteration: Cell<bool>,
 
     pub(super) current_tick: TickInstant,
     pub(super) current_stratum: usize,
@@ -121,6 +122,11 @@ impl Context {
     /// Schedules the current loop block to be run again (_in this tick_).
     pub fn reschedule_loop_block(&self) {
         self.reschedule_loop_block.set(true);
+    }
+
+    /// Allow another iteration of the loop, if more data comes.
+    pub fn allow_another_iteration(&self) {
+        self.allow_another_iteration.set(true);
     }
 
     /// Returns a `Waker` for interacting with async Rust.
@@ -272,6 +278,7 @@ impl Default for Context {
 
             event_queue_send,
             reschedule_loop_block: Cell::new(false),
+            allow_another_iteration: Cell::new(false),
 
             current_stratum: 0,
             current_tick: TickInstant::default(),

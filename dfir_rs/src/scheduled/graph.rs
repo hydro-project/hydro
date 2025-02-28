@@ -31,8 +31,8 @@ use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 #[derive(Default)]
 pub struct Dfir<'a> {
     pub(super) subgraphs: SlotVec<SubgraphTag, SubgraphData<'a>>,
-    /// `(nonce, iteration count)` pair.
-    pub(super) loop_iter_counters: SecondarySlotVec<LoopTag, (usize, usize)>,
+
+    pub(super) loop_data: SecondarySlotVec<LoopTag, LoopData>,
 
     pub(super) context: Context,
 
@@ -268,11 +268,9 @@ impl<'a> Dfir<'a> {
 
         let mut work_done = false;
 
-        while let Some(sg_id) =
+        'pop: while let Some(sg_id) =
             self.context.stratum_queues[self.context.current_stratum].pop_front()
         {
-            work_done = true;
-
             {
                 let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
@@ -308,40 +306,42 @@ impl<'a> Dfir<'a> {
                     // iteration count, then we need to increment the iteration count.
                     let curr_loop_nonce = self.context.loop_nonce_stack.last().copied();
 
-                    let curr_iter_count = if let Some(&(_loop_loop_nonce, loop_iter_count)) =
-                        self.loop_iter_counters.get(loop_id)
-                    {
-                        let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+                    let LoopData {
+                        iter_count: loop_iter_count,
+                        allow_another_iteration,
+                    } = &mut self.loop_data[loop_id];
 
-                        // If the loop nonce is the same as the previous execution, then we are in
-                        // the same loop execution.
-                        // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
-                        // always in the same (singular) loop execution.
+                    let (prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+
+                    // If the loop nonce is the same as the previous execution, then we are in
+                    // the same loop execution.
+                    // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
+                    // always in the same (singular) loop execution.
+                    let curr_iter_count =
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
-                            // If the iteration count is the same as the previous execution, we
-                            // need to increment it.
-                            if loop_iter_count == prev_iter_count {
-                                loop_iter_count + 1
+                            // If the iteration count is the same as the previous execution, then
+                            // we are on the next iteration.
+                            if loop_iter_count.is_none_or(|n| n == prev_iter_count) {
+                                // If not true, then we shall not run the next iteration.
+                                if !std::mem::take(allow_another_iteration) {
+                                    tracing::trace!(
+                                        "Loop will not continue to next iteration, skipping."
+                                    );
+                                    continue 'pop;
+                                }
+                                // Increment `loop_iter_count` or set it to 0.
+                                loop_iter_count.map_or(0, |n| n + 1)
                             } else {
-                                // Otherwise update the iteration count to match the loop.
-                                debug_assert!(prev_iter_count < loop_iter_count);
-                                loop_iter_count
+                                // Otherwise update the local iteration count to match the loop.
+                                debug_assert!(loop_iter_count.is_some_and(|n| prev_iter_count < n));
+                                loop_iter_count.unwrap()
                             }
                         } else {
                             // We are in a new loop execution.
                             0
-                        }
-                    } else {
-                        // We are in a new loop execution.
-                        0
-                    };
-
+                        };
+                    *loop_iter_count = Some(curr_iter_count);
                     self.context.loop_iter_count = curr_iter_count;
-                    // Update the loop data.
-                    self.loop_iter_counters.insert(
-                        loop_id,
-                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count),
-                    );
                     sg_data.last_loop_nonce =
                         (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
                 }
@@ -384,13 +384,26 @@ impl<'a> Dfir<'a> {
                 }
             }
 
-            if self.context.reschedule_loop_block.take() {
+            let reschedule = self.context.reschedule_loop_block.take();
+            let allow_another = self.context.allow_another_iteration.take();
+
+            if reschedule {
                 // Re-enqueue the subgraph.
                 self.context.schedule_deferred.push(sg_id);
                 self.context
                     .stratum_stack
                     .push(sg_data.loop_depth, sg_data.stratum);
             }
+            if reschedule || allow_another {
+                if let Some(loop_id) = sg_data.loop_id {
+                    self.loop_data
+                        .get_mut(loop_id)
+                        .unwrap()
+                        .allow_another_iteration = true;
+                }
+            }
+
+            work_done = true;
         }
         work_done
     }
@@ -938,6 +951,13 @@ impl<'a> Dfir<'a> {
     pub fn add_loop(&mut self, parent: Option<LoopId>) -> LoopId {
         let depth = parent.map_or(0, |p| self.context.loop_depth[p] + 1);
         let loop_id = self.context.loop_depth.insert(depth);
+        self.loop_data.insert(
+            loop_id,
+            LoopData {
+                iter_count: None,
+                allow_another_iteration: true,
+            },
+        );
         loop_id
     }
 }
@@ -1089,4 +1109,11 @@ impl<'a> SubgraphData<'a> {
             loop_depth,
         }
     }
+}
+
+pub(crate) struct LoopData {
+    /// Count of iterations of this loop.
+    iter_count: Option<usize>,
+    /// If the loop has reason to do another iteration.
+    allow_another_iteration: bool,
 }
