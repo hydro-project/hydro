@@ -1115,7 +1115,9 @@
 <a href="#1114" id="1114">1114</a>
 <a href="#1115" id="1115">1115</a>
 <a href="#1116" id="1116">1116</a>
-<a href="#1117" id="1117">1117</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span><span class="kw">crate</span>::test::cartesian_power;
 
@@ -2088,16 +2090,18 @@
             .is_ok()
         );
 
-        <span class="macro">assert!</span>(field(
-            TEST_ITEMS,
-            <span class="kw-2">&amp;</span>u32::wrapping_add,
-            <span class="kw-2">&amp;</span>u32::wrapping_mul,
-            <span class="number">0</span>,
-            <span class="number">1</span>,
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
-            <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x) <span class="comment">//Note there is no valid inverse function for multiplication over the integers so we just pick some function
-        </span>)
-        .is_err());
+        <span class="macro">assert!</span>(
+            field(
+                TEST_ITEMS,
+                <span class="kw-2">&amp;</span>u32::wrapping_add,
+                <span class="kw-2">&amp;</span>u32::wrapping_mul,
+                <span class="number">0</span>,
+                <span class="number">1</span>,
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x),
+                <span class="kw-2">&amp;</span>|x| <span class="number">0u32</span>.wrapping_sub(x) <span class="comment">//Note there is no valid inverse function for multiplication over the integers so we just pick some function
+            </span>)
+            .is_err()
+        );
     }
 
     <span class="attr">#[test]
