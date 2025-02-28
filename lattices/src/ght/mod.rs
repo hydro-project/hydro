@@ -6,7 +6,7 @@ use std::marker::PhantomData;
 
 use variadics::variadic_collections::VariadicCollection;
 use variadics::{
-    var_args, var_type, PartialEqVariadic, RefVariadic, Split, SplitBySuffix, VariadicExt,
+    PartialEqVariadic, RefVariadic, Split, SplitBySuffix, VariadicExt, var_args, var_type,
 };
 
 pub mod colt;

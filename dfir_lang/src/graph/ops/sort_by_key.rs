@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Like sort, takes a stream as input and produces a version of the stream as output.
@@ -38,15 +38,18 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
                    inputs,
                    is_pull,
                    arguments,
+                   work_fn,
                    ..
                },
                _| {
         assert!(is_pull);
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
-            let mut tmp = #input.collect::<Vec<_>>();
-            #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
-            let #ident = tmp.into_iter();
+            let #ident = #work_fn(|| {
+                let mut tmp = #input.collect::<Vec<_>>();
+                #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
+                tmp
+            }).into_iter();
         };
         Ok(OperatorWriteOutput {
             write_iterator,

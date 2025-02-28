@@ -2,7 +2,7 @@ use dfir_rs::util::{collect_ready, iter_batches_stream};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
-#[multiplatform_test]
+#[multiplatform_test(test, env_tracing, wasm)]
 pub fn test_flo_syntax() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
 
@@ -242,4 +242,100 @@ pub fn test_flo_repeat_n_multiple_nested() {
         ],
         &*collect_ready::<Vec<_>, _>(&mut result2_recv)
     );
+}
+
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_flo_repeat_kmeans() {
+    const POINTS: &[[i32; 2]] = &[
+        [-210, -104],
+        [-226, -143],
+        [-258, -119],
+        [-331, -129],
+        [-250, -69],
+        [-202, -113],
+        [-222, -133],
+        [-232, -155],
+        [-220, -107],
+        [-159, -109],
+        [-49, 57],
+        [-156, 52],
+        [-22, 125],
+        [-140, 168],
+        [-118, 89],
+        [-93, 133],
+        [-101, 80],
+        [-145, 79],
+        [187, 36],
+        [208, -66],
+        [142, 5],
+        [232, 41],
+        [91, -37],
+        [132, 16],
+        [248, -39],
+        [158, 65],
+        [108, -41],
+        [171, -121],
+        [147, 5],
+        [192, 58],
+    ];
+    const CENTROIDS: &[[i32; 2]] = &[[-50, 0], [0, 0], [50, 0]];
+
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        init_points = source_iter(POINTS) -> map(std::clone::Clone::clone);
+        init_centroids = source_iter(CENTROIDS) -> map(std::clone::Clone::clone);
+        loop {
+            batch_points = init_points -> batch();
+            batch_centroids = init_centroids -> batch();
+
+            loop {
+                points = batch_points
+                    -> repeat_n(10)
+                    -> [0]cj;
+                batch_centroids -> all_once() -> centroids;
+
+                centroids = union() -> tee();
+                centroids -> [1]cj;
+
+                cj = cross_join_multiset()
+                    -> map(|(point, centroid): ([i32; 2], [i32; 2])| {
+                        let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);
+                        (point, (dist2, centroid))
+                    })
+                    -> reduce_keyed(|(a_dist2, a_centroid), (b_dist2, b_centroid)| {
+                        if b_dist2 < *a_dist2 {
+                            *a_dist2 = b_dist2;
+                            *a_centroid = b_centroid;
+                        }
+                    })
+                    -> map(|(point, (_dist2, centroid))| {
+                        (centroid, (point, 1))
+                    })
+                    -> reduce_keyed(|(p1, n1), (p2, n2): ([i32; 2], i32)| {
+                        p1[0] += p2[0];
+                        p1[1] += p2[1];
+                        *n1 += n2;
+                    })
+                    -> map(|(_centroid, (p, n)): (_, ([i32; 2], i32))| {
+                         [p[0] / n, p[1] / n]
+                    })
+                    -> next_iteration()
+                    -> inspect(|x| println!("centroid: {:?}", x))
+                    -> centroids;
+            };
+
+            centroids
+                -> all_iterations()
+                -> for_each(|x| result_send.send(x).unwrap());
+        };
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+
+    let mut result = collect_ready::<Vec<_>, _>(&mut result_recv);
+    let n = result.len();
+    let last = &mut result[n - 3..];
+    last.sort_unstable();
+    assert_eq!(&[[-231, -118], [-103, 97], [168, -6]], last);
 }

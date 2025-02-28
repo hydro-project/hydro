@@ -6,8 +6,8 @@ use dfir_rs::lattices::{Max, Merge};
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{UdpSink, UdpStream};
 
-use crate::protocol::EchoMsg;
 use crate::Opts;
+use crate::protocol::EchoMsg;
 
 pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
     let bot: Max<usize> = Max::new(0);

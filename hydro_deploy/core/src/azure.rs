@@ -6,13 +6,13 @@ use async_trait::async_trait;
 use nanoid::nanoid;
 use serde_json::json;
 
-use super::terraform::{TerraformOutput, TerraformProvider, TERRAFORM_ALPHABET};
+use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 use super::{
     ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult,
     ServerStrategy,
 };
-use crate::ssh::LaunchedSshHost;
 use crate::HostStrategyGetter;
+use crate::ssh::LaunchedSshHost;
 
 pub struct LaunchedVirtualMachine {
     resource_result: Arc<ResourceResult>,

@@ -2,7 +2,7 @@ use std::any::Any;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock, Weak};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use async_trait::async_trait;
 use hydroflow_deploy_integration::{ConnectedDirect, ServerPort};
 use tokio::sync::RwLock;

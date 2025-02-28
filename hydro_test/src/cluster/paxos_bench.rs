@@ -1,8 +1,8 @@
 use hydro_lang::*;
 use hydro_std::quorum::collect_quorum;
 
-use super::bench_client::{bench_client, Client};
-use super::kv_replica::{kv_replica, KvPayload, Replica};
+use super::bench_client::{Client, bench_client};
+use super::kv_replica::{KvPayload, Replica, kv_replica};
 use super::paxos_with_client::PaxosLike;
 
 pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(

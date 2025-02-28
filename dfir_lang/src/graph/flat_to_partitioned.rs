@@ -7,8 +7,8 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
-use super::ops::{find_node_op_constraints, DelayType};
-use super::{graph_algorithms, Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId};
+use super::ops::{DelayType, FloType, find_node_op_constraints};
+use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
 
@@ -20,7 +20,7 @@ struct BarrierCrossers {
     pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
 }
 impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier.
+    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
     fn iter_node_pairs<'a>(
         &'a self,
         partitioned_graph: &'a DfirGraph,
@@ -135,6 +135,12 @@ fn find_subgraph_unionfind(
 
             // Do not connect across loop contexts.
             if partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
+                continue;
+            }
+            // Do not connect `next_iteration()`.
+            if partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
+                Some(FloType::NextIteration) == op_inst.op_constraints.flo_type
+            }) {
                 continue;
             }
 
@@ -475,7 +481,11 @@ fn find_subgraph_strata(
                 // Indicates an unbroken negative cycle.
                 // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydro/issues/1115#issuecomment-2018385033
                 if dst_stratum <= src_stratum {
-                    return Err(Diagnostic::spanned(dst_port.span(), Level::Error, "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."));
+                    return Err(Diagnostic::spanned(
+                        dst_port.span(),
+                        Level::Error,
+                        "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator.",
+                    ));
                 }
             }
             DelayType::MonotoneAccum => {

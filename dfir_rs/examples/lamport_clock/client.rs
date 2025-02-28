@@ -5,8 +5,8 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::lattices::{Max, Merge};
 use dfir_rs::util::{UdpSink, UdpStream};
 
-use crate::protocol::EchoMsg;
 use crate::Opts;
+use crate::protocol::EchoMsg;
 
 pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
     // server_addr is required for client

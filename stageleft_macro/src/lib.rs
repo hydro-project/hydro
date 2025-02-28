@@ -1,5 +1,5 @@
 use proc_macro2::{Punct, Spacing, Span, TokenStream};
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use sha2::{Digest, Sha256};
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;

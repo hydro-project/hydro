@@ -1,6 +1,6 @@
 use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use bincode::options;
@@ -14,16 +14,16 @@ use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::SetUnionSingletonSet;
 use lattices::{Max, Point, WithBot};
 use rand::{Rng, SeedableRng};
-use serde::de::DeserializeSeed;
 use serde::Serialize;
+use serde::de::DeserializeSeed;
 use tokio::task;
 use tokio_stream::StreamExt;
 
+use crate::Topology;
 use crate::buffer_pool::BufferPool;
 use crate::protocol::{
     KvsRequest, KvsRequestDeserializer, KvsResponse, MyLastWriteWins, MySetUnion, NodeId,
 };
-use crate::Topology;
 
 pub fn run_server<RX>(
     server_id: usize,

@@ -6,7 +6,7 @@ use std::thread_local;
 
 use dfir_datalog_core::gen_dfir_graph;
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{build_hfcode, partition_graph, WriteConfig};
+use dfir_lang::graph::{WriteConfig, build_hfcode, partition_graph};
 use dfir_rs::datalog;
 use dfir_rs::scheduled::graph::Dfir;
 use proc_macro2::{LineColumn, Span};
@@ -209,12 +209,14 @@ pub fn compile_datalog(
         },
         Err(err) => DfirResult {
             output: None,
-            diagnostics: vec![Diagnostic {
-                span: Span::call_site(),
-                level: Level::Error,
-                message: format!("Error: Could not parse input: {}", err),
-            }
-            .into()],
+            diagnostics: vec![
+                Diagnostic {
+                    span: Span::call_site(),
+                    level: Level::Error,
+                    message: format!("Error: Could not parse input: {}", err),
+                }
+                .into(),
+            ],
         },
     };
 

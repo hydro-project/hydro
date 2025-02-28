@@ -7,13 +7,13 @@ use nanoid::nanoid;
 use serde_json::json;
 use tokio::sync::RwLock;
 
-use super::terraform::{TerraformOutput, TerraformProvider, TERRAFORM_ALPHABET};
+use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
 use super::{
     ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult,
     ServerStrategy,
 };
-use crate::ssh::LaunchedSshHost;
 use crate::HostStrategyGetter;
+use crate::ssh::LaunchedSshHost;
 
 pub struct LaunchedComputeEngine {
     resource_result: Arc<ResourceResult>,

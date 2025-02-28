@@ -2,10 +2,10 @@ use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
+use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::rewrites::decoupler::Decoupler;
 use hydro_lang::rewrites::{decoupler, persist_pullup, print_id};
-use hydro_lang::Location;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;

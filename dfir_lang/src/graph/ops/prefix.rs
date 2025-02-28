@@ -52,11 +52,14 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
             ::std::iter::Extend::extend(&mut *#vec_ident, #input);
             let #ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
         };
+        let write_iterator_after = quote_spanned! {op_span=>
+            #context.allow_another_iteration();
+        };
 
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            ..Default::default()
+            write_iterator_after,
         })
     },
 };

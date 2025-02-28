@@ -1,5 +1,5 @@
-use lattices::map_union::MapUnionHashMap;
 use lattices::Max;
+use lattices::map_union::MapUnionHashMap;
 use serde::{Deserialize, Serialize};
 
 pub type VecClock = MapUnionHashMap<String, Max<usize>>;
