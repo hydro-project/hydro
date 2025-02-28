@@ -53,6 +53,13 @@ fn main() {
                 false,
                 None,
                 move |context, var_args!(), var_args!()| {
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_7v1__source_stream__loc_nopath_2_26_2_46<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_7v1 = std::iter::from_fn(|| {
                         match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_1v1_node_7v1_stream),
@@ -94,6 +101,13 @@ fn main() {
                         }
                         op_7v1__source_stream__loc_nopath_2_26_2_46(op_7v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_2v1__unique__loc_nopath_2_19_2_24<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_2v1 = op_7v1
                         .filter(|item| {
                             let mut borrow = context
@@ -143,6 +157,13 @@ fn main() {
                         }
                         op_2v1__unique__loc_nopath_2_19_2_24(op_2v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_9v1__filter__loc_nopath_5_12_5_37<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_9v1 = op_2v1.filter(|row: &(_, _)| row.0 == row.1);
                     let op_9v1 = {
                         #[allow(non_snake_case)]
@@ -176,6 +197,13 @@ fn main() {
                         }
                         op_9v1__filter__loc_nopath_5_12_5_37(op_9v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_10v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -213,6 +241,13 @@ fn main() {
                         }
                         op_10v1__map__loc_nopath_1_0_1_0(op_10v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_11v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -250,6 +285,13 @@ fn main() {
                         }
                         op_11v1__map__loc_nopath_1_0_1_0(op_11v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_5v1__unique__loc_nopath_3_20_3_23<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_5v1 = op_11v1
                         .filter(|item| {
                             let mut borrow = context
@@ -299,6 +341,13 @@ fn main() {
                         }
                         op_5v1__unique__loc_nopath_3_20_3_23(op_5v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_8v1__for_each__loc_nopath_3_25_3_59<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_8v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         out.send(v).unwrap()
                     });
