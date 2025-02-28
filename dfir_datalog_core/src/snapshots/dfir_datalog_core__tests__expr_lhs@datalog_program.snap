@@ -111,6 +111,13 @@ fn main() {
                     let hoff_24v1_send = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         hoff_24v1_send.give(Some(v));
                     });
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_7v1__source_stream__loc_nopath_2_25_2_44<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_7v1 = std::iter::from_fn(|| {
                         match dfir_rs::futures::stream::Stream::poll_next(
                             ::std::pin::Pin::new(&mut sg_1v1_node_7v1_stream),
@@ -152,6 +159,13 @@ fn main() {
                         }
                         op_7v1__source_stream__loc_nopath_2_25_2_44(op_7v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_2v1__unique__loc_nopath_2_19_2_23<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_2v1 = op_7v1
                         .filter(|item| {
                             let mut borrow = context
@@ -201,6 +215,13 @@ fn main() {
                         }
                         op_2v1__unique__loc_nopath_2_19_2_23(op_2v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_3v1__tee__loc_nopath_2_19_2_23<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_3v1 = dfir_rs::pusherator::tee::Tee::new(
                         hoff_6v3_send,
                         dfir_rs::pusherator::tee::Tee::new(
@@ -288,6 +309,13 @@ fn main() {
                     let hoff_23v1_recv = hoff_23v1_recv.drain(..);
                     let mut hoff_24v1_recv = hoff_24v1_recv.borrow_mut_swap();
                     let hoff_24v1_recv = hoff_24v1_recv.drain(..);
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_9v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -325,6 +353,13 @@ fn main() {
                         }
                         op_9v1__map__loc_nopath_1_0_1_0(op_9v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_10v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -362,6 +397,13 @@ fn main() {
                         }
                         op_10v1__map__loc_nopath_1_0_1_0(op_10v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_11v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -399,6 +441,13 @@ fn main() {
                         }
                         op_11v1__map__loc_nopath_1_0_1_0(op_11v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_12v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -436,6 +485,13 @@ fn main() {
                         }
                         op_12v1__map__loc_nopath_1_0_1_0(op_12v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_13v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -474,6 +530,13 @@ fn main() {
                         }
                         op_13v1__map__loc_nopath_1_0_1_0(op_13v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_14v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -511,6 +574,13 @@ fn main() {
                         }
                         op_14v1__map__loc_nopath_1_0_1_0(op_14v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_15v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -548,6 +618,13 @@ fn main() {
                         }
                         op_15v1__map__loc_nopath_1_0_1_0(op_15v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_16v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -585,6 +662,13 @@ fn main() {
                         }
                         op_16v1__map__loc_nopath_1_0_1_0(op_16v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_17v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -623,6 +707,13 @@ fn main() {
                         }
                         op_17v1__map__loc_nopath_1_0_1_0(op_17v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_18v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -660,6 +751,13 @@ fn main() {
                         }
                         op_18v1__map__loc_nopath_1_0_1_0(op_18v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_19v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -697,6 +795,13 @@ fn main() {
                         }
                         op_19v1__map__loc_nopath_1_0_1_0(op_19v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_20v1__map__loc_nopath_1_0_1_0<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     #[allow(
                         clippy::map_clone,
                         reason = "dfir has no explicit `cloned`/`copied` operator"
@@ -734,6 +839,13 @@ fn main() {
                         }
                         op_20v1__map__loc_nopath_1_0_1_0(op_20v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_4v1__union__loc_nopath_3_20_3_26<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_4v1 = {
                         #[allow(unused)]
                         #[inline(always)]
@@ -787,6 +899,13 @@ fn main() {
                         }
                         op_4v1__union__loc_nopath_3_20_3_26(op_4v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_5v1__unique__loc_nopath_3_20_3_26<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_5v1 = op_4v1
                         .filter(|item| {
                             let mut borrow = context
@@ -836,6 +955,13 @@ fn main() {
                         }
                         op_5v1__unique__loc_nopath_3_20_3_26(op_5v1)
                     };
+                    #[allow(non_snake_case)]
+                    #[inline(always)]
+                    fn op_8v1__for_each__loc_nopath_3_28_3_65<T>(
+                        thunk: impl FnOnce() -> T,
+                    ) -> T {
+                        thunk()
+                    }
                     let op_8v1 = dfir_rs::pusherator::for_each::ForEach::new(|v| {
                         result.send(v).unwrap()
                     });

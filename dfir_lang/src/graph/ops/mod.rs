@@ -363,6 +363,8 @@ pub struct WriteContextArgs<'a> {
     pub op_span: Span,
     /// Tag for this operator appended to the generated identifier.
     pub op_tag: Option<String>,
+    /// Identifier for a function to call when doing work outside the iterator.
+    pub work_fn: &'a Ident,
 
     /// Ident the iterator or pullerator should be assigned to.
     pub ident: &'a Ident,

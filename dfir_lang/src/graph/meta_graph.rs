@@ -1013,6 +1013,46 @@ impl DfirGraph {
                                     singletons_resolved.clone(),
                                 );
 
+                            let source_tag = 'a: {
+                                if let Some(tag) = self.operator_tag.get(node_id).cloned() {
+                                    break 'a tag;
+                                }
+
+                                #[cfg(nightly)]
+                                if proc_macro::is_available() {
+                                    let op_span = op_span.unwrap();
+                                    break 'a format!(
+                                        "loc_{}_{}_{}_{}_{}",
+                                        op_span
+                                            .source_file()
+                                            .path()
+                                            .display()
+                                            .to_string()
+                                            .replace(|x: char| !x.is_alphanumeric(), "_"),
+                                        op_span.start().line(),
+                                        op_span.start().column(),
+                                        op_span.end().line(),
+                                        op_span.end().column(),
+                                    );
+                                }
+
+                                format!(
+                                    "loc_nopath_{}_{}_{}_{}",
+                                    op_span.start().line,
+                                    op_span.start().column,
+                                    op_span.end().line,
+                                    op_span.end().column
+                                )
+                            };
+
+                            let fn_ident = format_ident!(
+                                "{}__{}__{}",
+                                ident,
+                                op_name,
+                                source_tag,
+                                span = op_span
+                            );
+
                             let context_args = WriteContextArgs {
                                 root: &root,
                                 df_ident: df_local,
@@ -1022,6 +1062,7 @@ impl DfirGraph {
                                 loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
+                                work_fn: &fn_ident,
                                 ident: &ident,
                                 is_pull,
                                 inputs: &inputs,
@@ -1049,48 +1090,16 @@ impl DfirGraph {
                             });
 
                             op_prologue_code.push(write_prologue);
+                            subgraph_op_iter_code.push(syn::parse_quote! {
+                                #[allow(non_snake_case)]
+                                #[inline(always)]
+                                fn #fn_ident<T>(thunk: impl FnOnce() -> T) -> T {
+                                    thunk()
+                                }
+                            });
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
-                                let source_tag = 'a: {
-                                    if let Some(tag) = self.operator_tag.get(node_id).cloned() {
-                                        break 'a tag;
-                                    }
-
-                                    #[cfg(nightly)]
-                                    if proc_macro::is_available() {
-                                        let op_span = op_span.unwrap();
-                                        break 'a format!(
-                                            "loc_{}_{}_{}_{}_{}",
-                                            op_span
-                                                .source_file()
-                                                .path()
-                                                .display()
-                                                .to_string()
-                                                .replace(|x: char| !x.is_alphanumeric(), "_"),
-                                            op_span.start().line(),
-                                            op_span.start().column(),
-                                            op_span.end().line(),
-                                            op_span.end().column(),
-                                        );
-                                    }
-
-                                    format!(
-                                        "loc_nopath_{}_{}_{}_{}",
-                                        op_span.start().line,
-                                        op_span.start().column,
-                                        op_span.end().line,
-                                        op_span.end().column
-                                    )
-                                };
-
-                                let fn_ident = format_ident!(
-                                    "{}__{}__{}",
-                                    ident,
-                                    op_name,
-                                    source_tag,
-                                    span = op_span
-                                );
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
