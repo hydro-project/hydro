@@ -1,9 +1,18 @@
 use crate::ir::*;
 use crate::location::LocationId;
 
-fn calculate_overhead(metadata: &HydroIrMetadata) -> Option<f64> {
+fn calculate_send_overhead(metadata: &HydroIrMetadata) -> Option<f64> {
     if let Some(cardinality) = metadata.cardinality {
         if let Some(cpu_usage) = metadata.cpu_usage {
+            return Some(cpu_usage / cardinality as f64);
+        }
+    }
+    None
+}
+
+fn calculate_recv_overhead(metadata: &HydroIrMetadata) -> Option<f64> {
+    if let Some(cardinality) = metadata.cardinality {
+        if let Some(cpu_usage) = metadata.network_recv_cpu_usage {
             return Some(cpu_usage / cardinality as f64);
         }
     }
@@ -18,21 +27,23 @@ fn analyze_overheads_node(
     location: &LocationId,
 ) {
     if let HydroNode::Network {
+            input,
             metadata,
             to_location,
             ..
         } = node {
-        if metadata.location_kind.root() == location {
-            // Sending from this location to somewhere else
-            if let Some(overhead) = calculate_overhead(metadata) {
+        if input.metadata().location_kind.root() == location {
+            // Sending from this location
+            if let Some(overhead) = calculate_send_overhead(metadata) {
                 println!("New send overhead: {}", overhead);
                 if overhead > *max_send_overhead {
                     *max_send_overhead = overhead;
                 }
             }
-        } else if to_location.root() == location {
-            // Receiving from somewhere else to this location
-            if let Some(overhead) = calculate_overhead(metadata) {
+        }
+        if to_location.root() == location {
+            // Receiving at this location
+            if let Some(overhead) = calculate_recv_overhead(metadata) {
                 println!("New receive overhead: {}", overhead);
                 if overhead > *max_recv_overhead {
                     *max_recv_overhead = overhead;

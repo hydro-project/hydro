@@ -132,6 +132,8 @@ pub async fn analyze_cluster_results(
     cardinality_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
 ) {
     for (id, name, cluster) in nodes.get_all_clusters() {
+        println!("Analyzing cluster {:?}: {}", id, name);
+        
         // Iterate through nodes' usages and keep the max usage one
         let mut max_usage = None;
         for (idx, _) in cluster.members().iter().enumerate() {

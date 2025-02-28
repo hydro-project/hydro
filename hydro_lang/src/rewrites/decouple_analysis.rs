@@ -14,17 +14,17 @@ struct ModelMetadata {
     // Model variables to construct final cost function
     model: Model,
     stmt_id_to_var: HashMap<usize, Var>,
-    stmt_id_to_metadata: HashMap<usize, HydroIrMetadata>,
+    stmt_id_to_cpu_usage: HashMap<usize, f64>,
     ops_with_same_tick: HashMap<usize, Vec<usize>>, // tick_id: vec of op_id
     tees_with_same_inner: HashMap<usize, (Vec<usize>, usize)>, /* inner_id: (vec of Tee op_id, cardinality) */
     potential_decoupling_network_cardinalities: Vec<(usize, usize, usize)>, /* (operator ID, input ID, cardinality) */
 }
 
-fn add_var_and_metadata(metadata: &HydroIrMetadata, model_metadata: &RefCell<ModelMetadata>) {
+fn add_var_and_metadata(metadata: &HydroIrMetadata, model_metadata: &RefCell<ModelMetadata>, is_network_recv: bool) {
     let ModelMetadata {
         model,
         stmt_id_to_var,
-        stmt_id_to_metadata,
+        stmt_id_to_cpu_usage,
         ..
     } = &mut *model_metadata.borrow_mut();
 
@@ -34,7 +34,13 @@ fn add_var_and_metadata(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mod
     let var = add_binvar!(model, name: &name, bounds: ..).unwrap();
 
     stmt_id_to_var.insert(id, var);
-    stmt_id_to_metadata.insert(id, metadata.clone());
+    // If this is a Network node and we're the receiver, the CPU usage is the network_recv_cpu_usage
+    if is_network_recv {
+        stmt_id_to_cpu_usage.insert(id, metadata.network_recv_cpu_usage.unwrap_or_default());
+    }
+    else {
+        stmt_id_to_cpu_usage.insert(id, metadata.cpu_usage.unwrap_or_default());
+    }
 }
 
 // Store how much data we would need to send if we decoupled above this
@@ -87,7 +93,7 @@ fn decouple_analysis_leaf(
         return;
     }
 
-    add_var_and_metadata(leaf.metadata(), model_metadata);
+    add_var_and_metadata(leaf.metadata(), model_metadata, false);
     add_decoupling_overhead(leaf.input_metadata_mut(), model_metadata);
     add_tick_constraint(leaf.metadata(), model_metadata);
 }
@@ -97,12 +103,19 @@ fn decouple_analysis_node(
     next_stmt_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
+    // Whether we are the receiver of a network node
+    let is_network_recv = if let HydroNode::Network { input, .. } = node {
+        *input.metadata().location_kind.root() == model_metadata.borrow().cluster_to_decouple
+    } else {
+        false
+    };
+
     // Ignore nodes that are not in the cluster to decouple
-    if model_metadata.borrow().cluster_to_decouple != *node.metadata().location_kind.root() {
+    if !is_network_recv && model_metadata.borrow().cluster_to_decouple != *node.metadata().location_kind.root() {
         return;
     }
 
-    add_var_and_metadata(node.metadata(), model_metadata);
+    add_var_and_metadata(node.metadata(), model_metadata, is_network_recv);
     // Add metadata for calculating decoupling overhead, special cases for Tee and CycleSource
     match node {
         HydroNode::Tee { inner, .. } => {
@@ -168,7 +181,7 @@ fn construct_objective_fn(
         decoupling_recv_overhead,
         model,
         stmt_id_to_var,
-        stmt_id_to_metadata,
+        stmt_id_to_cpu_usage,
         ops_with_same_tick,
         tees_with_same_inner,
         potential_decoupling_network_cardinalities,
@@ -200,13 +213,11 @@ fn construct_objective_fn(
     let mut decoupled_node_cpu_expr = Expr::default();
 
     // Calculate total CPU usage on each node (before overheads)
-    for (stmt_id, metadata) in stmt_id_to_metadata.iter() {
-        if let Some(cpu_usage) = metadata.cpu_usage {
-            let var = stmt_id_to_var.get(stmt_id).unwrap();
+    for (stmt_id, cpu_usage) in stmt_id_to_cpu_usage.iter() {
+        let var = stmt_id_to_var.get(stmt_id).unwrap();
 
-            orig_node_cpu_expr = orig_node_cpu_expr + cpu_usage * *var;
-            decoupled_node_cpu_expr = decoupled_node_cpu_expr + cpu_usage * (1 - *var);
-        }
+        orig_node_cpu_expr = orig_node_cpu_expr + *cpu_usage * *var;
+        decoupled_node_cpu_expr = decoupled_node_cpu_expr + *cpu_usage * (1 - *var);
     }
 
     // Calculate overheads
@@ -293,7 +304,7 @@ pub fn decouple_analysis(
         decoupling_recv_overhead: recv_overhead,
         model: Model::new(modelname).unwrap(),
         stmt_id_to_var: HashMap::new(),
-        stmt_id_to_metadata: HashMap::new(),
+        stmt_id_to_cpu_usage: HashMap::new(),
         ops_with_same_tick: HashMap::new(),
         tees_with_same_inner: HashMap::new(),
         potential_decoupling_network_cardinalities: vec![],
@@ -312,16 +323,15 @@ pub fn decouple_analysis(
     construct_objective_fn(&model_metadata, cycle_sink_to_sources);
     let ModelMetadata {
         stmt_id_to_var,
-        stmt_id_to_metadata,
         model,
         ..
     } = &mut *model_metadata.borrow_mut();
     model.optimize().unwrap();
 
     println!("We're decoupling the following operators:");
-    for (stmt_id, _) in stmt_id_to_metadata.iter() {
+    for (stmt_id, var) in stmt_id_to_var.iter() {
         if model
-            .get_obj_attr(attr::X, stmt_id_to_var.get(stmt_id).unwrap())
+            .get_obj_attr(attr::X, var)
             .unwrap()
             == 0.0
         {

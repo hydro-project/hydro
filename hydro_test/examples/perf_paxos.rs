@@ -1,10 +1,11 @@
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
+use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
-    analyze_cluster_results, perf_cluster_specs, track_cluster_usage_cardinality,
+    analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, track_cluster_usage_cardinality,
 };
-use hydro_lang::rewrites::{insert_counter, persist_pullup};
+use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, link_cycles, insert_counter, persist_pullup, print_id};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
 #[tokio::main]
@@ -84,7 +85,20 @@ async fn main() {
         .unwrap();
 
     analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
-    hydro_lang::ir::dbg_dedup_tee(|| {
-        println!("{:#?}", ir);
-    });
+    cleanup_after_analysis(&mut ir);
+
+    print_id::print_id(&mut ir);
+
+    // Create a mapping from each CycleSink to its corresponding CycleSource
+    let cycle_sink_to_sources = link_cycles::link_cycles(&mut ir);
+    let (send_overhead, recv_overhead) =
+        analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &proposers.id());
+    decouple_analysis::decouple_analysis(
+        &mut ir,
+        "perf_paxos_cluster",
+        &proposers.id(),
+        send_overhead,
+        recv_overhead,
+        &cycle_sink_to_sources,
+    );
 }

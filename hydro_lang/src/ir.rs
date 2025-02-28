@@ -1,5 +1,4 @@
 use core::panic;
-use std::any::Any;
 use std::cell::RefCell;
 #[cfg(feature = "build")]
 use std::collections::BTreeMap;
@@ -738,12 +737,7 @@ impl<'a> HydroNode {
                     }
                     | HydroNode::CycleSource { location_kind, .. }
                     | HydroNode::Source { location_kind, .. } => {
-                        // Unwrap location out of Tick
-                        if let LocationId::Tick(_, tick_loc) = location_kind {
-                            curr_location = Some(*tick_loc.clone());
-                        } else {
-                            curr_location = Some(location_kind.clone());
-                        }
+                        curr_location = Some(location_kind.root().clone());
                     }
                     HydroNode::Tee { inner, .. } => {
                         let inner_ref = inner.0.as_ref() as *const RefCell<HydroNode>;
