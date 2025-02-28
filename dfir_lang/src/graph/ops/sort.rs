@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Takes a stream as input and produces a sorted version of the stream as output.
@@ -36,6 +36,7 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                _| {
@@ -46,9 +47,11 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             // Fix requires handoff specialization.
             let #ident = {
-                let mut v = #input.collect::<::std::vec::Vec<_>>();
-                v.sort_unstable();
-                v.into_iter()
+                #work_fn(|| {
+                    let mut v = #input.collect::<::std::vec::Vec<_>>();
+                    v.sort_unstable();
+                    v
+                }).into_iter()
             };
         };
         Ok(OperatorWriteOutput {
