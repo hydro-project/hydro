@@ -453,22 +453,10 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree, excluding ref-edges and edges which enter/exit loops.
-        let inn_degree = self
-            .node_predecessor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
-        // Out-degree excluding ref-edges and loop-crossing edges.
-        let out_degree = self
-            .node_successor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
+        // In-degree, excluding ref-edges.
+        let inn_degree = self.node_predecessor_nodes(node_id).count();
+        // Out-degree excluding ref-edges.
+        let out_degree = self.node_successor_nodes(node_id).count();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -871,10 +859,13 @@ impl DfirGraph {
             .map(|(node_id, (src_span, dst_span))| {
                 let ident_send = Ident::new(&format!("hoff_{:?}_send", node_id.data()), dst_span);
                 let ident_recv = Ident::new(&format!("hoff_{:?}_recv", node_id.data()), src_span);
-                let hoff_name = Literal::string(&format!("handoff {:?}", node_id));
-                quote! {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let mut hoff_name = Literal::string(&format!("handoff {:?}", node_id));
+                hoff_name.set_span(span);
+                let hoff_type = quote_spanned! (span=> #root::scheduled::handoff::VecHandoff<_>);
+                quote_spanned! {span=>
                     let (#ident_send, #ident_recv) =
-                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
+                        #df.make_edge::<_, #hoff_type>(#hoff_name);
                 }
             });
 
@@ -920,6 +911,10 @@ impl DfirGraph {
                         });
                     }
                 });
+
+                let loop_id = self
+                    // All nodes in a subgraph should be in the same loop.
+                    .node_loop(subgraph_nodes[0]);
 
                 let mut subgraph_op_iter_code = Vec::new();
                 let mut subgraph_op_iter_after_code = Vec::new();
@@ -1024,6 +1019,7 @@ impl DfirGraph {
                                 context,
                                 subgraph_id,
                                 node_id,
+                                loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
                                 ident: &ident,
@@ -1211,9 +1207,7 @@ impl DfirGraph {
                 let laziness = self.subgraph_laziness(subgraph_id);
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
-                let loop_id_opt = self
-                    // All nodes in a subgraph should be in the same loop.
-                    .node_loop(subgraph_nodes[0])
+                let loop_id_opt = loop_id
                     .map(Self::loop_as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
