@@ -1089,14 +1089,15 @@ impl DfirGraph {
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(&context_args), ..Default::default() }
                             });
 
-                            op_prologue_code.push(write_prologue);
-                            subgraph_op_iter_code.push(syn::parse_quote! {
+                            op_prologue_code.push(syn::parse_quote! {
                                 #[allow(non_snake_case)]
                                 #[inline(always)]
                                 fn #fn_ident<T>(thunk: impl FnOnce() -> T) -> T {
                                     thunk()
                                 }
                             });
+                            op_prologue_code.push(write_prologue);
+
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
