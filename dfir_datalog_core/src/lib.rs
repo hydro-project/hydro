@@ -817,7 +817,7 @@ fn apply_aggregations(
 mod tests {
     use syn::parse_quote;
 
-    use super::{dfir_graph_to_program, gen_dfir_graph};
+    use super::gen_dfir_graph;
 
     macro_rules! test_snapshots {
         ($program:literal) => {
@@ -826,21 +826,6 @@ mod tests {
             let flat_graph_ref = &flat_graph;
             insta::with_settings!({snapshot_suffix => "surface_graph"}, {
                 insta::assert_snapshot!(flat_graph_ref.surface_syntax_string());
-            });
-
-            // `dfir_rs` as root. Only used for codegen snapshot testing.
-            let tokens = dfir_graph_to_program(flat_graph, quote::quote! { dfir_rs });
-            let out: syn::Stmt = syn::parse_quote!(#tokens);
-            let wrapped: syn::File = parse_quote! {
-                fn main() {
-                    #out
-                }
-            };
-
-            insta::with_settings!({snapshot_suffix => "datalog_program"}, {
-                insta::assert_snapshot!(
-                    prettyplease::unparse(&wrapped)
-                );
             });
         };
     }

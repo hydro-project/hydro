@@ -1,9 +1,9 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -53,6 +53,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -142,7 +143,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 let mut #neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
 
                 #[allow(clippy::needless_borrow)]
-                #neg_borrow.extend(#input_neg);
+                #work_fn(|| #neg_borrow.extend(#input_neg));
 
                 let #ident = #input_pos.filter(|x: &(_,_)| {
                     #[allow(clippy::needless_borrow)]
@@ -160,14 +161,14 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                     #[allow(suspicious_double_ref_op)]
                     if context.is_first_run_this_tick() {
                         // Start of new tick
-                        #neg_borrow.extend(#input_neg);
+                        #work_fn(|| #neg_borrow.extend(#input_neg));
 
-                        #pos_borrow_ident.extend(#input_pos);
+                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
                         #pos_borrow_ident.iter()
                     } else {
                         // Called second or later times on the same tick.
                         let len = #pos_borrow_ident.len();
-                        #pos_borrow_ident.extend(#input_pos);
+                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
                         #pos_borrow_ident[len..].iter()
                     }
                     .filter(|x: &&(_,_)| {
