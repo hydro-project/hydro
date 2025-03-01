@@ -157,11 +157,12 @@
 <a href="#156" id="156">156</a>
 <a href="#157" id="157">157</a>
 <a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -215,6 +216,7 @@
                    inputs,
                    is_pull,
                    singleton_output_ident,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -275,18 +277,18 @@
         }
 
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
-        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
             <span class="macro">quote_spanned!</span> {op_span=&gt;
                 <span class="kw">let </span>#ident = {
                     <span class="kw">let </span><span class="kw-2">mut </span>#accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
 
-                    #input.for_each(|#iterator_item_ident| {
+                    #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
-                    });
+                    }));
 
                     <span class="attr">#[allow(clippy::clone_on_copy)]
                     </span>{
-                        ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(<span class="kw-2">&amp;*</span>#accumulator_ident))
+                        ::std::iter::IntoIterator::into_iter(#work_fn(|| ::std::clone::Clone::clone(<span class="kw-2">&amp;*</span>#accumulator_ident)))
                     }
                 };
             }

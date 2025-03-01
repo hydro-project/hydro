@@ -230,11 +230,12 @@
 <a href="#229" id="229">229</a>
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 
 <span class="kw">use super</span>::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -313,6 +314,7 @@
                    ident,
                    inputs,
                    is_pull,
+                   work_fn,
                    root,
                    op_inst:
                        OperatorInstance {
@@ -362,7 +364,7 @@
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             <span class="attr">#[inline(always)]
                             </span><span class="kw">fn </span>check_input&lt;Iter: ::std::iter::Iterator&lt;Item = (A, B)&gt;, A: ::std::clone::Clone, B: ::std::clone::Clone&gt;(iter: Iter)
                                 -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (A, B)&gt; { iter }
@@ -384,7 +386,7 @@
                                     }
                                 }
                             }
-                        }
+                        });
 
                         <span class="kw">let </span>#ident = #hashtable_ident.drain();
                     },
@@ -402,7 +404,7 @@
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             <span class="attr">#[inline(always)]
                             </span><span class="kw">fn </span>check_input&lt;Iter: ::std::iter::Iterator&lt;Item = (A, B)&gt;, A: ::std::clone::Clone, B: ::std::clone::Clone&gt;(iter: Iter)
                                 -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (A, B)&gt; { iter }
@@ -424,7 +426,7 @@
                                     }
                                 }
                             }
-                        }
+                        });
 
                         <span class="kw">let </span>#ident = #context.is_first_run_this_tick()
                             .then_some(#hashtable_ident.iter())

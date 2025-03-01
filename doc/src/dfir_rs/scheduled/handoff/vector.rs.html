@@ -73,20 +73,7 @@
 <a href="#72" id="72">72</a>
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
-<a href="#75" id="75">75</a>
-<a href="#76" id="76">76</a>
-<a href="#77" id="77">77</a>
-<a href="#78" id="78">78</a>
-<a href="#79" id="79">79</a>
-<a href="#80" id="80">80</a>
-<a href="#81" id="81">81</a>
-<a href="#82" id="82">82</a>
-<a href="#83" id="83">83</a>
-<a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a>
-<a href="#88" id="88">88</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
+<a href="#75" id="75">75</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
 <span class="kw">use </span>std::cell::{RefCell, RefMut};
 <span class="kw">use </span>std::rc::Rc;
 
@@ -159,19 +146,6 @@
 
     <span class="kw">fn </span>is_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         (<span class="kw-2">*</span><span class="self">self</span>.input).borrow_mut().is_empty()
-    }
-}
-
-<span class="kw">impl</span>&lt;H&gt; HandoffMeta <span class="kw">for </span>Rc&lt;RefCell&lt;H&gt;&gt;
-<span class="kw">where
-    </span>H: HandoffMeta,
-{
-    <span class="kw">fn </span>any_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>Any {
-        <span class="self">self
-    </span>}
-
-    <span class="kw">fn </span>is_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-        <span class="self">self</span>.borrow().is_bottom()
     }
 }
 </code></pre></div></section></main></body></html>

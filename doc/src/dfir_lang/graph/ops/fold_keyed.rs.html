@@ -281,11 +281,12 @@
 <a href="#280" id="280">280</a>
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 
 <span class="kw">use super</span>::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
 <span class="doccomment">/// &gt; 1 input stream of type `(K, V1)`, 1 output stream of type `(K, V2)`.
@@ -374,6 +375,7 @@
                    ident,
                    inputs,
                    is_pull,
+                   work_fn,
                    root,
                    op_inst:
                        OperatorInstance {
@@ -424,7 +426,7 @@
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             <span class="attr">#[inline(always)]
                             </span><span class="kw">fn </span>check_input&lt;Iter, A, B&gt;(iter: Iter) -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (A, B)&gt;
                             <span class="kw">where
@@ -449,7 +451,7 @@
                                 </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
                                 <span class="attr">#[allow(clippy::redundant_closure_call)] </span>call_comb_type(entry, kv.<span class="number">1</span>, #aggfn);
                             }
-                        }
+                        });
 
                         <span class="kw">let </span>#ident = #hashtable_ident.drain();
                     },
@@ -464,7 +466,7 @@
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             <span class="attr">#[inline(always)]
                             </span><span class="kw">fn </span>check_input&lt;Iter, A, B&gt;(iter: Iter) -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (A, B)&gt;
                             <span class="kw">where
@@ -489,7 +491,7 @@
                                 </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
                                 <span class="attr">#[allow(clippy::redundant_closure_call)] </span>call_comb_type(entry, kv.<span class="number">1</span>, #aggfn);
                             }
-                        }
+                        });
 
                         <span class="comment">// Play everything but only on the first run of this tick/stratum.
                         // (We know we won't have any more inputs, so it is fine to only play once.
@@ -520,7 +522,7 @@
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             <span class="attr">#[inline(always)]
                             </span><span class="kw">fn </span>check_input&lt;Iter: ::std::iter::Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;, K: ::std::clone::Clone, V: ::std::clone::Clone&gt;(iter: Iter)
                                 -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt; { iter }
@@ -544,7 +546,7 @@
                                     },
                                 }
                             }
-                        }
+                        });
 
                         <span class="kw">let </span>#ident = #hashtable_ident
                             .iter()

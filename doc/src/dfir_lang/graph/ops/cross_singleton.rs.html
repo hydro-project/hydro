@@ -115,12 +115,13 @@
 <a href="#114" id="114">114</a>
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::graph::PortIndexValue;
 
@@ -172,6 +173,7 @@
                    op_span,
                    inputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                _diagnostics| {
@@ -202,14 +204,14 @@
                     SingletonIter: Iterator&lt;Item = Singleton&gt;,
                     Stream: Iterator&lt;Item = Item&gt;,
                 {
-                    <span class="kw">let </span>singleton_value_opt = <span class="kw">match </span><span class="kw-2">&amp;*</span>singleton_state_mut {
+                    <span class="kw">let </span>singleton_value_opt = #work_fn(|| <span class="kw">match </span><span class="kw-2">&amp;*</span>singleton_state_mut {
                         ::std::option::Option::Some(singleton_value) =&gt; <span class="prelude-val">Some</span>(singleton_value.clone()),
                         ::std::option::Option::None =&gt; {
                             <span class="kw">let </span>singleton_value_opt = singleton_input.next();
                             <span class="kw-2">*</span>singleton_state_mut = singleton_value_opt.clone();
                             singleton_value_opt
                         }
-                    };
+                    });
                     singleton_value_opt
                         .map(|singleton_value| {
                             stream_input.map(<span class="kw">move </span>|item| (item, ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>singleton_value)))

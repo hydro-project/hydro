@@ -317,7 +317,14 @@
 <a href="#316" id="316">316</a>
 <a href="#317" id="317">317</a>
 <a href="#318" id="318">318</a>
-<a href="#319" id="319">319</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the user-facing [`Context`] object.
 //!
 //! Provides APIs for state and scheduling.
 
@@ -375,6 +382,7 @@
 
     <span class="doccomment">/// If the current subgraph wants to reschedule the current loop block (in the current tick).
     </span><span class="kw">pub</span>(<span class="kw">super</span>) reschedule_loop_block: Cell&lt;bool&gt;,
+    <span class="kw">pub</span>(<span class="kw">super</span>) allow_another_iteration: Cell&lt;bool&gt;,
 
     <span class="kw">pub</span>(<span class="kw">super</span>) current_tick: TickInstant,
     <span class="kw">pub</span>(<span class="kw">super</span>) current_stratum: usize,
@@ -440,6 +448,11 @@
     <span class="doccomment">/// Schedules the current loop block to be run again (_in this tick_).
     </span><span class="kw">pub fn </span>reschedule_loop_block(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="self">self</span>.reschedule_loop_block.set(<span class="bool-val">true</span>);
+    }
+
+    <span class="doccomment">/// Allow another iteration of the loop, if more data comes.
+    </span><span class="kw">pub fn </span>allow_another_iteration(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.allow_another_iteration.set(<span class="bool-val">true</span>);
     }
 
     <span class="doccomment">/// Returns a `Waker` for interacting with async Rust.
@@ -591,6 +604,7 @@
 
             event_queue_send,
             reschedule_loop_block: Cell::new(<span class="bool-val">false</span>),
+            allow_another_iteration: Cell::new(<span class="bool-val">false</span>),
 
             current_stratum: <span class="number">0</span>,
             current_tick: TickInstant::default(),

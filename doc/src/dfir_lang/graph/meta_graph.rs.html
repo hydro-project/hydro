@@ -1689,7 +1689,10 @@
 <a href="#1688" id="1688">1688</a>
 <a href="#1689" id="1689">1689</a>
 <a href="#1690" id="1690">1690</a>
-<a href="#1691" id="1691">1691</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">extern crate </span>proc_macro;
 
@@ -2144,22 +2147,10 @@
         <span class="kw">if </span><span class="macro">matches!</span>(<span class="self">self</span>.node(node_id), GraphNode::Handoff { .. }) {
             <span class="kw">return </span><span class="prelude-val">Some</span>(Color::Hoff);
         }
-        <span class="comment">// In-degree, excluding ref-edges and edges which enter/exit loops.
-        </span><span class="kw">let </span>inn_degree = <span class="self">self
-            </span>.node_predecessor_nodes(node_id)
-            .filter(|<span class="kw-2">&amp;</span>pred_id| {
-                <span class="comment">// Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                </span><span class="self">self</span>.node_loop(pred_id) == <span class="self">self</span>.node_loop(node_id)
-            })
-            .count();
-        <span class="comment">// Out-degree excluding ref-edges and loop-crossing edges.
-        </span><span class="kw">let </span>out_degree = <span class="self">self
-            </span>.node_successor_nodes(node_id)
-            .filter(|<span class="kw-2">&amp;</span>pred_id| {
-                <span class="comment">// Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                </span><span class="self">self</span>.node_loop(pred_id) == <span class="self">self</span>.node_loop(node_id)
-            })
-            .count();
+        <span class="comment">// In-degree, excluding ref-edges.
+        </span><span class="kw">let </span>inn_degree = <span class="self">self</span>.node_predecessor_nodes(node_id).count();
+        <span class="comment">// Out-degree excluding ref-edges.
+        </span><span class="kw">let </span>out_degree = <span class="self">self</span>.node_successor_nodes(node_id).count();
 
         <span class="kw">match </span>(inn_degree, out_degree) {
             (<span class="number">0</span>, <span class="number">0</span>) =&gt; <span class="prelude-val">None</span>, <span class="comment">// Generally should not happen, "Degenerate subgraph detected".
@@ -2562,10 +2553,13 @@
             .map(|(node_id, (src_span, dst_span))| {
                 <span class="kw">let </span>ident_send = Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"hoff_{:?}_send"</span>, node_id.data()), dst_span);
                 <span class="kw">let </span>ident_recv = Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"hoff_{:?}_recv"</span>, node_id.data()), src_span);
-                <span class="kw">let </span>hoff_name = Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"handoff {:?}"</span>, node_id));
-                <span class="macro">quote!</span> {
+                <span class="kw">let </span>span = src_span.join(dst_span).unwrap_or(src_span);
+                <span class="kw">let </span><span class="kw-2">mut </span>hoff_name = Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"handoff {:?}"</span>, node_id));
+                hoff_name.set_span(span);
+                <span class="kw">let </span>hoff_type = <span class="macro">quote_spanned!</span> (span=&gt; #root::scheduled::handoff::VecHandoff&lt;<span class="kw">_</span>&gt;);
+                <span class="macro">quote_spanned!</span> {span=&gt;
                     <span class="kw">let </span>(#ident_send, #ident_recv) =
-                        #df.make_edge::&lt;<span class="kw">_</span>, #root::scheduled::handoff::VecHandoff&lt;<span class="kw">_</span>&gt;&gt;(#hoff_name);
+                        #df.make_edge::&lt;<span class="kw">_</span>, #hoff_type&gt;(#hoff_name);
                 }
             });
 
@@ -2611,6 +2605,10 @@
                         });
                     }
                 });
+
+                <span class="kw">let </span>loop_id = <span class="self">self
+                    </span><span class="comment">// All nodes in a subgraph should be in the same loop.
+                    </span>.node_loop(subgraph_nodes[<span class="number">0</span>]);
 
                 <span class="kw">let </span><span class="kw-2">mut </span>subgraph_op_iter_code = Vec::new();
                 <span class="kw">let </span><span class="kw-2">mut </span>subgraph_op_iter_after_code = Vec::new();
@@ -2709,14 +2707,56 @@
                                     singletons_resolved.clone(),
                                 );
 
+                            <span class="kw">let </span>source_tag = <span class="lifetime">'a</span>: {
+                                <span class="kw">if let </span><span class="prelude-val">Some</span>(tag) = <span class="self">self</span>.operator_tag.get(node_id).cloned() {
+                                    <span class="kw">break </span><span class="lifetime">'a </span>tag;
+                                }
+
+                                <span class="attr">#[cfg(nightly)]
+                                </span><span class="kw">if </span>proc_macro::is_available() {
+                                    <span class="kw">let </span>op_span = op_span.unwrap();
+                                    <span class="kw">break </span><span class="lifetime">'a </span><span class="macro">format!</span>(
+                                        <span class="string">"loc_{}_{}_{}_{}_{}"</span>,
+                                        op_span
+                                            .source_file()
+                                            .path()
+                                            .display()
+                                            .to_string()
+                                            .replace(|x: char| !x.is_alphanumeric(), <span class="string">"_"</span>),
+                                        op_span.start().line(),
+                                        op_span.start().column(),
+                                        op_span.end().line(),
+                                        op_span.end().column(),
+                                    );
+                                }
+
+                                <span class="macro">format!</span>(
+                                    <span class="string">"loc_nopath_{}_{}_{}_{}"</span>,
+                                    op_span.start().line,
+                                    op_span.start().column,
+                                    op_span.end().line,
+                                    op_span.end().column
+                                )
+                            };
+
+                            <span class="kw">let </span>fn_ident = <span class="macro">format_ident!</span>(
+                                <span class="string">"{}__{}__{}"</span>,
+                                ident,
+                                op_name,
+                                source_tag,
+                                span = op_span
+                            );
+
                             <span class="kw">let </span>context_args = WriteContextArgs {
                                 root: <span class="kw-2">&amp;</span>root,
                                 df_ident: df_local,
                                 context,
                                 subgraph_id,
                                 node_id,
+                                loop_id,
                                 op_span,
                                 op_tag: <span class="self">self</span>.operator_tag.get(node_id).cloned(),
+                                work_fn: <span class="kw-2">&amp;</span>fn_ident,
                                 ident: <span class="kw-2">&amp;</span>ident,
                                 is_pull,
                                 inputs: <span class="kw-2">&amp;</span>inputs,
@@ -2744,48 +2784,16 @@
                             });
 
                             op_prologue_code.push(write_prologue);
+                            subgraph_op_iter_code.push(<span class="macro">syn::parse_quote!</span> {
+                                <span class="attr">#[allow(non_snake_case)]
+                                #[inline(always)]
+                                </span><span class="kw">fn </span>#fn_ident&lt;T&gt;(thunk: <span class="kw">impl </span>FnOnce() -&gt; T) -&gt; T {
+                                    thunk()
+                                }
+                            });
                             subgraph_op_iter_code.push(write_iterator);
 
                             <span class="kw">if </span>include_type_guards {
-                                <span class="kw">let </span>source_tag = <span class="lifetime">'a</span>: {
-                                    <span class="kw">if let </span><span class="prelude-val">Some</span>(tag) = <span class="self">self</span>.operator_tag.get(node_id).cloned() {
-                                        <span class="kw">break </span><span class="lifetime">'a </span>tag;
-                                    }
-
-                                    <span class="attr">#[cfg(nightly)]
-                                    </span><span class="kw">if </span>proc_macro::is_available() {
-                                        <span class="kw">let </span>op_span = op_span.unwrap();
-                                        <span class="kw">break </span><span class="lifetime">'a </span><span class="macro">format!</span>(
-                                            <span class="string">"loc_{}_{}_{}_{}_{}"</span>,
-                                            op_span
-                                                .source_file()
-                                                .path()
-                                                .display()
-                                                .to_string()
-                                                .replace(|x: char| !x.is_alphanumeric(), <span class="string">"_"</span>),
-                                            op_span.start().line(),
-                                            op_span.start().column(),
-                                            op_span.end().line(),
-                                            op_span.end().column(),
-                                        );
-                                    }
-
-                                    <span class="macro">format!</span>(
-                                        <span class="string">"loc_nopath_{}_{}_{}_{}"</span>,
-                                        op_span.start().line,
-                                        op_span.start().column,
-                                        op_span.end().line,
-                                        op_span.end().column
-                                    )
-                                };
-
-                                <span class="kw">let </span>fn_ident = <span class="macro">format_ident!</span>(
-                                    <span class="string">"{}__{}__{}"</span>,
-                                    ident,
-                                    op_name,
-                                    source_tag,
-                                    span = op_span
-                                );
                                 <span class="kw">let </span>type_guard = <span class="kw">if </span>is_pull {
                                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                                         <span class="kw">let </span>#ident = {
@@ -2902,9 +2910,7 @@
                 <span class="kw">let </span>laziness = <span class="self">self</span>.subgraph_laziness(subgraph_id);
 
                 <span class="comment">// Codegen: the loop that this subgraph is in `Some(&lt;loop_id&gt;)`, or `None` if not in a loop.
-                </span><span class="kw">let </span>loop_id_opt = <span class="self">self
-                    </span><span class="comment">// All nodes in a subgraph should be in the same loop.
-                    </span>.node_loop(subgraph_nodes[<span class="number">0</span>])
+                </span><span class="kw">let </span>loop_id_opt = loop_id
                     .map(<span class="self">Self</span>::loop_as_ident)
                     .map(|ident| <span class="macro">quote!</span> { <span class="prelude-val">Some</span>(#ident) })
                     .unwrap_or_else(|| <span class="macro">quote!</span> { <span class="prelude-val">None </span>});

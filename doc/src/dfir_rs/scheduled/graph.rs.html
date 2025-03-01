@@ -1090,7 +1090,34 @@
 <a href="#1089" id="1089">1089</a>
 <a href="#1090" id="1090">1090</a>
 <a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
+<a href="#1092" id="1092">1092</a>
+<a href="#1093" id="1093">1093</a>
+<a href="#1094" id="1094">1094</a>
+<a href="#1095" id="1095">1095</a>
+<a href="#1096" id="1096">1096</a>
+<a href="#1097" id="1097">1097</a>
+<a href="#1098" id="1098">1098</a>
+<a href="#1099" id="1099">1099</a>
+<a href="#1100" id="1100">1100</a>
+<a href="#1101" id="1101">1101</a>
+<a href="#1102" id="1102">1102</a>
+<a href="#1103" id="1103">1103</a>
+<a href="#1104" id="1104">1104</a>
+<a href="#1105" id="1105">1105</a>
+<a href="#1106" id="1106">1106</a>
+<a href="#1107" id="1107">1107</a>
+<a href="#1108" id="1108">1108</a>
+<a href="#1109" id="1109">1109</a>
+<a href="#1110" id="1110">1110</a>
+<a href="#1111" id="1111">1111</a>
+<a href="#1112" id="1112">1112</a>
+<a href="#1113" id="1113">1113</a>
+<a href="#1114" id="1114">1114</a>
+<a href="#1115" id="1115">1115</a>
+<a href="#1116" id="1116">1116</a>
+<a href="#1117" id="1117">1117</a>
+<a href="#1118" id="1118">1118</a>
+<a href="#1119" id="1119">1119</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
 
 </span><span class="kw">use </span>std::any::Any;
 <span class="kw">use </span>std::borrow::Cow;
@@ -1123,8 +1150,8 @@
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Dfir&lt;<span class="lifetime">'a</span>&gt; {
     <span class="kw">pub</span>(<span class="kw">super</span>) subgraphs: SlotVec&lt;SubgraphTag, SubgraphData&lt;<span class="lifetime">'a</span>&gt;&gt;,
-    <span class="doccomment">/// `(nonce, iteration count)` pair.
-    </span><span class="kw">pub</span>(<span class="kw">super</span>) loop_iter_counters: SecondarySlotVec&lt;LoopTag, (usize, usize)&gt;,
+
+    <span class="kw">pub</span>(<span class="kw">super</span>) loop_data: SecondarySlotVec&lt;LoopTag, LoopData&gt;,
 
     <span class="kw">pub</span>(<span class="kw">super</span>) context: Context,
 
@@ -1360,11 +1387,9 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>work_done = <span class="bool-val">false</span>;
 
-        <span class="kw">while let </span><span class="prelude-val">Some</span>(sg_id) =
+        <span class="lifetime">'pop</span>: <span class="kw">while let </span><span class="prelude-val">Some</span>(sg_id) =
             <span class="self">self</span>.context.stratum_queues[<span class="self">self</span>.context.current_stratum].pop_front()
         {
-            work_done = <span class="bool-val">true</span>;
-
             {
                 <span class="kw">let </span>sg_data = <span class="kw-2">&amp;mut </span><span class="self">self</span>.subgraphs[sg_id];
                 <span class="comment">// This must be true for the subgraph to be enqueued.
@@ -1400,40 +1425,42 @@
                     // iteration count, then we need to increment the iteration count.
                     </span><span class="kw">let </span>curr_loop_nonce = <span class="self">self</span>.context.loop_nonce_stack.last().copied();
 
-                    <span class="kw">let </span>curr_iter_count = <span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(_loop_loop_nonce, loop_iter_count)) =
-                        <span class="self">self</span>.loop_iter_counters.get(loop_id)
-                    {
-                        <span class="kw">let </span>(prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+                    <span class="kw">let </span>LoopData {
+                        iter_count: loop_iter_count,
+                        allow_another_iteration,
+                    } = <span class="kw-2">&amp;mut </span><span class="self">self</span>.loop_data[loop_id];
 
-                        <span class="comment">// If the loop nonce is the same as the previous execution, then we are in
-                        // the same loop execution.
-                        // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
-                        // always in the same (singular) loop execution.
-                        </span><span class="kw">if </span>curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
-                            <span class="comment">// If the iteration count is the same as the previous execution, we
-                            // need to increment it.
-                            </span><span class="kw">if </span>loop_iter_count == prev_iter_count {
-                                loop_iter_count + <span class="number">1
-                            </span>} <span class="kw">else </span>{
-                                <span class="comment">// Otherwise update the iteration count to match the loop.
-                                </span><span class="macro">debug_assert!</span>(prev_iter_count &lt; loop_iter_count);
-                                loop_iter_count
+                    <span class="kw">let </span>(prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+
+                    <span class="comment">// If the loop nonce is the same as the previous execution, then we are in
+                    // the same loop execution.
+                    // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
+                    // always in the same (singular) loop execution.
+                    </span><span class="kw">let </span>curr_iter_count =
+                        <span class="kw">if </span>curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
+                            <span class="comment">// If the iteration count is the same as the previous execution, then
+                            // we are on the next iteration.
+                            </span><span class="kw">if </span>loop_iter_count.is_none_or(|n| n == prev_iter_count) {
+                                <span class="comment">// If not true, then we shall not run the next iteration.
+                                </span><span class="kw">if </span>!std::mem::take(allow_another_iteration) {
+                                    <span class="macro">tracing::trace!</span>(
+                                        <span class="string">"Loop will not continue to next iteration, skipping."
+                                    </span>);
+                                    <span class="kw">continue </span><span class="lifetime">'pop</span>;
+                                }
+                                <span class="comment">// Increment `loop_iter_count` or set it to 0.
+                                </span>loop_iter_count.map_or(<span class="number">0</span>, |n| n + <span class="number">1</span>)
+                            } <span class="kw">else </span>{
+                                <span class="comment">// Otherwise update the local iteration count to match the loop.
+                                </span><span class="macro">debug_assert!</span>(loop_iter_count.is_some_and(|n| prev_iter_count &lt; n));
+                                loop_iter_count.unwrap()
                             }
                         } <span class="kw">else </span>{
                             <span class="comment">// We are in a new loop execution.
                             </span><span class="number">0
-                        </span>}
-                    } <span class="kw">else </span>{
-                        <span class="comment">// We are in a new loop execution.
-                        </span><span class="number">0
-                    </span>};
-
+                        </span>};
+                    <span class="kw-2">*</span>loop_iter_count = <span class="prelude-val">Some</span>(curr_iter_count);
                     <span class="self">self</span>.context.loop_iter_count = curr_iter_count;
-                    <span class="comment">// Update the loop data.
-                    </span><span class="self">self</span>.loop_iter_counters.insert(
-                        loop_id,
-                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count),
-                    );
                     sg_data.last_loop_nonce =
                         (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
                 }
@@ -1476,13 +1503,26 @@
                 }
             }
 
-            <span class="kw">if </span><span class="self">self</span>.context.reschedule_loop_block.take() {
+            <span class="kw">let </span>reschedule = <span class="self">self</span>.context.reschedule_loop_block.take();
+            <span class="kw">let </span>allow_another = <span class="self">self</span>.context.allow_another_iteration.take();
+
+            <span class="kw">if </span>reschedule {
                 <span class="comment">// Re-enqueue the subgraph.
                 </span><span class="self">self</span>.context.schedule_deferred.push(sg_id);
                 <span class="self">self</span>.context
                     .stratum_stack
                     .push(sg_data.loop_depth, sg_data.stratum);
             }
+            <span class="kw">if </span>reschedule || allow_another {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(loop_id) = sg_data.loop_id {
+                    <span class="self">self</span>.loop_data
+                        .get_mut(loop_id)
+                        .unwrap()
+                        .allow_another_iteration = <span class="bool-val">true</span>;
+                }
+            }
+
+            work_done = <span class="bool-val">true</span>;
         }
         work_done
     }
@@ -2030,6 +2070,13 @@
     </span><span class="kw">pub fn </span>add_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;LoopId&gt;) -&gt; LoopId {
         <span class="kw">let </span>depth = parent.map_or(<span class="number">0</span>, |p| <span class="self">self</span>.context.loop_depth[p] + <span class="number">1</span>);
         <span class="kw">let </span>loop_id = <span class="self">self</span>.context.loop_depth.insert(depth);
+        <span class="self">self</span>.loop_data.insert(
+            loop_id,
+            LoopData {
+                iter_count: <span class="prelude-val">None</span>,
+                allow_another_iteration: <span class="bool-val">true</span>,
+            },
+        );
         loop_id
     }
 }
@@ -2181,5 +2228,12 @@
             loop_depth,
         }
     }
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LoopData {
+    <span class="doccomment">/// Count of iterations of this loop.
+    </span>iter_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    <span class="doccomment">/// If the loop has reason to do another iteration.
+    </span>allow_another_iteration: bool,
 }
 </code></pre></div></section></main></body></html>

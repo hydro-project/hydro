@@ -432,7 +432,9 @@
 <a href="#431" id="431">431</a>
 <a href="#432" id="432">432</a>
 <a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for DFIR graphs.
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for DFIR graphs.
 
 </span><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::hash::Hash;
@@ -565,7 +567,9 @@
     </span><span class="kw">pub fn </span>span(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Span {
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::Operator(op) =&gt; op.span(),
-            <span class="kw-2">&amp;</span><span class="self">Self</span>::Handoff { src_span, dst_span } =&gt; src_span.join(dst_span).unwrap_or(src_span),
+            <span class="kw-2">&amp;</span><span class="self">Self</span>::Handoff {
+                src_span, dst_span, ..
+            } =&gt; src_span.join(dst_span).unwrap_or(src_span),
             <span class="self">Self</span>::ModuleBoundary { import_expr, .. } =&gt; <span class="kw-2">*</span>import_expr,
         }
     }

@@ -84,14 +84,29 @@
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
-<a href="#86" id="86">86</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for all [`Handoff`]-related items.
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for all [`Handoff`]-related items.
 
 </span><span class="kw">pub mod </span>handoff_list;
 <span class="kw">mod </span>tee;
 <span class="kw">mod </span>vector;
 
 <span class="kw">use </span>std::any::Any;
-<span class="kw">use </span>std::cell::RefMut;
+<span class="kw">use </span>std::cell::{RefCell, RefMut};
+<span class="kw">use </span>std::rc::Rc;
 
 <span class="kw">pub use </span>tee::TeeingHandoff;
 <span class="kw">pub use </span>vector::VecHandoff;
@@ -121,6 +136,19 @@
     <span class="comment">// TODO(justin): more fine-grained info here.
     </span><span class="doccomment">/// Return if the handoff is empty.
     </span><span class="kw">fn </span>is_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool;
+}
+
+<span class="kw">impl</span>&lt;H&gt; HandoffMeta <span class="kw">for </span>Rc&lt;RefCell&lt;H&gt;&gt;
+<span class="kw">where
+    </span>H: HandoffMeta,
+{
+    <span class="kw">fn </span>any_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>Any {
+        <span class="self">self
+    </span>}
+
+    <span class="kw">fn </span>is_bottom(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+        <span class="self">self</span>.borrow().is_bottom()
+    }
 }
 
 <span class="doccomment">/// Trait for handoffs to implement.

@@ -223,7 +223,51 @@
 <a href="#222" id="222">222</a>
 <a href="#223" id="223">223</a>
 <a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -324,6 +368,7 @@
                    root,
                    context,
                    df_ident,
+                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -359,28 +404,41 @@
             <span class="macro">quote_spanned!</span>(op_span=&gt;)
         };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>make_joindata = |persistence, side| {
+        <span class="kw">let </span><span class="kw-2">mut </span>make_joindata = |persistence, in_loop, side| {
             <span class="kw">let </span>joindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}"</span>, side));
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
-            <span class="kw">let </span>reset = <span class="kw">match </span>persistence {
-                Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+            <span class="kw">let </span>reset = <span class="kw">match </span>(in_loop, persistence) {
+                (<span class="bool-val">false</span>, Persistence::Tick) =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
                     #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
                 },
-                Persistence::Static =&gt; Default::default(),
-                Persistence::Mutable =&gt; {
+                (<span class="bool-val">true</span>, Persistence::Tick) =&gt; Default::default(),
+                (<span class="bool-val">false</span>, Persistence::Static) =&gt; Default::default(),
+                (<span class="bool-val">true</span>, Persistence::Static) =&gt; {
                     diagnostics.push(Diagnostic::spanned(
                         op_span,
                         Level::Error,
-                        <span class="string">"An implementation of 'mutable does not exist"</span>,
+                        <span class="string">"`'static` is not allowed within loops."</span>,
+                    ));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
+                }
+                (<span class="kw">_</span>, Persistence::Mutable) =&gt; {
+                    diagnostics.push(Diagnostic::spanned(
+                        op_span,
+                        Level::Error,
+                        <span class="string">"An implementation of `'mutable` does not exist."</span>,
                     ));
                     <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             };
-            <span class="kw">let </span>init = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>#joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                    #join_type::default()
-                ));
-                #reset
+            <span class="kw">let </span>init = <span class="kw">if </span>!in_loop {
+                <span class="macro">quote_spanned!</span> {op_span=&gt;
+                    <span class="kw">let </span>#joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
+                        #join_type::default()
+                    ));
+                    #reset
+                }
+            } <span class="kw">else </span>{
+                Default::default()
             };
             <span class="prelude-val">Ok</span>((joindata_ident, borrow_ident, init))
         };
@@ -393,9 +451,9 @@
         };
 
         <span class="kw">let </span>(lhs_joindata_ident, lhs_borrow_ident, lhs_init) =
-            make_joindata(persistences[<span class="number">0</span>], <span class="string">"lhs"</span>)<span class="question-mark">?</span>;
+            make_joindata(persistences[<span class="number">0</span>], loop_id.is_some(), <span class="string">"lhs"</span>)<span class="question-mark">?</span>;
         <span class="kw">let </span>(rhs_joindata_ident, rhs_borrow_ident, rhs_init) =
-            make_joindata(persistences[<span class="number">1</span>], <span class="string">"rhs"</span>)<span class="question-mark">?</span>;
+            make_joindata(persistences[<span class="number">1</span>], loop_id.is_some(), <span class="string">"rhs"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
             #lhs_init
@@ -404,31 +462,61 @@
 
         <span class="kw">let </span>lhs = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
         <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
-            <span class="kw">let </span>#ident = {
-                <span class="comment">// Limit error propagation by bounding locally, erasing output iterator type.
-                </span><span class="attr">#[inline(always)]
-                </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, K, I1, V1, I2, V2&gt;(
-                    lhs: I1,
-                    rhs: I2,
-                    lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V1, V2&gt;,
-                    rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V2, V1&gt;,
-                    is_new_tick: bool,
-                ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ Iterator&lt;Item = (K, (V1, V2))&gt;
-                <span class="kw">where
-                    </span>K: Eq + std::hash::Hash + Clone,
-                    V1: Clone #additional_trait_bounds,
-                    V2: Clone #additional_trait_bounds,
-                    I1: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V1)&gt;,
-                    I2: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V2)&gt;,
-                {
-                    #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
-                }
+        <span class="kw">let </span>write_iterator = <span class="kw">if </span>loop_id.is_none() {
+            <span class="macro">quote_spanned!</span> {op_span=&gt;
+                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                <span class="kw">let </span>#ident = {
+                    <span class="comment">// Limit error propagation by bounding locally, erasing output iterator type.
+                    </span><span class="attr">#[inline(always)]
+                    </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, K, I1, V1, I2, V2&gt;(
+                        lhs: I1,
+                        rhs: I2,
+                        lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V1, V2&gt;,
+                        rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V2, V1&gt;,
+                        is_new_tick: bool,
+                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ Iterator&lt;Item = (K, (V1, V2))&gt;
+                    <span class="kw">where
+                        </span>K: Eq + std::hash::Hash + Clone,
+                        V1: Clone #additional_trait_bounds,
+                        V2: Clone #additional_trait_bounds,
+                        I1: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V1)&gt;,
+                        I2: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V2)&gt;,
+                    {
+                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                    }
 
-                check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut *</span>#lhs_borrow_ident, <span class="kw-2">&amp;mut *</span>#rhs_borrow_ident, #context.is_first_run_this_tick())
-            };
+                    check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut *</span>#lhs_borrow_ident, <span class="kw-2">&amp;mut *</span>#rhs_borrow_ident, #context.is_first_run_this_tick())
+                };
+            }
+        } <span class="kw">else </span>{
+            <span class="comment">// TODO(mingwei): deduplicate this code with the above.
+            </span><span class="macro">quote_spanned!</span> {op_span=&gt;
+                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = ::std::default::Default::default();
+                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = ::std::default::Default::default();
+                <span class="kw">let </span>#ident = {
+                    <span class="comment">// Limit error propagation by bounding locally, erasing output iterator type.
+                    </span><span class="attr">#[inline(always)]
+                    </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, K, I1, V1, I2, V2&gt;(
+                        lhs: I1,
+                        rhs: I2,
+                        lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V1, V2&gt;,
+                        rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V2, V1&gt;,
+                        is_new_tick: bool,
+                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ Iterator&lt;Item = (K, (V1, V2))&gt;
+                    <span class="kw">where
+                        </span>K: Eq + std::hash::Hash + Clone,
+                        V1: Clone #additional_trait_bounds,
+                        V2: Clone #additional_trait_bounds,
+                        I1: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V1)&gt;,
+                        I2: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V2)&gt;,
+                    {
+                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                    }
+
+                    check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut </span>#lhs_borrow_ident, <span class="kw-2">&amp;mut </span>#rhs_borrow_ident, <span class="bool-val">true</span>)
+                };
+            }
         };
 
         <span class="kw">let </span>write_iterator_after =

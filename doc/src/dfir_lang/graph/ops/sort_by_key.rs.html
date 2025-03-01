@@ -54,11 +54,14 @@
 <a href="#53" id="53">53</a>
 <a href="#54" id="54">54</a>
 <a href="#55" id="55">55</a>
-<a href="#56" id="56">56</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 <span class="doccomment">/// Like sort, takes a stream as input and produces a version of the stream as output.
@@ -94,15 +97,18 @@
                    inputs,
                    is_pull,
                    arguments,
+                   work_fn,
                    ..
                },
                <span class="kw">_</span>| {
         <span class="macro">assert!</span>(is_pull);
         <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
         <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span><span class="kw-2">mut </span>tmp = #input.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-            #root::util::sort_unstable_by_key_hrtb(<span class="kw-2">&amp;mut </span>tmp, #arguments);
-            <span class="kw">let </span>#ident = tmp.into_iter();
+            <span class="kw">let </span>#ident = #work_fn(|| {
+                <span class="kw">let </span><span class="kw-2">mut </span>tmp = #input.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                #root::util::sort_unstable_by_key_hrtb(<span class="kw-2">&amp;mut </span>tmp, #arguments);
+                tmp
+            }).into_iter();
         };
         <span class="prelude-val">Ok</span>(OperatorWriteOutput {
             write_iterator,

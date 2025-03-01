@@ -60,7 +60,10 @@
 <a href="#59" id="59">59</a>
 <a href="#60" id="60">60</a>
 <a href="#61" id="61">61</a>
-<a href="#62" id="62">62</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
@@ -114,11 +117,14 @@
             ::std::iter::Extend::extend(<span class="kw-2">&amp;mut *</span>#vec_ident, #input);
             <span class="kw">let </span>#ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(<span class="kw-2">&amp;*</span>#vec_ident));
         };
+        <span class="kw">let </span>write_iterator_after = <span class="macro">quote_spanned!</span> {op_span=&gt;
+            #context.allow_another_iteration();
+        };
 
         <span class="prelude-val">Ok</span>(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            ..Default::default()
+            write_iterator_after,
         })
     },
 };

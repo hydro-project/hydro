@@ -57,11 +57,14 @@
 <a href="#56" id="56">56</a>
 <a href="#57" id="57">57</a>
 <a href="#58" id="58">58</a>
-<a href="#59" id="59">59</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 <span class="doccomment">/// Takes a stream as input and produces a sorted version of the stream as output.
@@ -95,6 +98,7 @@
                    ident,
                    inputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                <span class="kw">_</span>| {
@@ -105,9 +109,11 @@
             <span class="comment">// TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             // Fix requires handoff specialization.
             </span><span class="kw">let </span>#ident = {
-                <span class="kw">let </span><span class="kw-2">mut </span>v = #input.collect::&lt;::std::vec::Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                v.sort_unstable();
-                v.into_iter()
+                #work_fn(|| {
+                    <span class="kw">let </span><span class="kw-2">mut </span>v = #input.collect::&lt;::std::vec::Vec&lt;<span class="kw">_</span>&gt;&gt;();
+                    v.sort_unstable();
+                    v
+                }).into_iter()
             };
         };
         <span class="prelude-val">Ok</span>(OperatorWriteOutput {

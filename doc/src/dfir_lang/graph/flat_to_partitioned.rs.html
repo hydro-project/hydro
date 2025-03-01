@@ -556,7 +556,13 @@
 <a href="#555" id="555">555</a>
 <a href="#556" id="556">556</a>
 <a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a></pre></div><pre class="rust"><code><span class="doccomment">//! Subgraph partioning algorithm
+<a href="#558" id="558">558</a>
+<a href="#559" id="559">559</a>
+<a href="#560" id="560">560</a>
+<a href="#561" id="561">561</a>
+<a href="#562" id="562">562</a>
+<a href="#563" id="563">563</a>
+<a href="#564" id="564">564</a></pre></div><pre class="rust"><code><span class="doccomment">//! Subgraph partioning algorithm
 
 </span><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
 
@@ -565,7 +571,7 @@
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use </span><span class="kw">super</span>::meta_graph::DfirGraph;
-<span class="kw">use </span><span class="kw">super</span>::ops::{DelayType, find_node_op_constraints};
+<span class="kw">use </span><span class="kw">super</span>::ops::{DelayType, FloType, find_node_op_constraints};
 <span class="kw">use super</span>::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span><span class="kw">crate</span>::union_find::UnionFind;
@@ -578,7 +584,7 @@
     </span><span class="kw">pub </span>singleton_barrier_crossers: Vec&lt;(GraphNodeId, GraphNodeId)&gt;,
 }
 <span class="kw">impl </span>BarrierCrossers {
-    <span class="doccomment">/// Iterate pairs of nodes that are across a barrier.
+    <span class="doccomment">/// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
     </span><span class="kw">fn </span>iter_node_pairs&lt;<span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
         partitioned_graph: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>DfirGraph,
@@ -693,6 +699,12 @@
 
             <span class="comment">// Do not connect across loop contexts.
             </span><span class="kw">if </span>partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
+                <span class="kw">continue</span>;
+            }
+            <span class="comment">// Do not connect `next_iteration()`.
+            </span><span class="kw">if </span>partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
+                <span class="prelude-val">Some</span>(FloType::NextIteration) == op_inst.op_constraints.flo_type
+            }) {
                 <span class="kw">continue</span>;
             }
 
