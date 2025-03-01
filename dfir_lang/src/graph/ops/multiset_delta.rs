@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 // TODO(mingwei): more doc
@@ -58,6 +58,7 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                _| {
@@ -104,12 +105,12 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
         };
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                #tick_swap
+                #work_fn(|| #tick_swap);
                 let #ident = #input.filter(#filter_fn);
             }
         } else {
             quote_spanned! {op_span=>
-                #tick_swap
+                #work_fn(|| #tick_swap);
                 let #ident = #root::pusherator::filter::Filter::new(#filter_fn, #output);
             }
         };

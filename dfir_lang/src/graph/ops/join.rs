@@ -1,9 +1,9 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, WriteContextArgs, RANGE_1,
+    Persistence, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -103,6 +103,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -140,7 +141,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
             let reset = match (in_loop, persistence) {
                 (false, Persistence::Tick) => quote_spanned! {op_span=>
-                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
+                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
                 },
                 (true, Persistence::Tick) => Default::default(),
                 (false, Persistence::Static) => Default::default(),
@@ -214,7 +215,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                         I1: 'a + Iterator<Item = (K, V1)>,
                         I2: 'a + Iterator<Item = (K, V2)>,
                     {
-                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                        #work_fn(|| #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick))
                     }
 
                     check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick())
@@ -242,7 +243,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                         I1: 'a + Iterator<Item = (K, V1)>,
                         I2: 'a + Iterator<Item = (K, V2)>,
                     {
-                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                        #work_fn(|| #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick))
                     }
 
                     check_inputs(#lhs, #rhs, &mut #lhs_borrow_ident, &mut #rhs_borrow_ident, true)

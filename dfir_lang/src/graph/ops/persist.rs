@@ -1,9 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OpInstGenerics, OperatorCategory,
-    OperatorConstraints, OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -63,6 +62,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                    outputs,
                    singleton_output_ident,
                    op_name,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -96,11 +96,11 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 let mut #vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
                 let #ident = {
                     if #context.is_first_run_this_tick() {
-                        #vec_ident.extend(#input);
+                        #work_fn(|| #vec_ident.extend(#input));
                         #vec_ident.iter().cloned()
                     } else {
                         let len = #vec_ident.len();
-                        #vec_ident.extend(#input);
+                        #work_fn(|| #vec_ident.extend(#input));
                         #vec_ident[len..].iter().cloned()
                     }
                 };
@@ -116,9 +116,9 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                         Item: ::std::clone::Clone,
                     {
                         if is_new_tick {
-                            vec.iter().cloned().for_each(|item| {
+                            #work_fn(|| vec.iter().cloned().for_each(|item| {
                                 #root::pusherator::Pusherator::give(&mut output, item);
-                            });
+                            }));
                         }
                         #root::pusherator::map::Map::new(|item| {
                             vec.push(item);
