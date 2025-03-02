@@ -144,9 +144,8 @@
 <a href="#143" id="143">143</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OpInstGenerics, OperatorCategory,
-    OperatorConstraints, OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -206,6 +205,7 @@
                    outputs,
                    singleton_output_ident,
                    op_name,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -239,11 +239,11 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
                 <span class="kw">let </span>#ident = {
                     <span class="kw">if </span>#context.is_first_run_this_tick() {
-                        #vec_ident.extend(#input);
+                        #work_fn(|| #vec_ident.extend(#input));
                         #vec_ident.iter().cloned()
                     } <span class="kw">else </span>{
                         <span class="kw">let </span>len = #vec_ident.len();
-                        #vec_ident.extend(#input);
+                        #work_fn(|| #vec_ident.extend(#input));
                         #vec_ident[len..].iter().cloned()
                     }
                 };
@@ -259,9 +259,9 @@
                         Item: ::std::clone::Clone,
                     {
                         <span class="kw">if </span>is_new_tick {
-                            vec.iter().cloned().for_each(|item| {
+                            #work_fn(|| vec.iter().cloned().for_each(|item| {
                                 #root::pusherator::Pusherator::give(<span class="kw-2">&amp;mut </span>output, item);
-                            });
+                            }));
                         }
                         #root::pusherator::map::Map::new(|item| {
                             vec.push(item);

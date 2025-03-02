@@ -194,12 +194,13 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -249,6 +250,7 @@
                    op_span,
                    ident,
                    inputs,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -338,7 +340,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>#neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
 
                 <span class="attr">#[allow(clippy::needless_borrow)]
-                </span>#neg_borrow.extend(#input_neg);
+                </span>#work_fn(|| #neg_borrow.extend(#input_neg));
 
                 <span class="kw">let </span>#ident = #input_pos.filter(|x: <span class="kw-2">&amp;</span>(<span class="kw">_</span>,<span class="kw">_</span>)| {
                     <span class="attr">#[allow(clippy::needless_borrow)]
@@ -356,14 +358,14 @@
                     #[allow(suspicious_double_ref_op)]
                     </span><span class="kw">if </span>context.is_first_run_this_tick() {
                         <span class="comment">// Start of new tick
-                        </span>#neg_borrow.extend(#input_neg);
+                        </span>#work_fn(|| #neg_borrow.extend(#input_neg));
 
-                        #pos_borrow_ident.extend(#input_pos);
+                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
                         #pos_borrow_ident.iter()
                     } <span class="kw">else </span>{
                         <span class="comment">// Called second or later times on the same tick.
                         </span><span class="kw">let </span>len = #pos_borrow_ident.len();
-                        #pos_borrow_ident.extend(#input_pos);
+                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
                         #pos_borrow_ident[len..].iter()
                     }
                     .filter(|x: &amp;&amp;(<span class="kw">_</span>,<span class="kw">_</span>)| {

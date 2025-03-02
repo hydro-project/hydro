@@ -267,12 +267,13 @@
 <a href="#266" id="266">266</a>
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, WriteContextArgs, RANGE_1,
+    Persistence, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -372,6 +373,7 @@
                    op_span,
                    ident,
                    inputs,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -409,7 +411,7 @@
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
             <span class="kw">let </span>reset = <span class="kw">match </span>(in_loop, persistence) {
                 (<span class="bool-val">false</span>, Persistence::Tick) =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #root::util::clear::Clear::clear(rcell.get_mut()));
+                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
                 },
                 (<span class="bool-val">true</span>, Persistence::Tick) =&gt; Default::default(),
                 (<span class="bool-val">false</span>, Persistence::Static) =&gt; Default::default(),
@@ -483,7 +485,7 @@
                         I1: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V1)&gt;,
                         I2: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V2)&gt;,
                     {
-                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                        #work_fn(|| #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick))
                     }
 
                     check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut *</span>#lhs_borrow_ident, <span class="kw-2">&amp;mut *</span>#rhs_borrow_ident, #context.is_first_run_this_tick())
@@ -511,7 +513,7 @@
                         I1: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V1)&gt;,
                         I2: <span class="lifetime">'a </span>+ Iterator&lt;Item = (K, V2)&gt;,
                     {
-                        #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick)
+                        #work_fn(|| #root::compiled::pull::symmetric_hash_join_into_iter(lhs, rhs, lhs_state, rhs_state, is_new_tick))
                     }
 
                     check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut </span>#lhs_borrow_ident, <span class="kw-2">&amp;mut </span>#rhs_borrow_ident, <span class="bool-val">true</span>)

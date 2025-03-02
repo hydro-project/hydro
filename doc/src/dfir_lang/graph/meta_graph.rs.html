@@ -1692,7 +1692,8 @@
 <a href="#1691" id="1691">1691</a>
 <a href="#1692" id="1692">1692</a>
 <a href="#1693" id="1693">1693</a>
-<a href="#1694" id="1694">1694</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">extern crate </span>proc_macro;
 
@@ -2783,14 +2784,15 @@
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(<span class="kw-2">&amp;</span>context_args), ..Default::default() }
                             });
 
-                            op_prologue_code.push(write_prologue);
-                            subgraph_op_iter_code.push(<span class="macro">syn::parse_quote!</span> {
+                            op_prologue_code.push(<span class="macro">syn::parse_quote!</span> {
                                 <span class="attr">#[allow(non_snake_case)]
                                 #[inline(always)]
                                 </span><span class="kw">fn </span>#fn_ident&lt;T&gt;(thunk: <span class="kw">impl </span>FnOnce() -&gt; T) -&gt; T {
                                     thunk()
                                 }
                             });
+                            op_prologue_code.push(write_prologue);
+
                             subgraph_op_iter_code.push(write_iterator);
 
                             <span class="kw">if </span>include_type_guards {

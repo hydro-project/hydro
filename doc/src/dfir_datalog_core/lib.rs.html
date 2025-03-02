@@ -1259,22 +1259,7 @@
 <a href="#1258" id="1258">1258</a>
 <a href="#1259" id="1259">1259</a>
 <a href="#1260" id="1260">1260</a>
-<a href="#1261" id="1261">1261</a>
-<a href="#1262" id="1262">1262</a>
-<a href="#1263" id="1263">1263</a>
-<a href="#1264" id="1264">1264</a>
-<a href="#1265" id="1265">1265</a>
-<a href="#1266" id="1266">1266</a>
-<a href="#1267" id="1267">1267</a>
-<a href="#1268" id="1268">1268</a>
-<a href="#1269" id="1269">1269</a>
-<a href="#1270" id="1270">1270</a>
-<a href="#1271" id="1271">1271</a>
-<a href="#1272" id="1272">1272</a>
-<a href="#1273" id="1273">1273</a>
-<a href="#1274" id="1274">1274</a>
-<a href="#1275" id="1275">1275</a>
-<a href="#1276" id="1276">1276</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
+<a href="#1261" id="1261">1261</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{HashMap, HashSet};
 <span class="kw">use </span>std::ops::Deref;
 
 <span class="kw">pub use </span>dfir_lang::diagnostic;
@@ -2093,7 +2078,7 @@
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>syn::parse_quote;
 
-    <span class="kw">use super</span>::{dfir_graph_to_program, gen_dfir_graph};
+    <span class="kw">use </span><span class="kw">super</span>::gen_dfir_graph;
 
     <span class="macro">macro_rules!</span> test_snapshots {
         (<span class="macro-nonterminal">$program</span>:literal) =&gt; {
@@ -2102,21 +2087,6 @@
             <span class="kw">let </span>flat_graph_ref = <span class="kw-2">&amp;</span>flat_graph;
             <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">"surface_graph"</span>}, {
                 <span class="macro">insta::assert_snapshot!</span>(flat_graph_ref.surface_syntax_string());
-            });
-
-            <span class="comment">// `dfir_rs` as root. Only used for codegen snapshot testing.
-            </span><span class="kw">let </span>tokens = dfir_graph_to_program(flat_graph, <span class="macro">quote::quote!</span> { dfir_rs });
-            <span class="kw">let </span>out: syn::Stmt = <span class="macro">syn::parse_quote!</span>(#tokens);
-            <span class="kw">let </span>wrapped: syn::File = <span class="macro">parse_quote!</span> {
-                <span class="kw">fn </span>main() {
-                    #out
-                }
-            };
-
-            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">"datalog_program"</span>}, {
-                <span class="macro">insta::assert_snapshot!</span>(
-                    prettyplease::unparse(<span class="kw-2">&amp;</span>wrapped)
-                );
             });
         };
     }

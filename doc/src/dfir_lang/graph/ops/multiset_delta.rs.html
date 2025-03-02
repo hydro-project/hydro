@@ -121,10 +121,11 @@
 <a href="#120" id="120">120</a>
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 <span class="comment">// TODO(mingwei): more doc
@@ -181,6 +182,7 @@
                    inputs,
                    outputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                <span class="kw">_</span>| {
@@ -227,12 +229,12 @@
         };
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                #tick_swap
+                #work_fn(|| #tick_swap);
                 <span class="kw">let </span>#ident = #input.filter(#filter_fn);
             }
         } <span class="kw">else </span>{
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                #tick_swap
+                #work_fn(|| #tick_swap);
                 <span class="kw">let </span>#ident = #root::pusherator::filter::Filter::new(#filter_fn, #output);
             }
         };

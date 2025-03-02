@@ -163,7 +163,7 @@
 <a href="#162" id="162">162</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 <span class="doccomment">/// &gt; Arguments: An [async `Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html).
@@ -265,7 +265,7 @@
                    ident,
                    is_pull,
                    arguments,
-                   <span class="kw-2">ref </span>op_tag,
+                   work_fn,
                    ..
                },
                <span class="kw">_</span>| {
@@ -275,14 +275,14 @@
 
         <span class="kw">let </span>send_ident = wc.make_ident(<span class="string">"item_send"</span>);
         <span class="kw">let </span>recv_ident = wc.make_ident(<span class="string">"item_recv"</span>);
-        <span class="kw">let </span>sink_feed_flush_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"sink_feed_flush_{}"</span>, op_tag.clone().unwrap_or_default()));
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="kw">let </span>(#send_ident, #recv_ident) = #root::tokio::sync::mpsc::unbounded_channel();
             {
                 <span class="doccomment">/// Function is needed so `Item` is so no ambiguity for what `Item` is used
                 /// when calling `.flush()`.
-                </span><span class="kw">async fn </span>#sink_feed_flush_ident&lt;Sink, Item&gt;(
+                </span><span class="attr">#[allow(non_snake_case)]
+                </span><span class="kw">async fn </span>#work_fn&lt;Sink, Item&gt;(
                     <span class="kw-2">mut </span>recv: #root::tokio::sync::mpsc::UnboundedReceiver&lt;Item&gt;,
                     <span class="kw-2">mut </span>sink: Sink,
                 ) <span class="kw">where
@@ -303,7 +303,7 @@
                     }
                 }
                 #df_ident
-                    .request_task(#sink_feed_flush_ident(#recv_ident, #sink_arg));
+                    .request_task(#work_fn(#recv_ident, #sink_arg));
             }
         };
 
