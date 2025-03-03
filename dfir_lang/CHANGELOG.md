@@ -356,7 +356,7 @@ Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()N
 
 ### Reverted
 
- - <csr-id-256779abece03bee662b351430d27141d10bd5ef/> "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183
+ - <csr-id-256779abece03bee662b351430d27141d10bd5ef/> "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183
    This reverts commit 997d90a76db9a4e05dbac35073a09548750ce342.
    
    We have been trying to figure out the semantics a bit, and want to give
@@ -415,9 +415,9 @@ Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()N
 <details><summary>view details</summary>
 
  * **[#1143](https://github.com/hydro-project/hydroflow/issues/1143)**
-    - "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
+    - "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
  * **[#1216](https://github.com/hydro-project/hydroflow/issues/1216)**
-    - "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
+    - "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
  * **[#1260](https://github.com/hydro-project/hydroflow/issues/1260)**
     - Test code snipets, generate output for `surface_flows`, fix #814 ([`2a4881d`](https://github.com/hydro-project/hydroflow/commit/2a4881d7c981bdf8f4deae9902e7d305f36c4203))
  * **[#1266](https://github.com/hydro-project/hydroflow/issues/1266)**
@@ -472,7 +472,7 @@ Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()N
  - <csr-id-f184ea145f0c7c3072d7d0f94d42fcda717ac8d9/> insert `persist()` before singleton referencers to enable replay
  - <csr-id-4ca8ce43c0998296e2d86bd74800585ebb24123a/> allow `defer_tick()`, `next_stratum()` to have a type hint arg
  - <csr-id-9df9c6251526903dbe7288e2fd9a532c63a9412c/> error on unused ports, fix #1108
- - <csr-id-997d90a76db9a4e05dbac35073a09548750ce342/> Added resolve_futures and resolve_futures_async operators.
+ - <csr-id-997d90a76db9a4e05dbac35073a09548750ce342/> Added poll_futures and poll_futures_async operators.
  - <csr-id-29a263fb564c5ce4bc495ea4e9d20b8b2621b645/> add support for collecting counts and running perf
 
 ### Bug Fixes
@@ -523,7 +523,7 @@ Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()N
 <details><summary>view details</summary>
 
  * **[#1143](https://github.com/hydro-project/hydroflow/issues/1143)**
-    - Added resolve_futures and resolve_futures_async operators. ([`997d90a`](https://github.com/hydro-project/hydroflow/commit/997d90a76db9a4e05dbac35073a09548750ce342))
+    - Added poll_futures and poll_futures_async operators. ([`997d90a`](https://github.com/hydro-project/hydroflow/commit/997d90a76db9a4e05dbac35073a09548750ce342))
  * **[#1152](https://github.com/hydro-project/hydroflow/issues/1152)**
     - Update some compile-fail outputs caused by rustc regression ([`d2427e2`](https://github.com/hydro-project/hydroflow/commit/d2427e2cc901c4174830d41b4a1dfc52fd4f19ce))
     - Update pyo3, silence warnings in generated code ([`1801502`](https://github.com/hydro-project/hydroflow/commit/18015029a725b068696ed9edefd1097583c858a6))

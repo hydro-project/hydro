@@ -1142,7 +1142,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Reverted
 
- - <csr-id-256779abece03bee662b351430d27141d10bd5ef/> "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183
+ - <csr-id-256779abece03bee662b351430d27141d10bd5ef/> "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183
    This reverts commit 997d90a76db9a4e05dbac35073a09548750ce342.
    
    We have been trying to figure out the semantics a bit, and want to give
@@ -1170,9 +1170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1143](https://github.com/hydro-project/hydroflow/issues/1143)**
-    - "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
+    - "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
  * **[#1216](https://github.com/hydro-project/hydroflow/issues/1216)**
-    - "feat(hydroflow): Added resolve_futures and resolve_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
+    - "feat(hydroflow): Added poll_futures and poll_futures_async operators.", fix #1183 ([`256779a`](https://github.com/hydro-project/hydroflow/commit/256779abece03bee662b351430d27141d10bd5ef))
  * **[#1295](https://github.com/hydro-project/hydroflow/issues/1295)**
     - Require lifetime on `perist*()` operators ([`67c0e51`](https://github.com/hydro-project/hydroflow/commit/67c0e51fb25ea1a2e3aae197c1984920b46759fa))
  * **Uncategorized**
@@ -1191,7 +1191,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-6e571726ff40818fbe9bbe9923511877c20fb243/> add API to get the cluster ID of the current node
    feat(hydroflow_plus): add API to get the cluster ID of the current node
- - <csr-id-997d90a76db9a4e05dbac35073a09548750ce342/> Added resolve_futures and resolve_futures_async operators.
+ - <csr-id-997d90a76db9a4e05dbac35073a09548750ce342/> Added poll_futures and poll_futures_async operators.
  - <csr-id-c3f5a37ff746401a2383a900f9004e33072d5b1a/> add prototype of tagging algebraic properties
  - <csr-id-29a263fb564c5ce4bc495ea4e9d20b8b2621b645/> add support for collecting counts and running perf
 
@@ -1216,7 +1216,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1143](https://github.com/hydro-project/hydroflow/issues/1143)**
-    - Added resolve_futures and resolve_futures_async operators. ([`997d90a`](https://github.com/hydro-project/hydroflow/commit/997d90a76db9a4e05dbac35073a09548750ce342))
+    - Added poll_futures and poll_futures_async operators. ([`997d90a`](https://github.com/hydro-project/hydroflow/commit/997d90a76db9a4e05dbac35073a09548750ce342))
  * **[#1151](https://github.com/hydro-project/hydroflow/issues/1151)**
     - Handle send_bincode with local structs ([`0cafbdb`](https://github.com/hydro-project/hydroflow/commit/0cafbdb74a665412a83aa900b4eb10c00e2498dd))
  * **[#1156](https://github.com/hydro-project/hydroflow/issues/1156)**
