@@ -6,50 +6,50 @@ use crate::ir::*;
 
 fn link_cycles_leaf(
     leaf: &mut HydroLeaf,
-    next_stmt_id: &mut usize,
-    sinks: &mut HashMap<Ident, usize>,
+    sink_inputs: &mut HashMap<Ident, usize>,
 ) {
-    if let HydroLeaf::CycleSink { ident, .. } = leaf {
-        sinks.insert(ident.clone(), *next_stmt_id);
+    if let HydroLeaf::CycleSink { ident, input, .. } = leaf {
+        sink_inputs.insert(ident.clone(), input.metadata().id.unwrap());
     }
 }
 
 fn link_cycles_node(
     node: &mut HydroNode,
-    next_stmt_id: &mut usize,
     sources: &mut HashMap<Ident, usize>,
 ) {
-    if let HydroNode::CycleSource { ident, .. } = node {
-        sources.insert(ident.clone(), *next_stmt_id);
+    if let HydroNode::CycleSource { ident, metadata, .. } = node {
+        sources.insert(ident.clone(), metadata.id.unwrap());
     }
 }
 
-// Returns map from CycleSink id to CycleSource id
-pub fn link_cycles(ir: &mut [HydroLeaf]) -> HashMap<usize, usize> {
+// Returns map from CycleSource id to the input IDs of the corresponding CycleSink's input
+// Assumes that metadtata.id is set for all nodes
+pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize> {
     let mut sources = HashMap::new();
-    let mut sinks = HashMap::new();
+    let mut sink_inputs = HashMap::new();
 
-    traverse_dfir(
+    // Can't use traverse_dfir since that skips CycleSink
+    transform_bottom_up(
         ir,
-        |leaf, next_stmt_id| {
-            link_cycles_leaf(leaf, next_stmt_id, &mut sinks);
+        &mut |leaf| {
+            link_cycles_leaf(leaf, &mut sink_inputs);
         },
-        |node, next_stmt_id| {
-            link_cycles_node(node, next_stmt_id, &mut sources);
+        &mut |node| {
+            link_cycles_node(node, &mut sources);
         },
     );
 
-    let mut sink_to_source = HashMap::new();
-    for (sink_ident, sink_id) in sinks {
+    let mut source_to_sink_input = HashMap::new();
+    for (sink_ident, sink_input_id) in sink_inputs {
         if let Some(source_id) = sources.get(&sink_ident) {
-            sink_to_source.insert(sink_id, *source_id);
+            source_to_sink_input.insert(*source_id, sink_input_id);
         } else {
             std::panic!(
-                "No source found for CycleSink {}, Id {}",
-                sink_ident,
-                sink_id
+                "No source found for CycleSink {}, Input Id {}",
+                sink_ident, 
+                sink_input_id
             );
         }
     }
-    sink_to_source
+    source_to_sink_input
 }

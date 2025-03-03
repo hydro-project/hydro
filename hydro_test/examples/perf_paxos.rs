@@ -72,7 +72,7 @@ async fn main() {
             perf_cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
         )
         .deploy(&mut deployment);
-
+    
     deployment.deploy().await.unwrap();
 
     let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
@@ -90,7 +90,7 @@ async fn main() {
     print_id::print_id(&mut ir);
 
     // Create a mapping from each CycleSink to its corresponding CycleSource
-    let cycle_sink_to_sources = link_cycles::link_cycles(&mut ir);
+    let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) =
         analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &proposers.id());
     decouple_analysis::decouple_analysis(
@@ -99,6 +99,6 @@ async fn main() {
         &proposers.id(),
         send_overhead,
         recv_overhead,
-        &cycle_sink_to_sources,
+        &cycle_source_to_sink_input,
     );
 }

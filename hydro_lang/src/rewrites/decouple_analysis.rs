@@ -97,21 +97,8 @@ fn add_equality_constr(
     }
 }
 
-fn add_inputs_and_constraints(
-    op_id: usize,
-    input_metadatas: Vec<&mut HydroIrMetadata>,
-    model_metadata: &RefCell<ModelMetadata>,
-) {
-    let ModelMetadata {
-        cluster_to_decouple,
-        model,
-        op_id_to_var,
-        op_id_to_inputs,
-        ..
-    } = &mut *model_metadata.borrow_mut();
-
-    let input_ids = input_metadatas
-        .iter()
+fn relevant_inputs(input_metadatas: Vec<&HydroIrMetadata>, cluster_to_decouple: &LocationId) -> Vec<usize> {
+    input_metadatas.iter()
         .filter_map(|input_metadata| {
             if cluster_to_decouple == input_metadata.location_kind.root() {
                 Some(input_metadata.id.unwrap())
@@ -119,11 +106,23 @@ fn add_inputs_and_constraints(
                 None
             }
         })
-        .collect();
+        .collect()
+}
+
+fn add_input_constraints(
+    op_id: usize,
+    input_ids: Vec<usize>,
+    model_metadata: &RefCell<ModelMetadata>,
+) {
+    let ModelMetadata {
+        model,
+        op_id_to_var,
+        op_id_to_inputs,
+        ..
+    } = &mut *model_metadata.borrow_mut();
 
     // Add input constraints. All inputs of an op must output to the same machine (be assigned the same var)
     add_equality_constr(&input_ids, op_id_to_var, model);
-
     op_id_to_inputs.insert(op_id, input_ids);
 }
 
@@ -210,10 +209,10 @@ fn add_decouple_vars(
     model: &mut Model,
     op1: usize,
     op2: usize,
-    op_id_to_var: &HashMap<usize, Var>,
+    op_id_to_var: &mut HashMap<usize, Var>,
 ) -> (Var, Var) {
-    let op1_var = op_id_to_var.get(&op1).unwrap();
-    let op2_var = op_id_to_var.get(&op2).unwrap();
+    let op1_var = var_from_op_id(op1, op_id_to_var, model);
+    let op2_var = var_from_op_id(op2, op_id_to_var, model);
     // 1 if (op1 = 0, op2 = 1), 0 otherwise
     let orig_to_decoupled_var = add_binvar!(model, bounds: ..).unwrap();
     // Technically unnecessary since we're using binvar, but future proofing
@@ -226,7 +225,7 @@ fn add_decouple_vars(
     model
         .add_constr(
             &format!("{}_{}_orig_to_decoupled", op1, op2),
-            c!(orig_to_decoupled_var >= *op2_var - *op1_var),
+            c!(orig_to_decoupled_var >= op2_var - op1_var),
         )
         .unwrap();
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
@@ -240,7 +239,7 @@ fn add_decouple_vars(
     model
         .add_constr(
             &format!("{}_{}_decoupled_to_orig", op1, op2),
-            c!(decoupled_to_orig_var >= *op1_var - *op2_var),
+            c!(decoupled_to_orig_var >= op1_var - op2_var),
         )
         .unwrap();
     (orig_to_decoupled_var, decoupled_to_orig_var)
@@ -290,7 +289,6 @@ fn add_tee_decoupling_overhead(
         model,
         orig_node_cpu_usage,
         decoupled_node_cpu_usage,
-        op_id_to_inputs,
         op_id_to_var,
         tee_inner_to_decoupled_vars,
         ..
@@ -337,30 +335,24 @@ fn add_tee_decoupling_overhead(
 
 fn decouple_analysis_leaf(
     leaf: &mut HydroLeaf,
-    next_op_id: &mut usize,
+    op_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
-    cycle_sink_to_sources: &HashMap<usize, usize>,
 ) {
     // Ignore nodes that are not in the cluster to decouple
     if model_metadata.borrow().cluster_to_decouple != *leaf.metadata().location_kind.root() {
         return;
     }
 
-    // If this is a CycleSink, then its inputs = the CycleSource's inputs
-    if let HydroLeaf::CycleSink { .. } = leaf {
-        let source = cycle_sink_to_sources.get(next_op_id).unwrap();
-        add_inputs_and_constraints(*source, leaf.input_metadata_mut(), model_metadata);
-    } else {
-        add_inputs_and_constraints(*next_op_id, leaf.input_metadata_mut(), model_metadata);
-    }
-
+    let input_ids = relevant_inputs(leaf.input_metadata(), &model_metadata.borrow().cluster_to_decouple);
+    add_input_constraints(*op_id, input_ids, model_metadata);
     add_tick_constraint(leaf.metadata(), model_metadata);
 }
 
 fn decouple_analysis_node(
     node: &mut HydroNode,
-    next_op_id: &mut usize,
+    op_id: &mut usize,
     model_metadata: &RefCell<ModelMetadata>,
+    cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) {
     let network_type = get_network_type(node, &model_metadata.borrow().cluster_to_decouple);
     if let HydroNode::Network { .. } = node {
@@ -373,6 +365,17 @@ fn decouple_analysis_node(
         return;
     }
 
+    // Add inputs. For CycleSource, its input is its CycleSink's input
+    let input_ids = if let HydroNode::CycleSource { .. } = node {
+        // Note: assume the CycleSink is on the same cluster
+        vec![*cycle_source_to_sink_input.get(op_id).unwrap()]
+    }
+    else {
+        relevant_inputs(node.input_metadata(), &model_metadata.borrow().cluster_to_decouple)
+    };
+    add_input_constraints(*op_id, input_ids, model_metadata);
+
+    // Add decoupling overhead. For Tees of the same inner, even if multiple are decoupled, only penalize decoupling once
     if let HydroNode::Tee {
         inner, metadata, ..
     } = node
@@ -385,7 +388,7 @@ fn decouple_analysis_node(
     } else {
         add_decoupling_overhead(node.metadata(), model_metadata);
     }
-    add_inputs_and_constraints(*next_op_id, node.input_metadata_mut(), model_metadata);
+
     add_cpu_usage(node.metadata(), network_type, model_metadata);
     add_tick_constraint(node.metadata(), model_metadata);
 }
@@ -435,7 +438,7 @@ pub fn decouple_analysis(
     cluster_to_decouple: &LocationId,
     send_overhead: f64,
     recv_overhead: f64,
-    cycle_sink_to_sources: &HashMap<usize, usize>,
+    cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
@@ -453,10 +456,10 @@ pub fn decouple_analysis(
     traverse_dfir(
         ir,
         |leaf, next_op_id| {
-            decouple_analysis_leaf(leaf, next_op_id, &model_metadata, cycle_sink_to_sources);
+            decouple_analysis_leaf(leaf, next_op_id, &model_metadata);
         },
         |node, next_op_id| {
-            decouple_analysis_node(node, next_op_id, &model_metadata);
+            decouple_analysis_node(node, next_op_id, &model_metadata, cycle_source_to_sink_input);
         },
     );
 
@@ -466,12 +469,18 @@ pub fn decouple_analysis(
         model,
         ..
     } = &mut *model_metadata.borrow_mut();
+    model.write("decouple.lp").unwrap();
     model.optimize().unwrap();
 
-    println!("We're decoupling the following operators:");
+    let mut orig_machine = vec![];
+    let mut decoupled_machine = vec![];
     for (op_id, var) in op_id_to_var.iter() {
         if model.get_obj_attr(attr::X, var).unwrap() == 0.0 {
-            println!("{}", op_id);
+            orig_machine.push(*op_id);
+        } else {
+            decoupled_machine.push(*op_id);
         }
     }
+    println!("Original: {:?}", orig_machine);
+    println!("Decoupling: {:?}", decoupled_machine);
 }

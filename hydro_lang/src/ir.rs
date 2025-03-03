@@ -378,12 +378,12 @@ impl HydroLeaf {
         }
     }
 
-    pub fn input_metadata_mut(&mut self) -> Vec<&mut HydroIrMetadata> {
+    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
         match self {
             HydroLeaf::ForEach { input, .. }
             | HydroLeaf::DestSink { input, .. }
             | HydroLeaf::CycleSink { input, .. } => {
-                vec![input.metadata_mut()]
+                vec![input.metadata()]
             }
         }
     }
@@ -2073,7 +2073,7 @@ impl<'a> HydroNode {
         }
     }
 
-    pub fn input_metadata_mut(&mut self) -> Vec<&mut HydroIrMetadata> {
+    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
         match self {
             HydroNode::Placeholder => {
                 panic!()
@@ -2086,18 +2086,18 @@ impl<'a> HydroNode {
             HydroNode::Persist { inner, .. }
             | HydroNode::Unpersist { inner, .. }
             | HydroNode::Delta { inner, .. } => {
-                vec![inner.metadata_mut()]
+                vec![inner.metadata()]
             }
             HydroNode::Chain { first, second, .. } => {
-                vec![first.metadata_mut(), second.metadata_mut()]
+                vec![first.metadata(), second.metadata()]
             }
             HydroNode::CrossProduct { left, right, .. }
             | HydroNode::CrossSingleton { left, right, .. }
             | HydroNode::Join { left, right, .. } => {
-                vec![left.metadata_mut(), right.metadata_mut()]
+                vec![left.metadata(), right.metadata()]
             }
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
-                vec![pos.metadata_mut(), neg.metadata_mut()]
+                vec![pos.metadata(), neg.metadata()]
             }
             HydroNode::Map { input, .. }
             | HydroNode::FlatMap { input, .. }
@@ -2109,12 +2109,19 @@ impl<'a> HydroNode {
             | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. }
             | HydroNode::Network { input, .. }
-            | HydroNode::Fold { input, .. }
+            | HydroNode::Counter { input, .. } => {
+                vec![input.metadata()]
+            }
+            HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. }
-            | HydroNode::Counter { input, .. } => {
-                vec![input.metadata_mut()]
+            | HydroNode::ReduceKeyed { input, .. } => {
+                // Skip persist before fold/reduce
+                if let HydroNode::Persist { inner, .. } = input.as_ref() {
+                    vec![inner.metadata()]
+                } else {
+                    vec![input.metadata()]
+                }
             }
         }
     }
