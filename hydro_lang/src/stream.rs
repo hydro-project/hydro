@@ -1586,14 +1586,13 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// let tick = process.tick();
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
-    ///         // tokio::time::sleep works, import then just sleep does not, unsure why
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     ///         x
     ///     }))
     ///     .resolve_futures()
     /// #   },
     /// #   |mut stream| async move {
-    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9
+    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9 (in any order)
     /// #       let mut output = HashSet::new();
     /// #       for _ in 1..10 {
     /// #           output.insert(stream.next().await.unwrap());
@@ -1629,7 +1628,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// let tick = process.tick();
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
-    ///         // tokio::time::sleep works, import then just sleep does not, unsure why
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
     ///         x
     ///     }))
@@ -1659,34 +1657,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
             },
         )
     }
-
-    // fn test() {
-    //     use std::collections::HashSet;
-
-    //     use dfir_rs::futures::StreamExt;
-    //     use tokio::time::Duration;
-    //     use super::*;
-    //     // use hydro_lang::*;
-    //     tokio_test::block_on(test_util::stream_transform_test(
-    //         |process| {
-    //             let tick = process.tick();
-    //             process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
-    //                 .map(q!(|x| async move {
-    //                     // tokio::time::sleep works, import then just sleep does not, unsure why
-    //                     tokio::time::sleep(Duration::from_millis(10)).await;
-    //                     x
-    //                 }))
-    //                 .resolve_futures()
-    //         },
-    //         |stream| async move {
-
-    //             assert_eq!(
-    //                 HashSet::<i32>::from_iter(1..10),
-    //                 HashSet::from_iter(vec![stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap(), stream.next().await.unwrap()])
-    //             );
-    //         },
-    //     ));
-    // }
 
     /// Given a tick, returns a stream corresponding to a batch of elements segmented by
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
