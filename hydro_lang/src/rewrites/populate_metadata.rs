@@ -80,28 +80,15 @@ fn parse_perf(file: String) -> HashMap<(usize, bool), f64> {
     let mut unidentified_samples = 0f64;
     let mut samples_per_id = HashMap::new();
     let operator_regex = Regex::new(r"::op_\d+v\d+__(.*?)__(send)?(recv)?(\d+)::").unwrap();
-    let sink_feed_regex = Regex::new(r"sink_feed_flush_send(\d+)").unwrap();
 
     for line in file.lines() {
         let n_samples_index = line.rfind(' ').unwrap() + 1;
         let n_samples = &line[n_samples_index..].parse::<f64>().unwrap();
 
-        let mut id = 0;
-        let mut is_network_recv = false;
-        let mut is_op = false;
-
         if let Some(cap) = operator_regex.captures_iter(line).last() {
-            is_op = true;
-            id = cap[4].parse::<usize>().unwrap();
-            is_network_recv = cap.get(3).is_some_and(|direction| direction.as_str() == "recv");
-        }
-        // Note: Although we do a regex check twice per line (potentially adding samples twice), there will never be an operator and sink_feed in the same line, so it's ok
-        if let Some(cap) = sink_feed_regex.captures_iter(line).last() {
-            is_op = true;
-            id = cap[1].parse::<usize>().unwrap();
-        }
+            let id = cap[4].parse::<usize>().unwrap();
+            let is_network_recv = cap.get(3).is_some_and(|direction| direction.as_str() == "recv");
 
-        if is_op {
             let dfir_operator_and_samples =
                 samples_per_id.entry((id, is_network_recv)).or_insert(0.0);
             *dfir_operator_and_samples += n_samples;

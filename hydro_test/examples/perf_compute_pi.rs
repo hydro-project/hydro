@@ -65,7 +65,7 @@ async fn main() {
     });
 
     // Create a mapping from each CycleSink to its corresponding CycleSource
-    let cycle_sink_to_sources = link_cycles::link_cycles(&mut ir);
+    let cycle_source_to_sink_inputs = link_cycles::cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) =
         analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &cluster.id());
     decouple_analysis::decouple_analysis(
@@ -74,6 +74,6 @@ async fn main() {
         &cluster.id(),
         send_overhead,
         recv_overhead,
-        &cycle_sink_to_sources,
+        &cycle_source_to_sink_inputs,
     );
 }
