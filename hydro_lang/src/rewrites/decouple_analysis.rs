@@ -6,6 +6,8 @@ use grb::prelude::*;
 use crate::ir::*;
 use crate::location::LocationId;
 
+use super::analyze_send_recv_overheads::{get_network_type, NetworkType};
+
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
 /// If there are two operators, map() -> filter(), and they are assigned variables 0 and 1, then that means filter's result ends up on a different machine.
@@ -41,41 +43,6 @@ struct ModelMetadata {
 
 // Penalty for decoupling regardless of cardinality (to prevent decoupling low cardinality operators)
 const DECOUPLING_PENALTY: f64 = 0.0001;
-
-#[derive(Clone, PartialEq, Eq)]
-enum NetworkType {
-    Recv,
-    Send,
-    SendRecv,
-}
-
-fn get_network_type(node: &HydroNode, cluster_to_decouple: &LocationId) -> Option<NetworkType> {
-    let mut is_to_us = false;
-    let mut is_from_us = false;
-
-    if let HydroNode::Network {
-        input, to_location, ..
-    } = node
-    {
-        if input.metadata().location_kind.root() == cluster_to_decouple {
-            is_from_us = true;
-        }
-        if to_location.root() == cluster_to_decouple {
-            is_to_us = true;
-        }
-
-        return if is_from_us && is_to_us {
-            Some(NetworkType::SendRecv)
-        } else if is_from_us {
-            Some(NetworkType::Send)
-        } else if is_to_us {
-            Some(NetworkType::Recv)
-        } else {
-            None
-        };
-    }
-    None
-}
 
 // Lazily creates the var
 fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Var>, model: &mut Model) -> Var {
@@ -158,7 +125,7 @@ fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mode
 
 fn add_cpu_usage(
     metadata: &HydroIrMetadata,
-    network_type: Option<NetworkType>,
+    network_type: &Option<NetworkType>,
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     let ModelMetadata {
@@ -254,7 +221,7 @@ fn add_decouple_vars(
     (orig_to_decoupled_var, decoupled_to_orig_var)
 }
 
-fn add_decoupling_overhead(metadata: &HydroIrMetadata, model_metadata: &RefCell<ModelMetadata>) {
+fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>, model_metadata: &RefCell<ModelMetadata>) {
     let ModelMetadata {
         decoupling_send_overhead,
         decoupling_recv_overhead,
@@ -268,7 +235,12 @@ fn add_decoupling_overhead(metadata: &HydroIrMetadata, model_metadata: &RefCell<
         ..
     } = &mut *model_metadata.borrow_mut();
 
-    let cardinality = metadata.cardinality.unwrap_or_default();
+    let metadata = node.metadata();
+    let cardinality = match network_type {
+        Some(NetworkType::Send) | Some(NetworkType::SendRecv) => node.input_metadata().first().unwrap().cardinality.unwrap_or_default(),
+        _ => metadata.cardinality.unwrap_or_default(),
+    };
+
     let op_id = metadata.id.unwrap();
     if let Some(inputs) = op_id_to_inputs.get(&op_id) {
         // All inputs must be assigned the same var (by constraints above), so it suffices to check one
@@ -397,10 +369,10 @@ fn decouple_analysis_node(
             model_metadata,
         );
     } else {
-        add_decoupling_overhead(node.metadata(), model_metadata);
+        add_decoupling_overhead(node, &network_type, model_metadata);
     }
 
-    add_cpu_usage(node.metadata(), network_type, model_metadata);
+    add_cpu_usage(node.metadata(), &network_type, model_metadata);
     add_tick_constraint(node.metadata(), model_metadata);
 }
 

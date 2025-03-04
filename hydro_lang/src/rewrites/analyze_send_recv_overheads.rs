@@ -1,20 +1,37 @@
 use crate::ir::*;
 use crate::location::LocationId;
 
-fn calculate_send_overhead(metadata: &HydroIrMetadata) -> Option<f64> {
-    if let Some(cardinality) = metadata.cardinality {
-        if let Some(cpu_usage) = metadata.cpu_usage {
-            return Some(cpu_usage / cardinality as f64);
-        }
-    }
-    None
+#[derive(Clone, PartialEq, Eq)]
+pub enum NetworkType {
+    Recv,
+    Send,
+    SendRecv,
 }
 
-fn calculate_recv_overhead(metadata: &HydroIrMetadata) -> Option<f64> {
-    if let Some(cardinality) = metadata.cardinality {
-        if let Some(cpu_usage) = metadata.network_recv_cpu_usage {
-            return Some(cpu_usage / cardinality as f64);
+pub fn get_network_type(node: &HydroNode, location: &LocationId) -> Option<NetworkType> {
+    let mut is_to_us = false;
+    let mut is_from_us = false;
+
+    if let HydroNode::Network {
+        input, to_location, ..
+    } = node
+    {
+        if input.metadata().location_kind.root() == location {
+            is_from_us = true;
         }
+        if to_location.root() == location {
+            is_to_us = true;
+        }
+
+        return if is_from_us && is_to_us {
+            Some(NetworkType::SendRecv)
+        } else if is_from_us {
+            Some(NetworkType::Send)
+        } else if is_to_us {
+            Some(NetworkType::Recv)
+        } else {
+            None
+        };
     }
     None
 }
@@ -26,30 +43,39 @@ fn analyze_overheads_node(
     max_recv_overhead: &mut f64,
     location: &LocationId,
 ) {
-    if let HydroNode::Network {
-            input,
-            metadata,
-            to_location,
-            ..
-        } = node {
-        if input.metadata().location_kind.root() == location {
-            // Sending from this location
-            if let Some(overhead) = calculate_send_overhead(metadata) {
-                println!("New send overhead: {}", overhead);
-                if overhead > *max_send_overhead {
-                    *max_send_overhead = overhead;
+    let metadata = node.metadata();
+    let network_type = get_network_type(node, location);
+    match network_type {
+        Some(NetworkType::Send) | Some(NetworkType::SendRecv) => {
+            if let Some(cpu_usage) = metadata.cpu_usage {
+                // Use cardinality from the network's input, not the network itself.
+                // Reason: Cardinality is measured at ONE recipient, but the sender may be sending to MANY machines.
+                if let Some(cardinality) = node.input_metadata().first().unwrap().cardinality {
+                    let overhead = cpu_usage / cardinality as f64;
+
+                    println!("New send overhead: {}", overhead);
+                    if overhead > *max_send_overhead {
+                        *max_send_overhead = overhead;
+                    }
                 }
             }
         }
-        if to_location.root() == location {
-            // Receiving at this location
-            if let Some(overhead) = calculate_recv_overhead(metadata) {
-                println!("New receive overhead: {}", overhead);
-                if overhead > *max_recv_overhead {
-                    *max_recv_overhead = overhead;
+        _ => {}
+    }
+    match network_type {
+        Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
+            if let Some(cardinality) = metadata.cardinality {
+                if let Some(cpu_usage) = metadata.network_recv_cpu_usage {
+                    let overhead = cpu_usage / cardinality as f64;
+
+                    println!("New receive overhead: {}", overhead);
+                    if overhead > *max_recv_overhead {
+                        *max_recv_overhead = overhead;
+                    }
                 }
             }
         }
+        _ => {}
     }
 }
 
