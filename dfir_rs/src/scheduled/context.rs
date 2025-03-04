@@ -155,7 +155,10 @@ impl Context {
     }
 
     /// Returns a shared reference to the state.
-    pub fn state_ref<T>(&self, handle: StateHandle<T>) -> &'_ T
+    ///
+    /// # Safety
+    /// `StateHandle<T>` must be from _this_ instance, created via [`Self::add_state`].
+    pub unsafe fn state_ref_unchecked<T>(&self, handle: StateHandle<T>) -> &'_ T
     where
         T: Any,
     {
@@ -169,7 +172,7 @@ impl Context {
         debug_assert!(state.is::<T>());
 
         unsafe {
-            // SAFETY: DFIR codegen guarantees that the state has the correct type.
+            // SAFETY: `handle` is from this instance.
             // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
             &*(state as *const dyn Any as *const T)
         }
@@ -180,20 +183,12 @@ impl Context {
     where
         T: Any,
     {
-        let state = self
-            .states
+        self.states
             .get_mut(handle.state_id.0)
             .expect("Failed to find state with given handle.")
             .state
-            .as_mut();
-
-        debug_assert!(state.is::<T>());
-
-        unsafe {
-            // SAFETY: DFIR codegen guarantees that the state has the correct type.
-            // TODO(shadaj): replace with `downcast_mut_unchecked` when it's stabilized
-            &mut *(state as *mut dyn Any as *mut T)
-        }
+            .downcast_mut()
+            .expect("StateHandle wrong type T for casting.")
     }
 
     /// Adds state to the context and returns the handle.

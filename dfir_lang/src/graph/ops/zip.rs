@@ -86,7 +86,10 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 // TODO(mingwei): performance issue - get_mut_default and std::mem::take reset the vecs, reallocs heap.
-                let mut zipbuf_borrow = #context.state_ref(#zipbuf_ident).borrow_mut();
+                let mut zipbuf_borrow = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#zipbuf_ident)
+                }.borrow_mut();
                 let (lhs_buf, rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
                 #root::itertools::Itertools::zip_longest(
                     ::std::mem::take(lhs_buf).into_iter().chain(#lhs),
@@ -96,7 +99,10 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
                         if let #root::itertools::EitherOrBoth::Both(lhs, rhs) = either {
                             Some((lhs, rhs))
                         } else {
-                            let mut zipbuf_burrow = #context.state_ref(#zipbuf_ident).borrow_mut();
+                            let mut zipbuf_burrow = unsafe {
+                                // SAFETY: handle from `#df_ident.add_state(..)`.
+                                #context.state_ref_unchecked(#zipbuf_ident)
+                            }.borrow_mut();
                             let (lhs_buf, rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
                             match either {
                                 #root::itertools::EitherOrBoth::Left(lhs) => lhs_buf.push(lhs),
