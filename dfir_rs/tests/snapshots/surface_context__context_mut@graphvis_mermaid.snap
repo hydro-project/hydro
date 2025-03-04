@@ -11,7 +11,7 @@ linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter(0..10)</code>"/]:::pullClass
 2v1[\"(2v1) <code>map(|n| context.add_state(n))</code>"/]:::pullClass
 3v1[\"(3v1) <code>next_stratum()</code>"/]:::pullClass
-4v1[/"<div style=text-align:center>(4v1)</div> <code>for_each(|handle| {<br>    println!(&quot;{:?}: {}&quot;, handle, unsafe { context.state_ref_unchecked(handle) })<br>})</code>"\]:::pushClass
+4v1[/"(4v1) <code>for_each(|handle| println!(&quot;{:?}: {}&quot;, handle, context.state_ref(handle)))</code>"\]:::pushClass
 5v1["(5v1) <code>handoff</code>"]:::otherClass
 3v1-->4v1
 2v1-->5v1

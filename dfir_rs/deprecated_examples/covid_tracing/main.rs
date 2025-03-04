@@ -1,15 +1,13 @@
 use std::cell::RefCell;
 use std::time::Duration;
 
-use dfir_rs::compiled::pull::JoinState;
-use dfir_rs::compiled::pull::SymmetricHashJoin;
+use dfir_rs::compiled::pull::{JoinState, SymmetricHashJoin};
 use dfir_rs::lang::collections::Iter;
 use dfir_rs::pusherator::{InputBuild, IteratorToPusherator, PusheratorBuild};
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::graph_ext::GraphExt;
 use dfir_rs::scheduled::handoff::VecHandoff;
 use dfir_rs::var_expr;
-
 use rand::Rng;
 
 mod people;
@@ -61,10 +59,7 @@ fn main() {
                 .into_iter()
                 .flat_map(|(pid_a, pid_b, t)| vec![(pid_a, (pid_b, t)), (pid_b, (pid_a, t))]);
 
-            let mut join_state = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                context.state_ref_unchecked(state_handle)
-            }.borrow_mut();
+            let mut join_state = context.state_ref(state_handle).borrow_mut();
             let join_exposed_contacts = SymmetricHashJoin::new(exposed, contacts, &mut *join_state);
             let new_exposed = join_exposed_contacts.filter_map(
                 |(_pid_a, ((t_from, t_to), (pid_b, t_contact)))| {

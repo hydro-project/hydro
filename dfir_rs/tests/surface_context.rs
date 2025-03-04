@@ -24,7 +24,7 @@ pub fn test_context_mut() {
         source_iter(0..10)
             -> map(|n| context.add_state(n))
             -> next_stratum()
-            -> for_each(|handle| println!("{:?}: {}", handle, unsafe { context.state_ref_unchecked(handle) }));
+            -> for_each(|handle| println!("{:?}: {}", handle, context.state_ref(handle)));
     };
     assert_graphvis_snapshots!(df);
     df.run_available();

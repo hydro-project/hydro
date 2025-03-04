@@ -8,7 +8,7 @@ digraph {
     n1v1 [label="(n1v1) source_iter(0..10)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) map(|n| context.add_state(n))", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) next_stratum()", shape=invhouse, fillcolor="#88aaff"]
-    n4v1 [label="(n4v1) for_each(|handle| {\l    println!(\"{:?}: {}\", handle, unsafe { context.state_ref_unchecked(handle) })\l})\l", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) for_each(|handle| println!(\"{:?}: {}\", handle, context.state_ref(handle)))", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n3v1 -> n4v1
     n2v1 -> n5v1

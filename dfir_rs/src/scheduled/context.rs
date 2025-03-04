@@ -178,6 +178,19 @@ impl Context {
         }
     }
 
+    /// Returns a shared reference to the state.
+    pub fn state_ref<T>(&self, handle: StateHandle<T>) -> &'_ T
+    where
+        T: Any,
+    {
+        self.states
+            .get(handle.state_id.0)
+            .expect("Failed to find state with given handle.")
+            .state
+            .downcast_ref()
+            .expect("StateHandle wrong type T for casting.")
+    }
+
     /// Returns an exclusive reference to the state.
     pub fn state_mut<T>(&mut self, handle: StateHandle<T>) -> &'_ mut T
     where
