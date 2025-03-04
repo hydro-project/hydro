@@ -123,7 +123,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let mut #accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                    let mut #accumulator_ident = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#singleton_output_ident)
+                    }.borrow_mut();
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -139,7 +142,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = {
                     #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        let mut #accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                        let mut #accumulator_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#singleton_output_ident)
+                        }.borrow_mut();
                         #iterator_foreach
                     })
                 };

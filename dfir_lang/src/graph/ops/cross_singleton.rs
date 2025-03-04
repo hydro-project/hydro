@@ -102,7 +102,10 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                         .flatten()
                 }
                 cross_singleton_guard(
-                    #context.state_ref(#singleton_handle_ident).borrow_mut(),
+                    unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#singleton_handle_ident)
+                    }.borrow_mut(),
                     #singleton_input,
                     #stream_input,
                 )

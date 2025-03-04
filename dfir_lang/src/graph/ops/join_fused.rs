@@ -176,8 +176,13 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         // Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         let write_iterator = quote_spanned! {op_span=>
-            let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+            let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                (
+                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                )
+            };
 
             let #ident = {
                 #lhs_tokens
