@@ -19,6 +19,8 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
         | HydroNode::CrossSingleton { metadata, .. }
         | HydroNode::CrossProduct { metadata, .. } // Can technically be derived by multiplying parent cardinalities
         | HydroNode::Join { metadata, .. }
+        | HydroNode::ResolveFutures { metadata, .. }
+        | HydroNode::ResolveFuturesOrdered { metadata, .. }
         | HydroNode::Difference { metadata, .. }
         | HydroNode::AntiJoin { metadata, .. }
         | HydroNode::FlatMap { metadata, .. }

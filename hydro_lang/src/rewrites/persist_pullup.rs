@@ -45,6 +45,28 @@ fn persist_pullup_node(
                 }
             }
 
+            HydroNode::ResolveFutures {
+                input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
+                metadata,
+            } => HydroNode::Persist {
+                inner: Box::new(HydroNode::ResolveFutures {
+                    input: behind_persist,
+                    metadata: metadata.clone(),
+                }),
+                metadata: metadata.clone(),
+            },
+
+            HydroNode::ResolveFuturesOrdered {
+                input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
+                metadata,
+            } => HydroNode::Persist {
+                inner: Box::new(HydroNode::ResolveFuturesOrdered {
+                    input: behind_persist,
+                    metadata: metadata.clone(),
+                }),
+                metadata: metadata.clone(),
+            },
+
             HydroNode::Map {
                 f,
                 input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
