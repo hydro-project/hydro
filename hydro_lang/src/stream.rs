@@ -1583,7 +1583,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # use dfir_rs::futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
@@ -1625,7 +1624,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # use dfir_rs::futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
     ///     .map(q!(|x| async move {
     ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
