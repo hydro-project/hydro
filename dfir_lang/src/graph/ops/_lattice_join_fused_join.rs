@@ -3,8 +3,8 @@ use syn::parse_quote;
 use syn::spanned::Spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, RANGE_1, WriteContextArgs,
 };
 
 /// > 2 input streams of type `(K, V1)` and `(K, V2)`, 1 output stream of type `(K, (V1', V2'))` where `V1`, `V2`, `V1'`, `V2'` are lattice types
@@ -160,8 +160,13 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = quote_spanned! {op_span=>
-            let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+            let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
+                // SAFETY: handles from `#df_ident`.
+                (
+                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                )
+            };
 
             let #ident = {
                 #lhs_tokens

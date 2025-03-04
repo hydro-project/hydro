@@ -121,8 +121,14 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         let input_pos = &inputs[1];
         let write_iterator = {
             quote_spanned! {op_span=>
-                let mut #neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
-                let mut #pos_borrow_ident = #context.state_ref(#pos_antijoindata_ident).borrow_mut();
+                let (mut #neg_borrow_ident, mut #pos_borrow_ident) = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    (
+                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
+                    )
+                };
+
                 let #ident = {
                     /// Limit error propagation by bounding locally, erasing output iterator type.
                     #[inline(always)]
