@@ -129,7 +129,10 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
-                        let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
+                        let mut #hashtable_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#groupbydata_ident)
+                        }.borrow_mut();
 
                         #work_fn(|| {
                             #[inline(always)]
@@ -169,7 +172,10 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
-                        let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
+                        let mut #hashtable_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#groupbydata_ident)
+                        }.borrow_mut();
 
                         #work_fn(|| {
                             #[inline(always)]

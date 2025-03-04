@@ -196,8 +196,14 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
         let rhs = &inputs[1];
         let write_iterator = if loop_id.is_none() {
             quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    (
+                        #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                    )
+                };
+
                 let #ident = {
                     // Limit error propagation by bounding locally, erasing output iterator type.
                     #[inline(always)]

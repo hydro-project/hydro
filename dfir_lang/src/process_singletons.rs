@@ -43,7 +43,10 @@ pub fn postprocess_singletons(
         let mut group = Group::new(
             proc_macro2::Delimiter::Parenthesis,
             quote_spanned! {span=>
-                *#context.state_ref(#resolved_ident).borrow_mut()
+                *(unsafe {
+                    // SAFETY: `handle` is from this instance.
+                    #context.state_ref_unchecked(#resolved_ident)
+                }.borrow_mut())
             },
         );
         group.set_span(singleton_ident.span());

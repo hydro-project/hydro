@@ -118,7 +118,10 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
                 #root::__python_feature_gate! {
                     {
                         // TODO(mingwei): maybe this can be outside the closure?
-                        let py_func = #context.state_ref(#py_func_ident);
+                        let py_func = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#py_func_ident)
+                        };
                         #root::pyo3::Python::with_gil(|py| py_func.call1(py, x))
                     },
                     {

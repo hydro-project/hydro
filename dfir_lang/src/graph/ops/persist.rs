@@ -93,7 +93,11 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                let mut #vec_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 let #ident = {
                     if #context.is_first_run_this_tick() {
                         #work_fn(|| #vec_ident.extend(#input));
@@ -108,7 +112,11 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                let mut #vec_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 let #ident = {
                     fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, mut output: Push, is_new_tick: bool) -> impl 'ctx + #root::pusherator::Pusherator<Item = Item>
                     where

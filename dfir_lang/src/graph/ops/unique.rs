@@ -97,7 +97,10 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                     ));
                 };
                 let get_set = quote_spanned! {op_span=>
-                    let mut borrow = #context.state_ref(#uniquedata_ident).borrow_mut();
+                    let mut borrow = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#uniquedata_ident)
+                    }.borrow_mut();
                     let set = borrow.get_mut_clear((#context.current_tick(), #context.current_stratum()));
                 };
                 (write_prologue, get_set)
@@ -107,7 +110,10 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                     let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
                 };
                 let get_set = quote_spanned! {op_span=>
-                    let mut set = #context.state_ref(#uniquedata_ident).borrow_mut();
+                    let mut set = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#uniquedata_ident)
+                    }.borrow_mut();
                 };
                 (write_prologue, get_set)
             }

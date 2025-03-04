@@ -140,7 +140,10 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let input_pos = &inputs[1];
         let write_iterator = match persistences[0] {
             Persistence::Tick => quote_spanned! {op_span =>
-                let mut #neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
+                let mut #neg_borrow_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#neg_antijoindata_ident)
+                }.borrow_mut();
 
                 #[allow(clippy::needless_borrow)]
                 #work_fn(|| #neg_borrow.extend(#input_neg));
@@ -152,8 +155,13 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 });
             },
             Persistence::Static => quote_spanned! {op_span =>
-                let mut #neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
-                let mut #pos_borrow_ident = #context.state_ref(#pos_antijoindata_ident).borrow_mut();
+                let (mut #neg_borrow_ident, mut #pos_borrow_ident) = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    (
+                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
+                    )
+                };
 
                 #[allow(clippy::needless_borrow)]
                 let #ident = {

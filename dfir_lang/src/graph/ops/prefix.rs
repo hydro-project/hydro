@@ -48,7 +48,10 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
 
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
-            let mut #vec_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+            let mut #vec_ident = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                #context.state_ref_unchecked(#singleton_output_ident)
+            }.borrow_mut();
             ::std::iter::Extend::extend(&mut *#vec_ident, #input);
             let #ident = ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#vec_ident));
         };

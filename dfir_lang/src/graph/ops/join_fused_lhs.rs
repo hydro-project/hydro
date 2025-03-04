@@ -117,7 +117,10 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = match persistences[1] {
             Persistence::Tick => quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
+                let mut #lhs_borrow_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#lhs_joindata_ident)
+                }.borrow_mut();
 
                 let #ident = {
                     #lhs_fold_or_reduce_into_from
@@ -127,8 +130,13 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    (
+                        #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                    )
+                };
 
                 let #ident = {
                     #lhs_fold_or_reduce_into_from

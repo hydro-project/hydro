@@ -63,7 +63,10 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
         let write_iterator = {
             quote_spanned! {op_span=>
 
-                let mut #borrow_ident = #context.state_ref(#internal_buffer).borrow_mut();
+                let mut #borrow_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#internal_buffer)
+                }.borrow_mut();
 
                 #borrow_ident.extend(#input);
 

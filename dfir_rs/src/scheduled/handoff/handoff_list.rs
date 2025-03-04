@@ -42,7 +42,16 @@ where
     ///
     /// (Note that unlike [`Self::set_graph_meta`], this does not mess with pred/succ handoffs for
     /// teeing).
-    fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a>;
+    ///
+    /// # Safety
+    /// The handoffs in this port list (`self`) must come from the `handoffs` [`SlotVec`].
+    /// This ensure the types will match.
+    ///
+    /// Use [`Self::assert_is_from`] to check this.
+    unsafe fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a>;
+
+    /// Asserts that `self` is a valid port list from `handoffs`. Panics if not.
+    fn assert_is_from(&self, handoffs: &SlotVec<HandoffTag, HandoffData>);
 }
 #[sealed]
 impl<S, Rest, H> PortList<S> for (Port<S, H>, Rest)
@@ -84,19 +93,38 @@ where
     }
 
     type Ctx<'a> = (&'a PortCtx<S, H>, Rest::Ctx<'a>);
-    fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {
+    unsafe fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {
         let (this, rest) = self;
-        let handoff = handoffs
-            .get(this.handoff_id)
-            .unwrap()
-            .handoff
-            .any_ref()
-            .downcast_ref()
-            .expect("Attempted to cast handoff to wrong type.");
+        let hoff_any = handoffs.get(this.handoff_id).unwrap().handoff.any_ref();
+        debug_assert!(hoff_any.is::<H>());
+
+        let handoff = unsafe {
+            // SAFETY: Caller must ensure `self` is from `handoffs`.
+            // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
+            &*(hoff_any as *const dyn std::any::Any as *const H)
+        };
 
         let ctx = RefCast::ref_cast(handoff);
-        let ctx_rest = rest.make_ctx(handoffs);
+        let ctx_rest = unsafe {
+            // SAFETY: Same invariants hold, as we recurse through the list.
+            rest.make_ctx(handoffs)
+        };
         (ctx, ctx_rest)
+    }
+
+    fn assert_is_from(&self, handoffs: &SlotVec<HandoffTag, HandoffData>) {
+        let (this, rest) = self;
+        let Some(hoff_data) = handoffs.get(this.handoff_id) else {
+            panic!("Handoff ID {} not found in `handoffs`.", this.handoff_id);
+        };
+        let hoff_any = hoff_data.handoff.any_ref();
+        assert!(
+            hoff_any.is::<H>(),
+            "Handoff ID {} is not of type {} in `handoffs`.",
+            this.handoff_id,
+            std::any::type_name::<H>(),
+        );
+        rest.assert_is_from(handoffs);
     }
 }
 #[sealed]
@@ -114,7 +142,13 @@ where
     }
 
     type Ctx<'a> = ();
-    fn make_ctx<'a>(&self, _handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {}
+    unsafe fn make_ctx<'a>(
+        &self,
+        _handoffs: &'a SlotVec<HandoffTag, HandoffData>,
+    ) -> Self::Ctx<'a> {
+    }
+
+    fn assert_is_from(&self, _handoffs: &SlotVec<HandoffTag, HandoffData>) {}
 }
 
 /// Trait for splitting a list of ports into two.
