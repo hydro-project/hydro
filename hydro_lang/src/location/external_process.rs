@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use dfir_rs::bytes::Bytes;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::{Location, LocationId, NoTick};
 use crate::builder::FlowState;

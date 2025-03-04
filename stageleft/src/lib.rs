@@ -2,14 +2,14 @@ use core::panic;
 use std::marker::PhantomData;
 
 use internal::CaptureVec;
-use proc_macro2::{Span, TokenStream};
 use proc_macro_crate::FoundCrate;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 pub mod internal {
     pub use proc_macro2::{Span, TokenStream};
     pub use quote::quote;
-    pub use {proc_macro2, proc_macro_crate, syn};
+    pub use {proc_macro_crate, proc_macro2, syn};
 
     pub type CaptureVec = Vec<(String, (Option<TokenStream>, Option<TokenStream>))>;
 }
@@ -330,51 +330,51 @@ pub trait IntoQuotedOnce<'a, T, Ctx>:
 }
 
 impl<
-        'a,
-        T,
-        Ctx,
-        F: for<'b> FnOnce(
-                &'b Ctx,
-                &mut String,
-                &mut &'static str,
-                &mut TokenStream,
-                &mut CaptureVec,
-                bool,
-            ) -> T
-            + 'a,
-    > QuotedWithContext<'a, T, Ctx> for F
-{
-}
-
-impl<
-        'a,
-        T,
-        Ctx,
-        F: for<'b> FnOnce(
-                &'b Ctx,
-                &mut String,
-                &mut &'static str,
-                &mut TokenStream,
-                &mut CaptureVec,
-                bool,
-            ) -> T
-            + 'a,
-    > IntoQuotedOnce<'a, T, Ctx> for F
-{
-}
-
-impl<
-        T,
-        Ctx,
-        F: for<'b> FnOnce(
+    'a,
+    T,
+    Ctx,
+    F: for<'b> FnOnce(
             &'b Ctx,
             &mut String,
             &mut &'static str,
             &mut TokenStream,
             &mut CaptureVec,
             bool,
-        ) -> T,
-    > FreeVariableWithContext<Ctx> for F
+        ) -> T
+        + 'a,
+> QuotedWithContext<'a, T, Ctx> for F
+{
+}
+
+impl<
+    'a,
+    T,
+    Ctx,
+    F: for<'b> FnOnce(
+            &'b Ctx,
+            &mut String,
+            &mut &'static str,
+            &mut TokenStream,
+            &mut CaptureVec,
+            bool,
+        ) -> T
+        + 'a,
+> IntoQuotedOnce<'a, T, Ctx> for F
+{
+}
+
+impl<
+    T,
+    Ctx,
+    F: for<'b> FnOnce(
+        &'b Ctx,
+        &mut String,
+        &mut &'static str,
+        &mut TokenStream,
+        &mut CaptureVec,
+        bool,
+    ) -> T,
+> FreeVariableWithContext<Ctx> for F
 {
     type O = T;
 
@@ -412,7 +412,11 @@ impl<
             .skip(1)
             .cloned()
             .collect::<Vec<_>>();
-        let module_path = if module_path_segments.is_empty() {
+        let module_path = if module_path_segments.is_empty()
+            || module_path_segments
+                .iter()
+                .any(|segment| segment.ident.to_string().starts_with("__doctest"))
+        {
             None
         } else {
             Some(syn::Path {
@@ -446,19 +450,11 @@ pub trait IntoQuotedMut<'a, T, Ctx>:
 }
 
 impl<
-        'a,
-        T,
-        Ctx,
-        F: FnMut(
-                &Ctx,
-                &mut String,
-                &mut &'static str,
-                &mut TokenStream,
-                &mut CaptureVec,
-                bool,
-            ) -> T
-            + 'a,
-    > IntoQuotedMut<'a, T, Ctx> for F
+    'a,
+    T,
+    Ctx,
+    F: FnMut(&Ctx, &mut String, &mut &'static str, &mut TokenStream, &mut CaptureVec, bool) -> T + 'a,
+> IntoQuotedMut<'a, T, Ctx> for F
 {
 }
 

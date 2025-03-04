@@ -4,12 +4,12 @@ mod server;
 
 use std::collections::HashMap;
 use std::num::ParseFloatError;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use clap::{command, Parser, Subcommand};
+use clap::{Parser, Subcommand, command};
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
 use futures::Stream;
 use tokio::sync::mpsc::UnboundedSender;

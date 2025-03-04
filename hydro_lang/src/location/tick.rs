@@ -2,7 +2,7 @@ use std::marker::PhantomData;
 
 use proc_macro2::Span;
 use sealed::sealed;
-use stageleft::{q, QuotedWithContext};
+use stageleft::{QuotedWithContext, q};
 
 use super::{Cluster, Location, LocationId, Process};
 use crate::builder::FlowState;
@@ -176,6 +176,7 @@ impl<'a, L: Location<'a>> Tick<L> {
 
         (
             ForwardRef {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,
@@ -207,6 +208,7 @@ impl<'a, L: Location<'a>> Tick<L> {
 
         (
             ForwardRef {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,
@@ -241,6 +243,7 @@ impl<'a, L: Location<'a>> Tick<L> {
 
         (
             TickCycle {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,
@@ -278,6 +281,7 @@ impl<'a, L: Location<'a>> Tick<L> {
 
         (
             TickCycle {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,

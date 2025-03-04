@@ -118,7 +118,7 @@ where
 mod tests {
     use std::collections::HashSet;
 
-    use crate::compiled::pull::{symmetric_hash_join_into_iter, HalfSetJoinState};
+    use crate::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_iter};
 
     #[test]
     fn hash_join() {

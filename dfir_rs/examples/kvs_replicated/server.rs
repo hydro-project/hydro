@@ -2,8 +2,8 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{UdpSink, UdpStream};
 
-use crate::protocol::{KvsMessage, KvsMessageWithAddr};
 use crate::Opts;
+use crate::protocol::{KvsMessage, KvsMessageWithAddr};
 
 pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
     println!("Server live!");

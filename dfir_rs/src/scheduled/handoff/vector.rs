@@ -73,16 +73,3 @@ impl<T> HandoffMeta for VecHandoff<T> {
         (*self.input).borrow_mut().is_empty()
     }
 }
-
-impl<H> HandoffMeta for Rc<RefCell<H>>
-where
-    H: HandoffMeta,
-{
-    fn any_ref(&self) -> &dyn Any {
-        self
-    }
-
-    fn is_bottom(&self) -> bool {
-        self.borrow().is_bottom()
-    }
-}

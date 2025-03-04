@@ -5,7 +5,8 @@ mod tee;
 mod vector;
 
 use std::any::Any;
-use std::cell::RefMut;
+use std::cell::{RefCell, RefMut};
+use std::rc::Rc;
 
 pub use tee::TeeingHandoff;
 pub use vector::VecHandoff;
@@ -35,6 +36,19 @@ pub trait HandoffMeta: Any {
     // TODO(justin): more fine-grained info here.
     /// Return if the handoff is empty.
     fn is_bottom(&self) -> bool;
+}
+
+impl<H> HandoffMeta for Rc<RefCell<H>>
+where
+    H: HandoffMeta,
+{
+    fn any_ref(&self) -> &dyn Any {
+        self
+    }
+
+    fn is_bottom(&self) -> bool {
+        self.borrow().is_bottom()
+    }
 }
 
 /// Trait for handoffs to implement.

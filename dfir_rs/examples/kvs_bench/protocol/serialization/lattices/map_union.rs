@@ -7,8 +7,8 @@ use serde::{Serialize, Serializer};
 
 use super::my_last_write_wins::MyLastWriteWinsDeserializer;
 use crate::buffer_pool::BufferPool;
-use crate::protocol::serialization::lattices::my_last_write_wins::MyLastWriteWinsWrapper;
 use crate::protocol::MyLastWriteWins;
+use crate::protocol::serialization::lattices::my_last_write_wins::MyLastWriteWinsWrapper;
 
 #[repr(transparent)]
 pub struct MapUnionHashMapWrapper<'a, const SIZE: usize>(

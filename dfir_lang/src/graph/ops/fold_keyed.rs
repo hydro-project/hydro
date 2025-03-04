@@ -1,8 +1,8 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
 /// > 1 input stream of type `(K, V1)`, 1 output stream of type `(K, V2)`.
@@ -91,6 +91,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
+                   work_fn,
                    root,
                    op_inst:
                        OperatorInstance {
@@ -141,7 +142,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     quote_spanned! {op_span=>
                         let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             #[inline(always)]
                             fn check_input<Iter, A, B>(iter: Iter) -> impl ::std::iter::Iterator<Item = (A, B)>
                             where
@@ -166,7 +167,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                                 let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
                                 #[allow(clippy::redundant_closure_call)] call_comb_type(entry, kv.1, #aggfn);
                             }
-                        }
+                        });
 
                         let #ident = #hashtable_ident.drain();
                     },
@@ -181,7 +182,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     quote_spanned! {op_span=>
                         let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             #[inline(always)]
                             fn check_input<Iter, A, B>(iter: Iter) -> impl ::std::iter::Iterator<Item = (A, B)>
                             where
@@ -206,7 +207,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                                 let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
                                 #[allow(clippy::redundant_closure_call)] call_comb_type(entry, kv.1, #aggfn);
                             }
-                        }
+                        });
 
                         // Play everything but only on the first run of this tick/stratum.
                         // (We know we won't have any more inputs, so it is fine to only play once.
@@ -237,7 +238,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     quote_spanned! {op_span=>
                         let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
 
-                        {
+                        #work_fn(|| {
                             #[inline(always)]
                             fn check_input<Iter: ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>, K: ::std::clone::Clone, V: ::std::clone::Clone>(iter: Iter)
                                 -> impl ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>> { iter }
@@ -261,7 +262,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                                     },
                                 }
                             }
-                        }
+                        });
 
                         let #ident = #hashtable_ident
                             .iter()

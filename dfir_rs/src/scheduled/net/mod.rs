@@ -62,8 +62,8 @@ use std::pin::Pin;
 
 use byteorder::{NetworkEndian, WriteBytesExt};
 use futures::{Sink, StreamExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::TcpStream;
+use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 
 use super::graph::Dfir;

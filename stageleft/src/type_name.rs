@@ -2,7 +2,7 @@ use std::sync::{LazyLock, RwLock};
 
 use proc_macro2::Span;
 use syn::visit_mut::VisitMut;
-use syn::{parse_quote, TypeInfer};
+use syn::{TypeInfer, parse_quote};
 
 use crate::runtime_support::get_final_crate_name;
 

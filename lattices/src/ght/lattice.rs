@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 
 use variadics::variadic_collections::VariadicSet;
-use variadics::{var_expr, var_type, CloneVariadic, PartialEqVariadic, SplitBySuffix, VariadicExt};
+use variadics::{CloneVariadic, PartialEqVariadic, SplitBySuffix, VariadicExt, var_expr, var_type};
 
 use crate::ght::{GeneralizedHashTrieNode, GhtGet, GhtInner, GhtLeaf};
 use crate::{IsBot, IsTop, LatticeBimorphism, LatticeOrd, Merge};

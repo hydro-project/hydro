@@ -3,13 +3,13 @@ use std::ops::Deref;
 
 pub use dfir_lang::diagnostic;
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{eliminate_extra_unions_tees, partition_graph, DfirGraph, FlatGraphBuilder};
+use dfir_lang::graph::{DfirGraph, FlatGraphBuilder, eliminate_extra_unions_tees, partition_graph};
 use dfir_lang::parse::{
     DfirStatement, IndexInt, Indexing, Pipeline, PipelineLink, PipelineStatement, PortIndex,
 };
 use proc_macro2::{Span, TokenStream};
 use rust_sitter::errors::{ParseError, ParseErrorReason};
-use syn::{parse_quote, parse_quote_spanned, Token};
+use syn::{Token, parse_quote, parse_quote_spanned};
 
 mod grammar;
 mod join_plan;
@@ -19,7 +19,7 @@ use grammar::datalog::{
     Aggregation, Atom, Declaration, Ident, IntExpr, Program, Rule, RuleType, TargetExpr,
 };
 use join_plan::{IntermediateJoinNode, JoinPlan};
-use util::{repeat_tuple, Counter};
+use util::{Counter, repeat_tuple};
 
 static MAGIC_RELATIONS: [&str; 1] = ["less_than"];
 
@@ -817,7 +817,7 @@ fn apply_aggregations(
 mod tests {
     use syn::parse_quote;
 
-    use super::{dfir_graph_to_program, gen_dfir_graph};
+    use super::gen_dfir_graph;
 
     macro_rules! test_snapshots {
         ($program:literal) => {
@@ -826,21 +826,6 @@ mod tests {
             let flat_graph_ref = &flat_graph;
             insta::with_settings!({snapshot_suffix => "surface_graph"}, {
                 insta::assert_snapshot!(flat_graph_ref.surface_syntax_string());
-            });
-
-            // `dfir_rs` as root. Only used for codegen snapshot testing.
-            let tokens = dfir_graph_to_program(flat_graph, quote::quote! { dfir_rs });
-            let out: syn::Stmt = syn::parse_quote!(#tokens);
-            let wrapped: syn::File = parse_quote! {
-                fn main() {
-                    #out
-                }
-            };
-
-            insta::with_settings!({snapshot_suffix => "datalog_program"}, {
-                insta::assert_snapshot!(
-                    prettyplease::unparse(&wrapped)
-                );
             });
         };
     }

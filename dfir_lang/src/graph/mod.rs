@@ -131,7 +131,9 @@ impl GraphNode {
     pub fn span(&self) -> Span {
         match self {
             Self::Operator(op) => op.span(),
-            &Self::Handoff { src_span, dst_span } => src_span.join(dst_span).unwrap_or(src_span),
+            &Self::Handoff {
+                src_span, dst_span, ..
+            } => src_span.join(dst_span).unwrap_or(src_span),
             Self::ModuleBoundary { import_expr, .. } => *import_expr,
         }
     }

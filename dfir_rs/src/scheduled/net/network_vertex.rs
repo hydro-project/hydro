@@ -3,8 +3,8 @@
 use std::collections::HashMap;
 
 use futures::{SinkExt, StreamExt};
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 

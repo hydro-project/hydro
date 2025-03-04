@@ -8,20 +8,20 @@ use std::iter::FusedIterator;
 
 use itertools::Itertools;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
+use quote::{ToTokens, TokenStreamExt, format_ident, quote, quote_spanned};
 use serde::{Deserialize, Serialize};
 use slotmap::{Key, SecondaryMap, SlotMap, SparseSecondaryMap};
 use syn::spanned::Spanned;
 
 use super::graph_write::{Dot, GraphWrite, Mermaid};
 use super::ops::{
-    find_op_op_constraints, null_write_iterator_fn, DelayType, OperatorWriteOutput,
-    WriteContextArgs, OPERATORS,
+    DelayType, OPERATORS, OperatorWriteOutput, WriteContextArgs, find_op_op_constraints,
+    null_write_iterator_fn,
 };
 use super::{
-    change_spans, get_operator_generics, Color, DiMulGraph, GraphEdgeId, GraphLoopId, GraphNode,
-    GraphNodeId, GraphSubgraphId, OperatorInstance, PortIndexValue, Varname, CONTEXT, GRAPH,
-    HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR,
+    CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
+    GraphSubgraphId, HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR, OperatorInstance, PortIndexValue,
+    Varname, change_spans, get_operator_generics,
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
@@ -130,11 +130,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successors(src)
     }
 
@@ -143,11 +143,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = (GraphEdgeId, GraphNodeId)>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessors(dst)
     }
 
@@ -156,11 +156,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphEdgeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphEdgeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successor_edges(src)
     }
 
@@ -169,11 +169,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphEdgeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphEdgeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessor_edges(dst)
     }
 
@@ -182,11 +182,11 @@ impl DfirGraph {
         &self,
         src: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphNodeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphNodeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.successor_vertices(src)
     }
 
@@ -195,11 +195,11 @@ impl DfirGraph {
         &self,
         dst: GraphNodeId,
     ) -> impl '_
-           + DoubleEndedIterator<Item = GraphNodeId>
-           + ExactSizeIterator
-           + FusedIterator
-           + Clone
-           + Debug {
+    + DoubleEndedIterator<Item = GraphNodeId>
+    + ExactSizeIterator
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.predecessor_vertices(dst)
     }
 
@@ -453,22 +453,10 @@ impl DfirGraph {
         if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
-        // In-degree, excluding ref-edges and edges which enter/exit loops.
-        let inn_degree = self
-            .node_predecessor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
-        // Out-degree excluding ref-edges and loop-crossing edges.
-        let out_degree = self
-            .node_successor_nodes(node_id)
-            .filter(|&pred_id| {
-                // Only allow nodes in the same loop (i.e. don't enter/exit loops).
-                self.node_loop(pred_id) == self.node_loop(node_id)
-            })
-            .count();
+        // In-degree, excluding ref-edges.
+        let inn_degree = self.node_predecessor_nodes(node_id).count();
+        // Out-degree excluding ref-edges.
+        let out_degree = self.node_successor_nodes(node_id).count();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -628,10 +616,10 @@ impl DfirGraph {
     pub fn edges(
         &self,
     ) -> impl '_
-           + ExactSizeIterator<Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))>
-           + FusedIterator
-           + Clone
-           + Debug {
+    + ExactSizeIterator<Item = (GraphEdgeId, (GraphNodeId, GraphNodeId))>
+    + FusedIterator
+    + Clone
+    + Debug {
         self.graph.edges()
     }
 
@@ -871,10 +859,13 @@ impl DfirGraph {
             .map(|(node_id, (src_span, dst_span))| {
                 let ident_send = Ident::new(&format!("hoff_{:?}_send", node_id.data()), dst_span);
                 let ident_recv = Ident::new(&format!("hoff_{:?}_recv", node_id.data()), src_span);
-                let hoff_name = Literal::string(&format!("handoff {:?}", node_id));
-                quote! {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let mut hoff_name = Literal::string(&format!("handoff {:?}", node_id));
+                hoff_name.set_span(span);
+                let hoff_type = quote_spanned! (span=> #root::scheduled::handoff::VecHandoff<_>);
+                quote_spanned! {span=>
                     let (#ident_send, #ident_recv) =
-                        #df.make_edge::<_, #root::scheduled::handoff::VecHandoff<_>>(#hoff_name);
+                        #df.make_edge::<_, #hoff_type>(#hoff_name);
                 }
             });
 
@@ -920,6 +911,10 @@ impl DfirGraph {
                         });
                     }
                 });
+
+                let loop_id = self
+                    // All nodes in a subgraph should be in the same loop.
+                    .node_loop(subgraph_nodes[0]);
 
                 let mut subgraph_op_iter_code = Vec::new();
                 let mut subgraph_op_iter_after_code = Vec::new();
@@ -1018,14 +1013,56 @@ impl DfirGraph {
                                     singletons_resolved.clone(),
                                 );
 
+                            let source_tag = 'a: {
+                                if let Some(tag) = self.operator_tag.get(node_id).cloned() {
+                                    break 'a tag;
+                                }
+
+                                #[cfg(nightly)]
+                                if proc_macro::is_available() {
+                                    let op_span = op_span.unwrap();
+                                    break 'a format!(
+                                        "loc_{}_{}_{}_{}_{}",
+                                        op_span
+                                            .source_file()
+                                            .path()
+                                            .display()
+                                            .to_string()
+                                            .replace(|x: char| !x.is_alphanumeric(), "_"),
+                                        op_span.start().line(),
+                                        op_span.start().column(),
+                                        op_span.end().line(),
+                                        op_span.end().column(),
+                                    );
+                                }
+
+                                format!(
+                                    "loc_nopath_{}_{}_{}_{}",
+                                    op_span.start().line,
+                                    op_span.start().column,
+                                    op_span.end().line,
+                                    op_span.end().column
+                                )
+                            };
+
+                            let fn_ident = format_ident!(
+                                "{}__{}__{}",
+                                ident,
+                                op_name,
+                                source_tag,
+                                span = op_span
+                            );
+
                             let context_args = WriteContextArgs {
                                 root: &root,
                                 df_ident: df_local,
                                 context,
                                 subgraph_id,
                                 node_id,
+                                loop_id,
                                 op_span,
                                 op_tag: self.operator_tag.get(node_id).cloned(),
+                                work_fn: &fn_ident,
                                 ident: &ident,
                                 is_pull,
                                 inputs: &inputs,
@@ -1052,49 +1089,18 @@ impl DfirGraph {
                                 OperatorWriteOutput { write_iterator: null_write_iterator_fn(&context_args), ..Default::default() }
                             });
 
+                            op_prologue_code.push(syn::parse_quote! {
+                                #[allow(non_snake_case)]
+                                #[inline(always)]
+                                fn #fn_ident<T>(thunk: impl FnOnce() -> T) -> T {
+                                    thunk()
+                                }
+                            });
                             op_prologue_code.push(write_prologue);
+
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
-                                let source_tag = 'a: {
-                                    if let Some(tag) = self.operator_tag.get(node_id).cloned() {
-                                        break 'a tag;
-                                    }
-
-                                    #[cfg(nightly)]
-                                    if proc_macro::is_available() {
-                                        let op_span = op_span.unwrap();
-                                        break 'a format!(
-                                            "loc_{}_{}_{}_{}_{}",
-                                            op_span
-                                                .source_file()
-                                                .path()
-                                                .display()
-                                                .to_string()
-                                                .replace(|x: char| !x.is_alphanumeric(), "_"),
-                                            op_span.start().line(),
-                                            op_span.start().column(),
-                                            op_span.end().line(),
-                                            op_span.end().column(),
-                                        );
-                                    }
-
-                                    format!(
-                                        "loc_nopath_{}_{}_{}_{}",
-                                        op_span.start().line,
-                                        op_span.start().column,
-                                        op_span.end().line,
-                                        op_span.end().column
-                                    )
-                                };
-
-                                let fn_ident = format_ident!(
-                                    "{}__{}__{}",
-                                    ident,
-                                    op_name,
-                                    source_tag,
-                                    span = op_span
-                                );
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
@@ -1211,9 +1217,7 @@ impl DfirGraph {
                 let laziness = self.subgraph_laziness(subgraph_id);
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
-                let loop_id_opt = self
-                    // All nodes in a subgraph should be in the same loop.
-                    .node_loop(subgraph_nodes[0])
+                let loop_id_opt = loop_id
                     .map(Self::loop_as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });

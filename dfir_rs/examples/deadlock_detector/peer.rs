@@ -7,9 +7,9 @@ use tokio::io::AsyncBufReadExt;
 use tokio::net::UdpSocket;
 use tokio_stream::wrappers::LinesStream;
 
+use crate::Opts;
 use crate::helpers::{deserialize_msg, format_cycle, gen_bool, parse_edge, serialize_msg};
 use crate::protocol::{Message, SimplePath};
-use crate::Opts;
 
 pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     // setup message send/recv ports

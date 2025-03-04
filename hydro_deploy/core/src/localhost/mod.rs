@@ -4,7 +4,7 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
 use hydroflow_deploy_integration::ServerBindConfig;
@@ -162,6 +162,15 @@ impl LaunchedHost for LaunchedLocalhost {
                 );
                 let dtrace_outfile = tempfile::NamedTempFile::new()?;
 
+                // TODO(mingwei): use std `intersperse` when stabilized.
+                let inner_command = itertools::Itertools::intersperse(
+                    std::iter::once(binary.bin_path.to_str().unwrap())
+                        .chain(args.iter().map(Deref::deref))
+                        .map(|s| shell_escape::unix::escape(s.into())),
+                    Cow::Borrowed(" "),
+                )
+                .collect::<String>();
+
                 let mut command = Command::new("dtrace");
                 command
                     .arg("-o")
@@ -172,17 +181,7 @@ impl LaunchedHost for LaunchedLocalhost {
                         tracing.frequency
                     ))
                     .arg("-c")
-                    .arg({
-                        // TODO(mingwei): use std `intersperse` when stabilized.
-                        let inner_command = itertools::Itertools::intersperse(
-                            std::iter::once(binary.bin_path.to_str().unwrap())
-                                .chain(args.iter().map(Deref::deref))
-                                .map(|s| shell_escape::unix::escape(s.into())),
-                            Cow::Borrowed(" "),
-                        )
-                        .collect::<String>();
-                        &*shell_escape::unix::escape(inner_command.into())
-                    });
+                    .arg(&*shell_escape::unix::escape(inner_command.into()));
                 (Some(dtrace_outfile), command)
             }
             // else if cfg!(target_family = "windows") {

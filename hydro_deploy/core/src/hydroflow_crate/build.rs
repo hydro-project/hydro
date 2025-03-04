@@ -10,8 +10,8 @@ use memo_map::MemoMap;
 use nanoid::nanoid;
 use tokio::sync::OnceCell;
 
-use crate::progress::ProgressTracker;
 use crate::HostTargetType;
+use crate::progress::ProgressTracker;
 
 /// Build parameters for [`build_crate_memoized`].
 #[derive(PartialEq, Eq, Hash, Clone)]
@@ -138,21 +138,22 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         .unwrap();
 
                     let reader = std::io::BufReader::new(spawned.stdout.take().unwrap());
-                    let mut stderr_reader = std::io::BufReader::new(spawned.stderr.take().unwrap());
-                    std::thread::spawn(move || loop {
-                        let mut buf = String::new();
-                        if let Ok(size) = stderr_reader.read_line(&mut buf) {
-                            if size == 0 {
+                    let stderr_reader = std::io::BufReader::new(spawned.stderr.take().unwrap());
+
+                    let stderr_worker = std::thread::spawn(move || {
+                        let mut stderr_lines = Vec::new();
+                        for line in stderr_reader.lines() {
+                            let Ok(line) = line else {
                                 break;
-                            } else {
-                                set_msg(buf.trim().to_string());
-                            }
-                        } else {
-                            break;
+                            };
+                            set_msg(line.clone());
+                            stderr_lines.push(line);
                         }
+                        stderr_lines
                     });
 
                     let mut diagnostics = Vec::new();
+                    let mut text_lines = Vec::new();
                     for message in cargo_metadata::Message::parse_stream(reader) {
                         match message.unwrap() {
                             cargo_metadata::Message::CompilerArtifact(artifact) => {
@@ -181,18 +182,27 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             }
                             cargo_metadata::Message::TextLine(line) => {
                                 ProgressTracker::println(&line);
+                                text_lines.push(line);
                             }
                             cargo_metadata::Message::BuildFinished(_) => {}
                             cargo_metadata::Message::BuildScriptExecuted(_) => {}
-                            _ => {}
+                            msg => panic!("Unexpected message type: {:?}", msg),
                         }
                     }
 
-                    let exit_code = spawned.wait().unwrap();
-                    if exit_code.success() {
+                    let exit_status = spawned.wait().unwrap();
+                    if exit_status.success() {
                         Err(BuildError::NoBinaryEmitted)
                     } else {
-                        Err(BuildError::FailedToBuildCrate(exit_code, diagnostics))
+                        let stderr_lines = stderr_worker
+                            .join()
+                            .expect("Stderr worker unexpectedly panicked.");
+                        Err(BuildError::FailedToBuildCrate {
+                            exit_status,
+                            diagnostics,
+                            text_lines,
+                            stderr_lines,
+                        })
                     }
                 })
                 .await
@@ -204,7 +214,12 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
 #[derive(Clone, Debug)]
 pub enum BuildError {
-    FailedToBuildCrate(ExitStatus, Vec<Diagnostic>),
+    FailedToBuildCrate {
+        exit_status: ExitStatus,
+        diagnostics: Vec<Diagnostic>,
+        text_lines: Vec<String>,
+        stderr_lines: Vec<String>,
+    },
     TokioJoinError,
     NoBinaryEmitted,
 }
@@ -212,10 +227,24 @@ pub enum BuildError {
 impl Display for BuildError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::FailedToBuildCrate(exit_status, diagnostics) => {
-                writeln!(f, "Failed to build crate ({}):", exit_status)?;
+            Self::FailedToBuildCrate {
+                exit_status,
+                diagnostics,
+                text_lines,
+                stderr_lines,
+            } => {
+                writeln!(f, "Failed to build crate ({})", exit_status)?;
+                writeln!(f, "Diagnostics ({}):", diagnostics.len())?;
                 for diagnostic in diagnostics {
                     write!(f, "{}", diagnostic)?;
+                }
+                writeln!(f, "Text output ({} lines):", text_lines.len())?;
+                for line in text_lines {
+                    writeln!(f, "{}", line)?;
+                }
+                writeln!(f, "Stderr output ({} lines):", stderr_lines.len())?;
+                for line in stderr_lines {
+                    writeln!(f, "{}", line)?;
                 }
             }
             Self::TokioJoinError => {
