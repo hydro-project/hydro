@@ -5,7 +5,7 @@ use dfir_rs::tokio::sync::mpsc::UnboundedSender;
 use hydro_lang::deploy::SingleProcessGraph;
 use hydro_lang::dfir_rs::scheduled::graph::Dfir;
 use hydro_lang::*;
-use stageleft::{q, Quoted, RuntimeData};
+use stageleft::{Quoted, RuntimeData, q};
 
 #[stageleft::entry]
 pub fn unordered<'a>(

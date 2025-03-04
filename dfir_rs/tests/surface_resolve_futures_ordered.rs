@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use dfir_rs::dfir_syntax;
 use dfir_rs::util::collect_ready_async;
 use multiplatform_test::multiplatform_test;
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 #[multiplatform_test(dfir, env_tracing)]
 async fn single_batch_test() {
