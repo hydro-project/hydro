@@ -760,6 +760,10 @@ impl<'a> Dfir<'a> {
         W: 'static + PortList<SEND>,
         F: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
+        // SAFETY: Check that the send and recv ports are from `self.handoffs`.
+        recv_ports.assert_is_from(&self.handoffs);
+        send_ports.assert_is_from(&self.handoffs);
+
         let loop_depth = loop_id
             .and_then(|loop_id| self.context.loop_depth.get(loop_id))
             .copied()
@@ -772,8 +776,15 @@ impl<'a> Dfir<'a> {
 
             let subgraph =
                 move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
-                    let recv = recv_ports.make_ctx(&*handoffs);
-                    let send = send_ports.make_ctx(&*handoffs);
+                    let (recv, send) = unsafe {
+                        // SAFETY:
+                        // 1. We checked `assert_is_from` at assembly time, above.
+                        // 2. `SlotVec` is insert-only so no handoffs could have changed since then.
+                        (
+                            recv_ports.make_ctx(&*handoffs),
+                            send_ports.make_ctx(&*handoffs),
+                        )
+                    };
                     (subgraph)(context, recv, send);
                 };
             SubgraphData::new(
