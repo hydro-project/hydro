@@ -5,7 +5,7 @@ use std::rc::Rc;
 use std::task::{Context, Poll, Waker};
 use std::time::Duration;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
 
