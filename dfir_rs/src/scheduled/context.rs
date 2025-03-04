@@ -159,12 +159,20 @@ impl Context {
     where
         T: Any,
     {
-        self.states
+        let state = self
+            .states
             .get(handle.state_id.0)
             .expect("Failed to find state with given handle.")
             .state
-            .downcast_ref()
-            .expect("StateHandle wrong type T for casting.")
+            .as_ref();
+
+        debug_assert!(state.is::<T>());
+
+        unsafe {
+            // SAFETY: DFIR codegen guarantees that the state has the correct type.
+            // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
+            &*(state as *const dyn Any as *const T)
+        }
     }
 
     /// Returns an exclusive reference to the state.
@@ -172,12 +180,20 @@ impl Context {
     where
         T: Any,
     {
-        self.states
+        let state = self
+            .states
             .get_mut(handle.state_id.0)
             .expect("Failed to find state with given handle.")
             .state
-            .downcast_mut()
-            .expect("StateHandle wrong type T for casting.")
+            .as_mut();
+
+        debug_assert!(state.is::<T>());
+
+        unsafe {
+            // SAFETY: DFIR codegen guarantees that the state has the correct type.
+            // TODO(shadaj): replace with `downcast_mut_unchecked` when it's stabilized
+            &mut *(state as *mut dyn Any as *mut T)
+        }
     }
 
     /// Adds state to the context and returns the handle.
