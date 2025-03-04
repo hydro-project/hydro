@@ -86,13 +86,14 @@ where
     type Ctx<'a> = (&'a PortCtx<S, H>, Rest::Ctx<'a>);
     fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {
         let (this, rest) = self;
-        let handoff = handoffs
-            .get(this.handoff_id)
-            .unwrap()
-            .handoff
-            .any_ref()
-            .downcast_ref()
-            .expect("Attempted to cast handoff to wrong type.");
+        let meta_ref = handoffs.get(this.handoff_id).unwrap().handoff.any_ref();
+        debug_assert!(meta_ref.is::<H>());
+
+        let handoff = unsafe {
+            // SAFETY: DFIR codegen guarantees that the handoff has the correct type.
+            // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
+            &*(meta_ref as *const dyn std::any::Any as *const H)
+        };
 
         let ctx = RefCast::ref_cast(handoff);
         let ctx_rest = rest.make_ctx(handoffs);
