@@ -1,7 +1,7 @@
 use dfir_datalog_core::diagnostic::Diagnostic;
 use dfir_datalog_core::{dfir_graph_to_program, gen_dfir_graph};
 use proc_macro2::Span;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 
 /// Generate a graph instance from [Datalog](https://en.wikipedia.org/wiki/Datalog) code.
 ///

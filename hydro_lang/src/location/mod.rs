@@ -5,7 +5,7 @@ use std::time::Duration;
 use dfir_rs::futures::stream::Stream as FuturesStream;
 use dfir_rs::{tokio, tokio_stream};
 use proc_macro2::Span;
-use stageleft::{q, QuotedWithContext};
+use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
@@ -262,6 +262,7 @@ pub trait Location<'a>: Clone {
 
         (
             ForwardRef {
+                completed: false,
                 ident: ident.clone(),
                 expected_location: self.id(),
                 _phantom: PhantomData,

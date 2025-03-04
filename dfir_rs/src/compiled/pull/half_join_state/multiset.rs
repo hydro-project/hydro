@@ -1,12 +1,12 @@
-use std::collections::hash_map::Entry;
 use std::collections::VecDeque;
+use std::collections::hash_map::Entry;
 
 use super::HalfJoinState;
 use crate::util::clear::Clear;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 #[derive(Debug)]
 pub struct HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     // Here a smallvec with inline storage of 1 is chosen.

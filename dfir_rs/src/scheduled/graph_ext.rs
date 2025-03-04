@@ -7,12 +7,12 @@ use std::task::Poll;
 
 use futures::Stream;
 
+use super::SubgraphId;
 use super::context::Context;
 use super::graph::Dfir;
 use super::handoff::{CanReceive, Handoff};
 use super::input::Input;
 use super::port::{RecvCtx, RecvPort, SendCtx, SendPort};
-use super::SubgraphId;
 
 macro_rules! subgraph_ext {
     (

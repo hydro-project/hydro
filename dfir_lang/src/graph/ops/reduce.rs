@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -56,6 +56,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    inputs,
                    is_pull,
                    singleton_output_ident,
+                   work_fn,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -116,18 +117,18 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         }
 
         let write_iterator = if is_pull {
-        let input = &inputs[0];
+            let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
                     let mut #accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
 
-                    #input.for_each(|#iterator_item_ident| {
+                    #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
-                    });
+                    }));
 
                     #[allow(clippy::clone_on_copy)]
                     {
-                        ::std::iter::IntoIterator::into_iter(::std::clone::Clone::clone(&*#accumulator_ident))
+                        ::std::iter::IntoIterator::into_iter(#work_fn(|| ::std::clone::Clone::clone(&*#accumulator_ident)))
                     }
                 };
             }

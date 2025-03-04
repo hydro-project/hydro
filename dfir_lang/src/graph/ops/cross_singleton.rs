@@ -1,9 +1,9 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 use crate::graph::PortIndexValue;
 
@@ -55,6 +55,7 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                    op_span,
                    inputs,
                    is_pull,
+                   work_fn,
                    ..
                },
                _diagnostics| {
@@ -85,14 +86,14 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                     SingletonIter: Iterator<Item = Singleton>,
                     Stream: Iterator<Item = Item>,
                 {
-                    let singleton_value_opt = match &*singleton_state_mut {
+                    let singleton_value_opt = #work_fn(|| match &*singleton_state_mut {
                         ::std::option::Option::Some(singleton_value) => Some(singleton_value.clone()),
                         ::std::option::Option::None => {
                             let singleton_value_opt = singleton_input.next();
                             *singleton_state_mut = singleton_value_opt.clone();
                             singleton_value_opt
                         }
-                    };
+                    });
                     singleton_value_opt
                         .map(|singleton_value| {
                             stream_input.map(move |item| (item, ::std::clone::Clone::clone(&singleton_value)))

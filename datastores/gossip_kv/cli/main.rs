@@ -2,7 +2,7 @@ use std::net::SocketAddr;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
-use dfir_rs::{dfir_syntax, tokio, DemuxEnum};
+use dfir_rs::{DemuxEnum, dfir_syntax, tokio};
 use gossip_kv::{ClientRequest, ClientResponse, Key};
 use tracing::error;
 

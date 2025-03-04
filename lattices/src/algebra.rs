@@ -518,14 +518,18 @@ mod test {
     #[test]
     fn test_nonzero_inverse() {
         // Test that addition and subtraction has a nonzero inverse and that multiplication does not.
-        assert!(nonzero_inverse(TEST_ITEMS, u32::wrapping_add, 0, 0, |x| {
-            0u32.wrapping_sub(x)
-        })
-        .is_ok());
-        assert!(nonzero_inverse(TEST_ITEMS, u32::wrapping_sub, 0, 0, |x| {
-            0u32.wrapping_add(x)
-        })
-        .is_ok());
+        assert!(
+            nonzero_inverse(TEST_ITEMS, u32::wrapping_add, 0, 0, |x| {
+                0u32.wrapping_sub(x)
+            })
+            .is_ok()
+        );
+        assert!(
+            nonzero_inverse(TEST_ITEMS, u32::wrapping_sub, 0, 0, |x| {
+                0u32.wrapping_add(x)
+            })
+            .is_ok()
+        );
         assert!(
             right_distributes(TEST_ITEMS_NONZERO, u32::wrapping_div, u32::wrapping_mul).is_err()
         );
@@ -550,64 +554,70 @@ mod test {
     #[test]
     fn test_commutative_ring() {
         // Test that (Z, +, *) is a commutative ring.
-        assert!(commutative_ring(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_mul,
-            0,
-            1,
-            &|x| 0u32.wrapping_sub(x),
-        )
-        .is_ok());
+        assert!(
+            commutative_ring(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_mul,
+                0,
+                1,
+                &|x| 0u32.wrapping_sub(x),
+            )
+            .is_ok()
+        );
 
         // Test that (Z, +, ^) is not a commutative ring.
-        assert!(commutative_ring(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_pow,
-            0,
-            1,
-            &|x| 0u32.wrapping_sub(x),
-        )
-        .is_err());
+        assert!(
+            commutative_ring(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_pow,
+                0,
+                1,
+                &|x| 0u32.wrapping_sub(x),
+            )
+            .is_err()
+        );
 
         // Test that matrix multiplication is not a commutative ring.
-        assert!(commutative_ring(
-            &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
-            &|a, b| {
-                [
-                    [a[0][0] + b[0][0], a[0][1] + b[0][1]],
-                    [a[1][0] + b[1][0], a[1][0] + b[1][1]],
-                ]
-            },
-            &|a, b| {
-                [
+        assert!(
+            commutative_ring(
+                &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
+                &|a, b| {
                     [
-                        a[0][0] * b[0][0] + a[0][1] * b[1][0],
-                        a[0][0] * b[0][1] + a[0][1] * b[1][1],
-                    ],
+                        [a[0][0] + b[0][0], a[0][1] + b[0][1]],
+                        [a[1][0] + b[1][0], a[1][0] + b[1][1]],
+                    ]
+                },
+                &|a, b| {
                     [
-                        a[1][0] * b[0][0] + a[1][1] * b[1][0],
-                        a[1][0] * b[0][1] + a[1][1] * b[1][1],
-                    ],
-                ]
-            },
-            [[0, 0], [0, 0]],
-            [[1, 0], [0, 1]],
-            &|a| {
-                [
+                        [
+                            a[0][0] * b[0][0] + a[0][1] * b[1][0],
+                            a[0][0] * b[0][1] + a[0][1] * b[1][1],
+                        ],
+                        [
+                            a[1][0] * b[0][0] + a[1][1] * b[1][0],
+                            a[1][0] * b[0][1] + a[1][1] * b[1][1],
+                        ],
+                    ]
+                },
+                [[0, 0], [0, 0]],
+                [[1, 0], [0, 1]],
+                &|a| {
                     [
-                        -a[0][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                        -a[0][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                    ],
-                    [
-                        -a[1][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                        -a[1][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                    ],
-                ]
-            },
-        )
-        .is_err());
+                        [
+                            -a[0][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                            -a[0][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                        ],
+                        [
+                            -a[1][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                            -a[1][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                        ],
+                    ]
+                },
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -642,23 +652,25 @@ mod test {
         assert!(semigroup(TEST_ITEMS, &u32::wrapping_mul).is_ok());
         // Test that ({true, false}, ∧) is a semigroup.
         assert!(semigroup(TEST_BOOLS, &|a, b| a & b).is_ok()); // logical AND
-                                                               // Test that matrix multiplication is a semigroup.
-        assert!(semigroup(
-            &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
-            &|a, b| {
-                [
+        // Test that matrix multiplication is a semigroup.
+        assert!(
+            semigroup(
+                &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
+                &|a, b| {
                     [
-                        a[0][0] * b[0][0] + a[0][1] * b[1][0],
-                        a[0][0] * b[0][1] + a[0][1] * b[1][1],
-                    ],
-                    [
-                        a[1][0] * b[0][0] + a[1][1] * b[1][0],
-                        a[1][0] * b[0][1] + a[1][1] * b[1][1],
-                    ],
-                ]
-            },
-        )
-        .is_ok());
+                        [
+                            a[0][0] * b[0][0] + a[0][1] * b[1][0],
+                            a[0][0] * b[0][1] + a[0][1] * b[1][1],
+                        ],
+                        [
+                            a[1][0] * b[0][0] + a[1][1] * b[1][0],
+                            a[1][0] * b[0][1] + a[1][1] * b[1][1],
+                        ],
+                    ]
+                },
+            )
+            .is_ok()
+        );
         // Test that set of all natural numbers N = {0, 1, 2, ...} is not a semigroup under exponentiation.
         assert!(semigroup(TEST_ITEMS, &u32::wrapping_pow).is_err());
     }
@@ -708,24 +720,28 @@ mod test {
     fn test_bilinearity() {
         // Test that multiplication over the (Z,+) group is bilinear
         // but exponentiation over the (Z,+) group is not bilinear
-        assert!(bilinearity(
-            TEST_ITEMS,
-            TEST_ITEMS,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_mul
-        )
-        .is_ok());
-        assert!(bilinearity(
-            TEST_ITEMS,
-            TEST_ITEMS,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::wrapping_add,
-            u32::pow
-        )
-        .is_err());
+        assert!(
+            bilinearity(
+                TEST_ITEMS,
+                TEST_ITEMS,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_mul
+            )
+            .is_ok()
+        );
+        assert!(
+            bilinearity(
+                TEST_ITEMS,
+                TEST_ITEMS,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::wrapping_add,
+                u32::pow
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -737,9 +753,11 @@ mod test {
         // Test that (Z/14Z, +) form a group.
         assert!(group(TEST_ITEMS, &modulo_add_14, 0, &modulo_sub_14).is_ok());
         // Test that (Z, *) do not form a group since it has no inverse.
-        assert!(group(TEST_ITEMS_NONZERO, &u32::wrapping_mul, 1, &|x| 1u32
-            .wrapping_div(x))
-        .is_err());
+        assert!(
+            group(TEST_ITEMS_NONZERO, &u32::wrapping_mul, 1, &|x| 1u32
+                .wrapping_div(x))
+            .is_err()
+        );
     }
 
     #[test]
@@ -757,35 +775,37 @@ mod test {
             .is_err()
         );
         // Test that matrix multiplication is not an abelian group.
-        assert!(abelian_group(
-            &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
-            &|a, b| {
-                [
+        assert!(
+            abelian_group(
+                &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
+                &|a, b| {
                     [
-                        a[0][0] * b[0][0] + a[0][1] * b[1][0],
-                        a[0][0] * b[0][1] + a[0][1] * b[1][1],
-                    ],
+                        [
+                            a[0][0] * b[0][0] + a[0][1] * b[1][0],
+                            a[0][0] * b[0][1] + a[0][1] * b[1][1],
+                        ],
+                        [
+                            a[1][0] * b[0][0] + a[1][1] * b[1][0],
+                            a[1][0] * b[0][1] + a[1][1] * b[1][1],
+                        ],
+                    ]
+                },
+                [[1, 0], [0, 1]],
+                &|a| {
                     [
-                        a[1][0] * b[0][0] + a[1][1] * b[1][0],
-                        a[1][0] * b[0][1] + a[1][1] * b[1][1],
-                    ],
-                ]
-            },
-            [[1, 0], [0, 1]],
-            &|a| {
-                [
-                    [
-                        -a[0][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                        -a[0][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                    ],
-                    [
-                        -a[1][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                        -a[1][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
-                    ],
-                ]
-            },
-        )
-        .is_err());
+                        [
+                            -a[0][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                            -a[0][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                        ],
+                        [
+                            -a[1][0] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                            -a[1][1] / (a[0][0] * a[1][1] - a[0][1] * a[1][1]),
+                        ],
+                    ]
+                },
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -796,23 +816,25 @@ mod test {
         assert!(monoid(TEST_ITEMS_NONZERO, &u32::wrapping_mul, 1).is_ok());
         assert!(monoid(TEST_ITEMS, &u32::wrapping_mul, 1).is_ok());
         // Test that the set of nxn matrix with matrix multiplication is a monoid.
-        assert!(monoid(
-            &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
-            &|a, b| {
-                [
+        assert!(
+            monoid(
+                &[[[1, 2], [3, 4]], [[5, 6], [7, 8]], [[9, 10], [11, 12]]],
+                &|a, b| {
                     [
-                        a[0][0] * b[0][0] + a[0][1] * b[1][0],
-                        a[0][0] * b[0][1] + a[0][1] * b[1][1],
-                    ],
-                    [
-                        a[1][0] * b[0][0] + a[1][1] * b[1][0],
-                        a[1][0] * b[0][1] + a[1][1] * b[1][1],
-                    ],
-                ]
-            },
-            [[1, 0], [0, 1]],
-        )
-        .is_ok());
+                        [
+                            a[0][0] * b[0][0] + a[0][1] * b[1][0],
+                            a[0][0] * b[0][1] + a[0][1] * b[1][1],
+                        ],
+                        [
+                            a[1][0] * b[0][0] + a[1][1] * b[1][0],
+                            a[1][0] * b[0][1] + a[1][1] * b[1][1],
+                        ],
+                    ]
+                },
+                [[1, 0], [0, 1]],
+            )
+            .is_ok()
+        );
         // Test that N+ = N − {0} is not a monoid with respect to addition since it doesn't have an identity element (0 is missing).
         assert!(monoid(TEST_ITEMS_NONZERO, &u32::wrapping_add, 1).is_err());
     }
@@ -905,25 +927,29 @@ mod test {
     #[test]
     fn test_integral_domain() {
         // The ring of integers modulo a prime number is an integral domain.
-        assert!(integral_domain(
-            TEST_MOD_PRIME_7,
-            &modulo_add_7,
-            &modulo_mult_7,
-            0,
-            1,
-            &modulo_sub_7,
-        )
-        .is_ok());
+        assert!(
+            integral_domain(
+                TEST_MOD_PRIME_7,
+                &modulo_add_7,
+                &modulo_mult_7,
+                0,
+                1,
+                &modulo_sub_7,
+            )
+            .is_ok()
+        );
         // The ring of integers modulo a composite number is not an integral domain.
-        assert!(integral_domain(
-            TEST_ITEMS,
-            &modulo_add_14,
-            &modulo_mult_14,
-            0,
-            1,
-            &modulo_sub_14,
-        )
-        .is_err());
+        assert!(
+            integral_domain(
+                TEST_ITEMS,
+                &modulo_add_14,
+                &modulo_mult_14,
+                0,
+                1,
+                &modulo_sub_14,
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -931,51 +957,59 @@ mod test {
         // Test that GF2 (0, 1, XOR, AND) is a field and  +, x, 0, 1, - is not a field (no multiplicative inverses)
         // Note GF2 is the Galois Field with 2 elements.
 
-        assert!(field(
-            TEST_BOOLS,
-            &|a, b| a ^ b, // logical XOR
-            &|a, b| a & b, // a & b, // logical AND
-            false,
-            true,
-            &|x| x, // XOR(x,x) = false, the identity for XOR
-            &|_x| true /* AND(x,true) = true, the identity for AND. Note that the inverse doesn't need to work for the additive identity (false)
-                        */
-        )
-        .is_ok());
+        assert!(
+            field(
+                TEST_BOOLS,
+                &|a, b| a ^ b, // logical XOR
+                &|a, b| a & b, // a & b, // logical AND
+                false,
+                true,
+                &|x| x, // XOR(x,x) = false, the identity for XOR
+                &|_x| true /* AND(x,true) = true, the identity for AND. Note that the inverse doesn't need to work for the additive identity (false)
+                            */
+            )
+            .is_ok()
+        );
 
-        assert!(field(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_mul,
-            0,
-            1,
-            &|x| 0u32.wrapping_sub(x),
-            &|x| 0u32.wrapping_sub(x) //Note there is no valid inverse function for multiplication over the integers so we just pick some function
-        )
-        .is_err());
+        assert!(
+            field(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_mul,
+                0,
+                1,
+                &|x| 0u32.wrapping_sub(x),
+                &|x| 0u32.wrapping_sub(x) //Note there is no valid inverse function for multiplication over the integers so we just pick some function
+            )
+            .is_err()
+        );
     }
 
     #[test]
     fn test_ring() {
         // Test that +, x, 0, 1, - are a ring and +, x, 0, 5 are not (5 isn't a multiplicative identity)
-        assert!(ring(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_mul,
-            0,
-            1,
-            &|x| 0u32.wrapping_sub(x),
-        )
-        .is_ok());
-        assert!(ring(
-            TEST_ITEMS,
-            &u32::wrapping_add,
-            &u32::wrapping_mul,
-            0,
-            5,
-            &|x| 0u32.wrapping_sub(x),
-        )
-        .is_err());
+        assert!(
+            ring(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_mul,
+                0,
+                1,
+                &|x| 0u32.wrapping_sub(x),
+            )
+            .is_ok()
+        );
+        assert!(
+            ring(
+                TEST_ITEMS,
+                &u32::wrapping_add,
+                &u32::wrapping_mul,
+                0,
+                5,
+                &|x| 0u32.wrapping_sub(x),
+            )
+            .is_err()
+        );
     }
 
     #[test]
@@ -987,51 +1021,57 @@ mod test {
         assert!(semiring(&[false, true], &|x, y| x | y, &|x, y| x & y, false, true).is_ok());
 
         // Test min plus semiring. + is min and x is plus. Also known as the "tropical semiring"
-        assert!(semiring(
-            &[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, f64::INFINITY],
-            &f64::min,
-            &|x, y| x + y,
-            f64::INFINITY,
-            0.0,
-        )
-        .is_ok());
+        assert!(
+            semiring(
+                &[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, f64::INFINITY],
+                &f64::min,
+                &|x, y| x + y,
+                f64::INFINITY,
+                0.0,
+            )
+            .is_ok()
+        );
 
         // Test max plus semiring. + is max and x is plus.
-        assert!(semiring(
-            &[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, f64::NEG_INFINITY],
-            &f64::max,
-            &|x, y| x + y,
-            f64::NEG_INFINITY,
-            0.0,
-        )
-        .is_ok());
+        assert!(
+            semiring(
+                &[0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, f64::NEG_INFINITY],
+                &f64::max,
+                &|x, y| x + y,
+                f64::NEG_INFINITY,
+                0.0,
+            )
+            .is_ok()
+        );
 
         // Test sets of strings semiring with union as + and concatenation as x
-        assert!(semiring(
-            &[
+        assert!(
+            semiring(
+                &[
+                    HashSet::from([]),
+                    HashSet::from(["".to_owned()]),
+                    HashSet::from(["a".to_owned()]),
+                    HashSet::from(["aa".to_owned(), "bb".to_owned()]),
+                    HashSet::from(["ab".to_owned(), "bb".to_owned(), "cc".to_owned()]),
+                    HashSet::from(["ba".to_owned()]),
+                    HashSet::from(["bb".to_owned()]),
+                ],
+                &|x, y| x.union(&y).cloned().collect(),
+                &|x, y| {
+                    let mut new_set = HashSet::new();
+
+                    for a in x.iter() {
+                        for b in y.iter() {
+                            new_set.insert(format!("{a}{b}"));
+                        }
+                    }
+                    new_set
+                },
                 HashSet::from([]),
                 HashSet::from(["".to_owned()]),
-                HashSet::from(["a".to_owned()]),
-                HashSet::from(["aa".to_owned(), "bb".to_owned()]),
-                HashSet::from(["ab".to_owned(), "bb".to_owned(), "cc".to_owned()]),
-                HashSet::from(["ba".to_owned()]),
-                HashSet::from(["bb".to_owned()]),
-            ],
-            &|x, y| x.union(&y).cloned().collect(),
-            &|x, y| {
-                let mut new_set = HashSet::new();
-
-                for a in x.iter() {
-                    for b in y.iter() {
-                        new_set.insert(format!("{a}{b}"));
-                    }
-                }
-                new_set
-            },
-            HashSet::from([]),
-            HashSet::from(["".to_owned()]),
-        )
-        .is_ok());
+            )
+            .is_ok()
+        );
     }
 
     #[test]

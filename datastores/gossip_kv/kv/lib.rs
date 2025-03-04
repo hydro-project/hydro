@@ -13,8 +13,8 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
 
-use crate::model::{Clock, Namespaces};
 use crate::KeyParseError::InvalidNamespace;
+use crate::model::{Clock, Namespaces};
 
 /// The namespace of the key of an entry in the key-value store.
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Serialize, Deserialize, Hash)]

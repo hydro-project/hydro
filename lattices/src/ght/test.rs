@@ -7,8 +7,8 @@ mod tests {
     fn basic_test() {
         use variadics::var_expr;
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         // Example usage
         type MyTrie1 = GhtType!(u32, u32 => &'static str: VariadicCountedHashSet);
@@ -39,8 +39,8 @@ mod tests {
     fn test_ght_node_type_macro() {
         use variadics::var_expr;
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         // 0 => 1
         type LilTrie = GhtType!(() => u32: VariadicCountedHashSet);
@@ -88,8 +88,8 @@ mod tests {
     fn test_insert() {
         use variadics::var_expr;
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         type MyGht = GhtType!(u16, u32 => u64: VariadicCountedHashSet);
         let mut htrie = MyGht::default();
@@ -119,8 +119,8 @@ mod tests {
     fn test_scale() {
         use variadics::var_expr;
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         type MyGht = GhtType!(bool, usize, &'static str => i32: VariadicCountedHashSet);
         let mut htrie = MyGht::new_from(vec![var_expr!(true, 1, "hello", -5)]);
@@ -133,10 +133,10 @@ mod tests {
 
     #[test]
     fn test_contains() {
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         type MyGht = GhtType!(u16, u32 => u64: VariadicCountedHashSet);
         let htrie = MyGht::new_from(vec![var_expr!(42_u16, 314_u32, 43770_u64)]);
@@ -151,10 +151,10 @@ mod tests {
 
     #[test]
     fn test_get() {
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
 
         type MyGht = GhtType!(u32, u32 => u32: VariadicCountedHashSet);
         let ht_root = MyGht::new_from(vec![var_expr!(42, 314, 43770)]);
@@ -172,8 +172,8 @@ mod tests {
     fn test_iter() {
         use variadics::var_expr;
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
         type MyGht = GhtType!(u32, u32 => u32: VariadicCountedHashSet);
         let ht_root = MyGht::new_from(vec![var_expr!(42, 314, 43770)]);
         let inner_key = ht_root.iter().next().unwrap();
@@ -190,10 +190,10 @@ mod tests {
 
     #[test]
     fn test_recursive_iter() {
-        use variadics::{var_expr, var_type, VariadicExt};
+        use variadics::{VariadicExt, var_expr, var_type};
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         type MyGht = GhtType!(u32, u32 => u32: VariadicCountedHashSet);
         type InputType = var_type!(u32, u32, u32);
@@ -251,10 +251,10 @@ mod tests {
 
     #[test]
     fn test_prefix_iter() {
-        use variadics::{var_expr, var_type, VariadicExt};
+        use variadics::{VariadicExt, var_expr, var_type};
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         type MyGht = GhtType!(u8, u16 => u32: VariadicCountedHashSet);
         type InputType = var_type!(u8, u16, u32);
@@ -279,7 +279,7 @@ mod tests {
         let result = input
             .iter()
             .filter(|t: &&InputType| t.0 == 42)
-            .map(|t: &InputType| var_expr!(&t.0, &t.1 .0, &t.1 .1 .0))
+            .map(|t: &InputType| var_expr!(&t.0, &t.1.0, &t.1.1.0))
             .collect();
         assert_eq!(v, result);
 
@@ -290,10 +290,10 @@ mod tests {
 
     #[test]
     fn test_prefix_iter_complex() {
-        use variadics::{var_expr, var_type, VariadicExt};
+        use variadics::{VariadicExt, var_expr, var_type};
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         type MyGht = GhtType!(bool, u32, &'static str => i32: VariadicCountedHashSet);
         type InputType = var_type!(bool, u32, &'static str, i32);
@@ -413,8 +413,8 @@ mod tests {
     fn test_cartesian_bimorphism() {
         use variadics::var_expr;
 
-        use crate::ght::lattice::GhtCartesianProductBimorphism;
         use crate::ght::GeneralizedHashTrieNode;
+        use crate::ght::lattice::GhtCartesianProductBimorphism;
         use crate::{GhtType, LatticeBimorphism};
 
         type MyGhtA = GhtType!(u32, u64 => u16, &'static str: VariadicHashSet);
@@ -516,11 +516,11 @@ mod tests {
 
     #[test]
     fn test_ght_with_tuple_macro() {
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
         use variadics_macro::tuple;
 
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
 
         type MyRoot = GhtType!(u16, u32 => u64: VariadicCountedHashSet);
 
@@ -538,8 +538,8 @@ mod tests {
 
         use variadics::var_expr;
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
 
         const MATCHES: u32 = 1000;
         type MyGht = GhtType!(u32 => u32: VariadicCountedHashSet);
@@ -649,8 +649,8 @@ mod tests {
     fn clover_generic_join() {
         use variadics::var_expr;
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
 
         const MATCHES: usize = 1000;
         let (r_iter, s_iter, t_iter) = clover_setup(MATCHES);
@@ -680,8 +680,8 @@ mod tests {
     fn clover_factorized_join() {
         use variadics::var_expr;
 
-        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
         use crate::GhtType;
+        use crate::ght::{GeneralizedHashTrieNode, GhtGet};
 
         const MATCHES: usize = 1000;
         let (r_iter, s_iter, t_iter) = clover_setup(MATCHES);
@@ -712,9 +712,9 @@ mod tests {
     fn test_force() {
         use variadics::var_expr;
 
-        use crate::ght::colt::ColtForestNode;
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::GhtType;
+        use crate::ght::GeneralizedHashTrieNode;
+        use crate::ght::colt::ColtForestNode;
 
         type LeafType = GhtType!(() => u16, u32, u64: VariadicCountedHashSet);
         let n = LeafType::new_from(vec![
@@ -771,11 +771,11 @@ mod tests {
     #[test]
     fn test_colt_little_get() {
         use variadics::variadic_collections::VariadicCollection;
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
 
-        use crate::ght::colt::ColtGet;
-        use crate::ght::GeneralizedHashTrieNode;
         use crate::ColtType;
+        use crate::ght::GeneralizedHashTrieNode;
+        use crate::ght::colt::ColtGet;
 
         type MyForest = ColtType!(u8);
 
@@ -797,11 +797,11 @@ mod tests {
     #[test]
     fn test_colt_get() {
         use variadics::variadic_collections::VariadicCollection;
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
 
+        use crate::ColtType;
         use crate::ght::colt::ColtGet;
         use crate::ght::{GeneralizedHashTrieNode, GhtGet};
-        use crate::ColtType;
 
         type MyForest = ColtType!(u8, u16, u32, u64);
         let mut forest = MyForest::default();
@@ -823,7 +823,7 @@ mod tests {
                 get_result3.0.elements.iter().next(),
                 Some(var_expr!(1, 1, 1, 1).as_ref_var())
             );
-            assert_eq!(get_result3.1 .0.children.len(), 0);
+            assert_eq!(get_result3.1.0.children.len(), 0);
         }
         {
             let get_result = ColtGet::get(forest.as_mut_var(), &3);
@@ -834,20 +834,20 @@ mod tests {
                 get_result2.0.elements.iter().next(),
                 Some(var_expr!(3, 3, 3, 3).as_ref_var())
             );
-            assert_eq!(get_result2.1 .0.children.len(), 0);
+            assert_eq!(get_result2.1.0.children.len(), 0);
         }
         assert!(forest.0.forced);
-        assert_eq!(3, forest.1 .0.children.len()); // keys 1, 2 and 3
-        assert_eq!(0, forest.1 .0.get(&1).unwrap().elements.len());
-        assert_eq!(1, forest.1 .0.get(&2).unwrap().elements.len());
-        assert_eq!(0, forest.1 .0.get(&3).unwrap().elements.len());
-        assert_eq!(2, forest.1 .1 .0.children.len()); // keys 1 and 3
+        assert_eq!(3, forest.1.0.children.len()); // keys 1, 2 and 3
+        assert_eq!(0, forest.1.0.get(&1).unwrap().elements.len());
+        assert_eq!(1, forest.1.0.get(&2).unwrap().elements.len());
+        assert_eq!(0, forest.1.0.get(&3).unwrap().elements.len());
+        assert_eq!(2, forest.1.1.0.children.len()); // keys 1 and 3
         assert_eq!(
             0,
             forest
                 .1
-                 .1
-                 .0
+                .1
+                .0
                 .get(&1)
                 .unwrap()
                 .get(&1)
@@ -855,13 +855,13 @@ mod tests {
                 .elements
                 .len()
         );
-        assert!(forest.1 .1 .0.get(&2).is_none());
+        assert!(forest.1.1.0.get(&2).is_none());
         assert_eq!(
             1,
             forest
                 .1
-                 .1
-                 .0
+                .1
+                .0
                 .get(&3)
                 .unwrap()
                 .get(&3)
@@ -873,9 +873,9 @@ mod tests {
             1,
             forest
                 .1
-                 .1
-                 .1
-                 .0
+                .1
+                .1
+                .0
                 .get(&1)
                 .unwrap()
                 .get(&1)
@@ -890,7 +890,7 @@ mod tests {
     #[test]
     fn test_colt_scale() {
         use variadics::variadic_collections::VariadicCollection;
-        use variadics::{var_expr, VariadicExt};
+        use variadics::{VariadicExt, var_expr};
 
         use crate::ght::colt::ColtGet;
         use crate::ght::{GeneralizedHashTrieNode, GhtPrefixIter};
@@ -919,13 +919,15 @@ mod tests {
             assert_eq!(result.0.elements.len(), 0);
         }
         // check: prefix (3, true) is now found in the third trie: forest.1.1.0
-        assert!(forest
-            .1
-             .1
-             .0
-            .prefix_iter(var_expr!(3, true).as_ref_var())
-            .next()
-            .is_some());
+        assert!(
+            forest
+                .1
+                .1
+                .0
+                .prefix_iter(var_expr!(3, true).as_ref_var())
+                .next()
+                .is_some()
+        );
         {
             let result = forest.as_mut_var().get(&3);
             let result2 = result.get(&true);

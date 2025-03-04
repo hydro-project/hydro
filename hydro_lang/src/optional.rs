@@ -3,14 +3,14 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use stageleft::{q, IntoQuotedMut, QuotedWithContext};
+use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{HydroLeaf, HydroNode, HydroSource, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
-use crate::location::{check_matching_location, LocationId, NoTick};
+use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::singleton::ZipResult;
 use crate::stream::NoOrder;
 use crate::{Bounded, Location, Singleton, Stream, Tick, Unbounded};
@@ -461,11 +461,11 @@ impl<'a, T, L: Location<'a>> Optional<T, L, Bounded> {
     pub fn then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded>
     where
         Singleton<U, L, Bounded>: ZipResult<
-            'a,
-            Optional<(), L, Bounded>,
-            Location = L,
-            Out = Optional<(U, ()), L, Bounded>,
-        >,
+                'a,
+                Optional<(), L, Bounded>,
+                Location = L,
+                Out = Optional<(U, ()), L, Bounded>,
+            >,
     {
         value.continue_if(self)
     }

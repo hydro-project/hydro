@@ -2,7 +2,7 @@
 
 use ref_cast::RefCast;
 use sealed::sealed;
-use variadics::{variadic_trait, Variadic};
+use variadics::{Variadic, variadic_trait};
 
 use super::Handoff;
 use crate::scheduled::graph::HandoffData;

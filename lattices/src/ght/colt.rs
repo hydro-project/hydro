@@ -3,7 +3,7 @@
 use std::hash::Hash;
 
 use variadics::variadic_collections::VariadicCollection;
-use variadics::{var_expr, var_type, PartialEqVariadic, SplitBySuffix, VariadicExt};
+use variadics::{PartialEqVariadic, SplitBySuffix, VariadicExt, var_expr, var_type};
 
 use crate::ght::{GeneralizedHashTrieNode, GhtGet, GhtInner, GhtLeaf};
 
@@ -132,9 +132,9 @@ pub trait ColtGetTail<InnerToMerge>: ColtGet {
 impl<'a, Rest, Schema, SuffixSchema, Storage> ColtGet for var_type!(&'a mut GhtLeaf<Schema, SuffixSchema, Storage>, ...Rest)
 where
     Rest: ColtGetTail<
-        <GhtLeaf<Schema, SuffixSchema, Storage> as ColtForestNode>::Force,
-        Storage = Storage,
-    >,
+            <GhtLeaf<Schema, SuffixSchema, Storage> as ColtForestNode>::Force,
+            Storage = Storage,
+        >,
     <Rest as ColtGet>::SuffixSchema: 'a,
     GhtLeaf<Schema, SuffixSchema, Storage>: ColtForestNode,
     Schema: Clone + Hash + Eq + VariadicExt,
@@ -164,9 +164,9 @@ where
 impl<'a, Rest, Schema, SuffixSchema, T, Storage> ColtGetTail<T> for var_type!(&'a mut GhtLeaf<Schema, SuffixSchema, Storage>, ...Rest)
 where
     Rest: ColtGetTail<
-        <GhtLeaf<Schema, SuffixSchema, Storage> as ColtForestNode>::Force,
-        Storage = Storage,
-    >,
+            <GhtLeaf<Schema, SuffixSchema, Storage> as ColtForestNode>::Force,
+            Storage = Storage,
+        >,
     <Rest as ColtGet>::SuffixSchema: 'a,
     GhtLeaf<Schema, SuffixSchema, Storage>: ColtForestNode,
     Schema: Clone + Hash + Eq + VariadicExt,
@@ -185,11 +185,11 @@ where
     Head2: Eq + Hash + Clone,
     Node: GeneralizedHashTrieNode,
     GhtInner<Head, GhtInner<Head2, Node>>: GeneralizedHashTrieNode<
-        Head = Rest::Head,
-        SuffixSchema = Rest::SuffixSchema,
-        Schema = Rest::Schema,
-        Storage = Rest::Storage,
-    >,
+            Head = Rest::Head,
+            SuffixSchema = Rest::SuffixSchema,
+            Schema = Rest::Schema,
+            Storage = Rest::Storage,
+        >,
     GhtInner<Head2, Node>: GeneralizedHashTrieNode<Schema = Rest::Schema, Storage = Rest::Storage>,
 {
     type Schema = Rest::Schema;

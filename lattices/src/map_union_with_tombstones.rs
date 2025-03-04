@@ -338,9 +338,9 @@ pub type MapUnionWithTombstonesTombstoneSingletonSetOnly<K, Val> =
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::NaiveLatticeOrd;
     use crate::set_union::{SetUnion, SetUnionHashSet, SetUnionSingletonSet};
     use crate::test::check_all;
-    use crate::NaiveLatticeOrd;
 
     #[test]
     fn test_map_union() {

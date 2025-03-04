@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use hydro_lang::*;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 use super::paxos::PaxosPayload;
 

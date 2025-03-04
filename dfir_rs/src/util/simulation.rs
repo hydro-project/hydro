@@ -74,11 +74,11 @@ use std::fmt::Debug;
 use std::future::ready;
 use std::pin::Pin;
 
-use futures::{sink, Sink, SinkExt, StreamExt};
+use futures::{Sink, SinkExt, StreamExt, sink};
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_stream::Stream;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tracing::trace;
 
 use crate::scheduled::graph::Dfir;
@@ -339,16 +339,13 @@ impl Fleet {
                 } else {
                     trace!(
                         "No interface named {:?} found on host {:?}. Dropping message {:?}.",
-                        addr.interface,
-                        addr.host,
-                        msg
+                        addr.interface, addr.host, msg
                     );
                 }
             } else {
                 trace!(
                     "No host named {:?} found. Dropping message {:?}.",
-                    addr.host,
-                    msg
+                    addr.host, msg
                 );
             }
         }

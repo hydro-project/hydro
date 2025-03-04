@@ -1,10 +1,12 @@
-use crate::helpers::print_graph;
-use crate::protocol::Message;
-use crate::{Opts, DEFAULT_SERVER_ADDRESS};
+use std::net::SocketAddr;
+
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
-use std::net::SocketAddr;
+
+use crate::helpers::print_graph;
+use crate::protocol::Message;
+use crate::{DEFAULT_SERVER_ADDRESS, Opts};
 
 /// Runs the client. The client is a long-running process that reads stdin, and sends messages that
 /// it receives to the server. The client also prints any messages it receives to stdout.

@@ -36,8 +36,8 @@ mod declarative_macro;
 pub use dfir_datalog::*;
 #[cfg(feature = "dfir_macro")]
 pub use dfir_macro::{
-    dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test as test,
-    monotonic_fn, morphism, DemuxEnum,
+    DemuxEnum, dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test as test,
+    monotonic_fn, morphism,
 };
 
 // TODO(mingwei): Use the [nightly "never" type `!`](https://doc.rust-lang.org/std/primitive.never.html)

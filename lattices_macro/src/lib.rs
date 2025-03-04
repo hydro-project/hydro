@@ -8,13 +8,13 @@ use quote::{format_ident, quote};
 use syn::punctuated::Punctuated;
 use syn::visit_mut::VisitMut;
 use syn::{
-    parse_macro_input, Field, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, ItemStruct,
-    Member, Token, WhereClause, WherePredicate,
+    Field, FieldsNamed, FieldsUnnamed, Generics, Ident, Index, ItemStruct, Member, Token,
+    WhereClause, WherePredicate, parse_macro_input,
 };
 
 /// Tokens to reference the `lattices` crate.
 fn root() -> TokenStream {
-    use std::env::{var as env_var, VarError};
+    use std::env::{VarError, var as env_var};
 
     use proc_macro_crate::FoundCrate;
 

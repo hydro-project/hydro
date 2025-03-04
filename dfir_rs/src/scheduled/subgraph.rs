@@ -1,6 +1,6 @@
+use super::HandoffTag;
 use super::context::Context;
 use super::graph::HandoffData;
-use super::HandoffTag;
 use crate::util::slot_vec::SlotVec;
 
 /// Represents a compiled subgraph. Used internally by [Dataflow] to erase the input/output [Handoff] types.

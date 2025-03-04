@@ -11,15 +11,15 @@ use dfir_rs::bytes::Bytes;
 use dfir_rs::futures::{Sink, SinkExt, Stream, StreamExt};
 use dfir_rs::util::deploy::{ConnectedSink, ConnectedSource};
 use hydro_deploy::custom_service::CustomClientPort;
+use hydro_deploy::hydroflow_crate::HydroflowCrateService;
 use hydro_deploy::hydroflow_crate::ports::{
     DemuxSink, HydroflowSink, HydroflowSource, TaggedSource,
 };
 use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
-use hydro_deploy::hydroflow_crate::HydroflowCrateService;
 use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate, TracingResults};
 use nameof::name_of;
-use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
 use tokio::sync::RwLock;
 

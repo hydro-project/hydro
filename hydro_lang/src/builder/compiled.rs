@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
-use dfir_lang::graph::{partition_graph, DfirGraph};
+use dfir_lang::graph::{DfirGraph, partition_graph};
 use dfir_rs::scheduled::graph::Dfir;
 use proc_macro2::TokenStream;
 use quote::quote;
-use stageleft::runtime_support::FreeVariableWithContext;
 use stageleft::QuotedWithContext;
+use stageleft::runtime_support::FreeVariableWithContext;
 
 use crate::staging_util::Invariant;
 

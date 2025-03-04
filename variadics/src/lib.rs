@@ -141,11 +141,7 @@ pub trait VariadicExt: Variadic {
     }
 
     /// This as a variadic of references.
-    type AsRefVar<'a>: RefVariadic<
-        UnRefVar = Self,
-        RefVar = Self::AsRefVar<'a>,
-        MutVar = Self::AsMutVar<'a>,
-    >
+    type AsRefVar<'a>: RefVariadic<UnRefVar = Self, RefVar = Self::AsRefVar<'a>, MutVar = Self::AsMutVar<'a>>
     where
         Self: 'a;
     /// Convert a reference to this variadic into a variadic of references.
@@ -157,11 +153,7 @@ pub trait VariadicExt: Variadic {
     fn as_ref_var(&self) -> Self::AsRefVar<'_>;
 
     /// This as a variadic of exclusive (`mut`) references.
-    type AsMutVar<'a>: MutVariadic<
-        UnRefVar = Self,
-        RefVar = Self::AsRefVar<'a>,
-        MutVar = Self::AsMutVar<'a>,
-    >
+    type AsMutVar<'a>: MutVariadic<UnRefVar = Self, RefVar = Self::AsRefVar<'a>, MutVar = Self::AsMutVar<'a>>
     where
         Self: 'a;
     /// Convert an exclusive (`mut`) reference to this variadic into a variadic of exclusive
@@ -630,11 +622,7 @@ where
 {
     fn get(&self, i: usize) -> Option<&T> {
         let (item, rest) = self;
-        if i == 0 {
-            Some(item)
-        } else {
-            rest.get(i - 1)
-        }
+        if i == 0 { Some(item) } else { rest.get(i - 1) }
     }
     fn get_mut(&mut self, i: usize) -> Option<&mut T> {
         let (item, rest) = self;

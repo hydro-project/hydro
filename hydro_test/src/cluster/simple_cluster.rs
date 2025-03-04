@@ -75,7 +75,7 @@ mod tests {
     use hydro_lang::rewrites::partitioner::{self, PartitionAttribute, Partitioner};
     use hydro_lang::rewrites::{insert_counter, persist_pullup};
     use hydro_lang::{ClusterId, Location};
-    use stageleft::{q, RuntimeData};
+    use stageleft::{RuntimeData, q};
 
     #[tokio::test]
     async fn simple_cluster() {
@@ -110,7 +110,10 @@ mod tests {
             for j in 0..5 {
                 assert_eq!(
                     stdout.recv().await.unwrap(),
-                    format!("cluster received: (ClusterId::<()>({}), {}) (self cluster id: ClusterId::<()>({}))", i, j, i)
+                    format!(
+                        "cluster received: (ClusterId::<()>({}), {}) (self cluster id: ClusterId::<()>({}))",
+                        i, j, i
+                    )
                 );
             }
         }

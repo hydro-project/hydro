@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 
-use criterion::{criterion_group, criterion_main, Criterion};
+use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
 use dfir_rs::itertools::Itertools;
 use nameof::name_of;
@@ -56,13 +56,7 @@ fn hydroflo2_diamond_forloop(c: &mut Criterion) {
             let mut c = 0;
             for s in words() {
                 let a = { [format!("hi {}", s), format!("bye {}", s)] };
-                let b = {
-                    if 0 == s.len() % 5 {
-                        Some(s)
-                    } else {
-                        None
-                    }
-                };
+                let b = { if 0 == s.len() % 5 { Some(s) } else { None } };
                 for s in a.into_iter().chain(b) {
                     c += s.len();
                 }

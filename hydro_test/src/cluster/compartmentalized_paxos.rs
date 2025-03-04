@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use super::kv_replica::Replica;
 use super::paxos::{
-    acceptor_p2, index_payloads, leader_election, recommit_after_leader_election, Acceptor, Ballot,
-    LogValue, P2a, PaxosConfig, PaxosPayload, Proposer,
+    Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload, Proposer, acceptor_p2,
+    index_payloads, leader_election, recommit_after_leader_election,
 };
 use super::paxos_with_client::PaxosLike;
 

@@ -10,8 +10,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::token::{Brace, Bracket, Paren};
 use syn::{
-    braced, bracketed, parenthesized, AngleBracketedGenericArguments, Expr, ExprPath,
-    GenericArgument, Ident, ItemUse, LitInt, Path, PathArguments, PathSegment, Token,
+    AngleBracketedGenericArguments, Expr, ExprPath, GenericArgument, Ident, ItemUse, LitInt, Path,
+    PathArguments, PathSegment, Token, braced, bracketed, parenthesized,
 };
 
 use crate::process_singletons::preprocess_singletons;

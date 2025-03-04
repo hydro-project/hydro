@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::mpsc::SyncSender;
 
-use super::reactor::Reactor;
 use super::SubgraphId;
+use super::reactor::Reactor;
 
 pub trait Give<T> {
     fn give(&self, t: T) -> bool;

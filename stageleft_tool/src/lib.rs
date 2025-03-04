@@ -7,7 +7,7 @@ use quote::ToTokens;
 use sha2::{Digest, Sha256};
 use syn::visit::Visit;
 use syn::visit_mut::VisitMut;
-use syn::{parse_quote, UsePath, Visibility};
+use syn::{UsePath, Visibility, parse_quote};
 
 struct GenMacroVistor {
     exported_macros: BTreeSet<(String, String)>,

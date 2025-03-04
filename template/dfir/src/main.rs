@@ -1,10 +1,11 @@
+use std::net::SocketAddr;
+
 use clap::{Parser, ValueEnum};
 use client::run_client;
 use dfir_rs::lang::graph::{WriteConfig, WriteGraphType};
 use dfir_rs::tokio;
 use dfir_rs::util::ipv4_resolve;
 use server::run_server;
-use std::net::SocketAddr;
 
 mod client;
 mod helpers;

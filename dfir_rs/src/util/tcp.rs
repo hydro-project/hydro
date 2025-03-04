@@ -1,7 +1,7 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::fmt::Debug;
 use std::net::SocketAddr;
 
