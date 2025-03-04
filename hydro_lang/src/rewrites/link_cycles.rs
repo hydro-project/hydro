@@ -51,5 +51,6 @@ pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize>
             );
         }
     }
+    println!("Source to sink input: {:?}", source_to_sink_input);
     source_to_sink_input
 }

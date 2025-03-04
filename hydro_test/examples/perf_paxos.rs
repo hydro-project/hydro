@@ -85,8 +85,13 @@ async fn main() {
         .unwrap();
 
     analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    println!("IDs before cleanup");
+    print_id::print_id(&mut ir);
+    
+
     cleanup_after_analysis(&mut ir);
 
+    println!("IDs after cleanup");
     print_id::print_id(&mut ir);
 
     // Create a mapping from each CycleSink to its corresponding CycleSource

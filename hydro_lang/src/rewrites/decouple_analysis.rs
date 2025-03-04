@@ -281,6 +281,8 @@ fn add_tee_decoupling_overhead(
     let cardinality = metadata.cardinality.unwrap_or_default();
     let op_id = metadata.id.unwrap();
 
+    println!("Tee {} has inner {}", op_id, inner_id);
+
     // 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
     let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = tee_inner_to_decoupled_vars
         .entry(inner_id)
@@ -348,13 +350,18 @@ fn decouple_analysis_node(
         return;
     }
 
-    // Add inputs. For CycleSource, its input is its CycleSink's input
-    let input_ids = if let HydroNode::CycleSource { .. } = node {
-        // Note: assume the CycleSink is on the same cluster
-        vec![*cycle_source_to_sink_input.get(op_id).unwrap()]
-    }
-    else {
-        relevant_inputs(node.input_metadata(), &model_metadata.borrow().cluster_to_decouple)
+    // Add inputs
+    let input_ids = match node {
+        HydroNode::CycleSource { .. } => {
+            // For CycleSource, its input is its CycleSink's input. Note: assume the CycleSink is on the same cluster
+            vec![*cycle_source_to_sink_input.get(op_id).unwrap()]
+        }
+        HydroNode::Tee { inner, .. } => {
+            vec![inner.0.borrow().metadata().id.unwrap()]
+        }
+        _ => {
+            relevant_inputs(node.input_metadata(), &model_metadata.borrow().cluster_to_decouple)
+        }
     };
     add_input_constraints(*op_id, input_ids, model_metadata);
 
@@ -452,8 +459,7 @@ pub fn decouple_analysis(
     let ModelMetadata {
         model,
         op_id_to_var,
-        orig_to_decoupled_vars,
-        decoupled_to_orig_vars,
+        op_id_to_inputs,
         ..
     } = &mut *model_metadata.borrow_mut();
     model.write("decouple.lp").unwrap();
@@ -462,32 +468,41 @@ pub fn decouple_analysis(
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
-    for (op_id, var) in op_id_to_var.iter() {
-        if model.get_obj_attr(attr::X, var).unwrap() == 0.0 {
-            orig_machine.push(*op_id);
-        } else {
-            decoupled_machine.push(*op_id);
+    let mut orig_to_decoupled = vec![];
+    let mut decoupled_to_orig = vec![];
+
+    for (op_id, inputs) in op_id_to_inputs {
+        if let Some(input) = inputs.first() {
+            if let Some(op_var) = op_id_to_var.get(op_id) {
+                if let Some(input_var) = op_id_to_var.get(input) {
+                    let op_value = model.get_obj_attr(attr::X, op_var).unwrap();
+                    let input_value = model.get_obj_attr(attr::X, input_var).unwrap();
+                    match (input_value, op_value) {
+                        (0.0, 1.0) => {
+                            orig_to_decoupled.push(*op_id);
+                        }
+                        (1.0, 0.0) => {
+                            decoupled_to_orig.push(*op_id);
+                        }
+                        _ => {}
+                    }
+
+                    if input_value == 0.0 {
+                        orig_machine.push(*op_id);
+                    } else {
+                        decoupled_machine.push(*op_id);
+                    }
+                }
+            }
         }
     }
+
     orig_machine.sort();
     decoupled_machine.sort();
     println!("Original: {:?}", orig_machine);
     println!("Decoupling: {:?}", decoupled_machine);
-
-    let mut orig_to_decoupled = vec![];
-    let mut decoupled_to_orig = vec![];
-    for (op_id, var) in orig_to_decoupled_vars.iter() {
-        if model.get_obj_attr(attr::X, var).unwrap() == 1.0 {
-            orig_to_decoupled.push(*op_id);
-        }
-    }
-    for (op_id, var) in decoupled_to_orig_vars.iter() {
-        if model.get_obj_attr(attr::X, var).unwrap() == 1.0 {
-            decoupled_to_orig.push(*op_id);
-        }
-    }
     orig_to_decoupled.sort();
     decoupled_to_orig.sort();
-    println!("Original to decoupled: {:?}", orig_to_decoupled);
-    println!("Decoupled to original: {:?}", decoupled_to_orig);
+    println!("Original outputting to decoupled after: {:?}", orig_to_decoupled);
+    println!("Decoupled outputting to original after: {:?}", decoupled_to_orig);
 }
