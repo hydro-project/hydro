@@ -35,7 +35,12 @@ struct ModelMetadata {
     op_id_to_inputs: HashMap<usize, Vec<usize>>,
     prev_op_input_with_tick: HashMap<usize, usize>, // tick_id: last op_id with that tick_id
     tee_inner_to_decoupled_vars: HashMap<usize, (Var, Var)>, /* inner_id: (orig_to_decoupled, decoupled_to_orig) */
+    orig_to_decoupled_vars: Vec<(usize, Var)>, // Vars representing whether the output of op is a network edge to the decouple node (op, var)
+    decoupled_to_orig_vars: Vec<(usize, Var)>, // Vars representing whether the output of op is a network edge to the original node (op, var)
 }
+
+// Penalty for decoupling regardless of cardinality (to prevent decoupling low cardinality operators)
+const DECOUPLING_PENALTY: f64 = 0.0001;
 
 #[derive(Clone, PartialEq, Eq)]
 enum NetworkType {
@@ -210,11 +215,14 @@ fn add_decouple_vars(
     op1: usize,
     op2: usize,
     op_id_to_var: &mut HashMap<usize, Var>,
+    orig_to_decoupled_vars: &mut Vec<(usize, Var)>,
+    decoupled_to_orig_vars: &mut Vec<(usize, Var)>,
 ) -> (Var, Var) {
     let op1_var = var_from_op_id(op1, op_id_to_var, model);
     let op2_var = var_from_op_id(op2, op_id_to_var, model);
     // 1 if (op1 = 0, op2 = 1), 0 otherwise
-    let orig_to_decoupled_var = add_binvar!(model, bounds: ..).unwrap();
+    let orig_to_decoupled_var = add_binvar!(model, name: &format!("{}_{}_orig_to_decoupled", op1, op2), bounds: ..).unwrap();
+    orig_to_decoupled_vars.push((op2, orig_to_decoupled_var));
     // Technically unnecessary since we're using binvar, but future proofing
     model
         .add_constr(
@@ -224,12 +232,13 @@ fn add_decouple_vars(
         .unwrap();
     model
         .add_constr(
-            &format!("{}_{}_orig_to_decoupled", op1, op2),
+            &format!("{}_{}_orig_to_decoupled_constr", op1, op2),
             c!(orig_to_decoupled_var >= op2_var - op1_var),
         )
         .unwrap();
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
-    let decoupled_to_orig_var = add_binvar!(model, bounds: ..).unwrap();
+    let decoupled_to_orig_var = add_binvar!(model, name: &format!("{}_{}_decoupled_to_orig", op1, op2), bounds: ..).unwrap();
+    decoupled_to_orig_vars.push((op2, decoupled_to_orig_var));
     model
         .add_constr(
             &format!("{}_{}_decoupled_to_orig_pos", op1, op2),
@@ -238,7 +247,7 @@ fn add_decouple_vars(
         .unwrap();
     model
         .add_constr(
-            &format!("{}_{}_decoupled_to_orig", op1, op2),
+            &format!("{}_{}_decoupled_to_orig_constr", op1, op2),
             c!(decoupled_to_orig_var >= op1_var - op2_var),
         )
         .unwrap();
@@ -254,26 +263,27 @@ fn add_decoupling_overhead(metadata: &HydroIrMetadata, model_metadata: &RefCell<
         decoupled_node_cpu_usage,
         op_id_to_inputs,
         op_id_to_var,
+        orig_to_decoupled_vars,
+        decoupled_to_orig_vars,
         ..
     } = &mut *model_metadata.borrow_mut();
 
-    if let Some(cardinality) = metadata.cardinality {
-        let op_id = metadata.id.unwrap();
-        if let Some(inputs) = op_id_to_inputs.get(&op_id) {
-            // All inputs must be assigned the same var (by constraints above), so it suffices to check one
-            if let Some(input) = inputs.first() {
-                let (orig_to_decoupled_var, decoupled_to_orig_var) =
-                    add_decouple_vars(model, *input, op_id, op_id_to_var);
-                let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
-                *orig_node_cpu_usage = og_usage_temp
-                    + *decoupling_send_overhead * cardinality as f64 * orig_to_decoupled_var
-                    + *decoupling_recv_overhead * cardinality as f64 * decoupled_to_orig_var;
-                let decoupled_usage_temp =
-                    std::mem::replace(decoupled_node_cpu_usage, Expr::default());
-                *decoupled_node_cpu_usage = decoupled_usage_temp
-                    + *decoupling_recv_overhead * cardinality as f64 * orig_to_decoupled_var
-                    + *decoupling_send_overhead * cardinality as f64 * decoupled_to_orig_var;
-            }
+    let cardinality = metadata.cardinality.unwrap_or_default();
+    let op_id = metadata.id.unwrap();
+    if let Some(inputs) = op_id_to_inputs.get(&op_id) {
+        // All inputs must be assigned the same var (by constraints above), so it suffices to check one
+        if let Some(input) = inputs.first() {
+            let (orig_to_decoupled_var, decoupled_to_orig_var) =
+                add_decouple_vars(model, *input, op_id, op_id_to_var, orig_to_decoupled_vars, decoupled_to_orig_vars);
+            let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+            *orig_node_cpu_usage = og_usage_temp
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * orig_to_decoupled_var
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * decoupled_to_orig_var;
+            let decoupled_usage_temp =
+                std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+            *decoupled_node_cpu_usage = decoupled_usage_temp
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * orig_to_decoupled_var
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * decoupled_to_orig_var;
         }
     }
 }
@@ -291,46 +301,47 @@ fn add_tee_decoupling_overhead(
         decoupled_node_cpu_usage,
         op_id_to_var,
         tee_inner_to_decoupled_vars,
+        orig_to_decoupled_vars,
+        decoupled_to_orig_vars,
         ..
     } = &mut *model_metadata.borrow_mut();
 
-    if let Some(cardinality) = metadata.cardinality {
-        let op_id = metadata.id.unwrap();
+    let cardinality = metadata.cardinality.unwrap_or_default();
+    let op_id = metadata.id.unwrap();
 
-        // 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
-        let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = tee_inner_to_decoupled_vars
-            .entry(inner_id)
-            .or_insert_with(|| {
-                let any_orig_to_decoupled_var = add_binvar!(model, bounds: ..).unwrap();
-                let any_decoupled_to_orig_var = add_binvar!(model, bounds: ..).unwrap();
-                let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
-                *orig_node_cpu_usage = og_usage_temp
-                    + *decoupling_send_overhead * cardinality as f64 * any_orig_to_decoupled_var
-                    + *decoupling_recv_overhead * cardinality as f64 * any_decoupled_to_orig_var;
-                let decoupled_usage_temp =
-                    std::mem::replace(decoupled_node_cpu_usage, Expr::default());
-                *decoupled_node_cpu_usage = decoupled_usage_temp
-                    + *decoupling_recv_overhead * cardinality as f64 * any_orig_to_decoupled_var
-                    + *decoupling_send_overhead * cardinality as f64 * any_decoupled_to_orig_var;
-                (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
-            });
+    // 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
+    let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = tee_inner_to_decoupled_vars
+        .entry(inner_id)
+        .or_insert_with(|| {
+            let any_orig_to_decoupled_var = add_binvar!(model, name: &format!("tee{}_any_orig_to_decoupled", inner_id), bounds: ..).unwrap();
+            let any_decoupled_to_orig_var = add_binvar!(model, name: &format!("tee{}_any_decoupled_to_orig", inner_id), bounds: ..).unwrap();
+            let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+            *orig_node_cpu_usage = og_usage_temp
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
+            let decoupled_usage_temp =
+                std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+            *decoupled_node_cpu_usage = decoupled_usage_temp
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
+            (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
+        });
 
-        let (orig_to_decoupled_var, decoupled_to_orig_var) =
-            add_decouple_vars(model, inner_id, op_id, op_id_to_var);
-        // If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
-        model
-            .add_constr(
-                &format!("tee{}_inner{}_any_orig_to_decoupled", op_id, inner_id),
-                c!(*any_orig_to_decoupled_var >= orig_to_decoupled_var),
-            )
-            .unwrap();
-        model
-            .add_constr(
-                &format!("tee{}_inner{}_any_decoupled_to_orig", op_id, inner_id),
-                c!(*any_decoupled_to_orig_var >= decoupled_to_orig_var),
-            )
-            .unwrap();
-    }
+    let (orig_to_decoupled_var, decoupled_to_orig_var) =
+        add_decouple_vars(model, inner_id, op_id, op_id_to_var, orig_to_decoupled_vars, decoupled_to_orig_vars);
+    // If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
+    model
+        .add_constr(
+            &format!("tee{}_inner{}_any_orig_to_decoupled", op_id, inner_id),
+            c!(*any_orig_to_decoupled_var >= orig_to_decoupled_var),
+        )
+        .unwrap();
+    model
+        .add_constr(
+            &format!("tee{}_inner{}_any_decoupled_to_orig", op_id, inner_id),
+            c!(*any_decoupled_to_orig_var >= decoupled_to_orig_var),
+        )
+        .unwrap();
 }
 
 fn decouple_analysis_leaf(
@@ -451,6 +462,8 @@ pub fn decouple_analysis(
         op_id_to_inputs: HashMap::new(),
         prev_op_input_with_tick: HashMap::new(),
         tee_inner_to_decoupled_vars: HashMap::new(),
+        orig_to_decoupled_vars: vec![],
+        decoupled_to_orig_vars: vec![],
     });
 
     traverse_dfir(
@@ -465,12 +478,15 @@ pub fn decouple_analysis(
 
     construct_objective_fn(&model_metadata);
     let ModelMetadata {
-        op_id_to_var,
         model,
+        op_id_to_var,
+        orig_to_decoupled_vars,
+        decoupled_to_orig_vars,
         ..
     } = &mut *model_metadata.borrow_mut();
     model.write("decouple.lp").unwrap();
     model.optimize().unwrap();
+    model.write("decouple.sol").unwrap();
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
@@ -481,6 +497,25 @@ pub fn decouple_analysis(
             decoupled_machine.push(*op_id);
         }
     }
+    orig_machine.sort();
+    decoupled_machine.sort();
     println!("Original: {:?}", orig_machine);
     println!("Decoupling: {:?}", decoupled_machine);
+
+    let mut orig_to_decoupled = vec![];
+    let mut decoupled_to_orig = vec![];
+    for (op_id, var) in orig_to_decoupled_vars.iter() {
+        if model.get_obj_attr(attr::X, var).unwrap() == 1.0 {
+            orig_to_decoupled.push(*op_id);
+        }
+    }
+    for (op_id, var) in decoupled_to_orig_vars.iter() {
+        if model.get_obj_attr(attr::X, var).unwrap() == 1.0 {
+            decoupled_to_orig.push(*op_id);
+        }
+    }
+    orig_to_decoupled.sort();
+    decoupled_to_orig.sort();
+    println!("Original to decoupled: {:?}", orig_to_decoupled);
+    println!("Decoupled to original: {:?}", decoupled_to_orig);
 }

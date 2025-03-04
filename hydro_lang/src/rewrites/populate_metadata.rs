@@ -79,7 +79,7 @@ fn parse_perf(file: String) -> HashMap<(usize, bool), f64> {
     let mut total_samples = 0f64;
     let mut unidentified_samples = 0f64;
     let mut samples_per_id = HashMap::new();
-    let operator_regex = Regex::new(r"::op_\d+v\d+__(.*?)__(send)?(recv)?(\d+)::").unwrap();
+    let operator_regex = Regex::new(r"op_\d+v\d+__(.*?)__(send)?(recv)?(\d+)").unwrap();
 
     for line in file.lines() {
         let n_samples_index = line.rfind(' ').unwrap() + 1;
