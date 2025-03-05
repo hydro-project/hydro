@@ -72,6 +72,7 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
 
 #[cfg(test)]
 mod tests {
+    use dfir_rs::lang::graph::WriteConfig;
     use hydro_lang::deploy::DeployRuntime;
     use stageleft::RuntimeData;
 
@@ -84,7 +85,7 @@ mod tests {
         let acceptors = builder.cluster();
 
         let _ = super::paxos_bench(&builder, 1, 1, 1, 1, 2, |replica_checkpoint| CorePaxos {
-            proposers,
+            proposers: proposers.clone(),
             acceptors: acceptors.clone(),
             replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
             paxos_config: PaxosConfig {
@@ -98,6 +99,21 @@ mod tests {
 
         hydro_lang::ir::dbg_dedup_tee(|| {
             insta::assert_debug_snapshot!(built.ir());
+        });
+
+        let preview = built.preview_compile();
+        insta::with_settings!({snapshot_suffix => "proposer_mermaid"}, {
+            insta::assert_snapshot!(
+                preview.dfir_for(&proposers).to_mermaid(&WriteConfig {
+                    no_subgraphs: true,
+                    no_varnames: false,
+                    no_pull_push: true,
+                    no_handoffs: true,
+                    no_references: false,
+                    op_short_text: false,
+                    op_text_no_imports: true,
+                })
+            );
         });
 
         let _ = built.compile(&RuntimeData::new("FAKE"));

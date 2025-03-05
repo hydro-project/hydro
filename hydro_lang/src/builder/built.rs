@@ -1,10 +1,12 @@
+use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
 
-use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees};
+use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
+use super::{FlowBuilder, FlowStateInner};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy};
 use crate::ir::{HydroLeaf, emit};
 use crate::location::{Cluster, ExternalProcess, Process};
@@ -36,6 +38,8 @@ pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph>
         .map(|(k, v)| {
             let (mut flat_graph, _, _) = v.build();
             eliminate_extra_unions_tees(&mut flat_graph);
+            let flat_graph =
+                partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
             (k, flat_graph)
         })
         .collect()
@@ -94,7 +98,7 @@ impl<'a> BuiltFlow<'a> {
         };
 
         DeployFlow {
-            ir: std::mem::take(&mut self.ir),
+            ir: UnsafeCell::new(std::mem::take(&mut self.ir)),
             processes,
             process_id_name: std::mem::take(&mut self.process_id_name),
             clusters,

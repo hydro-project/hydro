@@ -1681,6 +1681,7 @@ dependencies = [
  "async-ssh2-lite",
  "ctor",
  "dfir_macro",
+ "dfir_rs",
  "futures",
  "hydro_deploy",
  "hydro_lang",
