@@ -53,7 +53,7 @@ mod tests {
 
         insta::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).dfir() {
+        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).all_dfir() {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });
