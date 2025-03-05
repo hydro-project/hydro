@@ -95,7 +95,7 @@ async fn main() {
     let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) =
         analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &proposers.id());
-    let (orig_to_decoupled, decoupled_to_orig) = decouple_analysis::decouple_analysis(
+    let (orig_to_decoupled, decoupled_to_orig, place_on_decoupled) = decouple_analysis::decouple_analysis(
         &mut ir,
         "perf_paxos_cluster",
         &proposers.id(),
@@ -115,6 +115,7 @@ async fn main() {
         let decoupler = Decoupler {
             output_to_decoupled_machine_after: orig_to_decoupled,
             output_to_original_machine_after: decoupled_to_orig,
+            place_on_decoupled_machine: place_on_decoupled,
             orig_location: proposers.id().clone(),
             decoupled_location: decoupled_cluster.clone().unwrap().id().clone(),
         };

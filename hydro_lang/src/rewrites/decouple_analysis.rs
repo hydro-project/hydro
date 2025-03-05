@@ -37,8 +37,6 @@ struct ModelMetadata {
     op_id_to_inputs: HashMap<usize, Vec<usize>>,
     prev_op_input_with_tick: HashMap<usize, usize>, // tick_id: last op_id with that tick_id
     tee_inner_to_decoupled_vars: HashMap<usize, (Var, Var)>, /* inner_id: (orig_to_decoupled, decoupled_to_orig) */
-    orig_to_decoupled_vars: Vec<(usize, Var)>, // Vars representing whether the output of op is a network edge to the decouple node (op, var)
-    decoupled_to_orig_vars: Vec<(usize, Var)>, // Vars representing whether the output of op is a network edge to the original node (op, var)
 }
 
 // Penalty for decoupling regardless of cardinality (to prevent decoupling low cardinality operators)
@@ -182,14 +180,11 @@ fn add_decouple_vars(
     op1: usize,
     op2: usize,
     op_id_to_var: &mut HashMap<usize, Var>,
-    orig_to_decoupled_vars: &mut Vec<(usize, Var)>,
-    decoupled_to_orig_vars: &mut Vec<(usize, Var)>,
 ) -> (Var, Var) {
     let op1_var = var_from_op_id(op1, op_id_to_var, model);
     let op2_var = var_from_op_id(op2, op_id_to_var, model);
     // 1 if (op1 = 0, op2 = 1), 0 otherwise
     let orig_to_decoupled_var = add_binvar!(model, name: &format!("{}_{}_orig_to_decoupled", op1, op2), bounds: ..).unwrap();
-    orig_to_decoupled_vars.push((op2, orig_to_decoupled_var));
     // Technically unnecessary since we're using binvar, but future proofing
     model
         .add_constr(
@@ -205,7 +200,6 @@ fn add_decouple_vars(
         .unwrap();
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
     let decoupled_to_orig_var = add_binvar!(model, name: &format!("{}_{}_decoupled_to_orig", op1, op2), bounds: ..).unwrap();
-    decoupled_to_orig_vars.push((op2, decoupled_to_orig_var));
     model
         .add_constr(
             &format!("{}_{}_decoupled_to_orig_pos", op1, op2),
@@ -230,8 +224,6 @@ fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>,
         decoupled_node_cpu_usage,
         op_id_to_inputs,
         op_id_to_var,
-        orig_to_decoupled_vars,
-        decoupled_to_orig_vars,
         ..
     } = &mut *model_metadata.borrow_mut();
 
@@ -246,7 +238,7 @@ fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>,
         // All inputs must be assigned the same var (by constraints above), so it suffices to check one
         if let Some(input) = inputs.first() {
             let (orig_to_decoupled_var, decoupled_to_orig_var) =
-                add_decouple_vars(model, *input, op_id, op_id_to_var, orig_to_decoupled_vars, decoupled_to_orig_vars);
+                add_decouple_vars(model, *input, op_id, op_id_to_var);
             let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
             *orig_node_cpu_usage = og_usage_temp
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * orig_to_decoupled_var
@@ -273,8 +265,6 @@ fn add_tee_decoupling_overhead(
         decoupled_node_cpu_usage,
         op_id_to_var,
         tee_inner_to_decoupled_vars,
-        orig_to_decoupled_vars,
-        decoupled_to_orig_vars,
         ..
     } = &mut *model_metadata.borrow_mut();
 
@@ -302,7 +292,7 @@ fn add_tee_decoupling_overhead(
         });
 
     let (orig_to_decoupled_var, decoupled_to_orig_var) =
-        add_decouple_vars(model, inner_id, op_id, op_id_to_var, orig_to_decoupled_vars, decoupled_to_orig_vars);
+        add_decouple_vars(model, inner_id, op_id, op_id_to_var);
     // If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
     model
         .add_constr(
@@ -429,7 +419,7 @@ pub fn decouple_analysis(
     send_overhead: f64,
     recv_overhead: f64,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-) -> (Vec<usize>, Vec<usize>) {
+) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
         decoupling_send_overhead: send_overhead,
@@ -441,8 +431,6 @@ pub fn decouple_analysis(
         op_id_to_inputs: HashMap::new(),
         prev_op_input_with_tick: HashMap::new(),
         tee_inner_to_decoupled_vars: HashMap::new(),
-        orig_to_decoupled_vars: vec![],
-        decoupled_to_orig_vars: vec![],
     });
 
     traverse_dfir(
@@ -470,6 +458,7 @@ pub fn decouple_analysis(
     let mut decoupled_machine = vec![];
     let mut orig_to_decoupled = vec![];
     let mut decoupled_to_orig = vec![];
+    let mut place_on_decoupled = vec![];
 
     for (op_id, inputs) in op_id_to_inputs {
         if let Some(op_var) = op_id_to_var.get(op_id) {
@@ -495,13 +484,12 @@ pub fn decouple_analysis(
                 }
             }
             else {
-                // No inputs, must be an incoming network node
+                // No inputs, must be 1. An incoming Network or 2. A Source
                 if op_value == 0.0 {
                     orig_machine.push(*op_id);
                 } else {
                     decoupled_machine.push(*op_id);
-                    // Tells the decoupler to swap the location of this Network
-                    orig_to_decoupled.push(*op_id);
+                    place_on_decoupled.push(*op_id);
                 }
             }
         }
@@ -513,8 +501,10 @@ pub fn decouple_analysis(
     println!("Decoupling: {:?}", decoupled_machine);
     orig_to_decoupled.sort();
     decoupled_to_orig.sort();
+    place_on_decoupled.sort();
     println!("Original outputting to decoupled after: {:?}", orig_to_decoupled);
     println!("Decoupled outputting to original after: {:?}", decoupled_to_orig);
+    println!("Placing on decoupled: {:?}", place_on_decoupled);
 
-    (orig_to_decoupled, decoupled_to_orig)
+    (orig_to_decoupled, decoupled_to_orig, place_on_decoupled)
 }

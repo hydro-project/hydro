@@ -1,46 +1,20 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use proc_macro2::Span;
+use stageleft::quote_type;
 
-use crate::ir::*;
+use crate::{ir::*, ClusterId};
 use crate::location::LocationId;
 use crate::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 
 pub struct Decoupler {
-    pub output_to_decoupled_machine_after: Vec<usize>,
-    pub output_to_original_machine_after: Vec<usize>,
+    pub output_to_decoupled_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the decoupled machine
+    pub output_to_original_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the original machine
+    pub place_on_decoupled_machine: Vec<usize>, // This operator should be placed on the decoupled machine. Only for sources
     pub orig_location: LocationId,
     pub decoupled_location: LocationId,
-}
-
-fn modify_network(node: &mut HydroNode, new_location: &LocationId) {
-    println!("Creating network to location {:?}, node {}", new_location, node.print_root());
-
-    let node_content = std::mem::replace(node, HydroNode::Placeholder);
-    if let HydroNode::Network { 
-        from_key,
-        to_location: _,
-        to_key,
-        serialize_fn,
-        instantiate_fn,
-        deserialize_fn,
-        input,
-        metadata,
-     } = node_content {
-        *node = HydroNode::Network {
-            from_key,
-            to_location: new_location.clone(),
-            to_key,
-            serialize_fn,
-            instantiate_fn,
-            deserialize_fn,
-            input,
-            metadata,
-        }
-    }
-    else {
-        std::panic!("Decoupler modifying network on non-network node: {}", node.print_root());
-    }
 }
 
 fn add_network(node: &mut HydroNode, new_location: &LocationId) {
@@ -61,12 +35,14 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         ClusterId::<()>::from_raw(#ident),
         b
     ));
+    let cluster_id_type = quote_type::<ClusterId<()>>();
+    let mapped_output_type: syn::Type = syn::parse_quote!((#cluster_id_type, #output_debug_type));
     let mapped_node = HydroNode::Map {
         f: f.into(),
         input: Box::new(node_content),
         metadata: HydroIrMetadata {
             location_kind: metadata.location_kind.root().clone(), // Remove any ticks
-            output_type: Some(output_debug_type.clone()), // TODO: Fix to account for the ClusterId
+            output_type: Some(DebugType(mapped_output_type.clone())),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,
@@ -75,15 +51,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     };
 
     // Set up the network node
-    let network_metadata = HydroIrMetadata {
-        location_kind: new_location.clone(),
-        output_type: Some(output_debug_type.clone()),
-        cardinality: None,
-        cpu_usage: None,
-        network_recv_cpu_usage: None,
-        id: None,
-    };
-    let output_type = output_debug_type.0;
+    let output_type = output_debug_type.clone().0;
     let network_node = HydroNode::Network {
         from_key: None,
         to_location: new_location.clone(),
@@ -92,12 +60,19 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
             .map(|e| e.into()),
         instantiate_fn: DebugInstantiate::Building(),
         deserialize_fn: Some(deserialize_bincode_with_type(
-            Some(stageleft::quote_type::<()>()),
-            output_type.clone(),
+            Some(quote_type::<()>()),
+            output_type,
         ))
         .map(|e| e.into()),
         input: Box::new(mapped_node),
-        metadata: network_metadata.clone(),
+        metadata: HydroIrMetadata {
+            location_kind: new_location.clone(),
+            output_type: Some(DebugType(mapped_output_type)),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        },
     };
 
     // Map again to remove the cluster Id (mimicking send_anonymous)
@@ -105,12 +80,52 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     let mapped_node = HydroNode::Map {
         f: f.into(),
         input: Box::new(network_node),
-        metadata: network_metadata,
+        metadata: HydroIrMetadata {
+            location_kind: new_location.clone(),
+            output_type: Some(output_debug_type),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        },
     };
     *node = mapped_node;
 }
 
-fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut usize) {
+fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>) {
+    let node_content = std::mem::replace(node, HydroNode::Placeholder);
+    let metadata = node_content.metadata().clone();
+
+    let new_inner = new_inners.entry((metadata.id.unwrap(), new_location.clone())).or_insert_with(|| {
+        Rc::new(RefCell::new(node_content))
+    }).clone();
+
+    let teed_node = HydroNode::Tee {
+        inner: TeeNode(new_inner),
+        metadata,
+    };
+    *node = teed_node;
+}
+
+fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut usize, new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>) {
+    // Replace location of sources, if necessary
+    if decoupler.place_on_decoupled_machine.contains(next_stmt_id) {
+        match node {
+            HydroNode::Source { location_kind, metadata, .. } => {
+                *location_kind = decoupler.decoupled_location.clone();
+                metadata.location_kind = decoupler.decoupled_location.clone();
+            }
+            HydroNode::Network { to_location, .. } => {
+                *to_location = decoupler.decoupled_location.clone();
+            }
+            _ => {
+                std::panic!("Decoupler placing non-source/network node on decoupled machine: {}", node.print_root());
+            }
+        }
+        return;
+    }
+
+    // Otherwise, replace where the outputs go
     let new_location = if decoupler.output_to_decoupled_machine_after.contains(next_stmt_id) {
         &decoupler.decoupled_location
     }
@@ -125,19 +140,13 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
         HydroNode::Placeholder => {
             std::panic!("Decoupler modifying placeholder node");
         }
-        HydroNode::Source { location_kind, metadata, .. } => {
-            // Don't need to decouple, just instantiate on a new node
-            *location_kind = new_location.clone();
-            metadata.location_kind = new_location.clone();
-        }
-        HydroNode::CycleSource { .. } => {
-            // TODO: Must match CycleSink's id, if decoupling. Should remove location_kind and refactor emit_core
-        }
         HydroNode::Tee { .. } => {
-            // TODO: Share same source as other Tees after decoupling
+            add_network(node, new_location);
+            add_tee(node, new_location, new_inners);
         }
-        HydroNode::Network { .. } => {
-            modify_network(node, new_location);
+        HydroNode::Network { to_location, .. } => {
+            // Instead of inserting a network after an existing Network, just modify the location
+            *to_location = new_location.clone();
         }
         _ => {
             add_network(node, new_location);
@@ -145,13 +154,13 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
     }
 }
 
-/// Limitations: Cannot decouple across a cycle. Can only decouple clusters (not processes).
 pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
+    let mut new_inners = HashMap::new();
     traverse_dfir(
         ir,
         |_, _| {},
         |node, next_stmt_id| {
-            decouple_node(node, decoupler, next_stmt_id);
+            decouple_node(node, decoupler, next_stmt_id, &mut new_inners);
         },
     );
 }

@@ -83,6 +83,7 @@ mod tests {
         let decoupler = decoupler::Decoupler {
             output_to_decoupled_machine_after: vec![4],
             output_to_original_machine_after: vec![],
+            place_on_decoupled_machine: vec![],
             decoupled_location: decoupled_cluster.id().clone(),
             orig_location: cluster.id().clone(),
         };
