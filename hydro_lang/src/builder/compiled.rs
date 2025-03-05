@@ -1,13 +1,14 @@
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 
-use dfir_lang::graph::{DfirGraph, partition_graph};
+use dfir_lang::graph::DfirGraph;
 use dfir_rs::scheduled::graph::Dfir;
 use proc_macro2::TokenStream;
 use quote::quote;
 use stageleft::QuotedWithContext;
 use stageleft::runtime_support::FreeVariableWithContext;
 
+use crate::Location;
 use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a, ID> {
@@ -16,13 +17,13 @@ pub struct CompiledFlow<'a, ID> {
     pub(super) _phantom: Invariant<'a, ID>,
 }
 
-impl<ID> CompiledFlow<'_, ID> {
-    pub fn dfir(&self) -> &BTreeMap<usize, DfirGraph> {
-        &self.dfir
+impl<'a, ID> CompiledFlow<'a, ID> {
+    pub fn dfir_for(&self, location: &impl Location<'a>) -> &DfirGraph {
+        self.dfir.get(&location.id().raw_id()).unwrap()
     }
 
-    pub fn take_dfir(self) -> BTreeMap<usize, DfirGraph> {
-        self.dfir
+    pub fn all_dfir(&self) -> &BTreeMap<usize, DfirGraph> {
+        &self.dfir
     }
 }
 
@@ -42,10 +43,7 @@ impl<'a> CompiledFlow<'a, usize> {
         };
 
         let mut conditioned_tokens = None;
-        for (subgraph_id, flat_graph) in self.dfir {
-            let partitioned_graph =
-                partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
-
+        for (subgraph_id, partitioned_graph) in self.dfir {
             let mut diagnostics = Vec::new();
             let tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
             let my_extra_stmts = self
@@ -105,9 +103,7 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
             panic!("Expected exactly one subgraph in the DFIR.");
         }
 
-        let flat_graph = self.dfir.remove(&0).unwrap();
-        let partitioned_graph =
-            partition_graph(flat_graph).expect("Failed to partition (cycle detected).");
+        let partitioned_graph = self.dfir.remove(&0).unwrap();
 
         let mut diagnostics = Vec::new();
         let tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
