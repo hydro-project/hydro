@@ -11,16 +11,16 @@ linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(roots)</code>"/]:::pullClass
 2v1[\"(2v1) <code>chain()</code>"/]:::pullClass
 3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
-4v1[/"<div style=text-align:center>(4v1)</div> <code>map(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (u32, ()),<br>    &gt;({<br>        use crate::__staged::local::graph_reachability::*;<br>        |r| (r, ())<br>    }),<br>)</code>"\]:::pushClass
+4v1[/"<div style=text-align:center>(4v1)</div> <code>map({<br>    use crate::__staged::local::graph_reachability::*;<br>    |r| (r, ())<br>})</code>"\]:::pushClass
 5v1[\"(5v1) <code>source_stream(edges)</code>"/]:::pullClass
 6v1[\"(6v1) <code>join_multiset::&lt;'tick, 'static&gt;()</code>"/]:::pullClass
-7v1[\"<div style=text-align:center>(7v1)</div> <code>map(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        (u32, ((), u32)),<br>        u32,<br>    &gt;({<br>        use crate::__staged::local::graph_reachability::*;<br>        |(_from, (_, to))| to<br>    }),<br>)</code>"/]:::pullClass
+7v1[\"<div style=text-align:center>(7v1)</div> <code>map({<br>    use crate::__staged::local::graph_reachability::*;<br>    |(_from, (_, to))| to<br>})</code>"/]:::pullClass
 8v1[\"(8v1) <code>chain()</code>"/]:::pullClass
 9v1[\"(9v1) <code>defer_tick_lazy()</code>"/]:::pullClass
 10v1[/"(10v1) <code>persist::&lt;'static&gt;()</code>"\]:::pushClass
 11v1[/"(11v1) <code>unique::&lt;'tick&gt;()</code>"\]:::pushClass
 12v1[/"(12v1) <code>multiset_delta()</code>"\]:::pushClass
-13v1[/"<div style=text-align:center>(13v1)</div> <code>for_each(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (),<br>    &gt;({<br>        use crate::__staged::local::graph_reachability::*;<br>        let reached_out__free = reached_out;<br>        |v| {<br>            reached_out__free.send(v).unwrap();<br>        }<br>    }),<br>)</code>"\]:::pushClass
+13v1[/"<div style=text-align:center>(13v1)</div> <code>for_each({<br>    use crate::__staged::local::graph_reachability::*;<br>    let reached_out__free = reached_out;<br>    |v| {<br>        reached_out__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 14v1["(14v1) <code>handoff</code>"]:::otherClass
 15v1["(15v1) <code>handoff</code>"]:::otherClass
 16v1["(16v1) <code>handoff</code>"]:::otherClass
