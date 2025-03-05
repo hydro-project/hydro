@@ -372,7 +372,7 @@ expression: built.ir()
                     ),
                     to_key: None,
                     serialize_fn: Some(
-                        | (id , data) : (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: cluster :: paxos :: Ballot > (& data) . unwrap () . into ()) },
+                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                     ),
                     instantiate_fn: <network instantiate>,
                     deserialize_fn: Some(
@@ -653,7 +653,7 @@ expression: built.ir()
                                                     ),
                                                     to_key: None,
                                                     serialize_fn: Some(
-                                                        | (id , data) : (hydro_lang :: ClusterId < _ > , (hydro_test :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , hydro_test :: cluster :: paxos :: Ballot >)) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < (hydro_test :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , hydro_test :: cluster :: paxos :: Ballot >) > (& data) . unwrap () . into ()) },
+                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: cluster :: paxos :: LogValue < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > >) , hydro_test :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                     ),
                                                     instantiate_fn: <network instantiate>,
                                                     deserialize_fn: Some(
@@ -673,7 +673,7 @@ expression: built.ir()
                                                                             ),
                                                                             to_key: None,
                                                                             serialize_fn: Some(
-                                                                                | (id , data) : (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: cluster :: paxos :: Ballot > (& data) . unwrap () . into ()) },
+                                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                             ),
                                                                             instantiate_fn: <network instantiate>,
                                                                             deserialize_fn: Some(
@@ -1904,7 +1904,7 @@ expression: built.ir()
                                                             ),
                                                             to_key: None,
                                                             serialize_fn: Some(
-                                                                | (id , data) : (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: cluster :: paxos :: Ballot > (& data) . unwrap () . into ()) },
+                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                             ),
                                                             instantiate_fn: <network instantiate>,
                                                             deserialize_fn: Some(
@@ -2279,7 +2279,7 @@ expression: built.ir()
                                                             ),
                                                             to_key: None,
                                                             serialize_fn: Some(
-                                                                | (id , data) : (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) >) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > > (& data) . unwrap () . into ()) },
+                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) >) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                             ),
                                                             instantiate_fn: <network instantiate>,
                                                             deserialize_fn: Some(
@@ -2822,7 +2822,7 @@ expression: built.ir()
                                                     ),
                                                     to_key: None,
                                                     serialize_fn: Some(
-                                                        | (id , data) : (hydro_lang :: ClusterId < _ > , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: cluster :: paxos :: Ballot >)) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: cluster :: paxos :: Ballot >) > (& data) . unwrap () . into ()) },
+                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , ((usize , hydro_test :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                     ),
                                                     instantiate_fn: <network instantiate>,
                                                     deserialize_fn: Some(
@@ -2841,7 +2841,7 @@ expression: built.ir()
                                                                         ),
                                                                         to_key: None,
                                                                         serialize_fn: Some(
-                                                                            | (id , data) : (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer > > (& data) . unwrap () . into ()) },
+                                                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , hydro_test :: cluster :: paxos :: P2a < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > , hydro_test :: cluster :: paxos :: Proposer >) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                         ),
                                                                         instantiate_fn: <network instantiate>,
                                                                         deserialize_fn: Some(
@@ -3908,7 +3908,7 @@ expression: built.ir()
                                                             ),
                                                             to_key: None,
                                                             serialize_fn: Some(
-                                                                | (id , data) : (hydro_lang :: ClusterId < _ > , usize) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < usize > (& data) . unwrap () . into ()) },
+                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , usize) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                             ),
                                                             instantiate_fn: <network instantiate>,
                                                             deserialize_fn: Some(
@@ -4251,7 +4251,7 @@ expression: built.ir()
                                                 ),
                                                 to_key: None,
                                                 serialize_fn: Some(
-                                                    | (id , data) : (hydro_lang :: ClusterId < _ > , (usize , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < (usize , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >) > (& data) . unwrap () . into ()) },
+                                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (usize , core :: option :: Option < hydro_test :: cluster :: kv_replica :: KvPayload < u32 , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: bench_client :: Client > , u32) > >)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                 ),
                                                 instantiate_fn: <network instantiate>,
                                                 deserialize_fn: Some(
@@ -5013,7 +5013,7 @@ expression: built.ir()
                                     ),
                                     to_key: None,
                                     serialize_fn: Some(
-                                        | (id , data) : (hydro_lang :: ClusterId < _ > , ((u32 , u32) , core :: result :: Result < () , () >)) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < ((u32 , u32) , core :: result :: Result < () , () >) > (& data) . unwrap () . into ()) },
+                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , ((u32 , u32) , core :: result :: Result < () , () >)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                     ),
                                     instantiate_fn: <network instantiate>,
                                     deserialize_fn: Some(

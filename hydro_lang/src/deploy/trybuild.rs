@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use dfir_lang::graph::{DfirGraph, partition_graph};
+use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
 use syn::visit_mut::VisitMut;
@@ -90,9 +90,10 @@ pub fn create_graph_trybuild(
     (bin_name, trybuild_created)
 }
 
-pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> syn::File {
-    let partitioned_graph = partition_graph(graph).expect("Failed to partition (cycle detected).");
-
+pub fn compile_graph_trybuild(
+    partitioned_graph: DfirGraph,
+    extra_stmts: Vec<syn::Stmt>,
+) -> syn::File {
     let mut diagnostics = Vec::new();
     let tokens = partitioned_graph.as_code(
         &quote! { hydro_lang::dfir_rs },
