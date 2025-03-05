@@ -9,7 +9,7 @@ classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"<div style=text-align:center>(1v1)</div> <code>source_iter({<br>    use crate::__staged::local::teed_join::*;<br>    0..5<br>})</code>"/]:::pullClass
-2v1[/"<div style=text-align:center>(2v1)</div> <code>for_each(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (),<br>    &gt;({<br>        use crate::__staged::local::teed_join::*;<br>        let output__free = output;<br>        |v| {<br>            output__free.send(v).unwrap();<br>        }<br>    }),<br>)</code>"\]:::pushClass
+2v1[/"<div style=text-align:center>(2v1)</div> <code>for_each({<br>    use crate::__staged::local::teed_join::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 1v1-->2v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1

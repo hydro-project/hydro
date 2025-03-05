@@ -10,12 +10,12 @@ classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(input_stream)</code>"/]:::pullClass
 2v1[/"(2v1) <code>tee()</code>"\]:::pushClass
-3v1[/"<div style=text-align:center>(3v1)</div> <code>map(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (u32, ()),<br>    &gt;({<br>        use crate::__staged::local::teed_join::*;<br>        |v| (v + 1, ())<br>    }),<br>)</code>"\]:::pushClass
-4v1[/"<div style=text-align:center>(4v1)</div> <code>map(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (u32, ()),<br>    &gt;({<br>        use crate::__staged::local::teed_join::*;<br>        |v| (v - 1, ())<br>    }),<br>)</code>"\]:::pushClass
+3v1[/"<div style=text-align:center>(3v1)</div> <code>map({<br>    use crate::__staged::local::teed_join::*;<br>    |v| (v + 1, ())<br>})</code>"\]:::pushClass
+4v1[/"<div style=text-align:center>(4v1)</div> <code>map({<br>    use crate::__staged::local::teed_join::*;<br>    |v| (v - 1, ())<br>})</code>"\]:::pushClass
 5v1[\"(5v1) <code>join_multiset::&lt;'tick, 'tick&gt;()</code>"/]:::pullClass
-6v1[\"<div style=text-align:center>(6v1)</div> <code>map(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        (u32, ((), ())),<br>        u32,<br>    &gt;({<br>        use crate::__staged::local::teed_join::*;<br>        |t| t.0<br>    }),<br>)</code>"/]:::pullClass
+6v1[\"<div style=text-align:center>(6v1)</div> <code>map({<br>    use crate::__staged::local::teed_join::*;<br>    |t| t.0<br>})</code>"/]:::pullClass
 7v3["(7v3) <code>handoff</code>"]:::otherClass
-8v1[/"<div style=text-align:center>(8v1)</div> <code>for_each(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (),<br>    &gt;({<br>        use crate::__staged::local::teed_join::*;<br>        let output__free = output;<br>        |v| {<br>            output__free.send(v).unwrap();<br>        }<br>    }),<br>)</code>"\]:::pushClass
+8v1[/"<div style=text-align:center>(8v1)</div> <code>for_each({<br>    use crate::__staged::local::teed_join::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 9v1["(9v1) <code>handoff</code>"]:::otherClass
 1v1-->2v1
 2v1-->3v1
