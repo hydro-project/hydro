@@ -93,10 +93,16 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
 }
 
 fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>) {
-    let node_content = std::mem::replace(node, HydroNode::Placeholder);
-    let metadata = node_content.metadata().clone();
+    let metadata = node.metadata().clone();
+    let inner_id = if let HydroNode::Tee { inner, .. } = node {
+        inner.0.borrow().metadata().id.unwrap()
+    } else {
+        std::panic!("Decoupler add_tee() called on non-Tee");
+    };
 
-    let new_inner = new_inners.entry((metadata.id.unwrap(), new_location.clone())).or_insert_with(|| {
+    let new_inner = new_inners.entry((inner_id, new_location.clone())).or_insert_with(|| {
+        add_network(node, new_location);
+        let node_content = std::mem::replace(node, HydroNode::Placeholder);
         Rc::new(RefCell::new(node_content))
     }).clone();
 
@@ -141,7 +147,6 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
             std::panic!("Decoupler modifying placeholder node");
         }
         HydroNode::Tee { .. } => {
-            add_network(node, new_location);
             add_tee(node, new_location, new_inners);
         }
         HydroNode::Network { to_location, .. } => {
