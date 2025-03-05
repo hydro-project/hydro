@@ -477,6 +477,8 @@ where
 /// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
+    /// No persistence, for within a loop iteration.
+    None,
     /// Persistence for one tick at-a-time only.
     Tick,
     /// Persistene across all ticks.

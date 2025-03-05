@@ -92,7 +92,6 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    ident,
                    inputs,
@@ -135,11 +134,11 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             .map_err(|err| diagnostics.push(err))?;
         let rhs_join_options = super::join_fused::parse_argument(&wc.arguments[1])
             .map_err(|err| diagnostics.push(err))?;
-        let (lhs_joindata_ident, lhs_borrow_ident, _lhs_prologue, lhs_borrow) =
+        let (_lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
             super::join_fused::make_joindata(&wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
-        let (rhs_joindata_ident, rhs_borrow_ident, _rhs_prologue, rhs_borrow) =
+        let (_rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
             super::join_fused::make_joindata(&wc, persistences[1], &rhs_join_options, "rhs")
                 .map_err(|err| diagnostics.push(err))?;
 
@@ -160,13 +159,8 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = quote_spanned! {op_span=>
-            let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
-                // SAFETY: handles from `#df_ident`.
-                (
-                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
-                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
-                )
-            };
+            #lhs_pre_write_iter
+            #rhs_pre_write_iter
 
             let #ident = {
                 #lhs_tokens
