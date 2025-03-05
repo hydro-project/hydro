@@ -145,7 +145,10 @@
 <a href="#144" id="144">144</a>
 <a href="#145" id="145">145</a>
 <a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Literal;
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::Literal;
 <span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
@@ -265,7 +268,10 @@
                 #<span class="macro">root::__python_feature_gate!</span> {
                     {
                         <span class="comment">// TODO(mingwei): maybe this can be outside the closure?
-                        </span><span class="kw">let </span>py_func = #context.state_ref(#py_func_ident);
+                        </span><span class="kw">let </span>py_func = <span class="kw">unsafe </span>{
+                            <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                            </span>#context.state_ref_unchecked(#py_func_ident)
+                        };
                         #root::pyo3::Python::with_gil(|py| py_func.call1(py, x))
                     },
                     {

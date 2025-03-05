@@ -116,7 +116,13 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -204,7 +210,10 @@
         <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
             <span class="kw">let </span>#ident = {
                 <span class="comment">// TODO(mingwei): performance issue - get_mut_default and std::mem::take reset the vecs, reallocs heap.
-                </span><span class="kw">let </span><span class="kw-2">mut </span>zipbuf_borrow = #context.state_ref(#zipbuf_ident).borrow_mut();
+                </span><span class="kw">let </span><span class="kw-2">mut </span>zipbuf_borrow = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#zipbuf_ident)
+                }.borrow_mut();
                 <span class="kw">let </span>(lhs_buf, rhs_buf) = zipbuf_borrow.get_mut_default(#context.current_tick());
                 #root::itertools::Itertools::zip_longest(
                     ::std::mem::take(lhs_buf).into_iter().chain(#lhs),
@@ -214,7 +223,10 @@
                         <span class="kw">if let </span>#root::itertools::EitherOrBoth::Both(lhs, rhs) = either {
                             <span class="prelude-val">Some</span>((lhs, rhs))
                         } <span class="kw">else </span>{
-                            <span class="kw">let </span><span class="kw-2">mut </span>zipbuf_burrow = #context.state_ref(#zipbuf_ident).borrow_mut();
+                            <span class="kw">let </span><span class="kw-2">mut </span>zipbuf_burrow = <span class="kw">unsafe </span>{
+                                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                                </span>#context.state_ref_unchecked(#zipbuf_ident)
+                            }.borrow_mut();
                             <span class="kw">let </span>(lhs_buf, rhs_buf) = zipbuf_burrow.get_mut_default(#context.current_tick());
                             <span class="kw">match </span>either {
                                 #root::itertools::EitherOrBoth::Left(lhs) =&gt; lhs_buf.push(lhs),

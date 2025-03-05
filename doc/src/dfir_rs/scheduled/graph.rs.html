@@ -1117,7 +1117,18 @@
 <a href="#1116" id="1116">1116</a>
 <a href="#1117" id="1117">1117</a>
 <a href="#1118" id="1118">1118</a>
-<a href="#1119" id="1119">1119</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
+<a href="#1119" id="1119">1119</a>
+<a href="#1120" id="1120">1120</a>
+<a href="#1121" id="1121">1121</a>
+<a href="#1122" id="1122">1122</a>
+<a href="#1123" id="1123">1123</a>
+<a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for the [`Dfir`] struct and helper items.
 
 </span><span class="kw">use </span>std::any::Any;
 <span class="kw">use </span>std::borrow::Cow;
@@ -1879,6 +1890,10 @@
         W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
         F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
     {
+        <span class="comment">// SAFETY: Check that the send and recv ports are from `self.handoffs`.
+        </span>recv_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
+        send_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
+
         <span class="kw">let </span>loop_depth = loop_id
             .and_then(|loop_id| <span class="self">self</span>.context.loop_depth.get(loop_id))
             .copied()
@@ -1891,8 +1906,15 @@
 
             <span class="kw">let </span>subgraph =
                 <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
-                    <span class="kw">let </span>recv = recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
-                    <span class="kw">let </span>send = send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs);
+                    <span class="kw">let </span>(recv, send) = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY:
+                        // 1. We checked `assert_is_from` at assembly time, above.
+                        // 2. `SlotVec` is insert-only so no handoffs could have changed since then.
+                        </span>(
+                            recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
+                            send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
+                        )
+                    };
                     (subgraph)(context, recv, send);
                 };
             SubgraphData::new(

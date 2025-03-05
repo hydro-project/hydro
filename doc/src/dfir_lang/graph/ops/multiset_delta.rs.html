@@ -122,7 +122,17 @@
 <a href="#121" id="121">121</a>
 <a href="#122" id="122">122</a>
 <a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
@@ -200,8 +210,13 @@
         <span class="kw">let </span>tick_swap = <span class="macro">quote_spanned!</span> {op_span=&gt;
             {
                 <span class="kw">if </span>context.is_first_run_this_tick() {
-                    <span class="kw">let </span><span class="kw-2">mut </span>prev_map = #context.state_ref(#prev_data).borrow_mut();
-                    <span class="kw">let </span><span class="kw-2">mut </span>curr_map = #context.state_ref(#curr_data).borrow_mut();
+                    <span class="kw">let </span>(<span class="kw-2">mut </span>prev_map, <span class="kw-2">mut </span>curr_map) = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>(
+                            #context.state_ref_unchecked(#prev_data).borrow_mut(),
+                            #context.state_ref_unchecked(#curr_data).borrow_mut(),
+                        )
+                    };
                     ::std::mem::swap(::std::ops::DerefMut::deref_mut(<span class="kw-2">&amp;mut </span>prev_map), ::std::ops::DerefMut::deref_mut(<span class="kw-2">&amp;mut </span>curr_map));
                     curr_map.clear();
                 }
@@ -210,8 +225,13 @@
 
         <span class="kw">let </span>filter_fn = <span class="macro">quote_spanned!</span> {op_span=&gt;
             |item| {
-                <span class="kw">let </span><span class="kw-2">mut </span>prev_map = #context.state_ref(#prev_data).borrow_mut();
-                <span class="kw">let </span><span class="kw-2">mut </span>curr_map = #context.state_ref(#curr_data).borrow_mut();
+                <span class="kw">let </span>(<span class="kw-2">mut </span>prev_map, <span class="kw-2">mut </span>curr_map) = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>(
+                        #context.state_ref_unchecked(#prev_data).borrow_mut(),
+                        #context.state_ref_unchecked(#curr_data).borrow_mut(),
+                    )
+                };
 
                 <span class="kw-2">*</span>curr_map.entry(<span class="attr">#[allow(clippy::clone_on_copy)] </span>item.clone()).or_insert(<span class="number">0_usize</span>) += <span class="number">1</span>;
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(old_count) = prev_map.get_mut(item) {

@@ -126,7 +126,11 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
@@ -212,7 +216,11 @@
         <span class="kw">let </span>write_iterator = {
             <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 <span class="kw">let </span>#ident = {
                     <span class="attr">#[inline(always)]
                     </span><span class="kw">fn </span>check_iter&lt;K, V&gt;(iter: <span class="kw">impl </span>Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;) -&gt; <span class="kw">impl </span>Iterator&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt; {

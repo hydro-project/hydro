@@ -185,13 +185,18 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote;
 <span class="kw">use </span>syn::spanned::Spanned;
 
 <span class="kw">use super</span>::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints,
-    OperatorInstance, OperatorWriteOutput, WriteContextArgs, RANGE_1,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, RANGE_1, WriteContextArgs,
 };
 
 <span class="doccomment">/// &gt; 2 input streams of type `(K, V1)` and `(K, V2)`, 1 output stream of type `(K, (V1', V2'))` where `V1`, `V2`, `V1'`, `V2'` are lattice types
@@ -347,8 +352,13 @@
         };
 
         <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+            <span class="kw">let </span>(<span class="kw-2">mut </span>#lhs_borrow_ident, <span class="kw-2">mut </span>#rhs_borrow_ident) = <span class="kw">unsafe </span>{
+                <span class="comment">// SAFETY: handles from `#df_ident`.
+                </span>(
+                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                )
+            };
 
             <span class="kw">let </span>#ident = {
                 #lhs_tokens

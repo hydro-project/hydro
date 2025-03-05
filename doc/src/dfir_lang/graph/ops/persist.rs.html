@@ -141,7 +141,15 @@
 <a href="#140" id="140">140</a>
 <a href="#141" id="141">141</a>
 <a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
@@ -236,7 +244,11 @@
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
             <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 <span class="kw">let </span>#ident = {
                     <span class="kw">if </span>#context.is_first_run_this_tick() {
                         #work_fn(|| #vec_ident.extend(#input));
@@ -251,7 +263,11 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#vec_ident = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 <span class="kw">let </span>#ident = {
                     <span class="kw">fn </span>constrain_types&lt;<span class="lifetime">'ctx</span>, Push, Item&gt;(vec: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Vec&lt;Item&gt;, <span class="kw-2">mut </span>output: Push, is_new_tick: bool) -&gt; <span class="kw">impl </span><span class="lifetime">'ctx </span>+ #root::pusherator::Pusherator&lt;Item = Item&gt;
                     <span class="kw">where

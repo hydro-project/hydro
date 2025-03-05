@@ -116,7 +116,10 @@
 <a href="#115" id="115">115</a>
 <a href="#116" id="116">116</a>
 <a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -220,7 +223,10 @@
                         .flatten()
                 }
                 cross_singleton_guard(
-                    #context.state_ref(#singleton_handle_ident).borrow_mut(),
+                    <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>#context.state_ref_unchecked(#singleton_handle_ident)
+                    }.borrow_mut(),
                     #singleton_input,
                     #stream_input,
                 )

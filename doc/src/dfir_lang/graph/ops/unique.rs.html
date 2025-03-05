@@ -149,7 +149,13 @@
 <a href="#148" id="148">148</a>
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
@@ -248,7 +254,10 @@
                     ));
                 };
                 <span class="kw">let </span>get_set = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    <span class="kw">let </span><span class="kw-2">mut </span>borrow = #context.state_ref(#uniquedata_ident).borrow_mut();
+                    <span class="kw">let </span><span class="kw-2">mut </span>borrow = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>#context.state_ref_unchecked(#uniquedata_ident)
+                    }.borrow_mut();
                     <span class="kw">let </span>set = borrow.get_mut_clear((#context.current_tick(), #context.current_stratum()));
                 };
                 (write_prologue, get_set)
@@ -258,7 +267,10 @@
                     <span class="kw">let </span>#uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
                 };
                 <span class="kw">let </span>get_set = <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    <span class="kw">let </span><span class="kw-2">mut </span>set = #context.state_ref(#uniquedata_ident).borrow_mut();
+                    <span class="kw">let </span><span class="kw-2">mut </span>set = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>#context.state_ref_unchecked(#uniquedata_ident)
+                    }.borrow_mut();
                 };
                 (write_prologue, get_set)
             }

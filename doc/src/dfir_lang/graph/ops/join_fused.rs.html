@@ -343,7 +343,12 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Ident, TokenStream};
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a></pre></div><pre class="rust"><code><span class="kw">use </span>proc_macro2::{Ident, TokenStream};
 <span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::spanned::Spanned;
 <span class="kw">use </span>syn::{parse_quote, Expr, ExprCall};
@@ -521,8 +526,13 @@
 
         <span class="comment">// Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         </span><span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-            <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+            <span class="kw">let </span>(<span class="kw-2">mut </span>#lhs_borrow_ident, <span class="kw-2">mut </span>#rhs_borrow_ident) = <span class="kw">unsafe </span>{
+                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                </span>(
+                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                )
+            };
 
             <span class="kw">let </span>#ident = {
                 #lhs_tokens

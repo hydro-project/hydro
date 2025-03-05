@@ -199,7 +199,16 @@
 <a href="#198" id="198">198</a>
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
 
 <span class="kw">use super</span>::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
@@ -337,7 +346,10 @@
                         Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
                     {
                         iter.filter(<span class="kw">move </span>|item| {
-                                <span class="kw">let </span>state = context.state_ref(state_handle);
+                                <span class="kw">let </span>state = <span class="kw">unsafe </span>{
+                                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                                    </span>context.state_ref_unchecked(state_handle)
+                                };
                                 <span class="kw">let </span><span class="kw-2">mut </span>state = state.borrow_mut();
                                 #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(::std::clone::Clone::clone(item)))
                             })
@@ -361,7 +373,10 @@
                         Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
                     {
                         #root::pusherator::filter::Filter::new(<span class="kw">move </span>|item| {
-                            <span class="kw">let </span>state = context.state_ref(state_handle);
+                            <span class="kw">let </span>state = <span class="kw">unsafe </span>{
+                                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                                </span>context.state_ref_unchecked(state_handle)
+                            };
                             <span class="kw">let </span><span class="kw-2">mut </span>state = state.borrow_mut();
                                 #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(::std::clone::Clone::clone(item)))
                         }, push)
@@ -384,7 +399,10 @@
                         Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
                     {
                         #root::pusherator::for_each::ForEach::new(<span class="kw">move </span>|item| {
-                            <span class="kw">let </span>state = context.state_ref(state_handle);
+                            <span class="kw">let </span>state = <span class="kw">unsafe </span>{
+                                <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                                </span>context.state_ref_unchecked(state_handle)
+                            };
                             <span class="kw">let </span><span class="kw-2">mut </span>state = state.borrow_mut();
                             #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(item));
                         })

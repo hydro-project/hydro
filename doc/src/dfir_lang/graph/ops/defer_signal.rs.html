@@ -83,7 +83,10 @@
 <a href="#82" id="82">82</a>
 <a href="#83" id="83">83</a>
 <a href="#84" id="84">84</a>
-<a href="#85" id="85">85</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -148,7 +151,10 @@
         <span class="kw">let </span>write_iterator = {
             <span class="macro">quote_spanned!</span> {op_span=&gt;
 
-                <span class="kw">let </span><span class="kw-2">mut </span>#borrow_ident = #context.state_ref(#internal_buffer).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#borrow_ident = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#internal_buffer)
+                }.borrow_mut();
 
                 #borrow_ident.extend(#input);
 

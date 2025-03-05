@@ -129,7 +129,12 @@
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
 <a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -229,8 +234,13 @@
                     RhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
                     Output: #root::lattices::Merge&lt;Output&gt;,
                 {
-                    <span class="kw">let </span>lhs_state = context.state_ref(lhs_state_handle);
-                    <span class="kw">let </span>rhs_state = context.state_ref(rhs_state_handle);
+                    <span class="kw">let </span>(lhs_state, rhs_state) = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>(
+                            context.state_ref_unchecked(lhs_state_handle),
+                            context.state_ref_unchecked(rhs_state_handle),
+                        )
+                    };
 
                     <span class="kw">let </span>iter = ::std::iter::from_fn(<span class="kw">move </span>|| {
                         <span class="comment">// Use `from_fn` instead of `chain` to dodge multiple ownership of `func`.

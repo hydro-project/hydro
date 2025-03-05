@@ -268,7 +268,13 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -466,8 +472,14 @@
         <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>loop_id.is_none() {
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                <span class="kw">let </span>(<span class="kw-2">mut </span>#lhs_borrow_ident, <span class="kw-2">mut </span>#rhs_borrow_ident) = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>(
+                        #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                    )
+                };
+
                 <span class="kw">let </span>#ident = {
                     <span class="comment">// Limit error propagation by bounding locally, erasing output iterator type.
                     </span><span class="attr">#[inline(always)]

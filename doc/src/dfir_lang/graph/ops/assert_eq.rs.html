@@ -85,7 +85,10 @@
 <a href="#84" id="84">84</a>
 <a href="#85" id="85">85</a>
 <a href="#86" id="86">86</a>
-<a href="#87" id="87">87</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 <span class="kw">use </span>syn::parse_quote_spanned;
 
 <span class="kw">use super</span>::{
@@ -141,15 +144,18 @@
         <span class="kw">let </span>arg = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
 
         <span class="kw">let </span>inspect_fn = <span class="macro">parse_quote_spanned!</span> {op_span=&gt;
-            |__item| {
+            |item| {
                 <span class="comment">// This is to help constrain the types so that type inference works nicely.
                 </span><span class="kw">fn </span>__constrain_types&lt;T&gt;(array: <span class="kw-2">&amp;</span><span class="kw">impl </span>::std::ops::Index&lt;usize, Output = T&gt;, index: usize) -&gt; <span class="kw-2">&amp;</span>T {
                     <span class="kw-2">&amp;</span>array[index]
                 }
 
-                <span class="kw">let </span>__index = #context.state_ref(#assert_index_ident).get();
-                <span class="macro">::std::assert_eq!</span>(__constrain_types(<span class="kw-2">&amp;</span>#arg, __index), __item, <span class="string">"Item (right) at index {} does not equal expected (left)."</span>, __index);
-                #context.state_ref(#assert_index_ident).set(__index + <span class="number">1</span>);
+                <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span><span class="kw">let </span>index = #context.state_ref_unchecked(#assert_index_ident).get();
+                    <span class="macro">::std::assert_eq!</span>(__constrain_types(<span class="kw-2">&amp;</span>#arg, index), item, <span class="string">"Item (right) at index {} does not equal expected (left)."</span>, index);
+                    #context.state_ref_unchecked(#assert_index_ident).set(index + <span class="number">1</span>);
+                };
             }
         };
 

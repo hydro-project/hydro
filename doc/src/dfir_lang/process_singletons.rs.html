@@ -112,7 +112,10 @@
 <a href="#111" id="111">111</a>
 <a href="#112" id="112">112</a>
 <a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a></pre></div><pre class="rust"><code><span class="doccomment">//! Utility methods for processing singleton references: `#my_var`.
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a></pre></div><pre class="rust"><code><span class="doccomment">//! Utility methods for processing singleton references: `#my_var`.
 
 </span><span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>proc_macro2::{Group, Ident, TokenStream, TokenTree};
@@ -157,7 +160,10 @@
         <span class="kw">let </span><span class="kw-2">mut </span>group = Group::new(
             proc_macro2::Delimiter::Parenthesis,
             <span class="macro">quote_spanned!</span> {span=&gt;
-                <span class="kw-2">*</span>#context.state_ref(#resolved_ident).borrow_mut()
+                <span class="kw-2">*</span>(<span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: `handle` is from this instance.
+                    </span>#context.state_ref_unchecked(#resolved_ident)
+                }.borrow_mut())
             },
         );
         group.set_span(singleton_ident.span());

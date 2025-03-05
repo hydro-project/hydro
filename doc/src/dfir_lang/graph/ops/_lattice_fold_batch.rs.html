@@ -105,7 +105,13 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -189,7 +195,10 @@
             <span class="macro">quote_spanned!</span> {op_span=&gt;
 
                 {
-                    <span class="kw">let </span><span class="kw-2">mut </span>__lattice = #context.state_ref(#lattice_ident).borrow_mut();
+                    <span class="kw">let </span><span class="kw-2">mut </span>__lattice = <span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>#context.state_ref_unchecked(#lattice_ident)
+                    }.borrow_mut();
 
                     <span class="kw">for </span>__item <span class="kw">in </span>#input {
                         #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>__lattice, __item);
@@ -197,7 +206,10 @@
                 }
 
                 <span class="kw">let </span>#ident = <span class="kw">if </span>#signal.count() &gt; <span class="number">0 </span>{
-                    ::std::option::Option::Some(#context.state_ref(#lattice_ident).take())
+                    ::std::option::Option::Some(<span class="kw">unsafe </span>{
+                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                        </span>#context.state_ref_unchecked(#lattice_ident)
+                    }.take())
                 } <span class="kw">else </span>{
                     ::std::option::Option::None
                 }.into_iter();

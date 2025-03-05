@@ -178,7 +178,41 @@
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
 <a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for variadic handoff port lists, [`PortList`].
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a></pre></div><pre class="rust"><code><span class="doccomment">//! Module for variadic handoff port lists, [`PortList`].
 
 </span><span class="kw">use </span>ref_cast::RefCast;
 <span class="kw">use </span>sealed::sealed;
@@ -222,7 +256,16 @@
     ///
     /// (Note that unlike [`Self::set_graph_meta`], this does not mess with pred/succ handoffs for
     /// teeing).
-    </span><span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt;;
+    ///
+    /// # Safety
+    /// The handoffs in this port list (`self`) must come from the `handoffs` [`SlotVec`].
+    /// This ensure the types will match.
+    ///
+    /// Use [`Self::assert_is_from`] to check this.
+    </span><span class="kw">unsafe fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt;;
+
+    <span class="doccomment">/// Asserts that `self` is a valid port list from `handoffs`. Panics if not.
+    </span><span class="kw">fn </span>assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span>SlotVec&lt;HandoffTag, HandoffData&gt;);
 }
 <span class="attr">#[sealed]
 </span><span class="kw">impl</span>&lt;S, Rest, H&gt; PortList&lt;S&gt; <span class="kw">for </span>(Port&lt;S, H&gt;, Rest)
@@ -264,19 +307,38 @@
     }
 
     <span class="kw">type </span>Ctx&lt;<span class="lifetime">'a</span>&gt; = (<span class="kw-2">&amp;</span><span class="lifetime">'a </span>PortCtx&lt;S, H&gt;, Rest::Ctx&lt;<span class="lifetime">'a</span>&gt;);
-    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">unsafe fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {
         <span class="kw">let </span>(this, rest) = <span class="self">self</span>;
-        <span class="kw">let </span>handoff = handoffs
-            .get(this.handoff_id)
-            .unwrap()
-            .handoff
-            .any_ref()
-            .downcast_ref()
-            .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>);
+        <span class="kw">let </span>hoff_any = handoffs.get(this.handoff_id).unwrap().handoff.any_ref();
+        <span class="macro">debug_assert!</span>(hoff_any.is::&lt;H&gt;());
+
+        <span class="kw">let </span>handoff = <span class="kw">unsafe </span>{
+            <span class="comment">// SAFETY: Caller must ensure `self` is from `handoffs`.
+            // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
+            </span><span class="kw-2">&amp;*</span>(hoff_any <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">dyn </span>std::any::Any <span class="kw">as </span><span class="kw-2">*const </span>H)
+        };
 
         <span class="kw">let </span>ctx = RefCast::ref_cast(handoff);
-        <span class="kw">let </span>ctx_rest = rest.make_ctx(handoffs);
+        <span class="kw">let </span>ctx_rest = <span class="kw">unsafe </span>{
+            <span class="comment">// SAFETY: Same invariants hold, as we recurse through the list.
+            </span>rest.make_ctx(handoffs)
+        };
         (ctx, ctx_rest)
+    }
+
+    <span class="kw">fn </span>assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>, handoffs: <span class="kw-2">&amp;</span>SlotVec&lt;HandoffTag, HandoffData&gt;) {
+        <span class="kw">let </span>(this, rest) = <span class="self">self</span>;
+        <span class="kw">let </span><span class="prelude-val">Some</span>(hoff_data) = handoffs.get(this.handoff_id) <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">"Handoff ID {} not found in `handoffs`."</span>, this.handoff_id);
+        };
+        <span class="kw">let </span>hoff_any = hoff_data.handoff.any_ref();
+        <span class="macro">assert!</span>(
+            hoff_any.is::&lt;H&gt;(),
+            <span class="string">"Handoff ID {} is not of type {} in `handoffs`."</span>,
+            this.handoff_id,
+            std::any::type_name::&lt;H&gt;(),
+        );
+        rest.assert_is_from(handoffs);
     }
 }
 <span class="attr">#[sealed]
@@ -294,7 +356,13 @@
     }
 
     <span class="kw">type </span>Ctx&lt;<span class="lifetime">'a</span>&gt; = ();
-    <span class="kw">fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, _handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {}
+    <span class="kw">unsafe fn </span>make_ctx&lt;<span class="lifetime">'a</span>&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        _handoffs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>SlotVec&lt;HandoffTag, HandoffData&gt;,
+    ) -&gt; <span class="self">Self</span>::Ctx&lt;<span class="lifetime">'a</span>&gt; {
+    }
+
+    <span class="kw">fn </span>assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>, _handoffs: <span class="kw-2">&amp;</span>SlotVec&lt;HandoffTag, HandoffData&gt;) {}
 }
 
 <span class="doccomment">/// Trait for splitting a list of ports into two.

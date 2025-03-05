@@ -173,7 +173,15 @@
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
 <a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{quote_spanned, ToTokens};
 <span class="kw">use </span>syn::parse_quote;
 <span class="kw">use </span>syn::spanned::Spanned;
 
@@ -292,7 +300,10 @@
 
         <span class="kw">let </span>write_iterator = <span class="kw">match </span>persistences[<span class="number">1</span>] {
             Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
+                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                    </span>#context.state_ref_unchecked(#lhs_joindata_ident)
+                }.borrow_mut();
 
                 <span class="kw">let </span>#ident = {
                     #lhs_fold_or_reduce_into_from
@@ -302,8 +313,13 @@
                 };
             },
             Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                <span class="kw">let </span>(<span class="kw-2">mut </span>#lhs_borrow_ident, <span class="kw-2">mut </span>#rhs_borrow_ident) = <span class="kw">unsafe </span>{
+                    <span class="comment">// SAFETY: handles from `#df_ident`.
+                    </span>(
+                        #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
+                    )
+                };
 
                 <span class="kw">let </span>#ident = {
                     #lhs_fold_or_reduce_into_from
