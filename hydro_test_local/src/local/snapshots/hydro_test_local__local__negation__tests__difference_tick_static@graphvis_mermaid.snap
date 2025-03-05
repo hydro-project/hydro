@@ -11,7 +11,7 @@ linkStyle default stroke:#aaa
 1v1[\"<div style=text-align:center>(1v1)</div> <code>source_iter({<br>    use crate::__staged::local::negation::*;<br>    0..5<br>})</code>"/]:::pullClass
 2v1[\"<div style=text-align:center>(2v1)</div> <code>source_iter({<br>    use crate::__staged::local::negation::*;<br>    3..6<br>})</code>"/]:::pullClass
 3v1[\"(3v1) <code>difference_multiset::&lt;'tick, 'static&gt;()</code>"/]:::pullClass
-4v1[/"<div style=text-align:center>(4v1)</div> <code>for_each(<br>    stageleft::runtime_support::fn1_type_hint::&lt;<br>        u32,<br>        (),<br>    &gt;({<br>        use crate::__staged::local::negation::*;<br>        let output__free = output;<br>        |v| {<br>            output__free.send(v).unwrap();<br>        }<br>    }),<br>)</code>"\]:::pushClass
+4v1[/"<div style=text-align:center>(4v1)</div> <code>for_each({<br>    use crate::__staged::local::negation::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 5v1["(5v1) <code>handoff</code>"]:::otherClass
 1v1-->|pos|3v1
 2v1-->5v1

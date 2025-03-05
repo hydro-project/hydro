@@ -1540,7 +1540,9 @@ impl DfirGraph {
                 GraphNode::Operator(op) => {
                     writeln!(write, "{:?} = {};", key.data(), op.to_token_stream())?;
                 }
-                GraphNode::Handoff { .. } => unimplemented!("HANDOFF IN FLAT GRAPH."),
+                GraphNode::Handoff { .. } => {
+                    writeln!(write, "// {:?} = <handoff>;", key.data())?;
+                }
                 GraphNode::ModuleBoundary { .. } => panic!(),
             }
         }
