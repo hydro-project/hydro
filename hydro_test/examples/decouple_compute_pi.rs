@@ -52,8 +52,10 @@ async fn main() {
         // Decouple between these operators:
         // .map(q!(|_| rand::random::<(f64, f64)>()))
         // .map(q!(|(x, y)| x * x + y * y < 1.0))
-        nodes_to_decouple: vec![4],
-        new_location: decoupled_cluster.id().clone(),
+        output_to_decoupled_machine_after: vec![4],
+        output_to_original_machine_after: vec![],
+        orig_location: cluster.id().clone(),
+        decoupled_location: decoupled_cluster.id().clone(),
     };
 
     let _nodes = builder

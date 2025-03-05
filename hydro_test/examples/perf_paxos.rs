@@ -1,6 +1,7 @@
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
+use hydro_lang::rewrites::decoupler::{self, Decoupler};
 use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
     analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, track_cluster_usage_cardinality,
@@ -48,6 +49,7 @@ async fn main() {
 
     let counter_output_duration = q!(std::time::Duration::from_secs(1));
 
+    let rewritten_ir_builder = builder.rewritten_ir_builder();
     let optimized = builder
         .optimize_with(persist_pullup::persist_pullup)
         .optimize_with(|leaf| {
@@ -85,20 +87,15 @@ async fn main() {
         .unwrap();
 
     analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
-    println!("IDs before cleanup");
-    print_id::print_id(&mut ir);
-    
-
     cleanup_after_analysis(&mut ir);
 
-    println!("IDs after cleanup");
     print_id::print_id(&mut ir);
 
     // Create a mapping from each CycleSink to its corresponding CycleSource
     let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) =
         analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &proposers.id());
-    decouple_analysis::decouple_analysis(
+    let (orig_to_decoupled, decoupled_to_orig) = decouple_analysis::decouple_analysis(
         &mut ir,
         "perf_paxos_cluster",
         &proposers.id(),
@@ -106,4 +103,62 @@ async fn main() {
         recv_overhead,
         &cycle_source_to_sink_input,
     );
+
+    drop(nodes);
+
+    let mut decoupled_cluster = None;
+
+    let new_builder = rewritten_ir_builder.build_with(|builder| {
+        let mut ir = deep_clone(&ir);
+
+        decoupled_cluster = Some(builder.cluster::<()>());
+        let decoupler = Decoupler {
+            output_to_decoupled_machine_after: orig_to_decoupled,
+            output_to_original_machine_after: decoupled_to_orig,
+            orig_location: proposers.id().clone(),
+            decoupled_location: decoupled_cluster.clone().unwrap().id().clone(),
+        };
+        decoupler::decouple(&mut ir, &decoupler);
+
+        ir
+    });
+    let optimized_new_builder = new_builder
+        .optimize_with(persist_pullup::persist_pullup)
+        .optimize_with(|leaf| {
+            insert_counter::insert_counter(leaf, counter_output_duration);
+        });
+
+    let mut nodes = optimized_new_builder
+        .with_cluster(
+            &proposers,
+            perf_cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
+        )
+        .with_cluster(
+            &acceptors,
+            perf_cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
+        )
+        .with_cluster(
+            &clients,
+            perf_cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+        )
+        .with_cluster(
+            &replicas,
+            perf_cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+        )
+        .with_cluster(
+            &decoupled_cluster.unwrap(),
+            perf_cluster_specs(&host_arg, &mut deployment, "decoupled", f + 1),
+        )
+        .deploy(&mut deployment);
+
+    deployment.deploy().await.unwrap();
+
+    let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
+
+    deployment
+        .start_until(async {
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+        })
+        .await
+        .unwrap();
 }

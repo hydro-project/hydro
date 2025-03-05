@@ -429,7 +429,7 @@ pub fn decouple_analysis(
     send_overhead: f64,
     recv_overhead: f64,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-) {
+) -> (Vec<usize>, Vec<usize>) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
         decoupling_send_overhead: send_overhead,
@@ -472,10 +472,10 @@ pub fn decouple_analysis(
     let mut decoupled_to_orig = vec![];
 
     for (op_id, inputs) in op_id_to_inputs {
-        if let Some(input) = inputs.first() {
-            if let Some(op_var) = op_id_to_var.get(op_id) {
+        if let Some(op_var) = op_id_to_var.get(op_id) {
+            let op_value = model.get_obj_attr(attr::X, op_var).unwrap();
+            if let Some(input) = inputs.first() {
                 if let Some(input_var) = op_id_to_var.get(input) {
-                    let op_value = model.get_obj_attr(attr::X, op_var).unwrap();
                     let input_value = model.get_obj_attr(attr::X, input_var).unwrap();
                     match (input_value, op_value) {
                         (0.0, 1.0) => {
@@ -494,6 +494,16 @@ pub fn decouple_analysis(
                     }
                 }
             }
+            else {
+                // No inputs, must be an incoming network node
+                if op_value == 0.0 {
+                    orig_machine.push(*op_id);
+                } else {
+                    decoupled_machine.push(*op_id);
+                    // Tells the decoupler to swap the location of this Network
+                    orig_to_decoupled.push(*op_id);
+                }
+            }
         }
     }
 
@@ -505,4 +515,6 @@ pub fn decouple_analysis(
     decoupled_to_orig.sort();
     println!("Original outputting to decoupled after: {:?}", orig_to_decoupled);
     println!("Decoupled outputting to original after: {:?}", decoupled_to_orig);
+
+    (orig_to_decoupled, decoupled_to_orig)
 }
