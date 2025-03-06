@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use regex::Regex;
 
-use crate::ir::*;
+use crate::{ir::*, location::LocationId};
 pub use crate::runtime_support::resource_measurement::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 
 fn inject_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
@@ -144,4 +144,88 @@ pub fn inject_perf(ir: &mut [HydroLeaf], folded_data: Vec<u8>) {
             inject_perf_node(node, &id_to_usage, next_stmt_id);
         },
     );
+}
+
+
+fn inject_location_leaf(leaf: &mut HydroLeaf, id_to_location: &RefCell<HashMap<usize, LocationId>>, missing_location: &RefCell<bool>) {
+    let inputs = leaf.input_metadata();
+    let input_metadata = inputs.first().unwrap();
+
+    if let Some(location) = id_to_location.borrow().get(&input_metadata.id.unwrap()) {
+        let metadata = leaf.metadata_mut();
+        metadata.location_kind = location.clone();
+
+        if let HydroLeaf::CycleSink { location_kind, .. } = leaf {
+            *location_kind = location.clone();
+        }
+    }
+    else {
+        println!("Missing location for leaf: {:?}", leaf.print_root());
+        *missing_location.borrow_mut() = true;
+    }
+}
+
+fn inject_location_node(node: &mut HydroNode, op_id: usize, id_to_location: &RefCell<HashMap<usize, LocationId>>, missing_location: &RefCell<bool>, cycle_source_to_sink_input: &HashMap<usize, usize>) {
+    let inputs = match node {
+        HydroNode::Source { location_kind, .. }
+        | HydroNode::Network { to_location: location_kind, .. } => {
+            // Get location sources from the nodes must have it be correct: Source and Network
+            id_to_location.borrow_mut().insert(op_id, location_kind.clone());
+            return;
+        }
+        HydroNode::Tee { inner, .. } => {
+            vec![inner.0.borrow().metadata().id.unwrap()]
+        }
+        HydroNode::CycleSource { .. } => {
+            vec![*cycle_source_to_sink_input.get(&op_id).unwrap()]
+        }
+        _ => {
+            node.input_metadata().iter().map(|input_metadata| input_metadata.id.unwrap()).collect()
+        }
+    };
+
+    // Otherwise, get it from (either) input
+    let metadata = node.metadata_mut();
+    for input in inputs {
+        let location = id_to_location.borrow().get(&input).cloned();
+        if let Some(location) = location {
+            metadata.location_kind = location.clone();
+            id_to_location.borrow_mut().insert(op_id, location.clone());
+
+            // Update Persist's location as well (we won't see it during traversal)
+            match node {
+                HydroNode::Fold { input, .. } | HydroNode::FoldKeyed { input, .. } | HydroNode::Reduce { input, .. } | HydroNode::ReduceKeyed { input, ..} => {
+                    if let HydroNode::Persist { metadata: persist_metadata, .. } = input.as_mut() {
+                        persist_metadata.location_kind = location;
+                    }
+                }
+                _ => {}
+            }
+            return;
+        }
+    }
+
+    // If the location was not set, let the recursive function know
+    println!("Missing location for node: {:?}", node.print_root());
+    *missing_location.borrow_mut() = true;
+}
+
+pub fn inject_location(ir: &mut [HydroLeaf], cycle_source_to_sink_input: &HashMap<usize, usize>) {
+    let id_to_location = RefCell::new(HashMap::new());
+
+    loop {
+        println!("Attempting to inject location, looping until fixpoint...");
+        let missing_location = RefCell::new(false);
+
+        traverse_dfir(ir, |leaf: &mut HydroLeaf, _next_stmt_id| {
+            inject_location_leaf(leaf, &id_to_location, &missing_location);
+        }, |node, next_stmt_id| {
+            inject_location_node(node, *next_stmt_id, &id_to_location, &missing_location, cycle_source_to_sink_input);
+        });
+
+        if !missing_location.borrow().clone() {
+            println!("Locations injected!");
+            break;
+        }
+    }
 }

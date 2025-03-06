@@ -17,9 +17,16 @@ pub struct Partitioner {
 }
 
 /// Replace CLUSTER_SELF_ID with the ID of the original node the partition is assigned to
-pub struct ClusterSelfIdReplace {
-    pub num_partitions: usize,
-    pub partitioned_cluster_id: usize,
+#[derive(Copy, Clone)]
+pub enum ClusterSelfIdReplace {
+    Decouple {
+        orig_cluster_id: usize,
+        decoupled_cluster_id: usize,
+    },
+    Partition {
+        num_partitions: usize,
+        partitioned_cluster_id: usize,
+    }
 }
 
 impl VisitMut for ClusterSelfIdReplace {
@@ -27,19 +34,38 @@ impl VisitMut for ClusterSelfIdReplace {
         if let syn::Expr::Path(path_expr) = expr {
             for segment in path_expr.path.segments.iter_mut() {
                 let ident = segment.ident.to_string();
-                let prefix = format!(
-                    "__hydro_lang_cluster_self_id_{}",
-                    self.partitioned_cluster_id
-                );
-                if ident.starts_with(&prefix) {
-                    let num_partitions = self.num_partitions;
-                    let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
-                    *expr = syn::parse_quote!({
-                        #expr_content / #num_partitions as u32
-                    });
-                    println!("Partitioning: Replaced CLUSTER_SELF_ID");
-                    return;
+
+                match self {
+                    ClusterSelfIdReplace::Decouple { orig_cluster_id, decoupled_cluster_id } => {
+                        let prefix = format!(
+                            "__hydro_lang_cluster_self_id_{}",
+                            orig_cluster_id
+                        );
+                        if ident.starts_with(&prefix) {
+                            segment.ident = syn::Ident::new(
+                                &format!("__hydro_lang_cluster_self_id_{}", decoupled_cluster_id),
+                                segment.ident.span()
+                            );
+                            println!("Decoupling: Replaced CLUSTER_SELF_ID");
+                            return;
+                        }
+                    }
+                    ClusterSelfIdReplace::Partition { num_partitions, partitioned_cluster_id } => {
+                        let prefix = format!(
+                            "__hydro_lang_cluster_self_id_{}",
+                            partitioned_cluster_id
+                        );
+                        if ident.starts_with(&prefix) {
+                            let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
+                            *expr = syn::parse_quote!({
+                                #expr_content / #num_partitions as u32
+                            });
+                            println!("Partitioning: Replaced CLUSTER_SELF_ID");
+                            return;
+                        }
+                    }
                 }
+                
             }
         }
         visit_mut::visit_expr_mut(self, expr);
@@ -102,7 +128,7 @@ fn replace_membership_info(node: &mut HydroNode, partitioner: &Partitioner) {
         visitor.visit_expr_mut(&mut expr.0);
     });
     node.visit_debug_expr(|expr| {
-        let mut visitor = ClusterSelfIdReplace {
+        let mut visitor = ClusterSelfIdReplace::Partition {
             num_partitions,
             partitioned_cluster_id,
         };

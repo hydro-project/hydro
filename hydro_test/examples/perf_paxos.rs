@@ -6,7 +6,7 @@ use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
     analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, track_cluster_usage_cardinality,
 };
-use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, link_cycles, insert_counter, persist_pullup, print_id};
+use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, populate_metadata, print_id};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
 #[tokio::main]

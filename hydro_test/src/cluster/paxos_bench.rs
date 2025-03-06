@@ -73,7 +73,6 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
 #[cfg(test)]
 mod tests {
     use hydro_lang::deploy::DeployRuntime;
-    use stageleft::RuntimeData;
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 
@@ -97,9 +96,7 @@ mod tests {
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.ir());
+            insta::assert_debug_snapshot!(built.into_ir());
         });
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 }

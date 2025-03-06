@@ -42,6 +42,11 @@ pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph>
 }
 
 impl<'a> BuiltFlow<'a> {
+    pub fn into_ir(mut self) -> Vec<HydroLeaf> {
+        self.used = true;
+        std::mem::take(&mut self.ir)
+    }
+
     pub fn ir(&self) -> &Vec<HydroLeaf> {
         &self.ir
     }

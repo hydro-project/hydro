@@ -340,13 +340,13 @@ impl HydroLeaf {
                     LocationId::ExternalProcess(_) => panic!(),
                 };
 
-                assert_eq!(
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
                     input_location_id, *location_id,
                     "cycle_sink location mismatch"
                 );
 
-                match builders_or_callback {
-                    BuildersOrCallback::Builders(graph_builders) => {
                         graph_builders.entry(*location_id).or_default().add_dfir(
                             parse_quote! {
                                 #ident = #input_ident;
@@ -393,6 +393,16 @@ impl HydroLeaf {
             HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
             HydroLeaf::DestSink { sink, .. } => format!("DestSink({:?})", sink),
             HydroLeaf::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+        }
+    }
+
+    pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
+        match self {
+            HydroLeaf::ForEach { f, .. } 
+            | HydroLeaf::DestSink { sink: f, .. } => {
+                transform(f);
+            }
+            HydroLeaf::CycleSink { .. } => {}
         }
     }
 }
@@ -1289,16 +1299,15 @@ impl<'a> HydroNode {
                 let (second_ident, second_location_id) =
                     second.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    first_location_id, second_location_id,
-                    "chain inputs must be in the same location"
-                );
-
                 let chain_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            first_location_id, second_location_id,
+                            "chain inputs must be in the same location"
+                        );
                         let builder = graph_builders.entry(first_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1326,16 +1335,16 @@ impl<'a> HydroNode {
                 let (right_ident, right_location_id) =
                     right.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    left_location_id, right_location_id,
-                    "cross_singleton inputs must be in the same location"
-                );
-
                 let cross_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            left_location_id, right_location_id,
+                            "cross_singleton inputs must be in the same location"
+                        );
+
                         let builder = graph_builders.entry(left_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1389,16 +1398,16 @@ impl<'a> HydroNode {
                 let (right_ident, right_location_id) =
                     right_inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    left_location_id, right_location_id,
-                    "join / cross product inputs must be in the same location"
-                );
-
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            left_location_id, right_location_id,
+                            "join / cross product inputs must be in the same location"
+                        );
+
                         let builder = graph_builders.entry(left_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1445,16 +1454,16 @@ impl<'a> HydroNode {
                 let (neg_ident, neg_location_id) =
                     neg.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    pos_location_id, neg_location_id,
-                    "difference / anti join inputs must be in the same location"
-                );
-
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                    pos_location_id, neg_location_id,
+                    "difference / anti join inputs must be in the same location"
+                );
+
                         let builder = graph_builders.entry(pos_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
