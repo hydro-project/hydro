@@ -5,7 +5,6 @@ use hydro_std::quorum::collect_quorum;
 use hydro_std::request_response::join_responses;
 use serde::{Deserialize, Serialize};
 
-use super::kv_replica::Replica;
 use super::paxos::{
     Acceptor, Ballot, LogValue, P2a, PaxosConfig, PaxosPayload, Proposer, acceptor_p2,
     index_payloads, leader_election, recommit_after_leader_election,
@@ -32,18 +31,21 @@ pub struct CoreCompartmentalizedPaxos<'a> {
     pub proposers: Cluster<'a, Proposer>,
     pub proxy_leaders: Cluster<'a, ProxyLeader>,
     pub acceptors: Cluster<'a, Acceptor>,
-    pub replica_checkpoint:
-        Stream<(ClusterId<Replica>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
     pub config: CompartmentalizedPaxosConfig,
 }
 
 impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
     type PaxosIn = Proposer;
+    type PaxosLog = Acceptor;
     type PaxosOut = ProxyLeader;
     type Ballot = Ballot;
 
     fn payload_recipients(&self) -> &Cluster<'a, Self::PaxosIn> {
         &self.proposers
+    }
+
+    fn log_stores(&self) -> &Cluster<'a, Self::PaxosLog> {
+        &self.acceptors
     }
 
     fn get_recipient_from_ballot<L: Location<'a>>(
@@ -57,13 +59,14 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
         ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
+        a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
         unsafe {
             compartmentalized_paxos_core(
                 &self.proposers,
                 &self.proxy_leaders,
                 &self.acceptors,
-                self.replica_checkpoint,
+                a_checkpoint,
                 with_ballot,
                 self.config,
             )
@@ -92,16 +95,11 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
+pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
-    r_to_acceptors_checkpoint: Stream<
-        (ClusterId<R>, usize),
-        Cluster<'a, Acceptor>,
-        Unbounded,
-        NoOrder,
-    >,
+    a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     c_to_proposers: impl FnOnce(
         Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
@@ -174,7 +172,7 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
             &proxy_leader_tick,
             &acceptor_tick,
             c_to_proposers,
-            r_to_acceptors_checkpoint,
+            a_checkpoint,
             p_ballot.clone(),
             p_is_leader,
             p_relevant_p1bs,
@@ -203,7 +201,7 @@ pub unsafe fn compartmentalized_paxos_core<'a, P: PaxosPayload, R>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
+unsafe fn sequence_payload<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
@@ -211,12 +209,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
     proxy_leader_tick: &Tick<Cluster<'a, ProxyLeader>>,
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
-    r_to_acceptors_checkpoint: Stream<
-        (ClusterId<R>, usize),
-        Cluster<'a, Acceptor>,
-        Unbounded,
-        NoOrder,
-    >,
+    a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     p_is_leader: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
@@ -295,9 +288,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
         acceptor_tick,
         a_max_ballot.clone(),
         pl_to_acceptors_p2a_thrifty,
-        r_to_acceptors_checkpoint,
+        a_checkpoint,
         proxy_leaders,
-        config.paxos_config.f,
     );
 
     // TODO: This is a liveness problem if any node in the thrifty quorum fails

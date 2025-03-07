@@ -62,11 +62,10 @@ async fn main() {
         checkpoint_frequency,
         f,
         num_replicas,
-        |replica_checkpoint| CoreCompartmentalizedPaxos {
+        CoreCompartmentalizedPaxos {
             proposers: proposers.clone(),
             proxy_leaders: proxy_leaders.clone(),
             acceptors: acceptors.clone(),
-            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
             config: CompartmentalizedPaxosConfig {
                 paxos_config: PaxosConfig {
                     f,

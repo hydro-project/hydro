@@ -52,10 +52,9 @@ async fn main() {
         checkpoint_frequency,
         f,
         f + 1,
-        |replica_checkpoint| CorePaxos {
+        CorePaxos {
             proposers: proposers.clone(),
             acceptors: acceptors.clone(),
-            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
             paxos_config: PaxosConfig {
                 f,
                 i_am_leader_send_timeout,
