@@ -5,8 +5,7 @@ pub use stageleft::q;
 
 #[doc(hidden)]
 pub mod runtime_support {
-    pub use bincode;
-
+    pub use {bincode, stageleft};
     pub mod resource_measurement;
 }
 

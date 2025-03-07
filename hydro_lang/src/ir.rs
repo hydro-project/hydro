@@ -1851,13 +1851,14 @@ impl<'a> HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let (sink_expr, source_expr, _connect_fn) = match instantiate_fn {
-                            DebugInstantiate::Building() => {
-                                panic!("Expected the network to be finalized")
-                            }
+                        let (sink_expr, source_expr) = match instantiate_fn {
+                            DebugInstantiate::Building() => (
+                                syn::parse_quote!(DUMMY_SINK),
+                                syn::parse_quote!(DUMMY_SOURCE),
+                            ),
 
-                            DebugInstantiate::Finalized(sink, source, connect_fn) => {
-                                (sink, source, connect_fn)
+                            DebugInstantiate::Finalized(sink, source, _connect_fn) => {
+                                (sink.clone(), source.clone())
                             }
                         };
 

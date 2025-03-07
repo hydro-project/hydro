@@ -1753,15 +1753,19 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -> syn::Ex
 
     if is_demux {
         parse_quote! {
-            |(id, data): (#root::ClusterId<_>, #t_type)| {
-                (id.raw_id, #root::runtime_support::bincode::serialize::<#t_type>(&data).unwrap().into())
-            }
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::ClusterId<_>, #t_type), _>(
+                |(id, data)| {
+                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                }
+            )
         }
     } else {
         parse_quote! {
-            |data| {
-                #root::runtime_support::bincode::serialize::<#t_type>(&data).unwrap().into()
-            }
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
+                |data| {
+                    #root::runtime_support::bincode::serialize(&data).unwrap().into()
+                }
+            )
         }
     }
 }
