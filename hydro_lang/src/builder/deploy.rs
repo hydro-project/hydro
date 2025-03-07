@@ -1,3 +1,4 @@
+use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Error;
 use std::marker::PhantomData;
@@ -24,7 +25,10 @@ use crate::location::{Cluster, ExternalProcess, Location, LocationId, Process};
 use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D: LocalDeploy<'a>> {
-    pub(super) ir: Vec<HydroLeaf>,
+    // We need to grab an `&mut` reference to the IR in `preview_compile` even though
+    // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
+    // while still being able to lend out immutable references to the IR.
+    pub(super) ir: UnsafeCell<Vec<HydroLeaf>>,
 
     /// Deployed instances of each process in the flow
     pub(super) processes: HashMap<usize, D::Process>,
@@ -55,7 +59,10 @@ impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
 
 impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
     pub fn ir(&self) -> &Vec<HydroLeaf> {
-        &self.ir
+        unsafe {
+            // SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
+            &*self.ir.get()
+        }
     }
 
     pub fn with_process<P>(
@@ -123,11 +130,25 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         self
     }
 
+    /// Compiles the flow into DFIR using placeholders for the network.
+    /// Useful for generating Mermaid diagrams of the DFIR.
+    pub fn preview_compile(&self) -> CompiledFlow<'a, ()> {
+        CompiledFlow {
+            dfir: build_inner(unsafe {
+                // SAFETY: `build_inner` does not mutate the IR, &mut is required
+                // only because the shared traversal logic requires it
+                &mut *self.ir.get()
+            }),
+            extra_stmts: BTreeMap::new(),
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn compile_no_network(mut self) -> CompiledFlow<'a, D::GraphId> {
         self.used = true;
 
         CompiledFlow {
-            dfir: build_inner(&mut self.ir),
+            dfir: build_inner(self.ir.get_mut()),
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -140,7 +161,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 env,
                 &mut seen_tees,
@@ -154,7 +175,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         let extra_stmts = self.extra_stmts(env);
 
         CompiledFlow {
-            dfir: build_inner(&mut self.ir),
+            dfir: build_inner(self.ir.get_mut()),
             extra_stmts,
             _phantom: PhantomData,
         }
@@ -200,7 +221,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
 
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &(),
                 &mut seen_tees_instantiate,
@@ -211,7 +232,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             );
         });
 
-        let mut compiled = build_inner(&mut self.ir);
+        let mut compiled = build_inner(self.ir.get_mut());
         let mut extra_stmts = self.extra_stmts(&());
         let mut meta = D::Meta::default();
 
@@ -275,7 +296,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         }
 
         let mut seen_tees_connect = HashMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.connect_network(&mut seen_tees_connect);
         });
 

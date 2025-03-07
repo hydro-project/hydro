@@ -6,10 +6,10 @@ digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter({\l    use crate::__staged::local::negation::*;\l    0..5\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) map(\l    stageleft::runtime_support::fn1_type_hint::<\l        u32,\l        (u32, u32),\l    >({\l        use crate::__staged::local::negation::*;\l        |v| (v, v)\l    }),\l)\l", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) map({\l    use crate::__staged::local::negation::*;\l    |v| (v, v)\l})\l", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) source_iter({\l    use crate::__staged::local::negation::*;\l    3..6\l})\l", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) anti_join_multiset::<'tick, 'static>()", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) for_each(\l    stageleft::runtime_support::fn1_type_hint::<\l        (u32, u32),\l        (),\l    >({\l        use crate::__staged::local::negation::*;\l        let output__free = output;\l        |v| {\l            output__free.send(v.0).unwrap();\l        }\l    }),\l)\l", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) for_each({\l    use crate::__staged::local::negation::*;\l    let output__free = output;\l    |v| {\l        output__free.send(v.0).unwrap();\l    }\l})\l", shape=house, fillcolor="#ffff88"]
     n6v1 [label="(n6v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n1v1 -> n2v1
     n2v1 -> n4v1 [label="pos"]
