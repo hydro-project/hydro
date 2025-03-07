@@ -1693,7 +1693,9 @@
 <a href="#1692" id="1692">1692</a>
 <a href="#1693" id="1693">1693</a>
 <a href="#1694" id="1694">1694</a>
-<a href="#1695" id="1695">1695</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a></pre></div><pre class="rust"><code><span class="attr">#![warn(missing_docs)]
 
 </span><span class="kw">extern crate </span>proc_macro;
 
@@ -3235,7 +3237,9 @@
                 GraphNode::Operator(op) =&gt; {
                     <span class="macro">writeln!</span>(write, <span class="string">"{:?} = {};"</span>, key.data(), op.to_token_stream())<span class="question-mark">?</span>;
                 }
-                GraphNode::Handoff { .. } =&gt; <span class="macro">unimplemented!</span>(<span class="string">"HANDOFF IN FLAT GRAPH."</span>),
+                GraphNode::Handoff { .. } =&gt; {
+                    <span class="macro">writeln!</span>(write, <span class="string">"// {:?} = &lt;handoff&gt;;"</span>, key.data())<span class="question-mark">?</span>;
+                }
                 GraphNode::ModuleBoundary { .. } =&gt; <span class="macro">panic!</span>(),
             }
         }

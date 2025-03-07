@@ -2297,7 +2297,8 @@
 <a href="#2296" id="2296">2296</a>
 <a href="#2297" id="2297">2297</a>
 <a href="#2298" id="2298">2298</a>
-<a href="#2299" id="2299">2299</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
+<a href="#2299" id="2299">2299</a>
+<a href="#2300" id="2300">2300</a></pre></div><pre class="rust"><code><span class="kw">use </span>core::panic;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 </span><span class="kw">use </span>std::collections::BTreeMap;
@@ -4150,13 +4151,14 @@
 
                 <span class="kw">match </span>builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) =&gt; {
-                        <span class="kw">let </span>(sink_expr, source_expr, _connect_fn) = <span class="kw">match </span>instantiate_fn {
-                            DebugInstantiate::Building() =&gt; {
-                                <span class="macro">panic!</span>(<span class="string">"Expected the network to be finalized"</span>)
-                            }
+                        <span class="kw">let </span>(sink_expr, source_expr) = <span class="kw">match </span>instantiate_fn {
+                            DebugInstantiate::Building() =&gt; (
+                                <span class="macro">syn::parse_quote!</span>(DUMMY_SINK),
+                                <span class="macro">syn::parse_quote!</span>(DUMMY_SOURCE),
+                            ),
 
-                            DebugInstantiate::Finalized(sink, source, connect_fn) =&gt; {
-                                (sink, source, connect_fn)
+                            DebugInstantiate::Finalized(sink, source, _connect_fn) =&gt; {
+                                (sink.clone(), source.clone())
                             }
                         };
 

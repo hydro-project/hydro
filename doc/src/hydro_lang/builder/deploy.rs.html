@@ -381,7 +381,29 @@
 <a href="#380" id="380">380</a>
 <a href="#381" id="381">381</a>
 <a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::UnsafeCell;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::io::Error;
 <span class="kw">use </span>std::marker::PhantomData;
 <span class="kw">use </span>std::pin::Pin;
@@ -407,7 +429,10 @@
 <span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 
 <span class="kw">pub struct </span>DeployFlow&lt;<span class="lifetime">'a</span>, D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt; {
-    <span class="kw">pub</span>(<span class="kw">super</span>) ir: Vec&lt;HydroLeaf&gt;,
+    <span class="comment">// We need to grab an `&amp;mut` reference to the IR in `preview_compile` even though
+    // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
+    // while still being able to lend out immutable references to the IR.
+    </span><span class="kw">pub</span>(<span class="kw">super</span>) ir: UnsafeCell&lt;Vec&lt;HydroLeaf&gt;&gt;,
 
     <span class="doccomment">/// Deployed instances of each process in the flow
     </span><span class="kw">pub</span>(<span class="kw">super</span>) processes: HashMap&lt;usize, D::Process&gt;,
@@ -438,7 +463,10 @@
 
 <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, D: LocalDeploy&lt;<span class="lifetime">'a</span>&gt;&gt; DeployFlow&lt;<span class="lifetime">'a</span>, D&gt; {
     <span class="kw">pub fn </span>ir(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Vec&lt;HydroLeaf&gt; {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.ir
+        <span class="kw">unsafe </span>{
+            <span class="comment">// SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
+            </span><span class="kw-2">&amp;*</span><span class="self">self</span>.ir.get()
+        }
     }
 
     <span class="kw">pub fn </span>with_process&lt;P&gt;(
@@ -506,11 +534,25 @@
         <span class="self">self
     </span>}
 
+    <span class="doccomment">/// Compiles the flow into DFIR using placeholders for the network.
+    /// Useful for generating Mermaid diagrams of the DFIR.
+    </span><span class="kw">pub fn </span>preview_compile(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>, ()&gt; {
+        CompiledFlow {
+            dfir: build_inner(<span class="kw">unsafe </span>{
+                <span class="comment">// SAFETY: `build_inner` does not mutate the IR, &amp;mut is required
+                // only because the shared traversal logic requires it
+                </span><span class="kw-2">&amp;mut *</span><span class="self">self</span>.ir.get()
+            }),
+            extra_stmts: BTreeMap::new(),
+            _phantom: PhantomData,
+        }
+    }
+
     <span class="kw">pub fn </span>compile_no_network(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>, D::GraphId&gt; {
         <span class="self">self</span>.used = <span class="bool-val">true</span>;
 
         CompiledFlow {
-            dfir: build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
+            dfir: build_inner(<span class="self">self</span>.ir.get_mut()),
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -523,7 +565,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tee_locations: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
-        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
+        <span class="self">self</span>.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::&lt;D&gt;(
                 env,
                 <span class="kw-2">&amp;mut </span>seen_tees,
@@ -537,7 +579,7 @@
         <span class="kw">let </span>extra_stmts = <span class="self">self</span>.extra_stmts(env);
 
         CompiledFlow {
-            dfir: build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
+            dfir: build_inner(<span class="self">self</span>.ir.get_mut()),
             extra_stmts,
             _phantom: PhantomData,
         }
@@ -583,7 +625,7 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees_instantiate: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tee_locations: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
-        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
+        <span class="self">self</span>.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::&lt;D&gt;(
                 <span class="kw-2">&amp;</span>(),
                 <span class="kw-2">&amp;mut </span>seen_tees_instantiate,
@@ -594,7 +636,7 @@
             );
         });
 
-        <span class="kw">let </span><span class="kw-2">mut </span>compiled = build_inner(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir);
+        <span class="kw">let </span><span class="kw-2">mut </span>compiled = build_inner(<span class="self">self</span>.ir.get_mut());
         <span class="kw">let </span><span class="kw-2">mut </span>extra_stmts = <span class="self">self</span>.extra_stmts(<span class="kw-2">&amp;</span>());
         <span class="kw">let </span><span class="kw-2">mut </span>meta = D::Meta::default();
 
@@ -658,7 +700,7 @@
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>seen_tees_connect = HashMap::new();
-        <span class="self">self</span>.ir.iter_mut().for_each(|leaf| {
+        <span class="self">self</span>.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.connect_network(<span class="kw-2">&amp;mut </span>seen_tees_connect);
         });
 

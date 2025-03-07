@@ -166,10 +166,14 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashMap};
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::cell::UnsafeCell;
+<span class="kw">use </span>std::collections::{BTreeMap, HashMap};
 <span class="kw">use </span>std::marker::PhantomData;
 
-<span class="kw">use </span>dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees};
+<span class="kw">use </span>dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 
 <span class="kw">use </span><span class="kw">super</span>::compiled::CompiledFlow;
 <span class="kw">use </span><span class="kw">super</span>::deploy::{DeployFlow, DeployResult};
@@ -204,7 +208,9 @@
         .map(|(k, v)| {
             <span class="kw">let </span>(<span class="kw-2">mut </span>flat_graph, <span class="kw">_</span>, <span class="kw">_</span>) = v.build();
             eliminate_extra_unions_tees(<span class="kw-2">&amp;mut </span>flat_graph);
-            (k, flat_graph)
+            <span class="kw">let </span>partitioned_graph =
+                partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>);
+            (k, partitioned_graph)
         })
         .collect()
 }
@@ -262,7 +268,7 @@
         };
 
         DeployFlow {
-            ir: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
+            ir: UnsafeCell::new(std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir)),
             processes,
             process_id_name: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.process_id_name),
             clusters,
