@@ -119,7 +119,47 @@
 <a href="#118" id="118">118</a>
 <a href="#119" id="119">119</a>
 <a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a></pre></div><pre class="rust"><code><span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>hydro_std::quorum::collect_quorum;
 
 <span class="kw">use </span><span class="kw">super</span>::bench_client::{Client, bench_client};
@@ -133,7 +173,7 @@
     </span>checkpoint_frequency: usize,       <span class="comment">// How many sequence numbers to commit before checkpointing
     </span>f: usize, <span class="comment">/* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
     </span>num_replicas: usize,
-    create_paxos: <span class="kw">impl </span>FnOnce(Stream&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;, Unbounded&gt;) -&gt; Paxos,
+    paxos: Paxos,
 ) -&gt; (Cluster&lt;<span class="lifetime">'a</span>, Client&gt;, Cluster&lt;<span class="lifetime">'a</span>, Replica&gt;) {
     <span class="kw">let </span>clients = flow.cluster::&lt;Client&gt;();
     <span class="kw">let </span>replicas = flow.cluster::&lt;Replica&gt;();
@@ -147,17 +187,16 @@
                 </span>value: (CLUSTER_SELF_ID, value)
             }));
 
-            <span class="kw">let </span>(replica_checkpoint_complete, replica_checkpoint) =
-                replicas.forward_ref::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
-
-            <span class="kw">let </span>paxos = create_paxos(replica_checkpoint);
+            <span class="kw">let </span>acceptors = paxos.log_stores().clone();
+            <span class="kw">let </span>(acceptor_checkpoint_complete, acceptor_checkpoint) =
+                acceptors.forward_ref::&lt;Optional&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 
             <span class="kw">let </span>sequenced_payloads = <span class="kw">unsafe </span>{
                 <span class="comment">// SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
                 // the order of writes to the same key
 
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                </span>paxos.with_client(<span class="kw-2">&amp;</span>clients, payloads)
+                </span>paxos.with_client(<span class="kw-2">&amp;</span>clients, payloads, acceptor_checkpoint)
             };
 
             <span class="kw">let </span>sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(<span class="kw-2">&amp;</span>replicas);
@@ -166,7 +205,41 @@
             </span><span class="kw">let </span>(replica_checkpoint, processed_payloads) =
                 kv_replica(<span class="kw-2">&amp;</span>replicas, sequenced_to_replicas, checkpoint_frequency);
 
-            replica_checkpoint_complete.complete(replica_checkpoint);
+            <span class="comment">// Get the latest checkpoint sequence per replica
+            </span><span class="kw">let </span>checkpoint_tick = acceptors.tick();
+            <span class="kw">let </span>a_checkpoint = <span class="kw">unsafe </span>{
+                <span class="comment">// SAFETY: even though we batch the checkpoint messages, because we reduce over the entire history,
+                // the final min checkpoint is deterministic
+                // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
+
+                </span><span class="kw">let </span>a_checkpoint_largest_seqs = replica_checkpoint
+                    .broadcast_bincode(<span class="kw-2">&amp;</span>acceptors)
+                    .tick_batch(<span class="kw-2">&amp;</span>checkpoint_tick)
+                    .persist()
+                    .reduce_keyed_commutative(<span class="macro">q!</span>(|curr_seq, seq| {
+                        <span class="kw">if </span>seq &gt; <span class="kw-2">*</span>curr_seq {
+                            <span class="kw-2">*</span>curr_seq = seq;
+                        }
+                    }));
+
+                <span class="kw">let </span>a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
+                    .clone()
+                    .count()
+                    .filter_map(<span class="macro">q!</span>(<span class="kw">move </span>|num_received| <span class="kw">if </span>num_received == f + <span class="number">1 </span>{
+                        <span class="prelude-val">Some</span>(<span class="bool-val">true</span>)
+                    } <span class="kw">else </span>{
+                        <span class="prelude-val">None
+                    </span>}));
+
+                <span class="comment">// Find the smallest checkpoint seq that everyone agrees to
+                </span>a_checkpoint_largest_seqs
+                    .continue_if(a_checkpoints_quorum_reached)
+                    .map(<span class="macro">q!</span>(|(_sender, seq)| seq))
+                    .min()
+                    .latest()
+            };
+
+            acceptor_checkpoint_complete.complete(a_checkpoint);
 
             <span class="kw">let </span>c_received_payloads = processed_payloads
                 .map(<span class="macro">q!</span>(|payload| (
@@ -205,17 +278,24 @@
         <span class="kw">let </span>proposers = builder.cluster();
         <span class="kw">let </span>acceptors = builder.cluster();
 
-        <span class="kw">let _ </span>= <span class="kw">super</span>::paxos_bench(<span class="kw-2">&amp;</span>builder, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">1</span>, <span class="number">2</span>, |replica_checkpoint| CorePaxos {
-            proposers: proposers.clone(),
-            acceptors: acceptors.clone(),
-            replica_checkpoint: replica_checkpoint.broadcast_bincode(<span class="kw-2">&amp;</span>acceptors),
-            paxos_config: PaxosConfig {
-                f: <span class="number">1</span>,
-                i_am_leader_send_timeout: <span class="number">1</span>,
-                i_am_leader_check_timeout: <span class="number">1</span>,
-                i_am_leader_check_timeout_delay_multiplier: <span class="number">1</span>,
+        <span class="kw">let _ </span>= <span class="kw">super</span>::paxos_bench(
+            <span class="kw-2">&amp;</span>builder,
+            <span class="number">1</span>,
+            <span class="number">1</span>,
+            <span class="number">1</span>,
+            <span class="number">1</span>,
+            <span class="number">2</span>,
+            CorePaxos {
+                proposers: proposers.clone(),
+                acceptors: acceptors.clone(),
+                paxos_config: PaxosConfig {
+                    f: <span class="number">1</span>,
+                    i_am_leader_send_timeout: <span class="number">1</span>,
+                    i_am_leader_check_timeout: <span class="number">1</span>,
+                    i_am_leader_check_timeout_delay_multiplier: <span class="number">1</span>,
+                },
             },
-        });
+        );
         <span class="kw">let </span>built = builder.with_default_optimize::&lt;DeployRuntime&gt;();
 
         hydro_lang::ir::dbg_dedup_tee(|| {

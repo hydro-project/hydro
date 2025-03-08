@@ -1052,7 +1052,20 @@
 <a href="#1051" id="1051">1051</a>
 <a href="#1052" id="1052">1052</a>
 <a href="#1053" id="1053">1053</a>
-<a href="#1054" id="1054">1054</a></pre></div><pre class="rust"><code><span class="doccomment">//! Build a flat graph from [`HfStatement`]s.
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a></pre></div><pre class="rust"><code><span class="doccomment">//! Build a flat graph from [`HfStatement`]s.
 
 </span><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::collections::btree_map::Entry;
@@ -1064,8 +1077,8 @@
 <span class="kw">use </span>syn::spanned::Spanned;
 <span class="kw">use </span>syn::{Error, Ident, ItemUse};
 
-<span class="kw">use </span><span class="kw">super</span>::ops::FloType;
 <span class="kw">use </span><span class="kw">super</span>::ops::next_iteration::NEXT_ITERATION;
+<span class="kw">use </span><span class="kw">super</span>::ops::{FloType, Persistence};
 <span class="kw">use super</span>::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 <span class="kw">use </span><span class="kw">crate</span>::graph::graph_algorithms;
@@ -1951,15 +1964,16 @@
 
     <span class="doccomment">/// Check for loop context-related errors.
     </span><span class="kw">fn </span>check_loop_errors(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-        <span class="comment">// All inputs must be declared in the root block.
-        </span><span class="kw">for </span>(node_id, node) <span class="kw">in </span><span class="self">self</span>.flat_graph.nodes() {
+        <span class="kw">for </span>(node_id, node) <span class="kw">in </span><span class="self">self</span>.flat_graph.nodes() {
             <span class="kw">let </span><span class="prelude-val">Some</span>(op_inst) = <span class="self">self</span>.flat_graph.node_op_inst(node_id) <span class="kw">else </span>{
                 <span class="kw">continue</span>;
             };
-            <span class="kw">let </span>loop_id = <span class="self">self</span>.flat_graph.node_loop(node_id);
+            <span class="kw">let </span><span class="prelude-val">Some</span>(_loop_id) = <span class="self">self</span>.flat_graph.node_loop(node_id) <span class="kw">else </span>{
+                <span class="kw">continue</span>;
+            };
 
-            <span class="comment">// Source operators must be at the top level.
-            </span><span class="kw">if </span><span class="prelude-val">Some</span>(FloType::Source) == op_inst.op_constraints.flo_type &amp;&amp; loop_id.is_some() {
+            <span class="comment">// All inputs must be declared in the root block.
+            </span><span class="kw">if </span><span class="prelude-val">Some</span>(FloType::Source) == op_inst.op_constraints.flo_type {
                 <span class="self">self</span>.diagnostics.push(Diagnostic::spanned(
                     node.span(),
                     Level::Error,
@@ -1968,6 +1982,17 @@
                         op_inst.op_constraints.name
                     )
                 ));
+            }
+
+            <span class="comment">// Ensure no `'tick` or `'static` persistences are used in a loop context.
+            </span><span class="kw">for </span>persistence <span class="kw">in </span><span class="kw-2">&amp;</span>op_inst.generics.persistence_args {
+                <span class="kw">if let </span>Persistence::Tick | Persistence::Static = persistence {
+                    <span class="self">self</span>.diagnostics.push(Diagnostic::spanned(
+                        op_inst.generics.generic_args.span(),
+                        Level::Error,
+                        <span class="string">"Operator uses a `'tick` or `'static` persistence, which is not allowed within a `loop {{ ... }}` context."
+                    </span>));
+                }
             }
         }
 
@@ -2069,6 +2094,7 @@
 
         <span class="comment">// Must be a DAG (excluding `next_iteration()` operators).
         // TODO(mingwei): Nested loop blocks should count as a single node.
+        // But this doesn't cause any correctness issues because the nested loops are also DAGs.
         </span><span class="kw">for </span>(loop_id, loop_nodes) <span class="kw">in </span><span class="self">self</span>.flat_graph.loops() {
             <span class="comment">// Filter out `next_iteration()` operators.
             </span><span class="kw">let </span>filter_next_iteration = |<span class="kw-2">&amp;</span>node_id: <span class="kw-2">&amp;</span>GraphNodeId| {

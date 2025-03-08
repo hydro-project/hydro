@@ -291,7 +291,47 @@
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
 <a href="#292" id="292">292</a>
-<a href="#293" id="293">293</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 
 <span class="kw">use super</span>::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
@@ -386,6 +426,7 @@
                    is_pull,
                    work_fn,
                    root,
+                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -400,7 +441,7 @@
                    ..
                },
                <span class="kw">_</span>| {
-        <span class="macro">assert!</span>(is_pull);
+        <span class="macro">assert!</span>(is_pull, <span class="string">"TODO(mingwei): `{}` only supports pull."</span>, op_name);
 
         <span class="kw">let </span>persistence = <span class="kw">match </span>persistence_args[..] {
             [] =&gt; Persistence::Tick,
@@ -427,6 +468,45 @@
         <span class="kw">let </span>hashtable_ident = wc.make_ident(<span class="string">"hashtable"</span>);
 
         <span class="kw">let </span>(write_prologue, write_iterator, write_iterator_after) = <span class="kw">match </span>persistence {
+            Persistence::None =&gt; {
+                (
+                    Default::default(),
+                    <span class="comment">// TODO(mingwei): deduplicate this code with the other persistence cases.
+                    </span><span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #root::rustc_hash::FxHashMap::&lt;#( #generic_type_args ),<span class="kw-2">*</span>&gt;::default();
+
+                        #work_fn(|| {
+                            <span class="attr">#[inline(always)]
+                            </span><span class="kw">fn </span>check_input&lt;Iter, A, B&gt;(iter: Iter) -&gt; <span class="kw">impl </span>::std::iter::Iterator&lt;Item = (A, B)&gt;
+                            <span class="kw">where
+                                </span>Iter: std::iter::Iterator&lt;Item = (A, B)&gt;,
+                                A: ::std::clone::Clone,
+                                B: ::std::clone::Clone
+                            {
+                                iter
+                            }
+
+                            <span class="doccomment">/// A: accumulator type
+                            /// T: iterator item type
+                            /// O: output type
+                            </span><span class="attr">#[inline(always)]
+                            </span><span class="kw">fn </span>call_comb_type&lt;A, T, O&gt;(a: <span class="kw-2">&amp;mut </span>A, t: T, f: <span class="kw">impl </span>Fn(<span class="kw-2">&amp;mut </span>A, T) -&gt; O) -&gt; O {
+                                (f)(a, t)
+                            }
+
+                            <span class="kw">for </span>kv <span class="kw">in </span>check_input(#input) {
+                                <span class="comment">// TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
+                                </span><span class="attr">#[allow(unknown_lints, clippy::unwrap_or_default)]
+                                </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
+                                <span class="attr">#[allow(clippy::redundant_closure_call)] </span>call_comb_type(entry, kv.<span class="number">1</span>, #aggfn);
+                            }
+                        });
+
+                        <span class="kw">let </span>#ident = #hashtable_ident.drain();
+                    },
+                    Default::default(),
+                )
+            }
             Persistence::Tick =&gt; {
                 (
                     <span class="macro">quote_spanned!</span> {op_span=&gt;

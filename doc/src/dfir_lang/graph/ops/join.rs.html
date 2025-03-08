@@ -274,7 +274,30 @@
 <a href="#273" id="273">273</a>
 <a href="#274" id="274">274</a>
 <a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -416,6 +439,15 @@
             <span class="kw">let </span>joindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}"</span>, side));
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"joindata_{}_borrow"</span>, side));
             <span class="kw">let </span>reset = <span class="kw">match </span>(in_loop, persistence) {
+                (<span class="bool-val">false</span>, Persistence::None) =&gt; {
+                    diagnostics.push(Diagnostic::spanned(
+                        op_span,
+                        Level::Error,
+                        <span class="string">"`'none` is not allowed outside of loops, use `'tick` instead."</span>,
+                    ));
+                    <span class="kw">return </span><span class="prelude-val">Err</span>(());
+                }
+                (<span class="bool-val">true</span>, Persistence::None) =&gt; Default::default(),
                 (<span class="bool-val">false</span>, Persistence::Tick) =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
                     #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
                 },
@@ -438,29 +470,49 @@
                     <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             };
-            <span class="kw">let </span>init = <span class="kw">if </span>!in_loop {
-                <span class="macro">quote_spanned!</span> {op_span=&gt;
-                    <span class="kw">let </span>#joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #join_type::default()
-                    ));
-                    #reset
-                }
+            <span class="kw">let </span>(borrow, init) = <span class="kw">if </span>!in_loop {
+                (
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">unsafe </span>{
+                            <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                            </span>#context.state_ref_unchecked(#joindata_ident)
+                        }.borrow_mut()
+                    },
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">let </span>#joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
+                            #join_type::default()
+                        ));
+                        #reset
+                    },
+                )
             } <span class="kw">else </span>{
-                Default::default()
+                (
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        #join_type::default()
+                    },
+                    Default::default(),
+                )
             };
-            <span class="prelude-val">Ok</span>((joindata_ident, borrow_ident, init))
+            <span class="prelude-val">Ok</span>((borrow, borrow_ident, init))
         };
 
         <span class="kw">let </span>persistences = <span class="kw">match </span>persistence_args[..] {
-            [] =&gt; [Persistence::Tick, Persistence::Tick],
+            [] =&gt; {
+                <span class="kw">let </span>p = <span class="kw">if </span>loop_id.is_some() {
+                    Persistence::None
+                } <span class="kw">else </span>{
+                    Persistence::Tick
+                };
+                [p, p]
+            }
             [a] =&gt; [a, a],
             [a, b] =&gt; [a, b],
             <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(),
         };
 
-        <span class="kw">let </span>(lhs_joindata_ident, lhs_borrow_ident, lhs_init) =
+        <span class="kw">let </span>(lhs_borrow, lhs_borrow_ident, lhs_init) =
             make_joindata(persistences[<span class="number">0</span>], loop_id.is_some(), <span class="string">"lhs"</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>(rhs_joindata_ident, rhs_borrow_ident, rhs_init) =
+        <span class="kw">let </span>(rhs_borrow, rhs_borrow_ident, rhs_init) =
             make_joindata(persistences[<span class="number">1</span>], loop_id.is_some(), <span class="string">"rhs"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
@@ -472,14 +524,8 @@
         <span class="kw">let </span>rhs = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
         <span class="kw">let </span>write_iterator = <span class="kw">if </span>loop_id.is_none() {
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>(<span class="kw-2">mut </span>#lhs_borrow_ident, <span class="kw-2">mut </span>#rhs_borrow_ident) = <span class="kw">unsafe </span>{
-                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
-                    </span>(
-                        #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
-                    )
-                };
-
+                <span class="kw">let </span><span class="kw-2">mut </span>#lhs_borrow_ident = #lhs_borrow;
+                <span class="kw">let </span><span class="kw-2">mut </span>#rhs_borrow_ident = #rhs_borrow;
                 <span class="kw">let </span>#ident = {
                     <span class="comment">// Limit error propagation by bounding locally, erasing output iterator type.
                     </span><span class="attr">#[inline(always)]

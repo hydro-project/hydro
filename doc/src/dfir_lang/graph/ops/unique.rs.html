@@ -155,11 +155,20 @@
 <a href="#154" id="154">154</a>
 <a href="#155" id="155">155</a>
 <a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::quote_spanned;
 
 <span class="kw">use super</span>::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 <span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
 
@@ -220,6 +229,7 @@
                    op_span,
                    context,
                    df_ident,
+                   loop_id,
                    ident,
                    inputs,
                    outputs,
@@ -235,11 +245,13 @@
                    ..
                },
                diagnostics| {
-        <span class="kw">let </span>persistence = <span class="kw">match </span>persistence_args[..] {
-            [] =&gt; Persistence::Tick,
-            [a] =&gt; a,
-            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-        };
+        <span class="kw">let </span>persistence = persistence_args.first().copied().unwrap_or_else(|| {
+            <span class="kw">if </span>loop_id.is_some() {
+                Persistence::None
+            } <span class="kw">else </span>{
+                Persistence::Tick
+            }
+        });
 
         <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
         <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
@@ -247,6 +259,12 @@
         <span class="kw">let </span>uniquedata_ident = wc.make_ident(<span class="string">"uniquedata"</span>);
 
         <span class="kw">let </span>(write_prologue, get_set) = <span class="kw">match </span>persistence {
+            Persistence::None =&gt; (
+                Default::default(),
+                <span class="macro">quote_spanned!</span> {op_span=&gt;
+                    <span class="kw">let </span><span class="kw-2">mut </span>set = #root::rustc_hash::FxHashSet::default();
+                },
+            ),
             Persistence::Tick =&gt; {
                 <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
                     <span class="kw">let </span>#uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(

@@ -580,7 +580,9 @@
 <a href="#579" id="579">579</a>
 <a href="#580" id="580">580</a>
 <a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a></pre></div><pre class="rust"><code><span class="doccomment">//! DFIR's operators
 
 </span><span class="kw">use </span>std::collections::HashMap;
 <span class="kw">use </span>std::fmt::{Debug, Display};
@@ -1059,6 +1061,8 @@
 <span class="doccomment">/// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
 </span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>Persistence {
+    <span class="doccomment">/// No persistence, for within a loop iteration.
+    </span><span class="prelude-val">None</span>,
     <span class="doccomment">/// Persistence for one tick at-a-time only.
     </span>Tick,
     <span class="doccomment">/// Persistene across all ticks.

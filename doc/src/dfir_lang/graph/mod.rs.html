@@ -434,7 +434,8 @@
 <a href="#433" id="433">433</a>
 <a href="#434" id="434">434</a>
 <a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for DFIR graphs.
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a></pre></div><pre class="rust"><code><span class="doccomment">//! Graph representation stages for DFIR graphs.
 
 </span><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::hash::Hash;
@@ -643,8 +644,9 @@
     <span class="kw">let </span>persistence_args = generic_args.iter().flatten().map_while(|generic_arg| <span class="kw">match </span>generic_arg {
             GenericArgument::Lifetime(lifetime) =&gt; {
                 <span class="kw">match </span><span class="kw-2">&amp;*</span>lifetime.ident.to_string() {
-                    <span class="string">"static" </span>=&gt; <span class="prelude-val">Some</span>(Persistence::Static),
+                    <span class="string">"none" </span>=&gt; <span class="prelude-val">Some</span>(Persistence::None),
                     <span class="string">"tick" </span>=&gt; <span class="prelude-val">Some</span>(Persistence::Tick),
+                    <span class="string">"static" </span>=&gt; <span class="prelude-val">Some</span>(Persistence::Static),
                     <span class="string">"mutable" </span>=&gt; <span class="prelude-val">Some</span>(Persistence::Mutable),
                     <span class="kw">_ </span>=&gt; {
                         diagnostics.push(Diagnostic::spanned(

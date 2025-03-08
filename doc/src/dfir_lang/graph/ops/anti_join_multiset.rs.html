@@ -203,7 +203,19 @@
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
 <a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -281,7 +293,7 @@
             <span class="kw">let </span>antijoindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"antijoindata_{}"</span>, side));
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"antijoindata_{}_borrow"</span>, side));
             <span class="kw">let </span>(init, borrow) = <span class="kw">match </span>persistence {
-                Persistence::Tick =&gt; (
+                Persistence::None | Persistence::Tick =&gt; (
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         #root::util::monotonic_map::MonotonicMap::&lt;<span class="kw">_</span>, #root::rustc_hash::FxHashSet&lt;<span class="kw">_</span>&gt;&gt;::default()
                     },
@@ -316,11 +328,19 @@
         </span><span class="kw">let </span>pos_antijoindata_ident = wc.make_ident(<span class="string">"antijoindata_pos_ident"</span>);
         <span class="kw">let </span>pos_borrow_ident = wc.make_ident(<span class="string">"antijoindata_pos_borrow_ident"</span>);
 
-        <span class="kw">let </span>write_prologue_pos = <span class="kw">match </span>persistences[<span class="number">0</span>] {
-            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;},
+        <span class="kw">let </span>write_prologue = <span class="kw">match </span>persistences[<span class="number">0</span>] {
+            Persistence::None =&gt; Default::default(),
+            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+                <span class="kw">let </span>#neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                    #neg_init
+                ));
+            },
             Persistence::Static =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
                 <span class="kw">let </span>#pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     ::std::vec::Vec::new()
+                ));
+                <span class="kw">let </span>#neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                    #neg_init
                 ));
             },
             Persistence::Mutable =&gt; {
@@ -333,18 +353,22 @@
             }
         };
 
-        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #neg_init
-            ));
-
-            #write_prologue_pos
-        };
-
         <span class="kw">let </span>input_neg = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>]; <span class="comment">// N before P
         </span><span class="kw">let </span>input_pos = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
         <span class="kw">let </span>write_iterator = <span class="kw">match </span>persistences[<span class="number">0</span>] {
-            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span =&gt;
+            Persistence::None =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+                <span class="kw">let </span><span class="kw-2">mut </span>#neg_borrow_ident = #neg_init;
+
+                <span class="attr">#[allow(clippy::needless_borrow)]
+                </span>#work_fn(|| #neg_borrow.extend(#input_neg));
+
+                <span class="kw">let </span>#ident = #input_pos.filter(|x: <span class="kw-2">&amp;</span>(<span class="kw">_</span>,<span class="kw">_</span>)| {
+                    <span class="attr">#[allow(clippy::needless_borrow)]
+                    #[allow(clippy::unnecessary_mut_passed)]
+                    </span>!#neg_borrow.contains(<span class="kw-2">&amp;</span>x.<span class="number">0</span>)
+                });
+            },
+            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
                 <span class="kw">let </span><span class="kw-2">mut </span>#neg_borrow_ident = <span class="kw">unsafe </span>{
                     <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
                     </span>#context.state_ref_unchecked(#neg_antijoindata_ident)

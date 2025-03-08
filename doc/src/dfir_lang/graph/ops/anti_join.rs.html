@@ -168,7 +168,28 @@
 <a href="#167" id="167">167</a>
 <a href="#168" id="168">168</a>
 <a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a></pre></div><pre class="rust"><code><span class="kw">use </span>quote::{ToTokens, quote_spanned};
 <span class="kw">use </span>syn::parse_quote;
 
 <span class="kw">use super</span>::{
@@ -219,6 +240,7 @@
                    root,
                    context,
                    df_ident,
+                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -235,7 +257,14 @@
                },
                diagnostics| {
         <span class="kw">let </span>persistences = <span class="kw">match </span>persistence_args[..] {
-            [] =&gt; [Persistence::Tick, Persistence::Tick],
+            [] =&gt; {
+                <span class="kw">let </span>p = <span class="kw">if </span>loop_id.is_some() {
+                    Persistence::None
+                } <span class="kw">else </span>{
+                    Persistence::Tick
+                };
+                [p, p]
+            }
             [a] =&gt; [a, a],
             [a, b] =&gt; [a, b],
             <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
@@ -244,10 +273,27 @@
         <span class="kw">let </span><span class="kw-2">mut </span>make_antijoindata = |persistence, side| {
             <span class="kw">let </span>antijoindata_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"antijoindata_{}"</span>, side));
             <span class="kw">let </span>borrow_ident = wc.make_ident(<span class="macro">format!</span>(<span class="string">"antijoindata_{}_borrow"</span>, side));
-            <span class="kw">let </span>(init, borrow) = <span class="kw">match </span>persistence {
+            <span class="kw">let </span>(init, pre_write_iter, borrow) = <span class="kw">match </span>persistence {
+                Persistence::None =&gt; (
+                    Default::default(),
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">let </span>#borrow_ident = <span class="kw-2">&amp;mut </span>#root::rustc_hash::FxHashSet::default();
+                    },
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw-2">&amp;mut *</span>#borrow_ident
+                    },
+                ),
                 Persistence::Tick =&gt; (
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
-                        #root::util::monotonic_map::MonotonicMap::&lt;<span class="kw">_</span>, #root::rustc_hash::FxHashSet&lt;<span class="kw">_</span>&gt;&gt;::default()
+                        <span class="kw">let </span>#antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                            #root::util::monotonic_map::MonotonicMap::&lt;<span class="kw">_</span>, #root::rustc_hash::FxHashSet&lt;<span class="kw">_</span>&gt;&gt;::default()
+                        ));
+                    },
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">let </span><span class="kw-2">mut </span>#borrow_ident = <span class="kw">unsafe </span>{
+                            <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                            </span>#context.state_ref_unchecked(#antijoindata_ident)
+                        }.borrow_mut();
                     },
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw-2">&amp;mut *</span>#borrow_ident.get_mut_clear(#context.current_tick())
@@ -255,7 +301,15 @@
                 ),
                 Persistence::Static =&gt; (
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
-                        #root::rustc_hash::FxHashSet::default()
+                        <span class="kw">let </span>#antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                            #root::rustc_hash::FxHashSet::default()
+                        ));
+                    },
+                    <span class="macro">quote_spanned!</span> {op_span=&gt;
+                        <span class="kw">let </span><span class="kw-2">mut </span>#borrow_ident = <span class="kw">unsafe </span>{
+                            <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+                            </span>#context.state_ref_unchecked(#antijoindata_ident)
+                        }.borrow_mut();
                     },
                     <span class="macro">quote_spanned!</span> {op_span=&gt;
                         <span class="kw-2">&amp;mut *</span>#borrow_ident
@@ -270,35 +324,23 @@
                     <span class="kw">return </span><span class="prelude-val">Err</span>(());
                 }
             };
-            <span class="prelude-val">Ok</span>((antijoindata_ident, borrow_ident, init, borrow))
+            <span class="prelude-val">Ok</span>((init, pre_write_iter, borrow))
         };
 
-        <span class="kw">let </span>(pos_antijoindata_ident, pos_borrow_ident, pos_init, pos_borrow) =
-            make_antijoindata(persistences[<span class="number">0</span>], <span class="string">"pos"</span>)<span class="question-mark">?</span>;
-        <span class="kw">let </span>(neg_antijoindata_ident, neg_borrow_ident, neg_init, neg_borrow) =
-            make_antijoindata(persistences[<span class="number">1</span>], <span class="string">"neg"</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(pos_init, pos_pre_write_iter, pos_borrow) = make_antijoindata(persistences[<span class="number">0</span>], <span class="string">"pos"</span>)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(neg_init, neg_pre_write_iter, neg_borrow) = make_antijoindata(persistences[<span class="number">1</span>], <span class="string">"neg"</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-            <span class="kw">let </span>#neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #neg_init
-            ));
-            <span class="kw">let </span>#pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #pos_init
-            ));
+            #pos_init
+            #neg_init
         };
 
         <span class="kw">let </span>input_neg = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>]; <span class="comment">// N before P
         </span><span class="kw">let </span>input_pos = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
         <span class="kw">let </span>write_iterator = {
             <span class="macro">quote_spanned!</span> {op_span=&gt;
-                <span class="kw">let </span>(<span class="kw-2">mut </span>#neg_borrow_ident, <span class="kw-2">mut </span>#pos_borrow_ident) = <span class="kw">unsafe </span>{
-                    <span class="comment">// SAFETY: handles from `#df_ident`.
-                    </span>(
-                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
-                    )
-                };
-
+                #pos_pre_write_iter
+                #neg_pre_write_iter
                 <span class="kw">let </span>#ident = {
                     <span class="doccomment">/// Limit error propagation by bounding locally, erasing output iterator type.
                     </span><span class="attr">#[inline(always)]

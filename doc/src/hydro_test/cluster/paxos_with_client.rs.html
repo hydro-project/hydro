@@ -91,7 +91,17 @@
 <a href="#90" id="90">90</a>
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
-<a href="#93" id="93">93</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a></pre></div><pre class="rust"><code><span class="kw">use </span>std::fmt::Debug;
 
 <span class="kw">use </span>hydro_lang::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::Serialize;
@@ -102,11 +112,16 @@
 <span class="kw">pub trait </span>PaxosLike&lt;<span class="lifetime">'a</span>&gt;: Sized {
     <span class="doccomment">/// The nodes that receive inputs in Paxos. Usually the proposers.
     </span><span class="kw">type </span>PaxosIn: <span class="lifetime">'a</span>;
+
+    <span class="doccomment">/// The nodes that store logs in Paxos. Usually the acceptors.
+    </span><span class="kw">type </span>PaxosLog: <span class="lifetime">'a</span>;
+
     <span class="doccomment">/// The nodes that output the results of Paxos. Proposers in Paxos, Proxy leaders in Compartmentalized Paxos.
     </span><span class="kw">type </span>PaxosOut: <span class="lifetime">'a</span>;
     <span class="kw">type </span>Ballot: Clone + Ord + Debug + Serialize + DeserializeOwned;
 
     <span class="kw">fn </span>payload_recipients(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosIn&gt;;
+    <span class="kw">fn </span>log_stores(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosLog&gt;;
 
     <span class="kw">fn </span>get_recipient_from_ballot&lt;L: Location&lt;<span class="lifetime">'a</span>&gt;&gt;(
         ballot: Optional&lt;<span class="self">Self</span>::Ballot, L, Unbounded&gt;,
@@ -121,6 +136,7 @@
         payload_generator: <span class="kw">impl </span>FnOnce(
             Stream&lt;<span class="self">Self</span>::Ballot, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosIn&gt;, Unbounded&gt;,
         ) -&gt; Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosIn&gt;, Unbounded&gt;,
+        checkpoints: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosLog&gt;, Unbounded&gt;,
     ) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosOut&gt;, Unbounded, NoOrder&gt;;
 
     <span class="doccomment">/// # Safety
@@ -131,6 +147,7 @@
         <span class="self">self</span>,
         clients: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C&gt;,
         payloads: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded&gt;,
+        checkpoints: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosLog&gt;, Unbounded&gt;,
     ) -&gt; Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>::PaxosOut&gt;, Unbounded, NoOrder&gt; {
         <span class="kw">unsafe </span>{
             <span class="comment">// SAFETY: Non-deterministic leader notifications are handled in `cur_leader_id`. We do not
@@ -138,49 +155,52 @@
             // `sequenced_payloads`.
             </span><span class="kw">let </span>leaders = <span class="self">self</span>.payload_recipients().clone();
 
-            <span class="self">self</span>.build(<span class="kw">move </span>|new_leader_elected| {
-                <span class="kw">let </span>cur_leader_id = <span class="self">Self</span>::get_recipient_from_ballot(
-                    new_leader_elected
-                        .broadcast_bincode_anonymous(clients)
-                        .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
-                            <span class="string">"Client notified that leader was elected: {:?}"</span>,
-                            ballot
-                        )))
-                        .max(),
-                );
-
-                <span class="kw">let </span>payloads_at_proposer = {
-                    <span class="comment">// SAFETY: the risk here is that we send a batch of requests
-                    // with a stale leader ID, but because the leader ID comes from the
-                    // network there is no way to guarantee that it is up to date. This
-                    // is documented non-determinism.
-
-                    </span><span class="kw">let </span>client_tick = clients.tick();
-                    <span class="kw">let </span>payload_batch = payloads.tick_batch(<span class="kw-2">&amp;</span>client_tick);
-
-                    <span class="kw">let </span>latest_leader = cur_leader_id.latest_tick(<span class="kw-2">&amp;</span>client_tick);
-
-                    <span class="kw">let </span>(unsent_payloads_complete, unsent_payloads) =
-                        client_tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
-
-                    <span class="kw">let </span>all_payloads = unsent_payloads.chain(payload_batch);
-
-                    unsent_payloads_complete.complete_next_tick(
-                        all_payloads.clone().continue_unless(latest_leader.clone()),
+            <span class="self">self</span>.build(
+                <span class="kw">move </span>|new_leader_elected| {
+                    <span class="kw">let </span>cur_leader_id = <span class="self">Self</span>::get_recipient_from_ballot(
+                        new_leader_elected
+                            .broadcast_bincode_anonymous(clients)
+                            .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
+                                <span class="string">"Client notified that leader was elected: {:?}"</span>,
+                                ballot
+                            )))
+                            .max(),
                     );
 
-                    all_payloads.cross_singleton(latest_leader).all_ticks()
-                }
-                .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
-                .send_bincode_anonymous(<span class="kw-2">&amp;</span>leaders);
+                    <span class="kw">let </span>payloads_at_proposer = {
+                        <span class="comment">// SAFETY: the risk here is that we send a batch of requests
+                        // with a stale leader ID, but because the leader ID comes from the
+                        // network there is no way to guarantee that it is up to date. This
+                        // is documented non-determinism.
 
-                <span class="kw">let </span>payloads_at_proposer = {
-                    <span class="comment">// SAFETY: documented non-determinism in interleaving of client payloads
-                    </span>payloads_at_proposer.assume_ordering()
-                };
+                        </span><span class="kw">let </span>client_tick = clients.tick();
+                        <span class="kw">let </span>payload_batch = payloads.tick_batch(<span class="kw-2">&amp;</span>client_tick);
 
-                payloads_at_proposer
-            })
+                        <span class="kw">let </span>latest_leader = cur_leader_id.latest_tick(<span class="kw-2">&amp;</span>client_tick);
+
+                        <span class="kw">let </span>(unsent_payloads_complete, unsent_payloads) =
+                            client_tick.cycle::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, TotalOrder&gt;&gt;();
+
+                        <span class="kw">let </span>all_payloads = unsent_payloads.chain(payload_batch);
+
+                        unsent_payloads_complete.complete_next_tick(
+                            all_payloads.clone().continue_unless(latest_leader.clone()),
+                        );
+
+                        all_payloads.cross_singleton(latest_leader).all_ticks()
+                    }
+                    .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
+                    .send_bincode_anonymous(<span class="kw-2">&amp;</span>leaders);
+
+                    <span class="kw">let </span>payloads_at_proposer = {
+                        <span class="comment">// SAFETY: documented non-determinism in interleaving of client payloads
+                        </span>payloads_at_proposer.assume_ordering()
+                    };
+
+                    payloads_at_proposer
+                },
+                checkpoints,
+            )
         }
     }
 }
