@@ -5,6 +5,99 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+ - <csr-id-473ee4ab8c3d77356b5d3199f1612e6f710eac51/> update buildstructor
+
+### New Features
+
+ - <csr-id-733494ea2655cdc1460da7f902d999f0e3797411/> Link DFIR operators to Hydro operators in perf
+ - <csr-id-a4adb08700fdc5fdbc949fc656e6cb309e7159a5/> provide in-memory access to perf tracing results
+
+### Bug Fixes
+
+ - <csr-id-02858077604330299de18b10bb261e6d25bde6cd/> always write logs to stdout
+ - <csr-id-070b6e0a300bfb4ccb47d231a008bd7ce2c93a7a/> improve error message when crates fail to build
+ - <csr-id-75eb323a612fd5d2609e464fe7690bc2b6a8457a/> use correct `__staged` path when rewriting `crate::` imports
+   Previously, a rewrite would first turn `crate` into `crate::__staged`,
+   and another would rewrite `crate::__staged` into `hydro_test::__staged`.
+   The latter global rewrite is unnecessary because the stageleft logic
+   already will use the full crate name when handling public types, so we
+   drop it.
+
+### Refactor
+
+ - <csr-id-6ac0c53fa02853be5e17998f19a36d1a30641201/> show a lot more error info on build failure
+   From debugging today
+   
+   Main useful one is the STDERR output
+   
+   Uses more memory
+ - <csr-id-a1572f4f6e665041012769f518be43e404383081/> fix lifetime issue with command forming for Rust 2024
+ - <csr-id-c293cca6855695107e9cef5c5df99fb04a571934/> enable lints, cleanups for Rust 2024 #1732
+
+### Style
+
+ - <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/> fix all unexpected cfgs
+   Testing in https://github.com/MingweiSamuel/hydroflow
+
+### Chore (BREAKING)
+
+ - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 12 commits contributed to the release over the course of 52 calendar days.
+ - 12 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 12 unique issues were worked on: [#1648](https://github.com/hydro-project/hydro/issues/1648), [#1657](https://github.com/hydro-project/hydro/issues/1657), [#1691](https://github.com/hydro-project/hydro/issues/1691), [#1700](https://github.com/hydro-project/hydro/issues/1700), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1719](https://github.com/hydro-project/hydro/issues/1719), [#1720](https://github.com/hydro-project/hydro/issues/1720), [#1723](https://github.com/hydro-project/hydro/issues/1723), [#1737](https://github.com/hydro-project/hydro/issues/1737), [#1744](https://github.com/hydro-project/hydro/issues/1744), [#1747](https://github.com/hydro-project/hydro/issues/1747), [#1752](https://github.com/hydro-project/hydro/issues/1752)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1648](https://github.com/hydro-project/hydro/issues/1648)**
+    - Fix all unexpected cfgs ([`8b3b608`](https://github.com/hydro-project/hydro/commit/8b3b60812d9f561cb7f59120993fbf2e23191e2b))
+ * **[#1657](https://github.com/hydro-project/hydro/issues/1657)**
+    - Use correct `__staged` path when rewriting `crate::` imports ([`75eb323`](https://github.com/hydro-project/hydro/commit/75eb323a612fd5d2609e464fe7690bc2b6a8457a))
+ * **[#1691](https://github.com/hydro-project/hydro/issues/1691)**
+    - Improve error message when crates fail to build ([`070b6e0`](https://github.com/hydro-project/hydro/commit/070b6e0a300bfb4ccb47d231a008bd7ce2c93a7a))
+ * **[#1700](https://github.com/hydro-project/hydro/issues/1700)**
+    - Always write logs to stdout ([`0285807`](https://github.com/hydro-project/hydro/commit/02858077604330299de18b10bb261e6d25bde6cd))
+ * **[#1713](https://github.com/hydro-project/hydro/issues/1713)**
+    - Use DFIR name instead of Hydroflow in some places, fix #1644 ([`44fb280`](https://github.com/hydro-project/hydro/commit/44fb2806cf2d165d86695910f4755e0944c11832))
+ * **[#1719](https://github.com/hydro-project/hydro/issues/1719)**
+    - Provide in-memory access to perf tracing results ([`a4adb08`](https://github.com/hydro-project/hydro/commit/a4adb08700fdc5fdbc949fc656e6cb309e7159a5))
+ * **[#1720](https://github.com/hydro-project/hydro/issues/1720)**
+    - Update buildstructor ([`473ee4a`](https://github.com/hydro-project/hydro/commit/473ee4ab8c3d77356b5d3199f1612e6f710eac51))
+ * **[#1723](https://github.com/hydro-project/hydro/issues/1723)**
+    - Link DFIR operators to Hydro operators in perf ([`733494e`](https://github.com/hydro-project/hydro/commit/733494ea2655cdc1460da7f902d999f0e3797411))
+ * **[#1737](https://github.com/hydro-project/hydro/issues/1737)**
+    - Enable lints, cleanups for Rust 2024 #1732 ([`c293cca`](https://github.com/hydro-project/hydro/commit/c293cca6855695107e9cef5c5df99fb04a571934))
+ * **[#1744](https://github.com/hydro-project/hydro/issues/1744)**
+    - Fix lifetime issue with command forming for Rust 2024 ([`a1572f4`](https://github.com/hydro-project/hydro/commit/a1572f4f6e665041012769f518be43e404383081))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+ * **[#1752](https://github.com/hydro-project/hydro/issues/1752)**
+    - Show a lot more error info on build failure ([`6ac0c53`](https://github.com/hydro-project/hydro/commit/6ac0c53fa02853be5e17998f19a36d1a30641201))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 ### Documentation
@@ -30,7 +123,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 45 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1577](https://github.com/hydro-project/hydro/issues/1577)
@@ -46,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1577](https://github.com/hydro-project/hydro/issues/1577)**
     - Use regular println when no tasks are active ([`8d550b9`](https://github.com/hydro-project/hydro/commit/8d550b94ae2c08486e1c2222d37e3ca8b5f018b7))
  * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>
 
@@ -198,6 +292,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1395
    * __->__ #1394
 
+### Refactor (BREAKING)
+
+ - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+
 ### Documentation
 
  - <csr-id-f5f1eb0c612f5c0c1752360d972ef6853c5e12f0/> cleanup doc comments for clippy latest
@@ -243,6 +375,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-0a465e55dd39c76bc1aefb020460a639d792fe87/> rename integration crates to drop CLI references
  - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-bb081d3b0af6dbce9630e23dfe8b7d1363751c2b/> end-to-end flamegraph generation, fix #1365
+   Depends on #1370
+ - <csr-id-a2147864b24110c9ae2c1553e9e8b55bd5065f15/> `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading
+   * `perf` profile downloading moved from the `drop()` impl to `async fn
+   stop()`
+   * download perf data via stdout
+   * update async-ssh2-lite to 0.5 to cleanup tokio compat issues
+   
+   WIP for #1365
+ - <csr-id-8856c8596d5ad9d5f24a46467690bfac1549fae2/> use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364
+   Adds new method `Deployment::AzureHost`
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -564,7 +716,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release.
- - 32 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1015](https://github.com/hydro-project/hydro/issues/1015), [#1043](https://github.com/hydro-project/hydro/issues/1043), [#1084](https://github.com/hydro-project/hydro/issues/1084)
 
@@ -623,7 +774,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 12 commits contributed to the release.
+ - 12 commits contributed to the release over the course of 39 calendar days.
  - 11 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 9 unique issues were worked on: [#1010](https://github.com/hydro-project/hydro/issues/1010), [#1014](https://github.com/hydro-project/hydro/issues/1014), [#986](https://github.com/hydro-project/hydro/issues/986), [#987](https://github.com/hydro-project/hydro/issues/987), [#992](https://github.com/hydro-project/hydro/issues/992), [#994](https://github.com/hydro-project/hydro/issues/994), [#995](https://github.com/hydro-project/hydro/issues/995), [#996](https://github.com/hydro-project/hydro/issues/996), [#999](https://github.com/hydro-project/hydro/issues/999)
 

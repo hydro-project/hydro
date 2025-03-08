@@ -12,27 +12,27 @@ default = ["stageleft_devel"]
 stageleft_devel = []
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.11.0" }
-hydro_std = { path = "../hydro_std", version = "^0.11.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.0" }
+hydro_std = { path = "../hydro_std", version = "^0.12.0" }
 tokio = { version = "1.29.0", features = ["full"] }
-stageleft = { path = "../stageleft", version = "^0.6.0" }
+stageleft = { path = "../stageleft", version = "^0.7.0" }
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
 stats-ci = "0.1.1"
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }
 
 [dev-dependencies]
 ctor = "0.2"
 insta = "1.39"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.11.0" }
-hydro_lang = { path = "../hydro_lang", version = "^0.11.0", features = [
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.0", features = [
     "deploy",
 ] }
 futures = "0.3.0"
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
-dfir_macro = { path = "../dfir_macro", version = "^0.11.0" }
+dfir_macro = { path = "../dfir_macro", version = "^0.12.0" }
 tokio-test = "0.4.4"
-dfir_rs = { path = "../dfir_rs", version = "^0.11.0" }
+dfir_rs = { path = "../dfir_rs", version = "^0.12.0" }

@@ -5,10 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Documentation
+
+ - <csr-id-19784f5bef45a823549bb9084d0f51a2b7ce0981/> fix extraneous `\<` escaping introduced in #1558, fix #1614
+   Previous code also inserted `\<` into code blocks. This fixes the
+   original issue of unescaped `<`s by ensuring all op docs have them in
+   `code blocks`, removes the escaping.
+ - <csr-id-f8313b018f6a1101935e4c06abbe5af3aafb400c/> fix broken links, fix #1613
+
+### Test
+
+ - <csr-id-3343fe2d58d8b7a7aa2766bfba9fbb4955114706/> add globbing utility for testing Markdown as doctests
+
+### Chore (BREAKING)
+
+ - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 51 calendar days.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 5 unique issues were worked on: [#1649](https://github.com/hydro-project/hydro/issues/1649), [#1686](https://github.com/hydro-project/hydro/issues/1686), [#1690](https://github.com/hydro-project/hydro/issues/1690), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1747](https://github.com/hydro-project/hydro/issues/1747)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1649](https://github.com/hydro-project/hydro/issues/1649)**
+    - Fixup! test: add globbing utility for testing Markdown as doctests ([`7c2e9a9`](https://github.com/hydro-project/hydro/commit/7c2e9a9d3040bb0b20bf30b8c2c4a209fc68a32b))
+    - Add globbing utility for testing Markdown as doctests ([`3343fe2`](https://github.com/hydro-project/hydro/commit/3343fe2d58d8b7a7aa2766bfba9fbb4955114706))
+ * **[#1686](https://github.com/hydro-project/hydro/issues/1686)**
+    - Fix broken links, fix #1613 ([`f8313b0`](https://github.com/hydro-project/hydro/commit/f8313b018f6a1101935e4c06abbe5af3aafb400c))
+ * **[#1690](https://github.com/hydro-project/hydro/issues/1690)**
+    - Fix extraneous `\<` escaping introduced in #1558, fix #1614 ([`19784f5`](https://github.com/hydro-project/hydro/commit/19784f5bef45a823549bb9084d0f51a2b7ce0981))
+ * **[#1713](https://github.com/hydro-project/hydro/issues/1713)**
+    - Use DFIR name instead of Hydroflow in some places, fix #1644 ([`44fb280`](https://github.com/hydro-project/hydro/commit/44fb2806cf2d165d86695910f4755e0944c11832))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 <csr-id-c58f13cff39b838fa283fae2711501c8b7894ff4/>
 <csr-id-251b1039c71d45d3f86123dba1926026ded80824/>
+<csr-id-5196f247e0124a31567af940541044ce1906cdc1/>
+<csr-id-03b3a349013a71b324276bca5329c33d400a73ff/>
+<csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
 
 ### Chore
 
@@ -88,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release.
+ - 8 commits contributed to the release.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1620](https://github.com/hydro-project/hydro/issues/1620), [#1624](https://github.com/hydro-project/hydro/issues/1624), [#1627](https://github.com/hydro-project/hydro/issues/1627), [#1628](https://github.com/hydro-project/hydro/issues/1628)
 
@@ -109,6 +171,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1628](https://github.com/hydro-project/hydro/issues/1628)**
     - Update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571 ([`5196f24`](https://github.com/hydro-project/hydro/commit/5196f247e0124a31567af940541044ce1906cdc1))
  * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Fix some broken github tree/main links ([`c707659`](https://github.com/hydro-project/hydro/commit/c707659afe188a2b46b093ce3438f64c6b0e1e30))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>

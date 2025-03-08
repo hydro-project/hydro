@@ -1,7 +1,7 @@
 [package]
 name = "stageleft"
 publish = true
-version = "0.6.0"
+version = "0.7.0"
 documentation = "https://docs.rs/stageleft/"
 description = "Type-safe staged programming for Rust"
 edition = { workspace = true }
@@ -19,4 +19,4 @@ quote = "1.0.35"
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit-mut" ] }
 proc-macro2 = "1.0.74"
 proc-macro-crate = "1.0.0"
-stageleft_macro = { path = "../stageleft_macro", version = "^0.5.0" }
+stageleft_macro = { path = "../stageleft_macro", version = "^0.6.0" }

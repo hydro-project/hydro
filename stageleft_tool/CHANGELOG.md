@@ -1,5 +1,74 @@
 
 
+## 0.6.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### New Features
+
+ - <csr-id-b968f5beccac2019b951cc5ab15891b48da01639/> allow developers to add their own re-export rewrites
+
+### Bug Fixes
+
+ - <csr-id-75eb323a612fd5d2609e464fe7690bc2b6a8457a/> use correct `__staged` path when rewriting `crate::` imports
+   Previously, a rewrite would first turn `crate` into `crate::__staged`,
+   and another would rewrite `crate::__staged` into `hydro_test::__staged`.
+   The latter global rewrite is unnecessary because the stageleft logic
+   already will use the full crate name when handling public types, so we
+   drop it.
+ - <csr-id-c7d21521c44916e031789634df84b1eb213e1a64/> avoid generating warnings for unexpected `stageleft_devel` feature
+   Crates using stageleft can always be safely built without ever touching
+   this feature, it's only used as a helper to improve incremental
+   compilation performance for non-library crates.
+
+### Style
+
+ - <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/> fix all unexpected cfgs
+   Testing in https://github.com/MingweiSamuel/hydroflow
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-c49a4913cfdae021404a86e5a4d0597aa4db9fbe/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
+   Simplifies the logic for generating the public clone of the code, which
+   eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
+   from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
+   through `cfg` attrs when re-exporting public types.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 57 calendar days.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 6 unique issues were worked on: [#1638](https://github.com/hydro-project/hydro/issues/1638), [#1643](https://github.com/hydro-project/hydro/issues/1643), [#1648](https://github.com/hydro-project/hydro/issues/1648), [#1657](https://github.com/hydro-project/hydro/issues/1657), [#1721](https://github.com/hydro-project/hydro/issues/1721), [#1747](https://github.com/hydro-project/hydro/issues/1747)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1638](https://github.com/hydro-project/hydro/issues/1638)**
+    - Allow developers to add their own re-export rewrites ([`b968f5b`](https://github.com/hydro-project/hydro/commit/b968f5beccac2019b951cc5ab15891b48da01639))
+ * **[#1643](https://github.com/hydro-project/hydro/issues/1643)**
+    - Avoid generating warnings for unexpected `stageleft_devel` feature ([`c7d2152`](https://github.com/hydro-project/hydro/commit/c7d21521c44916e031789634df84b1eb213e1a64))
+ * **[#1648](https://github.com/hydro-project/hydro/issues/1648)**
+    - Fix all unexpected cfgs ([`8b3b608`](https://github.com/hydro-project/hydro/commit/8b3b60812d9f561cb7f59120993fbf2e23191e2b))
+ * **[#1657](https://github.com/hydro-project/hydro/issues/1657)**
+    - Use correct `__staged` path when rewriting `crate::` imports ([`75eb323`](https://github.com/hydro-project/hydro/commit/75eb323a612fd5d2609e464fe7690bc2b6a8457a))
+ * **[#1721](https://github.com/hydro-project/hydro/issues/1721)**
+    - Reduce where `#[cfg(stageleft_runtime)]` needs to be used ([`c49a491`](https://github.com/hydro-project/hydro/commit/c49a4913cfdae021404a86e5a4d0597aa4db9fbe))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+</details>
+
 ## 0.5.0 (2024-12-23)
 
 <csr-id-0dc709ed5a53c723f47fa1d10063e57bb50a63c8/>
@@ -31,7 +100,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 45 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1574](https://github.com/hydro-project/hydro/issues/1574), [#1590](https://github.com/hydro-project/hydro/issues/1590)
@@ -49,6 +118,7 @@
  * **[#1590](https://github.com/hydro-project/hydro/issues/1590)**
     - Use same hashing library everywhere ([`0dc709e`](https://github.com/hydro-project/hydro/commit/0dc709ed5a53c723f47fa1d10063e57bb50a63c8))
  * **Uncategorized**
+    - Release stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0 ([`b58dccc`](https://github.com/hydro-project/hydro/commit/b58dccc7f85380951a0ae91d32548eff0784f3a7))
     - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>
@@ -225,7 +295,6 @@
 <csr-read-only-do-not-edit/>
 
  - 6 commits contributed to the release.
- - 71 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1083](https://github.com/hydro-project/hydro/issues/1083), [#1090](https://github.com/hydro-project/hydro/issues/1090), [#1098](https://github.com/hydro-project/hydro/issues/1098), [#1140](https://github.com/hydro-project/hydro/issues/1140)
 
@@ -273,7 +342,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release.
+ - 7 commits contributed to the release over the course of 76 calendar days.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1021](https://github.com/hydro-project/hydro/issues/1021), [#899](https://github.com/hydro-project/hydro/issues/899), [#978](https://github.com/hydro-project/hydro/issues/978), [#983](https://github.com/hydro-project/hydro/issues/983), [#986](https://github.com/hydro-project/hydro/issues/986)
 

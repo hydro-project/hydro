@@ -5,9 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### New Features
+
+ - <csr-id-3a3382aade8b9e9500ae8fec70496ba7125e63ad/> add more perf tags to operators that do non-iterator work
+   Also unifies all `dest_sink` related work under a common identifier now
+   that we pass it to the operator codegen.
+ - <csr-id-ee280c972848170783d105ba047b26dfa7249f24/> `loop {` scheduler
+   Fix https://github.com/hydro-project/hydro/issues/1580
+ - <csr-id-f3c459036976d87b20356a761bdea9c010ae680b/> Add ability to customize operator tag for stack tracing/flamegraphs
+   Actually inserting Hydro-level operator IDs/names is TODO
+   
+   #1479
+
+### Bug Fixes
+
+ - <csr-id-10d8db58f9f2757c93f228f0a7fb45f7719068d0/> include operator tag for pre-iterator work
+
+### Chore (BREAKING)
+
+ - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 28 calendar days.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 6 unique issues were worked on: [#1692](https://github.com/hydro-project/hydro/issues/1692), [#1702](https://github.com/hydro-project/hydro/issues/1702), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1747](https://github.com/hydro-project/hydro/issues/1747), [#1753](https://github.com/hydro-project/hydro/issues/1753), [#1754](https://github.com/hydro-project/hydro/issues/1754)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1692](https://github.com/hydro-project/hydro/issues/1692)**
+    - `loop {` scheduler ([`ee280c9`](https://github.com/hydro-project/hydro/commit/ee280c972848170783d105ba047b26dfa7249f24))
+ * **[#1702](https://github.com/hydro-project/hydro/issues/1702)**
+    - Add ability to customize operator tag for stack tracing/flamegraphs ([`f3c4590`](https://github.com/hydro-project/hydro/commit/f3c459036976d87b20356a761bdea9c010ae680b))
+ * **[#1713](https://github.com/hydro-project/hydro/issues/1713)**
+    - Use DFIR name instead of Hydroflow in some places, fix #1644 ([`44fb280`](https://github.com/hydro-project/hydro/commit/44fb2806cf2d165d86695910f4755e0944c11832))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+ * **[#1753](https://github.com/hydro-project/hydro/issues/1753)**
+    - Include operator tag for pre-iterator work ([`10d8db5`](https://github.com/hydro-project/hydro/commit/10d8db58f9f2757c93f228f0a7fb45f7719068d0))
+ * **[#1754](https://github.com/hydro-project/hydro/issues/1754)**
+    - Add more perf tags to operators that do non-iterator work ([`3a3382a`](https://github.com/hydro-project/hydro/commit/3a3382aade8b9e9500ae8fec70496ba7125e63ad))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 <csr-id-251b1039c71d45d3f86123dba1926026ded80824/>
+<csr-id-03b3a349013a71b324276bca5329c33d400a73ff/>
+<csr-id-accb13cad718c99d350e4bafe82e0ca38bf94c62/>
+<csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
 
 ### New Features
 
@@ -19,8 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Next steps:
    - Needs scheduler changes:
-   - Implement un-windowing operators
-- Implement windowing operator `repeat_n()` -
+- Implement un-windowing operators
 
 ### Refactor (BREAKING)
 
@@ -81,7 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1620](https://github.com/hydro-project/hydro/issues/1620), [#1623](https://github.com/hydro-project/hydro/issues/1623), [#1627](https://github.com/hydro-project/hydro/issues/1627)
 
@@ -100,11 +166,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1627](https://github.com/hydro-project/hydro/issues/1627)**
     - Bump versions manually for renamed crates, per `RELEASING.md` ([`03b3a34`](https://github.com/hydro-project/hydro/commit/03b3a349013a71b324276bca5329c33d400a73ff))
  * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>
 
 <csr-unknown>
-Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()Needs checking that all inputs into a loop agreeState type negotiations (for batch() and handoffs (?) - don’t alwaysuse Vec)Dag performance optimizations (lots of things)<csr-unknown/>
+Implement windowing operator repeat_n() -<csr-unknown/>
 
 ## 0.10.0 (2024-11-08)
 

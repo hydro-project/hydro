@@ -1,7 +1,7 @@
 [package]
 name = "hydro_lang"
 publish = true
-version = "0.11.0"
+version = "0.12.0"
 documentation = "https://docs.rs/hydro_lang/"
 description = "Choreographic programming  for Hydro, built on DFIR"
 edition = { workspace = true }
@@ -23,9 +23,9 @@ runtime_measure = [ "dep:chrono", "dep:procfs" ]
 
 [dependencies]
 bincode = "1.3.1"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.11.0", optional = true }
-dfir_rs = { path = "../dfir_rs", version = "^0.11.0", default-features = false, features = ["deploy_integration"] }
-dfir_lang = { path = "../dfir_lang", version = "^0.11.0", optional = true }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.0", optional = true }
+dfir_rs = { path = "../dfir_rs", version = "^0.12.0", default-features = false, features = ["deploy_integration"] }
+dfir_lang = { path = "../dfir_lang", version = "^0.12.0", optional = true }
 match_box = "0.0.2"
 nameof = { version = "1.0.0", optional = true }
 prettyplease = { version = "0.2.0", features = [ "verbatim" ], optional = true }
@@ -36,8 +36,8 @@ regex = "1.11.1"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = [ "derive" ] }
 sha2 = { version = "0.10.0", optional = true }
-stageleft = { path = "../stageleft", version = "^0.6.0" }
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0", optional = true }
+stageleft = { path = "../stageleft", version = "^0.7.0" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0", optional = true }
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit-mut" ] }
 tokio = { version = "1.29.0", features = [ "full" ] }
 toml = { version = "0.8.0", optional = true }
@@ -48,11 +48,11 @@ chrono = { version = "0.4.39", optional = true }
 procfs = { version = "0.17.0", optional = true }
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }
 
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.11.0" }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.0" }
 ctor = "0.2"
 insta = "1.39"
 tokio-test = "0.4.4"

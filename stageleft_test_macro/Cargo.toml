@@ -15,7 +15,7 @@ proc-macro = true
 path = "../stageleft_test/src/lib.rs"
 
 [dependencies]
-stageleft = { path = "../stageleft", version = "^0.6.0" }
+stageleft = { path = "../stageleft", version = "^0.7.0" }
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }

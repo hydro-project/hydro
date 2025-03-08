@@ -1,7 +1,7 @@
 [package]
 name = "stageleft_macro"
 publish = true
-version = "0.5.0"
+version = "0.6.0"
 documentation = "https://docs.rs/stageleft_macro/"
 description = "Helper macros for the stageleft crate"
 edition = { workspace = true }

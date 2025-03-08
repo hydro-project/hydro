@@ -5,6 +5,185 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Documentation
+
+ - <csr-id-d2a1f38fabbfa1e3ea323635c935bda929a9c625/> document APIs for `Stream`
+ - <csr-id-e43e7850121e4dfd1d2bfb2d76b1de3294ca2d48/> initial website docs on core Hydro concepts
+ - <csr-id-73444373dabeedd7a03a8231952684fb01bdf895/> add initial Rustdoc for some Stream APIs
+
+### New Features
+
+ - <csr-id-ce134fa0bae4085a9f81f9e556a553618e3652ab/> add APIs for getting DFIR without deploying
+   Also modifies DFIR to elide Stageleft `type_hint`s when pretty printing
+   an operator (e.g. for Mermaid). Also, because we stratify the graph
+   before we can print it, adds basic support for printing stratified
+   graphs as a surface string.
+ - <csr-id-65138b4a61f2f7263c68d26692204e89f5cbad3c/> Insert counter to measure cardinality for specific operators
+ - <csr-id-4d9c0f92964c4f49ebc5ca0b72e404a61b434383/> Partitioning
+ - <csr-id-1ab64e76d560a59e29094ce4da0391713b1cc35e/> Decoupling
+   Mechanism for decoupling at specified nodes
+   
+   ---------
+ - <csr-id-733494ea2655cdc1460da7f902d999f0e3797411/> Link DFIR operators to Hydro operators in perf
+ - <csr-id-a4adb08700fdc5fdbc949fc656e6cb309e7159a5/> provide in-memory access to perf tracing results
+ - <csr-id-f95252cab4e9bfae2e5e9061ea7cbd3f3d3bb12a/> Compartmentalized Paxos & kv_replica bug fix
+ - <csr-id-f3c459036976d87b20356a761bdea9c010ae680b/> Add ability to customize operator tag for stack tracing/flamegraphs
+   Actually inserting Hydro-level operator IDs/names is TODO
+   
+   #1479
+ - <csr-id-eee28d3a17ea542c69a2d7e535c38333f42d4398/> Add metadata field to HydroNode
+ - <csr-id-e043cedf1999670bd5a5a93960748c89ca092f2b/> make `Stream::cloned` work with borrowed elements
+ - <csr-id-316d700cf820fa448898ce8df95b5c6011c33cc0/> provide APIs for blanket-deploying locations
+   This makes it easy to implement patterns like deploying everything to
+   localhost.
+ - <csr-id-6d77db9e52ece0b668587187c59f2862670db7cf/> send_partitioned operator and move decoupling
+   Allows specifying a distribution policy (for deciding which partition to
+   send each message to) before networking. Designed to be as easy as
+   possible to inject (so the distribution policy function definition takes
+   in the cluster ID, for example, even though it doesn't need to, because
+   this way we can avoid project->map->join)
+ - <csr-id-b968f5beccac2019b951cc5ab15891b48da01639/> allow developers to add their own re-export rewrites
+
+### Bug Fixes
+
+ - <csr-id-0045599af763478c56b3599e7704fe24f26775e6/> update trybuild error message after Rust update
+ - <csr-id-1f74d2f25a48963f372764d4cda2522f5a43faf9/> send_bincode_lifetime test
+   Test expected stderr stemmed from importing the wrong library, not from
+   the actual error regarding lifetimes
+ - <csr-id-75eb323a612fd5d2609e464fe7690bc2b6a8457a/> use correct `__staged` path when rewriting `crate::` imports
+   Previously, a rewrite would first turn `crate` into `crate::__staged`,
+   and another would rewrite `crate::__staged` into `hydro_test::__staged`.
+   The latter global rewrite is unnecessary because the stageleft logic
+   already will use the full crate name when handling public types, so we
+   drop it.
+ - <csr-id-9fdb7709a94b09857d986272435e795f856435b3/> avoid crashes and miscompilations with unused locations
+   Previously, if a location was not used in the graph, we would crash or
+   use faulty IDs in the generated code. This also changes semantics
+   slightly so that if there is a cluster with no assigned computation, it
+   will be treated as an empty cluster at runtime (the list of cluster IDs
+   will be an empty slice).
+
+### Refactor
+
+ - <csr-id-c293cca6855695107e9cef5c5df99fb04a571934/> enable lints, cleanups for Rust 2024 #1732
+
+### Test
+
+ - <csr-id-b1514be40f44201866bf9420bd4fc7d2b35c5e9c/> add example of doctest for `map`
+
+### Chore (BREAKING)
+
+ - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+
+### Documentation (BREAKING)
+
+ - <csr-id-146d10a1347aa23e1e42500abef86201851bacfd/> rename `singleton_first_tick` to `optional_first_tick` and add example of doctest
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-5c1c16cef25e058281e26c04160998072953ae95/> raise a panic if a user forgets to complete a cycle
+ - <csr-id-c49a4913cfdae021404a86e5a4d0597aa4db9fbe/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
+   Simplifies the logic for generating the public clone of the code, which
+   eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
+   from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
+   through `cfg` attrs when re-exporting public types.
+
+### Refactor (BREAKING)
+
+ - <csr-id-41e5bb93eb9c19a88167a63bce0ceb800f8f300d/> rename `_interleaved` to `_anonymous`
+   Also address docs feedback for streams.
+ - <csr-id-80407a2f0fdaa8b8a81688d181166a0da8aa7b52/> rename timestamp to atomic and provide batching shortcuts
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 29 commits contributed to the release over the course of 58 calendar days.
+ - 29 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 29 unique issues were worked on: [#1632](https://github.com/hydro-project/hydro/issues/1632), [#1636](https://github.com/hydro-project/hydro/issues/1636), [#1638](https://github.com/hydro-project/hydro/issues/1638), [#1641](https://github.com/hydro-project/hydro/issues/1641), [#1650](https://github.com/hydro-project/hydro/issues/1650), [#1652](https://github.com/hydro-project/hydro/issues/1652), [#1657](https://github.com/hydro-project/hydro/issues/1657), [#1659](https://github.com/hydro-project/hydro/issues/1659), [#1668](https://github.com/hydro-project/hydro/issues/1668), [#1676](https://github.com/hydro-project/hydro/issues/1676), [#1678](https://github.com/hydro-project/hydro/issues/1678), [#1681](https://github.com/hydro-project/hydro/issues/1681), [#1689](https://github.com/hydro-project/hydro/issues/1689), [#1695](https://github.com/hydro-project/hydro/issues/1695), [#1701](https://github.com/hydro-project/hydro/issues/1701), [#1702](https://github.com/hydro-project/hydro/issues/1702), [#1706](https://github.com/hydro-project/hydro/issues/1706), [#1707](https://github.com/hydro-project/hydro/issues/1707), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1719](https://github.com/hydro-project/hydro/issues/1719), [#1721](https://github.com/hydro-project/hydro/issues/1721), [#1723](https://github.com/hydro-project/hydro/issues/1723), [#1724](https://github.com/hydro-project/hydro/issues/1724), [#1728](https://github.com/hydro-project/hydro/issues/1728), [#1734](https://github.com/hydro-project/hydro/issues/1734), [#1735](https://github.com/hydro-project/hydro/issues/1735), [#1737](https://github.com/hydro-project/hydro/issues/1737), [#1747](https://github.com/hydro-project/hydro/issues/1747), [#1758](https://github.com/hydro-project/hydro/issues/1758)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1632](https://github.com/hydro-project/hydro/issues/1632)**
+    - Add metadata field to HydroNode ([`eee28d3`](https://github.com/hydro-project/hydro/commit/eee28d3a17ea542c69a2d7e535c38333f42d4398))
+ * **[#1636](https://github.com/hydro-project/hydro/issues/1636)**
+    - Add example of doctest for `map` ([`b1514be`](https://github.com/hydro-project/hydro/commit/b1514be40f44201866bf9420bd4fc7d2b35c5e9c))
+ * **[#1638](https://github.com/hydro-project/hydro/issues/1638)**
+    - Allow developers to add their own re-export rewrites ([`b968f5b`](https://github.com/hydro-project/hydro/commit/b968f5beccac2019b951cc5ab15891b48da01639))
+ * **[#1641](https://github.com/hydro-project/hydro/issues/1641)**
+    - Avoid crashes and miscompilations with unused locations ([`9fdb770`](https://github.com/hydro-project/hydro/commit/9fdb7709a94b09857d986272435e795f856435b3))
+ * **[#1650](https://github.com/hydro-project/hydro/issues/1650)**
+    - Add initial Rustdoc for some Stream APIs ([`7344437`](https://github.com/hydro-project/hydro/commit/73444373dabeedd7a03a8231952684fb01bdf895))
+ * **[#1652](https://github.com/hydro-project/hydro/issues/1652)**
+    - Send_partitioned operator and move decoupling ([`6d77db9`](https://github.com/hydro-project/hydro/commit/6d77db9e52ece0b668587187c59f2862670db7cf))
+ * **[#1657](https://github.com/hydro-project/hydro/issues/1657)**
+    - Use correct `__staged` path when rewriting `crate::` imports ([`75eb323`](https://github.com/hydro-project/hydro/commit/75eb323a612fd5d2609e464fe7690bc2b6a8457a))
+ * **[#1659](https://github.com/hydro-project/hydro/issues/1659)**
+    - Rename `singleton_first_tick` to `optional_first_tick` and add example of doctest ([`146d10a`](https://github.com/hydro-project/hydro/commit/146d10a1347aa23e1e42500abef86201851bacfd))
+ * **[#1668](https://github.com/hydro-project/hydro/issues/1668)**
+    - Initial website docs on core Hydro concepts ([`e43e785`](https://github.com/hydro-project/hydro/commit/e43e7850121e4dfd1d2bfb2d76b1de3294ca2d48))
+ * **[#1676](https://github.com/hydro-project/hydro/issues/1676)**
+    - Provide APIs for blanket-deploying locations ([`316d700`](https://github.com/hydro-project/hydro/commit/316d700cf820fa448898ce8df95b5c6011c33cc0))
+ * **[#1678](https://github.com/hydro-project/hydro/issues/1678)**
+    - Make `Stream::cloned` work with borrowed elements ([`e043ced`](https://github.com/hydro-project/hydro/commit/e043cedf1999670bd5a5a93960748c89ca092f2b))
+ * **[#1681](https://github.com/hydro-project/hydro/issues/1681)**
+    - Rename timestamp to atomic and provide batching shortcuts ([`80407a2`](https://github.com/hydro-project/hydro/commit/80407a2f0fdaa8b8a81688d181166a0da8aa7b52))
+ * **[#1689](https://github.com/hydro-project/hydro/issues/1689)**
+    - Document APIs for `Stream` ([`d2a1f38`](https://github.com/hydro-project/hydro/commit/d2a1f38fabbfa1e3ea323635c935bda929a9c625))
+ * **[#1695](https://github.com/hydro-project/hydro/issues/1695)**
+    - Rename `_interleaved` to `_anonymous` ([`41e5bb9`](https://github.com/hydro-project/hydro/commit/41e5bb93eb9c19a88167a63bce0ceb800f8f300d))
+ * **[#1701](https://github.com/hydro-project/hydro/issues/1701)**
+    - Compartmentalized Paxos & kv_replica bug fix ([`f95252c`](https://github.com/hydro-project/hydro/commit/f95252cab4e9bfae2e5e9061ea7cbd3f3d3bb12a))
+ * **[#1702](https://github.com/hydro-project/hydro/issues/1702)**
+    - Add ability to customize operator tag for stack tracing/flamegraphs ([`f3c4590`](https://github.com/hydro-project/hydro/commit/f3c459036976d87b20356a761bdea9c010ae680b))
+ * **[#1706](https://github.com/hydro-project/hydro/issues/1706)**
+    - Send_bincode_lifetime test ([`1f74d2f`](https://github.com/hydro-project/hydro/commit/1f74d2f25a48963f372764d4cda2522f5a43faf9))
+ * **[#1707](https://github.com/hydro-project/hydro/issues/1707)**
+    - Update trybuild error message after Rust update ([`0045599`](https://github.com/hydro-project/hydro/commit/0045599af763478c56b3599e7704fe24f26775e6))
+ * **[#1713](https://github.com/hydro-project/hydro/issues/1713)**
+    - Use DFIR name instead of Hydroflow in some places, fix #1644 ([`44fb280`](https://github.com/hydro-project/hydro/commit/44fb2806cf2d165d86695910f4755e0944c11832))
+ * **[#1719](https://github.com/hydro-project/hydro/issues/1719)**
+    - Provide in-memory access to perf tracing results ([`a4adb08`](https://github.com/hydro-project/hydro/commit/a4adb08700fdc5fdbc949fc656e6cb309e7159a5))
+ * **[#1721](https://github.com/hydro-project/hydro/issues/1721)**
+    - Reduce where `#[cfg(stageleft_runtime)]` needs to be used ([`c49a491`](https://github.com/hydro-project/hydro/commit/c49a4913cfdae021404a86e5a4d0597aa4db9fbe))
+ * **[#1723](https://github.com/hydro-project/hydro/issues/1723)**
+    - Link DFIR operators to Hydro operators in perf ([`733494e`](https://github.com/hydro-project/hydro/commit/733494ea2655cdc1460da7f902d999f0e3797411))
+ * **[#1724](https://github.com/hydro-project/hydro/issues/1724)**
+    - Decoupling ([`1ab64e7`](https://github.com/hydro-project/hydro/commit/1ab64e76d560a59e29094ce4da0391713b1cc35e))
+ * **[#1728](https://github.com/hydro-project/hydro/issues/1728)**
+    - Partitioning ([`4d9c0f9`](https://github.com/hydro-project/hydro/commit/4d9c0f92964c4f49ebc5ca0b72e404a61b434383))
+ * **[#1734](https://github.com/hydro-project/hydro/issues/1734)**
+    - Raise a panic if a user forgets to complete a cycle ([`5c1c16c`](https://github.com/hydro-project/hydro/commit/5c1c16cef25e058281e26c04160998072953ae95))
+ * **[#1735](https://github.com/hydro-project/hydro/issues/1735)**
+    - Insert counter to measure cardinality for specific operators ([`65138b4`](https://github.com/hydro-project/hydro/commit/65138b4a61f2f7263c68d26692204e89f5cbad3c))
+ * **[#1737](https://github.com/hydro-project/hydro/issues/1737)**
+    - Enable lints, cleanups for Rust 2024 #1732 ([`c293cca`](https://github.com/hydro-project/hydro/commit/c293cca6855695107e9cef5c5df99fb04a571934))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+ * **[#1758](https://github.com/hydro-project/hydro/issues/1758)**
+    - Add APIs for getting DFIR without deploying ([`ce134fa`](https://github.com/hydro-project/hydro/commit/ce134fa0bae4085a9f81f9e556a553618e3652ab))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 <csr-id-0dc709ed5a53c723f47fa1d10063e57bb50a63c8/>
@@ -187,7 +366,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release.
+ - 9 commits contributed to the release.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 6 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1617](https://github.com/hydro-project/hydro/issues/1617), [#1620](https://github.com/hydro-project/hydro/issues/1620), [#1623](https://github.com/hydro-project/hydro/issues/1623), [#1624](https://github.com/hydro-project/hydro/issues/1624), [#1627](https://github.com/hydro-project/hydro/issues/1627)
 
@@ -210,6 +389,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1627](https://github.com/hydro-project/hydro/issues/1627)**
     - Bump versions manually for renamed crates, per `RELEASING.md` ([`03b3a34`](https://github.com/hydro-project/hydro/commit/03b3a349013a71b324276bca5329c33d400a73ff))
  * **Uncategorized**
+    - Release stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0 ([`b58dccc`](https://github.com/hydro-project/hydro/commit/b58dccc7f85380951a0ae91d32548eff0784f3a7))
     - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>
@@ -246,6 +426,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Refactor
 
  - <csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1485).
+   * #1493
+   * #1492
+   * #1489
+   * #1488
+   * #1487
+   * #1486
+   * __->__ #1485
+
+<csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -348,6 +542,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-38b17cd977fb6c00ddc37e7a5b30e45dba17329e/> simplify latency calculations
  - <csr-id-8b7b1c60fd33b78f9a4b0873bbbd150260ae2ad5/> complete split into leader election and sequencing phases
  - <csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1485).
+   * #1493
+   * #1492
+   * #1489
+   * #1488
+   * #1487
+   * #1486
+   * __->__ #1485
+ - <csr-id-1b18b358c87caa37a6519612131c8674653a2407/> simplify `persist_pullup` code
+   Instead of matching on `&mut` and juggling ownership, instead match on
+   the owned node and always replaced `*node = new_node` (sometimes itself)
+ - <csr-id-c752affc2ee2c5d82d19dd992f6a89b7070b8773/> use max and min in Paxos and make client generic over ballots
+
+<csr-id-dff2a40669736014349cf12744d6a057a7992e11/> start splitting out leader election into a separate module
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed
@@ -660,6 +872,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1394
    * __->__ #1377
 
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
 ### Refactor (BREAKING)
 
  - <csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
@@ -794,6 +1054,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1394
    * __->__ #1377
 
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
 ### Documentation
 
  - <csr-id-f5f1eb0c612f5c0c1752360d972ef6853c5e12f0/> cleanup doc comments for clippy latest
@@ -832,21 +1150,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * __->__ #1404
 * #1398
 * __->__ #1404
- - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
-   Cloning was unsafe because values behind a `Rc<RefCell<...>>` in the
-   case of tee would be entangled with the old IR.
-   ---
-   [//]: # (BEGIN SAPLING FOOTER)
-   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
-   with
-   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1404).
-   * #1405
-   * #1398
-   * __->__ #1404
-* #1398
-* __->__ #1404
-* #1398
-* __->__ #1404
 * #1398
 * __->__ #1404
  - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
@@ -860,6 +1163,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1405
    * #1398
    * __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+* #1398
+* __->__ #1404
+ - <csr-id-1aeacb212227f654e8f0cdc8a59816a68f059177/> rewrite IR in place to avoid stack overflow and disable cloning
+   Cloning was unsafe because values behind a `Rc<RefCell<...>>` in the
+   case of tee would be entangled with the old IR.
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1404).
+   * #1405
+   * #1398
+   * __->__ #1404
+* #1398
+* __->__ #1404
 * #1398
 * __->__ #1404
 * #1398
@@ -1023,6 +1347,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * #1395
    * __->__ #1394
  - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+ - <csr-id-09d6d44eafc866881e73719813fe9edeb49ca2a6/> start rearranging stages of flow compilation to prepare for trybuild approach
+
+<csr-id-128aaecd40edce57dc254afdcd61ecd5b9948d71/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
+ - <csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1377).
+   * #1395
+   * #1394
+   * __->__ #1377
+
+<csr-id-0eba702f62e7a6816cf931b01a2ea5643bd7321d/> defer network instantiation until after finalizing IR
    ---
    [//]: # (BEGIN SAPLING FOOTER)
    Stack created with [Sapling](https://sapling-scm.com). Best reviewed

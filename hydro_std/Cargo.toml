@@ -1,7 +1,7 @@
 [package]
 name = "hydro_std"
 publish = true
-version = "0.11.0"
+version = "0.12.0"
 documentation = "https://docs.rs/hydro_plus/"
 description = "Standard library of distributed systems building blocks for Hydro"
 edition = { workspace = true }
@@ -15,15 +15,15 @@ workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.11.0" }
-stageleft = { path = "../stageleft", version = "^0.6.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.0" }
+stageleft = { path = "../stageleft", version = "^0.7.0" }
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }
 
 [dev-dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.11.0", features = ["deploy"] }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.0", features = ["deploy"] }
 insta = "1.39"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.11.0" }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.0" }
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
 ctor = "0.2"

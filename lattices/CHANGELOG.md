@@ -5,7 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.6.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+ - <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/> update pinned nightly to 2025-02-10, cleanups for clippy
+
+### Style
+
+ - <csr-id-39a2963518a9cc63c7e60a5c542cfa2509064a0c/> fix small format issue
+   after upgrading to edition 2024
+ - <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/> clippy cleanups for latest stable rust
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 52 calendar days.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#1640](https://github.com/hydro-project/hydro/issues/1640), [#1704](https://github.com/hydro-project/hydro/issues/1704), [#1747](https://github.com/hydro-project/hydro/issues/1747), [#1749](https://github.com/hydro-project/hydro/issues/1749)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1640](https://github.com/hydro-project/hydro/issues/1640)**
+    - Clippy cleanups for latest stable rust ([`c198330`](https://github.com/hydro-project/hydro/commit/c1983308743d912e5bf2583b7cccbb47d8a8b5d1))
+ * **[#1704](https://github.com/hydro-project/hydro/issues/1704)**
+    - Update pinned nightly to 2025-02-10, cleanups for clippy ([`2fd6aa7`](https://github.com/hydro-project/hydro/commit/2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+ * **[#1749](https://github.com/hydro-project/hydro/issues/1749)**
+    - Fix small format issue ([`39a2963`](https://github.com/hydro-project/hydro/commit/39a2963518a9cc63c7e60a5c542cfa2509064a0c))
+</details>
+
 ## 0.5.9 (2024-12-23)
+
+<csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
 
 ### Chore
 
@@ -33,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 45 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1620](https://github.com/hydro-project/hydro/issues/1620), [#1624](https://github.com/hydro-project/hydro/issues/1624)
@@ -50,6 +94,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Rename Hydroflow -> DFIR ([`3291c07`](https://github.com/hydro-project/hydro/commit/3291c07b37c9f9031837a2a32953e8f8854ec298))
  * **[#1624](https://github.com/hydro-project/hydro/issues/1624)**
     - Cleanups for the rename, fixing links ([`6ab6252`](https://github.com/hydro-project/hydro/commit/6ab625273d822812e83a333e928c3dea1c3c9ccb))
+ * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
 </details>
 
 ## 0.5.8 (2024-11-08)
@@ -351,7 +397,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 4 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1052](https://github.com/hydro-project/hydro/issues/1052)
 
@@ -396,7 +441,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 8 commits contributed to the release.
- - 110 days passed between releases.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1032](https://github.com/hydro-project/hydro/issues/1032), [#942](https://github.com/hydro-project/hydro/issues/942), [#960](https://github.com/hydro-project/hydro/issues/960), [#967](https://github.com/hydro-project/hydro/issues/967)
 
@@ -776,7 +820,6 @@ Unchanged from previous release.
 <csr-read-only-do-not-edit/>
 
  - 14 commits contributed to the release.
- - 18 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 10 unique issues were worked on: [#625](https://github.com/hydro-project/hydro/issues/625), [#637](https://github.com/hydro-project/hydro/issues/637), [#638](https://github.com/hydro-project/hydro/issues/638), [#642](https://github.com/hydro-project/hydro/issues/642), [#644](https://github.com/hydro-project/hydro/issues/644), [#645](https://github.com/hydro-project/hydro/issues/645), [#658](https://github.com/hydro-project/hydro/issues/658), [#660](https://github.com/hydro-project/hydro/issues/660), [#664](https://github.com/hydro-project/hydro/issues/664), [#667](https://github.com/hydro-project/hydro/issues/667)
 

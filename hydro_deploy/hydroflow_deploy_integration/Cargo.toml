@@ -1,7 +1,7 @@
 [package]
 name = "hydroflow_deploy_integration"
 publish = true
-version = "0.11.0"
+version = "0.12.0"
 documentation = "https://docs.rs/hydroflow_deploy_integration/"
 description = "`hydro_deploy` integration for Hydroflow"
 edition = { workspace = true }

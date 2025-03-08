@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.7.0 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Documentation
+
+ - <csr-id-73444373dabeedd7a03a8231952684fb01bdf895/> add initial Rustdoc for some Stream APIs
+
+### New Features
+
+ - <csr-id-b968f5beccac2019b951cc5ab15891b48da01639/> allow developers to add their own re-export rewrites
+
+### Bug Fixes
+
+ - <csr-id-309221680dbb95bf7cbc609932dd36de731b985a/> don't emit imports when staged code is in a doctest
+
+### Style
+
+ - <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/> fix all unexpected cfgs
+   Testing in https://github.com/MingweiSamuel/hydroflow
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-c49a4913cfdae021404a86e5a4d0597aa4db9fbe/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
+   Simplifies the logic for generating the public clone of the code, which
+   eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
+   from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
+   through `cfg` attrs when re-exporting public types.
+
+### Refactor (BREAKING)
+
+ - <csr-id-80407a2f0fdaa8b8a81688d181166a0da8aa7b52/> rename timestamp to atomic and provide batching shortcuts
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release over the course of 57 calendar days.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 7 unique issues were worked on: [#1638](https://github.com/hydro-project/hydro/issues/1638), [#1648](https://github.com/hydro-project/hydro/issues/1648), [#1650](https://github.com/hydro-project/hydro/issues/1650), [#1681](https://github.com/hydro-project/hydro/issues/1681), [#1721](https://github.com/hydro-project/hydro/issues/1721), [#1743](https://github.com/hydro-project/hydro/issues/1743), [#1747](https://github.com/hydro-project/hydro/issues/1747)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1638](https://github.com/hydro-project/hydro/issues/1638)**
+    - Allow developers to add their own re-export rewrites ([`b968f5b`](https://github.com/hydro-project/hydro/commit/b968f5beccac2019b951cc5ab15891b48da01639))
+ * **[#1648](https://github.com/hydro-project/hydro/issues/1648)**
+    - Fix all unexpected cfgs ([`8b3b608`](https://github.com/hydro-project/hydro/commit/8b3b60812d9f561cb7f59120993fbf2e23191e2b))
+ * **[#1650](https://github.com/hydro-project/hydro/issues/1650)**
+    - Add initial Rustdoc for some Stream APIs ([`7344437`](https://github.com/hydro-project/hydro/commit/73444373dabeedd7a03a8231952684fb01bdf895))
+ * **[#1681](https://github.com/hydro-project/hydro/issues/1681)**
+    - Rename timestamp to atomic and provide batching shortcuts ([`80407a2`](https://github.com/hydro-project/hydro/commit/80407a2f0fdaa8b8a81688d181166a0da8aa7b52))
+ * **[#1721](https://github.com/hydro-project/hydro/issues/1721)**
+    - Reduce where `#[cfg(stageleft_runtime)]` needs to be used ([`c49a491`](https://github.com/hydro-project/hydro/commit/c49a4913cfdae021404a86e5a4d0597aa4db9fbe))
+ * **[#1743](https://github.com/hydro-project/hydro/issues/1743)**
+    - Don't emit imports when staged code is in a doctest ([`3092216`](https://github.com/hydro-project/hydro/commit/309221680dbb95bf7cbc609932dd36de731b985a))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+</details>
+
 ## 0.6.0 (2024-12-23)
 
 <csr-id-ec55910f5a41d4f08059b5feda4b96fbd058c959/>
@@ -80,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release.
+ - 9 commits contributed to the release.
  - 45 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 6 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1559](https://github.com/hydro-project/hydro/issues/1559), [#1574](https://github.com/hydro-project/hydro/issues/1574), [#1583](https://github.com/hydro-project/hydro/issues/1583), [#1584](https://github.com/hydro-project/hydro/issues/1584), [#1591](https://github.com/hydro-project/hydro/issues/1591)
@@ -104,6 +174,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1591](https://github.com/hydro-project/hydro/issues/1591)**
     - Extract initial Hydroflow+ utilities into a standard library ([`53da4c1`](https://github.com/hydro-project/hydro/commit/53da4c1c9b18562e7806adcaf3a3838f56b8ef1b))
  * **Uncategorized**
+    - Release stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0 ([`b58dccc`](https://github.com/hydro-project/hydro/commit/b58dccc7f85380951a0ae91d32548eff0784f3a7))
     - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
     - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
 </details>
@@ -297,7 +368,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 32 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1070](https://github.com/hydro-project/hydro/issues/1070)
 
@@ -336,7 +406,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release.
+ - 7 commits contributed to the release over the course of 76 calendar days.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1010](https://github.com/hydro-project/hydro/issues/1010), [#1021](https://github.com/hydro-project/hydro/issues/1021), [#899](https://github.com/hydro-project/hydro/issues/899), [#983](https://github.com/hydro-project/hydro/issues/983), [#984](https://github.com/hydro-project/hydro/issues/984)
 
