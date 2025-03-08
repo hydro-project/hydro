@@ -68,18 +68,12 @@ jobs:
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
             core.exportVariable('RUSTC_WRAPPER', 'sccache');
 
-      - name: Run cargo fmt
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo fmt --all -- --check
 
-      - name: Run cargo clippy
-        run: cargo clippy --all-targets --features python -- -D warnings
-
-      - name: Run cargo check
-        run: cargo check --all-targets --features python
-
-      - name: Run cargo check (no default features)
-        run: cargo check --all-targets --no-default-features
+      - run: cargo clippy --all-targets --features python -- -D warnings
+      - run: cargo check --all-targets --features python
+      - run: cargo check --all-targets --no-default-features
 
   check-wasm:
     name: Check WebAssembly
@@ -104,11 +98,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Check dfir_lang
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: -p dfir_lang --target wasm32-unknown-unknown
+      - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
@@ -241,18 +231,12 @@ jobs:
         run: echo "VERSION=$(cargo pkgid wasm-bindgen-shared | cut -d '@' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Install WebAssembly test runner
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: wasm-bindgen-cli@${{ steps.wasm-bindgen-version.outputs.VERSION }}
+        run: cargo install wasm-bindgen-cli@${{ steps.wasm-bindgen-version.outputs.VERSION }}
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
         env:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
-        with:
-          command: test
-          args: -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
+        run: cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
   build-website:
     name: Build Website
@@ -280,13 +264,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
-        env:
+      - env:
           RUSTDOCFLAGS: -Dwarnings
+        run: cargo doc --no-deps
 
       - name: Move design docs to output
         shell: bash

@@ -62,16 +62,10 @@ jobs:
           token: ${{ steps.generate_token.outputs.token }}
 
       - name: Run cargo login
-        uses: actions-rs/cargo@v1
-        with:
-          command: login
-          args: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Install cargo-smart-release
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-smart-release
+        run: cargo install cargo-smart-release
 
       - name: Run cargo smart-release
         # list lockstep-versioned packages at the end of this command
