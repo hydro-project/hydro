@@ -236,6 +236,14 @@ impl VisitMut for GenFinalPubVistor {
     }
 
     fn visit_item_fn_mut(&mut self, i: &mut syn::ItemFn) {
+        if is_runtime(&i.attrs) {
+            i.attrs.insert(
+                0,
+                parse_quote!(#[cfg(all(stageleft_macro, not(stageleft_macro)))]),
+            );
+            return;
+        }
+
         let is_ctor = i
             .attrs
             .iter()
