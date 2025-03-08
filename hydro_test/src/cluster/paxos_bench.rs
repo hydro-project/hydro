@@ -12,7 +12,7 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
     f: usize, /* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
     num_replicas: usize,
-    create_paxos: impl FnOnce(Stream<usize, Cluster<'a, Replica>, Unbounded>) -> Paxos,
+    paxos: Paxos,
 ) -> (Cluster<'a, Client>, Cluster<'a, Replica>) {
     let clients = flow.cluster::<Client>();
     let replicas = flow.cluster::<Replica>();
@@ -26,17 +26,16 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
                 value: (CLUSTER_SELF_ID, value)
             }));
 
-            let (replica_checkpoint_complete, replica_checkpoint) =
-                replicas.forward_ref::<Stream<_, _, _>>();
-
-            let paxos = create_paxos(replica_checkpoint);
+            let acceptors = paxos.log_stores().clone();
+            let (acceptor_checkpoint_complete, acceptor_checkpoint) =
+                acceptors.forward_ref::<Optional<_, _, _>>();
 
             let sequenced_payloads = unsafe {
                 // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
                 // the order of writes to the same key
 
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                paxos.with_client(&clients, payloads)
+                paxos.with_client(&clients, payloads, acceptor_checkpoint)
             };
 
             let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);
@@ -45,7 +44,41 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
             let (replica_checkpoint, processed_payloads) =
                 kv_replica(&replicas, sequenced_to_replicas, checkpoint_frequency);
 
-            replica_checkpoint_complete.complete(replica_checkpoint);
+            // Get the latest checkpoint sequence per replica
+            let checkpoint_tick = acceptors.tick();
+            let a_checkpoint = unsafe {
+                // SAFETY: even though we batch the checkpoint messages, because we reduce over the entire history,
+                // the final min checkpoint is deterministic
+                // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
+
+                let a_checkpoint_largest_seqs = replica_checkpoint
+                    .broadcast_bincode(&acceptors)
+                    .tick_batch(&checkpoint_tick)
+                    .persist()
+                    .reduce_keyed_commutative(q!(|curr_seq, seq| {
+                        if seq > *curr_seq {
+                            *curr_seq = seq;
+                        }
+                    }));
+
+                let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
+                    .clone()
+                    .count()
+                    .filter_map(q!(move |num_received| if num_received == f + 1 {
+                        Some(true)
+                    } else {
+                        None
+                    }));
+
+                // Find the smallest checkpoint seq that everyone agrees to
+                a_checkpoint_largest_seqs
+                    .continue_if(a_checkpoints_quorum_reached)
+                    .map(q!(|(_sender, seq)| seq))
+                    .min()
+                    .latest()
+            };
+
+            acceptor_checkpoint_complete.complete(a_checkpoint);
 
             let c_received_payloads = processed_payloads
                 .map(q!(|payload| (
@@ -84,17 +117,24 @@ mod tests {
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
 
-        let _ = super::paxos_bench(&builder, 1, 1, 1, 1, 2, |replica_checkpoint| CorePaxos {
-            proposers: proposers.clone(),
-            acceptors: acceptors.clone(),
-            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
-            paxos_config: PaxosConfig {
-                f: 1,
-                i_am_leader_send_timeout: 1,
-                i_am_leader_check_timeout: 1,
-                i_am_leader_check_timeout_delay_multiplier: 1,
+        let _ = super::paxos_bench(
+            &builder,
+            1,
+            1,
+            1,
+            1,
+            2,
+            CorePaxos {
+                proposers: proposers.clone(),
+                acceptors: acceptors.clone(),
+                paxos_config: PaxosConfig {
+                    f: 1,
+                    i_am_leader_send_timeout: 1,
+                    i_am_leader_check_timeout: 1,
+                    i_am_leader_check_timeout_delay_multiplier: 1,
+                },
             },
-        });
+        );
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
