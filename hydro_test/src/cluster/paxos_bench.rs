@@ -1,15 +1,16 @@
 use hydro_lang::*;
+use hydro_std::bench_client::{bench_client, print_bench_results};
 use hydro_std::quorum::collect_quorum;
 
-use super::bench_client::{Client, bench_client};
 use super::kv_replica::{KvPayload, Replica, kv_replica};
 use super::paxos_with_client::PaxosLike;
+
+pub struct Client;
 
 pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     flow: &FlowBuilder<'a>,
     num_clients_per_node: usize,
-    median_latency_window_size: usize, /* How many latencies to keep in the window for calculating the median */
-    checkpoint_frequency: usize,       // How many sequence numbers to commit before checkpointing
+    checkpoint_frequency: usize, // How many sequence numbers to commit before checkpointing
     f: usize, /* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
     num_replicas: usize,
     paxos: Paxos,
@@ -17,88 +18,92 @@ pub fn paxos_bench<'a, Paxos: PaxosLike<'a>>(
     let clients = flow.cluster::<Client>();
     let replicas = flow.cluster::<Replica>();
 
-    bench_client(
-        &clients,
-        |c_to_proposers| {
-            let payloads = c_to_proposers.map(q!(move |(key, value)| KvPayload {
-                key,
-                // we use our ID as part of the value and use that so the replica only notifies us
-                value: (CLUSTER_SELF_ID, value)
-            }));
+    let bench_results = unsafe {
+        bench_client(
+            &clients,
+            |c_to_proposers| {
+                let payloads = c_to_proposers.map(q!(move |(key, value)| KvPayload {
+                    key,
+                    // we use our ID as part of the value and use that so the replica only notifies us
+                    value: (CLUSTER_SELF_ID, value)
+                }));
 
-            let acceptors = paxos.log_stores().clone();
-            let (acceptor_checkpoint_complete, acceptor_checkpoint) =
-                acceptors.forward_ref::<Optional<_, _, _>>();
+                let acceptors = paxos.log_stores().clone();
+                let (acceptor_checkpoint_complete, acceptor_checkpoint) =
+                    acceptors.forward_ref::<Optional<_, _, _>>();
 
-            let sequenced_payloads = unsafe {
-                // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
-                // the order of writes to the same key
+                let sequenced_payloads = {
+                    // SAFETY: clients "own" certain keys, so interleaving elements from clients will not affect
+                    // the order of writes to the same key
 
-                // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-                paxos.with_client(&clients, payloads, acceptor_checkpoint)
-            };
+                    // TODO(shadaj): we should retry when a payload is dropped due to stale leader
+                    paxos.with_client(&clients, payloads, acceptor_checkpoint)
+                };
 
-            let sequenced_to_replicas = sequenced_payloads.broadcast_bincode_anonymous(&replicas);
+                let sequenced_to_replicas =
+                    sequenced_payloads.broadcast_bincode_anonymous(&replicas);
 
-            // Replicas
-            let (replica_checkpoint, processed_payloads) =
-                kv_replica(&replicas, sequenced_to_replicas, checkpoint_frequency);
+                // Replicas
+                let (replica_checkpoint, processed_payloads) =
+                    kv_replica(&replicas, sequenced_to_replicas, checkpoint_frequency);
 
-            // Get the latest checkpoint sequence per replica
-            let checkpoint_tick = acceptors.tick();
-            let a_checkpoint = unsafe {
-                // SAFETY: even though we batch the checkpoint messages, because we reduce over the entire history,
-                // the final min checkpoint is deterministic
-                // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
+                // Get the latest checkpoint sequence per replica
+                let checkpoint_tick = acceptors.tick();
+                let a_checkpoint = {
+                    // SAFETY: even though we batch the checkpoint messages, because we reduce over the entire history,
+                    // the final min checkpoint is deterministic
+                    // TODO(shadaj): once we can reduce keyed over unbounded streams, this should be safe
 
-                let a_checkpoint_largest_seqs = replica_checkpoint
-                    .broadcast_bincode(&acceptors)
-                    .tick_batch(&checkpoint_tick)
-                    .persist()
-                    .reduce_keyed_commutative(q!(|curr_seq, seq| {
-                        if seq > *curr_seq {
-                            *curr_seq = seq;
-                        }
-                    }));
+                    let a_checkpoint_largest_seqs = replica_checkpoint
+                        .broadcast_bincode(&acceptors)
+                        .tick_batch(&checkpoint_tick)
+                        .persist()
+                        .reduce_keyed_commutative(q!(|curr_seq, seq| {
+                            if seq > *curr_seq {
+                                *curr_seq = seq;
+                            }
+                        }));
 
-                let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
-                    .clone()
-                    .count()
-                    .filter_map(q!(move |num_received| if num_received == f + 1 {
-                        Some(true)
-                    } else {
-                        None
-                    }));
+                    let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs
+                        .clone()
+                        .count()
+                        .filter_map(q!(move |num_received| if num_received == f + 1 {
+                            Some(true)
+                        } else {
+                            None
+                        }));
 
-                // Find the smallest checkpoint seq that everyone agrees to
-                a_checkpoint_largest_seqs
-                    .continue_if(a_checkpoints_quorum_reached)
-                    .map(q!(|(_sender, seq)| seq))
-                    .min()
-                    .latest()
-            };
+                    // Find the smallest checkpoint seq that everyone agrees to
+                    a_checkpoint_largest_seqs
+                        .continue_if(a_checkpoints_quorum_reached)
+                        .map(q!(|(_sender, seq)| seq))
+                        .min()
+                        .latest()
+                };
 
-            acceptor_checkpoint_complete.complete(a_checkpoint);
+                acceptor_checkpoint_complete.complete(a_checkpoint);
 
-            let c_received_payloads = processed_payloads
-                .map(q!(|payload| (
-                    payload.value.0,
-                    ((payload.key, payload.value.1), Ok(()))
-                )))
-                .send_bincode_anonymous(&clients);
+                let c_received_payloads = processed_payloads
+                    .map(q!(|payload| (
+                        payload.value.0,
+                        ((payload.key, payload.value.1), Ok(()))
+                    )))
+                    .send_bincode_anonymous(&clients);
 
-            // we only mark a transaction as committed when all replicas have applied it
-            collect_quorum::<_, _, _, ()>(
-                c_received_payloads.atomic(&clients.tick()),
-                f + 1,
-                num_replicas,
-            )
-            .0
-            .end_atomic()
-        },
-        num_clients_per_node,
-        median_latency_window_size,
-    );
+                // we only mark a transaction as committed when all replicas have applied it
+                collect_quorum::<_, _, _, ()>(
+                    c_received_payloads.atomic(&clients.tick()),
+                    f + 1,
+                    num_replicas,
+                )
+                .0
+                .end_atomic()
+            },
+            num_clients_per_node,
+        )
+    };
+
+    print_bench_results(bench_results);
 
     (clients, replicas)
 }
@@ -119,7 +124,6 @@ mod tests {
 
         let _ = super::paxos_bench(
             &builder,
-            1,
             1,
             1,
             1,

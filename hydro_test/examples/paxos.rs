@@ -36,7 +36,6 @@ async fn main() {
     let f = 1;
     let num_clients = 1;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
-    let median_latency_window_size = 1000;
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
@@ -48,7 +47,6 @@ async fn main() {
     let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
         &builder,
         num_clients_per_node,
-        median_latency_window_size,
         checkpoint_frequency,
         f,
         f + 1,
