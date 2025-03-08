@@ -22,7 +22,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.0
+        uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
           cancel_others: "true"
 
@@ -50,18 +50,11 @@ jobs:
       CARGO_PROFILE_DEV_STRIP: "debuginfo"
       CARGO_PROFILE_TEST_STRIP: "debuginfo"
       CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: ${{ matrix.rust_release == 'latest-stable' }}
-          components: rustfmt, clippy
+        uses: actions/checkout@v4
 
       - name: Run sccache-cache
         if: matrix.rust_release == 'pinned-nightly'
@@ -104,17 +97,12 @@ jobs:
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
           - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+        uses: actions/checkout@v4
 
       - name: Check dfir_lang
         uses: actions-rs/cargo@v1
@@ -147,17 +135,11 @@ jobs:
       CARGO_PROFILE_DEV_STRIP: "debuginfo"
       CARGO_PROFILE_TEST_STRIP: "debuginfo"
       CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+        uses: actions/checkout@v4
 
       - name: Run sccache-cache
         if: matrix.rust_release == 'pinned-nightly'
@@ -247,17 +229,12 @@ jobs:
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
           - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+        uses: actions/checkout@v4
 
       - name: Get wasm-bindgen version
         id: wasm-bindgen-version
@@ -286,7 +263,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build Website
         run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
@@ -301,13 +278,7 @@ jobs:
       WWW_DIR: target
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
+        uses: actions/checkout@v4
 
       - name: Run cargo doc
         uses: actions-rs/cargo@v1
@@ -368,13 +339,7 @@ jobs:
       WWW_DIR: target
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
+        uses: actions/checkout@v4
 
       - name: Checkout gh-pages
         shell: bash
