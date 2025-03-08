@@ -300,6 +300,8 @@ declare_ops![
     persist_mut::PERSIST_MUT,
     persist_mut_keyed::PERSIST_MUT_KEYED,
     prefix::PREFIX,
+    resolve_futures::RESOLVE_FUTURES,
+    resolve_futures_ordered::RESOLVE_FUTURES_ORDERED,
     py_udf::PY_UDF,
     reduce::REDUCE,
     spin::SPIN,

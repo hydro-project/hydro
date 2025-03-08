@@ -356,6 +356,7 @@ dependencies = [
  "criterion",
  "dfir_rs",
  "differential-dataflow-master",
+ "futures",
  "nameof",
  "rand",
  "rand_distr",
@@ -1719,6 +1720,7 @@ dependencies = [
  "rand",
  "stageleft",
  "stageleft_tool",
+ "tokio",
 ]
 
 [[package]]
@@ -4055,9 +4057,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.39.3"
+version = "1.43.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9babc99b9923bfa4804bd74722ff02c0381021eafa4db9949217e3be8e84fff5"
+checksum = "3d61fa4ffa3de412bfea335c6ecff681de2b609ba3c77ef3e00e521813a9ed9e"
 dependencies = [
  "backtrace",
  "bytes",
@@ -4073,9 +4075,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693d596312e88961bc67d7f1f97af8a70227d9f90c31bba5806eec004978d752"
+checksum = "6e06d43f1345a3bcd39f6a56dbb7dcab2ba47e68e8ac134855e7e2bdbaf8cab8"
 dependencies = [
  "proc-macro2",
  "quote",
