@@ -1,11 +1,11 @@
-use proc_macro2::{Ident, TokenStream};
-use quote::{quote_spanned, ToTokens};
+use proc_macro2::TokenStream;
+use quote::{ToTokens, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_quote, Expr, ExprCall};
+use syn::{Expr, ExprCall, parse_quote};
 
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -131,11 +131,11 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
         let rhs_join_options =
             parse_argument(&arguments[1]).map_err(|err| diagnostics.push(err))?;
 
-        let (lhs_joindata_ident, lhs_borrow_ident, lhs_prologue, lhs_borrow) =
+        let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
-        let (rhs_joindata_ident, rhs_borrow_ident, rhs_prologue, rhs_borrow) =
+        let (rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
             make_joindata(wc, persistences[1], &rhs_join_options, "rhs")
                 .map_err(|err| diagnostics.push(err))?;
 
@@ -176,13 +176,8 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         // Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         let write_iterator = quote_spanned! {op_span=>
-            let (mut #lhs_borrow_ident, mut #rhs_borrow_ident) = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                (
-                    #context.state_ref_unchecked(#lhs_joindata_ident).borrow_mut(),
-                    #context.state_ref_unchecked(#rhs_joindata_ident).borrow_mut(),
-                )
-            };
+            #lhs_pre_write_iter
+            #rhs_pre_write_iter
 
             let #ident = {
                 #lhs_tokens
@@ -243,23 +238,23 @@ pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions, Diagnostic> {
     match func_name.as_str() {
         "Fold" => match (elems.next(), elems.next()) {
             (Some(default), Some(fold)) => Ok(JoinOptions::Fold(default, fold)),
-            _ => {
-                Err(Diagnostic::spanned(
-                        args.span(),
-                        Level::Error,
-                        format!("Fold requires two arguments, first is the default function, second is the folding function: {func:?}"),
-                    ))
-            }
+            _ => Err(Diagnostic::spanned(
+                args.span(),
+                Level::Error,
+                format!(
+                    "Fold requires two arguments, first is the default function, second is the folding function: {func:?}"
+                ),
+            )),
         },
         "FoldFrom" => match (elems.next(), elems.next()) {
             (Some(from), Some(fold)) => Ok(JoinOptions::FoldFrom(from, fold)),
-            _ => {
-                Err(Diagnostic::spanned(
-                    args.span(),
-                    Level::Error,
-                    format!("FoldFrom requires two arguments, first is the From function, second is the folding function: {func:?}"),
-                ))
-            }
+            _ => Err(Diagnostic::spanned(
+                args.span(),
+                Level::Error,
+                format!(
+                    "FoldFrom requires two arguments, first is the From function, second is the folding function: {func:?}"
+                ),
+            )),
         },
         "Reduce" => match elems.next() {
             Some(reduce) => Ok(JoinOptions::Reduce(reduce)),
@@ -282,7 +277,7 @@ pub(crate) fn make_joindata(
     persistence: Persistence,
     join_options: &JoinOptions<'_>,
     side: &str,
-) -> Result<(Ident, Ident, TokenStream, TokenStream), Diagnostic> {
+) -> Result<(TokenStream, TokenStream, TokenStream), Diagnostic> {
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
@@ -306,7 +301,16 @@ pub(crate) fn make_joindata(
         }
     };
 
-    let (prologue, borrow) = match persistence {
+    let (prologue, pre_write_iter, borrow) = match persistence {
+        Persistence::None => (
+            Default::default(),
+            quote_spanned! {op_span=>
+                let mut #borrow_ident = #join_type::default();
+            },
+            quote_spanned! {op_span=>
+                #borrow_ident
+            },
+        ),
         Persistence::Tick => (
             quote_spanned! {op_span=>
                 let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
@@ -314,6 +318,12 @@ pub(crate) fn make_joindata(
                         #join_type::default()
                     )
                 ));
+            },
+            quote_spanned! {op_span=>
+                let mut #borrow_ident = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    #context.state_ref_unchecked(#joindata_ident)
+                }.borrow_mut();
             },
             quote_spanned! {op_span=>
                 #borrow_ident.get_mut_clear(#context.current_tick())
@@ -324,6 +334,12 @@ pub(crate) fn make_joindata(
                 let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #join_type::default()
                 ));
+            },
+            quote_spanned! {op_span=>
+                let mut #borrow_ident = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    #context.state_ref_unchecked(#joindata_ident)
+                }.borrow_mut();
             },
             quote_spanned! {op_span=>
                 #borrow_ident
@@ -337,7 +353,7 @@ pub(crate) fn make_joindata(
             ));
         }
     };
-    Ok((joindata_ident, borrow_ident, prologue, borrow))
+    Ok((prologue, pre_write_iter, borrow))
 }
 
 pub(crate) fn parse_persistences(persistences: &[Persistence]) -> [Persistence; 2] {

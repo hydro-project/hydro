@@ -119,10 +119,46 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let aggfn = &arguments[0];
 
+        let hashtable_ident = wc.make_ident("hashtable");
         let (write_prologue, write_iterator, write_iterator_after) = match persistence {
+            Persistence::None => {
+                (
+                    Default::default(),
+                    // TODO(mingwei): deduplicate with other persistence cases below.
+                    quote_spanned! {op_span=>
+                        let mut #hashtable_ident = #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
+
+                        #work_fn(|| {
+                            #[inline(always)]
+                            fn check_input<Iter: ::std::iter::Iterator<Item = (A, B)>, A: ::std::clone::Clone, B: ::std::clone::Clone>(iter: Iter)
+                                -> impl ::std::iter::Iterator<Item = (A, B)> { iter }
+
+                            #[inline(always)]
+                            /// A: accumulator type
+                            /// O: output type
+                            fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
+                                f(acc, item)
+                            }
+
+                            for kv in check_input(#input) {
+                                match #hashtable_ident.entry(kv.0) {
+                                    ::std::collections::hash_map::Entry::Vacant(vacant) => {
+                                        vacant.insert(kv.1);
+                                    }
+                                    ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
+                                        #[allow(clippy::redundant_closure_call)] call_comb_type(occupied.get_mut(), kv.1, #aggfn);
+                                    }
+                                }
+                            }
+                        });
+
+                        let #ident = #hashtable_ident.drain();
+                    },
+                    Default::default(),
+                )
+            }
             Persistence::Tick => {
                 let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
 
                 (
                     quote_spanned! {op_span=>
@@ -165,7 +201,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             }
             Persistence::Static => {
                 let groupbydata_ident = wc.make_ident("groupbydata");
-                let hashtable_ident = wc.make_ident("hashtable");
 
                 (
                     quote_spanned! {op_span=>

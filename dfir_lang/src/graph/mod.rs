@@ -207,8 +207,9 @@ pub fn get_operator_generics(
     let persistence_args = generic_args.iter().flatten().map_while(|generic_arg| match generic_arg {
             GenericArgument::Lifetime(lifetime) => {
                 match &*lifetime.ident.to_string() {
-                    "static" => Some(Persistence::Static),
+                    "none" => Some(Persistence::None),
                     "tick" => Some(Persistence::Tick),
+                    "static" => Some(Persistence::Static),
                     "mutable" => Some(Persistence::Mutable),
                     _ => {
                         diagnostics.push(Diagnostic::spanned(

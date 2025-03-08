@@ -339,3 +339,39 @@ pub fn test_flo_repeat_kmeans() {
     last.sort_unstable();
     assert_eq!(&[[-231, -118], [-103, 97], [168, -6]], last);
 }
+
+#[test]
+fn test_state_codegen() {
+    let mut df = dfir_syntax! {
+        a = source_iter((0..10).chain(5..15)) -> tee();
+        pairs = a -> map(|n| (n / 3, n)) -> tee();
+        loop {
+            a -> batch() -> fold(|| 0, |old: &mut _, val| {
+                *old += val;
+            }) -> for_each(|v| println!("fold1 {:?}", v));
+
+            a -> batch() -> fold::<'none>(|| 0, |old: &mut _, val| {
+                *old += val;
+            }) -> for_each(|v| println!("fold2 {:?}", v));
+
+            a -> batch() -> reduce::<'none>(|old: &mut _, val| {
+                *old += val;
+            }) -> for_each(|v| println!("reduce {:?}", v));
+
+            pairs -> batch() -> fold_keyed(|| 0, |old: &mut _, val| {
+                *old += val;
+            }) -> for_each(|v| println!("fold_keyed {:?}", v));
+
+            a -> batch() -> unique() -> for_each(|v| println!("unique {:?}", v));
+
+            j = join() -> for_each(|v| println!("join {:?}", v));
+            pairs -> batch() -> [0]j;
+            pairs -> batch() -> [1]j;
+
+            aj = difference() -> for_each(|v| println!("difference {:?}", v));
+            a -> batch() -> filter(|n| 0 == n % 2) -> [neg]aj;
+            a -> batch() -> [pos]aj;
+        };
+    };
+    df.run_available();
+}
