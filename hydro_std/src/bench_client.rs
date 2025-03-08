@@ -1,23 +1,32 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+use hdrhistogram::Histogram;
 use hydro_lang::*;
+use stats_ci::mean::Arithmetic;
 use stats_ci::{Confidence, StatisticsOps};
-use tokio::time::Instant;
 
-pub struct Client {}
+pub struct BenchResult<'a, Client> {
+    pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
+    pub throughput: Singleton<Arithmetic<f64>, Cluster<'a, Client>, Unbounded>,
+}
 
-pub fn bench_client<'a>(
+/// Benchmarks transactional workloads by concurrently submitting workloads
+/// (up to `num_clients_per_node` per machine), measuring the latency
+/// of each transaction and throughput over the entire workload.
+///
+/// # Safety
+/// This function uses non-deterministic time-based samples, and also updates results
+/// at non-deterministic points in time.
+pub unsafe fn bench_client<'a, Client>(
     clients: &Cluster<'a, Client>,
     transaction_cycle: impl FnOnce(
         Stream<(u32, u32), Cluster<'a, Client>, Unbounded>,
     ) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
-    median_latency_window_size: usize,
-) {
+) -> BenchResult<'a, Client> {
     let client_tick = clients.tick();
-    // r_to_clients_payload_applied.clone().inspect(q!(|payload: &(u32, ReplicaPayload)| println!("Client received payload: {:?}", payload)));
 
     // Set up an initial set of payloads on the first tick
     let start_this_tick = client_tick.optional_first_tick(q!(()));
@@ -84,37 +93,21 @@ pub fn bench_client<'a>(
     }
     .first();
 
-    let c_latency_reset = c_stats_output_timer.clone().map(q!(|_| None)).defer_tick();
-
     let c_latencies = c_timers
         .join(c_updated_timers)
-        .map(q!(|(_virtual_id, (prev_time, curr_time))| Some(
-            curr_time.duration_since(prev_time)
-        )))
-        .chain(c_latency_reset.into_stream())
+        .map(q!(
+            |(_virtual_id, (prev_time, curr_time))| curr_time.duration_since(prev_time)
+        ))
         .all_ticks()
-        .flatten_ordered()
         .fold_commutative(
-            // Create window with ring buffer using vec + wraparound index
-            // TODO: Would be nice if I could use vec![] instead, but that doesn't work in Hydro with RuntimeData *median_latency_window_size
-            q!(move || (
-                Rc::new(RefCell::new(Vec::<Duration>::with_capacity(
-                    median_latency_window_size
-                ))),
-                0usize,
-            )),
-            q!(move |(latencies, write_index), latency| {
-                let mut latencies_mut = latencies.borrow_mut();
-                if *write_index < latencies_mut.len() {
-                    latencies_mut[*write_index] = latency;
-                } else {
-                    latencies_mut.push(latency);
-                }
-                // Increment write index and wrap around
-                *write_index = (*write_index + 1) % median_latency_window_size;
+            q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
+            q!(move |latencies, latency| {
+                latencies
+                    .borrow_mut()
+                    .record(latency.as_nanos() as u64)
+                    .unwrap();
             }),
-        )
-        .map(q!(|(latencies, _)| latencies));
+        );
 
     let c_throughput_new_batch = c_received_quorum_payloads
         .clone()
@@ -146,41 +139,48 @@ pub fn bench_client<'a>(
         )
         .map(q!(|(_, stats)| { stats }));
 
-    unsafe {
-        // SAFETY: intentionally sampling statistics
-        c_latencies
-            .latest_tick(&client_tick)
-            .zip(c_throughput.latest_tick(&client_tick))
+    BenchResult {
+        latency_histogram: c_latencies,
+        throughput: c_throughput,
     }
-    .continue_if(c_stats_output_timer)
-    .all_ticks()
-    .for_each(q!(move |(latencies, throughput)| {
-        let mut latencies_mut = latencies.borrow_mut();
+}
 
-        let confidence = Confidence::new(0.95);
+/// Prints transaction latency and throughput results to stdout,
+/// with percentiles for latency and a confidence interval for throughput.
+pub fn print_bench_results<Client>(results: BenchResult<Client>) {
+    unsafe {
+        // SAFETY: intentional non-determinism
+        results
+            .latency_histogram
+            .sample_every(q!(Duration::from_millis(1000)))
+    }
+    .for_each(q!(move |latencies| {
+        let latencies = latencies.borrow();
+        println!(
+            "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
+            Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
+            Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
+            Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64 / 1000.0,
+            latencies.len()
+        );
+    }));
 
-        latencies_mut.sort_unstable();
-        if let Ok(interval) =
-            stats_ci::quantile::ci_sorted_unchecked(confidence, latencies_mut.as_slice(), 0.5)
-        {
-            if let Some(lower) = interval.left() {
-                if let Some(upper) = interval.right() {
-                    println!(
-                        "Latency Median 95% interval: {:.2} - {:.2} ms",
-                        lower.as_micros() as f64 / 1000.0,
-                        upper.as_micros() as f64 / 1000.0
-                    );
-                }
-            }
-        }
+    unsafe {
+        // SAFETY: intentional non-determinism
+        results
+            .throughput
+            .sample_every(q!(Duration::from_millis(1000)))
+    }
+    .for_each(q!(move |throughputs| {
+        let confidence = Confidence::new(0.99);
 
-        if throughput.sample_count() >= 2 {
+        if throughputs.sample_count() >= 2 {
             // ci_mean crashes if there are fewer than two samples
-            if let Ok(interval) = throughput.ci_mean(confidence) {
+            if let Ok(interval) = throughputs.ci_mean(confidence) {
                 if let Some(lower) = interval.left() {
                     if let Some(upper) = interval.right() {
                         println!(
-                            "Throughput 95% interval: {:.2} - {:.2} requests/s",
+                            "Throughput 99% interval: {:.2} - {:.2} requests/s",
                             lower, upper
                         );
                     }
@@ -188,5 +188,4 @@ pub fn bench_client<'a>(
             }
         }
     }));
-    // End track statistics
 }
