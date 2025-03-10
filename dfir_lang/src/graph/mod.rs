@@ -291,16 +291,18 @@ impl PortIndexValue {
         !matches!(self, Self::Elided(_))
     }
 
-    /// Return `Err(self)` if there is a conflict.
+    /// Returns whichever of the two ports are specified.
+    /// If both are [`Self::Elided`], returns [`Self::Elided`].
+    /// If both are specified, returns `Err(self)`.
+    #[expect(
+        clippy::result_large_err,
+        reason = "variants are same size, error isn't to be propagated."
+    )]
     pub fn combine(self, other: Self) -> Result<Self, Self> {
-        if self.is_specified() {
-            if other.is_specified() {
-                Err(self)
-            } else {
-                Ok(self)
-            }
-        } else {
-            Ok(other)
+        match (self.is_specified(), other.is_specified()) {
+            (false, _other) => Ok(other),
+            (true, false) => Ok(self),
+            (true, true) => Err(self),
         }
     }
 

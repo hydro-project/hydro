@@ -20,7 +20,7 @@ error[E0223]: ambiguous associated type
 help: if there were a trait named `Example` with associated type `Circle` implemented for `Shape`, you could use the fully-qualified path
    |
 14 |         my_demux[<Shape as Example>::Circle] -> for_each(std::mem::drop);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
   --> tests/compile-fail/surface_demuxenum_notenum.rs:16:18
@@ -31,7 +31,7 @@ error[E0223]: ambiguous associated type
 help: if there were a trait named `Example` with associated type `Ellipse` implemented for `Shape`, you could use the fully-qualified path
    |
 16 |         my_demux[<Shape as Example>::Ellipse] -> for_each(std::mem::drop);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
   --> tests/compile-fail/surface_demuxenum_notenum.rs:13:18
@@ -42,7 +42,7 @@ error[E0223]: ambiguous associated type
 help: if there were a trait named `Example` with associated type `Rectangle` implemented for `Shape`, you could use the fully-qualified path
    |
 13 |         my_demux[<Shape as Example>::Rectangle] -> for_each(std::mem::drop);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
   --> tests/compile-fail/surface_demuxenum_notenum.rs:15:18
@@ -53,7 +53,7 @@ error[E0223]: ambiguous associated type
 help: if there were a trait named `Example` with associated type `Square` implemented for `Shape`, you could use the fully-qualified path
    |
 15 |         my_demux[<Shape as Example>::Square] -> for_each(std::mem::drop);
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                  ++++++++++++++++++++
 
 error[E0277]: the trait bound `Shape: DemuxEnum<_>` is not satisfied
   --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15

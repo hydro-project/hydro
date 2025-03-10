@@ -1818,7 +1818,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: None,
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: other.new_node_metadata::<CoreType>(),
@@ -1855,7 +1855,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: Some(external_key),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: metadata.clone(),
@@ -1886,7 +1886,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: None,
                 serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: if let Some(c_type) = L::Root::tagged_type() {
                     let expr: syn::Expr = parse_quote!(|(id, b)| (#root::ClusterId<#c_type>::from_raw(id), b.unwrap().freeze()));
                     Some(expr.into())
@@ -1921,7 +1921,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: Some(external_key),
                 serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: metadata.clone(),

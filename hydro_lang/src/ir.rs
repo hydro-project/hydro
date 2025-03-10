@@ -81,8 +81,13 @@ impl Debug for DebugType {
     }
 }
 
+#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "`Building` is just equivalent to `None`."
+)]
 pub enum DebugInstantiate {
-    Building(),
+    Building,
     Finalized(syn::Expr, syn::Expr, Option<Box<dyn FnOnce()>>),
 }
 
@@ -101,7 +106,7 @@ impl Hash for DebugInstantiate {
 impl Clone for DebugInstantiate {
     fn clone(&self) -> Self {
         match self {
-            DebugInstantiate::Building() => DebugInstantiate::Building(),
+            DebugInstantiate::Building => DebugInstantiate::Building,
             DebugInstantiate::Finalized(_, _, _) => {
                 panic!("DebugInstantiate::Finalized should not be cloned")
             }
@@ -512,6 +517,8 @@ impl Eq for HydroIrMetadata {}
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
+#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
+#[allow(clippy::large_enum_variant, reason = "TODO(mingwei):")]
 #[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
@@ -699,7 +706,7 @@ impl<'a> HydroNode {
                 } = n
                 {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                        DebugInstantiate::Building() => instantiate_network::<D>(
+                        DebugInstantiate::Building => instantiate_network::<D>(
                             curr_location.as_ref().unwrap(),
                             *from_key,
                             to_location,
@@ -753,10 +760,10 @@ impl<'a> HydroNode {
             &mut |n| {
                 if let HydroNode::Network { instantiate_fn, .. } = n {
                     match instantiate_fn {
-                        DebugInstantiate::Building() => panic!("network not built"),
+                        DebugInstantiate::Building => panic!("network not built"),
 
                         DebugInstantiate::Finalized(_, _, connect_fn) => {
-                            connect_fn.take().unwrap()();
+                            (connect_fn.take().unwrap())();
                         }
                     }
                 }
@@ -1852,7 +1859,7 @@ impl<'a> HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         let (sink_expr, source_expr) = match instantiate_fn {
-                            DebugInstantiate::Building() => (
+                            DebugInstantiate::Building => (
                                 syn::parse_quote!(DUMMY_SINK),
                                 syn::parse_quote!(DUMMY_SOURCE),
                             ),

@@ -54,7 +54,7 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
             to_key: None,
             serialize_fn: Some(serialize_bincode_with_type(true, output_type.clone()))
                 .map(|e| e.into()),
-            instantiate_fn: DebugInstantiate::Building(),
+            instantiate_fn: DebugInstantiate::Building,
             deserialize_fn: Some(deserialize_bincode_with_type(
                 Some(stageleft::quote_type::<()>()),
                 output_type.clone(),
