@@ -116,7 +116,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         to_location: to.id(),
                         to_key: None,
                         serialize_fn: None,
-                        instantiate_fn: crate::ir::DebugInstantiate::Building(),
+                        instantiate_fn: crate::ir::DebugInstantiate::Building,
                         deserialize_fn: Some(deser_expr.into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),
@@ -156,7 +156,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         to_location: to.id(),
                         to_key: None,
                         serialize_fn: None,
-                        instantiate_fn: crate::ir::DebugInstantiate::Building(),
+                        instantiate_fn: crate::ir::DebugInstantiate::Building,
                         deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),

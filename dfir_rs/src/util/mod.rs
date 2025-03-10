@@ -158,10 +158,7 @@ pub fn ipv4_resolve(addr: &str) -> Result<SocketAddr, std::io::Error> {
     let result = addrs.find(|addr| addr.is_ipv4());
     match result {
         Some(addr) => Ok(addr),
-        None => Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "Unable to resolve IPv4 address",
-        )),
+        None => Err(std::io::Error::other("Unable to resolve IPv4 address")),
     }
 }
 
