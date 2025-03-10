@@ -973,7 +973,6 @@ name = "dfir_macro"
 version = "0.12.0"
 dependencies = [
  "dfir_lang",
- "glob",
  "itertools",
  "proc-macro-crate",
  "proc-macro2",
@@ -999,6 +998,7 @@ dependencies = [
  "futures",
  "getrandom",
  "hydroflow_deploy_integration",
+ "include_mdtests",
  "insta",
  "itertools",
  "lattices",
@@ -1708,12 +1708,12 @@ version = "0.0.0"
 dependencies = [
  "async-ssh2-lite",
  "ctor",
- "dfir_macro",
  "dfir_rs",
  "futures",
  "hydro_deploy",
  "hydro_lang",
  "hydro_std",
+ "include_mdtests",
  "insta",
  "rand",
  "serde",
@@ -1948,6 +1948,16 @@ checksum = "daca1df1c957320b2cf139ac61e7bd64fed304c5040df000a745aa1de3b4ef71"
 dependencies = [
  "icu_normalizer",
  "icu_properties",
+]
+
+[[package]]
+name = "include_mdtests"
+version = "0.0.0"
+dependencies = [
+ "glob",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.98",
 ]
 
 [[package]]

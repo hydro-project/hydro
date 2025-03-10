@@ -9,7 +9,7 @@ use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote};
 use syn::{
-    Attribute, Fields, GenericParam, ItemEnum, LitStr, Variant, WherePredicate, parse_macro_input,
+    Attribute, Fields, GenericParam, ItemEnum, Variant, WherePredicate, parse_macro_input,
     parse_quote,
 };
 
@@ -118,39 +118,6 @@ pub fn dfir_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .err()
         .unwrap_or_default()
         .into()
-}
-
-#[doc(hidden)]
-#[proc_macro]
-pub fn doctest_markdown_glob(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let current_dir = std::env::current_dir().unwrap();
-    let input_glob = parse_macro_input!(input as LitStr);
-    let globbed_files = glob::glob(input_glob.value().as_str())
-        .expect("Failed to read glob pattern")
-        .map(|entry| entry.expect("Failed to read glob entry"))
-        .map(|path| {
-            let path_abs = current_dir.join(path.clone());
-            let path_abs_str = path_abs.to_str().expect("Failed to convert path to string");
-            let file_name_without_extension = path.to_str().expect("Failed to get file stem");
-            let lit = LitStr::new(path_abs_str, Span::call_site());
-            let mut ident_string = file_name_without_extension
-                .chars()
-                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-                .collect::<String>();
-            if ident_string.chars().next().unwrap().is_ascii_digit() {
-                // Identifiers cannot start with a digit, prepend an underscore.
-                ident_string.insert(0, '_');
-            }
-            let file_name_ident = Ident::new(&ident_string, Span::call_site());
-            quote! {
-                #[doc = include_str!(#lit)]
-                mod #file_name_ident {}
-            }
-        });
-    let out = quote! {
-        #( #globbed_files )*
-    };
-    out.into()
 }
 
 fn wrap_localset(item: proc_macro::TokenStream, attribute: Attribute) -> proc_macro::TokenStream {

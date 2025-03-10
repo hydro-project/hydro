@@ -6,7 +6,7 @@ pub mod distributed;
 #[doc(hidden)]
 #[cfg(doctest)]
 mod docs {
-    dfir_macro::doctest_markdown_glob!("docs/docs/hydro/**/*.md*");
+    include_mdtests::include_mdtests!("docs/docs/hydro/**/*.md*");
 }
 
 #[cfg(test)]
