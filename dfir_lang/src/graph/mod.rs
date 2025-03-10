@@ -294,7 +294,8 @@ impl PortIndexValue {
     /// Returns whichever of the two ports are specified.
     /// If both are [`Self::Elided`], returns [`Self::Elided`].
     /// If both are specified, returns `Err(self)`.
-    #[expect(
+    #[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
+    #[allow(
         clippy::result_large_err,
         reason = "variants are same size, error isn't to be propagated."
     )]
