@@ -2358,6 +2358,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2503,6 +2509,16 @@ name = "nom"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf51a729ecf40266a2368ad335a5fdde43471f545a967109cd62146ecf8b66ff"
+
+[[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
 
 [[package]]
 name = "nonzero_ext"
@@ -2982,7 +2998,7 @@ checksum = "6ab1427f3d2635891f842892dda177883dca0639e05fe66796a62c9d2f23b49c"
 dependencies = [
  "byteorder",
  "libc",
- "nom",
+ "nom 2.2.1",
  "rustc_version 0.2.3",
 ]
 
@@ -3754,6 +3770,8 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 [[package]]
 name = "stageleft"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f92094518e36c72859c2b53d21d8a728a25c41c1c2939bad7a4d0dbf740202be"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3765,9 +3783,9 @@ dependencies = [
 [[package]]
 name = "stageleft_macro"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e913222b29d81957f4508bc47d08f4a15ee7d8e73555ecd98c629aead9cd56d2"
 dependencies = [
- "insta",
- "prettyplease",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -3776,25 +3794,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "stageleft_test"
-version = "0.0.0"
-dependencies = [
- "stageleft",
- "stageleft_test_macro",
- "stageleft_tool",
-]
-
-[[package]]
-name = "stageleft_test_macro"
-version = "0.0.0"
-dependencies = [
- "stageleft",
- "stageleft_tool",
-]
-
-[[package]]
 name = "stageleft_tool"
 version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e790e1c2f77a30bca30dd1e86cd504a138acae3072af182c72b57af6d9f9a96f"
 dependencies = [
  "prettyplease",
  "proc-macro2",

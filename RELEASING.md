@@ -32,7 +32,6 @@ cargo smart-release --update-crates-index \
    dfir_datalog dfir_datalog_core \
    hydro_lang hydro_std \
    hydro_deploy hydro_cli hydroflow_deploy_integration \
-   stageleft stageleft_macro stageleft_tool \
    multiplatform_test
 ```
 

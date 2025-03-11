@@ -36,8 +36,8 @@ regex = "1.11.1"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = [ "derive" ] }
 sha2 = { version = "0.10.0", optional = true }
-stageleft = { path = "../stageleft", version = "^0.7.0" }
-stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0", optional = true }
+stageleft = "0.7.0"
+stageleft_tool = { version = "0.6.0", optional = true }
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits", "visit-mut" ] }
 tokio = { version = "1.29.0", features = [ "full" ] }
 toml = { version = "0.8.0", optional = true }
@@ -48,7 +48,7 @@ chrono = { version = "0.4.39", optional = true }
 procfs = { version = "0.17.0", optional = true }
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }
+stageleft_tool = "0.6.0"
 
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }

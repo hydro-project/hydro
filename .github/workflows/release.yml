@@ -78,7 +78,6 @@ jobs:
           dfir_datalog dfir_datalog_core
           hydro_lang hydro_std
           hydro_deploy hydro_cli hydroflow_deploy_integration
-          stageleft stageleft_macro stageleft_tool
           multiplatform_test
         env:
           # Make sure to set this so the `gh` CLI works using our token.
