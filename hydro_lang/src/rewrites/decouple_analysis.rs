@@ -50,6 +50,7 @@ fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Var>, model: &
     })
 }
 
+#[expect(unused_qualifications, reason = "grb_rs macro bug")]
 fn add_equality_constr(
     ops: &Vec<usize>,
     op_id_to_var: &mut HashMap<usize, Var>,
@@ -175,6 +176,7 @@ fn add_cpu_usage(
 // Return the variables:
 // orig_to_decoupled_var: 1 if (op1 = 0, op2 = 1), 0 otherwise
 // decoupled_to_orig_var: 1 if (op1 = 1, op2 = 0), 0 otherwise
+#[expect(unused_qualifications, reason = "grb_rs macro bug")]
 fn add_decouple_vars(
     model: &mut Model,
     op1: usize,
@@ -252,6 +254,7 @@ fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>,
     }
 }
 
+#[expect(unused_qualifications, reason = "grb_rs macro bug")]
 fn add_tee_decoupling_overhead(
     inner_id: usize,
     metadata: &HydroIrMetadata,
@@ -373,6 +376,7 @@ fn decouple_analysis_node(
     add_tick_constraint(node.metadata(), model_metadata);
 }
 
+#[expect(unused_qualifications, reason = "grb_rs macro bug")]
 fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>) {
     let ModelMetadata {
         model,
@@ -450,9 +454,9 @@ pub fn decouple_analysis(
         op_id_to_inputs,
         ..
     } = &mut *model_metadata.borrow_mut();
-    model.write("decouple.lp").unwrap();
+    // model.write("decouple.lp").unwrap();
     model.optimize().unwrap();
-    model.write("decouple.sol").unwrap();
+    // model.write("decouple.sol").unwrap();
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
