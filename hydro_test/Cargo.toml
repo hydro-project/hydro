@@ -19,7 +19,10 @@ stageleft = { path = "../stageleft", version = "^0.7.0" }
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
+
+# TODO(shadaj): remove once we handle transitive dependencies in `quote_type`
 stats-ci = "0.1.1"
+hdrhistogram = "7.5.4"
 
 [build-dependencies]
 stageleft_tool = { path = "../stageleft_tool", version = "^0.6.0" }
