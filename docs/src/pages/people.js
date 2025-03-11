@@ -13,7 +13,7 @@ import natacha from "./people-img/natacha.jpeg";
 import shadaj from "./people-img/shadaj.png";
 import lucky from "./people-img/lucky.jpeg";
 import rohit from "./people-img/rohit.jpg";
-import hydroTurtle from "./people-img/hydro-turtle.png";
+import hydroTurtle from "../../static/img/hydro-turtle.png";
 
 import styles from "./people.module.css";
 
