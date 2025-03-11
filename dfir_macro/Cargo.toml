@@ -23,7 +23,6 @@ proc-macro2 = "1.0.74"
 proc-macro-crate = "1.0.0"
 quote = "1.0.35"
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits" ] }
-glob = "0.3.2"
 
 [build-dependencies]
 dfir_lang = { path = "../dfir_lang", version = "^0.12.0" }

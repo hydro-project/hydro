@@ -47,6 +47,6 @@ pub type Never = std::convert::Infallible;
 #[cfg(doctest)]
 mod booktest {
     mod surface_ops {
-        dfir_macro::doctest_markdown_glob!("docs/docgen/*.md");
+        include_mdtests::include_mdtests!("docs/docgen/*.md");
     }
 }
