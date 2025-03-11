@@ -39,7 +39,6 @@ async fn main() {
     let f = 1;
     let num_clients = 1;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
-    let median_latency_window_size = 1000;
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
@@ -54,11 +53,11 @@ async fn main() {
     let proposers = builder.cluster();
     let proxy_leaders = builder.cluster();
     let acceptors = builder.cluster();
+    let clients = builder.cluster();
+    let replicas = builder.cluster();
 
-    let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
-        &builder,
+    hydro_test::cluster::paxos_bench::paxos_bench(
         num_clients_per_node,
-        median_latency_window_size,
         checkpoint_frequency,
         f,
         num_replicas,
@@ -80,6 +79,8 @@ async fn main() {
                 acceptor_retry_timeout,
             },
         },
+        &clients,
+        &replicas,
     );
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
