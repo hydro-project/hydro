@@ -11,12 +11,10 @@ use dfir_rs::bytes::Bytes;
 use dfir_rs::futures::{Sink, SinkExt, Stream, StreamExt};
 use dfir_rs::util::deploy::{ConnectedSink, ConnectedSource};
 use hydro_deploy::custom_service::CustomClientPort;
-use hydro_deploy::hydroflow_crate::HydroflowCrateService;
-use hydro_deploy::hydroflow_crate::ports::{
-    DemuxSink, HydroflowSink, HydroflowSource, TaggedSource,
-};
-use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
-use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate, TracingResults};
+use hydro_deploy::rust_crate::RustCrateService;
+use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
+use hydro_deploy::rust_crate::tracing_options::TracingOptions;
+use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
 use nameof::name_of;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -144,7 +142,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                         (
                             id as u32,
                             Arc::new(n.get_port(c2_port.clone(), &c.underlying))
-                                as Arc<dyn HydroflowSink + 'static>,
+                                as Arc<dyn RustCrateSink + 'static>,
                         )
                     })
                     .collect(),
@@ -252,7 +250,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                             (
                                 id as u32,
                                 Arc::new(n.get_port(c2_port.clone(), &c.underlying).merge())
-                                    as Arc<dyn HydroflowSink + 'static>,
+                                    as Arc<dyn RustCrateSink + 'static>,
                             )
                         })
                         .collect(),
@@ -380,7 +378,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
 }
 
 pub trait DeployCrateWrapper {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>>;
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>>;
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     async fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
@@ -665,7 +663,7 @@ impl<H: Host + 'static> ExternalSpec<'_, HydroDeploy> for Arc<H> {
 }
 
 pub enum CrateOrTrybuild {
-    Crate(HydroflowCrate),
+    Crate(RustCrate),
     Trybuild(TrybuildHost),
 }
 
@@ -674,11 +672,11 @@ pub struct DeployNode {
     id: usize,
     next_port: Rc<RefCell<usize>>,
     service_spec: Rc<RefCell<Option<CrateOrTrybuild>>>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<HydroflowCrateService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<RwLock<RustCrateService>>>>>,
 }
 
 impl DeployCrateWrapper for DeployNode {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>> {
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
         self.underlying.borrow().as_ref().unwrap().clone()
     }
 }
@@ -731,11 +729,11 @@ impl Node for DeployNode {
 
 #[derive(Clone)]
 pub struct DeployClusterNode {
-    underlying: Arc<RwLock<HydroflowCrateService>>,
+    underlying: Arc<RwLock<RustCrateService>>,
 }
 
 impl DeployCrateWrapper for DeployClusterNode {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>> {
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
         self.underlying.clone()
     }
 }
@@ -850,10 +848,10 @@ impl Node for DeployCluster {
 }
 
 #[derive(Clone)]
-pub struct DeployProcessSpec(HydroflowCrate);
+pub struct DeployProcessSpec(RustCrate);
 
 impl DeployProcessSpec {
-    pub fn new(t: HydroflowCrate) -> Self {
+    pub fn new(t: RustCrate) -> Self {
         Self(t)
     }
 }
@@ -882,10 +880,10 @@ impl ProcessSpec<'_, HydroDeploy> for TrybuildHost {
 }
 
 #[derive(Clone)]
-pub struct DeployClusterSpec(Vec<HydroflowCrate>);
+pub struct DeployClusterSpec(Vec<RustCrate>);
 
 impl DeployClusterSpec {
-    pub fn new(crates: Vec<HydroflowCrate>) -> Self {
+    pub fn new(crates: Vec<RustCrate>) -> Self {
         Self(crates)
     }
 }
@@ -933,8 +931,8 @@ fn create_trybuild_service(
     target_dir: &std::path::PathBuf,
     features: &Option<Vec<String>>,
     bin_name: &str,
-) -> HydroflowCrate {
-    let mut ret = HydroflowCrate::new(dir, trybuild.host)
+) -> RustCrate {
+    let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
         .bin(bin_name)
         .no_default_features();

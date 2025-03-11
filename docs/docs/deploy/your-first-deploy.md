@@ -26,12 +26,12 @@ rustup update
 cargo test
 ```
 
-We'll need to add an additional dependency for `hydroflow_deploy_integration` to our `Cargo.toml`:
+We'll need to add an additional dependency for `hydro_deploy_integration` to our `Cargo.toml`:
 
 ```toml
 [dependencies]
 # ...
-hydroflow_deploy_integration = "0.1.1"
+hydro_deploy_integration = "..."
 ```
 
 Let's open up `src/main.rs` in the generated project and write a new `main` function that initializes Hydro Deploy:
@@ -77,7 +77,7 @@ Now, we need to wire up the ports. Hydro Deploy uses _named ports_, which can th
 Returning briefly to our DFIR code, we can then load these ports and use them to send and receive packets:
 
 ```rust
-use hydroflow_deploy_integration::ConnectedDirect;
+use hydro_deploy_integration::ConnectedDirect;
 use dfir_rs::dfir_syntax;
 
 #[dfir_rs::main]

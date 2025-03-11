@@ -6,12 +6,12 @@ use std::time::Duration;
 use anyhow::{Context, Result, bail};
 use async_trait::async_trait;
 use futures::Future;
-use hydroflow_deploy_integration::{InitConfig, ServerPort};
+use hydro_deploy_integration::{InitConfig, ServerPort};
 use serde::Serialize;
 use tokio::sync::{RwLock, mpsc};
 
 use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
-use super::ports::{self, HydroflowPortConfig, HydroflowSink, SourcePath};
+use super::ports::{self, RustCratePortConfig, RustCrateSink, SourcePath};
 use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
@@ -19,7 +19,7 @@ use crate::{
     TracingResults,
 };
 
-pub struct HydroflowCrateService {
+pub struct RustCrateService {
     id: usize,
     pub(super) on: Arc<dyn Host>,
     build_params: BuildParams,
@@ -47,7 +47,7 @@ pub struct HydroflowCrateService {
     started: bool,
 }
 
-impl HydroflowCrateService {
+impl RustCrateService {
     #[expect(clippy::too_many_arguments, reason = "internal code")]
     pub fn new(
         id: usize,
@@ -108,9 +108,9 @@ impl HydroflowCrateService {
     pub fn get_port(
         &self,
         name: String,
-        self_arc: &Arc<RwLock<HydroflowCrateService>>,
-    ) -> HydroflowPortConfig {
-        HydroflowPortConfig {
+        self_arc: &Arc<RwLock<RustCrateService>>,
+    ) -> RustCratePortConfig {
+        RustCratePortConfig {
             service: Arc::downgrade(self_arc),
             service_host: self.on.clone(),
             service_server_defns: self.server_defns.clone(),
@@ -121,9 +121,9 @@ impl HydroflowCrateService {
 
     pub fn add_connection(
         &mut self,
-        self_arc: &Arc<RwLock<HydroflowCrateService>>,
+        self_arc: &Arc<RwLock<RustCrateService>>,
         my_port: String,
-        sink: &dyn HydroflowSink,
+        sink: &dyn RustCrateSink,
     ) -> Result<()> {
         let forward_res = sink.instantiate(&SourcePath::Direct(self.on.clone()));
         if let Ok(instantiated) = forward_res {
@@ -135,7 +135,7 @@ impl HydroflowCrateService {
             drop(forward_res);
             let instantiated = sink.instantiate_reverse(
                 &self.on,
-                Arc::new(HydroflowPortConfig {
+                Arc::new(RustCratePortConfig {
                     service: Arc::downgrade(self_arc),
                     service_host: self.on.clone(),
                     service_server_defns: self.server_defns.clone(),
@@ -186,7 +186,7 @@ impl HydroflowCrateService {
 }
 
 #[async_trait]
-impl Service for HydroflowCrateService {
+impl Service for RustCrateService {
     fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {
         if self.launched_host.is_some() {
             return;

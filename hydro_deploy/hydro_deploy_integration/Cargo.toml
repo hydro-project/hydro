@@ -1,9 +1,9 @@
 [package]
-name = "hydroflow_deploy_integration"
+name = "hydro_deploy_integration"
 publish = true
-version = "0.12.0"
-documentation = "https://docs.rs/hydroflow_deploy_integration/"
-description = "`hydro_deploy` integration for Hydroflow"
+version = "0.13.0"
+documentation = "https://docs.rs/hydro_deploy_integration/"
+description = "`hydro_deploy` integration for deploying Rust crates."
 edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }

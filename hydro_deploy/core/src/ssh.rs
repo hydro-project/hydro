@@ -11,7 +11,7 @@ use async_ssh2_lite::{AsyncChannel, AsyncSession, SessionConfiguration};
 use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
 use futures::{AsyncBufReadExt, AsyncWriteExt};
-use hydroflow_deploy_integration::ServerBindConfig;
+use hydro_deploy_integration::ServerBindConfig;
 use inferno::collapse::Collapse;
 use inferno::collapse::perf::Folder;
 use nanoid::nanoid;
@@ -22,10 +22,10 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
 use tokio_util::io::SyncIoBridge;
 
-use crate::hydroflow_crate::build::BuildOutput;
-use crate::hydroflow_crate::flamegraph::handle_fold_data;
-use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
+use crate::rust_crate::build::BuildOutput;
+use crate::rust_crate::flamegraph::handle_fold_data;
+use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{async_retry, prioritized_broadcast};
 use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 

@@ -23,10 +23,10 @@ pub enum CrateTarget {
     Example(String),
 }
 
-/// Specifies a crate that uses `hydroflow_deploy_integration` to be
+/// Specifies a crate that uses `hydro_deploy_integration` to be
 /// deployed as a service.
 #[derive(Clone)]
-pub struct HydroflowCrate {
+pub struct RustCrate {
     src: PathBuf,
     target: CrateTarget,
     on: Arc<dyn Host>,
@@ -40,8 +40,8 @@ pub struct HydroflowCrate {
     display_name: Option<String>,
 }
 
-impl HydroflowCrate {
-    /// Creates a new `HydroflowCrate` that will be deployed on the given host.
+impl RustCrate {
+    /// Creates a new `RustCrate` that will be deployed on the given host.
     /// The `src` argument is the path to the crate's directory, and the `on`
     /// argument is the host that the crate will be deployed on.
     pub fn new(src: impl Into<PathBuf>, on: Arc<dyn Host>) -> Self {
@@ -151,8 +151,8 @@ impl HydroflowCrate {
     }
 }
 
-impl ServiceBuilder for HydroflowCrate {
-    type Service = HydroflowCrateService;
+impl ServiceBuilder for RustCrate {
+    type Service = RustCrateService;
     fn build(self, id: usize) -> Self::Service {
         let (bin, example) = match self.target {
             CrateTarget::Default => (None, None),
@@ -160,7 +160,7 @@ impl ServiceBuilder for HydroflowCrate {
             CrateTarget::Example(example) => (None, Some(example)),
         };
 
-        HydroflowCrateService::new(
+        RustCrateService::new(
             id,
             self.src,
             self.on,
@@ -189,7 +189,7 @@ mod tests {
         let mut deployment = deployment::Deployment::new();
 
         let service = deployment.add_service(
-            HydroflowCrate::new("../hydro_cli_examples", deployment.Localhost())
+            RustCrate::new("../hydro_cli_examples", deployment.Localhost())
                 .example("panic_program")
                 .profile("dev"),
         );

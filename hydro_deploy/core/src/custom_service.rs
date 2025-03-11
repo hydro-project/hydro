@@ -4,11 +4,11 @@ use std::sync::{Arc, OnceLock, Weak};
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
-use hydroflow_deploy_integration::{ConnectedDirect, ServerPort};
+use hydro_deploy_integration::{ConnectedDirect, ServerPort};
 use tokio::sync::RwLock;
 
-use crate::hydroflow_crate::ports::{
-    HydroflowServer, HydroflowSink, HydroflowSource, ReverseSinkInstantiator, ServerConfig,
+use crate::rust_crate::ports::{
+    ReverseSinkInstantiator, RustCrateServer, RustCrateSink, RustCrateSource, ServerConfig,
     SourcePath,
 };
 use crate::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
@@ -110,7 +110,7 @@ impl CustomClientPort {
     }
 }
 
-impl HydroflowSource for CustomClientPort {
+impl RustCrateSource for CustomClientPort {
     fn source_path(&self) -> SourcePath {
         SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
     }
@@ -119,7 +119,7 @@ impl HydroflowSource for CustomClientPort {
         panic!("Custom services cannot be used as the server")
     }
 
-    fn server(&self) -> Arc<dyn HydroflowServer> {
+    fn server(&self) -> Arc<dyn RustCrateServer> {
         panic!("Custom services cannot be used as the server")
     }
 
@@ -135,7 +135,7 @@ impl HydroflowSource for CustomClientPort {
     }
 }
 
-impl HydroflowSink for CustomClientPort {
+impl RustCrateSink for CustomClientPort {
     fn as_any(&self) -> &dyn Any {
         self
     }
@@ -147,7 +147,7 @@ impl HydroflowSink for CustomClientPort {
     fn instantiate_reverse(
         &self,
         server_host: &Arc<dyn Host>,
-        server_sink: Arc<dyn HydroflowServer>,
+        server_sink: Arc<dyn RustCrateServer>,
         wrap_client_port: &dyn Fn(ServerConfig) -> ServerConfig,
     ) -> Result<ReverseSinkInstantiator> {
         let client = self.on.upgrade().unwrap();

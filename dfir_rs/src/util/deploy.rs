@@ -3,7 +3,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-pub use hydroflow_deploy_integration::*;
+pub use hydro_deploy_integration::*;
 use serde::de::DeserializeOwned;
 
 use crate::scheduled::graph::Dfir;

@@ -7,11 +7,11 @@ use std::sync::Arc;
 use anyhow::{Context, Result, bail};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
-use hydroflow_deploy_integration::ServerBindConfig;
+use hydro_deploy_integration::ServerBindConfig;
 
-use crate::hydroflow_crate::build::BuildOutput;
-use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
+use crate::rust_crate::build::BuildOutput;
+use crate::rust_crate::tracing_options::TracingOptions;
 use crate::{
     ClientStrategy, Host, HostStrategyGetter, HostTargetType, LaunchedBinary, LaunchedHost,
     ResourceBatch, ResourceResult, ServerStrategy,
