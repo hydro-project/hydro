@@ -362,7 +362,10 @@ jobs:
 
       - name: Write benchmark HTML
         shell: bash
-        run: node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
+        run: |
+          node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
+          sed -i '/          const data = window.BENCHMARK_DATA;/a\
+                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.
