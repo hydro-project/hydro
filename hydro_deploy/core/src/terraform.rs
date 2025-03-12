@@ -222,7 +222,7 @@ fn filter_terraform_logs(child: &mut Child) {
                     && split.next().is_some()
                     && split.next().is_none()
                 {
-                    println!("[terraform] {}", line);
+                    eprintln!("[terraform] {}", line);
                 }
             }
         } else {
