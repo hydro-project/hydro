@@ -18,23 +18,22 @@ type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 fn cluster_specs(
     host_arg: &str,
+    project: Option<String>,
+    network: Option<Arc<RwLock<GcpNetwork>>>,
     deployment: &mut Deployment,
     cluster_name: &str,
     num_nodes: usize,
 ) -> Vec<TrybuildHost> {
     let create_host: HostCreator = if host_arg == "gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
-
         Box::new(move |deployment| -> Arc<dyn Host> {
             let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
-                .project(&project)
+                .project(project.as_ref().unwrap())
                 .machine_type("n2-highcpu-2")
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
-                .network(network.clone())
+                .network(network.as_ref().unwrap().clone())
                 .startup_script(startup_script)
                 .add()
         })
@@ -43,7 +42,11 @@ fn cluster_specs(
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = if host_arg == "gcp" {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     (0..num_nodes)
         .map(|idx| {
@@ -107,22 +110,61 @@ async fn main() {
             insert_counter::insert_counter(leaf, counter_output_duration);
         });
     let mut ir = deep_clone(optimized.ir());
+
+    let project = if host_arg == "gcp" {
+        std::env::args().nth(2)
+    } else {
+        None
+    };
+
+    let network = project
+        .as_ref()
+        .map(|project| Arc::new(RwLock::new(GcpNetwork::new(project, None))));
+
     let nodes = optimized
         .with_cluster(
             &proposers,
-            cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
+            cluster_specs(
+                &host_arg,
+                project.clone(),
+                network.clone(),
+                &mut deployment,
+                "proposer",
+                f + 1,
+            ),
         )
         .with_cluster(
             &acceptors,
-            cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
+            cluster_specs(
+                &host_arg,
+                project.clone(),
+                network.clone(),
+                &mut deployment,
+                "acceptor",
+                2 * f + 1,
+            ),
         )
         .with_cluster(
             &clients,
-            cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+            cluster_specs(
+                &host_arg,
+                project.clone(),
+                network.clone(),
+                &mut deployment,
+                "client",
+                num_clients,
+            ),
         )
         .with_cluster(
             &replicas,
-            cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+            cluster_specs(
+                &host_arg,
+                project.clone(),
+                network.clone(),
+                &mut deployment,
+                "replica",
+                f + 1,
+            ),
         )
         .deploy(&mut deployment);
 
