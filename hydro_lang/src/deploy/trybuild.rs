@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use dfir_lang::graph::DfirGraph;
@@ -92,12 +93,22 @@ pub fn create_graph_trybuild(
     fs::create_dir_all(path!(project_dir / "src" / "bin")).unwrap();
 
     let out_path = path!(project_dir / "src" / "bin" / format!("{bin_name}.rs"));
-    if !out_path.exists() || fs::read_to_string(&out_path).unwrap() != source {
-        fs::write(
-            path!(project_dir / "src" / "bin" / format!("{bin_name}.rs")),
-            source,
-        )
-        .unwrap();
+    {
+        let mut out_file = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&out_path)
+            .unwrap();
+        #[cfg(nightly)]
+        out_file.lock().unwrap();
+
+        let mut existing_contents = String::new();
+        out_file.read_to_string(&mut existing_contents).unwrap();
+        if existing_contents != source {
+            out_file.write_all(source.as_ref()).unwrap()
+        }
     }
 
     if is_test {
@@ -254,25 +265,31 @@ pub fn create_trybuild()
         keep_going: false,
     };
 
-    let manifest_toml = toml::to_string(&project.manifest)?;
-    fs::write(path!(project.dir / "Cargo.toml"), manifest_toml)?;
+    {
+        let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
+        #[cfg(nightly)]
+        project_lock.lock()?;
 
-    let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
-    if workspace_cargo_lock.exists() {
-        let _ = fs::copy(workspace_cargo_lock, path!(project.dir / "Cargo.lock"));
-    } else {
-        let _ = cargo::cargo(&project).arg("generate-lockfile").status();
-    }
+        let manifest_toml = toml::to_string(&project.manifest)?;
+        fs::write(path!(project.dir / "Cargo.toml"), manifest_toml)?;
 
-    let workspace_dot_cargo_config_toml = path!(project.workspace / ".cargo" / "config.toml");
-    if workspace_dot_cargo_config_toml.exists() {
-        let dot_cargo_folder = path!(project.dir / ".cargo");
-        fs::create_dir_all(&dot_cargo_folder)?;
+        let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
+        if workspace_cargo_lock.exists() {
+            let _ = fs::copy(workspace_cargo_lock, path!(project.dir / "Cargo.lock"));
+        } else {
+            let _ = cargo::cargo(&project).arg("generate-lockfile").status();
+        }
 
-        let _ = fs::copy(
-            workspace_dot_cargo_config_toml,
-            path!(dot_cargo_folder / "config.toml"),
-        );
+        let workspace_dot_cargo_config_toml = path!(project.workspace / ".cargo" / "config.toml");
+        if workspace_dot_cargo_config_toml.exists() {
+            let dot_cargo_folder = path!(project.dir / ".cargo");
+            fs::create_dir_all(&dot_cargo_folder)?;
+
+            let _ = fs::copy(
+                workspace_dot_cargo_config_toml,
+                path!(dot_cargo_folder / "config.toml"),
+            );
+        }
     }
 
     Ok((
