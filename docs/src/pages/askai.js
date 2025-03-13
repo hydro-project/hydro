@@ -21,7 +21,7 @@ export default function AskAI() {
       script.setAttribute("runllm-keyboard-shortcut", "Mod+j");
       script.setAttribute("runllm-name", "Hydro");
       script.setAttribute("runllm-position", "TOP_RIGHT");
-      script.setAttribute("runllm-assistant-id", "136");
+      script.setAttribute("runllm-assistant-id", "600");
       script.setAttribute("runllm-preset", "docusaurus");
       script.setAttribute("runllm-brand-logo", "img/hydro-turtle.png");
 
