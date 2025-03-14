@@ -23,7 +23,7 @@ export default function AskAI() {
       script.setAttribute("runllm-position", "TOP_RIGHT");
       script.setAttribute("runllm-assistant-id", "600");
       script.setAttribute("runllm-preset", "docusaurus");
-      script.setAttribute("runllm-brand-logo", "../img/hydro-turtle.png");
+      script.setAttribute("runllm-brand-logo", "img/hydro-turtle.png");
 
       script.async = true;
       document.body.appendChild(script);
