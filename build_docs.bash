@@ -15,7 +15,7 @@ DFIR_GENERATE_DOCS="1" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_uns
 
 cd ..
 
-RUSTDOCFLAGS="--cfg docsrs --cfg stageleft_runtime" RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --all-features
+RUSTDOCFLAGS="--cfg docsrs" RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps --all-features
 
 cp -r target/doc docs/static/rustdoc
 
