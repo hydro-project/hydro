@@ -224,11 +224,6 @@ impl Deployment {
 /// Buildstructor methods.
 #[buildstructor::buildstructor]
 impl Deployment {
-    #[allow(
-        clippy::allow_attributes,
-        clippy::too_many_arguments,
-        reason = "buildstructor"
-    )]
     #[builder(entry = "GcpComputeEngineHost", exit = "add")]
     pub fn add_gcp_compute_engine_host(
         &mut self,

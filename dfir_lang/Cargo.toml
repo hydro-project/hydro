@@ -20,7 +20,8 @@ clap-derive = [ "dep:clap" ]
 auto_impl = "1.0.0"
 clap = { version = "4.5.4", features = [ "derive" ], optional = true }
 data-encoding = { version = "2.0.0", optional = true }
-itertools = "0.10.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
+documented = "0.9.1"
+itertools = "0.13.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
 proc-macro2 = { version = "1.0.74", features = [ "span-locations" ] }
 quote = "1.0.35"
