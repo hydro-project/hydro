@@ -72,8 +72,8 @@ as a quick way to validate the output. In a fully functional program you should 
 One of the mechanical annoyances of networked systems is the need to convert data to wire format ("serialization") and convert it back from wire format to data ("deserialization"),
 also known as "Serde".
 This can be done with `map` functions, but we provide a convenience source/sink pair that does serde and networking for you. 
-The source side, [`source_serde()`](./surface_ops_gen.md#source_serde) generates tuples of the type `(T, SocketAddr)`, 
+The source side, [`source_stream_serde()`](./surface_ops_gen.md#source_stream_serde) generates tuples of the type `(T, SocketAddr)`, 
 where the first field is a deserialized item of type `T`, and the second field is the address of the sender of the item.
-The dest side, [`source_serde()`](./surface_ops_gen.md#source_serde), takes in tuples of type `(T, SocketAddr)`,
+The dest side, [`dest_sink_serde()`](./surface_ops_gen.md#dest_sink_serde), takes in tuples of type `(T, SocketAddr)`,
 where the first field is an item of type `T` to be serialized, and the second field is a destination address.
 
