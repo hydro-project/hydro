@@ -109,7 +109,7 @@ hydro_deploy_integration = "..."
 
 Let's open up `src/main.rs` in the generated project and write a new `main` function that initializes Hydro Deploy:
 
-```rust
+```rust,ignore
 #[dfir_rs::main]
 async fn main() {
     let ports = dfir_rs::util::deploy::init().await;
@@ -149,7 +149,7 @@ Now, we need to wire up the ports. Hydro Deploy uses _named ports_, which can th
 
 Returning briefly to our DFIR code, we can then load these ports and use them to send and receive packets:
 
-```rust
+```rust,ignore
 use hydro_deploy_integration::ConnectedDirect;
 use dfir_rs::dfir_syntax;
 
