@@ -15,7 +15,15 @@ use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+/// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+///
+/// ```bash
+/// cargo run -p hydro_test --example perf_compute_pi -- gcp hydroflow-work
+/// ```
+///
+/// Once the program is running, you can **press enter** to stop the program and see the results.
+/// (Pressing Ctrl+C will stop the program **without cleaning up cloud resources** nor generating the
+/// flamegraphs).
 #[tokio::main]
 async fn main() {
     let mut deployment = Deployment::new();
