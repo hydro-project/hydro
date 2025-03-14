@@ -46,13 +46,13 @@ To run a Hydro program, we need to write some deployment configuration in `examp
 
 :::tip
 
-When using Hydro, we will *always* place our deployment scripts in the `examples` directory. This is required because deployment is done via [Hydro Deploy](../deploy/index.) which is a _dev dependency_---i.e. not part of the dependencies used for generating binaries, but available to programs in the `examples` directory.
+When using Hydro, we will *always* place our deployment scripts in the `examples` directory. This is required because deployment is done via [Hydro Deploy](../deploy/index.mdx) which is a _dev dependency_---i.e. not part of the dependencies used for generating binaries, but available to programs in the `examples` directory.
 
 :::
 
 <CodeBlock language="rust" title="examples/first_ten.rs">{firstTenExampleSrc}</CodeBlock>
 
-First, we initialize a new [Hydro Deploy](../deploy/index) deployment with `Deployment::new()`. Then, we create a `FlowBuilder` that will store the entire dataflow program and manage its compilation.
+First, we initialize a new [Hydro Deploy](../deploy/index.mdx) deployment with `Deployment::new()`. Then, we create a `FlowBuilder` that will store the entire dataflow program and manage its compilation.
 
 To create a `Process`, we call `flow.process()`. After the dataflow has been created (by invoking the `hydro_template::first_ten::first_ten` function we created earlier), we must map each instantiated `Process` to a deployment target using `flow.with_process` (in this case we deploy to localhost).
 
