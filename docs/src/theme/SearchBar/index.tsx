@@ -2,6 +2,8 @@ import React from 'react';
 import SearchBar from '@theme-original/SearchBar';
 import type SearchBarType from '@theme/SearchBar';
 import type {WrapperProps} from '@docusaurus/types';
+import styles from './styles.module.css'; // ensure you have a styles.module.css file in the same directory
+
 
 declare global {
   interface Window {
@@ -16,7 +18,7 @@ declare global {
 type Props = WrapperProps<typeof SearchBarType>;
 
 export default function SearchBarWrapper(props: Props): JSX.Element {
-  console.log('props', props); // Figure out what other props to use
+  // console.log('props', props); // Figure out what other props to use
   return (
     <>
       <button onClick={() => {
