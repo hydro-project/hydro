@@ -12,26 +12,26 @@ use stageleft::QuotedWithContext;
 pub mod macro_runtime;
 pub use macro_runtime::*;
 
-#[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 pub(crate) mod trybuild;
 
-#[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 mod trybuild_rewriters;
 
-#[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use trybuild::init_test;
 
-#[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy_graph;
 
-#[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
+#[cfg(stageleft_runtime)]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use deploy_graph::*;
 
