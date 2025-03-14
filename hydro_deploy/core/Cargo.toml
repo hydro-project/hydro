@@ -26,7 +26,7 @@ futures = "0.3.0"
 hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.13.0" }
 indicatif = "0.17.0"
 inferno = "0.11.0"
-itertools = "0.10.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
+itertools = "0.13.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
 memo-map = "0.3.0"
 nameof = "1.0.0"
 nanoid = "0.4.0"

@@ -38,7 +38,7 @@ dfir_lang = { path = "../dfir_lang", version = "^0.12.0", optional = true }
 dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.12.0" }
 futures = "0.3.0"
 hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_deploy_integration", version = "^0.13.0" }
-itertools = "0.10.0"
+itertools = "0.13.0"
 lattices = { path = "../lattices", version = "^0.6.0", features = [ "serde" ] }
 pusherator = { path = "../pusherator", version = "^0.0.11" }
 pyo3 = { optional = true, version = "0.20" }
