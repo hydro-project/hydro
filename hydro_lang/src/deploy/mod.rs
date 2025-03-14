@@ -12,27 +12,22 @@ use stageleft::QuotedWithContext;
 pub mod macro_runtime;
 pub use macro_runtime::*;
 
-#[cfg(feature = "deploy")]
-#[cfg(stageleft_runtime)]
+#[cfg(all(stageleft_runtime, feature = "deploy"))]
 pub(crate) mod trybuild;
 
-#[cfg(feature = "deploy")]
-#[cfg(stageleft_runtime)]
+#[cfg(all(stageleft_runtime, feature = "deploy"))]
 mod trybuild_rewriters;
 
-#[cfg(feature = "deploy")]
-#[cfg(stageleft_runtime)]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(all(stageleft_runtime, feature = "deploy"))]
+#[cfg_attr(docsrs, doc(cfg(all(stageleft_runtime, feature = "deploy"))))]
 pub use trybuild::init_test;
 
-#[cfg(feature = "deploy")]
-#[cfg(stageleft_runtime)]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(all(stageleft_runtime, feature = "deploy"))]
+#[cfg_attr(docsrs, doc(cfg(all(stageleft_runtime, feature = "deploy"))))]
 pub mod deploy_graph;
 
-#[cfg(feature = "deploy")]
-#[cfg(stageleft_runtime)]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[cfg(all(stageleft_runtime, feature = "deploy"))]
+#[cfg_attr(docsrs, doc(cfg(all(stageleft_runtime, feature = "deploy"))))]
 pub use deploy_graph::*;
 
 pub mod in_memory_graph;

@@ -1,17 +1,10 @@
 [build]
-
-[env]
-# Stack backtraces.
-RUST_BACKTRACE = "1"
-# Set output levels for `tracing` logging.
-# Certain wasm crates emit a lot of `debug` logs, set to `info`.
-RUST_LOG = "debug,dfir_rs=trace,walrus=info,wasm_bindgen_cli_support=info,wasm_bindgen_wasm_interpreter=info"
-# DFIR generate for `/docs/` website.
-DFIR_GENERATE_DOCS = "1"
-DFIR_BASE_DIR = { value = ".", relative = true }
-# https://github.com/PyO3/pyo3/pull/3821
-# https://github.com/PyO3/maturin/issues/1960#issuecomment-1969773463
-PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1"
+rustflags = [
+    # Flag to make build.rs scripts generate docs. Should only be used in this repository
+    # internally, not by dependants.
+    '--cfg=HYDROFLOW_GENERATE_DOCS',
+]
+rustdocflags = [ '--cfg=docsrs', '--cfg=stageleft_runtime' ]
 
 [target.aarch64-apple-darwin]
 linker = "rust-lld"
