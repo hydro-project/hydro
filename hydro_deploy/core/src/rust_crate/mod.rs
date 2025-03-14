@@ -117,11 +117,15 @@ impl RustCrate {
     }
 
     pub fn features(mut self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        if self.features.is_some() {
-            panic!("{} already set", name_of!(features in Self));
+        if self.features.is_none() {
+            self.features = Some(vec![]);
         }
 
-        self.features = Some(features.into_iter().map(|s| s.into()).collect());
+        self.features
+            .as_mut()
+            .unwrap()
+            .extend(features.into_iter().map(|s| s.into()));
+
         self
     }
 

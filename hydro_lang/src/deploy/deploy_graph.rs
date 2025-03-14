@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::future::Future;
 use std::io::Error;
 use std::pin::Pin;
@@ -21,7 +21,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
 use tokio::sync::RwLock;
 
-use super::trybuild::create_graph_trybuild;
+use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use super::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort};
 use crate::deploy_runtime::*;
 
@@ -713,12 +713,8 @@ impl Node for DeployNode {
         let service = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c) => c,
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, (dir, target_dir, features)) = create_graph_trybuild(
-                    graph,
-                    extra_stmts,
-                    &trybuild.name_hint,
-                    &trybuild.additional_hydro_features,
-                );
+                let (bin_name, (dir, target_dir, features)) =
+                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
                 create_trybuild_service(trybuild, &dir, &target_dir, &features, &bin_name)
             }
         };
@@ -781,30 +777,7 @@ impl Node for DeployCluster {
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
         let maybe_trybuild = if has_trybuild {
-            let all_features = self
-                .cluster_spec
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|spec| match spec {
-                    CrateOrTrybuild::Crate(_c) => panic!("unexpected crate in cluster"),
-                    CrateOrTrybuild::Trybuild(t) => t.additional_hydro_features.clone(),
-                })
-                .collect::<HashSet<_>>();
-
-            assert!(
-                all_features.len() == 1,
-                "all trybuilds in a cluster must have the same features"
-            );
-            let features = all_features.into_iter().next().unwrap();
-
-            Some(create_graph_trybuild(
-                graph,
-                extra_stmts,
-                &self.name_hint,
-                &features,
-            ))
+            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint))
         } else {
             None
         };
@@ -955,8 +928,21 @@ fn create_trybuild_service(
         ret = ret.tracing(tracing);
     }
 
+    ret = ret.features(
+        trybuild
+            .additional_hydro_features
+            .into_iter()
+            .map(|runtime_feature| {
+                assert!(
+                    HYDRO_RUNTIME_FEATURES.iter().any(|f| f == &runtime_feature),
+                    "{runtime_feature} is not a valid Hydro runtime feature"
+                );
+                format!("hydro___feature_{runtime_feature}")
+            }),
+    );
+
     if let Some(features) = features {
-        ret = ret.features(features.clone());
+        ret = ret.features(features);
     }
 
     ret

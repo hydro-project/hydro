@@ -183,7 +183,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     fn extra_stmts(&self, env: &<D as Deploy<'a>>::CompileEnv) -> BTreeMap<usize, Vec<syn::Stmt>> {
         let mut extra_stmts: BTreeMap<usize, Vec<syn::Stmt>> = BTreeMap::new();
-        for &c_id in self.clusters.keys() {
+
+        let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
+        all_clusters_sorted.sort();
+
+        for &c_id in all_clusters_sorted {
             let self_id_ident = syn::Ident::new(
                 &format!("__hydro_lang_cluster_self_id_{}", c_id),
                 Span::call_site(),
