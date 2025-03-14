@@ -13,6 +13,12 @@ Finally, you can run the website locally:
 $ npm run start
 ```
 
+## Building the DFIR docs
+`dfir/syntax/surface_ops_gen.md` is generated during the Rust build. You will need to run this command to first generate or update it:
+```bash
+DFIR_GENERATE_DOCS="1" cargo build -p dfir_macro -p dfir_lang
+```
+
 ## Building the Playground
 By default, the DFIR / Datalog playgrounds are not loaded when launching the website. To build the playground, you'll need to follow a couple additional steps. This requires Rust and [wasm-pack](https://rustwasm.github.io/wasm-pack/):
 

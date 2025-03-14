@@ -168,10 +168,6 @@ const config = {
                 label: "DFIR",
                 to: "/docs/dfir/",
               },
-              {
-                label: "Hydro Deploy",
-                to: "/docs/deploy/",
-              },
             ],
           },
           {

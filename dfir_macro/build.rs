@@ -200,6 +200,7 @@ fn update_book() -> Result<()> {
 }
 
 fn main() {
+    println!("cargo::rerun-if-env-changed=DFIR_GENERATE_DOCS");
     println!("cargo::rustc-check-cfg=cfg(nightly)");
     if matches!(
         version_meta().map(|meta| meta.channel),
@@ -208,7 +209,7 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if Err(VarError::NotPresent) != std::env::var("CARGO_CFG_DFIR_GENERATE_DOCS") {
+    if Err(VarError::NotPresent) != std::env::var("DFIR_GENERATE_DOCS") {
         if let Err(err) = update_book() {
             eprintln!("dfir_macro/build.rs error: {:?}", err);
         }

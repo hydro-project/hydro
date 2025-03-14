@@ -10,9 +10,11 @@ use syn::{
 };
 
 const OPS_PATH: &str = "src/graph/ops";
+const DFIR_GENERATE_DOCS: &str = "DFIR_GENERATE_DOCS";
 
 fn main() {
     println!("cargo::rerun-if-changed={}", OPS_PATH);
+    println!("cargo::rerun-if-env-changed={}", DFIR_GENERATE_DOCS);
 
     println!("cargo::rustc-check-cfg=cfg(nightly)");
     if matches!(
@@ -22,7 +24,7 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if Err(VarError::NotPresent) != var("CARGO_CFG_DFIR_GENERATE_DOCS") {
+    if Err(VarError::NotPresent) != var(DFIR_GENERATE_DOCS) {
         if let Err(err) = generate_op_docs() {
             eprintln!("dfir_lang/build.rs error: {:?}", err);
         }

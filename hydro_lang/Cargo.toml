@@ -32,7 +32,6 @@ runtime_measure = ["dep:chrono", "dep:procfs"]
 
 [package.metadata.docs.rs]
 all-features = true
-rustc-args = [ "--cfg", "stageleft_runtime" ]
 
 [dependencies]
 bincode = "1.3.1"
