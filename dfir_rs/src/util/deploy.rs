@@ -1,3 +1,4 @@
+//! Hydro Deploy integration for DFIR.
 #![allow(clippy::allow_attributes, missing_docs, reason = "// TODO(mingwei)")]
 
 use std::cell::RefCell;

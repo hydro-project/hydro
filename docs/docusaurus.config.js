@@ -122,11 +122,6 @@ const config = {
               },
               {
                 type: "docSidebar",
-                sidebarId: "deploySidebar",
-                label: "Hydro Deploy",
-              },
-              {
-                type: "docSidebar",
                 sidebarId: "dfirSidebar",
                 label: "DFIR",
               },

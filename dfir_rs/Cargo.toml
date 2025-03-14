@@ -22,6 +22,9 @@ deploy_integration = [ "dep:hydro_deploy_integration" ]
 python = [ "dep:pyo3" ]
 debugging = [ "dfir_lang/debugging" ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [[example]]
 name = "kvs_bench"
 

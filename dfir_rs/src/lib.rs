@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 
 //! DFIR is a low-level dataflow-based runtime system for the [Hydro Project](https://hydro.run/).
@@ -21,8 +22,10 @@ pub mod scheduled;
 pub mod util;
 
 #[cfg(feature = "meta")]
+#[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
 pub use dfir_lang as lang;
 #[cfg(feature = "python")]
+#[cfg_attr(docsrs, doc(cfg(feature = "python")))]
 pub use pyo3;
 pub use variadics::{self, var_args, var_expr, var_type};
 pub use {
@@ -33,7 +36,9 @@ pub use {
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
 mod declarative_macro;
 #[cfg(feature = "dfir_datalog")]
+#[cfg_attr(docsrs, doc(cfg(feature = "dfir_datalog")))]
 pub use dfir_datalog::*;
+#[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 #[cfg(feature = "dfir_macro")]
 pub use dfir_macro::{
     DemuxEnum, dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test as test,
