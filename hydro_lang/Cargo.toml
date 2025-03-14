@@ -35,7 +35,6 @@ all-features = true
 
 [package.metadata.docs.rs]
 all-features = true
-rustc-args = [ "--cfg", "stageleft_runtime" ]
 
 [dependencies]
 bytes = "1.1.0"

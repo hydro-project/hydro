@@ -7,6 +7,7 @@ use rustc_version::{Channel, version_meta};
 use syn::{AttrStyle, Expr, ExprLit, Item, Lit, Member, Meta, MetaNameValue, Path, parse_quote};
 
 const OPS_PATH: &str = "src/graph/ops";
+const DFIR_GENERATE_DOCS: &str = "DFIR_GENERATE_DOCS";
 
 fn main() {
     const DFIR_GENERATE_DOCS: &str = "DFIR_GENERATE_DOCS";
@@ -23,7 +24,7 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if std::env::var_os(DFIR_GENERATE_DOCS).is_some() {
+    if Err(VarError::NotPresent) != var(DFIR_GENERATE_DOCS) {
         if let Err(err) = generate_op_docs() {
             eprintln!("{} error: {:?}", file!(), err);
         }
