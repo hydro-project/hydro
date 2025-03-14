@@ -1,0 +1,31 @@
+[package]
+name = "dfir_datalog_core"
+publish = true
+version = "0.12.0"
+documentation = "https://docs.rs/dfir_datalog_core/"
+description = "Datalog implementation for DFIR"
+edition = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+quote = "1.0.35"
+slotmap = "1.0.0"
+syn = { version = "2.0.46", features = [ "parsing", "extra-traits" ] }
+proc-macro2 = "1.0.74"
+rust-sitter = "0.4.3"
+dfir_lang = { path = "../dfir_lang", version = "^0.12.0" }
+
+[build-dependencies]
+rust-sitter-tool = "0.4.3"
+
+[dev-dependencies]
+insta = "1.39"
+prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
+tempfile = "3"
