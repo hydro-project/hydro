@@ -266,6 +266,7 @@ pub fn create_trybuild()
     };
 
     {
+        #[cfg(nightly)]
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         #[cfg(nightly)]
         project_lock.lock()?;
