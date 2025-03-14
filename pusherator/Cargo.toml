@@ -15,6 +15,9 @@ workspace = true
 default = [ "demux" ]
 demux = [ "dep:variadics" ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 either = "1.0.0"
 variadics = { optional = true, path = "../variadics", version = "^0.0.9" }

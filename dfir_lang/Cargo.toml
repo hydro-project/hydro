@@ -16,6 +16,9 @@ default = []
 debugging = [ "dep:data-encoding", "dep:webbrowser", "clap-derive" ]
 clap-derive = [ "dep:clap" ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 auto_impl = "1.0.0"
 clap = { version = "4.5.4", features = [ "derive" ], optional = true }

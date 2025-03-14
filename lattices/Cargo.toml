@@ -15,6 +15,9 @@ workspace = true
 default = []
 serde = ["dep:serde"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 cc-traits = "2.0.0"
 sealed = "0.5.0"

@@ -13,7 +13,9 @@ workspace = true
 
 [lib]
 proc-macro = true
-path = "src/lib.rs"
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 quote = "1.0.35"
