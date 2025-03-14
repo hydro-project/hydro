@@ -5,7 +5,7 @@ sidebar_position: 0
 # Introduction
 Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](./correctness.md). Hydro also makes it easy to get started by running your distributed programs in either testing or deployment modes.
 
-Hydro is a distributed dataflow language, powered by the high-performance single-threaded [DFIR runtime](../dfir/index.mdx). Unlike traditional architectures such as actors or RPCs, Hydro offers _choreographic_ APIs, where expressions and functions can describe computation that takes place across many locations. It also integrates with [Hydro Deploy](deploy/index.md) to make it easy to deploy and run distributed Hydro programs either locally or in the cloud.
+Hydro is a distributed dataflow language, powered by the high-performance single-threaded [DFIR runtime](../dfir/index.mdx). Unlike traditional architectures such as actors or RPCs, Hydro offers _choreographic_ APIs, where expressions and functions can describe computation that takes place across many locations. It also integrates with [Hydro Deploy](deploy/index) to make it easy to deploy and run distributed Hydro programs either locally or in the cloud.
 
 Hydro uses a two-stage compilation approach. Hydro programs are standard Rust programs, which first run on the developer's laptop to generate a _deployment plan_. This plan is then compiled to DFIR to generate individual binaries for each machine in the distributed system (enabling zero-overhead abstractions), which are then deployed to the cloud using the generated plan along with specifications of cloud resources.
 
