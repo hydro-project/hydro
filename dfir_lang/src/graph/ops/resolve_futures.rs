@@ -2,9 +2,11 @@ use quote::quote_spanned;
 use syn::Ident;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1
 };
-
+/// Given an incoming stream of `F: Future`, sends those futures to the executor being used
+/// by the DFIR runtime and emits elements whenever a future is completed. The output order
+/// is based on when futures complete, and may be different than the input order.
 pub const RESOLVE_FUTURES: OperatorConstraints = OperatorConstraints {
     name: "resolve_futures",
     categories: &[OperatorCategory::Map],
@@ -21,30 +23,22 @@ pub const RESOLVE_FUTURES: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesUnordered", wc.op_span),
-            Ident::new("push", wc.op_span),
-            wc,
-        )
-    },
+    write_fn: move |wc, _| resolve_futures_writer(
+        Ident::new("FuturesUnordered", wc.op_span), 
+        Ident::new("push", wc.op_span),
+        wc)
 };
 
-pub fn resolve_futures_writer(
-    future_type: Ident,
-    push_fn: Ident,
-    wc @ &WriteContextArgs {
-        root,
-        context,
-        op_span,
-        ident,
-        inputs,
-        outputs,
-        is_pull,
-        work_fn,
-        ..
-    }: &WriteContextArgs,
-) -> Result<OperatorWriteOutput, ()> {
+pub fn resolve_futures_writer(future_type: Ident, push_fn: Ident, wc @ &WriteContextArgs {
+    root,
+    context,
+    op_span,
+    ident,
+    inputs,
+    outputs,
+    is_pull,
+    ..
+} : &WriteContextArgs) -> Result<OperatorWriteOutput, ()> {
     let futures_ident = wc.make_ident("futures");
 
     let write_prologue = quote_spanned! {op_span=>
@@ -62,28 +56,24 @@ pub fn resolve_futures_writer(
                 let mut out = ::std::vec::Vec::new();
 
                 let mut state = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident)
-                        .borrow_mut()
+                    // SAFETY: handles from `#df_ident`.
+                    #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut()
                 };
 
-                #work_fn(|| {
-                    #input
-                        .for_each(|fut| {
-                            let mut fut = ::std::boxed::Box::pin(fut);
-                            if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                                out.push(val);
-                            } else {
-                                state.#push_fn(fut);
-                            }
-                        });
-
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        out.push(val);
-                    }
-                });
+                #input
+                    .for_each(|fut| {
+                        let mut fut = ::std::boxed::Box::pin(fut);
+                        if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
+                            out.push(val);
+                        } else {
+                            state.#push_fn(fut);
+                        }
+                    });
+                while let #root::futures::task::Poll::Ready(Some(val)) = 
+                    #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut state), &mut ::std::task::Context::from_waker(&#context.waker()))
+                {
+                    out.push(val);
+                }
 
                 ::std::iter::IntoIterator::into_iter(out)
             };
@@ -93,38 +83,30 @@ pub fn resolve_futures_writer(
         quote_spanned! {op_span=>
             let #ident = {
                 let mut out = #output;
-                let mut state = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                };
-
-                #work_fn(|| {
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        #root::pusherator::Pusherator::give(&mut out, val)
-                    }
-                });
-
                 let consumer = #root::pusherator::for_each::ForEach::new(|fut| {
-                    #work_fn(|| {
-                        let fut = ::std::boxed::Box::pin(fut);
-                        unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                        }.#push_fn(fut);
-                    });
+                    let fut = ::std::boxed::Box::pin(fut);
+                    #context
+                        .state_ref(#futures_ident)
+                        .borrow_mut()
+                        .#push_fn(fut);
                     #context.schedule_subgraph(#context.current_subgraph(), true);
                 });
+                while let #root::futures::task::Poll::Ready(Some(val)) = 
+                    #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#context
+                        .state_ref(#futures_ident)
+                        .borrow_mut()
+                    ), &mut ::std::task::Context::from_waker(&#context.waker()))
+                {
+                    #root::pusherator::Pusherator::give(&mut out, val)
+                }
 
                 consumer
             };
         }
     };
-
     Ok(OperatorWriteOutput {
-        write_prologue,
-        write_iterator,
-        ..Default::default()
+    write_prologue,
+    write_iterator,
+    ..Default::default()
     })
 }

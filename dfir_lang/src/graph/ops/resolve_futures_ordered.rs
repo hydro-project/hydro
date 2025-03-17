@@ -3,7 +3,11 @@ use syn::Ident;
 use super::{
     resolve_futures::resolve_futures_writer, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
 };
-
+/// Given an incoming stream of `F: Future`, sends those futures to the executor being used
+/// by the DFIR runtime. Yields the results of each future in the same order as the futures are
+/// received, so the output will always be blocked on the first remaining unresolved future.
+/// However, multiple futures may be spawned concurrently so there is no guarantee on when they are
+/// executed.
 pub const RESOLVE_FUTURES_ORDERED: OperatorConstraints = OperatorConstraints {
     name: "resolve_futures_ordered",
     categories: &[OperatorCategory::Map],
