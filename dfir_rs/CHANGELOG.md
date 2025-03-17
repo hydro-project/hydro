@@ -5,6 +5,302 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.1 (2025-03-15)
+
+<csr-id-260902b210378af5291ec71a574256d7a5bcb463/>
+<csr-id-f14174e92875b3264ef811effd954ed76cb3c948/>
+<csr-id-8058d2d6fe45e0286feb8ad48a44b1228f56d9bc/>
+<csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/>
+<csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/>
+
+### Chore
+
+ - <csr-id-260902b210378af5291ec71a574256d7a5bcb463/> set `hydro_deploy_integration` to release as `0.12.1`
+ - <csr-id-f14174e92875b3264ef811effd954ed76cb3c948/> update pinned nightly to 2025-03-10, clippy cleanups
+
+### Chore
+
+ - <csr-id-fb8393ae61091b04c0d29692aab097573b8db5e8/> attempt to fix releasing of `include_mdtests`, `dfir_rs`
+
+### Documentation
+
+ - <csr-id-b235a42a3071e55da7b09bdc8bc710b18e0fe053/> demote python deploy docs, fix docsrs configs, fix #1392, fix #1629
+   Running thru the quickstart in order to write more about Rust
+   `hydro_deploy`, ran into some confusion due to feature-gated items not
+   showing up in docs.
+   
+   `rustdocflags = [ '--cfg=docsrs', '--cfg=stageleft_runtime' ]` uses the
+   standard `[cfg(docrs)]` as well as enabled our
+   `[cfg(stageleft_runtime)]` so things `impl<H: Host + 'static>
+   IntoProcessSpec<'_, HydroDeploy> for Arc<H>` show up.
+   
+   Also set `--all-features` for the docsrs build
+
+### Refactor
+
+ - <csr-id-8058d2d6fe45e0286feb8ad48a44b1228f56d9bc/> move markdown doctesting macro into own crate, fix #1651
+
+### Style
+
+ - <csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/> cleanup old clippy lints, remove deprecated `relalg` crate
+
+### Refactor (BREAKING)
+
+ - <csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/> remove "hydroflow" for `hydro_deploy_integration`, `hydro_deploy::rust_crate`, fix #1712
+   Opted to use `RustCrate` as the replacement prefix with the expectation
+   that @shadaj may have a more coincise name in mind?
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 8 commits contributed to the release over the course of 4 calendar days.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 5 unique issues were worked on: [#1768](https://github.com/hydro-project/hydro/issues/1768), [#1769](https://github.com/hydro-project/hydro/issues/1769), [#1773](https://github.com/hydro-project/hydro/issues/1773), [#1785](https://github.com/hydro-project/hydro/issues/1785), [#1787](https://github.com/hydro-project/hydro/issues/1787)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1768](https://github.com/hydro-project/hydro/issues/1768)**
+    - Update pinned nightly to 2025-03-10, clippy cleanups ([`f14174e`](https://github.com/hydro-project/hydro/commit/f14174e92875b3264ef811effd954ed76cb3c948))
+ * **[#1769](https://github.com/hydro-project/hydro/issues/1769)**
+    - Move markdown doctesting macro into own crate, fix #1651 ([`8058d2d`](https://github.com/hydro-project/hydro/commit/8058d2d6fe45e0286feb8ad48a44b1228f56d9bc))
+ * **[#1773](https://github.com/hydro-project/hydro/issues/1773)**
+    - Remove "hydroflow" for `hydro_deploy_integration`, `hydro_deploy::rust_crate`, fix #1712 ([`7dd71d6`](https://github.com/hydro-project/hydro/commit/7dd71d67da162d2e4f3043b271a52037a3c983c0))
+ * **[#1785](https://github.com/hydro-project/hydro/issues/1785)**
+    - Cleanup old clippy lints, remove deprecated `relalg` crate ([`056ac62`](https://github.com/hydro-project/hydro/commit/056ac62611319b7bd10a751d7e231423a1b8dc4e))
+ * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
+    - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
+ * **Uncategorized**
+    - Attempt to fix releasing of `include_mdtests`, `dfir_rs` ([`fb8393a`](https://github.com/hydro-project/hydro/commit/fb8393ae61091b04c0d29692aab097573b8db5e8))
+    - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
+    - Set `hydro_deploy_integration` to release as `0.12.1` ([`260902b`](https://github.com/hydro-project/hydro/commit/260902b210378af5291ec71a574256d7a5bcb463))
+</details>
+
+## 0.12.0 (2025-03-08)
+
+<csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
+<csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/>
+<csr-id-be50e86bd70b0b451bc906de7363a9a783aeaf25/>
+<csr-id-ddbc5990647d567c941bdfb16606842fc93a08be/>
+<csr-id-c293cca6855695107e9cef5c5df99fb04a571934/>
+<csr-id-2e4f6b828e3d54ee6b1753c1a814006a3d0b3e34/>
+<csr-id-efb31e159ef107b26657d8550d8c2d445a8b6e4b/>
+<csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/>
+<csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/>
+<csr-id-3343fe2d58d8b7a7aa2766bfba9fbb4955114706/>
+<csr-id-44fb2806cf2d165d86695910f4755e0944c11832/>
+<csr-id-dc51d94d390672bd687a7fdc9c826a778bdf0256/>
+<csr-id-3c5bb05487a25345ea2f70b5a1ffbe74a216c684/>
+<csr-id-e0d9b26709011a2d5d56cc3f86a3ee640983e75a/>
+<csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/>
+<csr-id-bf4b40151f98439570ac81ee6d23440a629b972f/>
+<csr-id-8fc582d54ebc7dc974d2fd849b9de59134c1428d/>
+<csr-id-3f76e91766a0bd9e61f11f9013d76f688467fb5e/>
+<csr-id-fd85262930c678601a80c080fb79778675124964/>
+<csr-id-e5c2e23359055f41492344edf19efbe3f2afd7ce/>
+<csr-id-5cd0a9625822620dcc99b99356edfecbf0549497/>
+<csr-id-41ef00719671b087062628462a947c211d0d765c/>
+<csr-id-df804ec1ec2a9370c8e6e5f7db9ee1e316677a35/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
+<csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
+<csr-id-c3eedc6b44367519b6055bcdf7366b0a15efb17d/>
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+ - <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/> update pinned nightly to 2025-02-10, cleanups for clippy
+ - <csr-id-be50e86bd70b0b451bc906de7363a9a783aeaf25/> remove unused cross_join, fix #1616
+
+### Refactor (BREAKING)
+
+ - <csr-id-e0d9b26709011a2d5d56cc3f86a3ee640983e75a/> require semicolons after loop braces, fix #1726
+   Is better for syntax highlighting.
+
+### Chore (BREAKING)
+
+ - <csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+ - <csr-id-bf4b40151f98439570ac81ee6d23440a629b972f/> switch transducer -> process (fix #1572)
+
+### Test
+
+ - <csr-id-8fc582d54ebc7dc974d2fd849b9de59134c1428d/> add globbing utility for testing Markdown as doctests
+
+### Style
+
+ - <csr-id-3f76e91766a0bd9e61f11f9013d76f688467fb5e/> fix all unexpected cfgs
+   Testing in https://github.com/MingweiSamuel/hydroflow
+ - <csr-id-fd85262930c678601a80c080fb79778675124964/> clippy cleanups for latest stable rust
+
+### Refactor
+
+ - <csr-id-e5c2e23359055f41492344edf19efbe3f2afd7ce/> unchecked casts for handoffs & state, pedantic version
+ - <csr-id-5cd0a9625822620dcc99b99356edfecbf0549497/> enable lints, cleanups for Rust 2024 #1732
+ - <csr-id-41ef00719671b087062628462a947c211d0d765c/> improve naming of types involved with networking
+   I got confused looking at my own code for client-server handshakes (in
+   preparation for external client support). Time to do some renaming!
+ - <csr-id-df804ec1ec2a9370c8e6e5f7db9ee1e316677a35/> use `SlotMap`-esque for Subgraph & Handoff datastructure
+   Previously we used wrapper types around usize indexes, but any accesses
+   into the `Vec` required unwrapping the usize value. This adds a proper
+   wrapper class called `SlotVec` which has an API based on
+   [`SlotMap`](https://docs.rs/slotmap/latest/slotmap/struct.SlotMap.html)
+   with the main difference being that `SlotVec` does not support removals
+   and therefore doesn't need the (very slight) overhead of generational
+   indices
+
+### Chore
+
+ - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+ - <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/> update pinned nightly to 2025-02-10, cleanups for clippy
+ - <csr-id-c3eedc6b44367519b6055bcdf7366b0a15efb17d/> remove unused cross_join, fix #1616
+
+### Documentation
+
+ - <csr-id-f8313b018f6a1101935e4c06abbe5af3aafb400c/> fix broken links, fix #1613
+ - <csr-id-d45273943b0ca087b05f0fe4331b12cbe2ff4e90/> fix broken links, fix #1613
+
+### New Features
+
+ - <csr-id-7009a042837e4d8bbde82b680ee6779d9dec062b/> `next_iteration()` operator, `all_iterations()` un-windowing op, k-means example, fix #1612, fix #1731
+ - <csr-id-1ba45050f02a9f40860d7a52f144d35aebec031e/> add basic `_counter()` op for cardinality metrics, fix #1729
+   This is the simplest possible implementation, there's a lot of room for
+   improvement with a metrics system built into the runtime, but keeping it
+   simple for now.
+ - <csr-id-a72f7d56a720d56f6e5fd08e9dc6f50a2f302c57/> loop iteration counter, fix #1622
+ - <csr-id-ee280c972848170783d105ba047b26dfa7249f24/> `loop {` scheduler
+   Fix https://github.com/hydro-project/hydro/issues/1580
+ - <csr-id-9aee8b770116b1fc70263b9fab7176bfa9ffe73f/> `next_iteration()` operator, `all_iterations()` un-windowing op, k-means example, fix #1612, fix #1731
+ - <csr-id-11e07ead7e7b3fb0b552745d3332e0f6804a30a5/> add basic `_counter()` op for cardinality metrics, fix #1729
+   This is the simplest possible implementation, there's a lot of room for
+   improvement with a metrics system built into the runtime, but keeping it
+   simple for now.
+ - <csr-id-17bb5fa5a2b660a1202d3fa1c64fa606e1605f3a/> loop iteration counter, fix #1622
+ - <csr-id-206be0e0bb5d2ad8d19c502d6ac13e0ca1fed552/> `loop {` scheduler
+   Fix https://github.com/hydro-project/hydro/issues/1580
+
+### Bug Fixes
+
+ - <csr-id-a7d4d473b49d67818290a46a822b4e30e83478ff/> update stateful operators to be 'stateless' in loops, fix #1618
+   eventually, when the old 'tick/'static machinery is removed, we can unify under one set of lifetimes
+ - <csr-id-247a21d9617d44f13755c696224a6942afb9922a/> update stateful operators to be 'stateless' in loops, fix #1618
+   eventually, when the old 'tick/'static machinery is removed, we can unify under one set of lifetimes
+
+### Refactor
+
+ - <csr-id-ddbc5990647d567c941bdfb16606842fc93a08be/> unchecked casts for handoffs & state, pedantic version
+ - <csr-id-c293cca6855695107e9cef5c5df99fb04a571934/> enable lints, cleanups for Rust 2024 #1732
+ - <csr-id-2e4f6b828e3d54ee6b1753c1a814006a3d0b3e34/> improve naming of types involved with networking
+   I got confused looking at my own code for client-server handshakes (in
+   preparation for external client support). Time to do some renaming!
+ - <csr-id-efb31e159ef107b26657d8550d8c2d445a8b6e4b/> use `SlotMap`-esque for Subgraph & Handoff datastructure
+   Previously we used wrapper types around usize indexes, but any accesses
+   into the `Vec` required unwrapping the usize value. This adds a proper
+   wrapper class called `SlotVec` which has an API based on
+   [`SlotMap`](https://docs.rs/slotmap/latest/slotmap/struct.SlotMap.html)
+   with the main difference being that `SlotVec` does not support removals
+   and therefore doesn't need the (very slight) overhead of generational
+   indices
+
+### Style
+
+ - <csr-id-8b3b60812d9f561cb7f59120993fbf2e23191e2b/> fix all unexpected cfgs
+   Testing in https://github.com/MingweiSamuel/hydroflow
+ - <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/> clippy cleanups for latest stable rust
+
+### Test
+
+ - <csr-id-3343fe2d58d8b7a7aa2766bfba9fbb4955114706/> add globbing utility for testing Markdown as doctests
+
+### Chore (BREAKING)
+
+ - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
+   Fix partially #1712
+   
+   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
+   for DFIR operator codegen
+   * Removes some dead code/files
+ - <csr-id-dc51d94d390672bd687a7fdc9c826a778bdf0256/> switch transducer -> process (fix #1572)
+
+### Refactor (BREAKING)
+
+ - <csr-id-3c5bb05487a25345ea2f70b5a1ffbe74a216c684/> require semicolons after loop braces, fix #1726
+   Is better for syntax highlighting.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 20 commits contributed to the release.
+ - 74 days passed between releases.
+ - 19 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 19 unique issues were worked on: [#1637](https://github.com/hydro-project/hydro/issues/1637), [#1640](https://github.com/hydro-project/hydro/issues/1640), [#1648](https://github.com/hydro-project/hydro/issues/1648), [#1649](https://github.com/hydro-project/hydro/issues/1649), [#1684](https://github.com/hydro-project/hydro/issues/1684), [#1686](https://github.com/hydro-project/hydro/issues/1686), [#1688](https://github.com/hydro-project/hydro/issues/1688), [#1692](https://github.com/hydro-project/hydro/issues/1692), [#1704](https://github.com/hydro-project/hydro/issues/1704), [#1713](https://github.com/hydro-project/hydro/issues/1713), [#1714](https://github.com/hydro-project/hydro/issues/1714), [#1715](https://github.com/hydro-project/hydro/issues/1715), [#1725](https://github.com/hydro-project/hydro/issues/1725), [#1727](https://github.com/hydro-project/hydro/issues/1727), [#1733](https://github.com/hydro-project/hydro/issues/1733), [#1737](https://github.com/hydro-project/hydro/issues/1737), [#1747](https://github.com/hydro-project/hydro/issues/1747), [#1757](https://github.com/hydro-project/hydro/issues/1757), [#1759](https://github.com/hydro-project/hydro/issues/1759)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1637](https://github.com/hydro-project/hydro/issues/1637)**
+    - Use `SlotMap`-esque for Subgraph & Handoff datastructure ([`df804ec`](https://github.com/hydro-project/hydro/commit/df804ec1ec2a9370c8e6e5f7db9ee1e316677a35))
+ * **[#1640](https://github.com/hydro-project/hydro/issues/1640)**
+    - Clippy cleanups for latest stable rust ([`fd85262`](https://github.com/hydro-project/hydro/commit/fd85262930c678601a80c080fb79778675124964))
+ * **[#1648](https://github.com/hydro-project/hydro/issues/1648)**
+    - Fix all unexpected cfgs ([`3f76e91`](https://github.com/hydro-project/hydro/commit/3f76e91766a0bd9e61f11f9013d76f688467fb5e))
+ * **[#1649](https://github.com/hydro-project/hydro/issues/1649)**
+    - Add globbing utility for testing Markdown as doctests ([`8fc582d`](https://github.com/hydro-project/hydro/commit/8fc582d54ebc7dc974d2fd849b9de59134c1428d))
+ * **[#1684](https://github.com/hydro-project/hydro/issues/1684)**
+    - Switch transducer -> process (fix #1572) ([`bf4b401`](https://github.com/hydro-project/hydro/commit/bf4b40151f98439570ac81ee6d23440a629b972f))
+ * **[#1686](https://github.com/hydro-project/hydro/issues/1686)**
+    - Fix broken links, fix #1613 ([`d452739`](https://github.com/hydro-project/hydro/commit/d45273943b0ca087b05f0fe4331b12cbe2ff4e90))
+ * **[#1688](https://github.com/hydro-project/hydro/issues/1688)**
+    - Remove unused cross_join, fix #1616 ([`c3eedc6`](https://github.com/hydro-project/hydro/commit/c3eedc6b44367519b6055bcdf7366b0a15efb17d))
+ * **[#1692](https://github.com/hydro-project/hydro/issues/1692)**
+    - `loop {` scheduler ([`206be0e`](https://github.com/hydro-project/hydro/commit/206be0e0bb5d2ad8d19c502d6ac13e0ca1fed552))
+ * **[#1704](https://github.com/hydro-project/hydro/issues/1704)**
+    - Update pinned nightly to 2025-02-10, cleanups for clippy ([`8f44260`](https://github.com/hydro-project/hydro/commit/8f4426089dcbbe5d1098f89e367c7be49a03e401))
+ * **[#1713](https://github.com/hydro-project/hydro/issues/1713)**
+    - Use DFIR name instead of Hydroflow in some places, fix #1644 ([`3966d90`](https://github.com/hydro-project/hydro/commit/3966d9063dae52e65b077321e0bd1150f2b0c3f1))
+ * **[#1714](https://github.com/hydro-project/hydro/issues/1714)**
+    - Loop iteration counter, fix #1622 ([`17bb5fa`](https://github.com/hydro-project/hydro/commit/17bb5fa5a2b660a1202d3fa1c64fa606e1605f3a))
+ * **[#1715](https://github.com/hydro-project/hydro/issues/1715)**
+    - Improve naming of types involved with networking ([`41ef007`](https://github.com/hydro-project/hydro/commit/41ef00719671b087062628462a947c211d0d765c))
+ * **[#1725](https://github.com/hydro-project/hydro/issues/1725)**
+    - `next_iteration()` operator, `all_iterations()` un-windowing op, k-means example, fix #1612, fix #1731 ([`9aee8b7`](https://github.com/hydro-project/hydro/commit/9aee8b770116b1fc70263b9fab7176bfa9ffe73f))
+ * **[#1727](https://github.com/hydro-project/hydro/issues/1727)**
+    - Require semicolons after loop braces, fix #1726 ([`e0d9b26`](https://github.com/hydro-project/hydro/commit/e0d9b26709011a2d5d56cc3f86a3ee640983e75a))
+ * **[#1733](https://github.com/hydro-project/hydro/issues/1733)**
+    - Add basic `_counter()` op for cardinality metrics, fix #1729 ([`11e07ea`](https://github.com/hydro-project/hydro/commit/11e07ead7e7b3fb0b552745d3332e0f6804a30a5))
+ * **[#1737](https://github.com/hydro-project/hydro/issues/1737)**
+    - Enable lints, cleanups for Rust 2024 #1732 ([`5cd0a96`](https://github.com/hydro-project/hydro/commit/5cd0a9625822620dcc99b99356edfecbf0549497))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`ec3795a`](https://github.com/hydro-project/hydro/commit/ec3795a678d261a38085405b6e9bfea943dafefb))
+ * **[#1757](https://github.com/hydro-project/hydro/issues/1757)**
+    - Unchecked casts for handoffs & state, pedantic version ([`e5c2e23`](https://github.com/hydro-project/hydro/commit/e5c2e23359055f41492344edf19efbe3f2afd7ce))
+ * **[#1759](https://github.com/hydro-project/hydro/issues/1759)**
+    - Update stateful operators to be 'stateless' in loops, fix #1618 ([`247a21d`](https://github.com/hydro-project/hydro/commit/247a21d9617d44f13755c696224a6942afb9922a))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.0, dfir_datalog_core v0.12.0, dfir_datalog v0.12.0, dfir_macro v0.12.0, hydroflow_deploy_integration v0.12.0, lattices_macro v0.5.9, variadics v0.0.9, variadics_macro v0.6.0, lattices v0.6.0, multiplatform_test v0.5.0, pusherator v0.0.11, dfir_rs v0.12.0, hydro_deploy v0.12.0, stageleft_macro v0.6.0, stageleft v0.7.0, stageleft_tool v0.6.0, hydro_lang v0.12.0, hydro_std v0.12.0, hydro_cli v0.12.0, safety bump 10 crates ([`973c925`](https://github.com/hydro-project/hydro/commit/973c925e87ed78344494581bd7ce1bbb4186a2f3))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 <csr-id-7dea92b19e6b86566cc27babb457415896b6b608/>
@@ -12,6 +308,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-9ea5f061ee0f116caf8fc4ea99b62a9c7691be2a/>
 <csr-id-e440623a553f28c16ac0f87871c135aaefeec7fd/>
 <csr-id-251b1039c71d45d3f86123dba1926026ded80824/>
+<csr-id-5196f247e0124a31567af940541044ce1906cdc1/>
+<csr-id-03b3a349013a71b324276bca5329c33d400a73ff/>
+<csr-id-accb13cad718c99d350e4bafe82e0ca38bf94c62/>
+<csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
+<csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/>
+<csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
+<csr-id-2a22d50285ae1be1a5f888d5d15321cc1bb13c82/>
+<csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
 ### Documentation
 
@@ -28,6 +332,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-e1a08e5d165fbc80da2ae695e507078a97a9031f/> update `CHANGELOG.md`s for big rename
    Generated before rename per `RELEASING.md` instructions.
  - <csr-id-6ab625273d822812e83a333e928c3dea1c3c9ccb/> cleanups for the rename, fixing links
+ - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
+   #1452 
+   
+   Will trigger new releases of the following:
+   `unchanged = 'hydroflow_deploy_integration', 'variadics',
+   'variadics_macro', 'pusherator'`
+   
+   (All other crates already have changes, so would be released anyway)
+ - <csr-id-a652ead6a51ffae9f835124dcd40aec58dd15ff4/> fix some broken github tree/main links
+ - <csr-id-27c40e2ca5a822f6ebd31c7f01213aa6d407418a/> update `CHANGELOG.md`s for big rename
+   Generated before rename per `RELEASING.md` instructions.
+ - <csr-id-987f7ad8668d9740ceea577a595035228898d530/> cleanups for the rename, fixing links
 
 ### New Features
 
@@ -39,8 +355,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Next steps:
    - Needs scheduler changes:
-   - Implement un-windowing operators
-- Implement windowing operator `repeat_n()` -
 
 ### Bug Fixes
 
@@ -56,6 +370,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Adds env `HYDROFLOW_EXPECT_WARNINGS=ignore` to allow warning tests to
    pass
+
+### Chore
+
+ - <csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/> update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571
+ - <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/> bump versions manually for renamed crates, per `RELEASING.md`
+ - <csr-id-2a22d50285ae1be1a5f888d5d15321cc1bb13c82/> cleanup snapshots
+ - <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/> Rename Hydroflow -> DFIR
+   Work In Progress:
+   - [x] hydroflow_macro
+   - [x] hydroflow_datalog_core
+   - [x] hydroflow_datalog
+   - [x] hydroflow_lang
+   - [x] hydroflow
 
 ### Chore
 
@@ -138,7 +465,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release.
+ - 9 commits contributed to the release.
  - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 6 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1620](https://github.com/hydro-project/hydro/issues/1620), [#1623](https://github.com/hydro-project/hydro/issues/1623), [#1624](https://github.com/hydro-project/hydro/issues/1624), [#1627](https://github.com/hydro-project/hydro/issues/1627), [#1628](https://github.com/hydro-project/hydro/issues/1628)
 
@@ -149,24 +476,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1501](https://github.com/hydro-project/hydro/issues/1501)**
-    - Add `repository` field to `Cargo.toml`s, fix #1452 ([`28cd220`](https://github.com/hydro-project/hydro/commit/28cd220c68e3660d9ebade113949a2346720cd04))
+    - Add `repository` field to `Cargo.toml`s, fix #1452 ([`204bd11`](https://github.com/hydro-project/hydro/commit/204bd117ca3a8845b4986539efb91a0c612dfa05))
  * **[#1620](https://github.com/hydro-project/hydro/issues/1620)**
-    - Rename Hydroflow -> DFIR ([`3291c07`](https://github.com/hydro-project/hydro/commit/3291c07b37c9f9031837a2a32953e8f8854ec298))
+    - Rename Hydroflow -> DFIR ([`5e58e34`](https://github.com/hydro-project/hydro/commit/5e58e346612a094c7e637919c84ab1e78b59be27))
  * **[#1623](https://github.com/hydro-project/hydro/issues/1623)**
-    - Cleanup snapshots ([`accb13c`](https://github.com/hydro-project/hydro/commit/accb13cad718c99d350e4bafe82e0ca38bf94c62))
+    - Cleanup snapshots ([`2a22d50`](https://github.com/hydro-project/hydro/commit/2a22d50285ae1be1a5f888d5d15321cc1bb13c82))
  * **[#1624](https://github.com/hydro-project/hydro/issues/1624)**
-    - Cleanups for the rename, fixing links ([`6ab6252`](https://github.com/hydro-project/hydro/commit/6ab625273d822812e83a333e928c3dea1c3c9ccb))
+    - Cleanups for the rename, fixing links ([`987f7ad`](https://github.com/hydro-project/hydro/commit/987f7ad8668d9740ceea577a595035228898d530))
  * **[#1627](https://github.com/hydro-project/hydro/issues/1627)**
-    - Bump versions manually for renamed crates, per `RELEASING.md` ([`03b3a34`](https://github.com/hydro-project/hydro/commit/03b3a349013a71b324276bca5329c33d400a73ff))
+    - Bump versions manually for renamed crates, per `RELEASING.md` ([`a6f60c9`](https://github.com/hydro-project/hydro/commit/a6f60c92ae7168eb86eb311ca7b7afb10025c7de))
  * **[#1628](https://github.com/hydro-project/hydro/issues/1628)**
-    - Update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571 ([`5196f24`](https://github.com/hydro-project/hydro/commit/5196f247e0124a31567af940541044ce1906cdc1))
+    - Update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571 ([`84ee067`](https://github.com/hydro-project/hydro/commit/84ee06755a0ed7cabf32b334f1696bb600797c92))
  * **Uncategorized**
-    - Fix some broken github tree/main links ([`c707659`](https://github.com/hydro-project/hydro/commit/c707659afe188a2b46b093ce3438f64c6b0e1e30))
-    - Update `CHANGELOG.md`s for big rename ([`e1a08e5`](https://github.com/hydro-project/hydro/commit/e1a08e5d165fbc80da2ae695e507078a97a9031f))
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`361b443`](https://github.com/hydro-project/hydro/commit/361b4439ef9c781860f18d511668ab463a8c5203))
+    - Fix some broken github tree/main links ([`a652ead`](https://github.com/hydro-project/hydro/commit/a652ead6a51ffae9f835124dcd40aec58dd15ff4))
+    - Update `CHANGELOG.md`s for big rename ([`27c40e2`](https://github.com/hydro-project/hydro/commit/27c40e2ca5a822f6ebd31c7f01213aa6d407418a))
 </details>
-
-<csr-unknown>
-Pipeline flags: Needs checking of bounded vs unbounded for batch()vs all_once()Needs checking that all inputs into a loop agreeState type negotiations (for batch() and handoffs (?) - don’t alwaysuse Vec)Dag performance optimizations (lots of things)<csr-unknown/>
 
 ## 0.10.0 (2024-11-08)
 

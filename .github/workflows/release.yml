@@ -6,7 +6,7 @@ on:
       bump:
         description: "Specify how to bump the version for Hydro crates. Does not affect dependencies."
         required: true
-        default: "patch"
+        default: "keep"
         type: choice
         options:
           - major
@@ -25,6 +25,9 @@ jobs:
     name: Release Job
     timeout-minutes: 20
     runs-on: ubuntu-latest
+    env:
+      RUST_BACKTRACE: 1
+      RUST_LOG: "debug"
     steps:
       # https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
       # Unfortunately branch protection means that this workflow can't push the updated changelogs
@@ -61,23 +64,11 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
 
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-
       - name: Run cargo login
-        uses: actions-rs/cargo@v1
-        with:
-          command: login
-          args: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Install cargo-smart-release
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-smart-release
+        run: cargo install cargo-smart-release
 
       - name: Run cargo smart-release
         # list lockstep-versioned packages at the end of this command
@@ -89,8 +80,7 @@ jobs:
           dfir_rs dfir_lang dfir_macro
           dfir_datalog dfir_datalog_core
           hydro_lang hydro_std
-          hydro_deploy hydro_cli hydroflow_deploy_integration
-          stageleft stageleft_macro stageleft_tool
+          hydro_deploy hydro_cli hydro_deploy_integration
           multiplatform_test
         env:
           # Make sure to set this so the `gh` CLI works using our token.

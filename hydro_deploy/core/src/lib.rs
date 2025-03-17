@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use async_trait::async_trait;
-use hydroflow_crate::build::BuildOutput;
-use hydroflow_crate::tracing_options::TracingOptions;
-use hydroflow_deploy_integration::ServerBindConfig;
+use hydro_deploy_integration::ServerBindConfig;
+use rust_crate::build::BuildOutput;
+use rust_crate::tracing_options::TracingOptions;
 use tokio::sync::{mpsc, oneshot};
 
 pub mod deployment;
@@ -25,8 +25,8 @@ pub use gcp::GcpComputeEngineHost;
 pub mod azure;
 pub use azure::AzureHost;
 
-pub mod hydroflow_crate;
-pub use hydroflow_crate::HydroflowCrate;
+pub mod rust_crate;
+pub use rust_crate::RustCrate;
 
 pub mod custom_service;
 pub use custom_service::CustomService;

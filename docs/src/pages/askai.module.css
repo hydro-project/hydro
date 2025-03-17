@@ -1,0 +1,31 @@
+.subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 50px;
+  text-align: center;
+  font-weight: 600;
+  margin-top: 25px;
+  margin-bottom: 0;
+}
+
+.main_text {
+  text-align: Left;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 1.4;
+
+  color: #262626;
+
+  margin-top: 20px;
+  margin-bottom: 10px;
+
+  margin-left: 20px;
+  margin-right: 20px;
+}
+
+@media screen and (max-width: 1000px) {
+  .subtitle {
+    font-size: 40px;
+    margin-top: 30px;
+  }
+}

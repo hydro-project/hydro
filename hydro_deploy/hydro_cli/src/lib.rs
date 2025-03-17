@@ -5,7 +5,7 @@
     reason = "for pyo3 generated code"
 )]
 
-use core::hydroflow_crate::ports::HydroflowSource;
+use core::rust_crate::ports::RustCrateSource;
 use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -14,7 +14,7 @@ use std::sync::{Arc, OnceLock};
 
 use bytes::Bytes;
 use futures::{Future, SinkExt, StreamExt};
-use hydroflow_deploy_integration::{
+use hydro_deploy_integration::{
     ConnectedDirect, ConnectedSink, ConnectedSource, Connection, DynSink, DynStream,
 };
 use pyo3::exceptions::{PyException, PyStopAsyncIteration};
@@ -146,7 +146,7 @@ impl AnyhowWrapper {
 #[pyclass(subclass)]
 #[derive(Clone)]
 struct HydroflowSink {
-    underlying: Arc<dyn core::hydroflow_crate::ports::HydroflowSink>,
+    underlying: Arc<dyn core::rust_crate::ports::RustCrateSink>,
 }
 
 #[pyclass(name = "Deployment")]
@@ -276,7 +276,7 @@ impl Deployment {
         external_ports: Option<Vec<u16>>,
     ) -> PyResult<Py<PyAny>> {
         let service = self.underlying.blocking_write().add_service(|id| {
-            core::hydroflow_crate::HydroflowCrateService::new(
+            core::rust_crate::RustCrateService::new(
                 id,
                 src.into(),
                 on.underlying.clone(),
@@ -516,7 +516,7 @@ impl CustomClientPort {
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
             }),
@@ -535,7 +535,7 @@ impl CustomClientPort {
 
 #[pyclass(extends=Service, subclass)]
 struct HydroflowCrate {
-    underlying: Arc<RwLock<core::hydroflow_crate::HydroflowCrateService>>,
+    underlying: Arc<RwLock<core::rust_crate::RustCrateService>>,
 }
 
 #[pymethods]
@@ -579,7 +579,7 @@ impl HydroflowCrate {
 #[pyclass]
 #[derive(Clone)]
 struct HydroflowCratePorts {
-    underlying: Arc<RwLock<core::hydroflow_crate::HydroflowCrateService>>,
+    underlying: Arc<RwLock<core::rust_crate::RustCrateService>>,
 }
 
 #[pymethods]
@@ -606,7 +606,7 @@ impl HydroflowCratePorts {
 #[pyclass(extends=HydroflowSink, subclass)]
 #[derive(Clone)]
 struct HydroflowCratePort {
-    underlying: Arc<core::hydroflow_crate::ports::HydroflowPortConfig>,
+    underlying: Arc<core::rust_crate::ports::RustCratePortConfig>,
 }
 
 #[pymethods]
@@ -630,7 +630,7 @@ impl HydroflowCratePort {
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
             }),
@@ -641,7 +641,7 @@ impl HydroflowCratePort {
 #[pyfunction]
 fn demux(mapping: &PyDict) -> HydroflowSink {
     HydroflowSink {
-        underlying: Arc::new(core::hydroflow_crate::ports::DemuxSink {
+        underlying: Arc::new(core::rust_crate::ports::DemuxSink {
             demux: mapping
                 .into_iter()
                 .map(|(k, v)| {
@@ -657,7 +657,7 @@ fn demux(mapping: &PyDict) -> HydroflowSink {
 #[pyclass(subclass)]
 #[derive(Clone)]
 struct TaggedSource {
-    underlying: Arc<core::hydroflow_crate::ports::TaggedSource>,
+    underlying: Arc<core::rust_crate::ports::TaggedSource>,
 }
 
 #[pymethods]
@@ -668,7 +668,7 @@ impl TaggedSource {
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
             }),
@@ -679,7 +679,7 @@ impl TaggedSource {
 #[pyclass(extends=HydroflowSink, subclass)]
 #[derive(Clone)]
 struct HydroflowNull {
-    underlying: Arc<core::hydroflow_crate::ports::NullSourceSink>,
+    underlying: Arc<core::rust_crate::ports::NullSourceSink>,
 }
 
 #[pymethods]
@@ -690,7 +690,7 @@ impl HydroflowNull {
 
     fn tagged(&self, tag: u32) -> TaggedSource {
         TaggedSource {
-            underlying: Arc::new(core::hydroflow_crate::ports::TaggedSource {
+            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
                 source: self.underlying.clone(),
                 tag,
             }),
@@ -700,7 +700,7 @@ impl HydroflowNull {
 
 #[pyfunction]
 fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
-    let arc = Arc::new(core::hydroflow_crate::ports::NullSourceSink);
+    let arc = Arc::new(core::rust_crate::ports::NullSourceSink);
 
     Ok(Py::new(
         py,
@@ -714,7 +714,7 @@ fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
 
 #[pyclass]
 struct ServerPort {
-    underlying: hydroflow_deploy_integration::ServerPort,
+    underlying: hydro_deploy_integration::ServerPort,
 }
 
 fn with_tokio_runtime<T>(f: impl Fn() -> T) -> T {

@@ -375,6 +375,17 @@ impl ProgressTracker {
         });
     }
 
+    pub fn eprintln(msg: impl AsRef<str>) {
+        let progress_bar = PROGRESS_TRACKER
+            .get_or_init(|| Mutex::new(ProgressTracker::new()))
+            .lock()
+            .unwrap();
+
+        progress_bar.multi_progress.suspend(|| {
+            eprintln!("{}", msg.as_ref());
+        });
+    }
+
     pub fn with_group<'a, T, F: Future<Output = T>>(
         name: impl Into<String>,
         anticipated_total: Option<usize>,

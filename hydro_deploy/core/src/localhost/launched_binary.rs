@@ -17,9 +17,9 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
-use crate::hydroflow_crate::flamegraph::handle_fold_data;
-use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
+use crate::rust_crate::flamegraph::handle_fold_data;
+use crate::rust_crate::tracing_options::TracingOptions;
 use crate::ssh::PrefixFilteredChannel;
 use crate::util::prioritized_broadcast;
 use crate::{LaunchedBinary, TracingResults};

@@ -9,7 +9,7 @@ license = { workspace = true }
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "env"] }
-config = "0.14.0"
+config = "0.15.0"
 governor = "0.7.0"
 hostname = "0.4.0"
 dfir_rs = { path= "../../dfir_rs" }

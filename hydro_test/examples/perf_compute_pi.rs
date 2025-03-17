@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
+use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::ir::deep_clone;
@@ -15,31 +15,52 @@ use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+/// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+///
+/// ```bash
+/// cargo run -p hydro_test --example perf_compute_pi -- gcp hydroflow-work
+/// ```
+///
+/// Once the program is running, you can **press enter** to stop the program and see the results.
+/// (Pressing Ctrl+C will stop the program **without cleaning up cloud resources** nor generating the
+/// flamegraphs).
 #[tokio::main]
 async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
-    let create_host: HostCreator = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+    let project = if host_arg == "gcp" {
+        std::env::args().nth(2)
+    } else {
+        None
+    };
+
+    let network = project
+        .as_ref()
+        .map(|project| Arc::new(RwLock::new(GcpNetwork::new(project, None))));
+
+    let create_host: HostCreator = if host_arg == "gcp" {
         Box::new(move |deployment| -> Arc<dyn Host> {
             let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
-                .project(&project)
+                .project(project.as_ref().unwrap())
                 .machine_type("e2-micro")
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
-                .network(network.clone())
+                .network(network.as_ref().unwrap().clone())
                 .startup_script(startup_script)
                 .add()
         })
     } else {
         let localhost = deployment.Localhost();
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
+    };
+
+    let rustflags = if host_arg == "gcp" {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
     let builder = hydro_lang::FlowBuilder::new();

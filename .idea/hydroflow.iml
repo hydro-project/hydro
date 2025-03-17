@@ -7,7 +7,7 @@
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/core/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_cli/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_cli_examples/examples" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydroflow_deploy_integration/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_deploy_integration/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydroflow_plus_deploy/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydroflow/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydroflow/src" isTestSource="false" />
@@ -26,10 +26,6 @@
       <sourceFolder url="file://$MODULE_DIR$/multiplatform_test/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/pusherator/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/relalg/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/stageleft/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/stageleft_macro/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/stageleft_test/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/stageleft_tool/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/topolotree/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/variadics/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/variadics/src" isTestSource="false" />

@@ -65,7 +65,7 @@ expression: built.ir()
             ),
             to_key: None,
             serialize_fn: Some(
-                | data | { hydro_lang :: runtime_support :: bincode :: serialize :: < hydro_test :: distributed :: first_ten :: SendOverNetwork > (& data) . unwrap () . into () },
+                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(

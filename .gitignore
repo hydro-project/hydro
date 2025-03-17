@@ -11,3 +11,7 @@ perf.data.old
 flamegraph.svg
 
 /rustc-ice-*.txt
+/.hydro/
+/*.data.folded
+/*.perf.data
+/*.svg

@@ -1,7 +1,7 @@
 [package]
 name = "variadics"
 publish = true
-version = "0.0.8"
+version = "0.0.9"
 documentation = "https://docs.rs/variadics/"
 description = "Variadic generics on stable Rust using tuple lists"
 edition = { workspace = true }

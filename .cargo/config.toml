@@ -4,6 +4,7 @@ rustflags = [
     # internally, not by dependants.
     '--cfg=HYDROFLOW_GENERATE_DOCS',
 ]
+rustdocflags = [ '--cfg=docsrs' ]
 
 [target.aarch64-apple-darwin]
 linker = "rust-lld"

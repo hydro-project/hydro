@@ -12,7 +12,7 @@ expression: built.ir()
             ),
             to_key: None,
             serialize_fn: Some(
-                | (id , data) : (hydro_lang :: ClusterId < _ > , i32) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize :: < i32 > (& data) . unwrap () . into ()) },
+                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(

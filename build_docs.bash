@@ -11,11 +11,11 @@ rustup toolchain install
 
 cd website_playground
 
-CARGO_CFG_DFIR_GENERATE_DOCS="1" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" CC="$PWD/../LLVM-19.1.0-Linux-X64/bin/clang" wasm-pack build
+DFIR_GENERATE_DOCS="1" RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" CC="$PWD/../LLVM-19.1.0-Linux-X64/bin/clang" wasm-pack build
 
 cd ..
 
-RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps
+RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
 
 cp -r target/doc docs/static/rustdoc
 

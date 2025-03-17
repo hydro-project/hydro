@@ -12,9 +12,9 @@ proc-macro = true
 path = "../hydro_test_local/src/lib.rs"
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.11.0", features = ["build"] }
-stageleft = { path = "../stageleft", version = "^0.6.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = ["build"] }
+stageleft = "0.7.0"
 rand = "0.8.0"
 
 [build-dependencies]
-stageleft_tool = { path = "../stageleft_tool", version = "^0.5.0" }
+stageleft_tool = "0.6.0"

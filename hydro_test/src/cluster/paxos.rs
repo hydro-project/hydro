@@ -9,7 +9,6 @@ use hydro_std::request_response::join_responses;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use super::kv_replica::Replica;
 use super::paxos_with_client::PaxosLike;
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -68,18 +67,21 @@ pub struct P2a<P, S> {
 pub struct CorePaxos<'a> {
     pub proposers: Cluster<'a, Proposer>,
     pub acceptors: Cluster<'a, Acceptor>,
-    pub replica_checkpoint:
-        Stream<(ClusterId<Replica>, usize), Cluster<'a, Acceptor>, Unbounded, NoOrder>,
     pub paxos_config: PaxosConfig,
 }
 
 impl<'a> PaxosLike<'a> for CorePaxos<'a> {
     type PaxosIn = Proposer;
+    type PaxosLog = Acceptor;
     type PaxosOut = Proposer;
     type Ballot = Ballot;
 
     fn payload_recipients(&self) -> &Cluster<'a, Self::PaxosIn> {
         &self.proposers
+    }
+
+    fn log_stores(&self) -> &Cluster<'a, Self::PaxosLog> {
+        &self.acceptors
     }
 
     fn get_recipient_from_ballot<L: Location<'a>>(
@@ -93,12 +95,13 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
         ) -> Stream<P, Cluster<'a, Self::PaxosIn>, Unbounded>,
+        a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
         unsafe {
             paxos_core(
                 &self.proposers,
                 &self.acceptors,
-                self.replica_checkpoint,
+                a_checkpoint,
                 with_ballot,
                 self.paxos_config,
             )
@@ -124,15 +127,10 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
 /// non-deterministically dropped. The stream of ballots is also non-deterministic because
 /// leaders are elected in a non-deterministic process.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
+pub unsafe fn paxos_core<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
-    r_to_acceptors_checkpoint: Stream<
-        (ClusterId<R>, usize),
-        Cluster<'a, Acceptor>,
-        Unbounded,
-        NoOrder,
-    >,
+    a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     c_to_proposers: impl FnOnce(
         Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
     ) -> Stream<P, Cluster<'a, Proposer>, Unbounded>,
@@ -200,7 +198,7 @@ pub unsafe fn paxos_core<'a, P: PaxosPayload, R>(
             &proposer_tick,
             &acceptor_tick,
             c_to_proposers,
-            r_to_acceptors_checkpoint,
+            a_checkpoint,
             p_ballot.clone(),
             p_is_leader,
             p_relevant_p1bs,
@@ -613,18 +611,13 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
+unsafe fn sequence_payload<'a, P: PaxosPayload>(
     proposers: &Cluster<'a, Proposer>,
     acceptors: &Cluster<'a, Acceptor>,
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     c_to_proposers: Stream<P, Cluster<'a, Proposer>, Unbounded>,
-    r_to_acceptors_checkpoint: Stream<
-        (ClusterId<R>, usize),
-        Cluster<'a, Acceptor>,
-        Unbounded,
-        NoOrder,
-    >,
+    a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     p_is_leader: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
@@ -683,9 +676,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload, R>(
                 value
             }))
             .broadcast_bincode_anonymous(acceptors),
-        r_to_acceptors_checkpoint,
+        a_checkpoint,
         proposers,
-        f,
     );
 
     // TOOD: only persist if we are the leader
@@ -745,18 +737,12 @@ pub fn index_payloads<'a, P: PaxosPayload>(
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub fn acceptor_p2<'a, P: PaxosPayload, R, S: Clone>(
+pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     acceptor_tick: &Tick<Cluster<'a, Acceptor>>,
     a_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
     p_to_acceptors_p2a: Stream<P2a<P, S>, Cluster<'a, Acceptor>, Unbounded, NoOrder>,
-    r_to_acceptors_checkpoint: Stream<
-        (ClusterId<R>, usize),
-        Cluster<'a, Acceptor>,
-        Unbounded,
-        NoOrder,
-    >,
+    a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
     proposers: &Cluster<'a, S>,
-    f: usize,
 ) -> (
     Singleton<
         (Option<usize>, HashMap<usize, LogValue<P>>),
@@ -773,34 +759,13 @@ pub fn acceptor_p2<'a, P: PaxosPayload, R, S: Clone>(
         p_to_acceptors_p2a.tick_batch(acceptor_tick)
     };
 
-    // Get the latest checkpoint sequence per replica
-    let a_checkpoint_largest_seqs = unsafe {
-        // SAFETY: if a checkpoint is delayed, its effect is that the log may contain slots
-        // that do not need to be saved (because the data is at all replicas). This affects
-        // the logs that will be collected during a leader re-election, but eventually the
-        // same checkpoint will arrive at acceptors and those slots will be eventually deleted.
-        r_to_acceptors_checkpoint.tick_batch(acceptor_tick)
+    let a_new_checkpoint = unsafe {
+        // SAFETY: we can arbitrarily snapshot the checkpoint sequence number,
+        // since a delayed garbage collection does not affect correctness
+        a_checkpoint.latest_tick(acceptor_tick)
     }
-    .persist()
-    .reduce_keyed_commutative(q!(|curr_seq, seq| {
-        if seq > *curr_seq {
-            *curr_seq = seq;
-        }
-    }));
-    let a_checkpoints_quorum_reached = a_checkpoint_largest_seqs.clone().count().filter_map(q!(
-        move |num_received| if num_received == f + 1 {
-            Some(true)
-        } else {
-            None
-        }
-    ));
-    // Find the smallest checkpoint seq that everyone agrees to, track whenever it changes
-    let a_new_checkpoint = a_checkpoint_largest_seqs
-        .continue_if(a_checkpoints_quorum_reached)
-        .map(q!(|(_sender, seq)| seq))
-        .min()
-        .delta()
-        .map(q!(|min_seq| CheckpointOrP2a::Checkpoint(min_seq)));
+    .delta()
+    .map(q!(|min_seq| CheckpointOrP2a::Checkpoint(min_seq)));
     // .inspect(q!(|(min_seq, p2a): &(i32, P2a)| println!("Acceptor new checkpoint: {:?}", min_seq)));
 
     let a_p2as_to_place_in_log = p_to_acceptors_p2a_batch

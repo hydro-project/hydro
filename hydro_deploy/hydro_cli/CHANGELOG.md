@@ -5,11 +5,127 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.12.1 (2025-03-15)
+
+<csr-id-260902b210378af5291ec71a574256d7a5bcb463/>
+<csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/>
+
+### Chore
+
+ - <csr-id-260902b210378af5291ec71a574256d7a5bcb463/> set `hydro_deploy_integration` to release as `0.12.1`
+
+### Refactor (BREAKING)
+
+ - <csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/> remove "hydroflow" for `hydro_deploy_integration`, `hydro_deploy::rust_crate`, fix #1712
+   Opted to use `RustCrate` as the replacement prefix with the expectation
+   that @shadaj may have a more coincise name in mind?
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 2 calendar days.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#1773](https://github.com/hydro-project/hydro/issues/1773)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1773](https://github.com/hydro-project/hydro/issues/1773)**
+    - Remove "hydroflow" for `hydro_deploy_integration`, `hydro_deploy::rust_crate`, fix #1712 ([`7dd71d6`](https://github.com/hydro-project/hydro/commit/7dd71d67da162d2e4f3043b271a52037a3c983c0))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
+    - Set `hydro_deploy_integration` to release as `0.12.1` ([`260902b`](https://github.com/hydro-project/hydro/commit/260902b210378af5291ec71a574256d7a5bcb463))
+</details>
+
+## 0.12.0 (2025-03-08)
+
+<csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
+<csr-id-e5e6b75c79028990799a2c0def9fa3c5263788a8/>
+<csr-id-2e4f6b828e3d54ee6b1753c1a814006a3d0b3e34/>
+<csr-id-41ef00719671b087062628462a947c211d0d765c/>
+<csr-id-a3202888433f5eae7d45b0814e090ff6a8600d02/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Refactor
+
+ - <csr-id-41ef00719671b087062628462a947c211d0d765c/> improve naming of types involved with networking
+   I got confused looking at my own code for client-server handshakes (in
+   preparation for external client support). Time to do some renaming!
+
+### Other
+
+ - <csr-id-a3202888433f5eae7d45b0814e090ff6a8600d02/> set dynamic=version in pyproject
+
+### Chore
+
+ - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Other
+
+ - <csr-id-e5e6b75c79028990799a2c0def9fa3c5263788a8/> set dynamic=version in pyproject
+
+### Refactor
+
+ - <csr-id-2e4f6b828e3d54ee6b1753c1a814006a3d0b3e34/> improve naming of types involved with networking
+   I got confused looking at my own code for client-server handshakes (in
+   preparation for external client support). Time to do some renaming!
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release.
+ - 74 days passed between releases.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#1631](https://github.com/hydro-project/hydro/issues/1631), [#1715](https://github.com/hydro-project/hydro/issues/1715), [#1747](https://github.com/hydro-project/hydro/issues/1747)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1631](https://github.com/hydro-project/hydro/issues/1631)**
+    - Set dynamic=version in pyproject ([`a320288`](https://github.com/hydro-project/hydro/commit/a3202888433f5eae7d45b0814e090ff6a8600d02))
+ * **[#1715](https://github.com/hydro-project/hydro/issues/1715)**
+    - Improve naming of types involved with networking ([`41ef007`](https://github.com/hydro-project/hydro/commit/41ef00719671b087062628462a947c211d0d765c))
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`ec3795a`](https://github.com/hydro-project/hydro/commit/ec3795a678d261a38085405b6e9bfea943dafefb))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.0, dfir_datalog_core v0.12.0, dfir_datalog v0.12.0, dfir_macro v0.12.0, hydroflow_deploy_integration v0.12.0, lattices_macro v0.5.9, variadics v0.0.9, variadics_macro v0.6.0, lattices v0.6.0, multiplatform_test v0.5.0, pusherator v0.0.11, dfir_rs v0.12.0, hydro_deploy v0.12.0, stageleft_macro v0.6.0, stageleft v0.7.0, stageleft_tool v0.6.0, hydro_lang v0.12.0, hydro_std v0.12.0, hydro_cli v0.12.0, safety bump 10 crates ([`973c925`](https://github.com/hydro-project/hydro/commit/973c925e87ed78344494581bd7ce1bbb4186a2f3))
+</details>
+
 ## 0.11.0 (2024-12-23)
 
 ### Documentation
 
  - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
+   #1452 
+   
+   Will trigger new releases of the following:
+   `unchanged = 'hydroflow_deploy_integration', 'variadics',
+   'variadics_macro', 'pusherator'`
+   
+   (All other crates already have changes, so would be released anyway)
+ - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
    Will trigger new releases of the following:
@@ -52,12 +168,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Paxos changes are mostly refactors, and I verified that the performance
    is the same as before.
+ - <csr-id-b6c9a5dfc0b1ce6684a5a55ea3c582776d5f0204/> mark non-deterministic operators as unsafe and introduce timestamped streams
+   Big PR.
+   
+   First big change is we introduce a `Timestamped` location. This is a bit
+   of a hybrid between top-level locations and `Tick` locations. The idea
+   is that you choose where timestamps are generated, and then have a
+   guarantee that everything after that will be atomically computed (useful
+   for making sure we add payloads to the log before ack-ing).
+   
+   The contract is that an operator or module that takes a `Timestamped`
+   input must still be deterministic regardless of the stamps on messages
+   (which are hidden unless you `tick_batch`). But unlike a top-level
+   stream (which has the same constraints), you have the atomicity
+   guarantee. Right now the guarantee is trivial since we have one global
+   tick for everything. But in the future when we want to apply
+   @davidchuyaya's optimizations this will be helpful to know when there
+   are causal dependencies on when data can be sent to others.
+   
+   Second change is we mark every non-deterministic operator (modulo
+   explicit annotations such as `NoOrder`) with Rust's `unsafe` keyword.
+   This makes it super clear where non-determinism is taking place.
+   
+   I've used this to put `unsafe` blocks throughout our example code and
+   add `SAFETY` annotations that argue why the non-determinism is safe (or
+   point out that we've explicitly documented / expect non-determinism). I
+   also added `#![warn(unsafe_op_in_unsafe_fn)]` to the examples and the
+   template, since this forces good hygiene of annotating sources of
+   non-determinism even inside a module that is intentionally
+   non-deterministic.
+   
+   Paxos changes are mostly refactors, and I verified that the performance
+   is the same as before.
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 45 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1584](https://github.com/hydro-project/hydro/issues/1584)
@@ -69,20 +217,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1501](https://github.com/hydro-project/hydro/issues/1501)**
-    - Add `repository` field to `Cargo.toml`s, fix #1452 ([`28cd220`](https://github.com/hydro-project/hydro/commit/28cd220c68e3660d9ebade113949a2346720cd04))
+    - Add `repository` field to `Cargo.toml`s, fix #1452 ([`204bd11`](https://github.com/hydro-project/hydro/commit/204bd117ca3a8845b4986539efb91a0c612dfa05))
  * **[#1584](https://github.com/hydro-project/hydro/issues/1584)**
-    - Mark non-deterministic operators as unsafe and introduce timestamped streams ([`9393899`](https://github.com/hydro-project/hydro/commit/939389953875bf5f94ea84503a7a35efd7342282))
+    - Mark non-deterministic operators as unsafe and introduce timestamped streams ([`b6c9a5d`](https://github.com/hydro-project/hydro/commit/b6c9a5dfc0b1ce6684a5a55ea3c582776d5f0204))
  * **Uncategorized**
-    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
+    - Release stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0 ([`7633c38`](https://github.com/hydro-project/hydro/commit/7633c38c4a56acf7e5b3b6f2a72ccc1d6e6eeba1))
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`361b443`](https://github.com/hydro-project/hydro/commit/361b4439ef9c781860f18d511668ab463a8c5203))
 </details>
 
 ## 0.10.0 (2024-11-08)
 
 <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/>
+<csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
 ### Chore
 
  - <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/> update pinned rust version, clippy lints, remove some dead code
+
+### Chore
+
+ - <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/> update pinned rust version, clippy lints, remove some dead code
 
 ### Commit Statistics
 
@@ -100,9 +254,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1444](https://github.com/hydro-project/hydro/issues/1444)**
-    - Update pinned rust version, clippy lints, remove some dead code ([`d567760`](https://github.com/hydro-project/hydro/commit/d5677604e93c07a5392f4229af94a0b736eca382))
+    - Update pinned rust version, clippy lints, remove some dead code ([`014ebb2`](https://github.com/hydro-project/hydro/commit/014ebb2628b5b80ea1b6426b58c4d62706edb9ef))
  * **Uncategorized**
-    - Release hydroflow_lang v0.10.0, hydroflow_datalog_core v0.10.0, hydroflow_datalog v0.10.0, hydroflow_deploy_integration v0.10.0, hydroflow_macro v0.10.0, lattices_macro v0.5.7, variadics v0.0.7, variadics_macro v0.5.5, lattices v0.5.8, multiplatform_test v0.3.0, pusherator v0.0.9, hydroflow v0.10.0, hydro_deploy v0.10.0, stageleft_macro v0.4.0, stageleft v0.5.0, stageleft_tool v0.4.0, hydroflow_plus v0.10.0, hydro_cli v0.10.0, safety bump 8 crates ([`dcd48fc`](https://github.com/hydro-project/hydro/commit/dcd48fc7ee805898d9b5ef0d082870e30615e95b))
+    - Release hydroflow_lang v0.10.0, hydroflow_datalog_core v0.10.0, hydroflow_datalog v0.10.0, hydroflow_deploy_integration v0.10.0, hydroflow_macro v0.10.0, lattices_macro v0.5.7, variadics v0.0.7, variadics_macro v0.5.5, lattices v0.5.8, multiplatform_test v0.3.0, pusherator v0.0.9, hydroflow v0.10.0, hydro_deploy v0.10.0, stageleft_macro v0.4.0, stageleft v0.5.0, stageleft_tool v0.4.0, hydroflow_plus v0.10.0, hydro_cli v0.10.0, safety bump 8 crates ([`258f480`](https://github.com/hydro-project/hydro/commit/258f4805dbcca36750cbfaaf36db00d3a007d817))
 </details>
 
 ## 0.9.0 (2024-08-30)
@@ -112,6 +266,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-0a465e55dd39c76bc1aefb020460a639d792fe87/>
 <csr-id-a2147864b24110c9ae2c1553e9e8b55bd5065f15/>
 <csr-id-8856c8596d5ad9d5f24a46467690bfac1549fae2/>
+<csr-id-25989c7d938a0e93355a670f8d78a5aea900fce0/>
+<csr-id-9a503cf85225ff1fcfe7a815fda3a4ac34a75c42/>
+<csr-id-8bcd86c15bc4d9d2e3b564061be879bfe8820e25/>
+<csr-id-3508f5aeda3e18a6857df4ceb77e5e1015c02a17/>
+<csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
 ### Chore
 
@@ -121,17 +280,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    ---------
 
+### Refactor (BREAKING)
+
+ - <csr-id-25989c7d938a0e93355a670f8d78a5aea900fce0/> rename integration crates to drop CLI references
+ - <csr-id-9a503cf85225ff1fcfe7a815fda3a4ac34a75c42/> `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading
+   * `perf` profile downloading moved from the `drop()` impl to `async fn
+   stop()`
+   * download perf data via stdout
+   * update async-ssh2-lite to 0.5 to cleanup tokio compat issues
+   
+   WIP for #1365
+ - <csr-id-8bcd86c15bc4d9d2e3b564061be879bfe8820e25/> use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364
+   Adds new method `Deployment::AzureHost`
+
+### Chore
+
+ - <csr-id-3508f5aeda3e18a6857df4ceb77e5e1015c02a17/> manually set versions for crates renamed in #1413
+ - <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/> lower min dependency versions where possible, update `Cargo.lock`
+   Moved from #1418
+   
+   ---------
+
 ### New Features
 
  - <csr-id-46a8a2cb08732bb21096e824bc4542d208c68fb2/> use trybuild to compile subgraph binaries
+ - <csr-id-2a49c13f2f4e3b47d79c34167015d6ba98a89888/> use trybuild to compile subgraph binaries
 
 ### Bug Fixes
 
  - <csr-id-63b528feeb2e6dac2ed12c02b2e39e0d42133a74/> only instantiate `Localhost` once
+ - <csr-id-628066bf8250b541493c8cf5efd6c7bf01900640/> only instantiate `Localhost` once
 
 ### New Features (BREAKING)
 
  - <csr-id-749a10307f4eff2a46a1056735e84ed94d44b39e/> Perf works over SSH
+   See documentation on how to use in
+   [Notion](https://www.notion.so/hydro-project/perf-Measuring-CPU-usage-6135b6ce56a94af38eeeba0a55deef9c).
+ - <csr-id-43a411ea6ca0ad5110754fe788bb7593519cba51/> Perf works over SSH
    See documentation on how to use in
    [Notion](https://www.notion.so/hydro-project/perf-Measuring-CPU-usage-6135b6ce56a94af38eeeba0a55deef9c).
 
@@ -164,22 +349,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1313](https://github.com/hydro-project/hydro/issues/1313)**
-    - Perf works over SSH ([`749a103`](https://github.com/hydro-project/hydro/commit/749a10307f4eff2a46a1056735e84ed94d44b39e))
+    - Perf works over SSH ([`43a411e`](https://github.com/hydro-project/hydro/commit/43a411ea6ca0ad5110754fe788bb7593519cba51))
  * **[#1366](https://github.com/hydro-project/hydro/issues/1366)**
-    - Use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364 ([`8856c85`](https://github.com/hydro-project/hydro/commit/8856c8596d5ad9d5f24a46467690bfac1549fae2))
+    - Use `buildstructor` to handle excessive `Deployment` method arguments, fix #1364 ([`8bcd86c`](https://github.com/hydro-project/hydro/commit/8bcd86c15bc4d9d2e3b564061be879bfe8820e25))
  * **[#1370](https://github.com/hydro-project/hydro/issues/1370)**
-    - `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading ([`a214786`](https://github.com/hydro-project/hydro/commit/a2147864b24110c9ae2c1553e9e8b55bd5065f15))
+    - `Deployment.stop()` for graceful shutdown including updated `perf` profile downloading ([`9a503cf`](https://github.com/hydro-project/hydro/commit/9a503cf85225ff1fcfe7a815fda3a4ac34a75c42))
  * **[#1398](https://github.com/hydro-project/hydro/issues/1398)**
-    - Use trybuild to compile subgraph binaries ([`46a8a2c`](https://github.com/hydro-project/hydro/commit/46a8a2cb08732bb21096e824bc4542d208c68fb2))
+    - Use trybuild to compile subgraph binaries ([`2a49c13`](https://github.com/hydro-project/hydro/commit/2a49c13f2f4e3b47d79c34167015d6ba98a89888))
  * **[#1403](https://github.com/hydro-project/hydro/issues/1403)**
-    - Only instantiate `Localhost` once ([`63b528f`](https://github.com/hydro-project/hydro/commit/63b528feeb2e6dac2ed12c02b2e39e0d42133a74))
+    - Only instantiate `Localhost` once ([`628066b`](https://github.com/hydro-project/hydro/commit/628066bf8250b541493c8cf5efd6c7bf01900640))
  * **[#1413](https://github.com/hydro-project/hydro/issues/1413)**
-    - Rename integration crates to drop CLI references ([`0a465e5`](https://github.com/hydro-project/hydro/commit/0a465e55dd39c76bc1aefb020460a639d792fe87))
+    - Rename integration crates to drop CLI references ([`25989c7`](https://github.com/hydro-project/hydro/commit/25989c7d938a0e93355a670f8d78a5aea900fce0))
  * **[#1423](https://github.com/hydro-project/hydro/issues/1423)**
-    - Lower min dependency versions where possible, update `Cargo.lock` ([`11af328`](https://github.com/hydro-project/hydro/commit/11af32828bab6e4a4264d2635ff71a12bb0bb778))
+    - Lower min dependency versions where possible, update `Cargo.lock` ([`2c04f51`](https://github.com/hydro-project/hydro/commit/2c04f51f1ec44f7898307b6610371dcb490ea686))
  * **Uncategorized**
-    - Release hydroflow_lang v0.9.0, hydroflow_datalog_core v0.9.0, hydroflow_datalog v0.9.0, hydroflow_deploy_integration v0.9.0, hydroflow_macro v0.9.0, lattices_macro v0.5.6, lattices v0.5.7, multiplatform_test v0.2.0, variadics v0.0.6, pusherator v0.0.8, hydroflow v0.9.0, stageleft_macro v0.3.0, stageleft v0.4.0, stageleft_tool v0.3.0, hydroflow_plus v0.9.0, hydro_deploy v0.9.0, hydro_cli v0.9.0, hydroflow_plus_deploy v0.9.0, safety bump 8 crates ([`0750117`](https://github.com/hydro-project/hydro/commit/0750117de7088c01a439b102adeb4c832889f171))
-    - Manually set versions for crates renamed in #1413 ([`a2ec110`](https://github.com/hydro-project/hydro/commit/a2ec110ccadb97e293b19d83a155d98d94224bba))
+    - Release hydroflow_lang v0.9.0, hydroflow_datalog_core v0.9.0, hydroflow_datalog v0.9.0, hydroflow_deploy_integration v0.9.0, hydroflow_macro v0.9.0, lattices_macro v0.5.6, lattices v0.5.7, multiplatform_test v0.2.0, variadics v0.0.6, pusherator v0.0.8, hydroflow v0.9.0, stageleft_macro v0.3.0, stageleft v0.4.0, stageleft_tool v0.3.0, hydroflow_plus v0.9.0, hydro_deploy v0.9.0, hydro_cli v0.9.0, hydroflow_plus_deploy v0.9.0, safety bump 8 crates ([`1d54331`](https://github.com/hydro-project/hydro/commit/1d54331976040c049e4c97a9fba0e66930efee52))
+    - Manually set versions for crates renamed in #1413 ([`3508f5a`](https://github.com/hydro-project/hydro/commit/3508f5aeda3e18a6857df4ceb77e5e1015c02a17))
 </details>
 
 ## 0.8.0 (2024-07-23)
@@ -192,10 +377,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-60390782dd7dcec18d193c800af716843a944dba/>
 <csr-id-141eae1c3a1869fa42756250618a21ea2a2c7e34/>
 <csr-id-12b8ba53f28eb9de1318b41cdf1e23282f6f0eb6/>
+<csr-id-fbd7fb9bed9fd8d2afdfb5ad0edf076c3ad0f83f/>
+<csr-id-a97480ab834293bcc81d81fcd10d8944eb312417/>
+<csr-id-453fbce73423815752667c560318efe8b78014f8/>
+<csr-id-0983248beab176debc602f92fa617f9beb02dad3/>
+<csr-id-dd759aea1ac225654501e836b890dd8d144868b4/>
+<csr-id-d56c731482e25f3ab397c4912df35a6375fcb23a/>
+<csr-id-dfe7a0938c302353db05d9889eb8d88640887443/>
+<csr-id-45091d413f6da32927b640df781ce671a6e17c15/>
 
 ### Chore
 
  - <csr-id-3098f77fd99882aae23c4b31017aa4b761306197/> update pinned rust version to 2024-06-17
+
+### Style (BREAKING)
+
+ - <csr-id-fbd7fb9bed9fd8d2afdfb5ad0edf076c3ad0f83f/> enable clippy `upper-case-acronyms-aggressive`
+   * rename `GCP` -> `Gcp`, `NodeID` -> `NodeId`
+   * update CI `cargo-generate` template testing to use PR's branch instead
+   of whatever `main` happens to be
+
+### Refactor (BREAKING)
+
+ - <csr-id-a97480ab834293bcc81d81fcd10d8944eb312417/> make `Host` trait use `&self` interior mutability to remove `RwLock` wrappings #430
+   Depends on #1346
+ - <csr-id-453fbce73423815752667c560318efe8b78014f8/> make `HydroflowSource`, `HydroflowSink` traits use `&self` interior mutability to remove `RwLock` wrappings #430
+   Depends on #1339
+ - <csr-id-0983248beab176debc602f92fa617f9beb02dad3/> replace `async-channel` with `tokio::sync::mpsc::unbounded_channel`
+   Depends on #1339
+   
+   We could make the publicly facing `stdout`, `stderr` APIs return `impl Stream<Output = String>` in the future, maybe
+ - <csr-id-dd759aea1ac225654501e836b890dd8d144868b4/> replace some uses of `tokio::sync::RwLock` with `std::sync::Mutex` #430 (3/3)
+
+### Style
+
+ - <csr-id-d56c731482e25f3ab397c4912df35a6375fcb23a/> rename `SSH` -> `Ssh`
+
+### Refactor
+
+ - <csr-id-dfe7a0938c302353db05d9889eb8d88640887443/> build cache cleanup
+   * Replace mystery tuple with new `struct BuildOutput`
+   * Replace `Mutex` and `Arc`-infested `HashMap` with `memo-map` crate,
+   greatly simplifying build cache typing
+   * Remove redundant build caching in `HydroflowCrateService`, expose and
+   use cache parameters as `BuildParams`
+   * Remove `once_cell` and `async-once-cell` dependencies, use `std`'s
+   `OnceLock`
+   * Add `Failed to execute command: {}` context to `perf` error message
+   * Cleanup some repeated `format!` expressions
+
+### Chore
+
+ - <csr-id-45091d413f6da32927b640df781ce671a6e17c15/> update pinned rust version to 2024-06-17
 
 ### Refactor
 
@@ -249,36 +482,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1309](https://github.com/hydro-project/hydro/issues/1309)**
-    - Update pinned rust version to 2024-06-17 ([`3098f77`](https://github.com/hydro-project/hydro/commit/3098f77fd99882aae23c4b31017aa4b761306197))
+    - Update pinned rust version to 2024-06-17 ([`45091d4`](https://github.com/hydro-project/hydro/commit/45091d413f6da32927b640df781ce671a6e17c15))
  * **[#1334](https://github.com/hydro-project/hydro/issues/1334)**
-    - Build cache cleanup ([`0feae74`](https://github.com/hydro-project/hydro/commit/0feae7454e4674eea1f3308b3d6d4e9d459cda67))
+    - Build cache cleanup ([`dfe7a09`](https://github.com/hydro-project/hydro/commit/dfe7a0938c302353db05d9889eb8d88640887443))
  * **[#1339](https://github.com/hydro-project/hydro/issues/1339)**
-    - Replace some uses of `tokio::sync::RwLock` with `std::sync::Mutex` #430 (3/3) ([`141eae1`](https://github.com/hydro-project/hydro/commit/141eae1c3a1869fa42756250618a21ea2a2c7e34))
+    - Replace some uses of `tokio::sync::RwLock` with `std::sync::Mutex` #430 (3/3) ([`dd759ae`](https://github.com/hydro-project/hydro/commit/dd759aea1ac225654501e836b890dd8d144868b4))
  * **[#1340](https://github.com/hydro-project/hydro/issues/1340)**
-    - Rename `SSH` -> `Ssh` ([`947ebc1`](https://github.com/hydro-project/hydro/commit/947ebc1cb21a07fbfacae4ac956dbd0015a8a418))
+    - Rename `SSH` -> `Ssh` ([`d56c731`](https://github.com/hydro-project/hydro/commit/d56c731482e25f3ab397c4912df35a6375fcb23a))
  * **[#1345](https://github.com/hydro-project/hydro/issues/1345)**
-    - Enable clippy `upper-case-acronyms-aggressive` ([`12b8ba5`](https://github.com/hydro-project/hydro/commit/12b8ba53f28eb9de1318b41cdf1e23282f6f0eb6))
+    - Enable clippy `upper-case-acronyms-aggressive` ([`fbd7fb9`](https://github.com/hydro-project/hydro/commit/fbd7fb9bed9fd8d2afdfb5ad0edf076c3ad0f83f))
  * **[#1346](https://github.com/hydro-project/hydro/issues/1346)**
-    - Make `HydroflowSource`, `HydroflowSink` traits use `&self` interior mutability to remove `RwLock` wrappings #430 ([`057a0a5`](https://github.com/hydro-project/hydro/commit/057a0a510568cf81932368c8c65e056f91af7202))
+    - Make `HydroflowSource`, `HydroflowSink` traits use `&self` interior mutability to remove `RwLock` wrappings #430 ([`453fbce`](https://github.com/hydro-project/hydro/commit/453fbce73423815752667c560318efe8b78014f8))
  * **[#1347](https://github.com/hydro-project/hydro/issues/1347)**
-    - Make `Host` trait use `&self` interior mutability to remove `RwLock` wrappings #430 ([`c5a8de2`](https://github.com/hydro-project/hydro/commit/c5a8de28e7844b3c29d58116d8340967f2e6bcc4))
+    - Make `Host` trait use `&self` interior mutability to remove `RwLock` wrappings #430 ([`a97480a`](https://github.com/hydro-project/hydro/commit/a97480ab834293bcc81d81fcd10d8944eb312417))
  * **[#1356](https://github.com/hydro-project/hydro/issues/1356)**
-    - Replace `async-channel` with `tokio::sync::mpsc::unbounded_channel` ([`6039078`](https://github.com/hydro-project/hydro/commit/60390782dd7dcec18d193c800af716843a944dba))
+    - Replace `async-channel` with `tokio::sync::mpsc::unbounded_channel` ([`0983248`](https://github.com/hydro-project/hydro/commit/0983248beab176debc602f92fa617f9beb02dad3))
  * **Uncategorized**
-    - Release hydroflow_lang v0.8.0, hydroflow_datalog_core v0.8.0, hydroflow_datalog v0.8.0, hydroflow_macro v0.8.0, lattices_macro v0.5.5, lattices v0.5.6, variadics v0.0.5, pusherator v0.0.7, hydroflow v0.8.0, hydroflow_plus v0.8.0, hydro_deploy v0.8.0, hydro_cli v0.8.0, hydroflow_plus_cli_integration v0.8.0, safety bump 7 crates ([`ca6c16b`](https://github.com/hydro-project/hydro/commit/ca6c16b4a7ce35e155fe7fc6c7d1676c37c9e4de))
+    - Release hydroflow_lang v0.8.0, hydroflow_datalog_core v0.8.0, hydroflow_datalog v0.8.0, hydroflow_macro v0.8.0, lattices_macro v0.5.5, lattices v0.5.6, variadics v0.0.5, pusherator v0.0.7, hydroflow v0.8.0, hydroflow_plus v0.8.0, hydro_deploy v0.8.0, hydro_cli v0.8.0, hydroflow_plus_cli_integration v0.8.0, safety bump 7 crates ([`7b9c367`](https://github.com/hydro-project/hydro/commit/7b9c3678930af8010f8e2ffd4069583ece528119))
 </details>
 
 ## 0.7.0 (2024-05-24)
 
 <csr-id-18015029a725b068696ed9edefd1097583c858a6/>
+<csr-id-8c2a230afbc965d86339b7e9d71bc99c28d2fe41/>
 
 ### Chore
 
  - <csr-id-18015029a725b068696ed9edefd1097583c858a6/> update pyo3, silence warnings in generated code
 
+### Chore
+
+ - <csr-id-8c2a230afbc965d86339b7e9d71bc99c28d2fe41/> update pyo3, silence warnings in generated code
+
 ### New Features
 
  - <csr-id-29a263fb564c5ce4bc495ea4e9d20b8b2621b645/> add support for collecting counts and running perf
+ - <csr-id-a33d9e29bcab427961dbfe2f03d80a9b87ecda6c/> add support for collecting counts and running perf
 
 ### Commit Statistics
 
@@ -296,20 +535,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1152](https://github.com/hydro-project/hydro/issues/1152)**
-    - Update pyo3, silence warnings in generated code ([`1801502`](https://github.com/hydro-project/hydro/commit/18015029a725b068696ed9edefd1097583c858a6))
+    - Update pyo3, silence warnings in generated code ([`8c2a230`](https://github.com/hydro-project/hydro/commit/8c2a230afbc965d86339b7e9d71bc99c28d2fe41))
  * **[#1157](https://github.com/hydro-project/hydro/issues/1157)**
-    - Add support for collecting counts and running perf ([`29a263f`](https://github.com/hydro-project/hydro/commit/29a263fb564c5ce4bc495ea4e9d20b8b2621b645))
+    - Add support for collecting counts and running perf ([`a33d9e2`](https://github.com/hydro-project/hydro/commit/a33d9e29bcab427961dbfe2f03d80a9b87ecda6c))
  * **Uncategorized**
-    - Release hydroflow_lang v0.7.0, hydroflow_datalog_core v0.7.0, hydroflow_datalog v0.7.0, hydroflow_macro v0.7.0, lattices v0.5.5, multiplatform_test v0.1.0, pusherator v0.0.6, hydroflow v0.7.0, stageleft_macro v0.2.0, stageleft v0.3.0, stageleft_tool v0.2.0, hydroflow_plus v0.7.0, hydro_deploy v0.7.0, hydro_cli v0.7.0, hydroflow_plus_cli_integration v0.7.0, safety bump 8 crates ([`2852147`](https://github.com/hydro-project/hydro/commit/285214740627685e911781793e05d234ab2ad2bd))
+    - Release hydroflow_lang v0.7.0, hydroflow_datalog_core v0.7.0, hydroflow_datalog v0.7.0, hydroflow_macro v0.7.0, lattices v0.5.5, multiplatform_test v0.1.0, pusherator v0.0.6, hydroflow v0.7.0, stageleft_macro v0.2.0, stageleft v0.3.0, stageleft_tool v0.2.0, hydroflow_plus v0.7.0, hydro_deploy v0.7.0, hydro_cli v0.7.0, hydroflow_plus_cli_integration v0.7.0, safety bump 8 crates ([`855fda6`](https://github.com/hydro-project/hydro/commit/855fda65442ad7a9074a099ecc29e74322332418))
 </details>
 
 ## 0.6.1 (2024-04-09)
 
 <csr-id-7958fb0d900be8fe7359326abfa11dcb8fb35e8a/>
+<csr-id-864ea856ecbabfe6786990924021a70fb4252765/>
 
 ### Style
 
  - <csr-id-7958fb0d900be8fe7359326abfa11dcb8fb35e8a/> qualified path cleanups for clippy
+
+### Style
+
+ - <csr-id-864ea856ecbabfe6786990924021a70fb4252765/> qualified path cleanups for clippy
 
 ### Commit Statistics
 
@@ -327,26 +571,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1090](https://github.com/hydro-project/hydro/issues/1090)**
-    - Qualified path cleanups for clippy ([`7958fb0`](https://github.com/hydro-project/hydro/commit/7958fb0d900be8fe7359326abfa11dcb8fb35e8a))
+    - Qualified path cleanups for clippy ([`864ea85`](https://github.com/hydro-project/hydro/commit/864ea856ecbabfe6786990924021a70fb4252765))
  * **Uncategorized**
-    - Release hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1 ([`c385c13`](https://github.com/hydro-project/hydro/commit/c385c132c9733d1bace82156aa14216b8e7fef9f))
-    - Release hydroflow_lang v0.6.2, hydroflow v0.6.2, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`23cfe08`](https://github.com/hydro-project/hydro/commit/23cfe0839079aa17d042bbd3976f6d188689d290))
-    - Release hydroflow_cli_integration v0.5.2, hydroflow_lang v0.6.1, hydroflow_datalog_core v0.6.1, lattices v0.5.4, hydroflow v0.6.1, stageleft_macro v0.1.1, stageleft v0.2.1, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`cd63f22`](https://github.com/hydro-project/hydro/commit/cd63f2258c961a40f0e5dbef20ac329a2d570ad0))
+    - Release hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1 ([`499965b`](https://github.com/hydro-project/hydro/commit/499965b2bd27d3fca7e328b19960761bb64c0c0e))
+    - Release hydroflow_lang v0.6.2, hydroflow v0.6.2, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`67e16d0`](https://github.com/hydro-project/hydro/commit/67e16d069a2d565039dcf17e6caf0a23e258f983))
+    - Release hydroflow_cli_integration v0.5.2, hydroflow_lang v0.6.1, hydroflow_datalog_core v0.6.1, lattices v0.5.4, hydroflow v0.6.1, stageleft_macro v0.1.1, stageleft v0.2.1, hydroflow_plus v0.6.1, hydro_deploy v0.6.1, hydro_cli v0.6.1, hydroflow_plus_cli_integration v0.6.1, stageleft_tool v0.1.1 ([`fb82e52`](https://github.com/hydro-project/hydro/commit/fb82e523bb217658775989a276e18a1af68103c8))
 </details>
 
 ## 0.6.0 (2024-03-02)
 
 <csr-id-e9639f608f8dafd3f384837067800a66951b25df/>
+<csr-id-d8203407a97c2ccbcb5ce0cc739d8ae5a89a40c7/>
 
 ### New Features
 
  - <csr-id-fcf43bf86fe550247dffa4641a9ce3aff3b9afc3/> Add support for azure
    I accidentally committed some large files, so you won't see the commit
    history because I copied over the changes onto a fresh clone.
+ - <csr-id-8021da6e5fa5127dc67420157dff980d51c710ed/> Add support for azure
+   I accidentally committed some large files, so you won't see the commit
+   history because I copied over the changes onto a fresh clone.
 
 ### Other
 
  - <csr-id-e9639f608f8dafd3f384837067800a66951b25df/> consolidate tasks and use sccache and nextest
+
+### Other
+
+ - <csr-id-d8203407a97c2ccbcb5ce0cc739d8ae5a89a40c7/> consolidate tasks and use sccache and nextest
 
 ### Commit Statistics
 
@@ -364,11 +616,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1015](https://github.com/hydro-project/hydro/issues/1015)**
-    - Consolidate tasks and use sccache and nextest ([`e9639f6`](https://github.com/hydro-project/hydro/commit/e9639f608f8dafd3f384837067800a66951b25df))
+    - Consolidate tasks and use sccache and nextest ([`d820340`](https://github.com/hydro-project/hydro/commit/d8203407a97c2ccbcb5ce0cc739d8ae5a89a40c7))
  * **[#1043](https://github.com/hydro-project/hydro/issues/1043)**
-    - Add support for azure ([`fcf43bf`](https://github.com/hydro-project/hydro/commit/fcf43bf86fe550247dffa4641a9ce3aff3b9afc3))
+    - Add support for azure ([`8021da6`](https://github.com/hydro-project/hydro/commit/8021da6e5fa5127dc67420157dff980d51c710ed))
  * **Uncategorized**
-    - Release hydroflow_lang v0.6.0, hydroflow_datalog_core v0.6.0, hydroflow_datalog v0.6.0, hydroflow_macro v0.6.0, lattices v0.5.3, variadics v0.0.4, pusherator v0.0.5, hydroflow v0.6.0, stageleft v0.2.0, hydroflow_plus v0.6.0, hydro_deploy v0.6.0, hydro_cli v0.6.0, hydroflow_plus_cli_integration v0.6.0, safety bump 7 crates ([`09ea65f`](https://github.com/hydro-project/hydro/commit/09ea65fe9cd45c357c43bffca30e60243fa45cc8))
+    - Release hydroflow_lang v0.6.0, hydroflow_datalog_core v0.6.0, hydroflow_datalog v0.6.0, hydroflow_macro v0.6.0, lattices v0.5.3, variadics v0.0.4, pusherator v0.0.5, hydroflow v0.6.0, stageleft v0.2.0, hydroflow_plus v0.6.0, hydro_deploy v0.6.0, hydro_cli v0.6.0, hydroflow_plus_cli_integration v0.6.0, safety bump 7 crates ([`0e94db4`](https://github.com/hydro-project/hydro/commit/0e94db41c842c1181574c5e69179027cfa7a19cf))
 </details>
 
 ## 0.5.1 (2024-02-02)
@@ -376,14 +628,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ba6afab8416ad66eee4fdb9d0c73e62d45752617/>
 <csr-id-1b555e57c8c812bed4d6495d2960cbf77fb0b3ef/>
 <csr-id-69e04167f4774cf1ca3351e7ac34d15cfa83362b/>
+<csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/>
+<csr-id-5fa4168ea9d0ca07fb6fc46149aefbdc32ed7d61/>
 
 ### Chore
 
  - <csr-id-ba6afab8416ad66eee4fdb9d0c73e62d45752617/> fix clippy lints on latest nightly
 
+### Chore
+
+ - <csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/> manually set lockstep-versioned crates (and `lattices`) to version `0.5.1`
+   Setting manually since
+   https://github.com/frewsxcv/rust-crates-index/issues/159 is messing with
+   smart-release
+ - <csr-id-5fa4168ea9d0ca07fb6fc46149aefbdc32ed7d61/> generate pre-move changelogs for `hydro_cli` and `hydroflow_cli_integration`
+
 ### Bug Fixes
 
  - <csr-id-1ae27de6aafb72cee5da0cce6cf52748161d0f33/> don't vendor openssl and fix docker build
+ - <csr-id-eef407e063aa0d9079dc800bd300c39185f4390a/> don't vendor openssl and fix docker build
 
 ### Chore
 
@@ -403,6 +666,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    --
  - <csr-id-53d7aee8dcc574d47864ec89bfea30a82eab0ee7/> improve Rust API for defining services
  - <csr-id-c50ca121b6d5e30dc07843f82caa135b68626301/> split Rust core from Python bindings
+ - <csr-id-4133f52a40f7f77fb1d0bb44952815bc1fa4f1a5/> improve Rust API for defining services
+ - <csr-id-04553830046ac51fcaa212c2565a742f56b3a3e5/> split Rust core from Python bindings
 
 ### Pre-Move Commit Statistics
 
@@ -449,17 +714,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **[#1046](https://github.com/hydro-project/hydro/issues/1046)**
-    - Generate pre-move changelogs for `hydro_cli` and `hydroflow_cli_integration` ([`69e0416`](https://github.com/hydro-project/hydro/commit/69e04167f4774cf1ca3351e7ac34d15cfa83362b))
+    - Generate pre-move changelogs for `hydro_cli` and `hydroflow_cli_integration` ([`5fa4168`](https://github.com/hydro-project/hydro/commit/5fa4168ea9d0ca07fb6fc46149aefbdc32ed7d61))
  * **[#986](https://github.com/hydro-project/hydro/issues/986)**
-    - Split Rust core from Python bindings ([`c50ca12`](https://github.com/hydro-project/hydro/commit/c50ca121b6d5e30dc07843f82caa135b68626301))
+    - Split Rust core from Python bindings ([`0455383`](https://github.com/hydro-project/hydro/commit/04553830046ac51fcaa212c2565a742f56b3a3e5))
  * **[#987](https://github.com/hydro-project/hydro/issues/987)**
-    - Improve Rust API for defining services ([`53d7aee`](https://github.com/hydro-project/hydro/commit/53d7aee8dcc574d47864ec89bfea30a82eab0ee7))
+    - Improve Rust API for defining services ([`4133f52`](https://github.com/hydro-project/hydro/commit/4133f52a40f7f77fb1d0bb44952815bc1fa4f1a5))
  * **[#994](https://github.com/hydro-project/hydro/issues/994)**
-    - Don't vendor openssl and fix docker build ([`1ae27de`](https://github.com/hydro-project/hydro/commit/1ae27de6aafb72cee5da0cce6cf52748161d0f33))
+    - Don't vendor openssl and fix docker build ([`eef407e`](https://github.com/hydro-project/hydro/commit/eef407e063aa0d9079dc800bd300c39185f4390a))
  * **Uncategorized**
-    - Release hydroflow_lang v0.5.2, hydroflow_datalog_core v0.5.2, hydroflow_macro v0.5.2, lattices v0.5.2, hydroflow v0.5.2, hydro_cli v0.5.1, hydroflow_plus_cli_integration v0.5.1 ([`6ac8720`](https://github.com/hydro-project/hydro/commit/6ac872081753548ebb8ec95549b4d820dc050d3e))
-    - Release hydroflow_cli_integration v0.5.1, hydroflow_lang v0.5.1, hydroflow_datalog_core v0.5.1, hydroflow_datalog v0.5.1, hydroflow_macro v0.5.1, lattices v0.5.1, variadics v0.0.3, pusherator v0.0.4, hydroflow v0.5.1, stageleft_macro v0.1.0, stageleft v0.1.0, hydroflow_plus v0.5.1, hydro_deploy v0.5.1, hydro_cli v0.5.1 ([`478aebc`](https://github.com/hydro-project/hydro/commit/478aebc8fee2aa78eab86bd386322db1c70bde6a))
-    - Manually set lockstep-versioned crates (and `lattices`) to version `0.5.1` ([`1b555e5`](https://github.com/hydro-project/hydro/commit/1b555e57c8c812bed4d6495d2960cbf77fb0b3ef))
+    - Release hydroflow_lang v0.5.2, hydroflow_datalog_core v0.5.2, hydroflow_macro v0.5.2, lattices v0.5.2, hydroflow v0.5.2, hydro_cli v0.5.1, hydroflow_plus_cli_integration v0.5.1 ([`c6af815`](https://github.com/hydro-project/hydro/commit/c6af815d0dc1133477cfd54e0159939f337bf94f))
+    - Release hydroflow_cli_integration v0.5.1, hydroflow_lang v0.5.1, hydroflow_datalog_core v0.5.1, hydroflow_datalog v0.5.1, hydroflow_macro v0.5.1, lattices v0.5.1, variadics v0.0.3, pusherator v0.0.4, hydroflow v0.5.1, stageleft_macro v0.1.0, stageleft v0.1.0, hydroflow_plus v0.5.1, hydro_deploy v0.5.1, hydro_cli v0.5.1 ([`5a5e6d5`](https://github.com/hydro-project/hydro/commit/5a5e6d5933cf3c20ff23768d4592b0dde94e940b))
+    - Manually set lockstep-versioned crates (and `lattices`) to version `0.5.1` ([`7c48faf`](https://github.com/hydro-project/hydro/commit/7c48faf0d8301b498fa59e5eee5cddf5fa341229))
 </details>
 
 ## 0.5.0 (2023-10-11)

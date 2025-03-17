@@ -1,4 +1,4 @@
 [toolchain]
-channel = "nightly-2025-02-10" # Make sure to update `template/*/rust-toolchain.toml` as well.
+channel = "nightly-2025-03-10" # Make sure to update `template/*/rust-toolchain.toml` as well.
 components = ["rustfmt", "clippy"]
 targets = ["wasm32-unknown-unknown", "x86_64-unknown-linux-musl"]

@@ -31,8 +31,7 @@ cargo smart-release --update-crates-index \
    dfir_rs dfir_lang dfir_macro \
    dfir_datalog dfir_datalog_core \
    hydro_lang hydro_std \
-   hydro_deploy hydro_cli hydroflow_deploy_integration \
-   stageleft stageleft_macro stageleft_tool \
+   hydro_deploy hydro_cli hydro_deploy_integration \
    multiplatform_test
 ```
 
@@ -117,7 +116,7 @@ junk you mistakenly pushed.
 
 When adding a new crate which is published, you need to:
 1. Ensure `publish = true` and other required fields (`license`, `description`, `documentation`,
-   `repository`, etc.), are set in `my_crate/Cargo.toml`
+   `repository`, `[package.metadata.docs.rs]`, etc.), are set in `my_crate/Cargo.toml`
    https://doc.rust-lang.org/cargo/reference/publishing.html#before-publishing-a-new-crate
 2. Ensure any `path` dependencies to/from `my_crate` also include `version = "^0.1.0"`
    (substitute correct version).

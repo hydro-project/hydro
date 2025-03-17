@@ -178,6 +178,7 @@ impl<'a> Dfir<'a> {
     /// representation of all the operators, subgraphs, and handoffs in this instance.
     /// Will only be set if this graph was constructed using a surface syntax macro.
     #[cfg(feature = "meta")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
     pub fn meta_graph(&self) -> Option<&DfirGraph> {
         self.meta_graph.as_ref()
     }
@@ -187,6 +188,7 @@ impl<'a> Dfir<'a> {
     /// with original span info.
     /// Will only be set if this graph was constructed using a surface syntax macro.
     #[cfg(feature = "meta")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
     pub fn diagnostics(&self) -> Option<&[Diagnostic<SerdeSpan>]> {
         self.diagnostics.as_deref()
     }
