@@ -1,10 +1,7 @@
 [build]
-rustflags = [
-    # Flag to make build.rs scripts generate docs. Should only be used in this repository
-    # internally, not by dependants.
-    '--cfg=HYDROFLOW_GENERATE_DOCS',
-]
-rustdocflags = [ '--cfg=docsrs' ]
+
+[env]
+DFIR_GENERATE_DOCS = "1"
 
 [target.aarch64-apple-darwin]
 linker = "rust-lld"
