@@ -156,14 +156,14 @@ jobs:
         run: curl -LsSf https://get.nexte.st/latest/windows-tar | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
       - name: Run cargo nextest on all targets
-        run: cargo nextest run --no-fail-fast --features python --features deploy --all-targets
+        run: cargo nextest run --no-fail-fast --features python --features hydro_lang/deploy --all-targets
         env:
           # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
           TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
           DFIR_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
-        run: cargo test --no-fail-fast --features python --features deploy --doc
+        run: cargo test --no-fail-fast --features python --features hydro_lang/deploy --doc
 
       - name: Install Python
         uses: actions/setup-python@v4
