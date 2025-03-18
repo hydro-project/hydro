@@ -12,7 +12,6 @@ stageleft_devel = []
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_std = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 stageleft = "0.7.0"
-tokio = { version = "1.29.0", features = [ "full" ] }
 
 [build-dependencies]
 stageleft_tool = "0.6.0"
@@ -24,4 +23,5 @@ hydro_deploy = { git = "{{ hydro_git | default: 'https://github.com/hydro-projec
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}", features = [
     "deploy",
 ] }
+tokio = { version = "1.29.0", features = ["full"] }
 tokio-stream = { version = "0.1.3", default-features = false }

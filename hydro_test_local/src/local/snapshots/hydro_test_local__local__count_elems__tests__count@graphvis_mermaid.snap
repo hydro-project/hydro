@@ -9,9 +9,9 @@ classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(input_stream)</code>"/]:::pullClass
-2v1[\"<div style=text-align:center>(2v1)</div> <code>map({<br>    use crate::__staged::local::count_elems::*;<br>    |_| 1<br>})</code>"/]:::pullClass
-3v1[\"<div style=text-align:center>(3v1)</div> <code>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        use crate::__staged::local::count_elems::*;<br>        || 0<br>    },<br>    {<br>        use crate::__staged::local::count_elems::*;<br>        |a, b| *a += b<br>    },<br>)</code>"/]:::pullClass
-4v1[/"<div style=text-align:center>(4v1)</div> <code>for_each({<br>    use crate::__staged::local::count_elems::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
+2v1[\"<div style=text-align:center>(2v1)</div> <code>map({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::count_elems::*;<br>    |_| 1<br>})</code>"/]:::pullClass
+3v1[\"<div style=text-align:center>(3v1)</div> <code>fold::&lt;<br>    'tick,<br>&gt;(<br>    {<br>        use crate::__staged::__deps::*;<br>        use crate::__staged::local::count_elems::*;<br>        || 0<br>    },<br>    {<br>        use crate::__staged::__deps::*;<br>        use crate::__staged::local::count_elems::*;<br>        |a, b| *a += b<br>    },<br>)</code>"/]:::pullClass
+4v1[/"<div style=text-align:center>(4v1)</div> <code>for_each({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::count_elems::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 5v1["(5v1) <code>handoff</code>"]:::otherClass
 1v1-->2v1
 2v1-->5v1

@@ -14,18 +14,13 @@ stageleft_devel = []
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }
 hydro_std = { path = "../hydro_std", version = "^0.12.1" }
-tokio = { version = "1.29.0", features = ["full"] }
-stageleft = "0.7.0"
+stageleft = "0.8.0"
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
 
-# TODO(shadaj): remove once we handle transitive dependencies in `quote_type`
-stats-ci = "0.1.1"
-hdrhistogram = "7.5.4"
-
 [build-dependencies]
-stageleft_tool = "0.6.0"
+stageleft_tool = "0.8.0"
 
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
@@ -33,7 +28,10 @@ ctor = "0.2"
 dfir_rs = { path = "../dfir_rs", version = "^0.12.1" }
 futures = "0.3.0"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.1" }
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [ "deploy" ] }
+hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
+    "deploy",
+] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 insta = "1.39"
+tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"

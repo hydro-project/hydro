@@ -5,8 +5,8 @@ expression: "joined.meta_graph().unwrap().to_dot(& Default :: default())"
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
-    n1v1 [label="(n1v1) source_iter({\l    use crate::__staged::local::teed_join::*;\l    0..5\l})\l", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) for_each({\l    use crate::__staged::local::teed_join::*;\l    let output__free = output;\l    |v| {\l        output__free.send(v).unwrap();\l    }\l})\l", shape=house, fillcolor="#ffff88"]
+    n1v1 [label="(n1v1) source_iter({\l    use crate::__staged::__deps::*;\l    use crate::__staged::local::teed_join::*;\l    0..5\l})\l", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) for_each({\l    use crate::__staged::__deps::*;\l    use crate::__staged::local::teed_join::*;\l    let output__free = output;\l    |v| {\l        output__free.send(v).unwrap();\l    }\l})\l", shape=house, fillcolor="#ffff88"]
     n1v1 -> n2v1
     subgraph "cluster n1v1" {
         fillcolor="#dddddd"

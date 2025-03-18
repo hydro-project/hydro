@@ -51,12 +51,17 @@ pub fn create_graph_trybuild(
     }
     .visit_file_mut(&mut generated_code);
 
-    let inlined_staged = if is_test {
-        stageleft_tool::gen_staged_trybuild(
+    let inlined_staged: syn::File = if is_test {
+        let staged_contents = stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
             crate_name.clone(),
             is_test,
-        )
+        );
+
+        syn::parse_quote! {
+            pub mod __deps {} // TODO(shadaj): support deps in test-mode
+            #staged_contents
+        }
     } else {
         syn::parse_quote!()
     };
@@ -150,7 +155,7 @@ pub fn compile_graph_trybuild(
             #tokens
         }
 
-        #[tokio::main]
+        #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]
         async fn main() {
             let ports = hydro_lang::dfir_rs::util::deploy::init_no_ack_start().await;
             let flow = __hydro_runtime(&ports);

@@ -7,7 +7,7 @@ pub use stageleft::q;
 
 #[doc(hidden)]
 pub mod runtime_support {
-    pub use {bincode, stageleft};
+    pub use {bincode, stageleft, tokio};
     pub mod resource_measurement;
 }
 

@@ -8,12 +8,12 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"<div style=text-align:center>(1v1)</div> <code>source_iter({<br>    use crate::__staged::local::negation::*;<br>    0..5<br>})</code>"/]:::pullClass
-2v1[\"<div style=text-align:center>(2v1)</div> <code>map({<br>    use crate::__staged::local::negation::*;<br>    |v| (v, v)<br>})</code>"/]:::pullClass
+1v1[\"<div style=text-align:center>(1v1)</div> <code>source_iter({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::negation::*;<br>    0..5<br>})</code>"/]:::pullClass
+2v1[\"<div style=text-align:center>(2v1)</div> <code>map({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::negation::*;<br>    |v| (v, v)<br>})</code>"/]:::pullClass
 3v1[\"(3v1) <code>persist::&lt;'static&gt;()</code>"/]:::pullClass
-4v1[\"<div style=text-align:center>(4v1)</div> <code>source_iter({<br>    use crate::__staged::local::negation::*;<br>    3..6<br>})</code>"/]:::pullClass
+4v1[\"<div style=text-align:center>(4v1)</div> <code>source_iter({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::negation::*;<br>    3..6<br>})</code>"/]:::pullClass
 5v1[\"(5v1) <code>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"/]:::pullClass
-6v1[/"<div style=text-align:center>(6v1)</div> <code>for_each({<br>    use crate::__staged::local::negation::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v.0).unwrap();<br>    }<br>})</code>"\]:::pushClass
+6v1[/"<div style=text-align:center>(6v1)</div> <code>for_each({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::negation::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v.0).unwrap();<br>    }<br>})</code>"\]:::pushClass
 7v1["(7v1) <code>handoff</code>"]:::otherClass
 1v1-->2v1
 2v1-->3v1
