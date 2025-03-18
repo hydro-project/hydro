@@ -53,6 +53,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
+                   loop_id,
                    op_span,
                    ident,
                    is_pull,
@@ -71,11 +72,14 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [a] => a,
-            _ => unreachable!(),
-        };
+
+        let persistence = persistence_args.first().copied().unwrap_or_else(|| {
+            if loop_id.is_some() {
+                Persistence::None
+            } else {
+                Persistence::Tick
+            }
+        });
         if Persistence::Mutable == persistence {
             diagnostics.push(Diagnostic::spanned(
                 op_span,
@@ -123,7 +127,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let mut #accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                    let mut #accumulator_ident = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#singleton_output_ident)
+                    }.borrow_mut();
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -139,7 +146,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = {
                     #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        let mut #accumulator_ident = #context.state_ref(#singleton_output_ident).borrow_mut();
+                        let mut #accumulator_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#singleton_output_ident)
+                        }.borrow_mut();
                         #iterator_foreach
                     })
                 };

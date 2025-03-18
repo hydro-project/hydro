@@ -1,7 +1,8 @@
-use std::fs;
+use std::fs::{self, File};
+use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use dfir_lang::graph::{DfirGraph, partition_graph};
+use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
 use stageleft::internal::quote;
 use syn::visit_mut::VisitMut;
@@ -11,6 +12,8 @@ use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
 use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
+
+pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -33,7 +36,6 @@ pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
-    hydro_additional_features: &[String],
 ) -> (String, (PathBuf, PathBuf, Option<Vec<String>>)) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
@@ -85,14 +87,51 @@ pub fn create_graph_trybuild(
         hash
     };
 
-    let trybuild_created =
-        create_trybuild(&source, &bin_name, is_test, hydro_additional_features).unwrap();
-    (bin_name, trybuild_created)
+    let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
+
+    // TODO(shadaj): garbage collect this directory occasionally
+    fs::create_dir_all(path!(project_dir / "src" / "bin")).unwrap();
+
+    let out_path = path!(project_dir / "src" / "bin" / format!("{bin_name}.rs"));
+    {
+        let mut out_file = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(&out_path)
+            .unwrap();
+        #[cfg(nightly)]
+        out_file.lock().unwrap();
+
+        let mut existing_contents = String::new();
+        out_file.read_to_string(&mut existing_contents).unwrap();
+        if existing_contents != source {
+            out_file.write_all(source.as_ref()).unwrap()
+        }
+    }
+
+    if is_test {
+        if cur_bin_enabled_features.is_none() {
+            cur_bin_enabled_features = Some(vec![]);
+        }
+
+        cur_bin_enabled_features
+            .as_mut()
+            .unwrap()
+            .push("hydro___test".to_string());
+    }
+
+    (
+        bin_name,
+        (project_dir, target_dir, cur_bin_enabled_features),
+    )
 }
 
-pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> syn::File {
-    let partitioned_graph = partition_graph(graph).expect("Failed to partition (cycle detected).");
-
+pub fn compile_graph_trybuild(
+    partitioned_graph: DfirGraph,
+    extra_stmts: Vec<syn::Stmt>,
+) -> syn::File {
     let mut diagnostics = Vec::new();
     let tokens = partitioned_graph.as_code(
         &quote! { hydro_lang::dfir_rs },
@@ -123,12 +162,8 @@ pub fn compile_graph_trybuild(graph: DfirGraph, extra_stmts: Vec<syn::Stmt>) -> 
     source_ast
 }
 
-pub fn create_trybuild(
-    source: &str,
-    bin: &str,
-    is_test: bool,
-    hydro_additional_features: &[String],
-) -> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
+pub fn create_trybuild()
+-> Result<(PathBuf, PathBuf, Option<Vec<String>>), trybuild_internals_api::error::Error> {
     let Metadata {
         target_directory: target_dir,
         workspace_root: workspace,
@@ -138,9 +173,23 @@ pub fn create_trybuild(
     let source_dir = cargo::manifest_dir()?;
     let mut source_manifest = dependencies::get_manifest(&source_dir)?;
 
-    if !is_test {
-        source_manifest.dev_dependencies.clear();
-    }
+    let mut dev_dependency_features = vec![];
+    source_manifest.dev_dependencies.retain(|k, v| {
+        if source_manifest.dependencies.contains_key(k) {
+            // already a non-dev dependency, so drop the dep and put the features under the test flag
+            for feat in &v.features {
+                dev_dependency_features.push(format!("{}/{}", k, feat));
+            }
+
+            false
+        } else {
+            // only enable this in test mode, so make it optional otherwise
+            dev_dependency_features.push(format!("dep:{k}"));
+
+            v.optional = true;
+            true
+        }
+    });
 
     let mut features = features::find();
 
@@ -190,10 +239,16 @@ pub fn create_trybuild(
             });
     }
 
-    let hydro_dep = manifest.dependencies.get_mut("hydro_lang").unwrap();
-    hydro_dep
+    for runtime_feature in HYDRO_RUNTIME_FEATURES {
+        manifest.features.insert(
+            format!("hydro___feature_{runtime_feature}"),
+            vec![format!("hydro_lang/{runtime_feature}")],
+        );
+    }
+
+    manifest
         .features
-        .extend(hydro_additional_features.iter().cloned());
+        .insert("hydro___test".to_string(), dev_dependency_features);
 
     let project = Project {
         dir: project_dir,
@@ -210,36 +265,32 @@ pub fn create_trybuild(
         keep_going: false,
     };
 
-    let manifest_toml = toml::to_string(&project.manifest)?;
-    fs::write(path!(project.dir / "Cargo.toml"), manifest_toml)?;
+    {
+        #[cfg(nightly)]
+        let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
+        #[cfg(nightly)]
+        project_lock.lock()?;
 
-    fs::create_dir_all(path!(project.dir / "src" / "bin"))?;
+        let manifest_toml = toml::to_string(&project.manifest)?;
+        fs::write(path!(project.dir / "Cargo.toml"), manifest_toml)?;
 
-    let out_path = path!(project.dir / "src" / "bin" / format!("{bin}.rs"));
-    if !out_path.exists() || fs::read_to_string(&out_path)? != source {
-        fs::write(
-            path!(project.dir / "src" / "bin" / format!("{bin}.rs")),
-            source,
-        )?;
-    }
-    // TODO(shadaj): garbage collect this directory occasionally
+        let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
+        if workspace_cargo_lock.exists() {
+            let _ = fs::copy(workspace_cargo_lock, path!(project.dir / "Cargo.lock"));
+        } else {
+            let _ = cargo::cargo(&project).arg("generate-lockfile").status();
+        }
 
-    let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
-    if workspace_cargo_lock.exists() {
-        let _ = fs::copy(workspace_cargo_lock, path!(project.dir / "Cargo.lock"));
-    } else {
-        let _ = cargo::cargo(&project).arg("generate-lockfile").status();
-    }
+        let workspace_dot_cargo_config_toml = path!(project.workspace / ".cargo" / "config.toml");
+        if workspace_dot_cargo_config_toml.exists() {
+            let dot_cargo_folder = path!(project.dir / ".cargo");
+            fs::create_dir_all(&dot_cargo_folder)?;
 
-    let workspace_dot_cargo_config_toml = path!(project.workspace / ".cargo" / "config.toml");
-    if workspace_dot_cargo_config_toml.exists() {
-        let dot_cargo_folder = path!(project.dir / ".cargo");
-        fs::create_dir_all(&dot_cargo_folder)?;
-
-        let _ = fs::copy(
-            workspace_dot_cargo_config_toml,
-            path!(dot_cargo_folder / "config.toml"),
-        );
+            let _ = fs::copy(
+                workspace_dot_cargo_config_toml,
+                path!(dot_cargo_folder / "config.toml"),
+            );
+        }
     }
 
     Ok((

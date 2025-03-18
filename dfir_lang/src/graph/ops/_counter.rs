@@ -10,7 +10,7 @@ use super::{
 ///
 /// ```dfir
 /// source_stream(dfir_rs::util::iter_batches_stream(0..=100_000, 1))
-///     -> _counter("nums", Duration::from_millis(100));
+///     -> _counter("nums", std::time::Duration::from_millis(100));
 /// ```
 /// stdout:
 /// ```text

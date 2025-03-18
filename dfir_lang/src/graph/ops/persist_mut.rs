@@ -84,7 +84,11 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
         let write_iterator = {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #context.state_ref(#persistdata_ident).borrow_mut();
+                let mut #vec_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#persistdata_ident)
+                }.borrow_mut();
+
                 let #ident = {
                     #[inline(always)]
                     fn check_iter<T: ::std::hash::Hash + ::std::cmp::Eq>(iter: impl Iterator<Item = #root::util::Persistence::<T>>) -> impl Iterator<Item = #root::util::Persistence::<T>> {

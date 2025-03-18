@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::future::Future;
 use std::io::Error;
 use std::pin::Pin;
@@ -11,19 +11,17 @@ use dfir_rs::bytes::Bytes;
 use dfir_rs::futures::{Sink, SinkExt, Stream, StreamExt};
 use dfir_rs::util::deploy::{ConnectedSink, ConnectedSource};
 use hydro_deploy::custom_service::CustomClientPort;
-use hydro_deploy::hydroflow_crate::HydroflowCrateService;
-use hydro_deploy::hydroflow_crate::ports::{
-    DemuxSink, HydroflowSink, HydroflowSource, TaggedSource,
-};
-use hydro_deploy::hydroflow_crate::tracing_options::TracingOptions;
-use hydro_deploy::{CustomService, Deployment, Host, HydroflowCrate, TracingResults};
+use hydro_deploy::rust_crate::RustCrateService;
+use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
+use hydro_deploy::rust_crate::tracing_options::TracingOptions;
+use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
 use nameof::name_of;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
 use tokio::sync::RwLock;
 
-use super::trybuild::create_graph_trybuild;
+use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use super::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort};
 use crate::deploy_runtime::*;
 
@@ -144,7 +142,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                         (
                             id as u32,
                             Arc::new(n.get_port(c2_port.clone(), &c.underlying))
-                                as Arc<dyn HydroflowSink + 'static>,
+                                as Arc<dyn RustCrateSink + 'static>,
                         )
                     })
                     .collect(),
@@ -252,7 +250,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
                             (
                                 id as u32,
                                 Arc::new(n.get_port(c2_port.clone(), &c.underlying).merge())
-                                    as Arc<dyn HydroflowSink + 'static>,
+                                    as Arc<dyn RustCrateSink + 'static>,
                             )
                         })
                         .collect(),
@@ -380,7 +378,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
 }
 
 pub trait DeployCrateWrapper {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>>;
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>>;
 
     #[expect(async_fn_in_trait, reason = "no auto trait bounds needed")]
     async fn stdout(&self) -> tokio::sync::mpsc::UnboundedReceiver<String> {
@@ -665,7 +663,7 @@ impl<H: Host + 'static> ExternalSpec<'_, HydroDeploy> for Arc<H> {
 }
 
 pub enum CrateOrTrybuild {
-    Crate(HydroflowCrate),
+    Crate(RustCrate),
     Trybuild(TrybuildHost),
 }
 
@@ -674,11 +672,11 @@ pub struct DeployNode {
     id: usize,
     next_port: Rc<RefCell<usize>>,
     service_spec: Rc<RefCell<Option<CrateOrTrybuild>>>,
-    underlying: Rc<RefCell<Option<Arc<RwLock<HydroflowCrateService>>>>>,
+    underlying: Rc<RefCell<Option<Arc<RwLock<RustCrateService>>>>>,
 }
 
 impl DeployCrateWrapper for DeployNode {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>> {
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
         self.underlying.borrow().as_ref().unwrap().clone()
     }
 }
@@ -715,12 +713,8 @@ impl Node for DeployNode {
         let service = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c) => c,
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, (dir, target_dir, features)) = create_graph_trybuild(
-                    graph,
-                    extra_stmts,
-                    &trybuild.name_hint,
-                    &trybuild.additional_hydro_features,
-                );
+                let (bin_name, (dir, target_dir, features)) =
+                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
                 create_trybuild_service(trybuild, &dir, &target_dir, &features, &bin_name)
             }
         };
@@ -731,11 +725,11 @@ impl Node for DeployNode {
 
 #[derive(Clone)]
 pub struct DeployClusterNode {
-    underlying: Arc<RwLock<HydroflowCrateService>>,
+    underlying: Arc<RwLock<RustCrateService>>,
 }
 
 impl DeployCrateWrapper for DeployClusterNode {
-    fn underlying(&self) -> Arc<RwLock<HydroflowCrateService>> {
+    fn underlying(&self) -> Arc<RwLock<RustCrateService>> {
         self.underlying.clone()
     }
 }
@@ -783,30 +777,7 @@ impl Node for DeployCluster {
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
         let maybe_trybuild = if has_trybuild {
-            let all_features = self
-                .cluster_spec
-                .borrow()
-                .as_ref()
-                .unwrap()
-                .iter()
-                .map(|spec| match spec {
-                    CrateOrTrybuild::Crate(_c) => panic!("unexpected crate in cluster"),
-                    CrateOrTrybuild::Trybuild(t) => t.additional_hydro_features.clone(),
-                })
-                .collect::<HashSet<_>>();
-
-            assert!(
-                all_features.len() == 1,
-                "all trybuilds in a cluster must have the same features"
-            );
-            let features = all_features.into_iter().next().unwrap();
-
-            Some(create_graph_trybuild(
-                graph,
-                extra_stmts,
-                &self.name_hint,
-                &features,
-            ))
+            Some(create_graph_trybuild(graph, extra_stmts, &self.name_hint))
         } else {
             None
         };
@@ -850,10 +821,10 @@ impl Node for DeployCluster {
 }
 
 #[derive(Clone)]
-pub struct DeployProcessSpec(HydroflowCrate);
+pub struct DeployProcessSpec(RustCrate);
 
 impl DeployProcessSpec {
-    pub fn new(t: HydroflowCrate) -> Self {
+    pub fn new(t: RustCrate) -> Self {
         Self(t)
     }
 }
@@ -882,10 +853,10 @@ impl ProcessSpec<'_, HydroDeploy> for TrybuildHost {
 }
 
 #[derive(Clone)]
-pub struct DeployClusterSpec(Vec<HydroflowCrate>);
+pub struct DeployClusterSpec(Vec<RustCrate>);
 
 impl DeployClusterSpec {
-    pub fn new(crates: Vec<HydroflowCrate>) -> Self {
+    pub fn new(crates: Vec<RustCrate>) -> Self {
         Self(crates)
     }
 }
@@ -933,8 +904,8 @@ fn create_trybuild_service(
     target_dir: &std::path::PathBuf,
     features: &Option<Vec<String>>,
     bin_name: &str,
-) -> HydroflowCrate {
-    let mut ret = HydroflowCrate::new(dir, trybuild.host)
+) -> RustCrate {
+    let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
         .bin(bin_name)
         .no_default_features();
@@ -957,8 +928,21 @@ fn create_trybuild_service(
         ret = ret.tracing(tracing);
     }
 
+    ret = ret.features(
+        trybuild
+            .additional_hydro_features
+            .into_iter()
+            .map(|runtime_feature| {
+                assert!(
+                    HYDRO_RUNTIME_FEATURES.iter().any(|f| f == &runtime_feature),
+                    "{runtime_feature} is not a valid Hydro runtime feature"
+                );
+                format!("hydro___feature_{runtime_feature}")
+            }),
+    );
+
     if let Some(features) = features {
-        ret = ret.features(features.clone());
+        ret = ret.features(features);
     }
 
     ret

@@ -22,14 +22,17 @@ mod trybuild_rewriters;
 
 #[cfg(feature = "deploy")]
 #[cfg(stageleft_runtime)]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use trybuild::init_test;
 
 #[cfg(feature = "deploy")]
 #[cfg(stageleft_runtime)]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy_graph;
 
 #[cfg(feature = "deploy")]
 #[cfg(stageleft_runtime)]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use deploy_graph::*;
 
 pub mod in_memory_graph;

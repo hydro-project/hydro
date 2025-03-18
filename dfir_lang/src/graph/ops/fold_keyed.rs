@@ -93,6 +93,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    is_pull,
                    work_fn,
                    root,
+                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics:
@@ -107,7 +108,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
-        assert!(is_pull);
+        assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
 
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
@@ -134,13 +135,55 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         let hashtable_ident = wc.make_ident("hashtable");
 
         let (write_prologue, write_iterator, write_iterator_after) = match persistence {
+            Persistence::None => {
+                (
+                    Default::default(),
+                    // TODO(mingwei): deduplicate this code with the other persistence cases.
+                    quote_spanned! {op_span=>
+                        let mut #hashtable_ident = #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
+
+                        #work_fn(|| {
+                            #[inline(always)]
+                            fn check_input<Iter, A, B>(iter: Iter) -> impl ::std::iter::Iterator<Item = (A, B)>
+                            where
+                                Iter: std::iter::Iterator<Item = (A, B)>,
+                                A: ::std::clone::Clone,
+                                B: ::std::clone::Clone
+                            {
+                                iter
+                            }
+
+                            /// A: accumulator type
+                            /// T: iterator item type
+                            /// O: output type
+                            #[inline(always)]
+                            fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
+                                (f)(a, t)
+                            }
+
+                            for kv in check_input(#input) {
+                                // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
+                                #[allow(unknown_lints, clippy::unwrap_or_default)]
+                                let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
+                                #[allow(clippy::redundant_closure_call)] call_comb_type(entry, kv.1, #aggfn);
+                            }
+                        });
+
+                        let #ident = #hashtable_ident.drain();
+                    },
+                    Default::default(),
+                )
+            }
             Persistence::Tick => {
                 (
                     quote_spanned! {op_span=>
                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
-                        let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
+                        let mut #hashtable_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#groupbydata_ident)
+                        }.borrow_mut();
 
                         #work_fn(|| {
                             #[inline(always)]
@@ -180,7 +223,10 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
-                        let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
+                        let mut #hashtable_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#groupbydata_ident)
+                        }.borrow_mut();
 
                         #work_fn(|| {
                             #[inline(always)]
@@ -236,7 +282,10 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
                     },
                     quote_spanned! {op_span=>
-                        let mut #hashtable_ident = #context.state_ref(#groupbydata_ident).borrow_mut();
+                        let mut #hashtable_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#groupbydata_ident)
+                        }.borrow_mut();
 
                         #work_fn(|| {
                             #[inline(always)]

@@ -81,8 +81,13 @@ impl Debug for DebugType {
     }
 }
 
+#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "`Building` is just equivalent to `None`."
+)]
 pub enum DebugInstantiate {
-    Building(),
+    Building,
     Finalized(syn::Expr, syn::Expr, Option<Box<dyn FnOnce()>>),
 }
 
@@ -101,7 +106,7 @@ impl Hash for DebugInstantiate {
 impl Clone for DebugInstantiate {
     fn clone(&self) -> Self {
         match self {
-            DebugInstantiate::Building() => DebugInstantiate::Building(),
+            DebugInstantiate::Building => DebugInstantiate::Building,
             DebugInstantiate::Finalized(_, _, _) => {
                 panic!("DebugInstantiate::Finalized should not be cloned")
             }
@@ -534,6 +539,8 @@ impl Eq for HydroIrMetadata {}
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
+#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
+#[allow(clippy::large_enum_variant, reason = "TODO(mingwei):")]
 #[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
@@ -603,6 +610,15 @@ pub enum HydroNode {
     AntiJoin {
         pos: Box<HydroNode>,
         neg: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    ResolveFutures {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+    ResolveFuturesOrdered {
+        input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
 
@@ -721,7 +737,7 @@ impl<'a> HydroNode {
                 } = n
                 {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                        DebugInstantiate::Building() => instantiate_network::<D>(
+                        DebugInstantiate::Building => instantiate_network::<D>(
                             curr_location.as_ref().unwrap(),
                             *from_key,
                             to_location,
@@ -770,10 +786,10 @@ impl<'a> HydroNode {
             &mut |n| {
                 if let HydroNode::Network { instantiate_fn, .. } = n {
                     match instantiate_fn {
-                        DebugInstantiate::Building() => panic!("network not built"),
+                        DebugInstantiate::Building => panic!("network not built"),
 
                         DebugInstantiate::Finalized(_, _, connect_fn) => {
-                            connect_fn.take().unwrap()();
+                            (connect_fn.take().unwrap())();
                         }
                     }
                 }
@@ -847,6 +863,8 @@ impl<'a> HydroNode {
             }
 
             HydroNode::Map { input, .. }
+            | HydroNode::ResolveFutures { input, .. }
+            | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
@@ -967,6 +985,16 @@ impl<'a> HydroNode {
                 neg: Box::new(neg.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroNode::ResolveFutures { input, metadata } => HydroNode::ResolveFutures {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ResolveFuturesOrdered { input, metadata } => {
+                HydroNode::ResolveFuturesOrdered {
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
             HydroNode::Map { f, input, metadata } => HydroNode::Map {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
@@ -1485,6 +1513,62 @@ impl<'a> HydroNode {
                 (stream_ident, pos_location_id)
             }
 
+            HydroNode::ResolveFutures { input, .. } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let futures_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #futures_ident = #input_ident -> resolve_futures();
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (futures_ident, input_location_id)
+            }
+
+            HydroNode::ResolveFuturesOrdered { input, .. } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let futures_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        builder.add_dfir(
+                            parse_quote! {
+                                #futures_ident = #input_ident -> resolve_futures_ordered();
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (futures_ident, input_location_id)
+            }
+
             HydroNode::Map { f, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
@@ -1867,13 +1951,14 @@ impl<'a> HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let (sink_expr, source_expr, _connect_fn) = match instantiate_fn {
-                            DebugInstantiate::Building() => {
-                                panic!("Expected the network to be finalized")
-                            }
+                        let (sink_expr, source_expr) = match instantiate_fn {
+                            DebugInstantiate::Building => (
+                                syn::parse_quote!(DUMMY_SINK),
+                                syn::parse_quote!(DUMMY_SOURCE),
+                            ),
 
-                            DebugInstantiate::Finalized(sink, source, connect_fn) => {
-                                (sink, source, connect_fn)
+                            DebugInstantiate::Finalized(sink, source, _connect_fn) => {
+                                (sink.clone(), source.clone())
                             }
                         };
 
@@ -1974,6 +2059,8 @@ impl<'a> HydroNode {
             | HydroNode::Chain { .. }
             | HydroNode::CrossProduct { .. }
             | HydroNode::CrossSingleton { .. }
+            | HydroNode::ResolveFutures { .. }
+            | HydroNode::ResolveFuturesOrdered { .. }
             | HydroNode::Join { .. }
             | HydroNode::Difference { .. }
             | HydroNode::AntiJoin { .. }
@@ -2029,6 +2116,8 @@ impl<'a> HydroNode {
             HydroNode::Join { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::ResolveFutures { metadata, .. } => metadata,
+            HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
@@ -2064,6 +2153,8 @@ impl<'a> HydroNode {
             HydroNode::Join { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
+            HydroNode::ResolveFutures { metadata, .. } => metadata,
+            HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
@@ -2172,6 +2263,8 @@ impl<'a> HydroNode {
             HydroNode::AntiJoin { pos, neg, .. } => {
                 format!("AntiJoin({}, {})", pos.print_root(), neg.print_root())
             }
+            HydroNode::ResolveFutures { .. } => "ResolveFutures()".to_string(),
+            HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_string(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
             HydroNode::Filter { f, .. } => format!("Filter({:?})", f),

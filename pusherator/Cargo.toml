@@ -1,7 +1,7 @@
 [package]
 name = "pusherator"
 publish = true
-version = "0.0.10"
+version = "0.0.12"
 documentation = "https://docs.rs/pusherator/"
 description = "Push-based version of Rust iterators"
 edition = { workspace = true }
@@ -15,6 +15,9 @@ workspace = true
 default = [ "demux" ]
 demux = [ "dep:variadics" ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 either = "1.0.0"
-variadics = { optional = true, path = "../variadics", version = "^0.0.8" }
+variadics = { optional = true, path = "../variadics", version = "^0.0.9" }

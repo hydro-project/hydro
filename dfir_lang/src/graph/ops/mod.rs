@@ -5,6 +5,7 @@ use std::fmt::{Debug, Display};
 use std::ops::{Bound, RangeBounds};
 use std::sync::OnceLock;
 
+use documented::DocumentedVariants;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote_spanned;
 use serde::{Deserialize, Serialize};
@@ -300,6 +301,8 @@ declare_ops![
     persist_mut::PERSIST_MUT,
     persist_mut_keyed::PERSIST_MUT_KEYED,
     prefix::PREFIX,
+    resolve_futures::RESOLVE_FUTURES,
+    resolve_futures_ordered::RESOLVE_FUTURES_ORDERED,
     py_udf::PY_UDF,
     reduce::REDUCE,
     spin::SPIN,
@@ -477,6 +480,8 @@ where
 /// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
+    /// No persistence, for within a loop iteration.
+    None,
     /// Persistence for one tick at-a-time only.
     Tick,
     /// Persistene across all ticks.
@@ -494,77 +499,47 @@ fn make_missing_runtime_msg(op_name: &str) -> Literal {
 }
 
 /// Operator categories, for docs.
-///
-/// See source of [`Self::description`] for description of variants.
-#[allow(
-    clippy::allow_attributes,
-    missing_docs,
-    reason = "see `Self::description`"
-)]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, DocumentedVariants)]
 pub enum OperatorCategory {
+    /// Maps: Simple one-in-one-out operators.
     Map,
+    /// Filters: One-in zero-or-one-out operators.
     Filter,
+    /// Flattens: One-in multiple-out operators.
     Flatten,
+    /// Folds: Operators which accumulate elements together.
     Fold,
+    /// Keyed Folds: Operators which accumulate elements together by key.
     KeyedFold,
+    /// Lattice Folds: Folds based on lattice-merge.
     LatticeFold,
+    /// Persistent Operators: Persistent (stateful) operators.
     Persistence,
+    /// Multi-Input Operators: Operators with multiple inputs.
     MultiIn,
+    /// Multi-Output Operators: Operators with multiple outputs.
     MultiOut,
+    /// Sources: Operators which produce output elements (and consume no inputs).
     Source,
+    /// Sinks: Operators which consume input elements (and produce no outputs).
     Sink,
+    /// Control Flow Operators: Operators which affect control flow/scheduling.
     Control,
+    /// Compiler Fusion Operators: Operators which are necessary to implement certain optimizations and rewrite rules.
     CompilerFusionOperator,
+    /// Windowing Operators: Operators for windowing `loop` inputs.
     Windowing,
+    /// Un-Windowing Operators: Operators for collecting `loop` outputs.
     Unwindowing,
 }
 impl OperatorCategory {
     /// Human-readible heading name, for docs.
     pub fn name(self) -> &'static str {
-        match self {
-            OperatorCategory::Map => "Maps",
-            OperatorCategory::Filter => "Filters",
-            OperatorCategory::Flatten => "Flattens",
-            OperatorCategory::Fold => "Folds",
-            OperatorCategory::KeyedFold => "Keyed Folds",
-            OperatorCategory::LatticeFold => "Lattice Folds",
-            OperatorCategory::Persistence => "Persistent Operators",
-            OperatorCategory::MultiIn => "Multi-Input Operators",
-            OperatorCategory::MultiOut => "Multi-Output Operators",
-            OperatorCategory::Source => "Sources",
-            OperatorCategory::Sink => "Sinks",
-            OperatorCategory::Control => "Control Flow Operators",
-            OperatorCategory::CompilerFusionOperator => "Compiler Fusion Operators",
-            OperatorCategory::Windowing => "Windowing Operator",
-            OperatorCategory::Unwindowing => "Un-Windowing Operator",
-        }
+        self.get_variant_docs().split_once(":").unwrap().0
     }
     /// Human description, for docs.
     pub fn description(self) -> &'static str {
-        match self {
-            OperatorCategory::Map => "Simple one-in-one-out operators.",
-            OperatorCategory::Filter => "One-in zero-or-one-out operators.",
-            OperatorCategory::Flatten => "One-in multiple-out operators.",
-            OperatorCategory::Fold => "Operators which accumulate elements together.",
-            OperatorCategory::KeyedFold => "Keyed fold operators.",
-            OperatorCategory::LatticeFold => "Folds based on lattice-merge.",
-            OperatorCategory::Persistence => "Persistent (stateful) operators.",
-            OperatorCategory::MultiIn => "Operators with multiple inputs.",
-            OperatorCategory::MultiOut => "Operators with multiple outputs.",
-            OperatorCategory::Source => {
-                "Operators which produce output elements (and consume no inputs)."
-            }
-            OperatorCategory::Sink => {
-                "Operators which consume input elements (and produce no outputs)."
-            }
-            OperatorCategory::Control => "Operators which affect control flow/scheduling.",
-            OperatorCategory::CompilerFusionOperator => {
-                "Operators which are necessary to implement certain optimizations and rewrite rules"
-            }
-            OperatorCategory::Windowing => "Operators for windowing `loop` inputs.",
-            OperatorCategory::Unwindowing => "Operators for collecting `loop` outputs.",
-        }
+        self.get_variant_docs().split_once(":").unwrap().1
     }
 }
 

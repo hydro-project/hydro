@@ -20,7 +20,7 @@ expression: built.ir()
                                 ),
                                 to_key: None,
                                 serialize_fn: Some(
-                                    | data | { hydro_lang :: runtime_support :: bincode :: serialize :: < (u64 , u64) > (& data) . unwrap () . into () },
+                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                 ),
                                 instantiate_fn: <network instantiate>,
                                 deserialize_fn: Some(

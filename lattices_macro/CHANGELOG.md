@@ -1,6 +1,37 @@
 
 
+## v0.5.9 (2025-03-08)
+
+### Chore
+
+ - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
+   - Updates `Cargo.toml` to use new shared workspace keys
+   - Updates lint settings (in workspace `Cargo.toml`)
+   - `rustfmt` has changed slightly, resulting in a big diff - there are no
+   actual code changes
+   - Adds a script to `rustfmt` the template src files
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release over the course of 8 calendar days.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 1 unique issue was worked on: [#1747](https://github.com/hydro-project/hydro/issues/1747)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1747](https://github.com/hydro-project/hydro/issues/1747)**
+    - Upgrade to Rust 2024 edition ([`49a387d`](https://github.com/hydro-project/hydro/commit/49a387d4a21f0763df8ec94de73fb953c9cd333a))
+</details>
+
 ## v0.5.8 (2024-12-23)
+
+<csr-id-accb13cad718c99d350e4bafe82e0ca38bf94c62/>
 
 ### Chore
 
@@ -21,7 +52,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 45 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 2 unique issues were worked on: [#1501](https://github.com/hydro-project/hydro/issues/1501), [#1623](https://github.com/hydro-project/hydro/issues/1623)
@@ -36,6 +67,8 @@
     - Add `repository` field to `Cargo.toml`s, fix #1452 ([`28cd220`](https://github.com/hydro-project/hydro/commit/28cd220c68e3660d9ebade113949a2346720cd04))
  * **[#1623](https://github.com/hydro-project/hydro/issues/1623)**
     - Cleanup snapshots ([`accb13c`](https://github.com/hydro-project/hydro/commit/accb13cad718c99d350e4bafe82e0ca38bf94c62))
+ * **Uncategorized**
+    - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`9a7e486`](https://github.com/hydro-project/hydro/commit/9a7e48693fce0face0f8ad16349258cdbe26395f))
 </details>
 
 ## v0.5.7 (2024-11-08)

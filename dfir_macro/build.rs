@@ -1,6 +1,5 @@
 //! Build script to generate operator book docs.
 
-use std::env::VarError;
 use std::fmt::Write as _;
 use std::fs::File;
 use std::io::{BufWriter, Result, Write};
@@ -200,6 +199,10 @@ fn update_book() -> Result<()> {
 }
 
 fn main() {
+    const DFIR_GENERATE_DOCS: &str = "DFIR_GENERATE_DOCS";
+
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo::rerun-if-env-changed={}", DFIR_GENERATE_DOCS);
     println!("cargo::rustc-check-cfg=cfg(nightly)");
     if matches!(
         version_meta().map(|meta| meta.channel),
@@ -208,7 +211,7 @@ fn main() {
         println!("cargo:rustc-cfg=nightly");
     }
 
-    if Err(VarError::NotPresent) != std::env::var("CARGO_CFG_DFIR_GENERATE_DOCS") {
+    if std::env::var_os(DFIR_GENERATE_DOCS).is_some() {
         if let Err(err) = update_book() {
             eprintln!("dfir_macro/build.rs error: {:?}", err);
         }

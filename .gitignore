@@ -14,3 +14,7 @@ flamegraph.svg
 gurobi.log
 
 /rustc-ice-*.txt
+/.hydro/
+/*.data.folded
+/*.perf.data
+/*.svg

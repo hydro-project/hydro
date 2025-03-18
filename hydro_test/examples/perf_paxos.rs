@@ -29,7 +29,6 @@ async fn main() {
     let f = 1;
     let num_clients = 3;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
-    let median_latency_window_size = 1000;
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
@@ -37,18 +36,17 @@ async fn main() {
 
     let proposers = builder.cluster();
     let acceptors = builder.cluster();
+    let clients = builder.cluster();
+    let replicas = builder.cluster();
 
-    let (clients, replicas) = hydro_test::cluster::paxos_bench::paxos_bench(
-        &builder,
+    hydro_test::cluster::paxos_bench::paxos_bench(
         num_clients_per_node,
-        median_latency_window_size,
         checkpoint_frequency,
         f,
         f + 1,
-        |replica_checkpoint| CorePaxos {
+        CorePaxos {
             proposers: proposers.clone(),
             acceptors: acceptors.clone(),
-            replica_checkpoint: replica_checkpoint.broadcast_bincode(&acceptors),
             paxos_config: PaxosConfig {
                 f,
                 i_am_leader_send_timeout,
@@ -56,6 +54,8 @@ async fn main() {
                 i_am_leader_check_timeout_delay_multiplier,
             },
         },
+        &clients,
+        &replicas,
     );
 
     let counter_output_duration = q!(std::time::Duration::from_secs(1));

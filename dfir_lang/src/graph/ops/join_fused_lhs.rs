@@ -71,7 +71,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let lhs_join_options =
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
 
-        let (lhs_joindata_ident, lhs_borrow_ident, lhs_prologue, lhs_borrow) =
+        let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
@@ -79,7 +79,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
         let write_prologue_rhs = match persistences[1] {
-            Persistence::Tick => quote_spanned! {op_span=>},
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
@@ -116,8 +116,8 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = match persistences[1] {
-            Persistence::Tick => quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #lhs_pre_write_iter
 
                 let #ident = {
                     #lhs_fold_or_reduce_into_from
@@ -127,8 +127,11 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                #lhs_pre_write_iter
+                let mut #rhs_borrow_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#rhs_joindata_ident)
+                }.borrow_mut();
 
                 let #ident = {
                     #lhs_fold_or_reduce_into_from

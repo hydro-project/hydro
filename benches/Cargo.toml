@@ -17,6 +17,7 @@ workspace = true
 criterion = { version = "0.5.0", features = [ "async_tokio", "html_reports" ] }
 dfir_rs = { path = "../dfir_rs", features = [ "debugging" ] }
 nameof = "1.0.0"
+futures = "0.3"
 rand = "0.8.0"
 rand_distr = "0.4.3"
 seq-macro = "0.2.0"
@@ -67,4 +68,8 @@ harness = false
 
 [[bench]]
 name = "words_diamond"
+harness = false
+
+[[bench]]
+name = "futures"
 harness = false

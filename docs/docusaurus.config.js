@@ -10,7 +10,7 @@ const katex = require("rehype-katex");
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: "Hydro - Build for Every Scale",
-  tagline: "Dinosaurs are cool",
+  tagline: "Build for every scale",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
@@ -122,11 +122,6 @@ const config = {
               },
               {
                 type: "docSidebar",
-                sidebarId: "deploySidebar",
-                label: "Hydro Deploy",
-              },
-              {
-                type: "docSidebar",
                 sidebarId: "dfirSidebar",
                 label: "DFIR",
               },
@@ -152,6 +147,11 @@ const config = {
             label: "GitHub",
             position: "right",
           },
+          {
+            href: "/askai",
+            label: "AI Assistant",
+            position: "right",
+          },
         ],
       },
       footer: {
@@ -167,10 +167,6 @@ const config = {
               {
                 label: "DFIR",
                 to: "/docs/dfir/",
-              },
-              {
-                label: "Hydro Deploy",
-                to: "/docs/deploy/",
               },
             ],
           },

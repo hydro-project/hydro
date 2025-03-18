@@ -10,8 +10,8 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
-use super::ops::FloType;
 use super::ops::next_iteration::NEXT_ITERATION;
+use super::ops::{FloType, Persistence};
 use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms;
@@ -897,15 +897,16 @@ impl FlatGraphBuilder {
 
     /// Check for loop context-related errors.
     fn check_loop_errors(&mut self) {
-        // All inputs must be declared in the root block.
         for (node_id, node) in self.flat_graph.nodes() {
             let Some(op_inst) = self.flat_graph.node_op_inst(node_id) else {
                 continue;
             };
-            let loop_id = self.flat_graph.node_loop(node_id);
+            let Some(_loop_id) = self.flat_graph.node_loop(node_id) else {
+                continue;
+            };
 
-            // Source operators must be at the top level.
-            if Some(FloType::Source) == op_inst.op_constraints.flo_type && loop_id.is_some() {
+            // All inputs must be declared in the root block.
+            if Some(FloType::Source) == op_inst.op_constraints.flo_type {
                 self.diagnostics.push(Diagnostic::spanned(
                     node.span(),
                     Level::Error,
@@ -914,6 +915,17 @@ impl FlatGraphBuilder {
                         op_inst.op_constraints.name
                     )
                 ));
+            }
+
+            // Ensure no `'tick` or `'static` persistences are used in a loop context.
+            for persistence in &op_inst.generics.persistence_args {
+                if let Persistence::Tick | Persistence::Static = persistence {
+                    self.diagnostics.push(Diagnostic::spanned(
+                        op_inst.generics.generic_args.span(),
+                        Level::Error,
+                        "Operator uses a `'tick` or `'static` persistence, which is not allowed within a `loop {{ ... }}` context."
+                    ));
+                }
             }
         }
 
@@ -1015,6 +1027,7 @@ impl FlatGraphBuilder {
 
         // Must be a DAG (excluding `next_iteration()` operators).
         // TODO(mingwei): Nested loop blocks should count as a single node.
+        // But this doesn't cause any correctness issues because the nested loops are also DAGs.
         for (loop_id, loop_nodes) in self.flat_graph.loops() {
             // Filter out `next_iteration()` operators.
             let filter_next_iteration = |&node_id: &GraphNodeId| {

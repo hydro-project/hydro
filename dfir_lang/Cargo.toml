@@ -1,7 +1,7 @@
 [package]
 name = "dfir_lang"
 publish = true
-version = "0.11.0"
+version = "0.12.1"
 documentation = "https://docs.rs/dfir_lang/"
 description = "Hydro's Dataflow Intermediate Representation (DFIR) implementation"
 edition = { workspace = true }
@@ -16,19 +16,23 @@ default = []
 debugging = [ "dep:data-encoding", "dep:webbrowser", "clap-derive" ]
 clap-derive = [ "dep:clap" ]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 auto_impl = "1.0.0"
 clap = { version = "4.5.4", features = [ "derive" ], optional = true }
 data-encoding = { version = "2.0.0", optional = true }
-itertools = "0.10.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
+documented = "0.9.1"
+itertools = "0.13.0" # TODO(mingwei): remove when `iter_intersperse` is stabilized.
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
 proc-macro2 = { version = "1.0.74", features = [ "span-locations" ] }
 quote = "1.0.35"
 serde = "1.0.197"
 serde_json = "1.0.115"
 slotmap = { version = "1.0.0", features = ["serde"] }
-syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing" ] }
-webbrowser = { version = "1.0.0", optional = true }
+syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ] }
+webbrowser = { version = "1.0.3", optional = true }
 
 [dev-dependencies]
 

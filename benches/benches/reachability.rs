@@ -153,7 +153,11 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                 var_expr!(distinct_in),
                 var_expr!(distinct_out),
                 move |context, var_args!(recv), var_args!(send)| {
-                    let mut seen_state = context.state_ref(seen_handle).borrow_mut();
+                    let mut seen_state = unsafe {
+                        // SAFETY: handle from `df.add_state(..)`.
+                        context.state_ref_unchecked(seen_handle)
+                    }
+                    .borrow_mut();
                     let iter = recv
                         .take_inner()
                         .into_iter()
@@ -258,7 +262,11 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                         .flatten()
                         .copied();
 
-                    let mut seen_state = context.state_ref(seen_handle).borrow_mut();
+                    let mut seen_state = unsafe {
+                        // SAFETY: handle from `df.add_state(..)`.
+                        context.state_ref_unchecked(seen_handle)
+                    }
+                    .borrow_mut();
                     let pull = origins
                         .chain(possible_reach)
                         .filter(|v| seen_state.insert(*v));

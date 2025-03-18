@@ -45,6 +45,28 @@ fn persist_pullup_node(
                 }
             }
 
+            HydroNode::ResolveFutures {
+                input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
+                metadata,
+            } => HydroNode::Persist {
+                inner: Box::new(HydroNode::ResolveFutures {
+                    input: behind_persist,
+                    metadata: metadata.clone(),
+                }),
+                metadata: metadata.clone(),
+            },
+
+            HydroNode::ResolveFuturesOrdered {
+                input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
+                metadata,
+            } => HydroNode::Persist {
+                inner: Box::new(HydroNode::ResolveFuturesOrdered {
+                    input: behind_persist,
+                    metadata: metadata.clone(),
+                }),
+                metadata: metadata.clone(),
+            },
+
             HydroNode::Map {
                 f,
                 input: mb!(* HydroNode::Persist { inner: behind_persist, .. }),
@@ -207,7 +229,7 @@ mod tests {
         let optimized = built.optimize_with(super::persist_pullup);
 
         insta::assert_debug_snapshot!(optimized.ir());
-        for (id, graph) in optimized.compile_no_network::<MultiGraph>().dfir() {
+        for (id, graph) in optimized.compile_no_network::<MultiGraph>().all_dfir() {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });
@@ -242,7 +264,7 @@ mod tests {
 
         insta::assert_debug_snapshot!(optimized.ir());
 
-        for (id, graph) in optimized.compile_no_network::<MultiGraph>().dfir() {
+        for (id, graph) in optimized.compile_no_network::<MultiGraph>().all_dfir() {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });

@@ -11,12 +11,16 @@ expression: ir.surface_syntax_string()
 7v1 = cross_singleton ();
 8v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydro_lang :: __staged :: optional :: * ; | (d , _signal) | d }));
 9v1 = for_each (stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; } }));
+// 10v1 = <handoff>;
+// 11v1 = <handoff>;
 
 1v1 -> 2v1;
 2v1 -> 3v1;
-3v1 -> 4v1;
+3v1 -> 10v1;
 5v1 -> 6v1;
 4v1 -> 7v1;
-6v1 -> 7v1;
+6v1 -> 11v1;
 7v1 -> 8v1;
 8v1 -> 9v1;
+10v1 -> 4v1;
+11v1 -> 7v1;

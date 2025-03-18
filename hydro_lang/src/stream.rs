@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::future::Future;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -1573,6 +1574,88 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
         Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
 
+    /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
+    /// Future outputs are produced as available, regardless of input arrival order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # use hydro_lang::*;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures()
+    /// #   },
+    /// #   |mut stream| async move {
+    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9 (in any order)
+    /// #       let mut output = HashSet::new();
+    /// #       for _ in 1..10 {
+    /// #           output.insert(stream.next().await.unwrap());
+    /// #       }
+    /// #       assert_eq!(
+    /// #           output,
+    /// #           HashSet::<i32>::from_iter(1..10)
+    /// #       );
+    /// #   },
+    /// # ));
+    pub fn resolve_futures<T2>(self) -> Stream<T2, L, B, NoOrder>
+    where
+        T: Future<Output = T2>,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ResolveFutures {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T2>(),
+            },
+        )
+    }
+
+    /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
+    /// Future outputs are produced in the same order as the input stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use std::collections::HashSet;
+    /// # use dfir_rs::futures::StreamExt;
+    /// # use hydro_lang::*;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures_ordered()
+    /// #   },
+    /// #   |mut stream| async move {
+    /// // 2, 3, 1, 9, 6, 5, 4, 7, 8
+    /// #       let mut output = Vec::new();
+    /// #       for _ in 1..10 {
+    /// #           output.push(stream.next().await.unwrap());
+    /// #       }
+    /// #       assert_eq!(
+    /// #           output,
+    /// #           vec![2, 3, 1, 9, 6, 5, 4, 7, 8]
+    /// #       );
+    /// #   },
+    /// # ));
+    pub fn resolve_futures_ordered<T2>(self) -> Stream<T2, L, B, Order>
+    where
+        T: Future<Output = T2>,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ResolveFuturesOrdered {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T2>(),
+            },
+        )
+    }
+
     /// Given a tick, returns a stream corresponding to a batch of elements segmented by
     /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
     /// the order of the input.
@@ -1753,15 +1836,19 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -> syn::Ex
 
     if is_demux {
         parse_quote! {
-            |(id, data): (#root::ClusterId<_>, #t_type)| {
-                (id.raw_id, #root::runtime_support::bincode::serialize::<#t_type>(&data).unwrap().into())
-            }
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::ClusterId<_>, #t_type), _>(
+                |(id, data)| {
+                    (id.raw_id, #root::runtime_support::bincode::serialize(&data).unwrap().into())
+                }
+            )
         }
     } else {
         parse_quote! {
-            |data| {
-                #root::runtime_support::bincode::serialize::<#t_type>(&data).unwrap().into()
-            }
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
+                |data| {
+                    #root::runtime_support::bincode::serialize(&data).unwrap().into()
+                }
+            )
         }
     }
 }
@@ -1814,7 +1901,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: None,
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: other.new_node_metadata::<CoreType>(),
@@ -1851,7 +1938,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: Some(external_key),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: metadata.clone(),
@@ -1882,7 +1969,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: None,
                 serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: if let Some(c_type) = L::Root::tagged_type() {
                     let expr: syn::Expr = parse_quote!(|(id, b)| (#root::ClusterId<#c_type>::from_raw(id), b.unwrap().freeze()));
                     Some(expr.into())
@@ -1917,7 +2004,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
                 to_location: other.id(),
                 to_key: Some(external_key),
                 serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building(),
+                instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: None,
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: metadata.clone(),

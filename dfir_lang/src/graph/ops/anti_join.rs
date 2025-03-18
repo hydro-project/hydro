@@ -49,6 +49,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
+                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -65,7 +66,14 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                },
                diagnostics| {
         let persistences = match persistence_args[..] {
-            [] => [Persistence::Tick, Persistence::Tick],
+            [] => {
+                let p = if loop_id.is_some() {
+                    Persistence::None
+                } else {
+                    Persistence::Tick
+                };
+                [p, p]
+            }
             [a] => [a, a],
             [a, b] => [a, b],
             _ => unreachable!(),
@@ -74,10 +82,27 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         let mut make_antijoindata = |persistence, side| {
             let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
             let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
-            let (init, borrow) = match persistence {
+            let (init, pre_write_iter, borrow) = match persistence {
+                Persistence::None => (
+                    Default::default(),
+                    quote_spanned! {op_span=>
+                        let #borrow_ident = &mut #root::rustc_hash::FxHashSet::default();
+                    },
+                    quote_spanned! {op_span=>
+                        &mut *#borrow_ident
+                    },
+                ),
                 Persistence::Tick => (
                     quote_spanned! {op_span=>
-                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
+                        let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                            #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
+                        ));
+                    },
+                    quote_spanned! {op_span=>
+                        let mut #borrow_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#antijoindata_ident)
+                        }.borrow_mut();
                     },
                     quote_spanned! {op_span=>
                         &mut *#borrow_ident.get_mut_clear(#context.current_tick())
@@ -85,7 +110,15 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 ),
                 Persistence::Static => (
                     quote_spanned! {op_span=>
-                        #root::rustc_hash::FxHashSet::default()
+                        let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                            #root::rustc_hash::FxHashSet::default()
+                        ));
+                    },
+                    quote_spanned! {op_span=>
+                        let mut #borrow_ident = unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#antijoindata_ident)
+                        }.borrow_mut();
                     },
                     quote_spanned! {op_span=>
                         &mut *#borrow_ident
@@ -100,29 +133,23 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
             };
-            Ok((antijoindata_ident, borrow_ident, init, borrow))
+            Ok((init, pre_write_iter, borrow))
         };
 
-        let (pos_antijoindata_ident, pos_borrow_ident, pos_init, pos_borrow) =
-            make_antijoindata(persistences[0], "pos")?;
-        let (neg_antijoindata_ident, neg_borrow_ident, neg_init, neg_borrow) =
-            make_antijoindata(persistences[1], "neg")?;
+        let (pos_init, pos_pre_write_iter, pos_borrow) = make_antijoindata(persistences[0], "pos")?;
+        let (neg_init, neg_pre_write_iter, neg_borrow) = make_antijoindata(persistences[1], "neg")?;
 
         let write_prologue = quote_spanned! {op_span=>
-            let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #neg_init
-            ));
-            let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #pos_init
-            ));
+            #pos_init
+            #neg_init
         };
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
         let write_iterator = {
             quote_spanned! {op_span=>
-                let mut #neg_borrow_ident = #context.state_ref(#neg_antijoindata_ident).borrow_mut();
-                let mut #pos_borrow_ident = #context.state_ref(#pos_antijoindata_ident).borrow_mut();
+                #pos_pre_write_iter
+                #neg_pre_write_iter
                 let #ident = {
                     /// Limit error propagation by bounding locally, erasing output iterator type.
                     #[inline(always)]

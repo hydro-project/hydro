@@ -22,7 +22,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.0
+        uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
           cancel_others: "true"
 
@@ -50,22 +50,15 @@ jobs:
       CARGO_PROFILE_DEV_STRIP: "debuginfo"
       CARGO_PROFILE_TEST_STRIP: "debuginfo"
       CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: ${{ matrix.rust_release == 'latest-stable' }}
-          components: rustfmt, clippy
+        uses: actions/checkout@v4
 
       - name: Run sccache-cache
         if: matrix.rust_release == 'pinned-nightly'
-        uses: mozilla-actions/sccache-action@v0.0.4
+        uses: mozilla-actions/sccache-action@v0.0.8
 
       - name: Set Rust caching env vars
         if: matrix.rust_release == 'pinned-nightly'
@@ -74,19 +67,14 @@ jobs:
           script: |
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
             core.exportVariable('RUSTC_WRAPPER', 'sccache');
+            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
 
-      - name: Run cargo fmt
-        if: ${{ matrix.os == 'ubuntu-latest' }}
+      - if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo fmt --all -- --check
 
-      - name: Run cargo clippy
-        run: cargo clippy --all-targets --features python -- -D warnings
-
-      - name: Run cargo check
-        run: cargo check --all-targets --features python
-
-      - name: Run cargo check (no default features)
-        run: cargo check --all-targets --no-default-features
+      - run: cargo clippy --all-targets --features python -- -D warnings
+      - run: cargo check --all-targets --features python
+      - run: cargo check --all-targets --no-default-features
 
   check-wasm:
     name: Check WebAssembly
@@ -104,23 +92,17 @@ jobs:
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
           - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+      - name: Install wasm toolchain
+        run: rustup target add wasm32-unknown-unknown
 
-      - name: Check dfir_lang
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: -p dfir_lang --target wasm32-unknown-unknown
+      - run: cargo check -p dfir_rs --target wasm32-unknown-unknown
 
   test:
     name: Test Suite
@@ -137,7 +119,7 @@ jobs:
           # For non-pull requests, event_name != 'pull_request' will be true, and 'nothing' is
           # truthy, so the entire && operator will resolve to 'nothing'. Then the || operator will
           # resolve to 'nothing' so we will exclude 'nothing'. https://stackoverflow.com/a/73822998
-          - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
+          - rust_release: ${{ ((needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request') && 'nothing') || 'pinned-nightly' }}
           - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
           - os: ${{ (github.event_name != 'pull_request' && 'nothing') || 'windows-latest' }}
 
@@ -147,21 +129,15 @@ jobs:
       CARGO_PROFILE_DEV_STRIP: "debuginfo"
       CARGO_PROFILE_TEST_STRIP: "debuginfo"
       CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+        uses: actions/checkout@v4
 
       - name: Run sccache-cache
         if: matrix.rust_release == 'pinned-nightly'
-        uses: mozilla-actions/sccache-action@v0.0.4
+        uses: mozilla-actions/sccache-action@v0.0.8
 
       - name: Set Rust caching env vars
         if: matrix.rust_release == 'pinned-nightly'
@@ -170,6 +146,7 @@ jobs:
           script: |
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
             core.exportVariable('RUSTC_WRAPPER', 'sccache');
+            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
 
       - name: Install cargo-nextest (linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -181,19 +158,19 @@ jobs:
         run: curl -LsSf https://get.nexte.st/latest/windows-tar | tar zxf - -C ${CARGO_HOME:-~/.cargo}/bin
 
       - name: Run cargo nextest on all targets
-        run: cargo nextest run --no-fail-fast --features python --features deploy --all-targets
+        run: cargo nextest run --no-fail-fast --features python --features hydro_lang/deploy --all-targets
         env:
           # On stable the output messages will often not match pinned-nightly, so we set to 'overwrite'.
           TRYBUILD: ${{ matrix.rust_release == 'pinned-nightly' && 'wip' || 'overwrite' }}
           DFIR_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
-        run: cargo test --no-fail-fast --features python --features deploy --doc
+        run: cargo test --no-fail-fast --features python --features hydro_lang/deploy --doc
 
       - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Build CLI (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -247,35 +224,27 @@ jobs:
           - rust_release: ${{ (needs.pre_job.outputs.should_skip != 'true' && 'nothing') || 'pinned-nightly' }}
           - rust_release: ${{ (github.event_name != 'pull_request' && 'nothing') || 'latest-stable' }}
 
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          target: wasm32-unknown-unknown
-          override: ${{ matrix.rust_release == 'latest-stable' }}
+      - name: Install wasm toolchain
+        run: rustup target add wasm32-unknown-unknown
 
-      - name: Get wasm-bindgen version
+      - name: Determine wasm-bindgen version
         id: wasm-bindgen-version
         run: echo "VERSION=$(cargo pkgid wasm-bindgen-shared | cut -d '@' -f2)" >> "$GITHUB_OUTPUT"
 
       - name: Install WebAssembly test runner
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: wasm-bindgen-cli@${{ steps.wasm-bindgen-version.outputs.VERSION }}
+        run: cargo install wasm-bindgen-cli@${{ steps.wasm-bindgen-version.outputs.VERSION }}
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
         env:
           CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
-        with:
-          command: test
-          args: -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
+        run: cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 
   build-website:
     name: Build Website
@@ -285,8 +254,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.18.0
 
       - name: Build Website
         run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
@@ -301,21 +273,11 @@ jobs:
       WWW_DIR: target
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
-
-      - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
-        env:
-          RUSTDOCFLAGS: -Dwarnings
+      - env:
+          RUSTDOCFLAGS: --cfg docsrs -Dwarnings
+        run: cargo doc --no-deps --all-features
 
       - name: Move design docs to output
         shell: bash
@@ -368,13 +330,7 @@ jobs:
       WWW_DIR: target
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install nightly toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: nightly
+        uses: actions/checkout@v4
 
       - name: Checkout gh-pages
         shell: bash
@@ -411,7 +367,10 @@ jobs:
 
       - name: Write benchmark HTML
         shell: bash
-        run: node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
+        run: |
+          node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/master/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
+          sed -i '/          const data = window.BENCHMARK_DATA;/a\
+                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.

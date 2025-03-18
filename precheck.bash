@@ -17,6 +17,6 @@ cargo clippy --all-targets --features python -- -D warnings
 
 INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test --all-targets --no-fail-fast --features python
 cargo test --doc
-[ "$FULL" = false ] || RUSTDOCFLAGS="-Dwarnings" cargo doc --no-deps
+[ "$FULL" = false ] || RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo +nightly doc --no-deps --all-features
 
 [ "$FULL" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast

@@ -140,6 +140,15 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             let joindata_ident = wc.make_ident(format!("joindata_{}", side));
             let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
             let reset = match (in_loop, persistence) {
+                (false, Persistence::None) => {
+                    diagnostics.push(Diagnostic::spanned(
+                        op_span,
+                        Level::Error,
+                        "`'none` is not allowed outside of loops, use `'tick` instead.",
+                    ));
+                    return Err(());
+                }
+                (true, Persistence::None) => Default::default(),
                 (false, Persistence::Tick) => quote_spanned! {op_span=>
                     #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
                 },
@@ -162,29 +171,49 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
             };
-            let init = if !in_loop {
-                quote_spanned! {op_span=>
-                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #join_type::default()
-                    ));
-                    #reset
-                }
+            let (borrow, init) = if !in_loop {
+                (
+                    quote_spanned! {op_span=>
+                        unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#joindata_ident)
+                        }.borrow_mut()
+                    },
+                    quote_spanned! {op_span=>
+                        let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
+                            #join_type::default()
+                        ));
+                        #reset
+                    },
+                )
             } else {
-                Default::default()
+                (
+                    quote_spanned! {op_span=>
+                        #join_type::default()
+                    },
+                    Default::default(),
+                )
             };
-            Ok((joindata_ident, borrow_ident, init))
+            Ok((borrow, borrow_ident, init))
         };
 
         let persistences = match persistence_args[..] {
-            [] => [Persistence::Tick, Persistence::Tick],
+            [] => {
+                let p = if loop_id.is_some() {
+                    Persistence::None
+                } else {
+                    Persistence::Tick
+                };
+                [p, p]
+            }
             [a] => [a, a],
             [a, b] => [a, b],
             _ => panic!(),
         };
 
-        let (lhs_joindata_ident, lhs_borrow_ident, lhs_init) =
+        let (lhs_borrow, lhs_borrow_ident, lhs_init) =
             make_joindata(persistences[0], loop_id.is_some(), "lhs")?;
-        let (rhs_joindata_ident, rhs_borrow_ident, rhs_init) =
+        let (rhs_borrow, rhs_borrow_ident, rhs_init) =
             make_joindata(persistences[1], loop_id.is_some(), "rhs")?;
 
         let write_prologue = quote_spanned! {op_span=>
@@ -196,8 +225,8 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
         let rhs = &inputs[1];
         let write_iterator = if loop_id.is_none() {
             quote_spanned! {op_span=>
-                let mut #lhs_borrow_ident = #context.state_ref(#lhs_joindata_ident).borrow_mut();
-                let mut #rhs_borrow_ident = #context.state_ref(#rhs_joindata_ident).borrow_mut();
+                let mut #lhs_borrow_ident = #lhs_borrow;
+                let mut #rhs_borrow_ident = #rhs_borrow;
                 let #ident = {
                     // Limit error propagation by bounding locally, erasing output iterator type.
                     #[inline(always)]

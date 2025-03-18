@@ -82,7 +82,10 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
 
                 {
-                    let mut __lattice = #context.state_ref(#lattice_ident).borrow_mut();
+                    let mut __lattice = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#lattice_ident)
+                    }.borrow_mut();
 
                     for __item in #input {
                         #root::lattices::Merge::merge(&mut *__lattice, __item);
@@ -90,7 +93,10 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
                 }
 
                 let #ident = if #signal.count() > 0 {
-                    ::std::option::Option::Some(#context.state_ref(#lattice_ident).take())
+                    ::std::option::Option::Some(unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#lattice_ident)
+                    }.take())
                 } else {
                     ::std::option::Option::None
                 }.into_iter();

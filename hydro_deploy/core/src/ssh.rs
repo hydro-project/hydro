@@ -11,21 +11,23 @@ use async_ssh2_lite::{AsyncChannel, AsyncSession, SessionConfiguration};
 use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
 use futures::{AsyncBufReadExt, AsyncWriteExt};
-use hydroflow_deploy_integration::ServerBindConfig;
+use hydro_deploy_integration::ServerBindConfig;
 use inferno::collapse::Collapse;
 use inferno::collapse::perf::Folder;
 use nanoid::nanoid;
-use tokio::io::BufReader as TokioBufReader;
+use tokio::fs::File;
+use tokio::io::{AsyncReadExt, BufReader as TokioBufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::runtime::Handle;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
+use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
-use crate::hydroflow_crate::build::BuildOutput;
-use crate::hydroflow_crate::flamegraph::handle_fold_data;
-use crate::hydroflow_crate::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
+use crate::rust_crate::build::BuildOutput;
+use crate::rust_crate::flamegraph::handle_fold_data;
+use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{async_retry, prioritized_broadcast};
 use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
@@ -127,7 +129,41 @@ impl LaunchedBinary for LaunchedSshBinary {
 
         // Run perf post-processing and download perf output.
         if let Some(tracing) = self.tracing.as_ref() {
-            let mut script_channel = self.session.as_ref().unwrap().channel_session().await?;
+            let session = self.session.as_ref().unwrap();
+            if let Some(local_raw_perf) = tracing.perf_raw_outfile.as_ref() {
+                ProgressTracker::progress_leaf("downloading perf data", |progress, _| async move {
+                    let sftp = async_retry(
+                        &|| async { Ok(session.sftp().await?) },
+                        10,
+                        Duration::from_secs(1),
+                    )
+                    .await?;
+
+                    let mut remote_raw_perf = sftp.open(&PathBuf::from(PERF_OUTFILE)).await?;
+                    let mut local_raw_perf = File::create(local_raw_perf).await?;
+
+                    let total_size = remote_raw_perf.stat().await?.size.unwrap();
+                    let mut remote_tokio = remote_raw_perf.compat();
+
+                    use tokio::io::AsyncWriteExt;
+                    let mut index = 0;
+                    loop {
+                        let mut buffer = [0; 16 * 1024];
+                        let n = remote_tokio.read(&mut buffer).await?;
+                        if n == 0 {
+                            break;
+                        }
+                        local_raw_perf.write_all(&buffer[..n]).await?;
+                        index += n;
+                        progress(((index as f64 / total_size as f64) * 100.0) as u64);
+                    }
+
+                    Ok::<(), anyhow::Error>(())
+                })
+                .await?;
+            }
+
+            let mut script_channel = session.channel_session().await?;
             let mut fold_er = Folder::from(tracing.fold_perf_options.clone().unwrap_or_default());
 
             let fold_data = ProgressTracker::leaf("perf script & folding", async move {
@@ -139,7 +175,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                     async move {
                         // Log stderr.
                         while let Some(Ok(s)) = stderr_lines.next().await {
-                            ProgressTracker::println(format!("[perf stderr] {s}"));
+                            ProgressTracker::eprintln(format!("[perf stderr] {s}"));
                         }
                         Result::<_>::Ok(())
                     },

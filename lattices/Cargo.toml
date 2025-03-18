@@ -1,7 +1,7 @@
 [package]
 name = "lattices"
 publish = true
-version = "0.5.9"
+version = "0.6.1"
 documentation = "https://docs.rs/lattices/"
 description = "Lattice data types for simplifying distributed state by providing associativity, commutativity, and idempotence."
 edition = { workspace = true }
@@ -15,14 +15,17 @@ workspace = true
 default = []
 serde = ["dep:serde"]
 
+[package.metadata.docs.rs]
+all-features = true
+
 [dependencies]
 cc-traits = "2.0.0"
 sealed = "0.5.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
-lattices_macro = { path = "../lattices_macro", version = "^0.5.8" }
+lattices_macro = { path = "../lattices_macro", version = "^0.5.9" }
 ref-cast = "1.0.23"
-variadics = { path = "../variadics", version = "^0.0.8" }
-variadics_macro = { path = "../variadics_macro", version = "^0.5.6" }
+variadics = { path = "../variadics", version = "^0.0.9" }
+variadics_macro = { path = "../variadics_macro", version = "^0.6.0" }
 
 [dev-dependencies]
 trybuild = "1.0.0"

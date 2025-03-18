@@ -16,10 +16,13 @@ use crate::location::{Cluster, ExternalProcess, Process};
 use crate::staging_util::Invariant;
 
 #[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod built;
 #[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod compiled;
 #[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod deploy;
 
 pub struct FlowStateInner {
@@ -225,8 +228,32 @@ impl<'a> FlowBuilder<'a> {
             _phantom: PhantomData,
         }
     }
+}
 
-    #[cfg(feature = "build")]
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+impl<'a> FlowBuilder<'a> {
+    pub fn finalize(mut self) -> built::BuiltFlow<'a> {
+        self.finalized = true;
+
+        built::BuiltFlow {
+            ir: self.flow_state.borrow_mut().leaves.take().unwrap(),
+            process_id_name: self.processes.replace(vec![]),
+            cluster_id_name: self.clusters.replace(vec![]),
+            external_id_name: self.externals.replace(vec![]),
+            used: false,
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn with_default_optimize<D: LocalDeploy<'a>>(self) -> DeployFlow<'a, D> {
+        self.finalize().with_default_optimize()
+    }
+
+    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroLeaf])) -> built::BuiltFlow<'a> {
+        self.finalize().optimize_with(f)
+    }
+
     pub fn with_process<P, D: LocalDeploy<'a>>(
         self,
         process: &Process<P>,
@@ -235,7 +262,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_process(process, spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn with_remaining_processes<D: LocalDeploy<'a>, S: IntoProcessSpec<'a, D> + 'a>(
         self,
         spec: impl Fn() -> S,
@@ -243,7 +269,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_processes(spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn with_external<P, D: LocalDeploy<'a>>(
         self,
         process: &ExternalProcess<P>,
@@ -252,7 +277,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_external(process, spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn with_remaining_externals<D: LocalDeploy<'a>, S: ExternalSpec<'a, D> + 'a>(
         self,
         spec: impl Fn() -> S,
@@ -260,7 +284,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_externals(spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn with_cluster<C, D: LocalDeploy<'a>>(
         self,
         cluster: &Cluster<C>,
@@ -269,7 +292,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_cluster(cluster, spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn with_remaining_clusters<D: LocalDeploy<'a>, S: ClusterSpec<'a, D> + 'a>(
         self,
         spec: impl Fn() -> S,
@@ -277,17 +299,14 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_clusters(spec)
     }
 
-    #[cfg(feature = "build")]
     pub fn compile<D: Deploy<'a>>(self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
         self.with_default_optimize::<D>().compile(env)
     }
 
-    #[cfg(feature = "build")]
     pub fn compile_no_network<D: LocalDeploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
         self.with_default_optimize::<D>().compile_no_network()
     }
 
-    #[cfg(feature = "build")]
     pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
         self,
         env: &mut D::InstantiateEnv,

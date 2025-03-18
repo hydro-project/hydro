@@ -86,7 +86,10 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
 
         let map_fn = quote_spanned! {op_span=>
             |item| {
-                let mut counter = #context.state_ref(#counter_ident).borrow_mut();
+                let mut counter = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#counter_ident)
+                }.borrow_mut();
                 (counter.next().unwrap(), item)
             }
         };

@@ -10,7 +10,15 @@ use hydro_lang::rewrites::{
 };
 use hydro_lang::{q, Location};
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+/// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+///
+/// ```bash
+/// cargo run -p hydro_test --example perf_compute_pi -- gcp hydroflow-work
+/// ```
+///
+/// Once the program is running, you can **press enter** to stop the program and see the results.
+/// (Pressing Ctrl+C will stop the program **without cleaning up cloud resources** nor generating the
+/// flamegraphs).
 #[tokio::main]
 async fn main() {
     let mut deployment = Deployment::new();
@@ -21,6 +29,12 @@ async fn main() {
         String::new()
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+
+    let rustflags = if host_arg == "gcp" {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);

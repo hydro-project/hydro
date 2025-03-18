@@ -155,6 +155,30 @@ impl Context {
     }
 
     /// Returns a shared reference to the state.
+    ///
+    /// # Safety
+    /// `StateHandle<T>` must be from _this_ instance, created via [`Self::add_state`].
+    pub unsafe fn state_ref_unchecked<T>(&self, handle: StateHandle<T>) -> &'_ T
+    where
+        T: Any,
+    {
+        let state = self
+            .states
+            .get(handle.state_id.0)
+            .expect("Failed to find state with given handle.")
+            .state
+            .as_ref();
+
+        debug_assert!(state.is::<T>());
+
+        unsafe {
+            // SAFETY: `handle` is from this instance.
+            // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
+            &*(state as *const dyn Any as *const T)
+        }
+    }
+
+    /// Returns a shared reference to the state.
     pub fn state_ref<T>(&self, handle: StateHandle<T>) -> &'_ T
     where
         T: Any,

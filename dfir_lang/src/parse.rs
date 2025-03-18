@@ -401,6 +401,31 @@ impl ToTokens for PortIndex {
     }
 }
 
+struct TypeHintRemover;
+impl syn::visit_mut::VisitMut for TypeHintRemover {
+    fn visit_expr_mut(&mut self, expr: &mut Expr) {
+        if let Expr::Call(expr_call) = expr {
+            if let Expr::Path(path) = expr_call.func.as_ref() {
+                // if it is a call of the form `::...::*_type_hint(xyz)`,
+                // typically `::stageleft::...`, replace it with `xyz`
+                if path
+                    .path
+                    .segments
+                    .last()
+                    .unwrap()
+                    .ident
+                    .to_string()
+                    .ends_with("_type_hint")
+                {
+                    *expr = expr_call.args.first().unwrap().clone();
+                }
+            }
+        }
+
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
 #[derive(Clone)]
 pub struct Operator {
     pub path: Path,
@@ -446,11 +471,13 @@ impl Operator {
     /// Output the operator as a formatted string using `prettyplease`.
     pub fn to_pretty_string(&self) -> String {
         // TODO(mingwei): preserve #args_raw instead of just args?
-        let file: syn::File = syn::parse_quote! {
+        let mut file: syn::File = syn::parse_quote! {
             fn main() {
                 #self
             }
         };
+
+        syn::visit_mut::visit_file_mut(&mut TypeHintRemover, &mut file);
         let str = prettyplease::unparse(&file);
         str.trim_start()
             .trim_start_matches("fn main()")

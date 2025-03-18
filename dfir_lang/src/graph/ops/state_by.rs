@@ -136,7 +136,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         iter.filter(move |item| {
-                                let state = context.state_ref(state_handle);
+                                let state = unsafe {
+                                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                                    context.state_ref_unchecked(state_handle)
+                                };
                                 let mut state = state.borrow_mut();
                                 #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
                             })
@@ -160,7 +163,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::pusherator::filter::Filter::new(move |item| {
-                            let state = context.state_ref(state_handle);
+                            let state = unsafe {
+                                // SAFETY: handle from `#df_ident.add_state(..)`.
+                                context.state_ref_unchecked(state_handle)
+                            };
                             let mut state = state.borrow_mut();
                                 #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
                         }, push)
@@ -183,7 +189,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::pusherator::for_each::ForEach::new(move |item| {
-                            let state = context.state_ref(state_handle);
+                            let state = unsafe {
+                                // SAFETY: handle from `#df_ident.add_state(..)`.
+                                context.state_ref_unchecked(state_handle)
+                            };
                             let mut state = state.borrow_mut();
                             #root::lattices::Merge::merge(&mut *state, (mapfn)(item));
                         })
