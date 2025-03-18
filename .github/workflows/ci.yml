@@ -67,6 +67,7 @@ jobs:
           script: |
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
             core.exportVariable('RUSTC_WRAPPER', 'sccache');
+            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
 
       - if: ${{ matrix.os == 'ubuntu-latest' }}
         run: cargo fmt --all -- --check
@@ -145,6 +146,7 @@ jobs:
           script: |
             core.exportVariable('SCCACHE_GHA_ENABLED', 'true');
             core.exportVariable('RUSTC_WRAPPER', 'sccache');
+            core.exportVariable('ACTIONS_CACHE_SERVICE_V2', 'on');
 
       - name: Install cargo-nextest (linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
