@@ -153,30 +153,6 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    #[cfg(feature = "build")]
-    pub fn finalize(mut self) -> built::BuiltFlow<'a> {
-        self.finalized = true;
-
-        built::BuiltFlow {
-            ir: self.flow_state.borrow_mut().leaves.take().unwrap(),
-            process_id_name: self.processes.replace(vec![]),
-            cluster_id_name: self.clusters.replace(vec![]),
-            external_id_name: self.externals.replace(vec![]),
-            used: false,
-            _phantom: PhantomData,
-        }
-    }
-
-    #[cfg(feature = "build")]
-    pub fn with_default_optimize<D: LocalDeploy<'a>>(self) -> DeployFlow<'a, D> {
-        self.finalize().with_default_optimize()
-    }
-
-    #[cfg(feature = "build")]
-    pub fn optimize_with(self, f: impl FnOnce(&mut [HydroLeaf])) -> built::BuiltFlow<'a> {
-        self.finalize().optimize_with(f)
-    }
-
     pub fn flow_state(&self) -> &FlowState {
         &self.flow_state
     }

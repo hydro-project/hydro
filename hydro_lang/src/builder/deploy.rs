@@ -60,7 +60,7 @@ impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
 impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
     pub fn into_ir(mut self) -> Vec<HydroLeaf> {
         self.used = true;
-        std::mem::take(&mut self.ir)
+        std::mem::take(self.ir.get_mut())
     }
 
     pub fn ir(&self) -> &Vec<HydroLeaf> {

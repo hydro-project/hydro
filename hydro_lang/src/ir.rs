@@ -2209,7 +2209,9 @@ impl<'a> HydroNode {
             | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. }
             | HydroNode::Network { input, .. }
-            | HydroNode::Counter { input, .. } => {
+            | HydroNode::Counter { input, .. }
+            | HydroNode::ResolveFutures { input, .. }
+            | HydroNode::ResolveFuturesOrdered { input, .. } => {
                 vec![input.metadata()]
             }
             HydroNode::Fold { input, .. }

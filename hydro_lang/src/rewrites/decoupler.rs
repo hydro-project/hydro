@@ -62,7 +62,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         to_key: None,
         serialize_fn: Some(serialize_bincode_with_type(true, output_type.clone()))
             .map(|e| e.into()),
-        instantiate_fn: DebugInstantiate::Building(),
+        instantiate_fn: DebugInstantiate::Building,
         deserialize_fn: Some(deserialize_bincode_with_type(
             Some(quote_type::<()>()),
             output_type,
