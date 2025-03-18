@@ -168,7 +168,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Build CLI (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
@@ -252,8 +252,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18.18.0
 
       - name: Build Website
         run: bash build_docs.bash x86_64-linux-gnu-ubuntu-20.04
