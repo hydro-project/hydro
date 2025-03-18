@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::q;
@@ -6,17 +9,25 @@ use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
     analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, track_cluster_usage_cardinality,
 };
-use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, populate_metadata, print_id};
+use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, print_id};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+
+use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
+    let project = if host_arg == "gcp" {
+        std::env::args().nth(2).unwrap()
+    } else {
+        String::new()
+    };
+    let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
-    let num_clients = 1;
+    let num_clients = 3;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
     let median_latency_window_size = 1000;
     let checkpoint_frequency = 1000; // Num log entries
@@ -56,22 +67,22 @@ async fn main() {
             insert_counter::insert_counter(leaf, counter_output_duration);
         });
     let mut ir = deep_clone(optimized.ir());
+    let proposer_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "proposer", f + 1);
+    let acceptor_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "acceptor", 2 * f + 1);
+    let client_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "client", num_clients);
+    let replica_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "replica", f + 1);
+
     let nodes = optimized
+        .with_cluster(&proposers, proposer_machines.clone())
         .with_cluster(
-            &proposers,
-            perf_cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
-        )
-        .with_cluster(
-            &acceptors,
-            perf_cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
-        )
+            &acceptors,acceptor_machines.clone())
         .with_cluster(
             &clients,
-            perf_cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+            client_machines.clone()
         )
         .with_cluster(
             &replicas,
-            perf_cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+            replica_machines.clone()
         )
         .deploy(&mut deployment);
     
@@ -129,26 +140,26 @@ async fn main() {
             insert_counter::insert_counter(leaf, counter_output_duration);
         });
 
-    let mut nodes = optimized_new_builder
+    let nodes = optimized_new_builder
         .with_cluster(
             &proposers,
-            perf_cluster_specs(&host_arg, &mut deployment, "proposer", f + 1),
+            proposer_machines
         )
         .with_cluster(
             &acceptors,
-            perf_cluster_specs(&host_arg, &mut deployment, "acceptor", 2 * f + 1),
+            acceptor_machines
         )
         .with_cluster(
             &clients,
-            perf_cluster_specs(&host_arg, &mut deployment, "client", num_clients),
+            client_machines
         )
         .with_cluster(
             &replicas,
-            perf_cluster_specs(&host_arg, &mut deployment, "replica", f + 1),
+            replica_machines
         )
         .with_cluster(
             &decoupled_cluster.unwrap(),
-            perf_cluster_specs(&host_arg, &mut deployment, "decoupled", f + 1),
+            perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "decoupled", f + 1),
         )
         .deploy(&mut deployment);
 

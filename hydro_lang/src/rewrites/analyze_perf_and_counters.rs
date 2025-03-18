@@ -23,32 +23,33 @@ type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 pub fn perf_process_specs(
     host_arg: &str,
+    project: String,
+    network: Arc<RwLock<GcpNetwork>>,
     deployment: &mut Deployment,
     process_name: &str,
 ) -> TrybuildHost {
-    perf_cluster_specs(host_arg, deployment, process_name, 1)
+    perf_cluster_specs(host_arg, project, network.clone(), deployment, process_name, 1)
         .into_iter().next()
         .unwrap()
 }
 
 pub fn perf_cluster_specs(
     host_arg: &str,
+    project: String,
+    network: Arc<RwLock<GcpNetwork>>,
     deployment: &mut Deployment,
     cluster_name: &str,
     num_nodes: usize,
 ) -> Vec<TrybuildHost> {
     let create_host: HostCreator = if host_arg == "gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
-
         Box::new(move |deployment| -> Arc<dyn Host> {
             let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
                 .project(&project)
-                .machine_type("n2-highcpu-2")
+                .machine_type("n2-standard-4")
                 .image("debian-cloud/debian-11")
-                .region("us-west1-a")
+                .region("us-central1-c")
                 .network(network.clone())
                 .startup_script(startup_script)
                 .add()

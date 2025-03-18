@@ -15,6 +15,12 @@ use hydro_lang::{q, Location};
 async fn main() {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
+    let project = if host_arg == "gcp" {
+        std::env::args().nth(2).unwrap()
+    } else {
+        String::new()
+    };
+    let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
@@ -28,11 +34,11 @@ async fn main() {
     let nodes = optimized
         .with_process(
             &leader,
-            perf_process_specs(&host_arg, &mut deployment, "leader"),
+            perf_process_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "leader"),
         )
         .with_cluster(
             &cluster,
-            perf_cluster_specs(&host_arg, &mut deployment, "cluster", 8),
+            perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "cluster", 8),
         )
         .deploy(&mut deployment);
 

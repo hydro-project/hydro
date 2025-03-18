@@ -21,9 +21,9 @@ async fn main() {
             deployment
                 .GcpComputeEngineHost()
                 .project(&project)
-                .machine_type("n2-highcpu-2")
+                .machine_type("n2-standard-4")
                 .image("debian-cloud/debian-11")
-                .region("us-west1-a")
+                .region("us-central1-c")
                 .network(network.clone())
                 .add()
         })
@@ -34,7 +34,7 @@ async fn main() {
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
-    let num_clients = 1;
+    let num_clients = 3;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
     let median_latency_window_size = 1000;
     let checkpoint_frequency = 1000; // Num log entries
