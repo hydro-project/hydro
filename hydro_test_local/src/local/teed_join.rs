@@ -1,6 +1,6 @@
+use dfir_rs::scheduled::graph::Dfir;
 use futures::stream::Stream;
 use hydro_lang::deploy::MultiGraph;
-use hydro_lang::dfir_rs::scheduled::graph::Dfir;
 use hydro_lang::*;
 use stageleft::{Quoted, RuntimeData};
 use tokio::sync::mpsc::UnboundedSender;

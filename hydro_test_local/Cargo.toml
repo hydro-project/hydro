@@ -14,6 +14,8 @@ stageleft_devel = []
 dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false }
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
     "build",
+    "staged_macro",
+    "runtime_support",
 ] }
 stageleft = "0.8.1"
 rand = "0.8.0"

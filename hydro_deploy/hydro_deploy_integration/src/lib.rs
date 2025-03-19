@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
@@ -23,6 +24,23 @@ use tokio_stream::wrappers::TcpListenerStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
+
+/// Contains runtime information passed by Hydro Deploy to a program,
+/// describing how to connect to other services and metadata about them.
+pub struct DeployPorts<T = Option<()>> {
+    pub ports: RefCell<HashMap<String, Connection>>,
+    pub meta: T,
+}
+
+impl<T> DeployPorts<T> {
+    pub fn port(&self, name: &str) -> Connection {
+        self.ports
+            .try_borrow_mut()
+            .unwrap()
+            .remove(name)
+            .unwrap_or_else(|| panic!("port {} not found", name))
+    }
+}
 
 #[cfg(not(unix))]
 type UnixStream = std::convert::Infallible;

@@ -17,7 +17,7 @@ pub async fn multi_location_test<
         &FlowBuilder<'a>,
         &Process<'a, ()>,
     ) -> Stream<O, Process<'a>, Unbounded, OutOrder>,
-    check: impl FnOnce(Pin<Box<dyn dfir_rs::futures::Stream<Item = O>>>) -> C,
+    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = O>>>) -> C,
 ) {
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
@@ -46,7 +46,7 @@ pub async fn stream_transform_test<
     OutOrder,
 >(
     thunk: impl FnOnce(&Process<'a>) -> Stream<O, Process<'a>, Unbounded, OutOrder>,
-    check: impl FnOnce(Pin<Box<dyn dfir_rs::futures::Stream<Item = O>>>) -> C,
+    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = O>>>) -> C,
 ) {
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();

@@ -11,9 +11,9 @@ pub fn first_ten_distributed<'a>(p1: &Process<'a, P1>, p2: &Process<'a, P2>) {
 
 #[cfg(test)]
 mod tests {
+    use futures::StreamExt;
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
-    use hydro_lang::dfir_rs::futures::StreamExt;
     use tokio_stream::wrappers::UnboundedReceiverStream;
 
     #[tokio::test]

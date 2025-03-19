@@ -46,23 +46,6 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
     }
 }
 
-/// Contains runtime information passed by Hydro Deploy to a program,
-/// describing how to connect to other services and metadata about them.
-pub struct DeployPorts<T = Option<()>> {
-    ports: RefCell<HashMap<String, Connection>>,
-    pub meta: T,
-}
-
-impl<T> DeployPorts<T> {
-    pub fn port(&self, name: &str) -> Connection {
-        self.ports
-            .try_borrow_mut()
-            .unwrap()
-            .remove(name)
-            .unwrap_or_else(|| panic!("port {} not found", name))
-    }
-}
-
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).unwrap();

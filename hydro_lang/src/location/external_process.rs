@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use dfir_rs::bytes::Bytes;
+use bytes::Bytes;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 

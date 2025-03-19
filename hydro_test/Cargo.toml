@@ -25,7 +25,7 @@ stageleft_tool = "0.8.1"
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
 ctor = "0.2"
-dfir_rs = { path = "../dfir_rs", version = "^0.12.1" }
+dfir_lang = { path = "../dfir_lang", version = "^0.12.1" }
 futures = "0.3.0"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.1" }
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [

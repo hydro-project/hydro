@@ -1,11 +1,17 @@
 use std::collections::BTreeMap;
+#[cfg(feature = "staged_macro")]
 use std::marker::PhantomData;
 
 use dfir_lang::graph::DfirGraph;
+#[cfg(feature = "staged_macro")]
 use dfir_rs::scheduled::graph::Dfir;
+#[cfg(feature = "staged_macro")]
 use proc_macro2::TokenStream;
+#[cfg(feature = "staged_macro")]
 use quote::quote;
+#[cfg(feature = "staged_macro")]
 use stageleft::QuotedWithContext;
+#[cfg(feature = "staged_macro")]
 use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 
 use crate::Location;
@@ -13,6 +19,7 @@ use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a, ID> {
     pub(super) dfir: BTreeMap<usize, DfirGraph>,
+    #[cfg(feature = "staged_macro")]
     pub(super) extra_stmts: BTreeMap<usize, Vec<syn::Stmt>>,
     pub(super) _phantom: Invariant<'a, ID>,
 }
@@ -28,6 +35,7 @@ impl<'a, ID> CompiledFlow<'a, ID> {
 }
 
 impl<'a> CompiledFlow<'a, usize> {
+    #[cfg(feature = "staged_macro")]
     pub fn with_dynamic_id(
         self,
         id: impl QuotedWithContext<'a, usize, ()>,
@@ -35,10 +43,10 @@ impl<'a> CompiledFlow<'a, usize> {
         let hydro_lang_crate = proc_macro_crate::crate_name("hydro_lang")
             .expect("hydro_lang should be present in `Cargo.toml`");
         let root = match hydro_lang_crate {
-            proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::dfir_rs },
+            proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::runtime_support::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) => {
                 let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
-                quote! { #ident::dfir_rs }
+                quote! { #ident::runtime_support::dfir_rs }
             }
         };
 
@@ -83,8 +91,10 @@ impl<'a> CompiledFlow<'a, usize> {
     }
 }
 
+#[cfg(feature = "staged_macro")]
 impl<'a, Ctx> QuotedWithContext<'a, Dfir<'a>, Ctx> for CompiledFlow<'a, ()> {}
 
+#[cfg(feature = "staged_macro")]
 impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
     type O = Dfir<'a>;
 
@@ -92,10 +102,10 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
         let hydro_lang_crate = proc_macro_crate::crate_name("hydro_lang")
             .expect("hydro_lang should be present in `Cargo.toml`");
         let root = match hydro_lang_crate {
-            proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::dfir_rs },
+            proc_macro_crate::FoundCrate::Itself => quote! { hydro_lang::runtime_support::dfir_rs },
             proc_macro_crate::FoundCrate::Name(name) => {
                 let ident = syn::Ident::new(&name, proc_macro2::Span::call_site());
-                quote! { #ident::dfir_rs }
+                quote! { #ident::runtime_support::dfir_rs }
             }
         };
 
@@ -115,13 +125,16 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
     }
 }
 
+#[cfg(feature = "staged_macro")]
 pub struct CompiledFlowWithId<'a> {
     tokens: TokenStream,
     _phantom: Invariant<'a>,
 }
 
+#[cfg(feature = "staged_macro")]
 impl<'a, Ctx> QuotedWithContext<'a, Dfir<'a>, Ctx> for CompiledFlowWithId<'a> {}
 
+#[cfg(feature = "staged_macro")]
 impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlowWithId<'a> {
     type O = Dfir<'a>;
 

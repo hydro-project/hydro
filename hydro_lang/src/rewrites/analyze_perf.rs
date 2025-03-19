@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
+pub use crate::internal_constants::CPU_USAGE_PREFIX;
 use crate::ir::*;
-pub use crate::runtime_support::resource_measurement::CPU_USAGE_PREFIX;
 
 pub fn parse_cpu_usage(measurement: String) -> f64 {
     let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();

@@ -5,8 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use dfir_rs::bytes::Bytes;
-use dfir_rs::futures;
+use bytes::Bytes;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
@@ -2209,7 +2208,7 @@ impl<'a, T, L: Location<'a> + NoTick, B> Stream<T, L, B, TotalOrder> {
 
 #[cfg(test)]
 mod tests {
-    use dfir_rs::futures::StreamExt;
+    use futures::StreamExt;
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
     use stageleft::q;

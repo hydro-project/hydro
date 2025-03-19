@@ -3,10 +3,10 @@ use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
+use bytes::Bytes;
 use dfir_lang::graph::DfirGraph;
-use dfir_rs::bytes::Bytes;
-use dfir_rs::futures::{Sink, Stream};
-use dfir_rs::util::deploy::DeployPorts;
+use futures::{Sink, Stream};
+use hydro_deploy_integration::DeployPorts;
 use stageleft::{QuotedWithContext, RuntimeData};
 
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};

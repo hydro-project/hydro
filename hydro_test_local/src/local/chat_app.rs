@@ -1,6 +1,6 @@
+use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
 use hydro_lang::deploy::SingleProcessGraph;
-use hydro_lang::dfir_rs::scheduled::graph::Dfir;
 use hydro_lang::*;
 use stageleft::{Quoted, RuntimeData};
 use tokio::sync::mpsc::UnboundedSender;

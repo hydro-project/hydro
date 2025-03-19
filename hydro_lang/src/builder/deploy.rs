@@ -4,8 +4,8 @@ use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
-use dfir_rs::bytes::Bytes;
-use dfir_rs::futures::{Sink, Stream};
+use bytes::Bytes;
+use futures::{Sink, Stream};
 use proc_macro2::Span;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -139,6 +139,7 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
                 // only because the shared traversal logic requires it
                 &mut *self.ir.get()
             }),
+            #[cfg(feature = "staged_macro")]
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -149,6 +150,7 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
 
         CompiledFlow {
             dfir: build_inner(self.ir.get_mut()),
+            #[cfg(feature = "staged_macro")]
             extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
@@ -172,10 +174,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             );
         });
 
+        #[cfg(feature = "staged_macro")]
         let extra_stmts = self.extra_stmts(env);
 
         CompiledFlow {
             dfir: build_inner(self.ir.get_mut()),
+            #[cfg(feature = "staged_macro")]
             extra_stmts,
             _phantom: PhantomData,
         }

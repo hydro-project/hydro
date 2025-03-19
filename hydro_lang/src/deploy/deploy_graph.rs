@@ -6,15 +6,15 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 
+use bytes::Bytes;
 use dfir_lang::graph::DfirGraph;
-use dfir_rs::bytes::Bytes;
-use dfir_rs::futures::{Sink, SinkExt, Stream, StreamExt};
-use dfir_rs::util::deploy::{ConnectedSink, ConnectedSource};
+use futures::{Sink, SinkExt, Stream, StreamExt};
 use hydro_deploy::custom_service::CustomClientPort;
 use hydro_deploy::rust_crate::RustCrateService;
 use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
+use hydro_deploy_integration::{ConnectedSink, ConnectedSource};
 use nameof::name_of;
 use serde::Serialize;
 use serde::de::DeserializeOwned;

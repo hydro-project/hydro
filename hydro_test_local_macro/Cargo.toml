@@ -15,6 +15,7 @@ path = "../hydro_test_local/src/lib.rs"
 dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false }
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
     "build",
+    "staged_macro",
 ] }
 stageleft = "0.8.1"
 rand = "0.8.0"

@@ -139,7 +139,7 @@ pub fn compile_graph_trybuild(
 ) -> syn::File {
     let mut diagnostics = Vec::new();
     let tokens = partitioned_graph.as_code(
-        &quote! { hydro_lang::dfir_rs },
+        &quote! { hydro_lang::runtime_support::dfir_rs },
         true,
         quote!(),
         &mut diagnostics,
@@ -150,14 +150,14 @@ pub fn compile_graph_trybuild(
         use hydro_lang::*;
 
         #[allow(unused)]
-        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::dfir_rs::scheduled::graph::Dfir<'a> {
+        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
             #tokens
         }
 
         #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]
         async fn main() {
-            let ports = hydro_lang::dfir_rs::util::deploy::init_no_ack_start().await;
+            let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
             let flow = __hydro_runtime(&ports);
             println!("ack start");
 
@@ -250,6 +250,13 @@ pub fn create_trybuild()
             vec![format!("hydro_lang/{runtime_feature}")],
         );
     }
+
+    manifest
+        .dependencies
+        .get_mut("hydro_lang")
+        .unwrap()
+        .features
+        .push("runtime_support".to_string());
 
     manifest
         .features

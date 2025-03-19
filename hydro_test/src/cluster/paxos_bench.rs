@@ -101,7 +101,7 @@ pub fn paxos_bench<'a>(
 
 #[cfg(test)]
 mod tests {
-    use dfir_rs::lang::graph::WriteConfig;
+    use dfir_lang::graph::WriteConfig;
     use hydro_lang::deploy::DeployRuntime;
     use stageleft::RuntimeData;
 

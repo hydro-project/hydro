@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use regex::Regex;
 
+pub use crate::internal_constants::COUNTER_PREFIX;
 use crate::ir::*;
-pub use crate::runtime_support::resource_measurement::COUNTER_PREFIX;
 
 /// Returns (op_id, count)
 pub fn parse_counter_usage(measurement: String) -> (usize, usize) {

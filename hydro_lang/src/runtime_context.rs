@@ -24,7 +24,7 @@ impl<'a, L: Location<'a>> FreeVariableWithContext<L> for RuntimeContext<'a> {
 
 #[cfg(test)]
 mod tests {
-    use dfir_rs::futures::StreamExt;
+    use futures::StreamExt;
     use hydro_deploy::Deployment;
 
     use crate::*;

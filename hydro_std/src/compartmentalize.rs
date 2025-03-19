@@ -1,7 +1,7 @@
-use dfir_rs::serde::Serialize;
-use dfir_rs::serde::de::DeserializeOwned;
 use hydro_lang::*;
 use location::{CanSend, NoTick};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use stageleft::IntoQuotedMut;
 use stream::MinOrder;
 
