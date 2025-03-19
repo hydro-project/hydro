@@ -1,7 +1,15 @@
 [build]
 
 [env]
+# Stack backtraces.
+RUST_BACKTRACE = "1"
+# Set output levels for `tracing` logging.
+RUST_LOG = "debug,dfir_rs=trace"
+# DFIR generate for `/docs/` website.
 DFIR_GENERATE_DOCS = "1"
+# https://github.com/PyO3/pyo3/pull/3821
+# https://github.com/PyO3/maturin/issues/1960#issuecomment-1969773463
+PYO3_USE_ABI3_FORWARD_COMPATIBILITY = "1"
 
 [target.aarch64-apple-darwin]
 linker = "rust-lld"

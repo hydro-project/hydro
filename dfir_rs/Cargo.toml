@@ -44,7 +44,7 @@ hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_depl
 itertools = "0.13.0"
 lattices = { path = "../lattices", version = "^0.6.1", features = [ "serde" ] }
 pusherator = { path = "../pusherator", version = "^0.0.12" }
-pyo3 = { optional = true, version = "0.20" }
+pyo3 = { optional = true, version = "0.20.0" }
 ref-cast = "1.0.0"
 regex = "1.10.4"
 rustc-hash = "1.1.0"

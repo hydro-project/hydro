@@ -18,7 +18,7 @@ type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 ///
 /// ```bash
-/// cargo run -p hydro_test --example perf_compute_pi -- gcp hydroflow-work
+/// cargo run -p hydro_test --example perf_compute_pi -- gcp my-gcp-project
 /// ```
 ///
 /// Once the program is running, you can **press enter** to stop the program and see the results.

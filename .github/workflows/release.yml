@@ -25,9 +25,6 @@ jobs:
     name: Release Job
     timeout-minutes: 20
     runs-on: ubuntu-latest
-    env:
-      RUST_BACKTRACE: 1
-      RUST_LOG: "debug"
     steps:
       # https://github.com/orgs/community/discussions/25305#discussioncomment-8256560
       # Unfortunately branch protection means that this workflow can't push the updated changelogs
@@ -85,5 +82,3 @@ jobs:
         env:
           # Make sure to set this so the `gh` CLI works using our token.
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
-          # Show `cargo-smart-release`'s stack trace on error.
-          RUST_BACKTRACE: 1
