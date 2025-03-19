@@ -12,11 +12,15 @@ proc-macro = true
 path = "../hydro_test_local/src/lib.rs"
 
 [dependencies]
+dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false }
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
     "build",
 ] }
-stageleft = "0.8.0"
+stageleft = "0.8.1"
 rand = "0.8.0"
+tokio = "1.43.0"
+tokio-stream = { version = "0.1.3", default-features = false }
+futures = "0.3.0"
 
 [build-dependencies]
-stageleft_tool = "0.8.0"
+stageleft_tool = "0.8.1"

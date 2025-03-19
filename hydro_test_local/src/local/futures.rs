@@ -1,11 +1,10 @@
 use std::time::Duration;
 
-use dfir_rs::tokio;
-use dfir_rs::tokio::sync::mpsc::UnboundedSender;
 use hydro_lang::deploy::SingleProcessGraph;
 use hydro_lang::dfir_rs::scheduled::graph::Dfir;
 use hydro_lang::*;
 use stageleft::{Quoted, RuntimeData, q};
+use tokio::sync::mpsc::UnboundedSender;
 
 #[stageleft::entry]
 pub fn unordered<'a>(
@@ -17,7 +16,6 @@ pub fn unordered<'a>(
     process
         .source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
         .map(q!(|x| async move {
-            // tokio::time::sleep works, import then just sleep does not, unsure why
             tokio::time::sleep(Duration::from_millis(10)).await;
             x
         }))

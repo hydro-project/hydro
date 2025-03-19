@@ -6,7 +6,7 @@ use dfir_rs::scheduled::graph::Dfir;
 use proc_macro2::TokenStream;
 use quote::quote;
 use stageleft::QuotedWithContext;
-use stageleft::runtime_support::FreeVariableWithContext;
+use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 
 use crate::Location;
 use crate::staging_util::Invariant;
@@ -88,7 +88,7 @@ impl<'a, Ctx> QuotedWithContext<'a, Dfir<'a>, Ctx> for CompiledFlow<'a, ()> {}
 impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
     type O = Dfir<'a>;
 
-    fn to_tokens(mut self, _ctx: &Ctx) -> (Option<TokenStream>, Option<TokenStream>) {
+    fn to_tokens(mut self, _ctx: &Ctx) -> QuoteTokens {
         let hydro_lang_crate = proc_macro_crate::crate_name("hydro_lang")
             .expect("hydro_lang should be present in `Cargo.toml`");
         let root = match hydro_lang_crate {
@@ -108,7 +108,10 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlow<'a, ()> {
         let mut diagnostics = Vec::new();
         let tokens = partitioned_graph.as_code(&root, true, quote::quote!(), &mut diagnostics);
 
-        (None, Some(tokens))
+        QuoteTokens {
+            prelude: None,
+            expr: Some(tokens),
+        }
     }
 }
 
@@ -122,7 +125,10 @@ impl<'a, Ctx> QuotedWithContext<'a, Dfir<'a>, Ctx> for CompiledFlowWithId<'a> {}
 impl<'a, Ctx> FreeVariableWithContext<Ctx> for CompiledFlowWithId<'a> {
     type O = Dfir<'a>;
 
-    fn to_tokens(self, _ctx: &Ctx) -> (Option<TokenStream>, Option<TokenStream>) {
-        (None, Some(self.tokens))
+    fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens {
+        QuoteTokens {
+            prelude: None,
+            expr: Some(self.tokens),
+        }
     }
 }

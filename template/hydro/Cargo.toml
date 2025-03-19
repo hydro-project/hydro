@@ -11,10 +11,10 @@ stageleft_devel = []
 [dependencies]
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_std = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
-stageleft = "0.7.0"
+stageleft = "0.8.1"
 
 [build-dependencies]
-stageleft_tool = "0.6.0"
+stageleft_tool = "0.8.1"
 
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }

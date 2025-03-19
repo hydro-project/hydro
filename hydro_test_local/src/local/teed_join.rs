@@ -1,10 +1,10 @@
-use dfir_rs::futures::stream::Stream;
-use dfir_rs::tokio::sync::mpsc::UnboundedSender;
-use dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream;
+use futures::stream::Stream;
 use hydro_lang::deploy::MultiGraph;
 use hydro_lang::dfir_rs::scheduled::graph::Dfir;
 use hydro_lang::*;
 use stageleft::{Quoted, RuntimeData};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 struct N0 {}
 struct N1 {}

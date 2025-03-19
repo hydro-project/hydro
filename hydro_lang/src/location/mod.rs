@@ -3,7 +3,6 @@ use std::marker::PhantomData;
 use std::time::Duration;
 
 use dfir_rs::futures::stream::Stream as FuturesStream;
-use dfir_rs::{tokio, tokio_stream};
 use proc_macro2::Span;
 use stageleft::{QuotedWithContext, q};
 

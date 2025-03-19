@@ -14,13 +14,13 @@ stageleft_devel = []
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }
 hydro_std = { path = "../hydro_std", version = "^0.12.1" }
-stageleft = "0.8.0"
+stageleft = "0.8.1"
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
 
 [build-dependencies]
-stageleft_tool = "0.8.0"
+stageleft_tool = "0.8.1"
 
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }

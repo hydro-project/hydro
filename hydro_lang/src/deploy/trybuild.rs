@@ -52,16 +52,12 @@ pub fn create_graph_trybuild(
     .visit_file_mut(&mut generated_code);
 
     let inlined_staged: syn::File = if is_test {
-        let staged_contents = stageleft_tool::gen_staged_trybuild(
+        stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
+            &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             is_test,
-        );
-
-        syn::parse_quote! {
-            pub mod __deps {} // TODO(shadaj): support deps in test-mode
-            #staged_contents
-        }
+        )
     } else {
         syn::parse_quote!()
     };
