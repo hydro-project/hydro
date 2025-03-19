@@ -2,14 +2,14 @@
 
 extern crate proc_macro;
 
-use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote_spanned;
 use serde::{Deserialize, Serialize};
 
-use crate::pretty_span::PrettySpan;
+use crate::pretty_span::{PrettySpan, make_source_path_relative};
 
 /// Diagnostic reporting level.
 #[non_exhaustive]
@@ -182,9 +182,7 @@ impl std::fmt::Display for Diagnostic<SerdeSpan> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerdeSpan {
     /// The source file path.
-    // https://github.com/serde-rs/serde/issues/1852#issuecomment-904840811
-    #[serde(borrow)]
-    pub path: Cow<'static, str>,
+    pub path: Option<PathBuf>,
     /// Line number, one-indexed.
     pub line: usize,
     /// Column number, one-indexed.
@@ -199,16 +197,10 @@ impl From<Span> for SerdeSpan {
         let path = 'a: {
             #[cfg(nightly)]
             if proc_macro::is_available() {
-                break 'a span
-                    .unwrap()
-                    .source_file()
-                    .path()
-                    .display()
-                    .to_string()
-                    .into();
+                break 'a Some(span.unwrap().source_file().path());
             }
 
-            "unknown".into()
+            None
         };
 
         Self {
@@ -220,6 +212,17 @@ impl From<Span> for SerdeSpan {
 }
 impl std::fmt::Display for SerdeSpan {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}:{}:{}", self.path, self.line, self.column)
+        write!(
+            f,
+            "{}:{}:{}",
+            self.path
+                .as_deref()
+                .map(make_source_path_relative)
+                .map(|path| path.display().to_string())
+                .as_deref()
+                .unwrap_or("unknown"),
+            self.line,
+            self.column
+        )
     }
 }

@@ -24,7 +24,7 @@ use super::{
     Varname, change_spans, get_operator_generics,
 };
 use crate::diagnostic::{Diagnostic, Level};
-use crate::pretty_span::{PrettyRowCol, PrettySpan};
+use crate::pretty_span::{PrettyRowCol, PrettySpan, make_source_path_relative};
 use crate::process_singletons;
 
 /// An abstract "meta graph" representation of a DFIR graph.
@@ -1023,12 +1023,10 @@ impl DfirGraph {
                                     let op_span = op_span.unwrap();
                                     break 'a format!(
                                         "loc_{}_{}_{}_{}_{}",
-                                        op_span
-                                            .source_file()
-                                            .path()
+                                        make_source_path_relative(&op_span.source_file().path())
                                             .display()
                                             .to_string()
-                                            .replace(|x: char| !x.is_alphanumeric(), "_"),
+                                            .replace(|x: char| !x.is_ascii_alphanumeric(), "_"),
                                         op_span.start().line(),
                                         op_span.start().column(),
                                         op_span.end().line(),
