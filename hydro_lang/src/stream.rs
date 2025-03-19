@@ -241,7 +241,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let words = process.source_iter(q!(vec!["hello", "world"]));
     /// words.map(q!(|x| x.to_uppercase()))
@@ -276,7 +276,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
@@ -309,7 +309,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
     /// process
     ///     .source_iter(q!(vec![
@@ -350,7 +350,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     ///
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![vec![1, 2], vec![3, 4]]))
@@ -375,7 +375,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, NoOrder>(|process| {
     /// process
     ///     .source_iter(q!(vec![
@@ -409,7 +409,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec![1, 2, 3, 4]))
@@ -441,7 +441,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process
     ///     .source_iter(q!(vec!["1", "hello", "world", "2"]))
@@ -473,7 +473,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let batch = unsafe {
@@ -527,7 +527,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// ```rust
     /// # use hydro_lang::*;
     /// # use std::collections::HashSet;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream1 = process.source_iter(q!(vec!['a', 'b', 'c']));
@@ -560,7 +560,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     ///     process.source_iter(q!(vec![1, 2, 3, 2, 1, 4])).unique()
@@ -589,7 +589,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream = unsafe {
@@ -631,7 +631,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let nums = process.source_iter(q!(vec![1, 2]));
     /// // prints "1 * 10 = 10" and "2 * 10 = 20"
@@ -689,7 +689,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<T, L, B, Order> {
     /// ```rust
     /// # use hydro_lang::*;
     /// # use std::collections::HashSet;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let nums = process.source_iter(q!({
     ///     let now = std::time::SystemTime::now();
@@ -719,7 +719,7 @@ impl<'a, T, L: Location<'a>, B, Order> Stream<&T, L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process.source_iter(q!(&[1, 2, 3])).cloned()
     /// # }, |mut stream| async move {
@@ -750,7 +750,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -801,7 +801,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -841,7 +841,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -870,7 +870,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -918,7 +918,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -945,7 +945,7 @@ where
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -967,7 +967,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test::<_, _, TotalOrder>(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1016,7 +1016,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1040,7 +1040,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1065,7 +1065,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
@@ -1116,7 +1116,7 @@ impl<'a, T, L: Location<'a>, B> Stream<T, L, B, TotalOrder> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
@@ -1162,7 +1162,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O> Stream<T, L, Unbounded, O> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// numbers.clone().map(q!(|x| x + 1)).union(numbers)
@@ -1198,7 +1198,7 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![4, 2, 3, 1]));
@@ -1236,7 +1236,7 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, L, Bounded, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1274,7 +1274,7 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
     /// ```rust
     /// # use hydro_lang::*;
     /// # use std::collections::HashSet;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream1 = process.source_iter(q!(vec![(1, 'a'), (2, 'b')]));
@@ -1309,7 +1309,7 @@ impl<'a, K, V1, L: Location<'a>, B, Order> Stream<(K, V1), L, B, Order> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let stream = unsafe {
@@ -1359,7 +1359,7 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
@@ -1404,7 +1404,7 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
@@ -1446,7 +1446,7 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
@@ -1483,7 +1483,7 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
@@ -1511,7 +1511,7 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
@@ -1579,7 +1579,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # Example
     /// ```rust
     /// # use std::collections::HashSet;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
@@ -1620,7 +1620,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B, Order> Stream<T, L, B, Order
     /// # Example
     /// ```rust
     /// # use std::collections::HashSet;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # use hydro_lang::*;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// process.source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
