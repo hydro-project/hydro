@@ -15,10 +15,7 @@ impl std::fmt::Display for PrettySpan {
             write!(
                 f,
                 "{}:{}:{}",
-                make_source_path_relative(&span.source_file().path())
-                    .display()
-                    .to_string()
-                    .replace(|x: char| !x.is_ascii_alphanumeric(), "_"),
+                make_source_path_relative(&span.source_file().path()).display(),
                 span.start().line(),
                 span.start().column(),
             )?;
