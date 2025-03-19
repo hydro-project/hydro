@@ -17,6 +17,8 @@ pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
+static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
 }
@@ -95,6 +97,8 @@ pub fn create_graph_trybuild(
 
     let out_path = path!(project_dir / "src" / "bin" / format!("{bin_name}.rs"));
     {
+        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+
         let mut out_file = File::options()
             .read(true)
             .write(true)
@@ -267,6 +271,8 @@ pub fn create_trybuild()
     };
 
     {
+        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+
         #[cfg(nightly)]
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         #[cfg(nightly)]
