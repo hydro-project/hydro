@@ -37,6 +37,7 @@ struct ModelMetadata {
     op_id_to_inputs: HashMap<usize, Vec<usize>>,
     prev_op_input_with_tick: HashMap<usize, usize>, // tick_id: last op_id with that tick_id
     tee_inner_to_decoupled_vars: HashMap<usize, (Var, Var)>, /* inner_id: (orig_to_decoupled, decoupled_to_orig) */
+    network_ids: HashMap<usize, NetworkType>,
 }
 
 // Penalty for decoupling regardless of cardinality (to prevent decoupling low cardinality operators)
@@ -338,6 +339,7 @@ fn decouple_analysis_node(
         if network_type.is_none() {
             return;
         }
+        model_metadata.borrow_mut().network_ids.insert(*op_id, network_type.clone().unwrap());
     } else if model_metadata.borrow().cluster_to_decouple != *node.metadata().location_kind.root() {
         // If it's not a network and the operator isn't on the cluster, ignore
         return;
@@ -435,6 +437,7 @@ pub fn decouple_analysis(
         op_id_to_inputs: HashMap::new(),
         prev_op_input_with_tick: HashMap::new(),
         tee_inner_to_decoupled_vars: HashMap::new(),
+        network_ids: HashMap::new(),
     });
 
     traverse_dfir(
@@ -452,6 +455,7 @@ pub fn decouple_analysis(
         model,
         op_id_to_var,
         op_id_to_inputs,
+        network_ids,
         ..
     } = &mut *model_metadata.borrow_mut();
     // model.write("decouple.lp").unwrap();
@@ -467,33 +471,42 @@ pub fn decouple_analysis(
     for (op_id, inputs) in op_id_to_inputs {
         if let Some(op_var) = op_id_to_var.get(op_id) {
             let op_value = model.get_obj_attr(attr::X, op_var).unwrap();
+            let mut input_value = None;
             if let Some(input) = inputs.first() {
                 if let Some(input_var) = op_id_to_var.get(input) {
-                    let input_value = model.get_obj_attr(attr::X, input_var).unwrap();
-                    match (input_value, op_value) {
-                        (0.0, 1.0) => {
-                            orig_to_decoupled.push(*op_id);
-                        }
-                        (1.0, 0.0) => {
-                            decoupled_to_orig.push(*op_id);
-                        }
-                        _ => {}
-                    }
-
-                    if input_value == 0.0 {
-                        orig_machine.push(*op_id);
-                    } else {
-                        decoupled_machine.push(*op_id);
-                    }
+                    input_value = Some(model.get_obj_attr(attr::X, input_var).unwrap());
                 }
-            }
-            else {
-                // No inputs, must be 1. An incoming Network or 2. A Source
+            };
+
+            // Don't insert network if this is Source or already a Network
+            let network_type = network_ids.get(op_id);
+            if input_value.is_none() || network_type.is_some() {
                 if op_value == 0.0 {
                     orig_machine.push(*op_id);
                 } else {
                     decoupled_machine.push(*op_id);
-                    place_on_decoupled.push(*op_id);
+                    // Don't modify the destination if we're sending to someone else
+                    if !network_type.is_some_and(|t| *t == NetworkType::Send) {
+                        place_on_decoupled.push(*op_id);
+                    }
+                }
+            }
+            else {
+                // Figure out if we should insert Network nodes
+                match (input_value.unwrap(), op_value) {
+                    (0.0, 1.0) => {
+                        orig_to_decoupled.push(*op_id);
+                    }
+                    (1.0, 0.0) => {
+                        decoupled_to_orig.push(*op_id);
+                    }
+                    _ => {}
+                }
+
+                if input_value.unwrap() == 0.0 {
+                    orig_machine.push(*op_id);
+                } else {
+                    decoupled_machine.push(*op_id);
                 }
             }
         }

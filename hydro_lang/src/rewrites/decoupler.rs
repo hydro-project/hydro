@@ -11,7 +11,7 @@ use crate::location::LocationId;
 use crate::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 
 use super::partitioner::ClusterSelfIdReplace;
-use super::{link_cycles, populate_metadata};
+use super::{link_cycles, populate_metadata, print_id};
 
 pub struct Decoupler {
     pub output_to_decoupled_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the decoupled machine
@@ -22,8 +22,6 @@ pub struct Decoupler {
 }
 
 fn add_network(node: &mut HydroNode, new_location: &LocationId) {
-    println!("Creating network to location {:?} after node {}", new_location, node.print_root());
-
     let metadata = node.metadata().clone();
     let output_debug_type = metadata.output_type.clone().unwrap();
 
@@ -105,6 +103,7 @@ fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut Has
     };
 
     let new_inner = new_inners.entry((inner_id, new_location.clone())).or_insert_with(|| {
+        println!("Adding network before Tee to location {:?} after id: {}", new_location, inner_id);
         add_network(node, new_location);
         let node_content = std::mem::replace(node, HydroNode::Placeholder);
         Rc::new(RefCell::new(node_content))
@@ -123,8 +122,9 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
         match node {
             HydroNode::Source { location_kind, metadata, .. }
             | HydroNode::Network { to_location: location_kind, metadata, .. } => {
+                println!("Changing source/network destination from {:?} to location {:?}, id: {}", location_kind, decoupler.decoupled_location.clone(), next_stmt_id);
                 *location_kind = decoupler.decoupled_location.clone();
-                metadata.location_kind = decoupler.decoupled_location.clone();
+                metadata.location_kind.swap_root(decoupler.decoupled_location.clone());
             }
             _ => {
                 std::panic!("Decoupler placing non-source/network node on decoupled machine: {}", node.print_root());
@@ -145,18 +145,15 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
     };
 
     match node {
-        HydroNode::Placeholder => {
-            std::panic!("Decoupler modifying placeholder node");
+        HydroNode::Placeholder | HydroNode::Network { .. } => {
+            std::panic!("Decoupler modifying placeholder node or incorrectly handling network node: {}", next_stmt_id);
         }
         HydroNode::Tee { .. } => {
+            println!("Creating a TEE to location {:?}, id: {}", new_location, next_stmt_id);
             add_tee(node, new_location, new_inners);
         }
-        HydroNode::Network { to_location, metadata, .. } => {
-            // Instead of inserting a network after an existing Network, just modify the location
-            *to_location = new_location.clone();
-            metadata.location_kind = decoupler.decoupled_location.clone();
-        }
         _ => {
+            println!("Creating network to location {:?} after node {}, id: {}", new_location, node.print_root(), next_stmt_id);
             add_network(node, new_location);
         }
     }
@@ -211,6 +208,9 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
             fix_cluster_self_id_node(node, locations);
         },
     );
+
+    println!("Printing IDs after fixing");
+    print_id::print_id(ir);
 }
 
 

@@ -53,6 +53,17 @@ impl LocationId {
             LocationId::ExternalProcess(id) => *id,
         }
     }
+
+    pub fn swap_root(&mut self, new_root: LocationId) {
+        match self {
+            LocationId::Tick(_, id) => {
+                id.swap_root(new_root);
+            }
+            _ => {
+                *self = new_root;
+            }
+        }
+    }
 }
 
 pub fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
