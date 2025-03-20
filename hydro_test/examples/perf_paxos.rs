@@ -7,7 +7,7 @@ use hydro_lang::q;
 use hydro_lang::rewrites::decoupler::{self, Decoupler};
 use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
-    analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, track_cluster_usage_cardinality,
+    analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, perf_process_specs, track_cluster_usage_cardinality
 };
 use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, print_id};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
@@ -28,7 +28,7 @@ async fn main() {
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
     let num_clients = 3;
-    let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
+    let num_clients_per_node = 300; // Change based on experiment between 1, 50, 100.
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
@@ -37,6 +37,7 @@ async fn main() {
     let proposers = builder.cluster();
     let acceptors = builder.cluster();
     let clients = builder.cluster();
+    let client_aggregator = builder.process();
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
@@ -55,6 +56,7 @@ async fn main() {
             },
         },
         &clients,
+        &client_aggregator,
         &replicas,
     );
 
@@ -70,6 +72,7 @@ async fn main() {
     let proposer_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "proposer", f + 1);
     let acceptor_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "acceptor", 2 * f + 1);
     let client_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "client", num_clients);
+    let client_aggregator_machine = perf_process_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "client aggregator");
     let replica_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "replica", f + 1);
 
     let nodes = optimized
@@ -80,6 +83,7 @@ async fn main() {
             &clients,
             client_machines.clone()
         )
+        .with_process(&client_aggregator, client_aggregator_machine.clone())
         .with_cluster(
             &replicas,
             replica_machines.clone()
@@ -113,6 +117,7 @@ async fn main() {
         send_overhead,
         recv_overhead,
         &cycle_source_to_sink_input,
+        true,
     );
 
     drop(nodes);
@@ -152,6 +157,10 @@ async fn main() {
         .with_cluster(
             &clients,
             client_machines
+        )
+        .with_process(
+            &client_aggregator,
+            client_aggregator_machine
         )
         .with_cluster(
             &replicas,

@@ -1829,6 +1829,7 @@ dependencies = [
  "hydro_deploy",
  "hydro_lang",
  "insta",
+ "serde",
  "stageleft",
  "stageleft_tool",
  "stats-ci",

@@ -3,10 +3,36 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use hdrhistogram::Histogram;
+use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
 use hydro_lang::*;
+use serde::{Deserialize, Serialize};
 use stats_ci::mean::Arithmetic;
 use stats_ci::{Confidence, StatisticsOps};
 
+pub struct SerializableHistogramWrapper {
+    pub histogram: Rc<RefCell<Histogram<u64>>>,
+}
+
+impl Serialize for SerializableHistogramWrapper {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut vec = Vec::new();
+        V2Serializer::new()
+            .serialize(&self.histogram.borrow(), &mut vec)
+            .unwrap();
+        serializer.serialize_bytes(&vec)
+    }
+}
+impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
+    fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut bytes: &[u8] = Deserialize::deserialize(deserializer)?;
+        let mut histogram = Deserializer::new().deserialize(&mut bytes).unwrap();
+        // Allow auto-resizing to prevent error when combining
+        histogram.auto(true);
+        Ok(SerializableHistogramWrapper {
+            histogram: Rc::new(RefCell::new(histogram)),
+        })
+    }
+}
 pub struct BenchResult<'a, Client> {
     pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
     pub throughput: Singleton<Arithmetic<f64>, Cluster<'a, Client>, Unbounded>,
@@ -147,23 +173,54 @@ pub unsafe fn bench_client<'a, Client>(
 
 /// Prints transaction latency and throughput results to stdout,
 /// with percentiles for latency and a confidence interval for throughput.
-pub fn print_bench_results<Client>(results: BenchResult<Client>) {
-    unsafe {
+pub fn print_bench_results<'a, Client, Aggregator>(
+    results: BenchResult<'a, Client>,
+    aggregator: &Process<'a, Aggregator>,
+) {
+    let keyed_latencies = unsafe {
         // SAFETY: intentional non-determinism
         results
             .latency_histogram
             .sample_every(q!(Duration::from_millis(1000)))
     }
-    .for_each(q!(move |latencies| {
-        let latencies = latencies.borrow();
-        println!(
-            "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
-            Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
-            Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
-            Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64 / 1000.0,
-            latencies.len()
-        );
-    }));
+    .map(q!(|latencies| {
+        SerializableHistogramWrapper {
+            histogram: latencies,
+        }
+    }))
+    .send_bincode(aggregator);
+
+    let combined_latencies = unsafe {
+        keyed_latencies
+            .tick_batch(&aggregator.tick())
+            .assume_ordering()
+            .map(q!(|(id, histogram)| (
+                id,
+                histogram.histogram.borrow_mut().clone()
+            )))
+            .persist()
+            .reduce_keyed(q!(|combined, new| {
+                *combined = new;
+            }))
+            .map(q!(|(_id, histogram)| histogram))
+            .reduce_commutative(q!(|combined, new| {
+                combined.add(new).unwrap();
+            }))
+    }
+    .latest();
+
+    unsafe { combined_latencies.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
+        move |latencies| {
+            println!(
+                "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
+                Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
+                    / 1000.0,
+                latencies.len()
+            );
+        }
+    ));
 
     unsafe {
         // SAFETY: intentional non-determinism

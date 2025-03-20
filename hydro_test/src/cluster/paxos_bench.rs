@@ -6,6 +6,7 @@ use super::kv_replica::{KvPayload, Replica, kv_replica};
 use super::paxos_with_client::PaxosLike;
 
 pub struct Client;
+pub struct Aggregator;
 
 pub fn paxos_bench<'a>(
     num_clients_per_node: usize,
@@ -14,6 +15,7 @@ pub fn paxos_bench<'a>(
     num_replicas: usize,
     paxos: impl PaxosLike<'a>,
     clients: &Cluster<'a, Client>,
+    client_aggregator: &Process<'a, Aggregator>,
     replicas: &Cluster<'a, Replica>,
 ) {
     let paxos_processor = |c_to_proposers: Stream<(u32, u32), Cluster<'a, Client>, Unbounded>| {
@@ -96,7 +98,7 @@ pub fn paxos_bench<'a>(
 
     let bench_results = unsafe { bench_client(clients, paxos_processor, num_clients_per_node) };
 
-    print_bench_results(bench_results);
+    print_bench_results(bench_results, client_aggregator);
 }
 
 #[cfg(test)]
@@ -112,6 +114,7 @@ mod tests {
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
+        let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
         super::paxos_bench(
@@ -130,6 +133,7 @@ mod tests {
                 },
             },
             &clients,
+            &client_aggregator,
             &replicas,
         );
         let built = builder.with_default_optimize::<DeployRuntime>();

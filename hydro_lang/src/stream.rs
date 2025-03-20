@@ -1378,7 +1378,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
-    ) -> Stream<(K, A), Tick<L>, Bounded> {
+    ) -> Stream<(K, A), Tick<L>, Bounded>
+    where A: Clone {
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
@@ -1420,7 +1421,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>> Stream<(K, V), Tick<L>, Bounded> {
     pub fn reduce_keyed<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
-    ) -> Stream<(K, V), Tick<L>, Bounded> {
+    ) -> Stream<(K, V), Tick<L>, Bounded>
+    where V: Clone {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(
@@ -1465,7 +1467,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
         self,
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
-    ) -> Stream<(K, A), Tick<L>, Bounded, Order> {
+    ) -> Stream<(K, A), Tick<L>, Bounded, Order>
+    where A: Clone {
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
@@ -1529,7 +1532,8 @@ impl<'a, K: Eq + Hash, V, L: Location<'a>, Order> Stream<(K, V), Tick<L>, Bounde
     pub fn reduce_keyed_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
-    ) -> Stream<(K, V), Tick<L>, Bounded, Order> {
+    ) -> Stream<(K, V), Tick<L>, Bounded, Order> 
+    where V: Clone {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         Stream::new(

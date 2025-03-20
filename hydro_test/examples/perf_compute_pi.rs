@@ -95,5 +95,6 @@ async fn main() {
         send_overhead,
         recv_overhead,
         &cycle_source_to_sink_inputs,
+        true,
     );
 }

@@ -43,15 +43,13 @@ pub fn perf_cluster_specs(
 ) -> Vec<TrybuildHost> {
     let create_host: HostCreator = if host_arg == "gcp" {
         Box::new(move |deployment| -> Arc<dyn Host> {
-            let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
                 .project(&project)
                 .machine_type("n2-standard-4")
-                .image("debian-cloud/debian-11")
+                .image("debian-cloud/debian-12")
                 .region("us-central1-c")
                 .network(network.clone())
-                .startup_script(startup_script)
                 .add()
         })
     } else {
@@ -59,7 +57,11 @@ pub fn perf_cluster_specs(
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = if host_arg == "gcp" {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     (0..num_nodes)
         .map(|idx| {
@@ -140,6 +142,7 @@ pub async fn analyze_cluster_results(
         for (idx, _) in cluster.members().iter().enumerate() {
             let usage =
                 get_usage(usage_out.get_mut(&(id.clone(), name.clone(), idx)).unwrap()).await;
+            println!("Node {} usage: {}", idx, usage);
             if let Some((prev_usage, _)) = max_usage {
                 if usage > prev_usage {
                     max_usage = Some((usage, idx));

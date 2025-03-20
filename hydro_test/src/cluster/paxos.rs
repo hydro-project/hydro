@@ -386,8 +386,10 @@ unsafe fn p_leader_heartbeat<'a>(
             .then(p_ballot)
             .latest()
             .sample_every(q!(Duration::from_secs(i_am_leader_send_timeout)))
+            .inspect(q!(|ballot| println!("Proposer sending I am leader: {:?}", ballot)))
     }
-    .broadcast_bincode_anonymous(proposers);
+    .broadcast_bincode_anonymous(proposers)
+    .inspect(q!(|ballot| println!("Proposer received I am leader: {:?}", ballot)));
 
     let p_leader_expired = unsafe {
         // Delayed timeouts only affect which leader wins re-election. If the leadership flag

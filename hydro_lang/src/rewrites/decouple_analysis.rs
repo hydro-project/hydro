@@ -425,6 +425,7 @@ pub fn decouple_analysis(
     send_overhead: f64,
     recv_overhead: f64,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
+    write: bool,
 ) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
@@ -459,8 +460,16 @@ pub fn decouple_analysis(
         ..
     } = &mut *model_metadata.borrow_mut();
     // model.write("decouple.lp").unwrap();
-    model.optimize().unwrap();
-    // model.write("decouple.sol").unwrap();
+
+    // If write, then optimize and output the solution. If read, the read it back from the file
+    if write {
+        model.optimize().unwrap();
+        model.write("decouple.sol").unwrap();
+    }
+    else {
+        model.read("decouple.sol").unwrap();
+    }
+    
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
