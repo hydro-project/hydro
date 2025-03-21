@@ -1,6 +1,6 @@
 //! Pretty, human-readable printing of [`proc_macro2::Span`]s.
 
-use std::path::{MAIN_SEPARATOR, Path};
+use std::path::Path;
 
 extern crate proc_macro;
 
@@ -11,20 +11,22 @@ impl std::fmt::Display for PrettySpan {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         #[cfg(nightly)]
         if proc_macro::is_available() {
+            use std::path::MAIN_SEPARATOR;
+
             let span = self.0.unwrap();
 
             let path = span.source_file().path();
             let path = make_source_path_relative(&path);
+            let mut path_str = path.display().to_string();
+            if '/' != MAIN_SEPARATOR && path.is_relative() {
+                // Display relative paths using unix-style separators for consistency.
+                path_str = path_str.replace(MAIN_SEPARATOR, "/");
+            }
 
             write!(
                 f,
                 "{}:{}:{}",
-                // Display relative paths using unix-style separators for consistency.
-                if '/' != MAIN_SEPARATOR && path.is_relative() {
-                    path.display().to_string().replace(MAIN_SEPARATOR, "/")
-                } else {
-                    path.display().to_string()
-                },
+                path_str,
                 span.start().line(),
                 span.start().column(),
             )?;
