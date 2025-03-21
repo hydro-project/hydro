@@ -324,6 +324,17 @@ pub trait LaunchedSshHost: Send + Sync {
     }
 }
 
+async fn create_channel(session: &AsyncSession<TcpStream>) -> Result<AsyncChannel<TcpStream>> {
+    async_retry(
+        &|| async {
+            Ok(tokio::time::timeout(Duration::from_secs(60), session.channel_session()).await??)
+        },
+        10,
+        Duration::from_secs(1),
+    )
+    .await
+}
+
 #[async_trait]
 impl<T: LaunchedSshHost> LaunchedHost for T {
     fn server_config(&self, bind_type: &ServerStrategy) -> ServerBindConfig {
@@ -414,22 +425,9 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         let user = self.ssh_user();
         let binary_path = PathBuf::from(format!("/home/{user}/hydro-{unique_name}"));
 
-        let channel = ProgressTracker::leaf(
-            format!("launching binary {}", binary_path.display()),
+        let channel = ProgressTracker::leaf(format!("launching binary {}", binary_path.display()),
             async {
-                let mut channel =
-                    async_retry(
-                        &|| async {
-                            Ok(tokio::time::timeout(
-                                Duration::from_secs(60),
-                                session.channel_session(),
-                            )
-                            .await??)
-                        },
-                        10,
-                        Duration::from_secs(1),
-                    )
-                    .await?;
+                let mut channel = create_channel(&session).await?;
 
                 let mut command = binary_path.to_str().unwrap().to_owned();
                 for arg in args{
@@ -438,6 +436,26 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                 }
                 // Launch with perf if specified, also copy local binary to expected place for perf report to work
                 if let Some(TracingOptions { frequency, .. }) = tracing.clone() {
+
+                    // Install perf
+                    let mut perf_install_channel = create_channel(&session).await?;
+                    perf_install_channel
+                        .exec("sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'")
+                        .await?;
+
+                    // log outputs
+                    let mut perf_install_out = FuturesBufReader::new(perf_install_channel.stream(0)).lines();
+                    while let Some(line) = perf_install_out.next().await {
+                        ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
+                    }
+
+                    perf_install_channel.wait_eof().await?;
+                    let exit_code = perf_install_channel.exit_status()?;
+                    perf_install_channel.wait_close().await?;
+                    if exit_code != 0 {
+                        anyhow::bail!("Failed to install perf on remote host");
+                    }
+
                     // Attach perf to the command
                     command = format!(
                         "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
@@ -445,7 +463,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                 }
                 channel.exec(&command).await?;
                 anyhow::Ok(channel)
-            },
+            }
         )
         .await?;
 

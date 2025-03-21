@@ -26,7 +26,6 @@ fn cluster_specs(
 ) -> Vec<TrybuildHost> {
     let create_host: HostCreator = if host_arg == "gcp" {
         Box::new(move |deployment| -> Arc<dyn Host> {
-            let startup_script = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
             deployment
                 .GcpComputeEngineHost()
                 .project(project.as_ref().unwrap())
@@ -34,7 +33,6 @@ fn cluster_specs(
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
                 .network(network.as_ref().unwrap().clone())
-                .startup_script(startup_script)
                 .add()
         })
     } else {
