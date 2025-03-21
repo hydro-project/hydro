@@ -1830,7 +1830,7 @@ impl<'a, T, L: Location<'a>, Order> Stream<T, Tick<L>, Bounded, Order> {
     }
 }
 
-pub fn serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -> syn::Expr {
+pub fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
     if is_demux {
@@ -1853,10 +1853,10 @@ pub fn serialize_bincode_with_type(is_demux: bool, t_type: syn::Type) -> syn::Ex
 }
 
 fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
-    serialize_bincode_with_type(is_demux, stageleft::quote_type::<T>())
+    serialize_bincode_with_type(is_demux, &stageleft::quote_type::<T>())
 }
 
-pub fn deserialize_bincode_with_type(tagged: Option<syn::Type>, t_type: syn::Type) -> syn::Expr {
+pub fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
 
     if let Some(c_type) = tagged {
@@ -1875,8 +1875,8 @@ pub fn deserialize_bincode_with_type(tagged: Option<syn::Type>, t_type: syn::Typ
     }
 }
 
-pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<syn::Type>) -> syn::Expr {
-    deserialize_bincode_with_type(tagged, stageleft::quote_type::<T>())
+pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type>) -> syn::Expr {
+    deserialize_bincode_with_type(tagged, &stageleft::quote_type::<T>())
 }
 
 impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
@@ -1891,7 +1891,9 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     {
         let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::Root::is_demux()));
 
-        let deserialize_pipeline = Some(deserialize_bincode::<CoreType>(L::Root::tagged_type()));
+        let deserialize_pipeline = Some(deserialize_bincode::<CoreType>(
+            L::Root::tagged_type().as_ref(),
+        ));
 
         Stream::new(
             other.clone(),

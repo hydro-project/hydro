@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 
 use super::{Location, LocationId, NoTick};
 use crate::builder::FlowState;
-use crate::ir::{HydroNode, HydroSource};
+use crate::ir::{DebugInstantiate, HydroNode, HydroSource};
 use crate::staging_util::Invariant;
 use crate::{Stream, Unbounded};
 
@@ -116,7 +116,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         to_location: to.id(),
                         to_key: None,
                         serialize_fn: None,
-                        instantiate_fn: crate::ir::DebugInstantiate::Building,
+                        instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(deser_expr.into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),
@@ -156,7 +156,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         to_location: to.id(),
                         to_key: None,
                         serialize_fn: None,
-                        instantiate_fn: crate::ir::DebugInstantiate::Building,
+                        instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),

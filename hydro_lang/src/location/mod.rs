@@ -8,7 +8,7 @@ use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{DebugType, HydroIrMetadata, HydroNode, HydroSource};
+use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
 use crate::{Singleton, Stream, Unbounded};
 
 pub mod external_process;
@@ -90,7 +90,7 @@ pub trait Location<'a>: Clone {
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         HydroIrMetadata {
             location_kind: self.id(),
-            output_type: Some(DebugType(stageleft::quote_type::<T>())),
+            output_type: Some(stageleft::quote_type::<T>().into()),
             cardinality: None,
             cpu_usage: None,
         }

@@ -47,17 +47,16 @@ fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut
             cardinality: None,
             cpu_usage: None,
         };
-        let output_type = output_debug_type.0;
+        let output_type = &*output_debug_type;
         let network_node = HydroNode::Network {
             from_key: None,
             to_location: decoupler.new_location.clone(),
             to_key: None,
-            serialize_fn: Some(serialize_bincode_with_type(true, output_type.clone()))
-                .map(|e| e.into()),
+            serialize_fn: Some(serialize_bincode_with_type(true, output_type)).map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
             deserialize_fn: Some(deserialize_bincode_with_type(
-                Some(stageleft::quote_type::<()>()),
-                output_type.clone(),
+                Some(&stageleft::quote_type::<()>()),
+                output_type,
             ))
             .map(|e| e.into()),
             input: Box::new(mapped_node),
