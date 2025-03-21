@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap};
 use regex::Regex;
 
 use crate::{ir::*, location::LocationId};
-pub use crate::runtime_support::resource_measurement::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
+pub use crate::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 
 fn inject_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
     let metadata = leaf.metadata_mut();

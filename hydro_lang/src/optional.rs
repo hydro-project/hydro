@@ -220,7 +220,7 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     /// # Example
     /// ```rust
     /// # use hydro_lang::*;
-    /// # use dfir_rs::futures::StreamExt;
+    /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let optional = tick.optional_first_tick(q!(1));

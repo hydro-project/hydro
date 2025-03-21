@@ -1,6 +1,6 @@
 use std::fs::{self, File};
-use std::io::{Read, Write};
-use std::path::PathBuf;
+use std::io::{Read, Seek, SeekFrom, Write};
+use std::path::{Path, PathBuf};
 
 use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
@@ -16,6 +16,8 @@ use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
 pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+static CONCURRENT_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -51,9 +53,10 @@ pub fn create_graph_trybuild(
     }
     .visit_file_mut(&mut generated_code);
 
-    let inlined_staged = if is_test {
+    let inlined_staged: syn::File = if is_test {
         stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
+            &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             is_test,
         )
@@ -94,21 +97,8 @@ pub fn create_graph_trybuild(
 
     let out_path = path!(project_dir / "src" / "bin" / format!("{bin_name}.rs"));
     {
-        let mut out_file = File::options()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(&out_path)
-            .unwrap();
-        #[cfg(nightly)]
-        out_file.lock().unwrap();
-
-        let mut existing_contents = String::new();
-        out_file.read_to_string(&mut existing_contents).unwrap();
-        if existing_contents != source {
-            out_file.write_all(source.as_ref()).unwrap()
-        }
+        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+        write_atomic(source.as_ref(), &out_path).unwrap();
     }
 
     if is_test {
@@ -134,7 +124,7 @@ pub fn compile_graph_trybuild(
 ) -> syn::File {
     let mut diagnostics = Vec::new();
     let tokens = partitioned_graph.as_code(
-        &quote! { hydro_lang::dfir_rs },
+        &quote! { hydro_lang::runtime_support::dfir_rs },
         true,
         quote!(),
         &mut diagnostics,
@@ -145,14 +135,14 @@ pub fn compile_graph_trybuild(
         use hydro_lang::*;
 
         #[allow(unused)]
-        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::dfir_rs::scheduled::graph::Dfir<'a> {
+        fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
             #tokens
         }
 
-        #[tokio::main]
+        #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]
         async fn main() {
-            let ports = hydro_lang::dfir_rs::util::deploy::init_no_ack_start().await;
+            let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
             let flow = __hydro_runtime(&ports);
             println!("ack start");
 
@@ -247,6 +237,13 @@ pub fn create_trybuild()
     }
 
     manifest
+        .dependencies
+        .get_mut("hydro_lang")
+        .unwrap()
+        .features
+        .push("runtime_support".to_string());
+
+    manifest
         .features
         .insert("hydro___test".to_string(), dev_dependency_features);
 
@@ -266,17 +263,22 @@ pub fn create_trybuild()
     };
 
     {
+        let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
+
         #[cfg(nightly)]
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
         #[cfg(nightly)]
         project_lock.lock()?;
 
         let manifest_toml = toml::to_string(&project.manifest)?;
-        fs::write(path!(project.dir / "Cargo.toml"), manifest_toml)?;
+        write_atomic(manifest_toml.as_ref(), &path!(project.dir / "Cargo.toml"))?;
 
         let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
         if workspace_cargo_lock.exists() {
-            let _ = fs::copy(workspace_cargo_lock, path!(project.dir / "Cargo.lock"));
+            write_atomic(
+                fs::read_to_string(&workspace_cargo_lock)?.as_ref(),
+                &path!(project.dir / "Cargo.lock"),
+            )?;
         } else {
             let _ = cargo::cargo(&project).arg("generate-lockfile").status();
         }
@@ -286,10 +288,10 @@ pub fn create_trybuild()
             let dot_cargo_folder = path!(project.dir / ".cargo");
             fs::create_dir_all(&dot_cargo_folder)?;
 
-            let _ = fs::copy(
-                workspace_dot_cargo_config_toml,
-                path!(dot_cargo_folder / "config.toml"),
-            );
+            write_atomic(
+                fs::read_to_string(&workspace_dot_cargo_config_toml)?.as_ref(),
+                &path!(dot_cargo_folder / "config.toml"),
+            )?;
         }
     }
 
@@ -298,4 +300,25 @@ pub fn create_trybuild()
         path!(project.target_dir / "hydro_trybuild"),
         project.features,
     ))
+}
+
+fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
+    let mut file = File::options()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path)?;
+    #[cfg(nightly)]
+    file.lock()?;
+
+    let mut existing_contents = Vec::new();
+    file.read_to_end(&mut existing_contents)?;
+    if existing_contents != contents {
+        file.seek(SeekFrom::Start(0))?;
+        file.set_len(0)?;
+        file.write_all(contents)?;
+    }
+
+    Ok(())
 }

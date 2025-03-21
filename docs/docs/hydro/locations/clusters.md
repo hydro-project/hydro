@@ -30,7 +30,7 @@ When sending a live collection from a cluster to another location, **each** memb
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
@@ -53,7 +53,7 @@ If you do not need to know _which_ member of the cluster the data came from, you
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
@@ -76,7 +76,7 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
@@ -102,7 +102,7 @@ A common pattern in distributed systems is to broadcast data to all members of a
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
@@ -131,7 +131,7 @@ Under the hood, the `broadcast_bincode` API uses a list of members of the cluste
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p2| {
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
@@ -159,7 +159,7 @@ In some programs, it may be necessary for cluster members to know their own ID (
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, process| {
 let workers: Cluster<()> = flow.cluster::<()>();
 let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));

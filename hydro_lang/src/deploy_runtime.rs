@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use dfir_rs::util::deploy::{
+use hydro_deploy_integration::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
 };
 use serde::{Deserialize, Serialize};

@@ -8,10 +8,6 @@ use dfir_rs::scheduled::graph::Dfir;
 #[cfg(target_os = "linux")]
 use procfs::WithCurrentSystemInfo;
 
-pub const CPU_USAGE_PREFIX: &str = "CPU:";
-// Should remain consistent with dfir_lang/src/graph/ops/_counter.rs
-pub const COUNTER_PREFIX: &str = "_counter";
-
 #[cfg(not(feature = "runtime_measure"))]
 pub async fn run(flow: Dfir<'_>) {
     dfir_rs::util::deploy::launch_flow(flow).await;
@@ -51,7 +47,10 @@ pub async fn run(flow: Dfir<'_>) {
             system_time.num_milliseconds() as f32 / elapsed_time.num_milliseconds() as f32;
         println!(
             "{} Total {:.4}%, User {:.4}%, System {:.4}%",
-            CPU_USAGE_PREFIX, percent_cpu_use, user_cpu_use, system_cpu_use
+            crate::internal_constants::CPU_USAGE_PREFIX,
+            percent_cpu_use,
+            user_cpu_use,
+            system_cpu_use
         );
     }
 

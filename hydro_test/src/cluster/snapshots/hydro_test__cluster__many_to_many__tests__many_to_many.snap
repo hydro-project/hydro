@@ -4,7 +4,7 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
         input: Network {
             from_key: None,
             to_location: Cluster(
@@ -19,10 +19,10 @@ expression: built.ir()
                 | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
             ),
             input: FlatMap {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | b | ids__free . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | b | ids__free . iter () . map (move | id | (:: std :: clone :: Clone :: clone (id) , :: std :: clone :: Clone :: clone (& b))) }),
                 input: Source {
                     source: Iter(
-                        { use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
+                        { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
                     ),
                     location_kind: Cluster(
                         0,
@@ -43,7 +43,7 @@ expression: built.ir()
                         0,
                     ),
                     output_type: Some(
-                        (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                        (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
                     cardinality: None,
                     cpu_usage: None,
@@ -65,7 +65,7 @@ expression: built.ir()
                 0,
             ),
             output_type: Some(
-                (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
             ),
             cardinality: None,
             cpu_usage: None,

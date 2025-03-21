@@ -4,15 +4,15 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: rewrites :: properties :: tests :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
         input: FoldKeyed {
-            init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: rewrites :: properties :: tests :: * ; | | 0 }),
-            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: rewrites :: properties :: tests :: * ; | count : & mut i32 , _ | * count += 1 }),
+            init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; | | 0 }),
+            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; | count : & mut i32 , _ | * count += 1 }),
             input: Map {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: rewrites :: properties :: tests :: * ; | string : String | (string , ()) }),
+                f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; | string : String | (string , ()) }),
                 input: Source {
                     source: Iter(
-                        { use crate :: __staged :: rewrites :: properties :: tests :: * ; vec ! [] },
+                        { use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; vec ! [] },
                     ),
                     location_kind: Process(
                         0,

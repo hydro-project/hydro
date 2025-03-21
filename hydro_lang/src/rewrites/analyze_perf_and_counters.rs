@@ -15,8 +15,10 @@ use crate::deploy::{HydroDeploy, TrybuildHost};
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
 use crate::rewrites::populate_metadata::{
-    inject_count, inject_perf, parse_counter_usage, parse_cpu_usage, COUNTER_PREFIX,
-    CPU_USAGE_PREFIX,
+    inject_count, inject_perf, parse_counter_usage, parse_cpu_usage,
+};
+use crate::internal_constants::{
+    CPU_USAGE_PREFIX, COUNTER_PREFIX,
 };
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;

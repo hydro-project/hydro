@@ -2,9 +2,9 @@ use std::future::Future;
 use std::io::Error;
 use std::pin::Pin;
 
+use bytes::Bytes;
 use dfir_lang::graph::DfirGraph;
-use dfir_rs::bytes::Bytes;
-use dfir_rs::futures::{Sink, Stream};
+use futures::{Sink, Stream};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;

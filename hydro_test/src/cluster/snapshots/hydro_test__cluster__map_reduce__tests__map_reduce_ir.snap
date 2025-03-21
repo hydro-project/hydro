@@ -4,12 +4,12 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("{}: {}" , string , count) }),
         input: ReduceKeyed {
-            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | total , count | * total += count }),
+            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | total , count | * total += count }),
             input: Persist {
                 inner: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                     input: Network {
                         from_key: None,
                         to_location: Process(
@@ -24,12 +24,12 @@ expression: built.ir()
                             | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < hydro_test :: cluster :: map_reduce :: Worker > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (std :: string :: String , i32) > (& b) . unwrap ()) },
                         ),
                         input: Inspect {
-                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("partition count: {} - {}" , string , count) }),
+                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("partition count: {} - {}" , string , count) }),
                             input: FoldKeyed {
-                                init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | | 0 }),
-                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | count , _ | * count += 1 }),
+                                init: stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | | 0 }),
+                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | count , _ | * count += 1 }),
                                 input: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }),
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }),
                                     input: Network {
                                         from_key: None,
                                         to_location: Cluster(
@@ -44,14 +44,14 @@ expression: built.ir()
                                             | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
                                         ),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; | (i , w) | (ids__free [i % ids__free . len ()] , w) }),
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , std :: string :: String) , (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , std :: string :: String) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker >] > (__hydro_lang_cluster_ids_1) } ; | (i , w) | (ids__free [i % ids__free . len ()] , w) }),
                                             input: Enumerate {
                                                 is_static: true,
                                                 input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }),
                                                     input: Source {
                                                         source: Iter(
-                                                            { use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] },
+                                                            { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] },
                                                         ),
                                                         location_kind: Process(
                                                             0,
@@ -94,7 +94,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 output_type: Some(
-                                                    (hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , std :: string :: String),
+                                                    (hydro_std :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: cluster :: map_reduce :: Worker > , std :: string :: String),
                                                 ),
                                                 cardinality: None,
                                                 cpu_usage: None,

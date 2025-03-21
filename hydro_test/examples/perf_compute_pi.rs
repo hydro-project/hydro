@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
@@ -9,6 +12,8 @@ use hydro_lang::rewrites::{
     analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup,
 };
 use hydro_lang::{q, Location};
+
+use tokio::sync::RwLock;
 
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 ///

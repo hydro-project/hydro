@@ -17,7 +17,7 @@ The simplest way to create a stream is to use [`Location::source_iter`](https://
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p_out| {
 let process = flow.process::<()>();
 let numbers: Stream<_, Process<_>, Unbounded> = process
@@ -36,7 +36,7 @@ Streams also can be sent over the network to participate in distributed programs
 
 ```rust
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # tokio_test::block_on(test_util::multi_location_test(|flow, p_out| {
 let p1 = flow.process::<()>();
 let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
@@ -100,7 +100,7 @@ To perform an aggregation with an unordered stream, you must use [`fold_commutat
 
 ```rust,no_run
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let workers = flow.cluster::<()>();
 # let process = flow.process::<()>();

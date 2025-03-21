@@ -12,7 +12,7 @@ In some cases, you may need to convert between bounded and unbounded collections
 
 ```rust,no_run
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 # let tick = process.tick();
@@ -24,7 +24,7 @@ let unbounded: Stream<_, _, Unbounded> = input.into();
 
 ```rust,no_run
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 # let tick = process.tick();
@@ -36,7 +36,7 @@ Converting from an unbounded collection **to a bounded collection**, however is 
 
 ```rust,no_run
 # use hydro_lang::*;
-# use dfir_rs::futures::StreamExt;
+# use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 let unbounded_input = // ...

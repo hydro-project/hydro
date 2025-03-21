@@ -683,9 +683,9 @@ dependencies = [
 
 [[package]]
 name = "config"
-version = "0.15.11"
+version = "0.15.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "595aae20e65c3be792d05818e8c63025294ac3cb7e200f11459063a352a6ef80"
+checksum = "fb07d21d12f9f0bc5e7c3e97ccc78b2341b9b4a4604eac3ed7c1d0d6e2c3b23e"
 dependencies = [
  "async-trait",
  "convert_case",
@@ -696,7 +696,7 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
- "winnow 0.7.4",
+ "winnow 0.7.3",
  "yaml-rust2",
 ]
 
@@ -926,6 +926,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ctor"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07e9666f4a9a948d4f1dff0c08a4512b0f7c86414b23960104c243c10d79f4c3"
+dependencies = [
+ "ctor-proc-macro",
+ "dtor",
+]
+
+[[package]]
+name = "ctor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4f211af61d8efdd104f96e57adf5e426ba1bc3ed7a4ead616e15e5881fd79c4d"
+
+[[package]]
 name = "dashmap"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1132,6 +1148,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "dtor"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "222ef136a1c687d4aa0395c175f2c4586e379924c352fd02f7870cf7de783c23"
+dependencies = [
+ "dtor-proc-macro",
+]
+
+[[package]]
+name = "dtor-proc-macro"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7454e41ff9012c00d53cf7f475c5e3afa3b91b7c90568495495e8d9bf47a1055"
+
+[[package]]
 name = "dunce"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1260,9 +1291,9 @@ checksum = "3f9eec918d3f24069decb9af1554cad7c880e2da24a9afd88aca000531ab82c1"
 
 [[package]]
 name = "foldhash"
-version = "0.1.5"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9c4f5dac5e15c24eb999c26181a6ca40b39fe946cbe4c263c7209467bc83af2"
+checksum = "a0d2fde1f7b3d48b8395d5f2de76c18a528bd6a9cdde438df747bfcba3e05d6f"
 
 [[package]]
 name = "form_urlencoded"
@@ -1790,12 +1821,15 @@ version = "0.12.1"
 dependencies = [
  "async-ssh2-lite",
  "bincode",
+ "bytes",
  "chrono",
- "ctor",
+ "ctor 0.2.9",
  "dfir_lang",
  "dfir_rs",
+ "futures",
  "grb",
  "hydro_deploy",
+ "hydro_deploy_integration",
  "insta",
  "match_box",
  "nameof",
@@ -1813,6 +1847,7 @@ dependencies = [
  "stageleft_tool",
  "syn 2.0.98",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "toml",
  "trybuild",
@@ -1824,7 +1859,7 @@ name = "hydro_std"
 version = "0.12.1"
 dependencies = [
  "async-ssh2-lite",
- "ctor",
+ "ctor 0.2.9",
  "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",
@@ -1832,7 +1867,7 @@ dependencies = [
  "serde",
  "stageleft",
  "stageleft_tool",
- "stats-ci 0.1.2",
+ "stats-ci",
 ]
 
 [[package]]
@@ -1840,10 +1875,9 @@ name = "hydro_test"
 version = "0.0.0"
 dependencies = [
  "async-ssh2-lite",
- "ctor",
- "dfir_rs",
+ "ctor 0.2.9",
+ "dfir_lang",
  "futures",
- "hdrhistogram",
  "hydro_deploy",
  "hydro_lang",
  "hydro_std",
@@ -1853,7 +1887,6 @@ dependencies = [
  "serde",
  "stageleft",
  "stageleft_tool",
- "stats-ci 0.1.1",
  "tokio",
  "tokio-test",
 ]
@@ -1871,16 +1904,21 @@ dependencies = [
  "stageleft",
  "stageleft_tool",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
 name = "hydro_test_local_macro"
 version = "0.0.0"
 dependencies = [
+ "dfir_rs",
+ "futures",
  "hydro_lang",
  "rand",
  "stageleft",
  "stageleft_tool",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -2549,24 +2587,6 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d506eb7e08d6329505faa8a3a00a5dcc6de9f76e0c77e4b75763ae3c770831ff"
-dependencies = [
- "approx",
- "matrixmultiply",
- "nalgebra-macros",
- "num-complex",
- "num-rational",
- "num-traits",
- "rand",
- "rand_distr",
- "simba 0.6.0",
- "typenum",
-]
-
-[[package]]
-name = "nalgebra"
 version = "0.33.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
@@ -2578,19 +2598,8 @@ dependencies = [
  "num-traits",
  "rand",
  "rand_distr",
- "simba 0.9.0",
+ "simba",
  "typenum",
-]
-
-[[package]]
-name = "nalgebra-macros"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01fcc0b8149b4632adc89ac3b7b31a12fb6099a0317a4eb2ebff574ef7de7218"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -3782,9 +3791,9 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.7"
+version = "0.6.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb5b1b31579f3811bf615c144393417496f152e12ac8b7663bf664f4a815306d"
+checksum = "87607cb1398ed59d48732e575a4c28a7a8ebf2454b964fe3f224f2afc07909e1"
 dependencies = [
  "serde",
 ]
@@ -3851,19 +3860,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "simba"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0b7840f121a46d63066ee7a99fc81dcabbc6105e437cae43528cea199b5a05f"
-dependencies = [
- "approx",
- "num-complex",
- "num-traits",
- "paste",
- "wide",
 ]
 
 [[package]]
@@ -3967,10 +3963,11 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stageleft"
-version = "0.7.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f92094518e36c72859c2b53d21d8a728a25c41c1c2939bad7a4d0dbf740202be"
+checksum = "c213cb11cae9c29601d1a184586e7b3979674c8819b23f438d58f82cfb2ae375"
 dependencies = [
+ "ctor 0.4.1",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
@@ -3980,9 +3977,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.6.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e913222b29d81957f4508bc47d08f4a15ee7d8e73555ecd98c629aead9cd56d2"
+checksum = "de2d48817edd070ee1f12b5c555a076e3b6f84addaba87553834223505efcbf0"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3993,16 +3990,18 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.6.0"
+version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e790e1c2f77a30bca30dd1e86cd504a138acae3072af182c72b57af6d9f9a96f"
+checksum = "73d3e08b648f4465ae66dceb449a9383a4e300fc81dea7d009a680edf133110d"
 dependencies = [
  "prettyplease",
+ "proc-macro-crate",
  "proc-macro2",
  "quote",
  "sha2",
  "syn 2.0.98",
  "syn-inline-mod",
+ "toml_edit 0.22.24",
 ]
 
 [[package]]
@@ -4013,40 +4012,14 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "statrs"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b35a062dbadac17a42e0fc64c27f419b25d6fae98572eb43c8814c9e873d7721"
-dependencies = [
- "approx",
- "lazy_static",
- "nalgebra 0.29.0",
- "num-traits",
- "rand",
-]
-
-[[package]]
-name = "statrs"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a3fe7c28c6512e766b0874335db33c94ad7b8f9054228ae1c2abd47ce7d335e"
 dependencies = [
  "approx",
- "nalgebra 0.33.2",
+ "nalgebra",
  "num-traits",
  "rand",
-]
-
-[[package]]
-name = "stats-ci"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a98c29e345c3bbd19152decb20856ee8b6407084c4735800f277401350cee33"
-dependencies = [
- "approx",
- "lazy_static",
- "num-traits",
- "statrs 0.16.1",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -4059,7 +4032,7 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "serde",
- "statrs 0.18.0",
+ "statrs",
  "thiserror 2.0.12",
 ]
 
@@ -4445,14 +4418,14 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.19"
+version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1ed1f98e3fdc28d6d910e6737ae6ab1a93bf1985935a1193e68f93eeb68d24e"
+checksum = "cd87a5cdd6ffab733b2f74bc4fd7ee5fff6634124999ac278c35fc78c6120148"
 dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.22.20",
+ "toml_edit 0.22.24",
 ]
 
 [[package]]
@@ -4477,15 +4450,15 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.22.20"
+version = "0.22.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "583c44c02ad26b0c3f3066fe629275e50627026c51ac2e595cca4c230ce1ce1d"
+checksum = "17b4795ff5edd201c7cd6dca065ae59972ce77d1b80fa0a84d94950ece7d1474"
 dependencies = [
  "indexmap",
  "serde",
  "serde_spanned",
  "toml_datetime",
- "winnow 0.6.18",
+ "winnow 0.7.3",
 ]
 
 [[package]]
@@ -5353,18 +5326,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.6.18"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68a9bda4691f099d435ad181000724da8e5899daa10713c2d432552b9ccd3a6f"
-dependencies = [
- "memchr",
-]
-
-[[package]]
-name = "winnow"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e97b544156e9bebe1a0ffbc03484fc1ffe3100cbce3ffb17eac35f7cdd7ab36"
+checksum = "0e7f4ea97f6f78012141bcdb6a216b2609f0979ada50b20ca5b52dde2eac2bb1"
 dependencies = [
  "memchr",
 ]

@@ -176,6 +176,7 @@ pub unsafe fn bench_client<'a, Client>(
 pub fn print_bench_results<'a, Client, Aggregator>(
     results: BenchResult<'a, Client>,
     aggregator: &Process<'a, Aggregator>,
+    num_client_machines: usize,
 ) {
     let keyed_latencies = unsafe {
         // SAFETY: intentional non-determinism
@@ -251,12 +252,13 @@ pub fn print_bench_results<'a, Client, Aggregator>(
 
         if throughputs.sample_count() >= 2 {
             // ci_mean crashes if there are fewer than two samples
+            let mean = throughputs.sample_mean() * num_client_machines as f64;
             if let Ok(interval) = throughputs.ci_mean(confidence) {
                 if let Some(lower) = interval.left() {
                     if let Some(upper) = interval.right() {
                         println!(
-                            "Throughput 99% interval: {:.2} - {:.2} requests/s",
-                            lower, upper
+                            "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                            lower * num_client_machines as f64, mean, upper * num_client_machines as f64
                         );
                     }
                 }

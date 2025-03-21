@@ -1,7 +1,6 @@
 use dfir_rs::scheduled::context::Context;
-use proc_macro2::TokenStream;
 use quote::quote;
-use stageleft::runtime_support::FreeVariableWithContext;
+use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
 
 use crate::Location;
 
@@ -15,14 +14,17 @@ pub struct RuntimeContext<'a> {
 impl<'a, L: Location<'a>> FreeVariableWithContext<L> for RuntimeContext<'a> {
     type O = &'a Context;
 
-    fn to_tokens(self, _ctx: &L) -> (Option<TokenStream>, Option<TokenStream>) {
-        (None, Some(quote!(&context)))
+    fn to_tokens(self, _ctx: &L) -> QuoteTokens {
+        QuoteTokens {
+            prelude: None,
+            expr: Some(quote!(&context)),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use dfir_rs::futures::StreamExt;
+    use futures::StreamExt;
     use hydro_deploy::Deployment;
 
     use crate::*;

@@ -10,6 +10,7 @@ pub struct Aggregator;
 
 pub fn paxos_bench<'a>(
     num_clients_per_node: usize,
+    num_client_machines: usize,
     checkpoint_frequency: usize, // How many sequence numbers to commit before checkpointing
     f: usize, /* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
     num_replicas: usize,
@@ -98,12 +99,12 @@ pub fn paxos_bench<'a>(
 
     let bench_results = unsafe { bench_client(clients, paxos_processor, num_clients_per_node) };
 
-    print_bench_results(bench_results, client_aggregator);
+    print_bench_results(bench_results, client_aggregator, num_client_machines);
 }
 
 #[cfg(test)]
 mod tests {
-    use dfir_rs::lang::graph::WriteConfig;
+    use dfir_lang::graph::WriteConfig;
     use hydro_lang::deploy::DeployRuntime;
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
@@ -118,6 +119,7 @@ mod tests {
         let replicas = builder.cluster();
 
         super::paxos_bench(
+            1,
             1,
             1,
             1,
