@@ -1,6 +1,6 @@
 //! Pretty, human-readable printing of [`proc_macro2::Span`]s.
 
-use std::path::Path;
+use std::path::{MAIN_SEPARATOR, Path};
 
 extern crate proc_macro;
 
@@ -12,10 +12,19 @@ impl std::fmt::Display for PrettySpan {
         #[cfg(nightly)]
         if proc_macro::is_available() {
             let span = self.0.unwrap();
+
+            let path = span.source_file().path();
+            let path = make_source_path_relative(&path);
+
             write!(
                 f,
                 "{}:{}:{}",
-                make_source_path_relative(&span.source_file().path()).display(),
+                // Display relative paths using unix-style separators for consistency.
+                if '/' != MAIN_SEPARATOR && path.is_relative() {
+                    path.display().to_string().replace(MAIN_SEPARATOR, "/")
+                } else {
+                    path.display().to_string()
+                },
                 span.start().line(),
                 span.start().column(),
             )?;
@@ -43,10 +52,7 @@ impl std::fmt::Display for PrettyRowCol {
 /// Strip `DFIR_BASE_DIR` or `CARGO_MANIFEST_DIR` from the path prefix if possible.
 pub fn make_source_path_relative(source_path: &Path) -> &Path {
     std::env::var_os("DFIR_BASE_DIR")
-        .and_then(|base_dir| {
-            let base_dir = std::fs::canonicalize(base_dir).ok()?;
-            source_path.strip_prefix(base_dir).ok()
-        })
+        .and_then(|base_dir| source_path.strip_prefix(base_dir).ok())
         .or_else(|| {
             let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")?;
             source_path.strip_prefix(manifest_dir).ok()
