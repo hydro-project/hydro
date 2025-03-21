@@ -388,7 +388,7 @@ impl Host for GcpComputeEngineHost {
         }
         drop(external_ports); // Drop the lock as soon as possible.
 
-        let user = self.user.as_ref().cloned().unwrap_or("hydro".to_string());
+        let user = self.user.as_deref().unwrap_or("hydro");
         resource_batch
             .terraform
             .resource
