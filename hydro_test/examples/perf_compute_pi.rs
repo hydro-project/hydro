@@ -90,7 +90,7 @@ async fn main() {
         )
         .with_cluster(
             &cluster,
-            (0..8).map(|idx| {
+            (0..4).map(|idx| {
                 TrybuildHost::new(create_host(&mut deployment))
                     .rustflags(rustflags)
                     .additional_hydro_features(vec!["runtime_measure".to_string()])
