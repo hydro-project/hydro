@@ -104,6 +104,12 @@ pub async fn track_cluster_usage_cardinality(
             cardinality_out.insert((id.clone(), name.clone(), idx), node_cardinality_out);
         }
     }
+    for (id, name, process) in nodes.get_all_processes() {
+        let (process_usage_out, process_cardinality_out) =
+            track_process_usage_cardinality(process).await;
+        usage_out.insert((id.clone(), name.clone(), 0), process_usage_out);
+        cardinality_out.insert((id.clone(), name.clone(), 0), process_cardinality_out);
+    }
     (usage_out, cardinality_out)
 }
 

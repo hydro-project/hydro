@@ -18,7 +18,7 @@ all-features = true
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }
 stageleft = "0.7.0"
 hdrhistogram = "7.5.4"
-stats-ci = "0.1.1"
+stats-ci = { git = "https://github.com/hydro-project/stats-ci.git", branch = "main", features = ["serde"] }
 serde = { version = "1.0.197", features = ["derive"] }
 
 [build-dependencies]

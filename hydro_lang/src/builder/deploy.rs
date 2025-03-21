@@ -1,5 +1,6 @@
 use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
+use std::hash::Hash;
 use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -316,6 +317,9 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             cluster_id_name: std::mem::take(&mut self.cluster_id_name)
                 .into_iter()
                 .collect(),
+            process_id_name: std::mem::take(&mut self.process_id_name)
+                .into_iter()
+                .collect(),
         }
     }
 }
@@ -325,6 +329,7 @@ pub struct DeployResult<'a, D: Deploy<'a>> {
     clusters: HashMap<usize, D::Cluster>,
     externals: HashMap<usize, D::ExternalProcess>,
     cluster_id_name: HashMap<usize, String>,
+    process_id_name: HashMap<usize, String>,
 }
 
 impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
@@ -352,6 +357,16 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
                 LocationId::Cluster(id),
                 self.cluster_id_name.get(&id).unwrap().clone(),
                 c,
+            )
+        })
+    }
+
+    pub fn get_all_processes(&self) -> impl Iterator<Item = (LocationId, String, &D::Process)> {
+        self.processes.iter().map(|(&id, p)| {
+            (
+                LocationId::Process(id),
+                self.process_id_name.get(&id).unwrap().clone(),
+                p,
             )
         })
     }

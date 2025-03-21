@@ -192,12 +192,12 @@ pub fn print_bench_results<'a, Client, Aggregator>(
 
     let combined_latencies = unsafe {
         keyed_latencies
-            .tick_batch(&aggregator.tick())
-            .assume_ordering()
             .map(q!(|(id, histogram)| (
                 id,
                 histogram.histogram.borrow_mut().clone()
             )))
+            .tick_batch(&aggregator.tick())
+            .assume_ordering()
             .persist()
             .reduce_keyed(q!(|combined, new| {
                 *combined = new;
@@ -222,12 +222,30 @@ pub fn print_bench_results<'a, Client, Aggregator>(
         }
     ));
 
-    unsafe {
+    let keyed_throughputs = unsafe {
         // SAFETY: intentional non-determinism
         results
             .throughput
             .sample_every(q!(Duration::from_millis(1000)))
     }
+    .send_bincode(aggregator);
+
+    let combined_throughputs = unsafe {
+        keyed_throughputs
+            .tick_batch(&aggregator.tick())
+            .assume_ordering()
+            .persist()
+            .reduce_keyed(q!(|combined, new| {
+                *combined = new;
+            }))
+            .map(q!(|(_id, throughput)| throughput))
+            .reduce_commutative(q!(|combined, new| {
+                *combined = combined.add(new);
+            }))
+    }
+    .latest();
+
+    unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }
     .for_each(q!(move |throughputs| {
         let confidence = Confidence::new(0.99);
 
