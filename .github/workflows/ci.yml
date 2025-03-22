@@ -165,6 +165,7 @@ jobs:
           DFIR_EXPECT_WARNINGS: ${{ matrix.rust_release == 'pinned-nightly' && 'noop' || 'ignore' }}
 
       - name: Run doctests
+        # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
         run: cargo test --no-fail-fast --features python --features hydro_lang/deploy --doc
 
       - name: Install Python
@@ -197,7 +198,7 @@ jobs:
           source .venv/bin/activate
           cd python_tests
           pip install -r requirements.txt
-          RUST_BACKTRACE=1 pytest
+          pytest
 
       - name: Run Python tests (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
@@ -277,7 +278,7 @@ jobs:
 
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps --all-features --workspace --exclude hydro_cli
 
       - name: Move design docs to output
         shell: bash

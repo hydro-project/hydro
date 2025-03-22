@@ -13,7 +13,7 @@ use trybuild_internals_api::{Runner, dependencies, features, path};
 
 use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
 
-pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
+pub const HYDRO_RUNTIME_FEATURES: [&str; 2] = ["runtime_measure", "runtime_io-uring"];
 
 static IS_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
@@ -140,13 +140,20 @@ pub fn compile_graph_trybuild(
             #tokens
         }
 
-        #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]
-        async fn main() {
-            let ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().await;
-            let flow = __hydro_runtime(&ports);
-            println!("ack start");
+        fn main() {
+            let setup_runtime = hydro_lang::runtime_support::tokio::runtime::Builder::new_multi_thread().enable_all().build().unwrap();
+            let ports = setup_runtime.block_on({
+                hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start()
+            });
 
-            hydro_lang::runtime_support::resource_measurement::run(flow).await;
+            let flow = setup_runtime.block_on(async {
+                __hydro_runtime(&ports)
+            });
+
+            hydro_lang::runtime_support::launch::launch(
+                setup_runtime,
+                flow
+            );
         }
     };
     source_ast
