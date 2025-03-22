@@ -10,6 +10,7 @@ workspace = true
 [features]
 default = ["stageleft_devel"]
 stageleft_devel = []
+io-uring = ["hydro_lang/io-uring"]
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }

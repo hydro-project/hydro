@@ -941,6 +941,11 @@ fn create_trybuild_service(
             }),
     );
 
+    #[cfg(feature = "io-uring")]
+    {
+        ret = ret.features(vec!["hydro___feature_runtime_io-uring"]);
+    }
+
     if let Some(features) = features {
         ret = ret.features(features);
     }

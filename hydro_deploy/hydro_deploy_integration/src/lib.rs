@@ -1,5 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(feature = "io-uring")]
+use std::collections::VecDeque;
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -9,6 +11,8 @@ use std::time::Duration;
 
 use async_recursion::async_recursion;
 use async_trait::async_trait;
+#[cfg(feature = "io-uring")]
+use bytes::BufMut;
 use bytes::{Bytes, BytesMut};
 use futures::sink::Buffer;
 use futures::{Future, Sink, SinkExt, Stream, ready, stream};
@@ -21,6 +25,12 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::TcpListenerStream;
+#[cfg(feature = "io-uring")]
+use tokio_uring::BufResult;
+#[cfg(feature = "io-uring")]
+use tokio_uring::net::TcpStream as UringTcpStream;
+#[cfg(feature = "io-uring")]
+use tokio_uring::net::UnixStream as UringUnixStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
 pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
@@ -200,9 +210,17 @@ impl Connection {
     }
 }
 
+#[cfg(not(feature = "io-uring"))]
 pub type DynStream = Pin<Box<dyn Stream<Item = Result<BytesMut, io::Error>> + Send + Sync>>;
 
+#[cfg(feature = "io-uring")]
+pub type DynStream = Pin<Box<dyn Stream<Item = Result<BytesMut, io::Error>>>>;
+
+#[cfg(not(feature = "io-uring"))]
 pub type DynSink<Input> = Pin<Box<dyn Sink<Input, Error = io::Error> + Send + Sync>>;
+
+#[cfg(feature = "io-uring")]
+pub type DynSink<Input> = Pin<Box<dyn Sink<Input, Error = io::Error>>>;
 
 pub trait StreamSink:
     Stream<Item = Result<BytesMut, io::Error>> + Sink<Bytes, Error = io::Error>
@@ -213,23 +231,30 @@ impl<T: Stream<Item = Result<BytesMut, io::Error>> + Sink<Bytes, Error = io::Err
 {
 }
 
-pub type DynStreamSink = Pin<Box<dyn StreamSink + Send + Sync>>;
+pub type DynStreamSink = Pin<Box<dyn StreamSink>>;
 
-#[async_trait]
-pub trait Connected: Send {
+#[cfg_attr(not(feature = "io-uring"), async_trait)]
+#[cfg_attr(feature = "io-uring", async_trait(?Send))]
+pub trait Connected {
     async fn from_defn(pipe: Connection) -> Self;
 }
 
 pub trait ConnectedSink {
     type Input: Send;
+    #[cfg(not(feature = "io-uring"))]
     type Sink: Sink<Self::Input, Error = io::Error> + Send + Sync;
+    #[cfg(feature = "io-uring")]
+    type Sink: Sink<Self::Input, Error = io::Error>;
 
     fn into_sink(self) -> Self::Sink;
 }
 
 pub trait ConnectedSource {
     type Output: Send;
+    #[cfg(not(feature = "io-uring"))]
     type Stream: Stream<Item = Result<Self::Output, io::Error>> + Send + Sync;
+    #[cfg(feature = "io-uring")]
+    type Stream: Stream<Item = Result<Self::Output, io::Error>>;
     fn into_source(self) -> Self::Stream;
 }
 
@@ -287,15 +312,16 @@ impl BoundServer {
     }
 }
 
-#[async_recursion]
-async fn accept(bound: BoundServer) -> ConnectedDirect {
+#[cfg_attr(not(feature = "io-uring"), async_recursion)]
+#[cfg_attr(feature = "io-uring", async_recursion(?Send))]
+pub async fn accept(bound: BoundServer) -> ConnectedDirect {
     match bound {
         BoundServer::UnixSocket(listener, _) => {
             #[cfg(unix)]
             {
                 let stream = listener.await.unwrap().unwrap();
                 ConnectedDirect {
-                    stream_sink: Some(Box::pin(unix_bytes(stream))),
+                    stream_sink: Some(PhysicalStreamSink::Unix(stream)),
                     source_only: None,
                     sink_only: None,
                 }
@@ -310,7 +336,7 @@ async fn accept(bound: BoundServer) -> ConnectedDirect {
         BoundServer::TcpPort(mut listener, _) => {
             let stream = listener.next().await.unwrap().unwrap();
             ConnectedDirect {
-                stream_sink: Some(Box::pin(tcp_bytes(stream))),
+                stream_sink: Some(PhysicalStreamSink::Tcp(stream)),
                 source_only: None,
                 sink_only: None,
             }
@@ -341,12 +367,148 @@ async fn accept(bound: BoundServer) -> ConnectedDirect {
 }
 
 fn tcp_bytes(stream: TcpStream) -> impl StreamSink {
-    Framed::new(stream, LengthDelimitedCodec::new())
+    Framed::new(
+        // the executing runtime may be different from the one used to create the stream
+        TcpStream::from_std(stream.into_std().unwrap()).unwrap(),
+        LengthDelimitedCodec::new(),
+    )
+}
+
+#[cfg(feature = "io-uring")]
+fn io_uring_tcp_send(stream: TcpStream) -> impl Sink<Bytes, Error = io::Error> {
+    let uring_stream = UringTcpStream::from_std(stream.into_std().unwrap());
+    TcpUringSink {
+        stream: Some(uring_stream),
+        thunk: move |stream, bytes| async move { (stream.writev(bytes).await, stream) },
+        header_pool: VecDeque::new(),
+        cur_bufs: Some(vec![]),
+        first_is_header: true,
+        pending_write: None,
+    }
 }
 
 #[cfg(unix)]
 fn unix_bytes(stream: UnixStream) -> impl StreamSink {
-    Framed::new(stream, LengthDelimitedCodec::new())
+    // the executing runtime may be different from the one used to create the stream
+    Framed::new(
+        UnixStream::from_std(stream.into_std().unwrap()).unwrap(),
+        LengthDelimitedCodec::new(),
+    )
+}
+
+#[cfg(feature = "io-uring")]
+fn io_uring_unix_send(stream: UnixStream) -> impl Sink<Bytes, Error = io::Error> {
+    let uring_stream = UringUnixStream::from_std(stream.into_std().unwrap());
+    TcpUringSink {
+        stream: Some(uring_stream),
+        thunk: move |stream, bytes| async move { (stream.writev(bytes).await, stream) },
+        header_pool: VecDeque::new(),
+        cur_bufs: Some(vec![]),
+        first_is_header: true,
+        pending_write: None,
+    }
+}
+
+#[cfg(feature = "io-uring")]
+#[pin_project]
+struct TcpUringSink<
+    S,
+    F: Future<Output = (BufResult<usize, Vec<Bytes>>, S)>,
+    T: Fn(S, Vec<Bytes>) -> F,
+> {
+    stream: Option<S>,
+    thunk: T,
+    header_pool: VecDeque<Bytes>,
+    cur_bufs: Option<Vec<Bytes>>,
+    first_is_header: bool,
+    #[pin]
+    pending_write: Option<F>,
+}
+
+#[cfg(feature = "io-uring")]
+impl<S, F: Future<Output = (BufResult<usize, Vec<Bytes>>, S)>, T: Fn(S, Vec<Bytes>) -> F>
+    Sink<Bytes> for TcpUringSink<S, F, T>
+{
+    type Error = io::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        if self.pending_write.is_none()
+            && self.cur_bufs.as_ref().unwrap().len() + 2 <= (libc::UIO_MAXIOV as usize)
+        {
+            Poll::Ready(Ok(()))
+        } else {
+            Self::poll_flush(self, cx)
+        }
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        let this = self.project();
+        let mut header_buf = this
+            .header_pool
+            .pop_front()
+            .map(|v| {
+                let mut out = v.try_into_mut().unwrap();
+                out.clear();
+                out
+            })
+            .unwrap_or_else(|| BytesMut::new());
+        header_buf.clear();
+        header_buf.put_u32(item.len() as u32);
+        let bufs = this.cur_bufs.as_mut().unwrap();
+        bufs.extend([header_buf.freeze(), item]);
+        Ok(())
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let mut this = self.project();
+
+        if this.pending_write.as_ref().is_none() {
+            if this.cur_bufs.as_ref().unwrap().is_empty() {
+                return Poll::Ready(Ok(()));
+            }
+
+            this.pending_write.set(Some((this.thunk)(
+                this.stream.take().unwrap(),
+                this.cur_bufs.take().unwrap(),
+            )));
+        }
+
+        Poll::Ready({
+            let ((result, mut bufs), stream) =
+                ready!(this.pending_write.as_mut().as_pin_mut().unwrap().poll(cx));
+            this.pending_write.set(None);
+            *this.stream = Some(stream);
+            let bytes_written = result.unwrap(); //result?;
+            let mut cur_index = bytes_written;
+            let mut remove_count = 0;
+            while remove_count < bufs.len() && cur_index >= bufs[remove_count].len() {
+                cur_index -= bufs[remove_count].len();
+                remove_count += 1;
+            }
+
+            for removed in bufs.drain(..remove_count) {
+                if *this.first_is_header {
+                    this.header_pool.push_back(removed);
+                }
+                *this.first_is_header = !*this.first_is_header;
+            }
+
+            if cur_index > 0 {
+                bufs[0] = bufs[0].slice(cur_index..);
+            }
+
+            *this.cur_bufs = Some(bufs);
+            Ok(())
+        })
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        if self.pending_write.is_some() {
+            Self::poll_flush(self, cx)
+        } else {
+            Poll::Ready(Ok(()))
+        }
+    }
 }
 
 struct IoErrorDrain<T> {
@@ -390,13 +552,58 @@ async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     thunk().await
 }
 
+pub enum PhysicalStreamSink {
+    Tcp(TcpStream),
+    #[cfg(unix)]
+    Unix(UnixStream),
+}
+
+impl PhysicalStreamSink {
+    pub fn into_dyn_source(self) -> DynStream {
+        match self {
+            PhysicalStreamSink::Tcp(stream) => Box::pin(tcp_bytes(stream)),
+            #[cfg(unix)]
+            PhysicalStreamSink::Unix(stream) => Box::pin(unix_bytes(stream)),
+        }
+    }
+
+    pub fn into_dyn_sink(self) -> DynSink<Bytes> {
+        match self {
+            PhysicalStreamSink::Tcp(stream) => {
+                #[cfg(not(feature = "io-uring"))]
+                {
+                    Box::pin(tcp_bytes(stream))
+                }
+
+                #[cfg(feature = "io-uring")]
+                {
+                    Box::pin(io_uring_tcp_send(stream))
+                }
+            }
+            #[cfg(unix)]
+            PhysicalStreamSink::Unix(stream) => {
+                #[cfg(not(feature = "io-uring"))]
+                {
+                    Box::pin(unix_bytes(stream))
+                }
+
+                #[cfg(feature = "io-uring")]
+                {
+                    Box::pin(io_uring_unix_send(stream))
+                }
+            }
+        }
+    }
+}
+
 pub struct ConnectedDirect {
-    stream_sink: Option<DynStreamSink>,
+    stream_sink: Option<PhysicalStreamSink>,
     source_only: Option<DynStream>,
     sink_only: Option<DynSink<Bytes>>,
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "io-uring"), async_trait)]
+#[cfg_attr(feature = "io-uring", async_trait(?Send))]
 impl Connected for ConnectedDirect {
     async fn from_defn(pipe: Connection) -> Self {
         match pipe {
@@ -405,7 +612,7 @@ impl Connected for ConnectedDirect {
                 {
                     let stream = stream.await.unwrap().unwrap();
                     ConnectedDirect {
-                        stream_sink: Some(Box::pin(unix_bytes(stream))),
+                        stream_sink: Some(PhysicalStreamSink::Unix(stream)),
                         source_only: None,
                         sink_only: None,
                     }
@@ -421,7 +628,7 @@ impl Connected for ConnectedDirect {
                 let stream = stream.await.unwrap().unwrap();
                 stream.set_nodelay(true).unwrap();
                 ConnectedDirect {
-                    stream_sink: Some(Box::pin(tcp_bytes(stream))),
+                    stream_sink: Some(PhysicalStreamSink::Tcp(stream)),
                     source_only: None,
                     sink_only: None,
                 }
@@ -472,7 +679,7 @@ impl ConnectedSource for ConnectedDirect {
 
     fn into_source(mut self) -> DynStream {
         if let Some(s) = self.stream_sink.take() {
-            Box::pin(s)
+            Box::pin(s.into_dyn_source())
         } else {
             self.source_only.take().unwrap()
         }
@@ -485,7 +692,7 @@ impl ConnectedSink for ConnectedDirect {
 
     fn into_sink(mut self) -> DynSink<Self::Input> {
         if let Some(s) = self.stream_sink.take() {
-            Box::pin(s)
+            Box::pin(s.into_dyn_sink())
         } else {
             self.sink_only.take().unwrap()
         }
@@ -503,13 +710,13 @@ where
 }
 
 #[pin_project]
-pub struct DemuxDrain<T, S: Sink<T, Error = io::Error> + Send + Sync + ?Sized> {
+pub struct DemuxDrain<T, S: Sink<T, Error = io::Error> + ?Sized> {
     marker: PhantomData<T>,
     #[pin]
     sinks: HashMap<u32, Pin<Box<S>>>,
 }
 
-impl<T, S: Sink<T, Error = io::Error> + Send + Sync> Sink<(u32, T)> for DemuxDrain<T, S> {
+impl<T, S: Sink<T, Error = io::Error>> Sink<(u32, T)> for DemuxDrain<T, S> {
     type Error = io::Error;
 
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -549,7 +756,8 @@ impl<T, S: Sink<T, Error = io::Error> + Send + Sync> Sink<(u32, T)> for DemuxDra
     }
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "io-uring"), async_trait)]
+#[cfg_attr(feature = "io-uring", async_trait(?Send))]
 impl<T: Connected + ConnectedSink> Connected for ConnectedDemux<T>
 where
     <T as ConnectedSink>::Input: 'static + Sync,
@@ -624,12 +832,12 @@ where
     }
 }
 
-pub struct MergeSource<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> {
+pub struct MergeSource<T: Unpin, S: Stream<Item = T> + ?Sized> {
     marker: PhantomData<T>,
     sources: Vec<Pin<Box<S>>>,
 }
 
-impl<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> Stream for MergeSource<T, S> {
+impl<T: Unpin, S: Stream<Item = T> + ?Sized> Stream for MergeSource<T, S> {
     type Item = T;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -663,15 +871,13 @@ impl<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> Stream for MergeSourc
     }
 }
 
-pub struct TaggedSource<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> {
+pub struct TaggedSource<T: Unpin, S: Stream<Item = Result<T, io::Error>> + ?Sized> {
     marker: PhantomData<T>,
     id: u32,
     source: Pin<Box<S>>,
 }
 
-impl<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> Stream
-    for TaggedSource<T, S>
-{
+impl<T: Unpin, S: Stream<Item = Result<T, io::Error>> + ?Sized> Stream for TaggedSource<T, S> {
     type Item = Result<(u32, T), io::Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -697,7 +903,8 @@ where
     source: MergedMux<T>,
 }
 
-#[async_trait]
+#[cfg_attr(not(feature = "io-uring"), async_trait)]
+#[cfg_attr(feature = "io-uring", async_trait(?Send))]
 impl<T: Connected + ConnectedSource> Connected for ConnectedTagged<T>
 where
     <T as ConnectedSource>::Output: 'static + Sync + Unpin,

@@ -278,7 +278,7 @@ jobs:
 
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps --all-features --workspace --exclude hydro_cli
 
       - name: Move design docs to output
         shell: bash
