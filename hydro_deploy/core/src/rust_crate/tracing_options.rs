@@ -12,6 +12,12 @@ use inferno::collapse::perf::Options as PerfOptions;
 
 type FlamegraphOptions = inferno::flamegraph::Options<'static>;
 
+/// `Cow<'static, str>`.
+///
+/// `buildstructor` doesn't support `Into<_>` for types with parameters (like `Cow<'static, str>`),
+/// so we trick it by defining a type alias.
+pub type CowStr = Cow<'static, str>;
+
 #[derive(Clone, buildstructor::Builder)]
 #[non_exhaustive] // Prevent direct construction.
 pub struct TracingOptions {
@@ -40,7 +46,7 @@ pub struct TracingOptions {
     /// NOTE: Currently is only run for remote/cloud ssh hosts, not local hosts.
     ///
     /// Example: see [`DEBIAN_PERF_SETUP_COMMAND`].
-    pub setup_command: Option<Cow<'static, str>>,
+    pub setup_command: Option<CowStr>,
 }
 
 pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
