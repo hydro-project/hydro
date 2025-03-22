@@ -178,16 +178,11 @@ pub struct GcpComputeEngineHost {
     region: String,
     network: Arc<RwLock<GcpNetwork>>,
     user: Option<String>,
-    startup_script: Option<String>,
     pub launched: OnceLock<Arc<LaunchedComputeEngine>>, // TODO(mingwei): fix pub
     external_ports: Mutex<Vec<u16>>,
 }
 
 impl GcpComputeEngineHost {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "internal code called by builder elsewhere"
-    )]
     pub fn new(
         id: usize,
         project: impl Into<String>,
@@ -196,7 +191,6 @@ impl GcpComputeEngineHost {
         region: impl Into<String>,
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
-        startup_script: Option<String>,
     ) -> Self {
         Self {
             id,
@@ -206,7 +200,6 @@ impl GcpComputeEngineHost {
             region: region.into(),
             network,
             user,
-            startup_script,
             launched: OnceLock::new(),
             external_ports: Mutex::new(Vec::new()),
         }
@@ -422,7 +415,6 @@ impl Host for GcpComputeEngineHost {
                         }
                     ],
                     "network_interface": external_interfaces,
-                    "metadata_startup_script": self.startup_script,
                 }),
             );
 

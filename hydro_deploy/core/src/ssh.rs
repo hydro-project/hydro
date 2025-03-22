@@ -434,29 +434,32 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                     command.push(' ');
                     command.push_str(&shell_escape::unix::escape(Cow::Borrowed(arg)))
                 }
-                // Launch with perf if specified, also copy local binary to expected place for perf report to work
-                if let Some(TracingOptions { frequency, .. }) = tracing.clone() {
+                // Launch with tracing if specified, also copy local binary to expected place for perf report to work
+                if let Some(TracingOptions { frequency, setup_command, .. }) = tracing.clone() {
 
-                    // Install perf
-                    let mut perf_install_channel = create_channel(&session).await?;
-                    perf_install_channel
-                        .exec("sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'")
-                        .await?;
+                    // Run setup command
+                    if let Some(setup_command) = setup_command {
+                        let mut setup_channel = create_channel(&session).await?;
+                        setup_channel
+                            .exec(&setup_command)
+                            .await?;
 
-                    // log outputs
-                    let mut perf_install_out = FuturesBufReader::new(perf_install_channel.stream(0)).lines();
-                    while let Some(line) = perf_install_out.next().await {
-                        ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
-                    }
+                        // log outputs
+                        let mut setup_stdout = FuturesBufReader::new(setup_channel.stream(0)).lines();
+                        while let Some(line) = setup_stdout.next().await {
+                            ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
+                        }
 
-                    perf_install_channel.wait_eof().await?;
-                    let exit_code = perf_install_channel.exit_status()?;
-                    perf_install_channel.wait_close().await?;
-                    if exit_code != 0 {
-                        anyhow::bail!("Failed to install perf on remote host");
+                        setup_channel.wait_eof().await?;
+                        let exit_code = setup_channel.exit_status()?;
+                        setup_channel.wait_close().await?;
+                        if exit_code != 0 {
+                            anyhow::bail!("Failed to install perf on remote host");
+                        }
                     }
 
                     // Attach perf to the command
+                    // Note: `LaunchedSshHost` assumes `perf` on linux.
                     command = format!(
                         "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
                     );

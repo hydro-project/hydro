@@ -187,7 +187,6 @@ impl Deployment {
         region: String,
         network: GcpNetwork,
         user: Option<String>,
-        startup_script: Option<String>,
     ) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_write().add_host(|id| {
             core::GcpComputeEngineHost::new(
@@ -198,7 +197,6 @@ impl Deployment {
                 region,
                 network.underlying,
                 user,
-                startup_script,
             )
         });
 

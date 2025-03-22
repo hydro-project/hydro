@@ -4,6 +4,7 @@
     reason = "https://github.com/BrynCooke/buildstructor/issues/192"
 )]
 
+use std::borrow::Cow;
 use std::path::PathBuf;
 
 use inferno::collapse::dtrace::Options as DtraceOptions;
@@ -33,4 +34,13 @@ pub struct TracingOptions {
     pub flamegraph_outfile: Option<PathBuf>,
     // This type is super annoying and isn't `clone` and has a lifetime... so wrap in fn pointer for now.
     pub flamegraph_options: Option<fn() -> FlamegraphOptions>,
+
+    /// Command to setup tracing before running the command, i.e. to install `perf` or set kernel flags.
+    ///
+    /// NOTE: Currently is only run for remote/cloud ssh hosts, not local hosts.
+    ///
+    /// Example: see [`DEBIAN_PERF_SETUP_COMMAND`].
+    pub setup_command: Option<Cow<'static, str>>,
 }
+
+pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
