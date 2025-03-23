@@ -99,18 +99,18 @@ impl LaunchedBinary for LaunchedSshBinary {
 
     fn exit_code(&self) -> Option<i32> {
         // until the program exits, the exit status is meaningless
-        self.channel.get_exit_status().map(|ec| ec as _)
+        self.channel.get_exit_status().map(|ec| ec as _).ok()
     }
 
     async fn wait(&mut self) -> Result<i32> {
         self.channel.wait_close().await;
-        Ok(self.channel.wait_exit_status().await as _)
+        Ok(self.channel.get_exit_status().map(|ec| ec as _)?)
     }
 
     async fn stop(&mut self) -> Result<()> {
         if !self.channel.is_closed() {
             ProgressTracker::leaf("force stopping", async {
-                // self.channel.write_all(b"\x03").await?; // `^C`
+                // self.channel.signal(russh::Sig::INT).await?; // `^C`
                 self.channel.eof().await?; // Send EOF.
                 self.channel.close().await?; // Close the channel.
                 self.channel.wait_close().await;
@@ -406,14 +406,15 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             command.push_str(&shell_escape::unix::escape(Cow::Borrowed(arg)))
         }
 
-        // Launch with tracing if specified, also copy local binary to expected place for perf report to work
+        // Launch with tracing if specified.
         if let Some(TracingOptions {
             frequency,
             setup_command,
             ..
         }) = tracing.clone()
         {
-            command = ProgressTracker::leaf("instal perf", async {
+            let id_clone = id.clone();
+            ProgressTracker::leaf("instal perf", async {
                 // Run setup command
                 if let Some(setup_command) = setup_command {
                     let mut setup_channel = create_channel(&session).await?;
@@ -425,58 +426,33 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                     let mut output_lines = LinesStream::new(setup_stdout.lines())
                         .merge(LinesStream::new(setup_stderr.lines()));
                     while let Some(line) = output_lines.next().await {
-                        ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
+                        ProgressTracker::eprintln(format!(
+                            "[{} install perf] {}",
+                            id_clone,
+                            line.unwrap()
+                        ));
                     }
 
                     let exit_code = setup_channel.wait_exit_status().await;
                     setup_channel.wait_close().await;
-                    if 0 != exit_code {
+                    if Some(0) != exit_code {
                         anyhow::bail!("Failed to install perf on remote host");
                     }
                 }
+                Ok(())
+            })
+            .await?;
 
-                // Attach perf to the command
-                // Note: `LaunchedSshHost` assumes `perf` on linux.
-                let command = format!(
-                    "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
-                );
-                Ok(command)
-            }).await?;
+            // Attach perf to the command
+            // Note: `LaunchedSshHost` assumes `perf` on linux.
+            command = format!(
+                "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
+            );
         }
 
         let (channel, stdout, stderr) = ProgressTracker::leaf(
             format!("launching binary {}", binary_path.display()),
             async {
-                // Launch with tracing if specified, also copy local binary to expected place for perf report to work
-                if let Some(TracingOptions { frequency, setup_command, .. }) = tracing.clone() {
-
-                    // Run setup command
-                    if let Some(setup_command) = setup_command {
-                        let mut setup_channel = create_channel(&session).await?;
-                        let (setup_stdout, setup_stderr) = (setup_channel.stdout(), setup_channel.stderr());
-                        setup_channel
-                            .exec(false, &*setup_command)
-                            .await?;
-
-                        // log outputs
-                        let mut output_lines = LinesStream::new(setup_stdout.lines()).merge(LinesStream::new(setup_stderr.lines()));
-                        while let Some(line) = output_lines.next().await {
-                            ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
-                        }
-
-                        let exit_code = setup_channel.wait_exit_status().await;
-                        setup_channel.wait_close().await;
-                        if 0 != exit_code {
-                            anyhow::bail!("Failed to install perf on remote host");
-                        }
-                    }
-
-                    // Attach perf to the command
-                    // Note: `LaunchedSshHost` assumes `perf` on linux.
-                    command = format!(
-                        "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
-                    );
-                }
                 let channel = create_channel(&session).await?;
                 // Make sure to begin reading stdout/stderr before running the command.
                 let (stdout, stderr) = (channel.stdout(), channel.stderr());
@@ -487,7 +463,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         .await?;
 
         let (stdin_sender, mut stdin_receiver) = mpsc::unbounded_channel::<String>();
-        let mut stdin = channel.stdin(); // stream 0 is stdout/stdin, we use it for stdin
+        let mut stdin = channel.stdin();
 
         tokio::spawn(async move {
             while let Some(line) = stdin_receiver.recv().await {
