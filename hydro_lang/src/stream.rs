@@ -2059,11 +2059,25 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
     {
         let ids = other.members();
 
-        self.flat_map_ordered(q!(|b| ids.iter().map(move |id| (
-            ::std::clone::Clone::clone(id),
-            ::std::clone::Clone::clone(&b)
-        ))))
-        .send_bincode(other)
+        let to_send: Stream<(u32, Bytes), L, B, Order> = self
+            .map::<Bytes, _>(q!(|v| bincode::serialize(&v).unwrap().into()))
+            .flat_map_ordered(q!(|v| { ids.iter().map(move |id| (id.raw_id, v.clone())) }));
+
+        let deserialize_pipeline = Some(deserialize_bincode::<T>(L::Root::tagged_type().as_ref()));
+
+        Stream::new(
+            other.clone(),
+            HydroNode::Network {
+                from_key: None,
+                to_location: other.id(),
+                to_key: None,
+                serialize_fn: None,
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(to_send.ir_node.into_inner()),
+                metadata: other.new_node_metadata::<T>(),
+            },
+        )
     }
 
     pub fn broadcast_bincode_anonymous<C2: 'a, Tag>(
@@ -2071,7 +2085,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         other: &Cluster<'a, C2>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order::Min>
     where
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)> + 'a,
+        L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T), Out<T> = (Tag, T)>,
         T: Clone + Serialize + DeserializeOwned,
         Order: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>>,
     {
@@ -2089,7 +2103,7 @@ impl<'a, T, L: Location<'a> + NoTick, B, Order> Stream<T, L, B, Order> {
         Order::Min,
     >
     where
-        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T)> + 'a,
+        L::Root: CanSend<'a, Cluster<'a, C2>, In<Bytes> = (ClusterId<C2>, T)>,
         T: Clone,
         Order: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<Order>>,
     {
