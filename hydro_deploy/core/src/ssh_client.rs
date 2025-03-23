@@ -4,7 +4,7 @@ use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll, ready};
 
@@ -18,8 +18,6 @@ use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::ToSocketAddrs;
 use tokio::sync::{Semaphore, mpsc};
 use tokio::task::JoinHandle;
-
-use crate::progress::ProgressTracker;
 
 pub struct NoCheckHandler;
 impl Handler for NoCheckHandler {
@@ -92,9 +90,20 @@ impl Deref for Session {
     }
 }
 
+/// SSH channel.
+///
+/// Shutdown lifecycle (may vary):
+/// 1. [`Self::wait_success_failure`].
+/// 2. [`Self::wait_eof`] - Guarantees all stream data has been received, stdout/stderr/etc. will produce no more data.
+/// 3. [`Self::wait_exit_status`] - The exit status of the command run.
+/// 4. [`Self::wait_close`] - This channel is closed, no more events will occur. Will always occur last.
+///
+/// If the channel is closed abruptly, only [`Self::wait_close`] is guaranteed to occur.
 pub struct Channel {
     write_half: ChannelWriteHalf<Msg>,
     subscribe_send: mpsc::UnboundedSender<(Option<u32>, mpsc::UnboundedSender<CryptoVec>)>,
+    success_failure: Promise<bool>,
+    eof: Promise<()>,
     exit_status: Promise<u32>,
     reader: JoinHandle<()>,
 }
@@ -102,53 +111,74 @@ pub struct Channel {
 impl From<russh::Channel<Msg>> for Channel {
     fn from(inner: russh::Channel<Msg>) -> Self {
         let (mut read_half, write_half) = inner.split();
+        let (mut resolve_success_failure, success_failure) = promise();
+        let (mut resolve_eof, eof) = promise();
         let (mut resolve_exit_status, exit_status) = promise();
         let (subscribe_send, mut subscribe_recv) = mpsc::unbounded_channel();
 
         let reader = tokio::task::spawn(async move {
+            type Subscribers = Option<HashMap<Option<u32>, mpsc::UnboundedSender<CryptoVec>>>;
             // Map from `ext` to a sender for `CryptoVec`s of data.
-            let mut subscribers: HashMap<Option<u32>, mpsc::UnboundedSender<CryptoVec>> =
-                HashMap::new();
+            let mut subscribers: Subscribers = Some(HashMap::new());
+
+            fn receive_data(subscribers: &Subscribers, ext: Option<u32>, data: CryptoVec) {
+                if let Some(subscribers) = &subscribers {
+                    if let Some(send) = subscribers.get(&ext) {
+                        let _ = send.send(data);
+                    }
+                } else {
+                    // Unexpectedly received data after EOF.
+                }
+            }
+
             loop {
                 tokio::select! {
                     biased;
                     Some((ext, send)) = subscribe_recv.recv() => {
-                        subscribers.insert(ext, send);
+                        if let Some(subscribers) = &mut subscribers {
+                            subscribers.insert(ext, send);
+                        } else {
+                            // Subscribing after EOF was received.
+                        }
                     },
                     opt_msg = read_half.wait() => {
                         let Some(msg) = opt_msg else {
                             // No more messages, exit!
                             break;
                         };
-                        let (data, ext) = match msg {
-                            // Write data to the terminal
-                            ChannelMsg::Data { data } => (data, None),
-                            ChannelMsg::ExtendedData { data, ext } => (data, Some(ext)),
+                        match msg {
+                            ChannelMsg::Data { data } => receive_data(&subscribers, None, data),
+                            ChannelMsg::ExtendedData { data, ext } => receive_data(&subscribers, Some(ext), data),
+                            ChannelMsg::Success => {
+                                let _ = resolve_success_failure.resolve(true);
+                            }
+                            ChannelMsg::Failure => {
+                                let _ = resolve_success_failure.resolve(false);
+                            }
+                            // The command has indicated no more `ChannelMsg::Data`/`ChannelMsg::ExtendedData` will be sent.
+                            ChannelMsg::Eof => {
+                                let _ = resolve_eof.resolve(());
+                                // Disconnect all subscribers.
+                                drop(std::mem::take(&mut subscribers));
+                            }
                             // The command has returned an exit code
                             ChannelMsg::ExitStatus { exit_status } => {
-                                ProgressTracker::eprintln(format!("EXIT STATUS: {}", exit_status));
                                 let _ = resolve_exit_status.resolve(exit_status);
-                                continue;
                             }
-                            ChannelMsg::WindowChange { .. } | ChannelMsg::WindowAdjusted { .. } => continue,
-                            other => {
-                                ProgressTracker::eprintln(format!("Channel message: {:?}", other));
-                                continue;
-                            }
-                        };
-
-                        if let Some(send) = subscribers.get(&ext) {
-                            let _ = send.send(data);
+                            // Other
+                            _ => {}
                         }
                     },
                 }
             }
-            ProgressTracker::eprintln(format!("READER EXIT!!!!!!"));
+            // Exiting causes the `self.reader` `JoinHandle` to close.
         });
 
         Self {
             write_half,
             subscribe_send,
+            success_failure,
+            eof,
             exit_status,
             reader,
         }
@@ -204,18 +234,56 @@ impl Channel {
         SftpSession::new(tokio::io::join(self.stdout(), self.stdin())).await
     }
 
-    pub async fn wait_exit_status(&self) -> u32 {
-        *self.exit_status.wait().await
+    pub async fn wait_success_failure(&self) -> Option<bool> {
+        self.success_failure.wait().await.copied()
     }
 
-    pub fn get_exit_status(&self) -> Option<u32> {
+    pub fn get_success_failure(&self) -> Result<bool, PromiseError> {
+        self.success_failure.get().copied()
+    }
+
+    /// Returns when EOF has been received, indicating all stream data is complete.
+    ///
+    /// At that point, any streams from [`Self::stdout`]/[`Self::stderr`]/[`Self::read_stream`]
+    /// will return no additional data.
+    ///
+    /// If this returns `None`, the channel was closed before EOF was received.
+    pub async fn wait_eof(&self) -> Option<()> {
+        self.eof.wait().await.copied()
+    }
+
+    /// Returns if EOF has been receieved, indicating all stream data is complete.
+    ///
+    /// At that point, any streams from [`Self::stdout`]/[`Self::stderr`]/[`Self::read_stream`]
+    /// will return no additional data.
+    ///
+    /// If this returns [`Err(PromiseError::Dropped)`](PromiseError::Dropped), the channel was
+    /// closed before EOF was received.
+    pub fn get_eof(&self) -> Result<(), PromiseError> {
+        self.eof.get().copied()
+    }
+
+    /// Returns when the command exit status has been received.
+    ///
+    /// If this returns `None`, the channel was closed before the exit status was received.
+    pub async fn wait_exit_status(&self) -> Option<u32> {
+        self.exit_status.wait().await.copied()
+    }
+
+    /// Returns the command exit status, if it has been received.
+    ///
+    /// If this returns [`Err(PromiseError::Dropped)`](PromiseError::Dropped), the channel was
+    /// closed before the exit status was received.
+    pub fn get_exit_status(&self) -> Result<u32, PromiseError> {
         self.exit_status.get().copied()
     }
 
+    /// Returns when the channel has been closed (no more events will occur).
     pub async fn wait_close(&mut self) {
         let _ = (&mut self.reader).await;
     }
 
+    /// Returns if the channel has been closed (no more events will occur).
     pub fn is_closed(&self) -> bool {
         self.reader.is_finished()
     }
@@ -286,17 +354,42 @@ pub fn promise<T>() -> (Resolve<T>, Promise<T>) {
     )
 }
 
+// SAFETY: must not be clonable.
 pub struct Resolve<T> {
     inner: Option<Weak<Inner<T>>>,
 }
 impl<T> Resolve<T> {
+    pub fn into_resolve(mut self, value: T) {
+        self.resolve(value)
+            .unwrap_or_else(|_| panic!("already resolved"));
+    }
+
     pub fn resolve(&mut self, value: T) -> Result<(), T> {
-        if let Some(inner) = self.inner.take().as_ref().and_then(Weak::upgrade) {
+        let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) else {
+            return Err(value);
+        };
+
+        // SAFETY: `&mut self: Resolve` has exclusive access to `set_value`, once.
+        unsafe {
+            inner.value.get().write(MaybeUninit::new(value));
+        }
+
+        // Using release ordering so any threads that read a true from this
+        // atomic is able to read the value we just stored.
+        inner
+            .flag
+            .store(FLAG_RESOLVED | FLAG_INITIALIZED, Ordering::Release);
+        inner.semaphore.close();
+
+        Ok(())
+    }
+}
+impl<T> Drop for Resolve<T> {
+    fn drop(&mut self) {
+        if let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) {
             // SAFETY: `&mut self: Resolve` has exclusive access to `set_value`, once.
-            unsafe { inner.set_value(value) };
-            Ok(())
-        } else {
-            Err(value)
+            inner.flag.store(FLAG_RESOLVED, Ordering::Release);
+            inner.semaphore.close();
         }
     }
 }
@@ -305,68 +398,76 @@ pub struct Promise<T> {
     inner: Arc<Inner<T>>,
 }
 impl<T> Promise<T> {
-    pub async fn wait(&self) -> &T {
+    pub async fn wait(&self) -> Option<&T> {
         self.inner.semaphore.acquire().await.unwrap_err();
-        self.get().unwrap()
+        self.get().ok()
     }
 
-    pub fn get(&self) -> Option<&T> {
-        self.inner.get_value()
-    }
-
-    pub fn initialized(&self) -> bool {
-        self.get().is_some()
+    pub fn get(&self) -> Result<&T, PromiseError> {
+        self.inner.get()
     }
 }
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum PromiseError {
+    /// The resolver has not yet sent a value.
+    Unresolved,
+    /// The resolver was dropped before sending a value.
+    Dropped,
+}
+impl std::fmt::Display for PromiseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unresolved => write!(f, "not yet resovled"),
+            Self::Dropped => write!(f, "resolver dropped without resolving"),
+        }
+    }
+}
+impl std::error::Error for PromiseError {}
+
+const FLAG_RESOLVED: u8 = 0b01;
+const FLAG_INITIALIZED: u8 = 0b10;
 
 // Based on [`tokio::sync::OnceCell`].
 //
 // Any thread with an `&self` may access the `value` field according the following rules:
 //
-//  1. When `value_set` is false, the `value` field may be modified by the
+//  1. Iff `flag & FLAG_RESOLVED` is false, the `value` field may be modified by the
 //     thread holding the permit on the semaphore.
-//  2. When `value_set` is true, the `value` field may be accessed immutably by
+//  2. Iff `flag & FLAG_INITIALIZED` is true, the `value` field may be accessed immutably by
 //     any thread.
 //
-// It is an invariant that if the semaphore is closed, then `value_set` is true.
-// The reverse does not necessarily hold — but if not, the semaphore may not
-// have any available permits.
+// If `flag & FLAG_RESOLVED` is true, but `flag & FLAG_INITIALIZED` is false, then the resolver
+// was dropped before the value was set.
 struct Inner<T> {
-    value_set: AtomicBool,
+    flag: AtomicU8,
     value: UnsafeCell<MaybeUninit<T>>,
     semaphore: Semaphore,
 }
 impl<T> Inner<T> {
     fn new() -> Self {
         Self {
-            value_set: AtomicBool::new(false),
+            flag: AtomicU8::new(0),
             value: UnsafeCell::new(MaybeUninit::uninit()),
             semaphore: Semaphore::const_new(0),
         }
     }
 
-    /// SAFETY: Must only be called once, by the `Resolve` that owns this `Inner`.
-    unsafe fn set_value(&self, value: T) {
-        // SAFETY: We are holding the only permit on the semaphore.
-        unsafe {
-            self.value.get().write(MaybeUninit::new(value));
-        }
-
-        // Using release ordering so any threads that read a true from this
-        // atomic is able to read the value we just stored.
-        self.value_set.store(true, Ordering::Release);
-        self.semaphore.close();
-    }
-
-    fn get_value(&self) -> Option<&T> {
+    fn get(&self) -> Result<&T, PromiseError> {
         // Using acquire ordering so any threads that read a true from this
         // atomic is able to read the value.
-        let initialized = self.value_set.load(Ordering::Acquire);
-        if initialized {
-            // SAFETY: Value is initialized.
-            Some(unsafe { &*(*self.value.get()).as_ptr() })
+        let flag = self.flag.load(Ordering::Acquire);
+        let resolved = 0 != flag & FLAG_RESOLVED;
+        if resolved {
+            let initialized = 0 != flag & FLAG_INITIALIZED;
+            if initialized {
+                // SAFETY: Value is initialized.
+                Ok(unsafe { &*(*self.value.get()).as_ptr() })
+            } else {
+                Err(PromiseError::Dropped)
+            }
         } else {
-            None
+            Err(PromiseError::Unresolved)
         }
     }
 }
