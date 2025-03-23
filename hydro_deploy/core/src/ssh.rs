@@ -14,12 +14,10 @@ use nanoid::nanoid;
 use russh::client::Config;
 use russh_sftp::protocol::{Status, StatusCode};
 use tokio::fs::File;
-use tokio::io::{
-    AsyncBufReadExt as _, AsyncReadExt, AsyncWriteExt as _, BufReader as TokioBufReader,
-};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
-use tokio_stream::StreamExt as _;
+use tokio_stream::StreamExt;
 use tokio_stream::wrappers::LinesStream;
 use tokio_util::io::SyncIoBridge;
 
@@ -171,7 +169,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                         tokio::task::spawn_blocking(move || {
                             let mut fold_data = Vec::new();
                             fold_er.collapse(
-                                SyncIoBridge::new(TokioBufReader::new(stdout)),
+                                SyncIoBridge::new(BufReader::new(stdout)),
                                 &mut fold_data,
                             )?;
                             Ok(fold_data)
