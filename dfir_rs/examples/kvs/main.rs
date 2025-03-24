@@ -98,7 +98,11 @@ fn test() {
         run_cargo_example("kvs", "--role client --address 127.0.0.1:2051");
 
     let mut client2_output = String::new();
-    wait_for_process_output(&mut client2_output, &mut client2_stdout, "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2051\n");
+    wait_for_process_output(
+        &mut client2_output,
+        &mut client2_stdout,
+        "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2051\n",
+    );
 
     client2_stdin.write_all(b"GET a\n").unwrap();
     wait_for_process_output(

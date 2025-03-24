@@ -77,15 +77,11 @@ fn test() {
 
     use dfir_rs::util::{run_cargo_example, wait_for_process_output};
 
-    let (_server, _, mut server_output) = run_cargo_example(
-        "echo_serde_json",
-        "--role server --address 127.0.0.1:2049",
-    );
+    let (_server, _, mut server_output) =
+        run_cargo_example("echo_serde_json", "--role server --address 127.0.0.1:2049");
 
-    let (_client, mut client_input, mut client_output) = run_cargo_example(
-        "echo_serde_json",
-        "--role client --address 127.0.0.1:2049",
-    );
+    let (_client, mut client_input, mut client_output) =
+        run_cargo_example("echo_serde_json", "--role client --address 127.0.0.1:2049");
 
     let mut server_output_so_far = String::new();
     let mut client_output_so_far = String::new();
