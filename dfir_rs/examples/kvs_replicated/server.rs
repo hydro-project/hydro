@@ -1,16 +1,35 @@
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
-use dfir_rs::util::{UdpSink, UdpStream};
+use dfir_rs::util::bind_udp_bytes;
 
 use crate::Opts;
+use crate::helpers::print_graph;
 use crate::protocol::{KvsMessage, KvsMessageWithAddr};
 
-pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
-    println!("Server live!");
+pub(crate) async fn run_server(opts: Opts) {
+    // If a server address & port are provided as command-line inputs, use those, else use the
+    // default.
+    let server_address = opts.address;
 
-    let peer_server = opts.server_addr;
+    println!("Starting server on {:?}", server_address);
 
-    let mut hf: Dfir = dfir_syntax! {
+    // Bind a server-side socket to requested address and port. If "0" was provided as the port, the
+    // OS will allocate a port and the actual port used will be available in `actual_server_addr`.
+    //
+    // `outbound` is a `UdpSink`, we use it to send messages. `inbound` is `UdpStream`, we use it
+    // to receive messages.
+    //
+    // This is an async function, so we need to await it.
+    let (outbound, inbound, actual_server_addr) = bind_udp_bytes(server_address).await;
+
+    let peer_server = opts.peer_address;
+
+    println!(
+        "Server is live! Listening on {:?} and talking to peer server {:?}",
+        actual_server_addr, peer_server
+    );
+
+    let mut flow: Dfir = dfir_syntax! {
         // Setup network channels.
         network_send = union() -> dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)
@@ -61,13 +80,10 @@ pub(crate) async fn run_server(outbound: UdpSink, inbound: UdpStream, opts: Opts
             -> network_send;
     };
 
-    #[cfg(feature = "debugging")]
+    // If a graph was requested to be printed, print it.
     if let Some(graph) = opts.graph {
-        let serde_graph = hf
-            .meta_graph()
-            .expect("No graph found, maybe failed to parse.");
-        serde_graph.open_graph(graph, opts.write_config).unwrap();
+        print_graph(&flow, graph, opts.write_config);
     }
 
-    hf.run_async().await.unwrap();
+    flow.run_async().await.unwrap();
 }

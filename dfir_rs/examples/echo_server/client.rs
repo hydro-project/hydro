@@ -2,10 +2,10 @@ use std::net::SocketAddr;
 
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
-use dfir_rs::util::{bind_udp_lines, ipv4_resolve};
+use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 
 use crate::Opts;
-use crate::helpers::{deserialize_json, print_graph, serialize_json};
+use crate::helpers::print_graph;
 use crate::protocol::EchoMsg;
 
 /// Runs the client. The client is a long-running process that reads stdin, and sends messages that
@@ -30,23 +30,38 @@ pub(crate) async fn run_client(opts: Opts) {
     // to receive messages.
     //
     // bind_udp_bytes is an async function, so we need to await it.
-    let (outbound, inbound, allocated_client_addr) = bind_udp_lines(client_addr).await;
+    let (outbound, inbound, allocated_client_addr) = bind_udp_bytes(client_addr).await;
 
     println!(
         "Client is live! Listening on {:?} and talking to server on {:?}",
         allocated_client_addr, server_addr
     );
 
-    // The DFIR spec for the client.
+    // The skeletal DFIR spec for a client.
     let mut flow = dfir_syntax! {
-        // take stdin and send to server as an Echo::Message
-        source_stdin() -> map(|l| (EchoMsg{ payload: l.unwrap(), ts: Utc::now(), }, server_addr) )
-            -> map(|(msg, addr)| (serialize_json(msg), addr))
-            -> dest_sink(outbound);
 
-        // receive and print messages
-        source_stream(inbound) -> map(deserialize_json)
-            -> for_each(|(m, _a): (EchoMsg, SocketAddr) | println!("{:?}", m));
+        // Whenever a serialized message is received by the application from a particular address,
+        // a (serialized_payload, address_of_sender) pair is emitted by the `inbound` stream.
+        //
+        // `source_stream_serde` deserializes the payload into a
+        // (deserialized_payload, address_of_sender) pair.
+        inbound_chan = source_stream_serde(inbound)
+            -> map(Result::unwrap);  // If the deserialization was unsuccessful, this line will panic.
+
+        // Mirrors the inbound process on the outbound side.
+        // `dest_sink_serde` accepts a (`EchoMsg`, `SocketAddr`) pair and serializes the `EchoMsg`
+        // using `serde`, converting it to a (serialized_payload, address_of_receiver) pair.
+        // `outbound` transmits the serialized_payload to the address.
+        outbound_chan = dest_sink_serde(outbound);
+
+        // Print all messages for debugging purposes.
+        inbound_chan
+            -> for_each(|(m, a): (EchoMsg, SocketAddr)| println!("{}: Got {:?} from {:?}", Utc::now(), m, a));
+
+        // Consume input from stdin and send to server as an `EchoMsg`.
+        source_stdin() // A stream of lines from stdin.
+            -> map(|l| (EchoMsg { payload: l.unwrap(), ts: Utc::now(), }, server_addr) )
+            -> outbound_chan; // Send it to the server
     };
 
     // If a graph was requested to be printed, print it.

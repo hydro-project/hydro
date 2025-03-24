@@ -6,7 +6,7 @@ use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 
 use crate::helpers::print_graph;
 use crate::protocol::Message;
-use crate::{DEFAULT_SERVER_ADDRESS, Opts};
+use crate::Opts;
 
 /// Runs the client. The client is a long-running process that reads stdin, and sends messages that
 /// it receives to the server. The client also prints any messages it receives to stdout.
@@ -16,9 +16,8 @@ pub(crate) async fn run_client(opts: Opts) {
 
     // Use the server address that was provided in the command-line arguments, or use the default
     // if one was not provided.
-    let server_addr = opts
-        .address
-        .unwrap_or_else(|| ipv4_resolve(DEFAULT_SERVER_ADDRESS).unwrap());
+    let server_addr = opts.address;
+    assert_ne!(0, server_addr.port(), "Client cannot connect to server port 0.");
 
     // Bind a client-side socket to the requested address and port. The OS will allocate a port and
     // the actual port used will be available in `actual_client_addr`.

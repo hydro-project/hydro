@@ -7,7 +7,7 @@ use dfir_rs::util::bind_udp_bytes;
 
 use crate::Opts;
 use crate::helpers::print_graph;
-use crate::protocol::Message;
+use crate::protocol::EchoMsg;
 
 /// Runs the server. The server is a long-running process that listens for messages and echoes
 /// them back the client.
@@ -41,36 +41,16 @@ pub(crate) async fn run_server(opts: Opts) {
             -> map(Result::unwrap); // If the deserialization was unsuccessful, this line will panic.
 
         // Mirrors the inbound process on the outbound side.
-        // `dest_sink_serde` accepts a (`Message`, `SocketAddr`) pair and serializes the `Message`
+        // `dest_sink_serde` accepts a (`EchoMsg`, `SocketAddr`) pair and serializes the `EchoMsg`
         // using `serde`, converting it to a (serialized_payload, address_of_receiver) pair.
         // `outbound` transmits the serialized_payload to the address.
-        outbound_chan = union() -> dest_sink_serde(outbound);
+        outbound_chan = dest_sink_serde(outbound);
 
-        // Demux and destructure the inbound messages into separate streams
-        inbound_demuxed = inbound_chan
-            -> inspect(|(m, a): &(Message, SocketAddr)| println!("{}: Got {:?} from {:?}", Utc::now(), m, a)) // For debugging purposes.
-            -> demux(|(msg, addr), var_args!(echo, heartbeat, errs)|
-                match msg {
-                        Message::Echo {payload, ..} => echo.give((payload, addr)),
-                        Message::Heartbeat => heartbeat.give(addr),
-                        _ => errs.give((msg, addr)),
-                    }
-                );
-
-        // Echo a response back to the sender of the echo request.
-        inbound_demuxed[echo]
-            -> map(|(payload, sender_addr)| (Message::Echo { payload, ts: Utc::now() }, sender_addr) )
+        // Handle the inbound messages.
+        inbound_chan
+            -> inspect(|(m, a): &(EchoMsg, SocketAddr)| println!("{}: Got {:?} from {:?}", Utc::now(), m, a)) // For debugging purposes.
+            -> map(|(EchoMsg { payload, ts: _ }, sender_addr)| (EchoMsg { payload, ts: Utc::now() }, sender_addr) )
             -> [0]outbound_chan;
-
-        // Respond to Heartbeat messages
-        inbound_demuxed[heartbeat]
-            -> map(|addr| (Message::HeartbeatAck, addr))
-            -> [1]outbound_chan;
-
-        // Print unexpected messages
-        inbound_demuxed[errs]
-            -> for_each(|(msg, addr)| println!("Received unexpected message type: {:?} from {:?}", msg, addr));
-
     };
 
     // If a graph was requested to be printed, print it.

@@ -32,12 +32,12 @@ To run the example, open 2 terminals.
 
 In one terminal run the server like so:
 ```
-cargo run -p hydroflow --example kvs -- --role server --addr localhost:12346
+cargo run -p hydroflow --example kvs -- --address localhost:12346 --role server
 ```
 
 In another terminal run a client:
 ```
-cargo run -p hydroflow --example kvs -- --role client --addr localhost:9090 --server-addr localhost:12346
+cargo run -p hydroflow --example kvs -- --address localhost:12346 --role client
 ```
 
 Adding the `--graph <graph_type>` flag to the end of the command lines above will print out a node-and-edge diagram of the program. Supported values for `<graph_type>` include [mermaid](https://mermaid-js.github.io/) and [dot](https://graphviz.org/doc/info/lang.html).

@@ -4,17 +4,17 @@ To run the example, open 3 terminals.
 
 In one terminal run the server like so:
 ```
-cargo run -p hydroflow --example lamport_clock -- --role server --addr localhost:12347
+cargo run -p hydroflow --example lamport_clock -- --address localhost:12347 --role server
 ```
 
 In another terminal run a client:
 ```
-cargo run -p hydroflow --example lamport_clock -- --role client --server-addr localhost:12347
+cargo run -p hydroflow --example lamport_clock -- --address localhost:12347 --role client
 ```
 
 In a third terminal run a client:
 ```
-cargo run -p hydroflow --example lamport_clock -- --role client --server-addr localhost:12347
+cargo run -p hydroflow --example lamport_clock -- --address localhost:12347 --role client
 ```
 
 If you type in a client terminal the message will be sent to the server, echo'd back to the client and printed with a Lamport clock.
