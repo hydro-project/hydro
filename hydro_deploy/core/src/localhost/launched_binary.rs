@@ -1,5 +1,6 @@
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
+use std::path::PathBuf;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 
@@ -7,16 +8,18 @@ use anyhow::{Result, bail};
 use async_process::Command;
 use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
-use futures::{AsyncBufReadExt as _, AsyncWriteExt as _};
+use futures::{AsyncBufReadExt as _, AsyncWriteExt as _, StreamExt};
 use inferno::collapse::Collapse;
 use inferno::collapse::dtrace::Folder as DtraceFolder;
 use inferno::collapse::perf::Folder as PerfFolder;
+use inferno::collapse::xctrace::Folder as XctraceFolder;
 use tempfile::NamedTempFile;
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
 use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
+use super::XctraceChildWrapper;
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
@@ -25,11 +28,13 @@ use crate::util::prioritized_broadcast;
 use crate::{LaunchedBinary, TracingResults};
 
 pub(super) struct TracingDataLocal {
-    pub(super) outfile: NamedTempFile,
+    pub(super) outfile: Arc<NamedTempFile>,
 }
 
 pub struct LaunchedLocalhostBinary {
     child: Mutex<async_process::Child>,
+    bin_path: PathBuf,
+    xctrace_child: Option<(Arc<Mutex<XctraceChildWrapper>>, oneshot::Receiver<()>)>,
     tracing_config: Option<TracingOptions>,
     tracing_data_local: Option<TracingDataLocal>,
     tracing_results: Option<TracingResults>,
@@ -61,6 +66,8 @@ impl Drop for LaunchedLocalhostBinary {
 impl LaunchedLocalhostBinary {
     pub(super) fn new(
         mut child: async_process::Child,
+        bin_path: PathBuf,
+        xctrace_child: Option<(Arc<Mutex<XctraceChildWrapper>>, oneshot::Receiver<()>)>,
         id: String,
         tracing_config: Option<TracingOptions>,
         tracing_data_local: Option<TracingDataLocal>,
@@ -89,6 +96,8 @@ impl LaunchedLocalhostBinary {
 
         Self {
             child: Mutex::new(child),
+            bin_path,
+            xctrace_child,
             tracing_config,
             tracing_data_local,
             tracing_results: None,
@@ -176,17 +185,109 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
             if self.tracing_results.is_none() {
                 let tracing_data = self.tracing_data_local.take().unwrap();
 
-                if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                #[cfg(target_os = "macos")]
+                let xctrace_symbolicated = {
+                    let (xctrace_child, receive) = self.xctrace_child.take().unwrap();
+                    eprintln!("dropping xctrace child");
+                    drop(xctrace_child); // allow this to be cleaned up
+                    eprintln!("waiting for xctrace child to exit");
+                    let _ = receive.await.unwrap(); // wait for xctrace to finish
+                    eprintln!("xctrace child exited");
+
+                    // symbolicate the xctrace output
+                    let symbolicated_out = NamedTempFile::with_suffix(".trace")?;
+                    std::fs::remove_file(symbolicated_out.path()).unwrap();
+                    std::process::Command::new("xctrace")
+                        .args(["symbolicate", "--input"])
+                        .arg(tracing_data.outfile.path())
+                        .arg("--output")
+                        .arg(symbolicated_out.path())
+                        .arg("--dsym")
+                        .arg(self.bin_path.to_str().unwrap())
+                        .status()?;
+
+                    symbolicated_out
+                };
+
+                if cfg!(target_os = "macos") {
+                    #[cfg(target_os = "macos")]
+                    if let Some(xctrace_outfile) = tracing_config.xctrace_outfile.as_ref() {
+                        // std::fs::copy(tracing_data.outfile.path(), xctrace_outfile)?;
+                        std::process::Command::new("cp")
+                            .arg("-r")
+                            .arg(xctrace_symbolicated.path())
+                            .arg(xctrace_outfile)
+                            .status()?;
+                    }
+                } else if cfg!(target_family = "windows") {
                     if let Some(dtrace_outfile) = tracing_config.dtrace_outfile.as_ref() {
-                        std::fs::copy(&tracing_data.outfile, dtrace_outfile)?;
+                        std::fs::copy(tracing_data.outfile.path(), dtrace_outfile)?;
                     }
                 } else if cfg!(target_family = "unix") {
                     if let Some(perf_outfile) = tracing_config.perf_raw_outfile.as_ref() {
-                        std::fs::copy(&tracing_data.outfile, perf_outfile)?;
+                        std::fs::copy(tracing_data.outfile.path(), perf_outfile)?;
                     }
                 }
 
-                let fold_data = if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                let fold_data = if cfg!(target_os = "macos") {
+                    // Run xctrace export
+                    #[cfg(target_os = "macos")]
+                    {
+                        let mut xctrace_export = Command::new("xctrace")
+                            .args(["export", "--input"])
+                            .arg(xctrace_symbolicated.path())
+                            .args([
+                                "--xpath",
+                                "/trace-toc/*/data/table[@schema=\"time-profile\"]",
+                            ])
+                            .stdout(Stdio::piped())
+                            .stderr(Stdio::piped())
+                            .spawn()?;
+
+                        let stdout = xctrace_export.stdout.take().unwrap().compat();
+                        let mut stderr_lines =
+                            TokioBufReader::new(xctrace_export.stderr.take().unwrap().compat())
+                                .lines();
+
+                        let mut fold_er = XctraceFolder::default();
+
+                        // Pattern on `()` to make sure no `Result`s are ignored.
+                        let ((), fold_data, ()) = tokio::try_join!(
+                            async move {
+                                // Log stderr.
+                                while let Ok(Some(s)) = stderr_lines.next_line().await {
+                                    ProgressTracker::println(format!(
+                                        "[xctrace export stderr] {s}"
+                                    ));
+                                }
+                                Result::<_>::Ok(())
+                            },
+                            async move {
+                                // Stream `xctrace export` stdout and fold.
+                                tokio::task::spawn_blocking(move || {
+                                    let mut fold_data = Vec::new();
+                                    fold_er.collapse(
+                                        SyncIoBridge::new(tokio::io::BufReader::new(stdout)),
+                                        &mut fold_data,
+                                    )?;
+                                    Ok(fold_data)
+                                })
+                                .await?
+                            },
+                            async move {
+                                // Close stdin and wait for command exit.
+                                xctrace_export.status().await?;
+                                Ok(())
+                            },
+                        )?;
+                        fold_data
+                    }
+
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        bail!("xctrace is only supported on macOS");
+                    }
+                } else if cfg!(target_family = "windows") {
                     let mut fold_er = DtraceFolder::from(
                         tracing_config
                             .fold_dtrace_options
@@ -197,7 +298,8 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     let fold_data =
                         ProgressTracker::leaf("fold dtrace output".to_owned(), async move {
                             let mut fold_data = Vec::new();
-                            fold_er.collapse_file(Some(tracing_data.outfile), &mut fold_data)?;
+                            fold_er
+                                .collapse_file(Some(tracing_data.outfile.path()), &mut fold_data)?;
                             Result::<_>::Ok(fold_data)
                         })
                         .await?;

@@ -282,7 +282,7 @@ impl Service for RustCrateService {
                     *self.server_defns.try_write().unwrap() =
                         serde_json::from_str(ready_line.trim_start_matches("ready: ")).unwrap();
                 } else {
-                    bail!("expected ready");
+                    bail!("expected ready, got \"{ready_line}\"");
                 }
 
                 self.launched_binary = Some(binary);

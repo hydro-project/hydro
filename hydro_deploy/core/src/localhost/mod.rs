@@ -1,13 +1,15 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::ops::Deref;
-use std::sync::Arc;
+use std::ops::{Deref, DerefMut};
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard, Weak};
 
 use anyhow::{Context, Result, bail};
-use async_process::{Command, Stdio};
+use async_process::{Child, Command, Stdio};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
+use tempfile::NamedTempFile;
 
 use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
@@ -19,6 +21,38 @@ use crate::{
 
 pub mod launched_binary;
 pub use launched_binary::*;
+
+static SHARED_XTRACE_PROCESS: Mutex<Option<Weak<Mutex<XctraceChildWrapper>>>> = Mutex::new(None);
+
+struct XctraceChildWrapper {
+    child: std::process::Child,
+    path: Arc<NamedTempFile>,
+    recipients: Vec<tokio::sync::oneshot::Sender<()>>,
+}
+
+impl Drop for XctraceChildWrapper {
+    fn drop(&mut self) {
+        // Ensure the xctrace process is terminated when this wrapper is dropped
+        nix::sys::signal::kill(
+            nix::unistd::Pid::from_raw(self.child.id() as i32),
+            nix::sys::signal::SIGINT,
+        )
+        .unwrap();
+
+        ProgressTracker::eprintln("Waiting for xctrace process to exit...");
+
+        self.child
+            .wait()
+            .expect("Failed to wait for xctrace process");
+
+        // Notify the main thread that the xctrace process has exited
+        for recipient in self.recipients.drain(..) {
+            recipient.send(()).unwrap()
+        }
+    }
+}
+
+// impl Drop for
 
 #[derive(Debug)]
 pub struct LocalhostHost {
@@ -155,7 +189,11 @@ impl LaunchedHost for LaunchedLocalhost {
         tracing: Option<TracingOptions>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
-            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+            if cfg!(target_os = "macos") {
+                let mut command = Command::new(&binary.bin_path);
+                command.args(args);
+                (None, command)
+            } else if cfg!(target_family = "windows") {
                 // dtrace
                 ProgressTracker::println(
                     format!("[{id} tracing] Profiling binary with `dtrace`.",),
@@ -253,11 +291,59 @@ impl LaunchedHost for LaunchedLocalhost {
             .spawn()
             .with_context(|| format!("Failed to execute command: {:?}", command))?;
 
+        let (maybe_xctrace, maybe_xctrace_output_path) = if cfg!(target_os = "macos")
+            && tracing.is_some()
+        {
+            // xctrace
+            ProgressTracker::println(format!("[{id} tracing] Profiling binary with `xctrace`.",));
+
+            let (send_done, receive_done) = tokio::sync::oneshot::channel();
+
+            let mut maybe_shared_trace = SHARED_XTRACE_PROCESS.lock().unwrap();
+            if let Some(upgraded) = maybe_shared_trace.as_ref().and_then(Weak::upgrade) {
+                let mut locked = upgraded.lock().unwrap();
+                locked.recipients.push(send_done);
+                let path = locked.path.clone();
+                drop(locked);
+                (Some((upgraded, receive_done)), Some(path))
+            } else {
+                let xctrace_outfile = NamedTempFile::with_suffix(".trace").unwrap();
+                std::fs::remove_file(xctrace_outfile.path())?;
+
+                let mut command = std::process::Command::new("xctrace");
+                command
+                    .arg("record")
+                    .arg("--template")
+                    .arg("Time Profiler")
+                    .arg("--output")
+                    .arg(xctrace_outfile.as_ref())
+                    .arg("--all-processes");
+
+                let out_arc = Arc::new(xctrace_outfile);
+                let created_child = Arc::new(Mutex::new(XctraceChildWrapper {
+                    child: command.spawn().unwrap(),
+                    path: out_arc.clone(),
+                    recipients: vec![send_done],
+                }));
+                *maybe_shared_trace = Some(Arc::downgrade(&created_child));
+
+                (Some((created_child, receive_done)), Some(out_arc))
+            }
+        } else {
+            (None, None)
+        };
+
         Ok(Box::new(LaunchedLocalhostBinary::new(
             child,
+            binary.bin_path.clone(),
+            maybe_xctrace,
             id,
             tracing,
-            maybe_perf_outfile.map(|f| TracingDataLocal { outfile: f }),
+            maybe_perf_outfile
+                .map(|f| TracingDataLocal {
+                    outfile: Arc::new(f),
+                })
+                .or_else(|| maybe_xctrace_output_path.map(|p| TracingDataLocal { outfile: p })),
         )))
     }
 

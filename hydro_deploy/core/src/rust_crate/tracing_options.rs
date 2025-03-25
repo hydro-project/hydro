@@ -24,6 +24,9 @@ pub struct TracingOptions {
     /// Samples per second.
     pub frequency: u32,
 
+    /// Output filename for `xctrace`. Example: `my_worker.trace`.
+    pub xctrace_outfile: Option<PathBuf>,
+
     /// Output filename for `dtrace`. Example: `my_worker.stacks`.
     pub dtrace_outfile: Option<PathBuf>,
 

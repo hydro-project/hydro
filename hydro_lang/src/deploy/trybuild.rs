@@ -266,9 +266,15 @@ pub fn create_trybuild()
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
 
         #[cfg(nightly)]
-        let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
+        let project_lock = File::options()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path!(project.dir / ".hydro-trybuild-lock"))
+            .unwrap();
         #[cfg(nightly)]
-        project_lock.lock()?;
+        project_lock.lock().unwrap();
 
         let manifest_toml = toml::to_string(&project.manifest)?;
         write_atomic(manifest_toml.as_ref(), &path!(project.dir / "Cargo.toml"))?;
@@ -308,17 +314,18 @@ fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
         .write(true)
         .create(true)
         .truncate(false)
-        .open(path)?;
+        .open(path)
+        .unwrap();
     #[cfg(nightly)]
-    file.lock()?;
+    file.lock().unwrap();
 
     let mut existing_contents = Vec::new();
-    file.read_to_end(&mut existing_contents)?;
+    file.read_to_end(&mut existing_contents).unwrap();
     if existing_contents != contents {
-        file.seek(SeekFrom::Start(0))?;
-        file.set_len(0)?;
-        file.write_all(contents)?;
+        file.seek(SeekFrom::Start(0)).unwrap();
+        file.set_len(0).unwrap();
+        file.write_all(contents)
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
