@@ -15,7 +15,7 @@ RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" CC="$PWD/../LLVM
 
 cd ..
 
-RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
+RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features --workspace --exclude hydro_cli
 
 cp -r target/doc docs/static/rustdoc
 
