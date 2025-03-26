@@ -1,0 +1,4 @@
+# TODO(mingwei): If this becomes a separate crate, merge outer rustfmt.toml.
+max_width = 120
+comment_width = 120 # This is ignored if larger than `max_width`
+wrap_comments = true

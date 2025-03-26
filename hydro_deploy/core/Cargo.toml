@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 anyhow = { version = "1.0.82", features = ["backtrace"] }
+async_ssh2_russh = { path = "../../async_ssh2_russh", version = "^0.1.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.54"
@@ -30,8 +31,6 @@ memo-map = "0.3.0"
 nameof = "1.0.0"
 nanoid = "0.4.0"
 nix = { version = "0.29.0", features = ["signal"] }
-russh = { git = "https://github.com/hydro-project/russh.git", rev="361f38132a8e0f9abf140066c5a0826c99ca700f" }
-russh-sftp = "2.0.8"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
 serde_path_to_error = "0.1.0"

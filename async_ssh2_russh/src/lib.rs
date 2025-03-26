@@ -1,3 +1,7 @@
+#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/", env!("CARGO_PKG_README")))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![warn(missing_docs)]
+
 use std::cell::UnsafeCell;
 use std::collections::HashMap;
 use std::mem::MaybeUninit;
@@ -8,25 +12,32 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Weak};
 use std::task::{Context, Poll, ready};
 
-use anyhow::Error;
 use russh::client::{Config, Handle, Handler, Msg, connect};
 use russh::keys::{PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::{ChannelMsg, ChannelWriteHalf, CryptoVec};
-use russh_sftp::client::SftpSession;
-use russh_sftp::client::rawsession::SftpResult;
 use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::ToSocketAddrs;
 use tokio::sync::{Semaphore, mpsc};
 use tokio::task::JoinHandle;
 
+// Pub items
+#[cfg(feature = "sftp")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
+pub mod sftp;
+pub use russh::Error as SshError;
+#[cfg(feature = "sftp")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
+pub use russh_sftp;
+pub use {russh, tokio};
+
+/// A handler that does not check the server's public key.
+///
+/// This should NOT be used unless
 pub struct NoCheckHandler;
 impl Handler for NoCheckHandler {
-    type Error = russh::Error;
+    type Error = SshError;
 
-    async fn check_server_key(
-        &mut self,
-        _server_public_key: &ssh_key::PublicKey,
-    ) -> Result<bool, Self::Error> {
+    async fn check_server_key(&mut self, _server_public_key: &ssh_key::PublicKey) -> Result<bool, Self::Error> {
         // TODO(mingwei): we technically should check the server's public key fingerprint here
         // (get it somehow via terraform), but ssh `publickey` authentication already generally
         // prevents MITM attacks.
@@ -34,20 +45,38 @@ impl Handler for NoCheckHandler {
     }
 }
 
-// https://github.com/Eugeny/russh/blob/main/russh/examples/client_exec_simple.rs
-/// This struct is a convenience wrapper
-/// around a russh client
-pub struct Session {
-    session: Handle<NoCheckHandler>,
+/// A thin wrapper around [`russh::client::Handle`] which provides basic authentication and channel
+/// management for a SSH session.
+///
+/// Implements [`Deref`] to allow access to the underlying [`russh::client::Handle`].
+pub struct AsyncSession<H: Handler = NoCheckHandler> {
+    session: Handle<H>,
+}
+impl<H: Handler + 'static> AsyncSession<H> {
+    /// Connect to an SSH server using the provided configuration and handler, without begining
+    /// authentication.
+    pub async fn connect_unauthenticated(
+        config: Arc<Config>,
+        addrs: impl ToSocketAddrs,
+        handler: H,
+    ) -> Result<Self, H::Error> {
+        let session = connect(config, addrs, handler).await?;
+        Ok(Self { session })
+    }
 }
 
-impl Session {
-    pub async fn connect(
+impl AsyncSession {
+    /// Connect to an SSH server and authenticate with the given `user` and `key_path` via publickey
+    /// authentication.
+    ///
+    /// Uses [`NoCheckHandler`] to skip server public key verification, as publickey authentication provides protection
+    /// against MITM attacks.
+    pub async fn connect_publickey(
         config: impl Into<Arc<Config>>,
-        key_path: impl AsRef<Path>,
-        user: impl Into<String>,
         addrs: impl ToSocketAddrs,
-    ) -> Result<Self, russh::Error> {
+        user: impl Into<String>,
+        key_path: impl AsRef<Path>,
+    ) -> Result<Self, SshError> {
         let key_pair = load_secret_key(key_path, None)?;
 
         let mut session = connect(config.into(), addrs, NoCheckHandler).await?;
@@ -56,50 +85,50 @@ impl Session {
         let auth_res = session
             .authenticate_publickey(
                 user,
-                PrivateKeyWithHashAlg::new(
-                    Arc::new(key_pair),
-                    session.best_supported_rsa_hash().await?.flatten(),
-                ),
+                PrivateKeyWithHashAlg::new(Arc::new(key_pair), session.best_supported_rsa_hash().await?.flatten()),
             )
             .await?;
 
         if auth_res.success() {
             Ok(Self { session })
         } else {
-            Err(russh::Error::NotAuthenticated)
+            Err(SshError::NotAuthenticated)
         }
     }
 
-    pub async fn open_channel(&self) -> Result<Channel, russh::Error> {
+    /// Opens a [`Channel`] in this session.
+    ///
+    /// [`Channel`] is the asnyc wrapper for [`russh::Channel`].
+    pub async fn open_channel(&self) -> Result<AsyncChannel, SshError> {
         let russh_channel = self.session.channel_open_session().await?;
-        Ok(Channel::from(russh_channel))
-    }
-
-    pub async fn open_sftp(&self) -> Result<SftpSession, Error> {
-        let channel = self.open_channel().await?;
-        channel.request_subsystem(true, "sftp").await?;
-        let sftp = channel.sftp().await?;
-        Ok(sftp)
+        Ok(AsyncChannel::from(russh_channel))
     }
 }
 
-impl Deref for Session {
-    type Target = Handle<NoCheckHandler>;
+impl<H: Handler> Deref for AsyncSession<H> {
+    type Target = Handle<H>;
     fn deref(&self) -> &Self::Target {
         &self.session
     }
 }
 
-/// SSH channel.
+/// A thin wrapper around [`russh::Channel`] which provides access to async read/write streams (stdout/stderr/stdin) and
+/// async event handling.
 ///
-/// Shutdown lifecycle (may vary):
+/// Implements [`Deref`] to allow access to the underlying [`russh::ChannelWriteHalf`].
+///
+/// # Shutdown lifecycle
+///
+/// During shutdown, events _may_ be received in the following order. However this should not be relied upon, as the
+/// order may be different and none of these events are guaranteed to occur, except for [`Self::wait_close`] which will
+/// always happen last.
+///
 /// 1. [`Self::wait_success_failure`].
-/// 2. [`Self::wait_eof`] - Guarantees all stream data has been received, stdout/stderr/etc. will produce no more data.
-/// 3. [`Self::wait_exit_status`] - The exit status of the command run.
-/// 4. [`Self::wait_close`] - This channel is closed, no more events will occur. Will always occur last.
-///
-/// If the channel is closed abruptly, only [`Self::wait_close`] is guaranteed to occur.
-pub struct Channel {
+/// 2. [`Self::wait_eof`] - Guarantees all stream data has been received, i.e. stdout/stderr will produce no more data.
+///    Channels may be closed without sending EOF; see [this StackOverflow answer](https://stackoverflow.com/a/23257958).
+/// 3. [`Self::wait_exit_status`] - The exit status of the command run, if applicable.
+/// 4. [`Self::wait_close`] - This channel is closed, no more events will occur.
+pub struct AsyncChannel {
     write_half: ChannelWriteHalf<Msg>,
     subscribe_send: mpsc::UnboundedSender<(Option<u32>, mpsc::UnboundedSender<CryptoVec>)>,
     success_failure: Promise<bool>,
@@ -108,7 +137,7 @@ pub struct Channel {
     reader: JoinHandle<()>,
 }
 
-impl From<russh::Channel<Msg>> for Channel {
+impl From<russh::Channel<Msg>> for AsyncChannel {
     fn from(inner: russh::Channel<Msg>) -> Self {
         let (mut read_half, write_half) = inner.split();
         let (mut resolve_success_failure, success_failure) = promise();
@@ -185,7 +214,7 @@ impl From<russh::Channel<Msg>> for Channel {
     }
 }
 
-impl Channel {
+impl AsyncChannel {
     /// Returns the specified stream as an [`impl AsyncRead`](AsyncRead).
     ///
     /// When this is called for the same `ext` more than once, the later call will disconnect the
@@ -224,88 +253,52 @@ impl Channel {
         self.write_stream(None)
     }
 
-    /// Starst an SFTP session on this channel.
-    ///
-    /// Make sure to request the SFTP subsystem before calling this:
-    /// ```rust,ignore
-    /// channel.request_subsystem(true, "sftp").await.unwrap();
-    /// ```
-    pub async fn sftp(&self) -> SftpResult<SftpSession> {
-        SftpSession::new(tokio::io::join(self.stdout(), self.stdin())).await
+    /// Resolves when success or failure has been received, where `true` indicates success.
+    pub fn recv_success_failure(&self) -> &Promise<bool> {
+        &self.success_failure
     }
 
-    pub async fn wait_success_failure(&self) -> Option<bool> {
-        self.success_failure.wait().await.copied()
-    }
-
-    pub fn get_success_failure(&self) -> Result<bool, PromiseError> {
-        self.success_failure.get().copied()
-    }
-
-    /// Returns when EOF has been received, indicating all stream data is complete.
+    /// Resolves when EOF has been received, indicating all stream data is complete.
     ///
     /// At that point, any streams from [`Self::stdout`]/[`Self::stderr`]/[`Self::read_stream`]
     /// will return no additional data.
-    ///
-    /// If this returns `None`, the channel was closed before EOF was received.
-    pub async fn wait_eof(&self) -> Option<()> {
-        self.eof.wait().await.copied()
+    pub fn recv_eof(&self) -> &Promise<()> {
+        &self.eof
     }
 
-    /// Returns if EOF has been receieved, indicating all stream data is complete.
-    ///
-    /// At that point, any streams from [`Self::stdout`]/[`Self::stderr`]/[`Self::read_stream`]
-    /// will return no additional data.
-    ///
-    /// If this returns [`Err(PromiseError::Dropped)`](PromiseError::Dropped), the channel was
-    /// closed before EOF was received.
-    pub fn get_eof(&self) -> Result<(), PromiseError> {
-        self.eof.get().copied()
+    /// Resolves when the command exit status has been received.
+    pub fn recv_exit_status(&self) -> &Promise<u32> {
+        &self.exit_status
     }
 
-    /// Returns when the command exit status has been received.
+    /// Returns when the channel has been closed.
     ///
-    /// If this returns `None`, the channel was closed before the exit status was received.
-    pub async fn wait_exit_status(&self) -> Option<u32> {
-        self.exit_status.wait().await.copied()
-    }
-
-    /// Returns the command exit status, if it has been received.
-    ///
-    /// If this returns [`Err(PromiseError::Dropped)`](PromiseError::Dropped), the channel was
-    /// closed before the exit status was received.
-    pub fn get_exit_status(&self) -> Result<u32, PromiseError> {
-        self.exit_status.get().copied()
-    }
-
-    /// Returns when the channel has been closed (no more events will occur).
+    /// After this point, no more events will resolve.
     pub async fn wait_close(&mut self) {
         let _ = (&mut self.reader).await;
     }
 
-    /// Returns if the channel has been closed (no more events will occur).
+    /// Returns if the channel has been closed. See [`Self::wait_close`].
     pub fn is_closed(&self) -> bool {
         self.reader.is_finished()
     }
 }
 
-impl Deref for Channel {
+impl Deref for AsyncChannel {
     type Target = ChannelWriteHalf<Msg>;
     fn deref(&self) -> &Self::Target {
         &self.write_half
     }
 }
 
+/// Implements [`AsyncRead`](tokio::io::AsyncRead) and [`AsyncBufRead`](tokio::io::AsyncBufRead) for reading data from a
+/// SSH channel.
 pub struct ReadStream {
     recv: mpsc::UnboundedReceiver<CryptoVec>,
     buffer: Option<(CryptoVec, usize)>,
 }
 impl AsyncRead for ReadStream {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
         // Defer to the underlying `AsyncBufRead` implementation.
         let read_buf = ready!(self.as_mut().poll_fill_buf(cx))?;
         let amt = std::cmp::min(read_buf.len(), buf.capacity());
@@ -344,7 +337,7 @@ impl AsyncBufRead for ReadStream {
     }
 }
 
-pub fn promise<T>() -> (Resolve<T>, Promise<T>) {
+pub(crate) fn promise<T>() -> (Resolve<T>, Promise<T>) {
     let inner = Arc::new(Inner::new());
     (
         Resolve {
@@ -354,88 +347,90 @@ pub fn promise<T>() -> (Resolve<T>, Promise<T>) {
     )
 }
 
+/// A container for a value of type `T` that may not yet be resolved.
+///
+/// Similar to a [oneshot channel](`tokio::sync::oneshot`), but allows for multiple consumers to wait for the value to
+/// be resolved, which will be provided as a reference (`&T`).
+///
+/// Similar to a [`OnceCell`](tokio::sync::OnceCell), but consumers may only await the value, and may not attempt to set
+/// it.
+pub struct Promise<T> {
+    inner: Arc<Inner<T>>,
+}
+impl<T> Promise<T> {
+    /// Waits for the promise to be resolved, returning the value once set.
+    ///
+    /// Returns `None` if the resolver was dropped before sending a value.
+    pub async fn wait(&self) -> Option<&T> {
+        self.inner.semaphore.acquire().await.unwrap_err();
+        self.try_get().ok()
+    }
+
+    /// Attempts to get the value if it has been resolved, returning an error if not.
+    ///
+    /// Returns [`PromiseError::Empty`] if the value has not yet been set, and [`PromiseError::Dropped`] if the resolver
+    /// was dropped before sending a value.
+    pub fn try_get(&self) -> Result<&T, PromiseError> {
+        self.inner.try_get()
+    }
+}
+
+/// An error that may occur when trying to get the value from a [`Promise`], see [`Promise::try_get`].
+#[derive(Debug, Eq, PartialEq, Clone, thiserror::Error)]
+pub enum PromiseError {
+    /// The resolver has not yet sent a value.
+    #[error("value not yet sent")]
+    Empty,
+    /// The resolver was dropped before sending a value.
+    #[error("closed before a value was sent")]
+    Dropped,
+}
+
 // SAFETY: must not be clonable.
-pub struct Resolve<T> {
+pub(crate) struct Resolve<T> {
     inner: Option<Weak<Inner<T>>>,
 }
 impl<T> Resolve<T> {
+    #[allow(dead_code)]
     pub fn into_resolve(mut self, value: T) {
-        self.resolve(value)
-            .unwrap_or_else(|_| panic!("already resolved"));
+        self.resolve(value).unwrap_or_else(|_| panic!("already resolved"));
     }
 
     pub fn resolve(&mut self, value: T) -> Result<(), T> {
         let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) else {
             return Err(value);
         };
-
-        // SAFETY: `&mut self: Resolve` has exclusive access to `set_value`, once.
+        // SAFETY: `&mut self: Resolve` has exclusive access to `resolve` once.
         unsafe {
-            inner.value.get().write(MaybeUninit::new(value));
+            inner.resolve(Some(value));
         }
-
-        // Using release ordering so any threads that read a true from this
-        // atomic is able to read the value we just stored.
-        inner
-            .flag
-            .store(FLAG_RESOLVED | FLAG_INITIALIZED, Ordering::Release);
-        inner.semaphore.close();
-
         Ok(())
     }
 }
 impl<T> Drop for Resolve<T> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) {
-            // SAFETY: `&mut self: Resolve` has exclusive access to `set_value`, once.
-            inner.flag.store(FLAG_RESOLVED, Ordering::Release);
+            // SAFETY: `&mut self: Resolve` has exclusive access to call resolve once. Because we use `inner.take()`, we
+            // know `Self::resolve` was not called.
+            inner.flag.store(FLAG_COMPLETED, Ordering::Release);
             inner.semaphore.close();
         }
     }
 }
 
-pub struct Promise<T> {
-    inner: Arc<Inner<T>>,
-}
-impl<T> Promise<T> {
-    pub async fn wait(&self) -> Option<&T> {
-        self.inner.semaphore.acquire().await.unwrap_err();
-        self.get().ok()
-    }
-
-    pub fn get(&self) -> Result<&T, PromiseError> {
-        self.inner.get()
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum PromiseError {
-    /// The resolver has not yet sent a value.
-    Unresolved,
-    /// The resolver was dropped before sending a value.
-    Dropped,
-}
-impl std::fmt::Display for PromiseError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Unresolved => write!(f, "not yet resovled"),
-            Self::Dropped => write!(f, "resolver dropped without resolving"),
-        }
-    }
-}
-impl std::error::Error for PromiseError {}
-
-const FLAG_RESOLVED: u8 = 0b01;
-const FLAG_INITIALIZED: u8 = 0b10;
+/// Flag for when the [`Resolve`] will no longer change the value of the [`Inner`], because it was either resolved or
+/// dropped.
+const FLAG_COMPLETED: u8 = 0b01;
+/// Flag for when the value is set and can be read.
+const FLAG_VALUE_SET: u8 = 0b10;
 
 // Based on [`tokio::sync::OnceCell`].
 //
 // Any thread with an `&self` may access the `value` field according the following rules:
 //
-//  1. Iff `flag & FLAG_RESOLVED` is false, the `value` field may be modified by the
-//     thread holding the permit on the semaphore.
-//  2. Iff `flag & FLAG_INITIALIZED` is true, the `value` field may be accessed immutably by
-//     any thread.
+//  1. Iff `flag & FLAG_RESOLVED` is false, the `value` field may be modified by the thread holding the permit on the
+//     semaphore.
+//  2. Iff `flag & FLAG_INITIALIZED` is true, the `value` field may be accessed immutably by any thread.
 //
 // If `flag & FLAG_RESOLVED` is true, but `flag & FLAG_INITIALIZED` is false, then the resolver
 // was dropped before the value was set.
@@ -445,7 +440,7 @@ struct Inner<T> {
     semaphore: Semaphore,
 }
 impl<T> Inner<T> {
-    fn new() -> Self {
+    const fn new() -> Self {
         Self {
             flag: AtomicU8::new(0),
             value: UnsafeCell::new(MaybeUninit::uninit()),
@@ -453,13 +448,13 @@ impl<T> Inner<T> {
         }
     }
 
-    fn get(&self) -> Result<&T, PromiseError> {
+    fn try_get(&self) -> Result<&T, PromiseError> {
         // Using acquire ordering so any threads that read a true from this
         // atomic is able to read the value.
         let flag = self.flag.load(Ordering::Acquire);
-        let resolved = 0 != flag & FLAG_RESOLVED;
+        let resolved = 0 != flag & FLAG_COMPLETED;
         if resolved {
-            let initialized = 0 != flag & FLAG_INITIALIZED;
+            let initialized = 0 != flag & FLAG_VALUE_SET;
             if initialized {
                 // SAFETY: Value is initialized.
                 Ok(unsafe { &*(*self.value.get()).as_ptr() })
@@ -467,8 +462,26 @@ impl<T> Inner<T> {
                 Err(PromiseError::Dropped)
             }
         } else {
-            Err(PromiseError::Unresolved)
+            Err(PromiseError::Empty)
         }
+    }
+
+    /// SAFETY: The "owning" [`Resolve`] may call this once.
+    unsafe fn resolve(&self, value_or_dropped: Option<T>) {
+        let flag = if let Some(value) = value_or_dropped {
+            // SAFETY: `&mut self: Resolve` has exclusive access to set the value once.
+            unsafe {
+                self.value.get().write(MaybeUninit::new(value));
+            }
+            FLAG_COMPLETED | FLAG_VALUE_SET
+        } else {
+            // Dropped, do not set `FLAG_INITIALIZED`.
+            FLAG_COMPLETED
+        };
+        // Using release ordering so any threads that read a true from this
+        // atomic is able to read the value we just stored.
+        self.flag.store(flag, Ordering::Release);
+        self.semaphore.close();
     }
 }
 
