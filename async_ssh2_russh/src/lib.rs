@@ -9,21 +9,22 @@ use std::ops::Deref;
 use std::path::Path;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Arc, Weak};
-use std::task::{Context, Poll, ready};
+use std::sync::{Arc, Mutex, Weak};
+use std::task::{Context, Poll, Waker, ready};
 
 use russh::client::{Config, Handle, Handler, Msg, connect};
 use russh::keys::{PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::{ChannelMsg, ChannelWriteHalf, CryptoVec};
 use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::ToSocketAddrs;
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
-// Pub items
+// `pub` items
 #[cfg(feature = "sftp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
 pub mod sftp;
+#[doc(no_inline)]
 pub use russh::Error as SshError;
 #[cfg(feature = "sftp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
@@ -96,9 +97,9 @@ impl AsyncSession {
         }
     }
 
-    /// Opens a [`Channel`] in this session.
+    /// Opens an [`AsyncChannel`] in this session.
     ///
-    /// [`Channel`] is the asnyc wrapper for [`russh::Channel`].
+    /// [`AsyncChannel`] is the asnyc wrapper for [`russh::Channel`].
     pub async fn open_channel(&self) -> Result<AsyncChannel, SshError> {
         let russh_channel = self.session.channel_open_session().await?;
         Ok(AsyncChannel::from(russh_channel))
@@ -123,10 +124,10 @@ impl<H: Handler> Deref for AsyncSession<H> {
 /// order may be different and none of these events are guaranteed to occur, except for [`Self::wait_close`] which will
 /// always happen last.
 ///
-/// 1. [`Self::wait_success_failure`].
-/// 2. [`Self::wait_eof`] - Guarantees all stream data has been received, i.e. stdout/stderr will produce no more data.
+/// 1. [`Self::recv_success_failure`].
+/// 2. [`Self::recv_eof`] - Guarantees all stream data has been received, i.e. stdout/stderr will produce no more data.
 ///    Channels may be closed without sending EOF; see [this StackOverflow answer](https://stackoverflow.com/a/23257958).
-/// 3. [`Self::wait_exit_status`] - The exit status of the command run, if applicable.
+/// 3. [`Self::recv_exit_status`] - The exit status of the command run, if applicable.
 /// 4. [`Self::wait_close`] - This channel is closed, no more events will occur.
 pub struct AsyncChannel {
     write_half: ChannelWriteHalf<Msg>,
@@ -215,7 +216,10 @@ impl From<russh::Channel<Msg>> for AsyncChannel {
 }
 
 impl AsyncChannel {
-    /// Returns the specified stream as an [`impl AsyncRead`](AsyncRead).
+    /// Returns the specified stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`])..
+    ///
+    /// Note that the returned stream will only receive data after this call, so call this before calling
+    /// [`exec`](ChannelWriteHalf::exec).
     ///
     /// When this is called for the same `ext` more than once, the later call will disconnect the
     /// first.
@@ -225,14 +229,20 @@ impl AsyncChannel {
         ReadStream { recv, buffer: None }
     }
 
-    /// Returns stdout as an [`impl AsyncRead`](AsyncRead).
+    /// Returns stdout as an stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`]).
+    ///
+    /// Note that the returned stream will only receive data after this call, so call this before calling
+    /// [`exec`](ChannelWriteHalf::exec).
     ///
     /// When this is called more than once, the later call will disconnect the first.
     pub fn stdout(&self) -> ReadStream {
         self.read_stream(None)
     }
 
-    /// Returns stderr as an [`impl AsyncRead`](AsyncRead).
+    /// Returns stderr as an stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`]).
+    ///
+    /// Note that the returned stream will only receive data after this call, so call this before calling
+    /// [`exec`](ChannelWriteHalf::exec).
     ///
     /// When this is called more than once, the later call will disconnect the first.
     pub fn stderr(&self) -> ReadStream {
@@ -291,8 +301,7 @@ impl Deref for AsyncChannel {
     }
 }
 
-/// Implements [`AsyncRead`](tokio::io::AsyncRead) and [`AsyncBufRead`](tokio::io::AsyncBufRead) for reading data from a
-/// SSH channel.
+/// Implements [`AsyncRead`] (and [`AsyncBufRead`]) for reading data from a SSH channel stream.
 pub struct ReadStream {
     recv: mpsc::UnboundedReceiver<CryptoVec>,
     buffer: Option<(CryptoVec, usize)>,
@@ -362,8 +371,7 @@ impl<T> Promise<T> {
     ///
     /// Returns `None` if the resolver was dropped before sending a value.
     pub async fn wait(&self) -> Option<&T> {
-        self.inner.semaphore.acquire().await.unwrap_err();
-        self.try_get().ok()
+        std::future::poll_fn(|cx| self.inner.poll_get(cx)).await
     }
 
     /// Attempts to get the value if it has been resolved, returning an error if not.
@@ -371,7 +379,10 @@ impl<T> Promise<T> {
     /// Returns [`PromiseError::Empty`] if the value has not yet been set, and [`PromiseError::Dropped`] if the resolver
     /// was dropped before sending a value.
     pub fn try_get(&self) -> Result<&T, PromiseError> {
-        self.inner.try_get()
+        self.inner
+            .get()
+            .ok_or(PromiseError::Empty)
+            .and_then(|value_opt| value_opt.ok_or(PromiseError::Dropped))
     }
 }
 
@@ -412,8 +423,9 @@ impl<T> Drop for Resolve<T> {
         if let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) {
             // SAFETY: `&mut self: Resolve` has exclusive access to call resolve once. Because we use `inner.take()`, we
             // know `Self::resolve` was not called.
-            inner.flag.store(FLAG_COMPLETED, Ordering::Release);
-            inner.semaphore.close();
+            unsafe {
+                inner.resolve(None);
+            }
         }
     }
 }
@@ -424,49 +436,61 @@ const FLAG_COMPLETED: u8 = 0b01;
 /// Flag for when the value is set and can be read.
 const FLAG_VALUE_SET: u8 = 0b10;
 
-// Based on [`tokio::sync::OnceCell`].
-//
-// Any thread with an `&self` may access the `value` field according the following rules:
-//
-//  1. Iff `flag & FLAG_RESOLVED` is false, the `value` field may be modified by the thread holding the permit on the
-//     semaphore.
-//  2. Iff `flag & FLAG_INITIALIZED` is true, the `value` field may be accessed immutably by any thread.
-//
-// If `flag & FLAG_RESOLVED` is true, but `flag & FLAG_INITIALIZED` is false, then the resolver
-// was dropped before the value was set.
+/// Any thread with an `&self` may access the `value` field according the following rules:
+///
+///  1. Iff `flag & FLAG_COMPLETED` is false, the `value` field may be modified by the owning `Resolve` once.
+///  2. Iff `flag & FLAG_VALUE_SET` is true, the `value` field may be accessed immutably by any thread.
+///
+/// If `flag & FLAG_COMPLETED` is true, but `flag & FLAG_VALUE_SET` is false, then the owning `Resolve` was dropped
+/// before the value was set.
 struct Inner<T> {
     flag: AtomicU8,
     value: UnsafeCell<MaybeUninit<T>>,
-    semaphore: Semaphore,
+    wakers: Mutex<Vec<Waker>>,
 }
 impl<T> Inner<T> {
     const fn new() -> Self {
         Self {
             flag: AtomicU8::new(0),
             value: UnsafeCell::new(MaybeUninit::uninit()),
-            semaphore: Semaphore::const_new(0),
+            wakers: Mutex::new(Vec::new()),
         }
     }
 
-    fn try_get(&self) -> Result<&T, PromiseError> {
+    fn poll_get<'a>(&'a self, cx: &mut Context<'_>) -> Poll<Option<&'a T>> {
+        if let Some(value_opt) = self.get() {
+            return Poll::Ready(value_opt);
+        }
+        {
+            // Acquire lock.
+            let mut wakers = self.wakers.lock().unwrap();
+            // Check again in case of race condition with resolver.
+            if let Some(value_opt) = self.get() {
+                return Poll::Ready(value_opt);
+            }
+            // Add the current waker to the list of wakers.
+            wakers.push(cx.waker().clone());
+        }
+        Poll::Pending
+    }
+
+    fn get(&self) -> Option<Option<&T>> {
         // Using acquire ordering so any threads that read a true from this
         // atomic is able to read the value.
         let flag = self.flag.load(Ordering::Acquire);
         let resolved = 0 != flag & FLAG_COMPLETED;
         if resolved {
             let initialized = 0 != flag & FLAG_VALUE_SET;
-            if initialized {
+            initialized.then(|| {
                 // SAFETY: Value is initialized.
-                Ok(unsafe { &*(*self.value.get()).as_ptr() })
-            } else {
-                Err(PromiseError::Dropped)
-            }
+                Some(unsafe { &*(*self.value.get()).as_ptr() })
+            })
         } else {
-            Err(PromiseError::Empty)
+            None
         }
     }
 
-    /// SAFETY: The "owning" [`Resolve`] may call this once.
+    /// SAFETY: The owning [`Resolve`] may call this once.
     unsafe fn resolve(&self, value_or_dropped: Option<T>) {
         let flag = if let Some(value) = value_or_dropped {
             // SAFETY: `&mut self: Resolve` has exclusive access to set the value once.
@@ -481,7 +505,8 @@ impl<T> Inner<T> {
         // Using release ordering so any threads that read a true from this
         // atomic is able to read the value we just stored.
         self.flag.store(flag, Ordering::Release);
-        self.semaphore.close();
+        let wakers = { std::mem::take(&mut *self.wakers.lock().unwrap()) };
+        wakers.into_iter().for_each(Waker::wake);
     }
 }
 
