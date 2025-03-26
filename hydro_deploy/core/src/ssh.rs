@@ -6,13 +6,16 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
+use async_ssh2_russh::russh::client::Config;
+use async_ssh2_russh::russh::{Disconnect, compression};
+use async_ssh2_russh::russh_sftp::protocol::{Status, StatusCode};
+use async_ssh2_russh::sftp::SftpError;
+use async_ssh2_russh::{AsyncChannel, AsyncSession};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
 use inferno::collapse::Collapse;
 use inferno::collapse::perf::Folder;
 use nanoid::nanoid;
-use russh::client::Config;
-use russh_sftp::protocol::{Status, StatusCode};
 use tokio::fs::File;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::TcpListener;
@@ -25,7 +28,6 @@ use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
-use crate::ssh_client::{Channel, Session};
 use crate::util::{async_retry, prioritized_broadcast};
 use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
@@ -35,8 +37,8 @@ pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>)
 
 struct LaunchedSshBinary {
     _resource_result: Arc<ResourceResult>,
-    session: Option<Session>,
-    channel: Channel,
+    session: Option<AsyncSession>,
+    channel: AsyncChannel,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
     stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
@@ -97,12 +99,20 @@ impl LaunchedBinary for LaunchedSshBinary {
 
     fn exit_code(&self) -> Option<i32> {
         // until the program exits, the exit status is meaningless
-        self.channel.get_exit_status().map(|ec| ec as _).ok()
+        self.channel
+            .recv_exit_status()
+            .try_get()
+            .map(|&ec| ec as _)
+            .ok()
     }
 
     async fn wait(&mut self) -> Result<i32> {
         self.channel.wait_close().await;
-        Ok(self.channel.get_exit_status().map(|ec| ec as _)?)
+        Ok(self
+            .channel
+            .recv_exit_status()
+            .try_get()
+            .map(|&ec| ec as _)?)
     }
 
     async fn stop(&mut self) -> Result<()> {
@@ -204,7 +214,7 @@ impl Drop for LaunchedSshBinary {
         if let Some(session) = self.session.take() {
             tokio::task::block_in_place(|| {
                 tokio::runtime::Handle::current().block_on(session.disconnect(
-                    russh::Disconnect::ByApplication,
+                    Disconnect::ByApplication,
                     "",
                     "",
                 ))
@@ -264,7 +274,7 @@ pub trait LaunchedSshHost: Send + Sync {
         }
     }
 
-    async fn open_ssh_session(&self) -> Result<Session> {
+    async fn open_ssh_session(&self) -> Result<AsyncSession> {
         let target_addr = SocketAddr::new(
             self.get_external_ip()
                 .as_ref()
@@ -286,15 +296,17 @@ pub trait LaunchedSshHost: Send + Sync {
                 &|| async {
                     let mut config = Config::default();
                     config.preferred.compression = Cow::Borrowed(&[
-                        russh::compression::ZLIB,
-                        russh::compression::ZLIB_LEGACY,
-                        russh::compression::NONE,
+                        compression::ZLIB,
+                        compression::ZLIB_LEGACY,
+                        compression::NONE,
                     ]);
-
-                    let session =
-                        Session::connect(config, self.ssh_key_path(), self.ssh_user(), target_addr)
-                            .await?;
-                    Ok(session)
+                    AsyncSession::connect_publickey(
+                        config,
+                        target_addr,
+                        self.ssh_user(),
+                        self.ssh_key_path(),
+                    )
+                    .await
                 },
                 10,
                 Duration::from_secs(1),
@@ -306,7 +318,7 @@ pub trait LaunchedSshHost: Send + Sync {
     }
 }
 
-async fn create_channel(session: &Session) -> Result<Channel> {
+async fn create_channel(session: &AsyncSession) -> Result<AsyncChannel> {
     async_retry(
         &|| async {
             Ok(tokio::time::timeout(Duration::from_secs(60), session.open_channel()).await??)
@@ -364,9 +376,8 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
 
                         match sftp.rename(&temp_path, binary_path).await {
                             Ok(_) => {}
-                            Err(russh_sftp::client::error::Error::Status(Status {
-                                // 4
-                                status_code: StatusCode::Failure,
+                            Err(SftpError::Status(Status {
+                                status_code: StatusCode::Failure, // SSH_FXP_STATUS = 4
                                 ..
                             })) => {
                                 // file already exists
@@ -431,7 +442,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                         ));
                     }
 
-                    let exit_code = setup_channel.wait_exit_status().await;
+                    let exit_code = setup_channel.recv_exit_status().wait().await.copied();
                     setup_channel.wait_close().await;
                     if Some(0) != exit_code {
                         anyhow::bail!("Failed to install perf on remote host");
