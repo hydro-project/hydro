@@ -23,7 +23,7 @@ pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     thunk().await
 }
 
-type PriorityBroadcacst = (
+type PriorityBroadcast = (
     Arc<Mutex<Option<oneshot::Sender<String>>>>,
     Arc<Mutex<Vec<PrefixFilteredChannel>>>,
 );
@@ -31,7 +31,7 @@ type PriorityBroadcacst = (
 pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + Unpin + 'static>(
     mut lines: T,
     default: impl Fn(String) + Send + 'static,
-) -> PriorityBroadcacst {
+) -> PriorityBroadcast {
     let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
     // Option<String> is the prefix to separate special stdout messages from regular ones
     let receivers = Arc::new(Mutex::new(Vec::<PrefixFilteredChannel>::new()));

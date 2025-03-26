@@ -1,4 +1,13 @@
-# TODO(mingwei): If this becomes a separate crate, merge outer rustfmt.toml.
-max_width = 120
 comment_width = 120 # This is ignored if larger than `max_width`
+format_code_in_doc_comments = true
+format_macro_matchers = true
+group_imports = "StdExternalCrate"
+hex_literal_case = "Lower"
+imports_granularity = "Module"
+max_width = 120
+newline_style = "Unix"
+normalize_comments = true
+normalize_doc_attributes = true
+use_field_init_shorthand = true
+use_try_shorthand = true
 wrap_comments = true
