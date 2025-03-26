@@ -18,7 +18,6 @@ pub mod localhost;
 pub use localhost::LocalhostHost;
 
 pub mod ssh;
-pub mod ssh_client;
 
 pub mod gcp;
 pub use gcp::GcpComputeEngineHost;
