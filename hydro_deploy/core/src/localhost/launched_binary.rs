@@ -17,6 +17,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
+use super::samply::{FxProfile, samply_to_folded};
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
@@ -177,8 +178,8 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 let tracing_data = self.tracing_data_local.take().unwrap();
 
                 if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
-                    if let Some(dtrace_outfile) = tracing_config.dtrace_outfile.as_ref() {
-                        std::fs::copy(&tracing_data.outfile, dtrace_outfile)?;
+                    if let Some(samply_outfile) = tracing_config.samply_outfile.as_ref() {
+                        std::fs::copy(&tracing_data.outfile, samply_outfile)?;
                     }
                 } else if cfg!(target_family = "unix") {
                     if let Some(perf_outfile) = tracing_config.perf_raw_outfile.as_ref() {
@@ -186,7 +187,13 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     }
                 }
 
-                let fold_data = if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                let fold_data = if cfg!(target_os = "macos") {
+                    let loaded = serde_json::from_reader::<_, FxProfile>(std::fs::File::open(
+                        tracing_data.outfile.path(),
+                    )?)?;
+
+                    samply_to_folded(loaded).await.into()
+                } else if cfg!(target_family = "windows") {
                     let mut fold_er = DtraceFolder::from(
                         tracing_config
                             .fold_dtrace_options

@@ -80,7 +80,7 @@ async fn main() {
                 .tracing(
                     TracingOptions::builder()
                         .perf_raw_outfile("leader.perf.data")
-                        .dtrace_outfile("leader.stacks")
+                        .samply_outfile("leader.profile")
                         .fold_outfile("leader.data.folded")
                         .flamegraph_outfile("leader.svg")
                         .frequency(frequency)
@@ -97,7 +97,7 @@ async fn main() {
                     .tracing(
                         TracingOptions::builder()
                             .perf_raw_outfile(format!("cluster{}.perf.data", idx))
-                            .dtrace_outfile(format!("cluster{}.leader.stacks", idx))
+                            .samply_outfile(format!("cluster{}.profile", idx))
                             .fold_outfile(format!("cluster{}.data.folded", idx))
                             .flamegraph_outfile(format!("cluster{}.svg", idx))
                             .frequency(frequency)
