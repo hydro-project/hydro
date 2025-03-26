@@ -298,7 +298,8 @@ pub trait LaunchedSshHost: Send + Sync {
                         compression::ZLIB,
                         compression::ZLIB_LEGACY,
                         compression::NONE,
-                    ]).into();
+                    ])
+                        .into();
                     AsyncSession::connect_publickey(
                         config,
                         target_addr,
@@ -422,7 +423,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         }) = tracing.clone()
         {
             let id_clone = id.clone();
-            ProgressTracker::leaf("instal perf", async {
+            ProgressTracker::leaf("install perf", async {
                 // Run setup command
                 if let Some(setup_command) = setup_command {
                     let mut setup_channel = create_channel(&session).await?;
