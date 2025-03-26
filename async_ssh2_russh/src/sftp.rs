@@ -1,6 +1,7 @@
 //! SFTP support for the `async_ssh2_russh` crate.
 
 use russh_sftp::client::SftpSession;
+#[doc(no_inline)]
 pub use russh_sftp::client::error::Error as SftpError;
 
 use crate::{AsyncChannel, AsyncSession, SshError};
@@ -8,7 +9,7 @@ use crate::{AsyncChannel, AsyncSession, SshError};
 impl AsyncSession {
     /// Opens an SFTP channel.
     ///
-    /// Equivalent to [`Session::open_channel()`] followed by requesting the SFTP subsystem:
+    /// Equivalent to [`AsyncSession::open_channel()`] followed by requesting the SFTP subsystem:
     /// ```rust,ignore
     /// channel.request_subsystem(true, "sftp").await?;
     /// ```
@@ -24,7 +25,7 @@ impl AsyncSession {
 impl AsyncChannel {
     /// Starst an SFTP session on this channel.
     ///
-    /// Make sure this channel was opened with [`Session::open_sftp`], or if not, make sure to
+    /// Make sure this channel was opened with [`AsyncSession::open_sftp`], or if not, make sure to
     /// request the SFTP subsystem before calling this:
     /// ```rust,ignore
     /// channel.request_subsystem(true, "sftp").await.unwrap();
@@ -42,8 +43,8 @@ impl AsyncChannel {
 pub enum SshOrSftpError {
     /// SSH error.
     #[error("SSH Error: {0}")]
-    SshError(#[from] SshError),
+    Ssh(#[from] SshError),
     /// SFTP error.
     #[error("SFTP Error: {0}")]
-    SftpError(#[from] SftpError),
+    Sftp(#[from] SftpError),
 }
