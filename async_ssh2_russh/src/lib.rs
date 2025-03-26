@@ -2,20 +2,15 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![warn(missing_docs)]
 
-use std::cell::UnsafeCell;
 use std::collections::HashMap;
-use std::mem::MaybeUninit;
 use std::ops::Deref;
 use std::path::Path;
-use std::pin::Pin;
-use std::sync::atomic::{AtomicU8, Ordering};
-use std::sync::{Arc, Mutex, Weak};
-use std::task::{Context, Poll, Waker, ready};
+use std::sync::Arc;
 
 use russh::client::{Config, Handle, Handler, Msg, connect};
 use russh::keys::{PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::{ChannelMsg, ChannelWriteHalf, CryptoVec};
-use tokio::io::{AsyncBufRead, AsyncRead, AsyncWrite, ReadBuf};
+use tokio::io::AsyncWrite;
 use tokio::net::ToSocketAddrs;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
@@ -30,6 +25,10 @@ pub use russh::Error as SshError;
 #[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
 pub use russh_sftp;
 pub use {russh, tokio};
+mod promise;
+pub use promise::{Promise, PromiseError};
+mod read_stream;
+pub use read_stream::ReadStream;
 
 /// A handler that does not check the server's public key.
 ///
@@ -141,9 +140,9 @@ pub struct AsyncChannel {
 impl From<russh::Channel<Msg>> for AsyncChannel {
     fn from(inner: russh::Channel<Msg>) -> Self {
         let (mut read_half, write_half) = inner.split();
-        let (mut resolve_success_failure, success_failure) = promise();
-        let (mut resolve_eof, eof) = promise();
-        let (mut resolve_exit_status, exit_status) = promise();
+        let (mut resolve_success_failure, success_failure) = promise::channel();
+        let (mut resolve_eof, eof) = promise::channel();
+        let (mut resolve_exit_status, exit_status) = promise::channel();
         let (subscribe_send, mut subscribe_recv) = mpsc::unbounded_channel();
 
         let reader = tokio::task::spawn(async move {
@@ -216,7 +215,7 @@ impl From<russh::Channel<Msg>> for AsyncChannel {
 }
 
 impl AsyncChannel {
-    /// Returns the specified stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`])..
+    /// Returns the specified stream as a [`ReadStream`].
     ///
     /// Note that the returned stream will only receive data after this call, so call this before calling
     /// [`exec`](ChannelWriteHalf::exec).
@@ -226,10 +225,10 @@ impl AsyncChannel {
     pub fn read_stream(&self, ext: Option<u32>) -> ReadStream {
         let (send, recv) = mpsc::unbounded_channel();
         let _ = self.subscribe_send.send((ext, send));
-        ReadStream { recv, buffer: None }
+        ReadStream::from_recv(recv)
     }
 
-    /// Returns stdout as an stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`]).
+    /// Returns stdout as an stream as a [`ReadStream`].
     ///
     /// Note that the returned stream will only receive data after this call, so call this before calling
     /// [`exec`](ChannelWriteHalf::exec).
@@ -239,7 +238,7 @@ impl AsyncChannel {
         self.read_stream(None)
     }
 
-    /// Returns stderr as an stream as a [`ReadStream`], which implements [`AsyncRead`] (and [`AsyncBufRead`]).
+    /// Returns stderr as an stream as a [`ReadStream`].
     ///
     /// Note that the returned stream will only receive data after this call, so call this before calling
     /// [`exec`](ChannelWriteHalf::exec).
@@ -300,224 +299,3 @@ impl Deref for AsyncChannel {
         &self.write_half
     }
 }
-
-/// Implements [`AsyncRead`] (and [`AsyncBufRead`]) for reading data from a SSH channel stream.
-pub struct ReadStream {
-    recv: mpsc::UnboundedReceiver<CryptoVec>,
-    buffer: Option<(CryptoVec, usize)>,
-}
-impl AsyncRead for ReadStream {
-    fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>, buf: &mut ReadBuf<'_>) -> Poll<std::io::Result<()>> {
-        // Defer to the underlying `AsyncBufRead` implementation.
-        let read_buf = ready!(self.as_mut().poll_fill_buf(cx))?;
-        let amt = std::cmp::min(read_buf.len(), buf.capacity());
-        buf.put_slice(&read_buf[..amt]);
-        self.consume(amt);
-        Poll::Ready(Ok(()))
-    }
-}
-impl AsyncBufRead for ReadStream {
-    fn poll_fill_buf(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<std::io::Result<&[u8]>> {
-        let this = self.get_mut();
-
-        if this.buffer.is_none() {
-            let opt_data = ready!(this.recv.poll_recv(cx));
-            this.buffer = opt_data.map(|data| (data, 0));
-        }
-
-        Poll::Ready(Ok(this
-            .buffer
-            .as_ref()
-            .map(|(buf, offset)| &buf[*offset..])
-            .unwrap_or(&[])))
-    }
-
-    fn consume(self: Pin<&mut Self>, amt: usize) {
-        let this = self.get_mut();
-        if let Some((buf, offset)) = &mut this.buffer {
-            *offset += amt;
-            debug_assert!(*offset <= buf.len());
-            if *offset == buf.len() {
-                this.buffer = None;
-            }
-        } else {
-            debug_assert!(amt == 0);
-        }
-    }
-}
-
-pub(crate) fn promise<T>() -> (Resolve<T>, Promise<T>) {
-    let inner = Arc::new(Inner::new());
-    (
-        Resolve {
-            inner: Some(Arc::downgrade(&inner)),
-        },
-        Promise { inner },
-    )
-}
-
-/// A container for a value of type `T` that may not yet be resolved.
-///
-/// Similar to a [oneshot channel](`tokio::sync::oneshot`), but allows for multiple consumers to wait for the value to
-/// be resolved, which will be provided as a reference (`&T`).
-///
-/// Similar to a [`OnceCell`](tokio::sync::OnceCell), but consumers may only await the value, and may not attempt to set
-/// it.
-pub struct Promise<T> {
-    inner: Arc<Inner<T>>,
-}
-impl<T> Promise<T> {
-    /// Waits for the promise to be resolved, returning the value once set.
-    ///
-    /// Returns `None` if the resolver was dropped before sending a value.
-    pub async fn wait(&self) -> Option<&T> {
-        std::future::poll_fn(|cx| self.inner.poll_get(cx)).await
-    }
-
-    /// Attempts to get the value if it has been resolved, returning an error if not.
-    ///
-    /// Returns [`PromiseError::Empty`] if the value has not yet been set, and [`PromiseError::Dropped`] if the resolver
-    /// was dropped before sending a value.
-    pub fn try_get(&self) -> Result<&T, PromiseError> {
-        self.inner
-            .get()
-            .ok_or(PromiseError::Empty)
-            .and_then(|value_opt| value_opt.ok_or(PromiseError::Dropped))
-    }
-}
-
-/// An error that may occur when trying to get the value from a [`Promise`], see [`Promise::try_get`].
-#[derive(Debug, Eq, PartialEq, Clone, thiserror::Error)]
-pub enum PromiseError {
-    /// The resolver has not yet sent a value.
-    #[error("value not yet sent")]
-    Empty,
-    /// The resolver was dropped before sending a value.
-    #[error("closed before a value was sent")]
-    Dropped,
-}
-
-// SAFETY: must not be clonable.
-pub(crate) struct Resolve<T> {
-    inner: Option<Weak<Inner<T>>>,
-}
-impl<T> Resolve<T> {
-    #[allow(dead_code)]
-    pub fn into_resolve(mut self, value: T) {
-        self.resolve(value).unwrap_or_else(|_| panic!("already resolved"));
-    }
-
-    pub fn resolve(&mut self, value: T) -> Result<(), T> {
-        let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) else {
-            return Err(value);
-        };
-        // SAFETY: `&mut self: Resolve` has exclusive access to `resolve` once.
-        unsafe {
-            inner.resolve(Some(value));
-        }
-        Ok(())
-    }
-}
-impl<T> Drop for Resolve<T> {
-    fn drop(&mut self) {
-        if let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) {
-            // SAFETY: `&mut self: Resolve` has exclusive access to call resolve once. Because we use `inner.take()`, we
-            // know `Self::resolve` was not called.
-            unsafe {
-                inner.resolve(None);
-            }
-        }
-    }
-}
-
-/// Flag for when the [`Resolve`] will no longer change the value of the [`Inner`], because it was either resolved or
-/// dropped.
-const FLAG_COMPLETED: u8 = 0b01;
-/// Flag for when the value is set and can be read.
-const FLAG_VALUE_SET: u8 = 0b10;
-
-/// Any thread with an `&self` may access the `value` field according the following rules:
-///
-///  1. Iff `flag & FLAG_COMPLETED` is false, the `value` field may be modified by the owning `Resolve` once.
-///  2. Iff `flag & FLAG_VALUE_SET` is true, the `value` field may be accessed immutably by any thread.
-///
-/// If `flag & FLAG_COMPLETED` is true, but `flag & FLAG_VALUE_SET` is false, then the owning `Resolve` was dropped
-/// before the value was set.
-struct Inner<T> {
-    flag: AtomicU8,
-    value: UnsafeCell<MaybeUninit<T>>,
-    wakers: Mutex<Vec<Waker>>,
-}
-impl<T> Inner<T> {
-    const fn new() -> Self {
-        Self {
-            flag: AtomicU8::new(0),
-            value: UnsafeCell::new(MaybeUninit::uninit()),
-            wakers: Mutex::new(Vec::new()),
-        }
-    }
-
-    fn poll_get<'a>(&'a self, cx: &mut Context<'_>) -> Poll<Option<&'a T>> {
-        if let Some(value_opt) = self.get() {
-            return Poll::Ready(value_opt);
-        }
-        {
-            // Acquire lock.
-            let mut wakers = self.wakers.lock().unwrap();
-            // Check again in case of race condition with resolver.
-            if let Some(value_opt) = self.get() {
-                return Poll::Ready(value_opt);
-            }
-            // Add the current waker to the list of wakers.
-            wakers.push(cx.waker().clone());
-        }
-        Poll::Pending
-    }
-
-    fn get(&self) -> Option<Option<&T>> {
-        // Using acquire ordering so any threads that read a true from this
-        // atomic is able to read the value.
-        let flag = self.flag.load(Ordering::Acquire);
-        let resolved = 0 != flag & FLAG_COMPLETED;
-        if resolved {
-            let initialized = 0 != flag & FLAG_VALUE_SET;
-            initialized.then(|| {
-                // SAFETY: Value is initialized.
-                Some(unsafe { &*(*self.value.get()).as_ptr() })
-            })
-        } else {
-            None
-        }
-    }
-
-    /// SAFETY: The owning [`Resolve`] may call this once.
-    unsafe fn resolve(&self, value_or_dropped: Option<T>) {
-        let flag = if let Some(value) = value_or_dropped {
-            // SAFETY: `&mut self: Resolve` has exclusive access to set the value once.
-            unsafe {
-                self.value.get().write(MaybeUninit::new(value));
-            }
-            FLAG_COMPLETED | FLAG_VALUE_SET
-        } else {
-            // Dropped, do not set `FLAG_INITIALIZED`.
-            FLAG_COMPLETED
-        };
-        // Using release ordering so any threads that read a true from this
-        // atomic is able to read the value we just stored.
-        self.flag.store(flag, Ordering::Release);
-        let wakers = { std::mem::take(&mut *self.wakers.lock().unwrap()) };
-        wakers.into_iter().for_each(Waker::wake);
-    }
-}
-
-// Since `get` gives us access to immutable references of the OnceCell, OnceCell
-// can only be Sync if T is Sync, otherwise OnceCell would allow sharing
-// references of !Sync values across threads. We need T to be Send in order for
-// OnceCell to by Sync because we can use `set` on `&OnceCell<T>` to send values
-// (of type T) across threads.
-unsafe impl<T: Sync + Send> Sync for Inner<T> {}
-
-// Access to OnceCell's value is guarded by the semaphore permit
-// and atomic operations on `value_set`, so as long as T itself is Send
-// it's safe to send it to another thread
-unsafe impl<T: Send> Send for Inner<T> {}
