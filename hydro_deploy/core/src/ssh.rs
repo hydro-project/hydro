@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -295,11 +294,11 @@ pub trait LaunchedSshHost: Send + Sync {
             async_retry(
                 &|| async {
                     let mut config = Config::default();
-                    config.preferred.compression = Cow::Borrowed(&[
+                    config.preferred.compression = (&[
                         compression::ZLIB,
                         compression::ZLIB_LEGACY,
                         compression::NONE,
-                    ]);
+                    ]).into();
                     AsyncSession::connect_publickey(
                         config,
                         target_addr,
@@ -412,7 +411,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         let mut command = binary_path.to_str().unwrap().to_owned();
         for arg in args {
             command.push(' ');
-            command.push_str(&shell_escape::unix::escape(Cow::Borrowed(arg)))
+            command.push_str(&shell_escape::unix::escape(arg.into()))
         }
 
         // Launch with tracing if specified.
