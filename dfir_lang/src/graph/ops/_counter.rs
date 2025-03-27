@@ -68,7 +68,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let duration_ident = wc.make_ident("duration");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0));
+            let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0_u64));
 
             let #read_ident = ::std::rc::Rc::clone(&#write_ident);
             let #duration_ident = #duration_expr;
