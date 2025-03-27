@@ -8,7 +8,12 @@ use crate::ir::*;
 /// Returns (op_id, count)
 pub fn parse_counter_usage(measurement: String) -> (usize, usize) {
     let regex = Regex::new(r"\((\d+)\): (\d+)").unwrap();
-    let matches = regex.captures_iter(&measurement).last().unwrap();
+    let matches = regex.captures_iter(&measurement).last().unwrap_or_else(|| {
+        ::core::panic!(
+            "Failed to parse counter usage from measurement: {:?}",
+            measurement
+        )
+    });
     let op_id = matches[1].parse::<usize>().unwrap();
     let count = matches[2].parse::<usize>().unwrap();
     (op_id, count)

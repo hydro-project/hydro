@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-rm *.data.folded *.perf.data *.svg
+rm *.data.folded *.perf.data *.svg *.profile || true

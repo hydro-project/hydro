@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use futures::future::join_all;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
 use wholesym::debugid::DebugId;
 use wholesym::{LookupAddress, MultiArchDisambiguator, SymbolManager, SymbolManagerConfig};
 
@@ -47,13 +49,15 @@ pub struct StackTable {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FrameTable {
-    pub address: Vec<u64>,
+    /// `Vec` of `u64` or `-1`.
+    pub address: Vec<Number>,
     pub func: Vec<usize>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FuncTable {
-    pub resource: Vec<usize>,
+    // `Vec` of `usize` or `-1`.
+    pub resource: Vec<Number>,
 }
 
 pub async fn samply_to_folded(loaded: FxProfile) -> String {
@@ -74,40 +78,36 @@ pub async fn samply_to_folded(loaded: FxProfile) -> String {
         );
     }
 
-    let mut folded_frames: BTreeMap<Vec<String>, u64> = BTreeMap::new();
+    let mut folded_frames: BTreeMap<Vec<Option<String>>, u64> = BTreeMap::new();
     for thread in loaded.threads.into_iter().filter(|t| t.is_main_thread) {
-        let mut frame_lookuped = vec![];
-        for frame_id in 0..thread.frame_table.address.len() {
-            let address = thread.frame_table.address[frame_id];
-            let func_id = thread.frame_table.func[frame_id];
-            let resource_id = thread.func_table.resource[func_id];
-            let maybe_symbol_map = &symbol_maps[resource_id];
-
-            if let Some(symbols_map) = maybe_symbol_map {
-                if let Some(lookuped) = symbols_map
+        let frame_lookuped = join_all((0..thread.frame_table.address.len()).map(|frame_id| {
+            let fr_address = &thread.frame_table.address;
+            let fr_func = &thread.frame_table.func;
+            let fn_resource = &thread.func_table.resource;
+            let symbol_maps = &symbol_maps;
+            async move {
+                let address = fr_address[frame_id].as_u64()?;
+                let func_id = fr_func[frame_id];
+                let resource_id = fn_resource[func_id].as_u64()?;
+                let symbol_map = symbol_maps[resource_id as usize].as_ref()?;
+                let lookuped = symbol_map
                     .lookup(LookupAddress::Relative(address as u32))
-                    .await
-                {
-                    if let Some(inline_frames) = lookuped.frames {
-                        frame_lookuped.push(
-                            inline_frames
-                                .into_iter()
-                                .rev()
-                                .map(|inline| {
-                                    inline.function.unwrap_or_else(|| "unknown".to_string())
-                                })
-                                .join(";"),
-                        );
-                    } else {
-                        frame_lookuped.push(lookuped.symbol.name);
-                    }
+                    .await?;
+
+                if let Some(inline_frames) = lookuped.frames {
+                    Some(
+                        inline_frames
+                            .into_iter()
+                            .rev()
+                            .map(|inline| inline.function.unwrap_or_else(|| "unknown".to_string()))
+                            .join(";"),
+                    )
                 } else {
-                    frame_lookuped.push("unknown".to_string());
+                    Some(lookuped.symbol.name)
                 }
-            } else {
-                frame_lookuped.push("unknown".to_string());
             }
-        }
+        }))
+        .await;
 
         let all_leaves_grouped = thread
             .samples
@@ -116,10 +116,10 @@ pub async fn samply_to_folded(loaded: FxProfile) -> String {
             .enumerate()
             .filter_map(|(idx, s)| s.map(|s| (idx, s)))
             .map(|(idx, leaf)| (leaf, thread.samples.weight[idx]))
-            .chunk_by(|v| v.0)
+            .chunk_by(|&(leaf, _)| leaf)
             .into_iter()
             .map(|(leaf, group)| {
-                let weight = group.map(|t| t.1).sum();
+                let weight = group.map(|(_leaf, weight)| weight).sum();
                 (leaf, weight)
             })
             .collect::<Vec<(usize, u64)>>();
@@ -143,7 +143,7 @@ pub async fn samply_to_folded(loaded: FxProfile) -> String {
             if i != 0 {
                 output.push(';');
             }
-            output.push_str(s);
+            output.push_str(s.as_deref().unwrap_or("unknown"));
         }
 
         output.push_str(&format!(" {}\n", weight));

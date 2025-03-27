@@ -188,9 +188,10 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 }
 
                 let fold_data = if cfg!(target_os = "macos") {
-                    let loaded = serde_json::from_reader::<_, FxProfile>(std::fs::File::open(
+                    let deserializer = &mut serde_json::Deserializer::from_reader(std::fs::File::open(
                         tracing_data.outfile.path(),
-                    )?)?;
+                    )?);
+                    let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
 
                     samply_to_folded(loaded).await.into()
                 } else if cfg!(target_family = "windows") {
