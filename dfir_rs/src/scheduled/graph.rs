@@ -319,7 +319,7 @@ impl<'a> Dfir<'a> {
                     // the same loop execution.
                     // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
                     // always in the same (singular) loop execution.
-                    let curr_iter_count =
+                    let (curr_iter_count, new_loop_execution) =
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
                             // If the iteration count is the same as the previous execution, then
                             // we are on the next iteration.
@@ -332,16 +332,22 @@ impl<'a> Dfir<'a> {
                                     continue 'pop;
                                 }
                                 // Increment `loop_iter_count` or set it to 0.
-                                loop_iter_count.map_or(0, |n| n + 1)
+                                loop_iter_count.map_or((0, true), |n| (n + 1, false))
                             } else {
                                 // Otherwise update the local iteration count to match the loop.
                                 debug_assert!(loop_iter_count.is_some_and(|n| prev_iter_count < n));
-                                loop_iter_count.unwrap()
+                                (loop_iter_count.unwrap(), false)
                             }
                         } else {
                             // We are in a new loop execution.
-                            0
+                            (0, true)
                         };
+
+                    if new_loop_execution {
+                        // Run state hooks.
+                        self.context.run_state_hooks_loop(loop_id);
+                    }
+
                     *loop_iter_count = Some(curr_iter_count);
                     self.context.loop_iter_count = curr_iter_count;
                     sg_data.last_loop_nonce =
@@ -497,7 +503,7 @@ impl<'a> Dfir<'a> {
                         self.context.current_tick,
                         self.context.current_tick + TickDuration::SINGLE_TICK,
                     );
-                    self.context.reset_state_at_end_of_tick();
+                    self.context.run_state_hooks_tick();
 
                     self.context.current_stratum = 0;
                     self.context.current_tick += TickDuration::SINGLE_TICK;
@@ -941,14 +947,16 @@ impl<'a> Dfir<'a> {
     /// Sets a hook to modify the state at the end of each tick, using the supplied closure.
     ///
     /// This is part of the "state API".
-    pub fn set_state_tick_hook<T>(
+    pub fn set_state_lifespan_hook<T>(
         &mut self,
         handle: StateHandle<T>,
-        tick_hook_fn: impl 'static + FnMut(&mut T),
+        lifespan: StateLifespan,
+        hook_fn: impl 'static + FnMut(&mut T),
     ) where
         T: Any,
     {
-        self.context.set_state_tick_hook(handle, tick_hook_fn)
+        self.context
+            .set_state_lifespan_hook(handle, lifespan, hook_fn)
     }
 
     /// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
@@ -1129,4 +1137,17 @@ pub(crate) struct LoopData {
     iter_count: Option<usize>,
     /// If the loop has reason to do another iteration.
     allow_another_iteration: bool,
+}
+
+/// Defines when state should be reset.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateLifespan {
+    /// Always reset, a ssociated with the subgraph.
+    Subgraph(SubgraphId),
+    /// Reset between loop executions.
+    Loop(LoopId),
+    /// Reset between ticks.
+    Tick,
+    /// Never reset.
+    Static,
 }

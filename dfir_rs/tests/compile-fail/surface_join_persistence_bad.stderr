@@ -1,4 +1,4 @@
-error: Unknown lifetime generic argument `'a`, expected `'tick`, `'static`, or `'mutable`.
+error: Unknown lifetime generic argument `'a`, expected `'none`, `'loop`, `'tick`, `'static`, or `'mutable`.
  --> tests/compile-fail/surface_join_persistence_bad.rs:5:20
   |
 5 |         j = join::<'a>() -> for_each(std::mem::drop);

@@ -32,7 +32,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: RANGE_0,
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // If this is set to true, the state will need to be cleared using `#context.set_state_lifespan_hook`
     // to prevent reading uncleared data if this subgraph doesn't run.
     // https://github.com/hydro-project/hydro/issues/1298
     has_singleton_output: false,
@@ -92,22 +92,24 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                         &mut *#borrow_ident
                     },
                 ),
-                Persistence::Tick => (
-                    quote_spanned! {op_span=>
-                        let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                            #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
-                        ));
-                    },
-                    quote_spanned! {op_span=>
-                        let mut #borrow_ident = unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#antijoindata_ident)
-                        }.borrow_mut();
-                    },
-                    quote_spanned! {op_span=>
-                        &mut *#borrow_ident.get_mut_clear(#context.current_tick())
-                    },
-                ),
+                Persistence::Tick | Persistence::Loop => {
+                    let lifespan = wc.persistence_as_state_lifespan(persistence);
+                    (
+                        quote_spanned! {op_span=>
+                            let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                            #df_ident.set_state_lifespan_hook(#antijoindata_ident, #lifespan, |rcell| { rcell.take(); });
+                        },
+                        quote_spanned! {op_span=>
+                            let mut #borrow_ident = unsafe {
+                                // SAFETY: handle from `#df_ident.add_state(..)`.
+                                #context.state_ref_unchecked(#antijoindata_ident)
+                            }.borrow_mut();
+                        },
+                        quote_spanned! {op_span=>
+                            &mut *#borrow_ident
+                        },
+                    )
+                }
                 Persistence::Static => (
                     quote_spanned! {op_span=>
                         let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(

@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -58,15 +58,18 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let persistence = match persistence_args[..] {
             [] => Persistence::Tick,
-            [Persistence::Mutable] => {
+            [p @ Persistence::Mutable] => {
                 diagnostics.push(Diagnostic::spanned(
                     op_span,
                     Level::Error,
-                    "An implementation of 'mutable does not exist",
+                    format!(
+                        "An implementation of `'{}` does not exist",
+                        p.to_str_lowercase()
+                    ),
                 ));
                 Persistence::Tick
-            },
-            [a] => a,
+            }
+            [p] => p,
             _ => unreachable!(),
         };
 
@@ -78,9 +81,10 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
         let mut write_prologue = quote_spanned! {op_span=>
             let #counter_ident = #df_ident.add_state(::std::cell::RefCell::new(0..));
         };
-        if Persistence::Tick == persistence {
+        if matches!(persistence, Persistence::Tick | Persistence::Loop) {
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
             write_prologue.extend(quote_spanned! {op_span=>
-                #df_ident.set_state_tick_hook(#counter_ident, |rcell| { rcell.replace(0..); });
+                #df_ident.set_state_lifespan_hook(#counter_ident, #lifespan, |rcell| { rcell.replace(0..); });
             });
         }
 

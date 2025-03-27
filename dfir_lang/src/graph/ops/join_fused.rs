@@ -311,27 +311,29 @@ pub(crate) fn make_joindata(
                 #borrow_ident
             },
         ),
-        Persistence::Tick => (
-            quote_spanned! {op_span=>
-                let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    #root::util::monotonic_map::MonotonicMap::new_init(
-                        #join_type::default()
-                    )
-                ));
-            },
-            quote_spanned! {op_span=>
-                let mut #borrow_ident = unsafe {
-                    // SAFETY: handles from `#df_ident`.
-                    #context.state_ref_unchecked(#joindata_ident)
-                }.borrow_mut();
-            },
-            quote_spanned! {op_span=>
-                #borrow_ident.get_mut_clear(#context.current_tick())
-            },
-        ),
+        Persistence::Tick | Persistence::Loop => {
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
+            (
+                quote_spanned! {op_span=>
+                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#join_type::default()));
+
+                    // Reset the value to the initializer fn at the end of each tick/loop execution.
+                    #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| { rcell.take(); });
+                },
+                quote_spanned! {op_span=>
+                    let mut #borrow_ident = unsafe {
+                        // SAFETY: handles from `#df_ident`.
+                        #context.state_ref_unchecked(#joindata_ident)
+                    }.borrow_mut();
+                },
+                quote_spanned! {op_span=>
+                    #borrow_ident
+                },
+            )
+        }
         Persistence::Static => (
             quote_spanned! {op_span=>
-                let #joindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     #join_type::default()
                 ));
             },
