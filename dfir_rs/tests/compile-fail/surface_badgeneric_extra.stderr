@@ -1,4 +1,4 @@
-error: Unknown lifetime generic argument `'a`, expected `'tick`, `'static`, or `'mutable`.
+error: Unknown lifetime generic argument `'a`, expected `'none`, `'loop`, `'tick`, `'static`, or `'mutable`.
  --> tests/compile-fail/surface_badgeneric_extra.rs:6:42
   |
 6 |         source_iter(0..10) -> identity::<'a, usize>() -> for_each(std::mem::drop);

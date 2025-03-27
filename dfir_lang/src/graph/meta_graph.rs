@@ -811,11 +811,6 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
-    /// Generate a deterministic `Ident` for the given loop ID.
-    fn loop_as_ident(loop_id: GraphLoopId) -> Ident {
-        Ident::new(&format!("loop_{:?}", loop_id.data()), Span::call_site())
-    }
-
     /// Code for adding all nested loops.
     fn codegen_nested_loops(&self, df: &Ident) -> TokenStream {
         // Breadth-first iteration from outermost (root) loops to deepest nested loops.
@@ -824,10 +819,10 @@ impl DfirGraph {
         while let Some(loop_id) = queue.pop_front() {
             let parent_opt = self
                 .loop_parent(loop_id)
-                .map(Self::loop_as_ident)
+                .map(GraphLoopId::as_ident)
                 .map(|ident| quote! { Some(#ident) })
                 .unwrap_or_else(|| quote! { None });
-            let loop_name = Self::loop_as_ident(loop_id);
+            let loop_name = loop_id.as_ident();
             out.append_all(quote! {
                 let #loop_name = #df.add_loop(#parent_opt);
             });
@@ -1218,7 +1213,7 @@ impl DfirGraph {
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
                 let loop_id_opt = loop_id
-                    .map(Self::loop_as_ident)
+                    .map(GraphLoopId::as_ident)
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
 

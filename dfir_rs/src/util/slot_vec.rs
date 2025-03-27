@@ -14,7 +14,7 @@ pub struct Key<Tag: ?Sized> {
 }
 impl<Tag: ?Sized> Key<Tag> {
     /// Creates a Key from a raw index. Avoid using this function directly.
-    pub fn from_raw(index: usize) -> Self {
+    pub const fn from_raw(index: usize) -> Self {
         Key {
             index,
             _phantom: PhantomData,
@@ -69,9 +69,9 @@ pub struct SlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     /// Creates a new `SlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -180,9 +180,9 @@ pub struct SecondarySlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Creates a new `SecondarySlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }

@@ -76,7 +76,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
             let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
             let (init, borrow) = match persistence {
-                Persistence::None | Persistence::Tick => (
+                Persistence::None | Persistence::Tick | Persistence::Loop => (
                     quote_spanned! {op_span=>
                         #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
                     },
@@ -113,7 +113,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
 
         let write_prologue = match persistences[0] {
             Persistence::None => Default::default(),
-            Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
                 let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     #neg_init
                 ));
@@ -151,7 +151,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                     !#neg_borrow.contains(&x.0)
                 });
             },
-            Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
                 let mut #neg_borrow_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#neg_antijoindata_ident)

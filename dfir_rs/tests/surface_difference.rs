@@ -214,7 +214,7 @@ pub fn test_diff_multiset_tick_static() {
     assert_eq!(&[1, 1, 3], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
 
-#[multiplatform_test]
+#[multiplatform_test(wasm, test, env_tracing)]
 pub fn test_diff_multiset_static_tick() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (pos_send, pos_recv) = dfir_rs::util::unbounded_channel::<usize>();

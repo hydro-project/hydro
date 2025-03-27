@@ -477,17 +477,55 @@ where
     }
 }
 
-/// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
+/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
     /// No persistence, for within a loop iteration.
     None,
-    /// Persistence for one tick at-a-time only.
+    /// Persistence throughout a single loop execution, across iterations.
+    Loop,
+    /// Persistence for one tick, at the top-level only (outside any loops).
     Tick,
-    /// Persistene across all ticks.
+    /// Persistence across all ticks.
     Static,
-    /// Mutability.
+    /// The static lifetime but allowing non-monotonic mutability.
     Mutable,
+}
+impl Persistence {
+    /// Returns the `#root::scheduled::graph::StateLifespan` variant for use in macros.
+    pub fn as_state_lifespan_variant(
+        self,
+        loop_id: Option<GraphLoopId>,
+        span: Span,
+    ) -> TokenStream {
+        match (self, loop_id) {
+            (Persistence::Tick, _any) => quote_spanned!(span=> Tick),
+            (Persistence::Loop, Some(loop_id)) => {
+                let loop_ident = loop_id.as_ident();
+                quote_spanned!(span=> Loop(#loop_ident))
+            }
+            (Persistence::Loop, None) => {
+                panic!("`Persistence::Loop` cannot be used outside of a loop context.");
+            }
+            _ => {
+                panic!(
+                    "Persistence type `{:?}` does not have a corresponding state lifespan.",
+                    self
+                );
+            }
+        }
+    }
+
+    /// Returns a lowercase string for the persistence type.
+    pub fn to_str_lowercase(self) -> &'static str {
+        match self {
+            Persistence::None => "none",
+            Persistence::Tick => "tick",
+            Persistence::Loop => "loop",
+            Persistence::Static => "static",
+            Persistence::Mutable => "mutable",
+        }
+    }
 }
 
 /// Helper which creates a error message string literal for when the Tokio runtime is not found.

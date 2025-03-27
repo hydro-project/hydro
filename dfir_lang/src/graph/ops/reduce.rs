@@ -51,6 +51,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
+                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -70,18 +71,77 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                },
                diagnostics| {
         let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [a] => a,
+            [] => {
+                if loop_id.is_some() {
+                    Persistence::None
+                } else {
+                    Persistence::Tick
+                }
+            }
+            [p @ Persistence::Mutable] => {
+                diagnostics.push(Diagnostic::spanned(
+                    op_span,
+                    Level::Error,
+                    format!(
+                        "An implementation of `'{}` does not exist",
+                        p.to_str_lowercase()
+                    ),
+                ));
+                if loop_id.is_some() {
+                    Persistence::None
+                } else {
+                    Persistence::Tick
+                }
+            }
+            [p] => p,
             _ => unreachable!(),
         };
-        if Persistence::Mutable == persistence {
-            diagnostics.push(Diagnostic::spanned(
-                op_span,
-                Level::Error,
-                "An implementation of 'mutable does not exist",
-            ));
-            return Err(());
-        }
+
+        let (write_prologue, borrow_mut) = match persistence {
+            Persistence::None => (
+                Default::default(),
+                quote_spanned! {op_span=> &mut ::std::option::Option::None },
+            ),
+            Persistence::Loop | Persistence::Tick => {
+                let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+                (
+                    quote_spanned! {op_span=>
+                        #[allow(clippy::redundant_closure_call)]
+                        let #singleton_output_ident = #df_ident.add_state(
+                            ::std::cell::RefCell::new(::std::option::Option::None)
+                        );
+
+                        #[allow(clippy::redundant_closure_call)]
+                        #df_ident.set_state_lifespan_hook(
+                            #singleton_output_ident,
+                            move |rcell| { rcell.replace(::std::option::Option::None); },
+                            #root::scheduled::graph::StateLifespan::#lifespan,
+                        );
+                    },
+                    quote_spanned! {op_span=>
+                        unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#singleton_output_ident)
+                        }.borrow_mut()
+                    },
+                )
+            }
+            Persistence::Static => (
+                quote_spanned! {op_span=>
+                    #[allow(clippy::redundant_closure_call)]
+                    let #singleton_output_ident = #df_ident.add_state(
+                        ::std::cell::RefCell::new(::std::option::Option::None)
+                    );
+                },
+                quote_spanned! {op_span=>
+                    unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#singleton_output_ident)
+                    }.borrow_mut()
+                },
+            ),
+            Persistence::Mutable => unreachable!(),
+        };
 
         let func = &arguments[0];
         let accumulator_ident = wc.make_ident("accumulator");
@@ -103,27 +163,12 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             call_comb_type(&mut *#accumulator_ident, #iterator_item_ident, #func);
         };
 
-        let mut write_prologue = quote_spanned! {op_span=>
-            #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(
-                ::std::cell::RefCell::new(::std::option::Option::None)
-            );
-        };
-        if Persistence::Tick == persistence {
-            write_prologue.extend(quote_spanned! {op_span=>
-                // Reset the value to the initializer fn at the end of each tick.
-                #df_ident.set_state_tick_hook(#singleton_output_ident, |rcell| { rcell.take(); });
-            });
-        }
-
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    let mut #accumulator_ident = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#singleton_output_ident)
-                    }.borrow_mut();
+                    #[allow(unused_mut)]
+                    let mut #accumulator_ident = #borrow_mut;
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -140,15 +185,15 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = {
                     #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        let mut #accumulator_ident = unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#singleton_output_ident)
-                        }.borrow_mut();
+                        #[allow(unused_mut)]
+                        let mut #accumulator_ident = #borrow_mut;
+
                         #iterator_foreach
                     })
                 };
             }
         };
+
         let write_iterator_after = if Persistence::Static == persistence {
             quote_spanned! {op_span=>
                 #context.schedule_subgraph(#context.current_subgraph(), false);
