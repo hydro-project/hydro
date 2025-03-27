@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
@@ -214,9 +214,14 @@ impl LaunchedHost for LaunchedLocalhost {
 
         ProgressTracker::println(format!("[{}] running command: `{:?}`", id, command));
 
-        let child = command
-            .spawn()
-            .with_context(|| format!("Failed to execute command: {:?}", command))?;
+        let child = command.spawn().map_err(|e| {
+            let msg = if maybe_perf_outfile.is_some() && std::io::ErrorKind::NotFound == e.kind() {
+                "Tracing executable not found, ensure it is installed"
+            } else {
+                "Failed to execute command"
+            };
+            anyhow::Error::new(e).context(format!("{}: {:?}", msg, command))
+        })?;
 
         Ok(Box::new(LaunchedLocalhostBinary::new(
             child,
