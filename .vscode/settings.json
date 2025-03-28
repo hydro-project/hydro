@@ -27,4 +27,12 @@
     "evenBetterToml.formatter.compactArrays": true,
     "evenBetterToml.formatter.allowedBlankLines": 2,
     "evenBetterToml.formatter.trailingNewline": true,
+    "evenBetterToml.formatter.arrayAutoCollapse": true,
+    "evenBetterToml.formatter.arrayAutoExpand": true,
+    "evenBetterToml.formatter.arrayTrailingComma": true,
+    "evenBetterToml.formatter.compactEntries": false,
+    "evenBetterToml.formatter.compactInlineTables": false,
+    "evenBetterToml.formatter.crlf": false,
+    "evenBetterToml.formatter.indentEntries": false,
+    "evenBetterToml.formatter.indentTables": false,
 }
