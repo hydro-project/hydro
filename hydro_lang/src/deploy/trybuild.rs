@@ -265,10 +265,12 @@ pub fn create_trybuild()
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
 
-        #[cfg(nightly)]
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
+        // TODO(mingwei): remove cfg once file locking is stable: https://github.com/rust-lang/rust/issues/130994
         #[cfg(nightly)]
         project_lock.lock()?;
+        #[cfg(not(nightly))]
+        fs2::FileExt::lock_exclusive(&project_lock)?;
 
         let manifest_toml = toml::to_string(&project.manifest)?;
         write_atomic(manifest_toml.as_ref(), &path!(project.dir / "Cargo.toml"))?;
@@ -309,8 +311,12 @@ fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
         .create(true)
         .truncate(false)
         .open(path)?;
+
+    // TODO(mingwei): remove cfg once file locking is stable: https://github.com/rust-lang/rust/issues/130994
     #[cfg(nightly)]
     file.lock()?;
+    #[cfg(not(nightly))]
+    fs2::FileExt::lock_exclusive(&file)?;
 
     let mut existing_contents = Vec::new();
     file.read_to_end(&mut existing_contents)?;

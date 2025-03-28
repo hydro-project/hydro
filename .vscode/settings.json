@@ -23,4 +23,8 @@
     "files.watcherExclude": {
         "**/target": true
     },
+    "evenBetterToml.formatter.columnWidth": 80,
+    "evenBetterToml.formatter.compactArrays": true,
+    "evenBetterToml.formatter.allowedBlankLines": 2,
+    "evenBetterToml.formatter.trailingNewline": true,
 }
