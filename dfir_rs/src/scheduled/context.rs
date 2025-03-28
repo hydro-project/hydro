@@ -15,7 +15,7 @@ use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::state::StateHandle;
-use super::{LoopTag, StateId, SubgraphId};
+use super::{LoopTag, StateTag, SubgraphId};
 use crate::scheduled::ticks::TickInstant;
 use crate::util::priority_stack::PriorityStack;
 use crate::util::slot_vec::SlotVec;
@@ -27,7 +27,7 @@ use crate::util::slot_vec::SlotVec;
 /// a running operator, the `subgraph_id` field must be updated.
 pub struct Context {
     /// User-facing State API.
-    states: Vec<StateData>,
+    states: SlotVec<StateTag, StateData>,
 
     /// Priority stack for handling strata within loops. Prioritized by loop depth.
     pub(super) stratum_stack: PriorityStack<usize>,
@@ -164,7 +164,7 @@ impl Context {
     {
         let state = self
             .states
-            .get(handle.state_id.0)
+            .get(handle.state_id)
             .expect("Failed to find state with given handle.")
             .state
             .as_ref();
@@ -184,7 +184,7 @@ impl Context {
         T: Any,
     {
         self.states
-            .get(handle.state_id.0)
+            .get(handle.state_id)
             .expect("Failed to find state with given handle.")
             .state
             .downcast_ref()
@@ -197,7 +197,7 @@ impl Context {
         T: Any,
     {
         self.states
-            .get_mut(handle.state_id.0)
+            .get_mut(handle.state_id)
             .expect("Failed to find state with given handle.")
             .state
             .downcast_mut()
@@ -209,13 +209,11 @@ impl Context {
     where
         T: Any,
     {
-        let state_id = StateId(self.states.len());
-
         let state_data = StateData {
             state: Box::new(state),
             tick_reset: None,
         };
-        self.states.push(state_data);
+        let state_id = self.states.insert(state_data);
 
         StateHandle {
             state_id,
@@ -232,23 +230,11 @@ impl Context {
         T: Any,
     {
         self.states
-            .get_mut(handle.state_id.0)
+            .get_mut(handle.state_id)
             .expect("Failed to find state with given handle.")
             .tick_reset = Some(Box::new(move |state| {
             (tick_hook_fn)(state.downcast_mut::<T>().unwrap());
         }));
-    }
-
-    /// Removes state from the context returns it as an owned heap value.
-    pub fn remove_state<T>(&mut self, handle: StateHandle<T>) -> Box<T>
-    where
-        T: Any,
-    {
-        self.states
-            .remove(handle.state_id.0)
-            .state
-            .downcast()
-            .expect("StateHandle wrong type T for casting.")
     }
 
     /// Prepares an async task to be launched by [`Self::spawn_tasks`].
@@ -287,7 +273,7 @@ impl Default for Context {
         let (event_queue_send, event_queue_recv) = mpsc::unbounded_channel();
         let (stratum_stack, loop_depth) = Default::default();
         Self {
-            states: Vec::new(),
+            states: SlotVec::new(),
 
             stratum_stack,
 
@@ -334,7 +320,7 @@ impl Context {
 
     /// Call this at the end of a tick,
     pub(super) fn reset_state_at_end_of_tick(&mut self) {
-        for StateData { state, tick_reset } in self.states.iter_mut() {
+        for StateData { state, tick_reset } in self.states.values_mut() {
             if let Some(tick_reset) = tick_reset {
                 (tick_reset)(Box::deref_mut(state));
             }

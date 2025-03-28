@@ -4,7 +4,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-pub use hydro_deploy_integration::*;
+pub use hydro_deploy_integration::{Connection, DeployPorts, InitConfig, ServerPort, *};
 use serde::de::DeserializeOwned;
 
 use crate::scheduled::graph::Dfir;

@@ -9,7 +9,8 @@
         "--nocapture"
     ],
     "rust-analyzer.cargo.features": [
-        "hydro_lang/deploy"
+        "hydro_lang/deploy",
+        "dfir_rs/deploy_integration",
     ],
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,

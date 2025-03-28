@@ -2,6 +2,7 @@
 
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -111,6 +112,46 @@ impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     pub fn is_empty(&self) -> bool {
         self.slots.is_empty()
     }
+
+    /// Iterate the key-value pairs of the slotvec, where the value is a shared reference.
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ Val)> + ExactSizeIterator + FusedIterator + Clone
+    {
+        self.slots
+            .iter()
+            .enumerate()
+            .map(|(idx, val)| (Key::from_raw(idx), val))
+    }
+
+    /// Iterate the key-value pairs of the slotvec, where the value is a exclusive reference.
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ mut Val)> + ExactSizeIterator + FusedIterator
+    {
+        self.slots
+            .iter_mut()
+            .enumerate()
+            .map(|(idx, val)| (Key::from_raw(idx), val))
+    }
+
+    /// Iterate over the values of the slotvec by shared reference.
+    pub fn values(&self) -> std::slice::Iter<'_, Val> {
+        self.slots.iter()
+    }
+
+    /// Iterate over the values of the slotvec by exclusive reference.
+    pub fn values_mut(&mut self) -> std::slice::IterMut<'_, Val> {
+        self.slots.iter_mut()
+    }
+
+    /// Iterate over the keys of the the slotvec.
+    pub fn keys(
+        &self,
+    ) -> impl '_ + DoubleEndedIterator<Item = Key<Tag>> + ExactSizeIterator + FusedIterator + Clone
+    {
+        self.iter().map(|(key, _)| key)
+    }
 }
 impl<Tag: ?Sized, Val> Index<Key<Tag>> for SlotVec<Tag, Val> {
     type Output = Val;
@@ -168,6 +209,42 @@ impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Returns a mutable reference to the value associated with the key.
     pub fn get_mut(&mut self, key: Key<Tag>) -> Option<&mut Val> {
         self.slots.get_mut(key.index).and_then(|v| v.as_mut())
+    }
+
+    /// Iterate the key-value pairs of the slotvec, where the value is a shared reference.
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ Val)> + FusedIterator + Clone {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, opt_val)| Some((Key::from_raw(idx), opt_val.as_ref()?)))
+    }
+
+    /// Iterate the key-value pairs of the slotvec, where the value is a exclusive reference.
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ mut Val)> + FusedIterator {
+        self.slots
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(idx, opt_val)| Some((Key::from_raw(idx), opt_val.as_mut()?)))
+    }
+
+    /// Iterate over the values of the slotvec by shared reference.
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = &'_ Val> + FusedIterator + Clone {
+        self.slots.iter().filter_map(Option::as_ref)
+    }
+
+    /// Iterate over the values of the slotvec by exclusive reference.
+    pub fn values_mut(&mut self) -> impl DoubleEndedIterator<Item = &'_ mut Val> + FusedIterator {
+        self.slots.iter_mut().filter_map(Option::as_mut)
+    }
+
+    /// Iterate over the keys of the the slotvec.
+    // Returned iterator inclues `&'_ self` lifetime to prevent changing the keys while iterating.
+    pub fn keys(&self) -> impl '_ + DoubleEndedIterator<Item = Key<Tag>> + FusedIterator + Clone {
+        self.iter().map(|(key, _)| key)
     }
 }
 impl<Tag: ?Sized, Val> Default for SecondarySlotVec<Tag, Val> {
