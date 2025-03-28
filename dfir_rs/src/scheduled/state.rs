@@ -76,7 +76,7 @@ mod test {
     #[test]
     fn test_erasure() {
         let handle = StateHandle::<String> {
-            state_id: StateId(0),
+            state_id: StateId::from_raw(0),
             _phantom: PhantomData,
         };
         let handle_erased = StateHandleErased::from(handle);

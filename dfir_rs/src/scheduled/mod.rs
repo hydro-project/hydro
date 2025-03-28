@@ -31,11 +31,11 @@ pub enum HandoffTag {}
 /// instance than the original that created it.
 pub type HandoffId = Key<HandoffTag>;
 
+/// Tag for [`StateId`].
+pub enum StateTag {}
 /// A staten handle's ID. Invalid if used in a different [`graph::Dfir`]
 /// instance than the original that created it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[repr(transparent)]
-pub struct StateId(pub(crate) usize);
+pub type StateId = Key<StateTag>;
 
 /// Tag for [`LoopId`].
 pub enum LoopTag {}
