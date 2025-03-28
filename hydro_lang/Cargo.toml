@@ -67,7 +67,7 @@ trybuild-internals-api = { version = "1.0.99", optional = true }
 
 [target.'cfg(not(nightly))'.dependencies]
 # TODO(mingwei): remove once file locking is stable: https://github.com/rust-lang/rust/issues/130994
-# build.rs `println!("cargo:rustc-cfg=nightly")` doens't affect this (happens
+# build.rs `println!("cargo:rustc-cfg=nightly")` doesn't affect this (happens
 # after dependency resolution), but this doesn't hurt to have.
 fs2 = "0.4.0"
 
