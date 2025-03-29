@@ -1,18 +1,16 @@
-use std::io;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use anyhow::Result;
 use futures::{Future, Stream, StreamExt};
 use tokio::sync::oneshot;
 
 use crate::ssh::PrefixFilteredChannel;
 
-pub async fn async_retry<T, F: Future<Output = Result<T>>>(
+pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     mut thunk: impl FnMut() -> F,
     count: usize,
     delay: Duration,
-) -> Result<T> {
+) -> Result<T, E> {
     for _ in 1..count {
         let result = thunk().await;
         if result.is_ok() {
@@ -25,15 +23,15 @@ pub async fn async_retry<T, F: Future<Output = Result<T>>>(
     thunk().await
 }
 
-type PriorityBroadcacst = (
+type PriorityBroadcast = (
     Arc<Mutex<Option<oneshot::Sender<String>>>>,
     Arc<Mutex<Vec<PrefixFilteredChannel>>>,
 );
 
-pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin + 'static>(
+pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + Unpin + 'static>(
     mut lines: T,
     default: impl Fn(String) + Send + 'static,
-) -> PriorityBroadcacst {
+) -> PriorityBroadcast {
     let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
     // Option<String> is the prefix to separate special stdout messages from regular ones
     let receivers = Arc::new(Mutex::new(Vec::<PrefixFilteredChannel>::new()));
@@ -42,7 +40,7 @@ pub fn prioritized_broadcast<T: Stream<Item = io::Result<String>> + Send + Unpin
     let weak_receivers = Arc::downgrade(&receivers);
 
     tokio::spawn(async move {
-        while let Some(Result::Ok(line)) = lines.next().await {
+        while let Some(Ok(line)) = lines.next().await {
             if let Some(deploy_receivers) = weak_priority_receivers.upgrade() {
                 let mut deploy_receivers = deploy_receivers.lock().unwrap();
 
