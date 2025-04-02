@@ -92,7 +92,6 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -135,23 +134,13 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             .map_err(|err| diagnostics.push(err))?;
         let rhs_join_options = super::join_fused::parse_argument(&wc.arguments[1])
             .map_err(|err| diagnostics.push(err))?;
-        let (_lhs_prologue, lhs_pre_write_iter, lhs_borrow) = super::join_fused::make_joindata(
-            &wc,
-            persistences[0],
-            loop_id,
-            &lhs_join_options,
-            "lhs",
-        )
-        .map_err(|err| diagnostics.push(err))?;
+        let (_lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
+            super::join_fused::make_joindata(&wc, persistences[0], &lhs_join_options, "lhs")
+                .map_err(|err| diagnostics.push(err))?;
 
-        let (_rhs_prologue, rhs_pre_write_iter, rhs_borrow) = super::join_fused::make_joindata(
-            &wc,
-            persistences[1],
-            loop_id,
-            &rhs_join_options,
-            "rhs",
-        )
-        .map_err(|err| diagnostics.push(err))?;
+        let (_rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
+            super::join_fused::make_joindata(&wc, persistences[1], &rhs_join_options, "rhs")
+                .map_err(|err| diagnostics.push(err))?;
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];

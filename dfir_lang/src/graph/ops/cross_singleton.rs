@@ -70,8 +70,8 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
             let #singleton_handle_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::option::Option::None)
             );
-            // Reset the value if it is a new tick.
-            #df_ident.set_state_lifespan_hook(#singleton_handle_ident, |rcell| { rcell.take(); }, #root::scheduled::graph::StateLifespan::Tick);
+            // Reset the value if it is a new tick. TODO(mingwei): handle other lifespans?
+            #df_ident.set_state_lifespan_hook(#singleton_handle_ident, #root::scheduled::graph::StateLifespan::Tick, |rcell| { rcell.take(); });
         };
 
         let write_iterator = quote_spanned! {op_span=>

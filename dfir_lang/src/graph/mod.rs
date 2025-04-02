@@ -49,11 +49,19 @@ new_key_type! {
     pub struct GraphLoopId;
 }
 
+impl GraphSubgraphId {
+    /// Generate a deterministic `Ident` for the given loop ID.
+    pub fn as_ident(self, span: Span) -> Ident {
+        use slotmap::Key;
+        Ident::new(&format!("sgid_{:?}", self.data()), span)
+    }
+}
+
 impl GraphLoopId {
     /// Generate a deterministic `Ident` for the given loop ID.
-    pub fn as_ident(self) -> Ident {
+    pub fn as_ident(self, span: Span) -> Ident {
         use slotmap::Key;
-        Ident::new(&format!("loop_{:?}", self.data()), Span::call_site())
+        Ident::new(&format!("loop_{:?}", self.data()), span)
     }
 }
 

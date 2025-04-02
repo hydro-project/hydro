@@ -211,6 +211,15 @@ impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
         self.slots.get_mut(key.index).and_then(|v| v.as_mut())
     }
 
+    /// Returns a mutable reference to the value associated with the key, inserting a default value
+    /// if it doesn't yet exist.
+    pub fn get_or_insert_with(&mut self, key: Key<Tag>, default: impl FnOnce() -> Val) -> &mut Val {
+        if key.index >= self.slots.len() {
+            self.slots.resize_with(key.index + 1, || None);
+        }
+        self.slots[key.index].get_or_insert_with(default)
+    }
+
     /// Iterate the key-value pairs, where the value is a shared reference.
     pub fn iter(
         &self,

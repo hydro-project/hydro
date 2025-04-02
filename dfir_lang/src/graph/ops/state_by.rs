@@ -55,11 +55,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
                    df_ident,
-                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -111,13 +110,9 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                     };
         };
         if let Persistence::Tick | Persistence::Loop = persistence {
-            let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
             write_prologue.extend(quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(
-                    #state_ident,
-                    |rcell| { rcell.take(); }, // Resets state to `Default::default()`.
-                    #root::scheduled::graph::StateLifespan::#lifespan,
-                );
+                #df_ident.set_state_lifespan_hook(#state_ident, #lifespan, |rcell| { rcell.take(); });
             });
         }
 

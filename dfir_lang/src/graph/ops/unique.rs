@@ -100,17 +100,10 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                 },
             ),
             Persistence::Tick | Persistence::Loop => {
-                let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+                let lifespan = wc.persistence_as_state_lifespan(persistence);
                 let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #root::rustc_hash::FxHashSet::default(),
-                    ));
-                    // Reset the value if it is a new tick/loop execution.
-                    #df_ident.set_state_lifespan_hook(
-                        #uniquedata_ident,
-                        move |rcell| { rcell.take(); },
-                        #root::scheduled::graph::StateLifespan::#lifespan,
-                    );
+                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                    #df_ident.set_state_lifespan_hook(#uniquedata_ident, #lifespan, move |rcell| { rcell.take(); });
                 };
                 let get_set = quote_spanned! {op_span=>
                     let mut set = unsafe {

@@ -97,50 +97,12 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             _ => unreachable!(),
         };
 
-        let (write_prologue, borrow_mut) = match persistence {
-            Persistence::None => (
-                Default::default(),
-                quote_spanned! {op_span=> &mut ::std::option::Option::None },
-            ),
-            Persistence::Loop | Persistence::Tick => {
-                let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
-                (
-                    quote_spanned! {op_span=>
-                        #[allow(clippy::redundant_closure_call)]
-                        let #singleton_output_ident = #df_ident.add_state(
-                            ::std::cell::RefCell::new(::std::option::Option::None)
-                        );
-
-                        #[allow(clippy::redundant_closure_call)]
-                        #df_ident.set_state_lifespan_hook(
-                            #singleton_output_ident,
-                            move |rcell| { rcell.replace(::std::option::Option::None); },
-                            #root::scheduled::graph::StateLifespan::#lifespan,
-                        );
-                    },
-                    quote_spanned! {op_span=>
-                        unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#singleton_output_ident)
-                        }.borrow_mut()
-                    },
-                )
+        let write_prologue = {
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
+            quote_spanned! {op_span=>
+                let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));
+                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(::std::option::Option::None); });
             }
-            Persistence::Static => (
-                quote_spanned! {op_span=>
-                    #[allow(clippy::redundant_closure_call)]
-                    let #singleton_output_ident = #df_ident.add_state(
-                        ::std::cell::RefCell::new(::std::option::Option::None)
-                    );
-                },
-                quote_spanned! {op_span=>
-                    unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#singleton_output_ident)
-                    }.borrow_mut()
-                },
-            ),
-            Persistence::Mutable => unreachable!(),
         };
 
         let func = &arguments[0];
@@ -163,12 +125,19 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             call_comb_type(&mut *#accumulator_ident, #iterator_item_ident, #func);
         };
 
+        let assign_accum_ident = quote_spanned! {op_span=>
+            #[allow(unused_mut)]
+            let mut #accumulator_ident = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                #context.state_ref_unchecked(#singleton_output_ident)
+            }.borrow_mut();
+        };
+
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    #[allow(unused_mut)]
-                    let mut #accumulator_ident = #borrow_mut;
+                    #assign_accum_ident
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -185,8 +154,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 let #ident = {
                     #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        #[allow(unused_mut)]
-                        let mut #accumulator_ident = #borrow_mut;
+                        #assign_accum_ident
 
                         #iterator_foreach
                     })

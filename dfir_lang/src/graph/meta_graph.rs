@@ -819,10 +819,10 @@ impl DfirGraph {
         while let Some(loop_id) = queue.pop_front() {
             let parent_opt = self
                 .loop_parent(loop_id)
-                .map(GraphLoopId::as_ident)
+                .map(|loop_id| loop_id.as_ident(Span::call_site()))
                 .map(|ident| quote! { Some(#ident) })
                 .unwrap_or_else(|| quote! { None });
-            let loop_name = loop_id.as_ident();
+            let loop_name = loop_id.as_ident(Span::call_site());
             out.append_all(quote! {
                 let #loop_name = #df.add_loop(#parent_opt);
             });
@@ -1213,12 +1213,14 @@ impl DfirGraph {
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
                 let loop_id_opt = loop_id
-                    .map(GraphLoopId::as_ident)
+                    .map(|loop_id| loop_id.as_ident(Span::call_site()))
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
 
+                let sg_ident = subgraph_id.as_ident(Span::call_site());
+
                 subgraphs.push(quote! {
-                    #df.add_subgraph_full(
+                    let #sg_ident = #df.add_subgraph_full(
                         #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),

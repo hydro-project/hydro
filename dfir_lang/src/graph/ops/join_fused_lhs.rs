@@ -46,7 +46,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    context,
                    df_ident,
-                   loop_id,
                    op_span,
                    ident,
                    inputs,
@@ -73,7 +72,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
 
         let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], loop_id, &lhs_join_options, "lhs")
+            make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");

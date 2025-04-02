@@ -10,14 +10,13 @@ use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
 
-use smallvec::SmallVec;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::graph::StateLifespan;
 use super::state::StateHandle;
-use super::{LoopId, LoopTag, StateId, StateTag, SubgraphId};
+use super::{LoopId, LoopTag, StateId, StateTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::TickInstant;
 use crate::util::priority_stack::PriorityStack;
 use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
@@ -70,9 +69,12 @@ pub struct Context {
     /// Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
     /// For each loop, state which needs to be reset between loop executions.
-    pub(super) loop_state: SecondarySlotVec<LoopTag, SmallVec<[StateId; 1]>>,
+    loop_states: SecondarySlotVec<LoopTag, Vec<StateId>>,
     /// Used to differentiate between loop executions. Incremented at the start of each loop execution.
     pub(super) loop_nonce: usize,
+
+    /// For each subgraph, state which needs to be reset between executions.
+    subgraph_states: SecondarySlotVec<SubgraphTag, Vec<StateId>>,
 
     /// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is meaningless.
@@ -230,8 +232,8 @@ impl Context {
     pub fn set_state_lifespan_hook<T>(
         &mut self,
         handle: StateHandle<T>,
-        mut lifespan_hook_fn: impl 'static + FnMut(&mut T),
         lifespan: StateLifespan,
+        mut hook_fn: impl 'static + FnMut(&mut T),
     ) where
         T: Any,
     {
@@ -240,9 +242,28 @@ impl Context {
             .get_mut(handle.state_id)
             .expect("Failed to find state with given handle.");
         state_data.lifespan_reset = Some(Box::new(move |state| {
-            (lifespan_hook_fn)(state.downcast_mut::<T>().unwrap());
+            (hook_fn)(state.downcast_mut::<T>().unwrap());
         }));
         state_data.lifespan = Some(lifespan);
+
+        match lifespan {
+            StateLifespan::Subgraph(key) => {
+                self.subgraph_states
+                    .get_or_insert_with(key, Vec::new)
+                    .push(handle.state_id);
+            }
+            StateLifespan::Loop(loop_id) => {
+                self.loop_states
+                    .get_or_insert_with(loop_id, Vec::new)
+                    .push(handle.state_id);
+            }
+            StateLifespan::Tick => {
+                // Already included in `run_state_hooks_tick`.
+            }
+            StateLifespan::Static => {
+                // Never resets.
+            }
+        }
     }
 
     /// Prepares an async task to be launched by [`Self::spawn_tasks`].
@@ -306,8 +327,10 @@ impl Default for Context {
             loop_iter_count: 0,
 
             loop_depth,
-            loop_state: SecondarySlotVec::new(),
+            loop_states: SecondarySlotVec::new(),
             loop_nonce: 0,
+
+            subgraph_states: SecondarySlotVec::new(),
 
             // Will be re-set before use.
             subgraph_id: SubgraphId::from_raw(0),
@@ -348,7 +371,7 @@ impl Context {
     // Call at the end of each loop execution.
     pub(super) fn run_state_hooks_loop(&mut self, loop_id: LoopId) {
         tracing::debug!("Running state hooks for loop {:?}", loop_id);
-        for state_id in self.loop_state.get(loop_id).into_iter().flatten() {
+        for state_id in self.loop_states.get(loop_id).into_iter().flatten() {
             let StateData {
                 state,
                 lifespan_reset,

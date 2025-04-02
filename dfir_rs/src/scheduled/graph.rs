@@ -950,13 +950,13 @@ impl<'a> Dfir<'a> {
     pub fn set_state_lifespan_hook<T>(
         &mut self,
         handle: StateHandle<T>,
-        lifespan_hook_fn: impl 'static + FnMut(&mut T),
         lifespan: StateLifespan,
+        hook_fn: impl 'static + FnMut(&mut T),
     ) where
         T: Any,
     {
         self.context
-            .set_state_lifespan_hook(handle, lifespan_hook_fn, lifespan)
+            .set_state_lifespan_hook(handle, lifespan, hook_fn)
     }
 
     /// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
@@ -1142,8 +1142,12 @@ pub(crate) struct LoopData {
 /// Defines when state should be reset.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StateLifespan {
+    /// Always reset, a ssociated with the subgraph.
+    Subgraph(SubgraphId),
     /// Reset between loop executions.
     Loop(LoopId),
     /// Reset between ticks.
     Tick,
+    /// Never reset.
+    Static,
 }

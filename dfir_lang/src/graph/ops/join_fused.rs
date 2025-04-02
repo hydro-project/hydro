@@ -8,7 +8,6 @@ use super::{
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
-use crate::graph::GraphLoopId;
 
 /// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
@@ -108,7 +107,6 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    context,
                    op_span,
-                   loop_id,
                    ident,
                    inputs,
                    is_pull,
@@ -134,11 +132,11 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             parse_argument(&arguments[1]).map_err(|err| diagnostics.push(err))?;
 
         let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], loop_id, &lhs_join_options, "lhs")
+            make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
         let (rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
-            make_joindata(wc, persistences[1], loop_id, &rhs_join_options, "rhs")
+            make_joindata(wc, persistences[1], &rhs_join_options, "rhs")
                 .map_err(|err| diagnostics.push(err))?;
 
         let write_prologue = quote_spanned! {op_span=>
@@ -277,7 +275,6 @@ pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions, Diagnostic> {
 pub(crate) fn make_joindata(
     wc: &WriteContextArgs,
     persistence: Persistence,
-    loop_id: Option<GraphLoopId>,
     join_options: &JoinOptions<'_>,
     side: &str,
 ) -> Result<(TokenStream, TokenStream, TokenStream), Diagnostic> {
@@ -315,19 +312,13 @@ pub(crate) fn make_joindata(
             },
         ),
         Persistence::Tick | Persistence::Loop => {
-            let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
             (
                 quote_spanned! {op_span=>
-                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #join_type::default()
-                    ));
+                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#join_type::default()));
 
                     // Reset the value to the initializer fn at the end of each tick/loop execution.
-                    #df_ident.set_state_lifespan_hook(
-                        #joindata_ident,
-                        |rcell| { rcell.take(); },
-                        #root::scheduled::graph::StateLifespan::#lifespan,
-                    );
+                    #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| { rcell.take(); });
                 },
                 quote_spanned! {op_span=>
                     let mut #borrow_ident = unsafe {

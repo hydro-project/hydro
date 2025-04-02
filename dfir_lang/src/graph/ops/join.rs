@@ -150,13 +150,9 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 }
                 (true, Persistence::None) => Default::default(),
                 (false, Persistence::Tick | Persistence::Loop) => {
-                    let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+                    let lifespan = wc.persistence_as_state_lifespan(persistence);
                     quote_spanned! {op_span=>
-                        #df_ident.set_state_lifespan_hook(
-                            #joindata_ident,
-                            |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())),
-                            #root::scheduled::graph::StateLifespan::#lifespan,
-                        );
+                        #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
                     }
                 }
                 (true, Persistence::Tick | Persistence::Loop) => Default::default(),

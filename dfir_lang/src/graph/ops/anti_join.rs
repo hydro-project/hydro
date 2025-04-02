@@ -93,17 +93,11 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     },
                 ),
                 Persistence::Tick | Persistence::Loop => {
-                    let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+                    let lifespan = wc.persistence_as_state_lifespan(persistence);
                     (
                         quote_spanned! {op_span=>
-                            let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                                #root::rustc_hash::FxHashSet::default()
-                            ));
-                            #df_ident.set_state_lifespan_hook(
-                                #antijoindata_ident,
-                                |rcell| { rcell.take(); },
-                                #root::scheduled::graph::StateLifespan::#lifespan,
-                            );
+                            let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                            #df_ident.set_state_lifespan_hook(#antijoindata_ident, #lifespan, |rcell| { rcell.take(); });
                         },
                         quote_spanned! {op_span=>
                             let mut #borrow_ident = unsafe {

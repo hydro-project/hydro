@@ -41,7 +41,6 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
                    op_span,
                    context,
                    df_ident,
-                   loop_id,
                    ident,
                    inputs,
                    outputs,
@@ -83,13 +82,9 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
             let #counter_ident = #df_ident.add_state(::std::cell::RefCell::new(0..));
         };
         if matches!(persistence, Persistence::Tick | Persistence::Loop) {
-            let lifespan = persistence.as_state_lifespan_variant(loop_id, op_span);
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
             write_prologue.extend(quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(
-                    #counter_ident,
-                    |rcell| { rcell.replace(0..); },
-                    #root::scheduled::graph::StateLifespan::#lifespan,
-                );
+                #df_ident.set_state_lifespan_hook(#counter_ident, #lifespan, |rcell| { rcell.replace(0..); });
             });
         }
 
