@@ -1,11 +1,11 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 use syn::spanned::Spanned;
 
-use super::join_fused::{make_joindata, parse_argument, parse_persistences, JoinOptions};
+use super::join_fused::{JoinOptions, make_joindata, parse_argument, parse_persistences};
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -79,7 +79,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
         let write_prologue_rhs = match persistences[1] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>},
+            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
@@ -116,7 +116,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = match persistences[1] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
 
                 let #ident = {

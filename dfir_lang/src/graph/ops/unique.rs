@@ -99,18 +99,17 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                     let mut set = #root::rustc_hash::FxHashSet::default();
                 },
             ),
-            Persistence::Tick => {
+            Persistence::Tick | Persistence::Loop => {
+                let lifespan = wc.persistence_as_state_lifespan(persistence);
                 let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default(),
-                    ));
+                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                    #df_ident.set_state_lifespan_hook(#uniquedata_ident, #lifespan, move |rcell| { rcell.take(); });
                 };
                 let get_set = quote_spanned! {op_span=>
-                    let mut borrow = unsafe {
+                    let mut set = unsafe {
                         // SAFETY: handle from `#df_ident.add_state(..)`.
                         #context.state_ref_unchecked(#uniquedata_ident)
                     }.borrow_mut();
-                    let set = borrow.get_mut_clear((#context.current_tick(), #context.current_stratum()));
                 };
                 (write_prologue, get_set)
             }

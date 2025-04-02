@@ -40,7 +40,7 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // If this is set to true, the state will need to be cleared using `#context.set_state_lifespan_hook`
     // to prevent reading uncleared data if this subgraph doesn't run.
     // https://github.com/hydro-project/hydro/issues/1298
     // If `'tick` lifetimes are added.

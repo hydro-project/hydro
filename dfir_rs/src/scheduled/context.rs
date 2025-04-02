@@ -14,11 +14,12 @@ use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
+use super::graph::StateLifespan;
 use super::state::StateHandle;
-use super::{LoopTag, StateTag, SubgraphId};
+use super::{LoopId, LoopTag, StateId, StateTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::TickInstant;
 use crate::util::priority_stack::PriorityStack;
-use crate::util::slot_vec::SlotVec;
+use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 
 /// The main state and scheduler of the runtime instance. Provided as the `context` API to each
 /// subgraph/operator as it is run.
@@ -26,7 +27,7 @@ use crate::util::slot_vec::SlotVec;
 /// Each instance stores eactly one Context inline. Before the `Context` is provided to
 /// a running operator, the `subgraph_id` field must be updated.
 pub struct Context {
-    /// User-facing State API.
+    /// Storage for the user-facing State API.
     states: SlotVec<StateTag, StateData>,
 
     /// Priority stack for handling strata within loops. Prioritized by loop depth.
@@ -65,10 +66,15 @@ pub struct Context {
     pub(super) is_first_run_this_tick: bool,
     pub(super) loop_iter_count: usize,
 
-    // Depth of loop (zero for top-level).
+    /// Depth of loop (zero for top-level).
     pub(super) loop_depth: SlotVec<LoopTag, usize>,
-
+    /// For each loop, state which needs to be reset between loop executions.
+    loop_states: SecondarySlotVec<LoopTag, Vec<StateId>>,
+    /// Used to differentiate between loop executions. Incremented at the start of each loop execution.
     pub(super) loop_nonce: usize,
+
+    /// For each subgraph, state which needs to be reset between executions.
+    subgraph_states: SecondarySlotVec<SubgraphTag, Vec<StateId>>,
 
     /// The SubgraphId of the currently running operator. When this context is
     /// not being forwarded to a running operator, this field is meaningless.
@@ -211,7 +217,8 @@ impl Context {
     {
         let state_data = StateData {
             state: Box::new(state),
-            tick_reset: None,
+            lifespan_reset: None,
+            lifespan: None,
         };
         let state_id = self.states.insert(state_data);
 
@@ -222,19 +229,41 @@ impl Context {
     }
 
     /// Sets a hook to modify the state at the end of each tick, using the supplied closure.
-    pub fn set_state_tick_hook<T>(
+    pub fn set_state_lifespan_hook<T>(
         &mut self,
         handle: StateHandle<T>,
-        mut tick_hook_fn: impl 'static + FnMut(&mut T),
+        lifespan: StateLifespan,
+        mut hook_fn: impl 'static + FnMut(&mut T),
     ) where
         T: Any,
     {
-        self.states
+        let state_data = self
+            .states
             .get_mut(handle.state_id)
-            .expect("Failed to find state with given handle.")
-            .tick_reset = Some(Box::new(move |state| {
-            (tick_hook_fn)(state.downcast_mut::<T>().unwrap());
+            .expect("Failed to find state with given handle.");
+        state_data.lifespan_reset = Some(Box::new(move |state| {
+            (hook_fn)(state.downcast_mut::<T>().unwrap());
         }));
+        state_data.lifespan = Some(lifespan);
+
+        match lifespan {
+            StateLifespan::Subgraph(key) => {
+                self.subgraph_states
+                    .get_or_insert_with(key, Vec::new)
+                    .push(handle.state_id);
+            }
+            StateLifespan::Loop(loop_id) => {
+                self.loop_states
+                    .get_or_insert_with(loop_id, Vec::new)
+                    .push(handle.state_id);
+            }
+            StateLifespan::Tick => {
+                // Already included in `run_state_hooks_tick`.
+            }
+            StateLifespan::Static => {
+                // Never resets.
+            }
+        }
     }
 
     /// Prepares an async task to be launched by [`Self::spawn_tasks`].
@@ -298,7 +327,10 @@ impl Default for Context {
             loop_iter_count: 0,
 
             loop_depth,
+            loop_states: SecondarySlotVec::new(),
             loop_nonce: 0,
+
+            subgraph_states: SecondarySlotVec::new(),
 
             // Will be re-set before use.
             subgraph_id: SubgraphId::from_raw(0),
@@ -319,9 +351,37 @@ impl Context {
     }
 
     /// Call this at the end of a tick,
-    pub(super) fn reset_state_at_end_of_tick(&mut self) {
-        for StateData { state, tick_reset } in self.states.values_mut() {
-            if let Some(tick_reset) = tick_reset {
+    pub(super) fn run_state_hooks_tick(&mut self) {
+        tracing::debug!("Running state hooks for tick {}", self.current_tick);
+        for StateData {
+            state,
+            lifespan_reset,
+            lifespan,
+        } in self.states.values_mut()
+        {
+            if Some(StateLifespan::Tick) == *lifespan {
+                if let Some(tick_reset) = lifespan_reset {
+                    (tick_reset)(Box::deref_mut(state));
+                }
+            }
+        }
+    }
+
+    // Run the state hooks for each state in the loop.
+    // Call at the end of each loop execution.
+    pub(super) fn run_state_hooks_loop(&mut self, loop_id: LoopId) {
+        tracing::debug!("Running state hooks for loop {:?}", loop_id);
+        for state_id in self.loop_states.get(loop_id).into_iter().flatten() {
+            let StateData {
+                state,
+                lifespan_reset,
+                lifespan: _,
+            } = self
+                .states
+                .get_mut(*state_id)
+                .expect("Failed to find state with given ID.");
+
+            if let Some(tick_reset) = lifespan_reset {
                 (tick_reset)(Box::deref_mut(state));
             }
         }
@@ -331,6 +391,8 @@ impl Context {
 /// Internal struct containing a pointer to instance-owned state.
 struct StateData {
     state: Box<dyn Any>,
-    tick_reset: Option<TickResetFn>,
+    lifespan_reset: Option<LifespanResetFn>, // TODO(mingwei): replace with trait?
+    /// `None` for static.
+    lifespan: Option<StateLifespan>,
 }
-type TickResetFn = Box<dyn FnMut(&mut dyn Any)>;
+type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;

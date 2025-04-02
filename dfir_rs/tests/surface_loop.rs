@@ -341,6 +341,82 @@ pub fn test_flo_repeat_kmeans() {
 }
 
 #[test]
+fn test_loop_lifetime_reduce() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        a = source_iter(0..10);
+        loop {
+            b = a -> batch() -> tee();
+            loop {
+                b -> repeat_n(5)
+                    -> reduce::<'none>(|old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result1_send.send(v).unwrap());
+
+                b -> repeat_n(5)
+                    -> reduce::<'loop>(|old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result2_send.send(v).unwrap());
+            };
+        };
+    };
+    df.run_available();
+
+    // `'none` resets each iteration.
+    assert_eq!(
+        &[45, 45, 45, 45, 45],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+    // `'loop` accumulates across iterations.
+    assert_eq!(
+        &[45, 90, 135, 180, 225],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+}
+
+#[test]
+fn test_loop_lifetime_fold() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        a = source_iter(0..10);
+        loop {
+            b = a -> batch() -> tee();
+            loop {
+                b -> repeat_n(5)
+                    -> fold::<'none>(|| 10000, |old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result1_send.send(v).unwrap());
+
+                b -> repeat_n(5)
+                    -> fold::<'loop>(|| 10000, |old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result2_send.send(v).unwrap());
+            };
+        };
+    };
+    df.run_available();
+
+    // `'none` resets each iteration.
+    assert_eq!(
+        &[10045, 10045, 10045, 10045, 10045],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+    // `'loop` accumulates across iterations.
+    assert_eq!(
+        &[10045, 10090, 10135, 10180, 10225],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+}
+
+#[test]
 fn test_state_codegen() {
     let mut df = dfir_syntax! {
         a = source_iter((0..10).chain(5..15)) -> tee();

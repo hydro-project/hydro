@@ -410,6 +410,17 @@ impl WriteContextArgs<'_> {
             self.op_span,
         )
     }
+
+    /// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
+    /// peristence.
+    pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> TokenStream {
+        let root = self.root;
+        let variant =
+            persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span);
+        quote_spanned!(self.op_span=>
+            #root::scheduled::graph::StateLifespan::#variant
+        )
+    }
 }
 
 /// An object-safe version of [`RangeBounds`].
@@ -477,17 +488,60 @@ where
     }
 }
 
-/// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
+/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
     /// No persistence, for within a loop iteration.
     None,
-    /// Persistence for one tick at-a-time only.
+    /// Persistence throughout a single loop execution, across iterations.
+    Loop,
+    /// Persistence for one tick, at the top-level only (outside any loops).
     Tick,
-    /// Persistene across all ticks.
+    /// Persistence across all ticks.
     Static,
-    /// Mutability.
+    /// The static lifetime but allowing non-monotonic mutability.
     Mutable,
+}
+impl Persistence {
+    /// Returns just the variant of `#root::scheduled::graph::StateLifespan::VARIANT` for use in macros.
+    pub fn as_state_lifespan_variant(
+        self,
+        subgraph_id: GraphSubgraphId,
+        loop_id: Option<GraphLoopId>,
+        span: Span,
+    ) -> TokenStream {
+        match self {
+            Persistence::None => {
+                let sg_ident = subgraph_id.as_ident(span);
+                quote_spanned!(span=> Subgraph(#sg_ident))
+            }
+            Persistence::Loop => {
+                let loop_ident = loop_id
+                    .expect("`Persistence::Loop` outside of a loop context.")
+                    .as_ident(span);
+                quote_spanned!(span=> Loop(#loop_ident))
+            }
+            Persistence::Tick => quote_spanned!(span=> Tick),
+            Persistence::Static => quote_spanned!(span=> Static),
+            _ => {
+                panic!(
+                    "Persistence type `{:?}` does not have a corresponding state lifespan.",
+                    self
+                );
+            }
+        }
+    }
+
+    /// Returns a lowercase string for the persistence type.
+    pub fn to_str_lowercase(self) -> &'static str {
+        match self {
+            Persistence::None => "none",
+            Persistence::Tick => "tick",
+            Persistence::Loop => "loop",
+            Persistence::Static => "static",
+            Persistence::Mutable => "mutable",
+        }
+    }
 }
 
 /// Helper which creates a error message string literal for when the Tokio runtime is not found.

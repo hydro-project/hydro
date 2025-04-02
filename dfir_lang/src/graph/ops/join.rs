@@ -149,10 +149,13 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
                 (true, Persistence::None) => Default::default(),
-                (false, Persistence::Tick) => quote_spanned! {op_span=>
-                    #df_ident.set_state_tick_hook(#joindata_ident, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
-                },
-                (true, Persistence::Tick) => Default::default(),
+                (false, Persistence::Tick | Persistence::Loop) => {
+                    let lifespan = wc.persistence_as_state_lifespan(persistence);
+                    quote_spanned! {op_span=>
+                        #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
+                    }
+                }
+                (true, Persistence::Tick | Persistence::Loop) => Default::default(),
                 (false, Persistence::Static) => Default::default(),
                 (true, Persistence::Static) => {
                     diagnostics.push(Diagnostic::spanned(
@@ -171,27 +174,27 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
             };
-            let (borrow, init) = if !in_loop {
+            let (init, borrow) = if !in_loop {
                 (
-                    quote_spanned! {op_span=>
-                        unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#joindata_ident)
-                        }.borrow_mut()
-                    },
                     quote_spanned! {op_span=>
                         let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                             #join_type::default()
                         ));
                         #reset
                     },
+                    quote_spanned! {op_span=>
+                        unsafe {
+                            // SAFETY: handle from `#df_ident.add_state(..)`.
+                            #context.state_ref_unchecked(#joindata_ident)
+                        }.borrow_mut()
+                    },
                 )
             } else {
                 (
+                    Default::default(),
                     quote_spanned! {op_span=>
                         #join_type::default()
                     },
-                    Default::default(),
                 )
             };
             Ok((borrow, borrow_ident, init))

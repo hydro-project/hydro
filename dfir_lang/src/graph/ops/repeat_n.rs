@@ -43,10 +43,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             let #singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::vec::Vec::new())
             );
-
-            // TODO(mingwei): Is this needed?
-            // Reset the value to the initializer fn if it is a new tick.
-            #df_ident.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.take(); });
         };
 
         let vec_ident = wc.make_ident("vec");

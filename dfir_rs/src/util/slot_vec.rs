@@ -14,7 +14,7 @@ pub struct Key<Tag: ?Sized> {
 }
 impl<Tag: ?Sized> Key<Tag> {
     /// Creates a Key from a raw index. Avoid using this function directly.
-    pub fn from_raw(index: usize) -> Self {
+    pub const fn from_raw(index: usize) -> Self {
         Key {
             index,
             _phantom: PhantomData,
@@ -69,9 +69,9 @@ pub struct SlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     /// Creates a new `SlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -180,9 +180,9 @@ pub struct SecondarySlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Creates a new `SecondarySlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -209,6 +209,15 @@ impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Returns a mutable reference to the value associated with the key.
     pub fn get_mut(&mut self, key: Key<Tag>) -> Option<&mut Val> {
         self.slots.get_mut(key.index).and_then(|v| v.as_mut())
+    }
+
+    /// Returns a mutable reference to the value associated with the key, inserting a default value
+    /// if it doesn't yet exist.
+    pub fn get_or_insert_with(&mut self, key: Key<Tag>, default: impl FnOnce() -> Val) -> &mut Val {
+        if key.index >= self.slots.len() {
+            self.slots.resize_with(key.index + 1, || None);
+        }
+        self.slots[key.index].get_or_insert_with(default)
     }
 
     /// Iterate the key-value pairs, where the value is a shared reference.
