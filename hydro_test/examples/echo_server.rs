@@ -4,8 +4,6 @@ use hydro_lang::deploy::TrybuildHost;
 #[tokio::main]
 async fn main() {
     let mut deployment = Deployment::new();
-    let _localhost = deployment.Localhost();
-
     let builder = hydro_lang::FlowBuilder::new();
     let num_clients: u32 = 3;
 
