@@ -15,8 +15,15 @@ pub struct ChatMsg {
     pub content: String,
 }
 
+// To enable colored output in the terminal, set the environment variable
+// `CLICOLOR_FORCE=1`. By default, the `colored` crate only applies color
+// when the output is a terminal, to avoid issues with terminals that do
+// not support color.
 pub fn chat_server<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Server>, Cluster<'a, Clients>) {
-    // For testing, a fixed cluster of clients.
+    // For testing, use a fixed cluster of clients. In future we should support unbounded clients.
+    // This is a workaround for the fact that we don't have a way to create a cluster of
+    // unbounded clients in the current version of hydro.
+
     let clients = flow.cluster::<Clients>();
     // Assume single server.
     let server = flow.process::<Server>();
