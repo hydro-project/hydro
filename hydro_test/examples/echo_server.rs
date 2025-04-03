@@ -11,8 +11,6 @@ async fn main() {
 
     let (server, clients) = hydro_test::cluster::echo_server::echo_server(&builder);
 
-    let _rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
-
     let _nodes = builder
         .with_process(&server, TrybuildHost::new(deployment.Localhost()))
         .with_cluster(
