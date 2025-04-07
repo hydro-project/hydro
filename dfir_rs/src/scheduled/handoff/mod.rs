@@ -27,12 +27,6 @@ pub trait CanReceive<T> {
 
 /// A handle onto the metadata part of a [Handoff], with no element type.
 pub trait HandoffMeta: Any {
-    /// Helper to cast an instance of `HandoffMeta` to [`Any`]. In general you cannot cast between
-    /// traits, including [`Any`], but this helper method works around that limitation.
-    ///
-    /// For implementors: the body of this method will generally just be `{ self }`.
-    fn any_ref(&self) -> &dyn Any;
-
     // TODO(justin): more fine-grained info here.
     /// Return if the handoff is empty.
     fn is_bottom(&self) -> bool;
@@ -42,10 +36,6 @@ impl<H> HandoffMeta for Rc<RefCell<H>>
 where
     H: HandoffMeta,
 {
-    fn any_ref(&self) -> &dyn Any {
-        self
-    }
-
     fn is_bottom(&self) -> bool {
         self.borrow().is_bottom()
     }

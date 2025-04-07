@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -154,9 +155,9 @@ pub enum HostTargetType {
     Linux,
 }
 
-pub type HostStrategyGetter = Box<dyn FnOnce(&dyn std::any::Any) -> ServerStrategy>;
+pub type HostStrategyGetter = Box<dyn FnOnce(&dyn Any) -> ServerStrategy>;
 
-pub trait Host: Send + Sync {
+pub trait Host: Any + Send + Sync {
     fn target_type(&self) -> HostTargetType;
 
     fn request_port(&self, bind_type: &ServerStrategy);
@@ -188,9 +189,6 @@ pub trait Host: Send + Sync {
 
     /// Determines whether this host can connect to another host using the given strategy.
     fn can_connect_to(&self, typ: ClientStrategy) -> bool;
-
-    /// Returns a reference to the host as a trait object.
-    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 #[async_trait]
