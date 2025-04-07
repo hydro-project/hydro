@@ -1,6 +1,5 @@
 //! Module for teeing handoffs, not currently used much.
 
-use std::any::Any;
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::rc::Rc;
@@ -71,10 +70,6 @@ where
 }
 
 impl<T> HandoffMeta for TeeingHandoff<T> {
-    fn any_ref(&self) -> &dyn Any {
-        self
-    }
-
     /// If this output's buffer is empty, return true.
     fn is_bottom(&self) -> bool {
         self.internal.borrow().readers[self.read_from]

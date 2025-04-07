@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock, Weak};
 
@@ -136,10 +135,6 @@ impl RustCrateSource for CustomClientPort {
 }
 
 impl RustCrateSink for CustomClientPort {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn instantiate(&self, _client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         bail!("Custom services cannot be used as the server")
     }
@@ -163,7 +158,7 @@ impl RustCrateSink for CustomClientPort {
             me.downcast_ref::<CustomClientPort>()
                 .unwrap()
                 .record_server_config(client_port);
-            bind_type(server_host.as_any())
+            bind_type(&*server_host)
         }))
     }
 }

@@ -146,8 +146,7 @@ impl RustCrateService {
             )?;
 
             assert!(!self.port_to_bind.contains_key(&my_port));
-            self.port_to_bind
-                .insert(my_port, instantiated(sink.as_any()));
+            self.port_to_bind.insert(my_port, (instantiated)(sink));
 
             Ok(())
         }
