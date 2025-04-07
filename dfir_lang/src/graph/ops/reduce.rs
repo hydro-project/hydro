@@ -97,17 +97,14 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             _ => unreachable!(),
         };
 
-        let (write_prologue, write_prologue_after) = {
-            let lifespan = wc.persistence_as_state_lifespan(persistence);
-            (
-                quote_spanned! {op_span=>
-                    let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));
-                },
-                lifespan.map(|lifespan| quote_spanned! {op_span=>
-                    #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(::std::option::Option::None); });
-                }).unwrap_or_default(),
-            )
+        let write_prologue = quote_spanned! {op_span=>
+            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));
         };
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(::std::option::Option::None); });
+            }).unwrap_or_default();
 
         let func = &arguments[0];
         let accumulator_ident = wc.make_ident("accumulator");

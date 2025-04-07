@@ -66,10 +66,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=2),
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_lifespan_hook`
-    // to prevent reading uncleared data if this subgraph doesn't run.
-    // https://github.com/hydro-project/hydro/issues/1298
-    has_singleton_output: false,
+    has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -80,6 +77,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
+                   singleton_output_ident,
                    is_pull,
                    work_fn,
                    root,
@@ -128,37 +126,24 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let aggfn = &arguments[0];
 
-        let groupbydata_ident = wc.make_ident("groupbydata");
         let hashtable_ident = wc.make_ident("hashtable");
 
-        let (write_prologue, mut_borrow) = match persistence {
-            Persistence::None => (
-                Default::default(),
-                quote_spanned! {op_span=>
-                    #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()
-                },
-            ),
-            Persistence::Tick | Persistence::Loop | Persistence::Static | Persistence::Mutable => (
-                quote_spanned! {op_span=>
-                    let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
-                },
-                quote_spanned! {op_span=>
-                    unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#groupbydata_ident)
-                    }.borrow_mut()
-                },
-            ),
+        let write_prologue = quote_spanned! {op_span=>
+            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
         };
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, |rcell| { rcell.take(); });
+            }).unwrap_or_default();
 
         let write_iterator = {
             let iter_expr = match persistence {
-                Persistence::None => quote_spanned! {op_span=>
-                    #hashtable_ident.drain()
-                },
-                Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
-                    #hashtable_ident.drain()
-                },
+                Persistence::None | Persistence::Tick | Persistence::Loop => {
+                    quote_spanned! {op_span=>
+                        #hashtable_ident.drain()
+                    }
+                }
                 Persistence::Static => quote_spanned! {op_span=>
                     // Play everything but only on the first run of this tick/stratum.
                     // (We know we won't have any more inputs, so it is fine to only play once.
@@ -180,7 +165,10 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             };
 
             quote_spanned! {op_span=>
-                let mut #hashtable_ident = #mut_borrow;
+                let mut #hashtable_ident = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#singleton_output_ident)
+                }.borrow_mut();
 
                 #work_fn(|| {
                     #[inline(always)]
@@ -226,207 +214,9 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after: Default::default(), // TODO(mingwei)
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })
     },
 };
-//     write_fn: |wc @ &WriteContextArgs {
-//                    df_ident,
-//                    context,
-//                    op_span,
-//                    ident,
-//                    inputs,
-//                    is_pull,
-//                    work_fn,
-//                    root,
-//                    op_inst:
-//                        OperatorInstance {
-//                            generics:
-//                                OpInstGenerics {
-//                                    persistence_args,
-//                                    type_args,
-//                                    ..
-//                                },
-//                            ..
-//                        },
-//                    arguments,
-//                    ..
-//                },
-//                diagnostics| {
-//         assert!(is_pull);
-
-//         let persistence = match persistence_args[..] {
-//             [] => Persistence::Tick,
-//             [a] => a,
-//             _ => unreachable!(),
-//         };
-
-//         let generic_type_args = [
-//             type_args
-//                 .first()
-//                 .map(ToTokens::to_token_stream)
-//                 .unwrap_or(quote_spanned!(op_span=> _)),
-//             type_args
-//                 .get(1)
-//                 .map(ToTokens::to_token_stream)
-//                 .unwrap_or(quote_spanned!(op_span=> _)),
-//         ];
-
-//         let input = &inputs[0];
-//         let aggfn = &arguments[0];
-
-//         let hashtable_ident = wc.make_ident("hashtable");
-//         let (write_prologue, write_iterator, write_iterator_after) = match persistence {
-//             Persistence::None => {
-//                 (
-//                     Default::default(),
-//                     // TODO(mingwei): deduplicate with other persistence cases below.
-//                     quote_spanned! {op_span=>
-//                         let mut #hashtable_ident = #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
-
-//                         #work_fn(|| {
-//                             #[inline(always)]
-//                             fn check_input<Iter: ::std::iter::Iterator<Item = (A, B)>, A: ::std::clone::Clone, B: ::std::clone::Clone>(iter: Iter)
-//                                 -> impl ::std::iter::Iterator<Item = (A, B)> { iter }
-
-//                             #[inline(always)]
-//                             /// A: accumulator type
-//                             /// O: output type
-//                             fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
-//                                 f(acc, item)
-//                             }
-
-//                             for kv in check_input(#input) {
-//                                 match #hashtable_ident.entry(kv.0) {
-//                                     ::std::collections::hash_map::Entry::Vacant(vacant) => {
-//                                         vacant.insert(kv.1);
-//                                     }
-//                                     ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
-//                                         #[allow(clippy::redundant_closure_call)] call_comb_type(occupied.get_mut(), kv.1, #aggfn);
-//                                     }
-//                                 }
-//                             }
-//                         });
-
-//                         let #ident = #hashtable_ident.drain();
-//                     },
-//                     Default::default(),
-//                 )
-//             }
-//             Persistence::Tick => {
-//                 let groupbydata_ident = wc.make_ident("groupbydata");
-
-//                 (
-//                     quote_spanned! {op_span=>
-//                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
-//                     },
-//                     quote_spanned! {op_span=>
-//                         let mut #hashtable_ident = unsafe {
-//                             // SAFETY: handle from `#df_ident.add_state(..)`.
-//                             #context.state_ref_unchecked(#groupbydata_ident)
-//                         }.borrow_mut();
-
-//                         #work_fn(|| {
-//                             #[inline(always)]
-//                             fn check_input<Iter: ::std::iter::Iterator<Item = (A, B)>, A: ::std::clone::Clone, B: ::std::clone::Clone>(iter: Iter)
-//                                 -> impl ::std::iter::Iterator<Item = (A, B)> { iter }
-
-//                             #[inline(always)]
-//                             /// A: accumulator type
-//                             /// O: output type
-//                             fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
-//                                 f(acc, item)
-//                             }
-
-//                             for kv in check_input(#input) {
-//                                 match #hashtable_ident.entry(kv.0) {
-//                                     ::std::collections::hash_map::Entry::Vacant(vacant) => {
-//                                         vacant.insert(kv.1);
-//                                     }
-//                                     ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
-//                                         #[allow(clippy::redundant_closure_call)] call_comb_type(occupied.get_mut(), kv.1, #aggfn);
-//                                     }
-//                                 }
-//                             }
-//                         });
-
-//                         let #ident = #hashtable_ident.drain();
-//                     },
-//                     Default::default(),
-//                 )
-//             }
-//             Persistence::Static => {
-//                 let groupbydata_ident = wc.make_ident("groupbydata");
-
-//                 (
-//                     quote_spanned! {op_span=>
-//                         let #groupbydata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
-//                     },
-//                     quote_spanned! {op_span=>
-//                         let mut #hashtable_ident = unsafe {
-//                             // SAFETY: handle from `#df_ident.add_state(..)`.
-//                             #context.state_ref_unchecked(#groupbydata_ident)
-//                         }.borrow_mut();
-
-//                         #work_fn(|| {
-//                             #[inline(always)]
-//                             fn check_input<Iter: ::std::iter::Iterator<Item = (A, B)>, A: ::std::clone::Clone, B: ::std::clone::Clone>(iter: Iter)
-//                                 -> impl ::std::iter::Iterator<Item = (A, B)> { iter }
-
-//                             #[inline(always)]
-//                             /// A: accumulator type
-//                             /// O: output type
-//                             fn call_comb_type<A, O>(acc: &mut A, item: A, f: impl Fn(&mut A, A) -> O) -> O {
-//                                 f(acc, item)
-//                             }
-
-//                             for kv in check_input(#input) {
-//                                 match #hashtable_ident.entry(kv.0) {
-//                                     ::std::collections::hash_map::Entry::Vacant(vacant) => {
-//                                         vacant.insert(kv.1);
-//                                     }
-//                                     ::std::collections::hash_map::Entry::Occupied(mut occupied) => {
-//                                         #[allow(clippy::redundant_closure_call)] call_comb_type(occupied.get_mut(), kv.1, #aggfn);
-//                                     }
-//                                 }
-//                             }
-//                         });
-
-//                         let #ident = #context.is_first_run_this_tick()
-//                             .then_some(#hashtable_ident.iter())
-//                             .into_iter()
-//                             .flatten()
-//                             .map(
-//                                 // TODO(mingwei): remove `unknown_lints` when `suspicious_double_ref_op` is stabilized.
-//                                 #[allow(unknown_lints, suspicious_double_ref_op, clippy::clone_on_copy)]
-//                                 |(k, v)| (
-//                                     ::std::clone::Clone::clone(k),
-//                                     ::std::clone::Clone::clone(v),
-//                                 )
-//                             );
-//                     },
-//                     quote_spanned! {op_span=>
-//                         #context.schedule_subgraph(#context.current_subgraph(), false);
-//                     },
-//                 )
-//             }
-
-//             Persistence::Mutable => {
-//                 diagnostics.push(Diagnostic::spanned(
-//                     op_span,
-//                     Level::Error,
-//                     "An implementation of 'mutable does not exist",
-//                 ));
-//                 return Err(());
-//             }
-//         };
-
-//         Ok(OperatorWriteOutput {
-//             write_prologue,
-//             write_iterator,
-//             write_iterator_after,
-//         })
-//     },
-// };
