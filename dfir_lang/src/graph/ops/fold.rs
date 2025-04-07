@@ -152,13 +152,14 @@ pub(crate) fn fold_impl(
             #[allow(clippy::redundant_closure_call)]
             #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); });
         }).unwrap_or_default();
-    let borrow_mut = quote_spanned! {op_span=>
-        unsafe {
+
+    let assign_accum_ident = quote_spanned! {op_span=>
+        #[allow(unused_mut)]
+        let mut #accumulator_ident = unsafe {
             // SAFETY: handle from `#df_ident.add_state(..)`.
             #context.state_ref_unchecked(#singleton_output_ident)
-        }.borrow_mut()
+        }.borrow_mut();
     };
-
     let iterator_foreach = quote_spanned! {op_span=>
         #[inline(always)]
         fn call_comb_type<Accum, Item>(
@@ -175,8 +176,7 @@ pub(crate) fn fold_impl(
     let write_iterator = if is_pull {
         quote_spanned! {op_span=>
             let #ident = {
-                #[allow(unused_mut)]
-                let mut #accumulator_ident = #borrow_mut;
+                #assign_accum_ident
 
                 #work_fn(|| #input.for_each(|#iterator_item_ident| {
                     #iterator_foreach
@@ -190,14 +190,11 @@ pub(crate) fn fold_impl(
         }
     } else {
         quote_spanned! {op_span=>
-            let #ident = {
-                #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                    #[allow(unused_mut)]
-                    let mut #accumulator_ident = #borrow_mut;
+            let #ident = #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
+                #assign_accum_ident
 
-                    #iterator_foreach
-                })
-            };
+                #iterator_foreach
+            });
         }
     };
 

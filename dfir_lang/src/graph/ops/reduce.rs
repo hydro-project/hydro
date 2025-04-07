@@ -153,13 +153,11 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         } else {
             // Is only push when used as a singleton, so no need to push to `outputs[0]`.
             quote_spanned! {op_span=>
-                let #ident = {
-                    #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        #assign_accum_ident
+                let #ident = #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
+                    #assign_accum_ident
 
-                        #iterator_foreach
-                    })
-                };
+                    #iterator_foreach
+                });
             }
         };
 

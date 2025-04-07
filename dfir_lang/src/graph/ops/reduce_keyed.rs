@@ -139,11 +139,18 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = {
             let iter_expr = match persistence {
-                Persistence::None | Persistence::Tick | Persistence::Loop => {
-                    quote_spanned! {op_span=>
-                        #hashtable_ident.drain()
-                    }
-                }
+                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                    #hashtable_ident.drain()
+                },
+                Persistence::Loop => quote_spanned! {op_span=>
+                    #hashtable_ident.iter().map(
+                        #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                        |(k, v)| (
+                            ::std::clone::Clone::clone(k),
+                            ::std::clone::Clone::clone(v),
+                        )
+                    )
+                },
                 Persistence::Static => quote_spanned! {op_span=>
                     // Play everything but only on the first run of this tick/stratum.
                     // (We know we won't have any more inputs, so it is fine to only play once.
@@ -153,8 +160,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                         .into_iter()
                         .flatten()
                         .map(
-                            // TODO(mingwei): remove `unknown_lints` when `suspicious_double_ref_op` is stabilized.
-                            #[allow(unknown_lints, suspicious_double_ref_op, clippy::clone_on_copy)]
+                            #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                             |(k, v)| (
                                 ::std::clone::Clone::clone(k),
                                 ::std::clone::Clone::clone(v),
