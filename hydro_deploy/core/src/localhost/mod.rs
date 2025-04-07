@@ -55,10 +55,6 @@ impl Host for LocalhostHost {
         self.id
     }
 
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>> {
         Some(Arc::new(LaunchedLocalhost))
     }

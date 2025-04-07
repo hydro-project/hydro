@@ -1,4 +1,3 @@
-use std::any::Any;
 use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 
@@ -65,10 +64,6 @@ impl<T> CanReceive<Vec<T>> for VecHandoff<T> {
 }
 
 impl<T> HandoffMeta for VecHandoff<T> {
-    fn any_ref(&self) -> &dyn Any {
-        self
-    }
-
     fn is_bottom(&self) -> bool {
         (*self.input).borrow_mut().is_empty()
     }
