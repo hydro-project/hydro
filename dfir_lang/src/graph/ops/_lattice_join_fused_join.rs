@@ -123,6 +123,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
         // initialize write_prologue and write_iterator_after via join_fused, but specialize the write_iterator
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator: _,
             write_iterator_after,
         } = (super::join_fused::JOIN_FUSED.write_fn)(&wc, diagnostics).unwrap();
@@ -134,11 +135,11 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             .map_err(|err| diagnostics.push(err))?;
         let rhs_join_options = super::join_fused::parse_argument(&wc.arguments[1])
             .map_err(|err| diagnostics.push(err))?;
-        let (_lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
+        let (_lhs_prologue, _lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
             super::join_fused::make_joindata(&wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
-        let (_rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
+        let (_rhs_prologue, _rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
             super::join_fused::make_joindata(&wc, persistences[1], &rhs_join_options, "rhs")
                 .map_err(|err| diagnostics.push(err))?;
 
@@ -179,6 +180,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

@@ -115,9 +115,13 @@ impl Debug for OperatorConstraints {
 #[derive(Default)]
 #[non_exhaustive]
 pub struct OperatorWriteOutput {
-    /// Code which runs once outside the subgraph to set up any external stuff
-    /// like state API stuff, external chanels, network connections, etc.
+    /// Code which runs once outside any subgraphs, BEFORE subgraphs are initialized,
+    /// to set up any external state (state API, chanels, network connections, etc.)
+    /// to be used by the subgraph.
     pub write_prologue: TokenStream,
+    /// Code which runs once outside the subgraph, AFTER subgraphs are initialized,
+    /// to set up state hooks which may need the subgraph ID.
+    pub write_prologue_after: TokenStream,
     /// Iterator (or pusherator) code inside the subgraphs. The code for each
     /// operator is emitted in order.
     ///
@@ -413,13 +417,13 @@ impl WriteContextArgs<'_> {
 
     /// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
     /// peristence.
-    pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> TokenStream {
+    pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> Option<TokenStream> {
         let root = self.root;
         let variant =
-            persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span);
-        quote_spanned!(self.op_span=>
+            persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span)?;
+        Some(quote_spanned! {self.op_span=>
             #root::scheduled::graph::StateLifespan::#variant
-        )
+        })
     }
 }
 
@@ -509,26 +513,21 @@ impl Persistence {
         subgraph_id: GraphSubgraphId,
         loop_id: Option<GraphLoopId>,
         span: Span,
-    ) -> TokenStream {
+    ) -> Option<TokenStream> {
         match self {
             Persistence::None => {
                 let sg_ident = subgraph_id.as_ident(span);
-                quote_spanned!(span=> Subgraph(#sg_ident))
+                Some(quote_spanned!(span=> Subgraph(#sg_ident)))
             }
             Persistence::Loop => {
                 let loop_ident = loop_id
                     .expect("`Persistence::Loop` outside of a loop context.")
                     .as_ident(span);
-                quote_spanned!(span=> Loop(#loop_ident))
+                Some(quote_spanned!(span=> Loop(#loop_ident)))
             }
-            Persistence::Tick => quote_spanned!(span=> Tick),
-            Persistence::Static => quote_spanned!(span=> Static),
-            _ => {
-                panic!(
-                    "Persistence type `{:?}` does not have a corresponding state lifespan.",
-                    self
-                );
-            }
+            Persistence::Tick => Some(quote_spanned!(span=> Tick)),
+            Persistence::Static => None,
+            Persistence::Mutable => None,
         }
     }
 

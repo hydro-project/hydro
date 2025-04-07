@@ -50,7 +50,7 @@ pub(crate) async fn run_server(opts: Opts) {
                     ],
                 }
             })
-            -> persist_mut_keyed::<'static>()
+            -> persist_mut_keyed::<'mutable>()
             -> [0]lookup;
         gets -> [1]lookup;
         // Join PUTs and GETs by key, persisting the PUTs.

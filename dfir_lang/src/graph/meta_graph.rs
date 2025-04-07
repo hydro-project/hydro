@@ -877,6 +877,7 @@ impl DfirGraph {
             });
 
         let mut op_prologue_code = Vec::new();
+        let mut op_prologue_after_code = Vec::new();
         let mut subgraphs = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in subgraphs_without_preds
@@ -1073,6 +1074,7 @@ impl DfirGraph {
                                 (op_constraints.write_fn)(&context_args, diagnostics);
                             let OperatorWriteOutput {
                                 write_prologue,
+                                write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
                             } = write_result.unwrap_or_else(|()| {
@@ -1092,7 +1094,7 @@ impl DfirGraph {
                                 }
                             });
                             op_prologue_code.push(write_prologue);
-
+                            op_prologue_after_code.push(write_prologue_after);
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
@@ -1249,6 +1251,7 @@ impl DfirGraph {
             #loop_code
             #( #op_prologue_code )*
             #( #subgraphs )*
+            #( #op_prologue_after_code )*
         };
 
         let meta_graph_json = serde_json::to_string(&self).unwrap();

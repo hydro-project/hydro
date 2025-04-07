@@ -151,9 +151,9 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 (true, Persistence::None) => Default::default(),
                 (false, Persistence::Tick | Persistence::Loop) => {
                     let lifespan = wc.persistence_as_state_lifespan(persistence);
-                    quote_spanned! {op_span=>
+                    lifespan.map(|lifespan| quote_spanned! {op_span=>
                         #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| #work_fn(|| #root::util::clear::Clear::clear(rcell.get_mut())));
-                    }
+                    }).unwrap_or_default()
                 }
                 (true, Persistence::Tick | Persistence::Loop) => Default::default(),
                 (false, Persistence::Static) => Default::default(),
@@ -174,13 +174,12 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     return Err(());
                 }
             };
-            let (init, borrow) = if !in_loop {
+            let (prologue, borrow) = if !in_loop {
                 (
                     quote_spanned! {op_span=>
                         let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                             #join_type::default()
                         ));
-                        #reset
                     },
                     quote_spanned! {op_span=>
                         unsafe {
@@ -197,7 +196,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     },
                 )
             };
-            Ok((borrow, borrow_ident, init))
+            Ok((prologue, reset, borrow, borrow_ident))
         };
 
         let persistences = match persistence_args[..] {
@@ -214,15 +213,10 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             _ => panic!(),
         };
 
-        let (lhs_borrow, lhs_borrow_ident, lhs_init) =
-            make_joindata(persistences[0], loop_id.is_some(), "lhs")?;
-        let (rhs_borrow, rhs_borrow_ident, rhs_init) =
-            make_joindata(persistences[1], loop_id.is_some(), "rhs")?;
-
-        let write_prologue = quote_spanned! {op_span=>
-            #lhs_init
-            #rhs_init
-        };
+        let (lhs_prologue, lhs_prologue_after, lhs_borrow, lhs_borrow_ident) =
+            (make_joindata)(persistences[0], loop_id.is_some(), "lhs")?;
+        let (rhs_prologue, rhs_prologue_after, rhs_borrow, rhs_borrow_ident) =
+            (make_joindata)(persistences[1], loop_id.is_some(), "rhs")?;
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -294,7 +288,14 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #lhs_prologue
+                #rhs_prologue
+            },
+            write_prologue_after: quote_spanned! {op_span=>
+                #lhs_prologue_after
+                #rhs_prologue_after
+            },
             write_iterator,
             write_iterator_after,
         })

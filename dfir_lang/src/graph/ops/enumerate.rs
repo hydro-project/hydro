@@ -78,15 +78,14 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
 
         let counter_ident = wc.make_ident("counterdata");
 
-        let mut write_prologue = quote_spanned! {op_span=>
+        let write_prologue = quote_spanned! {op_span=>
             let #counter_ident = #df_ident.add_state(::std::cell::RefCell::new(0..));
         };
-        if matches!(persistence, Persistence::Tick | Persistence::Loop) {
-            let lifespan = wc.persistence_as_state_lifespan(persistence);
-            write_prologue.extend(quote_spanned! {op_span=>
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
                 #df_ident.set_state_lifespan_hook(#counter_ident, #lifespan, |rcell| { rcell.replace(0..); });
-            });
-        }
+            }).unwrap_or_default();
 
         let map_fn = quote_spanned! {op_span=>
             |item| {
@@ -109,6 +108,7 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             ..Default::default()
         })

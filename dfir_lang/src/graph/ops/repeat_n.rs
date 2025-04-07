@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
-    RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Given a _bounded_ input stream, emits all values repeatedly over `N` iterations, in the same order.
@@ -74,6 +74,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

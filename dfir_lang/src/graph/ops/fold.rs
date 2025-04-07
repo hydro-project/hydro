@@ -64,6 +64,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = fold_impl(wc, diagnostics, &init, func)?;
@@ -77,6 +78,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })
@@ -140,41 +142,21 @@ pub(crate) fn fold_impl(
     let accumulator_ident = wc.make_ident("accumulator");
     let iterator_item_ident = wc.make_ident("iterator_item");
 
-    let (write_prologue, borrow_mut) = match persistence {
-        Persistence::None => (Default::default(), quote_spanned! {op_span=> &mut #init }),
-        Persistence::Loop | Persistence::Tick => {
-            let lifespan = wc.persistence_as_state_lifespan(persistence);
-            (
-                quote_spanned! {op_span=>
-                    #[allow(clippy::redundant_closure_call)]
-                    let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#init));
-
-                    #[allow(clippy::redundant_closure_call)]
-                    #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); });
-                },
-                quote_spanned! {op_span=>
-                    unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#singleton_output_ident)
-                    }.borrow_mut()
-                },
-            )
-        }
-        Persistence::Static => (
-            quote_spanned! {op_span=>
-                #[allow(clippy::redundant_closure_call)]
-                let #singleton_output_ident = #df_ident.add_state(
-                    ::std::cell::RefCell::new(#init)
-                );
-            },
-            quote_spanned! {op_span=>
-                unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#singleton_output_ident)
-                }.borrow_mut()
-            },
-        ),
-        Persistence::Mutable => unreachable!(),
+    let write_prologue = quote_spanned! {op_span=>
+        #[allow(clippy::redundant_closure_call)]
+        let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#init));
+    };
+    let write_prologue_after =wc
+        .persistence_as_state_lifespan(persistence)
+        .map(|lifespan| quote_spanned! {op_span=>
+            #[allow(clippy::redundant_closure_call)]
+            #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); });
+        }).unwrap_or_default();
+    let borrow_mut = quote_spanned! {op_span=>
+        unsafe {
+            // SAFETY: handle from `#df_ident.add_state(..)`.
+            #context.state_ref_unchecked(#singleton_output_ident)
+        }.borrow_mut()
     };
 
     let iterator_foreach = quote_spanned! {op_span=>
@@ -219,7 +201,7 @@ pub(crate) fn fold_impl(
         }
     };
 
-    let write_iterator_after = if Persistence::Static == persistence {
+    let write_iterator_after = if let Persistence::Static | Persistence::Tick = persistence {
         quote_spanned! {op_span=>
             #context.schedule_subgraph(#context.current_subgraph(), false);
         }
@@ -229,6 +211,7 @@ pub(crate) fn fold_impl(
 
     Ok(OperatorWriteOutput {
         write_prologue,
+        write_prologue_after,
         write_iterator,
         write_iterator_after,
     })

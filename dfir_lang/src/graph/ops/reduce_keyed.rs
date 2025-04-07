@@ -226,6 +226,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after: Default::default(), // TODO(mingwei)
             write_iterator,
             write_iterator_after,
         })

@@ -146,6 +146,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

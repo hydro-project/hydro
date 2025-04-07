@@ -354,6 +354,9 @@ impl<'a> Dfir<'a> {
                         (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
                 }
 
+                // Run subgraph state hooks.
+                self.context.run_state_hooks_subgraph(sg_id);
+
                 tracing::info!(
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,

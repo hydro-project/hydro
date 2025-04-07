@@ -268,6 +268,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

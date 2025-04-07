@@ -71,14 +71,14 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let lhs_join_options =
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
 
-        let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
+        let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
-        let write_prologue_rhs = match persistences[1] {
+        let rhs_prologue = match persistences[1] {
             Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
@@ -93,11 +93,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 ));
                 return Err(());
             }
-        };
-
-        let write_prologue = quote_spanned! {op_span=>
-            #lhs_prologue
-            #write_prologue_rhs
         };
 
         let lhs = &inputs[0];
@@ -170,7 +165,11 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #lhs_prologue
+                #rhs_prologue
+            },
+            write_prologue_after: lhs_prologue_after,
             write_iterator,
             write_iterator_after,
         })

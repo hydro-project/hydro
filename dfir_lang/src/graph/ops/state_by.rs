@@ -102,19 +102,18 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let state_ident = singleton_output_ident;
         let factory_fn = &arguments[1];
 
-        let mut write_prologue = quote_spanned! { op_span=>
+        let write_prologue = quote_spanned! { op_span=>
                     let #state_ident = {
                         let data_struct : #lattice_type = (#factory_fn)();
                         ::std::debug_assert!(::lattices::IsBot::is_bot(&data_struct));
                         #df_ident.add_state(::std::cell::RefCell::new(data_struct))
                     };
         };
-        if let Persistence::Tick | Persistence::Loop = persistence {
-            let lifespan = wc.persistence_as_state_lifespan(persistence);
-            write_prologue.extend(quote_spanned! {op_span=>
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
                 #df_ident.set_state_lifespan_hook(#state_ident, #lifespan, |rcell| { rcell.take(); });
-            });
-        }
+            }).unwrap_or_default();
 
         let by_fn = &arguments[0];
 
@@ -203,6 +202,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         };
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             ..Default::default()
         })

@@ -1,9 +1,9 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
 
 /// See `join_fused_lhs`
@@ -46,6 +46,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::join_fused_lhs::JOIN_FUSED_LHS.write_fn)(&wc, diagnostics)?;
@@ -57,6 +58,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

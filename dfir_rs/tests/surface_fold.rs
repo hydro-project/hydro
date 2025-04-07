@@ -103,7 +103,7 @@ pub fn test_fold_static_join() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
 
     let mut df = dfir_rs::dfir_syntax! {
-        teed_fold = source_iter(Vec::<usize>::new())
+        teed_fold = source_iter([])
             -> fold::<'tick>(|| 0, |old: &mut usize, _: usize| { *old += 1; })
             -> tee();
         teed_fold -> for_each(|_| {});

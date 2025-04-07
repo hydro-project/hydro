@@ -217,7 +217,7 @@ impl Context {
     {
         let state_data = StateData {
             state: Box::new(state),
-            lifespan_reset: None,
+            lifespan_hook_fn: None,
             lifespan: None,
         };
         let state_id = self.states.insert(state_data);
@@ -241,7 +241,7 @@ impl Context {
             .states
             .get_mut(handle.state_id)
             .expect("Failed to find state with given handle.");
-        state_data.lifespan_reset = Some(Box::new(move |state| {
+        state_data.lifespan_hook_fn = Some(Box::new(move |state| {
             (hook_fn)(state.downcast_mut::<T>().unwrap());
         }));
         state_data.lifespan = Some(lifespan);
@@ -352,17 +352,34 @@ impl Context {
 
     /// Call this at the end of a tick,
     pub(super) fn run_state_hooks_tick(&mut self) {
-        tracing::debug!("Running state hooks for tick {}", self.current_tick);
-        for StateData {
-            state,
-            lifespan_reset,
-            lifespan,
-        } in self.states.values_mut()
-        {
-            if Some(StateLifespan::Tick) == *lifespan {
-                if let Some(tick_reset) = lifespan_reset {
-                    (tick_reset)(Box::deref_mut(state));
-                }
+        tracing::trace!("Running state hooks for tick {}", self.current_tick);
+        for state_data in self.states.values_mut() {
+            let StateData {
+                state,
+                lifespan_hook_fn: Some(lifespan_hook_fn),
+                lifespan: Some(StateLifespan::Tick),
+            } = state_data
+            else {
+                continue;
+            };
+            (lifespan_hook_fn)(Box::deref_mut(state));
+        }
+    }
+
+    pub(super) fn run_state_hooks_subgraph(&mut self, subgraph_id: SubgraphId) {
+        tracing::trace!("Running state hooks for subgraph {:?}", subgraph_id);
+        for state_id in self.subgraph_states.get(subgraph_id).into_iter().flatten() {
+            let StateData {
+                state,
+                lifespan_hook_fn,
+                lifespan: _,
+            } = self
+                .states
+                .get_mut(*state_id)
+                .expect("Failed to find state with given ID.");
+
+            if let Some(lifespan_hook_fn) = lifespan_hook_fn {
+                (lifespan_hook_fn)(Box::deref_mut(state));
             }
         }
     }
@@ -370,19 +387,19 @@ impl Context {
     // Run the state hooks for each state in the loop.
     // Call at the end of each loop execution.
     pub(super) fn run_state_hooks_loop(&mut self, loop_id: LoopId) {
-        tracing::debug!("Running state hooks for loop {:?}", loop_id);
+        tracing::trace!("Running state hooks for loop {:?}", loop_id);
         for state_id in self.loop_states.get(loop_id).into_iter().flatten() {
             let StateData {
                 state,
-                lifespan_reset,
+                lifespan_hook_fn,
                 lifespan: _,
             } = self
                 .states
                 .get_mut(*state_id)
                 .expect("Failed to find state with given ID.");
 
-            if let Some(tick_reset) = lifespan_reset {
-                (tick_reset)(Box::deref_mut(state));
+            if let Some(lifespan_hook_fn) = lifespan_hook_fn {
+                (lifespan_hook_fn)(Box::deref_mut(state));
             }
         }
     }
@@ -391,7 +408,7 @@ impl Context {
 /// Internal struct containing a pointer to instance-owned state.
 struct StateData {
     state: Box<dyn Any>,
-    lifespan_reset: Option<LifespanResetFn>, // TODO(mingwei): replace with trait?
+    lifespan_hook_fn: Option<LifespanResetFn>, // TODO(mingwei): replace with trait?
     /// `None` for static.
     lifespan: Option<StateLifespan>,
 }

@@ -2,8 +2,8 @@ use quote::quote_spanned;
 use syn::parse_quote_spanned;
 
 use super::{
-    make_missing_runtime_msg, FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs, make_missing_runtime_msg,
 };
 
 /// > 0 input streams, 1 output stream
@@ -67,6 +67,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue: write_prologue_stream,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::source_stream::SOURCE_STREAM.write_fn)(&wc, diagnostics)?;
@@ -84,6 +85,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

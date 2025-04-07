@@ -74,77 +74,51 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 };
                 [p, p]
             }
+            [Persistence::Mutable] | [Persistence::Mutable, Persistence::Mutable] => {
+                diagnostics.push(Diagnostic::spanned(
+                    op_span,
+                    Level::Error,
+                    "An implementation of 'mutable does not exist",
+                ));
+                let p = if loop_id.is_some() {
+                    Persistence::None
+                } else {
+                    Persistence::Tick
+                };
+                [p, p]
+            }
             [a] => [a, a],
             [a, b] => [a, b],
             _ => unreachable!(),
         };
 
-        let mut make_antijoindata = |persistence, side| {
+        let make_antijoindata = |persistence, side| {
             let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
             let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
-            let (init, pre_write_iter, borrow) = match persistence {
-                Persistence::None => (
-                    Default::default(),
-                    quote_spanned! {op_span=>
-                        let #borrow_ident = &mut #root::rustc_hash::FxHashSet::default();
-                    },
-                    quote_spanned! {op_span=>
-                        &mut *#borrow_ident
-                    },
-                ),
-                Persistence::Tick | Persistence::Loop => {
-                    let lifespan = wc.persistence_as_state_lifespan(persistence);
-                    (
-                        quote_spanned! {op_span=>
-                            let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
-                            #df_ident.set_state_lifespan_hook(#antijoindata_ident, #lifespan, |rcell| { rcell.take(); });
-                        },
-                        quote_spanned! {op_span=>
-                            let mut #borrow_ident = unsafe {
-                                // SAFETY: handle from `#df_ident.add_state(..)`.
-                                #context.state_ref_unchecked(#antijoindata_ident)
-                            }.borrow_mut();
-                        },
-                        quote_spanned! {op_span=>
-                            &mut *#borrow_ident
-                        },
-                    )
-                }
-                Persistence::Static => (
-                    quote_spanned! {op_span=>
-                        let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                            #root::rustc_hash::FxHashSet::default()
-                        ));
-                    },
-                    quote_spanned! {op_span=>
-                        let mut #borrow_ident = unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#antijoindata_ident)
-                        }.borrow_mut();
-                    },
-                    quote_spanned! {op_span=>
-                        &mut *#borrow_ident
-                    },
-                ),
-                Persistence::Mutable => {
-                    diagnostics.push(Diagnostic::spanned(
-                        op_span,
-                        Level::Error,
-                        "An implementation of 'mutable does not exist",
-                    ));
-                    return Err(());
-                }
-            };
-            Ok((init, pre_write_iter, borrow))
+            let lifespan = wc.persistence_as_state_lifespan(persistence);
+            (
+                quote_spanned! {op_span=>
+                    let #antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+                },
+                lifespan.map(|lifespan| quote_spanned! {op_span=>
+                    #df_ident.set_state_lifespan_hook(#antijoindata_ident, #lifespan, |rcell| { rcell.take(); });
+                }).unwrap_or_default(),
+                quote_spanned! {op_span=>
+                    let mut #borrow_ident = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#antijoindata_ident)
+                    }.borrow_mut();
+                },
+                quote_spanned! {op_span=>
+                    &mut *#borrow_ident
+                },
+            )
         };
 
-        let (pos_init, pos_pre_write_iter, pos_borrow) = make_antijoindata(persistences[0], "pos")?;
-        let (neg_init, neg_pre_write_iter, neg_borrow) = make_antijoindata(persistences[1], "neg")?;
-
-        let write_prologue = quote_spanned! {op_span=>
-            #pos_init
-            #neg_init
-        };
+        let (pos_prologue, pos_prologue_after, pos_pre_write_iter, pos_borrow) =
+            make_antijoindata(persistences[0], "pos");
+        let (neg_prologue, neg_prologue_after, neg_pre_write_iter, neg_borrow) =
+            make_antijoindata(persistences[1], "neg");
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
@@ -185,7 +159,14 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #pos_prologue
+                #neg_prologue
+            },
+            write_prologue_after: quote_spanned! {op_span=>
+                #pos_prologue_after
+                #neg_prologue_after
+            },
             write_iterator,
             ..Default::default()
         })

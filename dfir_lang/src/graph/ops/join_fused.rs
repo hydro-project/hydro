@@ -131,18 +131,13 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
         let rhs_join_options =
             parse_argument(&arguments[1]).map_err(|err| diagnostics.push(err))?;
 
-        let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
+        let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
-        let (rhs_prologue, rhs_pre_write_iter, rhs_borrow) =
+        let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
             make_joindata(wc, persistences[1], &rhs_join_options, "rhs")
                 .map_err(|err| diagnostics.push(err))?;
-
-        let write_prologue = quote_spanned! {op_span=>
-            #lhs_prologue
-            #rhs_prologue
-        };
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];
@@ -204,7 +199,14 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #lhs_prologue
+                #rhs_prologue
+            },
+            write_prologue_after: quote_spanned! {op_span=>
+                #lhs_prologue_after
+                #rhs_prologue_after
+            },
             write_iterator,
             write_iterator_after,
         })
@@ -272,12 +274,13 @@ pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions, Diagnostic> {
     }
 }
 
+/// Returns `(prologue, prologue_after, pre_write_iter, borrow)`.
 pub(crate) fn make_joindata(
     wc: &WriteContextArgs,
     persistence: Persistence,
     join_options: &JoinOptions<'_>,
     side: &str,
-) -> Result<(TokenStream, TokenStream, TokenStream), Diagnostic> {
+) -> Result<(TokenStream, TokenStream, TokenStream, TokenStream), Diagnostic> {
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
@@ -301,8 +304,9 @@ pub(crate) fn make_joindata(
         }
     };
 
-    let (prologue, pre_write_iter, borrow) = match persistence {
+    Ok(match persistence {
         Persistence::None => (
+            Default::default(),
             Default::default(),
             quote_spanned! {op_span=>
                 let mut #borrow_ident = #join_type::default();
@@ -311,15 +315,16 @@ pub(crate) fn make_joindata(
                 #borrow_ident
             },
         ),
-        Persistence::Tick | Persistence::Loop => {
+        Persistence::Tick | Persistence::Loop | Persistence::Static => {
             let lifespan = wc.persistence_as_state_lifespan(persistence);
             (
                 quote_spanned! {op_span=>
                     let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#join_type::default()));
-
+                },
+                lifespan.map(|lifespan| quote_spanned! {op_span=>
                     // Reset the value to the initializer fn at the end of each tick/loop execution.
                     #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| { rcell.take(); });
-                },
+                }).unwrap_or_default(),
                 quote_spanned! {op_span=>
                     let mut #borrow_ident = unsafe {
                         // SAFETY: handles from `#df_ident`.
@@ -331,22 +336,6 @@ pub(crate) fn make_joindata(
                 },
             )
         }
-        Persistence::Static => (
-            quote_spanned! {op_span=>
-                let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                    #join_type::default()
-                ));
-            },
-            quote_spanned! {op_span=>
-                let mut #borrow_ident = unsafe {
-                    // SAFETY: handles from `#df_ident`.
-                    #context.state_ref_unchecked(#joindata_ident)
-                }.borrow_mut();
-            },
-            quote_spanned! {op_span=>
-                #borrow_ident
-            },
-        ),
         Persistence::Mutable => {
             return Err(Diagnostic::spanned(
                 op_span,
@@ -354,15 +343,14 @@ pub(crate) fn make_joindata(
                 "An implementation of 'mutable does not exist",
             ));
         }
-    };
-    Ok((prologue, pre_write_iter, borrow))
+    })
 }
 
 pub(crate) fn parse_persistences(persistences: &[Persistence]) -> [Persistence; 2] {
-    match persistences {
+    match *persistences {
         [] => [Persistence::Tick, Persistence::Tick],
-        [a] => [*a, *a],
-        [a, b] => [*a, *b],
+        [a] => [a, a],
+        [a, b] => [a, b],
         _ => panic!("Too many persistences: {persistences:?}"),
     }
 }
