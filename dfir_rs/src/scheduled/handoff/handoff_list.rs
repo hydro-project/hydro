@@ -1,5 +1,7 @@
 //! Module for variadic handoff port lists, [`PortList`].
 
+use std::any::Any;
+
 use ref_cast::RefCast;
 use sealed::sealed;
 use variadics::{Variadic, variadic_trait};
@@ -95,13 +97,13 @@ where
     type Ctx<'a> = (&'a PortCtx<S, H>, Rest::Ctx<'a>);
     unsafe fn make_ctx<'a>(&self, handoffs: &'a SlotVec<HandoffTag, HandoffData>) -> Self::Ctx<'a> {
         let (this, rest) = self;
-        let hoff_any = handoffs.get(this.handoff_id).unwrap().handoff.any_ref();
+        let hoff_any: &dyn Any = &*handoffs.get(this.handoff_id).unwrap().handoff;
         debug_assert!(hoff_any.is::<H>());
 
         let handoff = unsafe {
             // SAFETY: Caller must ensure `self` is from `handoffs`.
             // TODO(shadaj): replace with `downcast_ref_unchecked` when it's stabilized
-            &*(hoff_any as *const dyn std::any::Any as *const H)
+            &*(hoff_any as *const dyn Any as *const H)
         };
 
         let ctx = RefCast::ref_cast(handoff);
@@ -117,7 +119,7 @@ where
         let Some(hoff_data) = handoffs.get(this.handoff_id) else {
             panic!("Handoff ID {} not found in `handoffs`.", this.handoff_id);
         };
-        let hoff_any = hoff_data.handoff.any_ref();
+        let hoff_any: &dyn Any = &*hoff_data.handoff;
         assert!(
             hoff_any.is::<H>(),
             "Handoff ID {} is not of type {} in `handoffs`.",

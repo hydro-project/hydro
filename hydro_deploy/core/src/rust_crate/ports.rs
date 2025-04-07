@@ -36,7 +36,7 @@ pub trait RustCrateSource: Send + Sync {
                     self.wrap_reverse_server_config(p)
                 })
                 .unwrap();
-            self.record_server_strategy(instantiated(sink.as_any()));
+            self.record_server_strategy(instantiated(sink));
         }
     }
 }
@@ -48,9 +48,7 @@ pub trait RustCrateServer: DynClone + Send + Sync {
 
 pub type ReverseSinkInstantiator = Box<dyn FnOnce(&dyn Any) -> ServerStrategy>;
 
-pub trait RustCrateSink: Send + Sync {
-    fn as_any(&self) -> &dyn Any;
-
+pub trait RustCrateSink: Any + Send + Sync {
     /// Instantiate the sink as the source host connecting to the sink host.
     /// Returns a thunk that can be called to perform mutations that instantiate the sink.
     fn instantiate(&self, client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>>;
@@ -116,10 +114,6 @@ impl RustCrateSource for NullSourceSink {
 }
 
 impl RustCrateSink for NullSourceSink {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn instantiate(&self, _client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         Ok(Box::new(|| ServerConfig::Null))
     }
@@ -139,10 +133,6 @@ pub struct DemuxSink {
 }
 
 impl RustCrateSink for DemuxSink {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn instantiate(&self, client_host: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         let mut thunk_map = HashMap::new();
         for (key, target) in &self.demux {
@@ -182,7 +172,7 @@ impl RustCrateSink for DemuxSink {
             let me = me.downcast_ref::<DemuxSink>().unwrap();
             let instantiated_map = thunk_map
                 .into_iter()
-                .map(|(key, thunk)| (key, thunk(me.demux.get(&key).unwrap().as_any())))
+                .map(|(key, thunk)| (key, (thunk)(me.demux.get(&key).unwrap())))
                 .collect();
 
             ServerStrategy::Demux(instantiated_map)
@@ -314,10 +304,6 @@ impl SourcePath {
 }
 
 impl RustCrateSink for RustCratePortConfig {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn instantiate(&self, client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         let server = self.service.upgrade().unwrap();
         let server_read = server.try_read().unwrap();
@@ -331,7 +317,7 @@ impl RustCrateSink for RustCratePortConfig {
         let port = self.port.clone();
         Ok(Box::new(move || {
             let mut server_write = server.try_write().unwrap();
-            let bind_type = (bind_type)(server_write.on.as_any());
+            let bind_type = (bind_type)(&*server_write.on);
 
             if merge {
                 let merge_config = server_write
@@ -392,7 +378,7 @@ impl RustCrateSink for RustCratePortConfig {
                     .insert(port.clone(), client_port);
             };
 
-            (bind_type)(client_write.on.as_any())
+            (bind_type)(&*client_write.on)
         }))
     }
 }

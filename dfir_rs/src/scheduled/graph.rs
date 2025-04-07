@@ -65,11 +65,8 @@ impl Dfir<'_> {
         let tee_root_data_name = tee_root_data.name.clone();
 
         // Insert new handoff output.
-        let teeing_handoff = tee_root_data
-            .handoff
-            .any_ref()
-            .downcast_ref::<TeeingHandoff<T>>()
-            .unwrap();
+        let teeing_handoff =
+            <dyn Any>::downcast_ref::<TeeingHandoff<T>>(&*tee_root_data.handoff).unwrap();
         let new_handoff = teeing_handoff.tee();
 
         // Handoff ID of new tee output.
@@ -111,11 +108,7 @@ impl Dfir<'_> {
         T: Clone,
     {
         let data = &self.handoffs[tee_port.handoff_id];
-        let teeing_handoff = data
-            .handoff
-            .any_ref()
-            .downcast_ref::<TeeingHandoff<T>>()
-            .unwrap();
+        let teeing_handoff = <dyn Any>::downcast_ref::<TeeingHandoff<T>>(&*data.handoff).unwrap();
         teeing_handoff.drop();
 
         let tee_root = data.pred_handoffs[0];
@@ -875,10 +868,7 @@ impl<'a> Dfir<'a> {
                         .map(|hid| hid.handoff_id)
                         .map(|hid| handoffs.get(hid).unwrap())
                         .map(|h_data| {
-                            h_data
-                                .handoff
-                                .any_ref()
-                                .downcast_ref()
+                            <dyn Any>::downcast_ref(&*h_data.handoff)
                                 .expect("Attempted to cast handoff to wrong type.")
                         })
                         .map(RefCast::ref_cast)
@@ -889,10 +879,7 @@ impl<'a> Dfir<'a> {
                         .map(|hid| hid.handoff_id)
                         .map(|hid| handoffs.get(hid).unwrap())
                         .map(|h_data| {
-                            h_data
-                                .handoff
-                                .any_ref()
-                                .downcast_ref()
+                            <dyn Any>::downcast_ref(&*h_data.handoff)
                                 .expect("Attempted to cast handoff to wrong type.")
                         })
                         .map(RefCast::ref_cast)
