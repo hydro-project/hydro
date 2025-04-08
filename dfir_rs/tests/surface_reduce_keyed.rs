@@ -209,7 +209,7 @@ pub fn test_reduce_keyed_loop_lifetime() {
 
     // `'none` resets each iteration.
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             ("bar", 45),
             ("foo", 45),
             ("bar", 45),
@@ -220,12 +220,12 @@ pub fn test_reduce_keyed_loop_lifetime() {
             ("foo", 45),
             ("bar", 45),
             ("foo", 45),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+        ]),
+        collect_ready::<BTreeSet<_>, _>(&mut result1_recv)
     );
     // `'loop` accumulates across iterations.
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             ("bar", 45),
             ("foo", 45),
             ("bar", 90),
@@ -236,7 +236,7 @@ pub fn test_reduce_keyed_loop_lifetime() {
             ("foo", 180),
             ("bar", 225),
             ("foo", 225),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+        ]),
+        collect_ready::<BTreeSet<_>, _>(&mut result2_recv)
     );
 }

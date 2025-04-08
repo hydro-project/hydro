@@ -209,7 +209,7 @@ pub fn test_fold_keyed_loop_lifetime() {
 
     // `'none` resets each iteration.
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             ("bar", 10045),
             ("foo", 10045),
             ("bar", 10045),
@@ -220,12 +220,12 @@ pub fn test_fold_keyed_loop_lifetime() {
             ("foo", 10045),
             ("bar", 10045),
             ("foo", 10045),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+        ]),
+        collect_ready::<BTreeSet<_>, _>(&mut result1_recv)
     );
     // `'loop` accumulates across iterations.
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             ("bar", 10045),
             ("foo", 10045),
             ("bar", 10090),
@@ -236,7 +236,7 @@ pub fn test_fold_keyed_loop_lifetime() {
             ("foo", 10180),
             ("bar", 10225),
             ("foo", 10225),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+        ]),
+        collect_ready::<BTreeSet<_>, _>(&mut result2_recv)
     );
 }
