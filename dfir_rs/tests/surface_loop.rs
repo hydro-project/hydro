@@ -3,6 +3,36 @@ use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test(test, env_tracing, wasm)]
+pub fn test_batches_basic() {
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        x = source_stream(iter_batches_stream(0..10, 1));
+        loop {
+            x -> batch()
+                -> for_each(|x| result_send.send((context.loop_iter_count(), x)).unwrap());
+        };
+    };
+    df.run_available();
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (5, 5),
+            (6, 6),
+            (7, 7),
+            (8, 8),
+            (9, 9),
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
+#[multiplatform_test(test, env_tracing, wasm)]
 pub fn test_flo_syntax() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
 

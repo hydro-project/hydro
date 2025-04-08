@@ -278,6 +278,15 @@ impl<'a> Dfir<'a> {
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
+                let _enter = tracing::info_span!(
+                    "run-subgraph",
+                    sg_id = sg_id.to_string(),
+                    sg_name = &*sg_data.name,
+                    sg_depth = sg_data.loop_depth,
+                    sg_loop_nonce = sg_data.last_loop_nonce.0,
+                    sg_iter_count = sg_data.last_loop_nonce.1,
+                ).entered();
+
                 match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
                         // We have entered a loop.
@@ -357,14 +366,7 @@ impl<'a> Dfir<'a> {
                 // Run subgraph state hooks.
                 self.context.run_state_hooks_subgraph(sg_id);
 
-                tracing::info!(
-                    sg_id = sg_id.to_string(),
-                    sg_name = &*sg_data.name,
-                    sg_depth = sg_data.loop_depth,
-                    sg_loop_nonce = sg_data.last_loop_nonce.0,
-                    sg_iter_count = sg_data.last_loop_nonce.1,
-                    "Running subgraph."
-                );
+                tracing::info!("Running subgraph.");
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
 
                 sg_data.last_tick_run_in = Some(self.context.current_tick);

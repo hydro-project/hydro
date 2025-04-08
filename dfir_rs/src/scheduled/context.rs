@@ -352,7 +352,7 @@ impl Context {
 
     /// Call this at the end of a tick,
     pub(super) fn run_state_hooks_tick(&mut self) {
-        tracing::trace!("Running state hooks for tick {}", self.current_tick);
+        tracing::trace!("Running state hooks for tick.");
         for state_data in self.states.values_mut() {
             let StateData {
                 state,
@@ -367,7 +367,7 @@ impl Context {
     }
 
     pub(super) fn run_state_hooks_subgraph(&mut self, subgraph_id: SubgraphId) {
-        tracing::trace!("Running state hooks for subgraph {:?}", subgraph_id);
+        tracing::trace!("Running state hooks for subgraph.");
         for state_id in self.subgraph_states.get(subgraph_id).into_iter().flatten() {
             let StateData {
                 state,
@@ -387,7 +387,7 @@ impl Context {
     // Run the state hooks for each state in the loop.
     // Call at the end of each loop execution.
     pub(super) fn run_state_hooks_loop(&mut self, loop_id: LoopId) {
-        tracing::trace!("Running state hooks for loop {:?}", loop_id);
+        tracing::trace!(loop_id = loop_id.to_string(), "Running state hooks for loop.");
         for state_id in self.loop_states.get(loop_id).into_iter().flatten() {
             let StateData {
                 state,

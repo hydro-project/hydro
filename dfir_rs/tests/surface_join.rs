@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::util::{collect_ready, iter_batches_stream};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
@@ -150,4 +151,70 @@ pub fn replay_static() {
         assert_contains_each_by_tick!(results, TickInstant::new(1), &[(7, (1, 3)), (7, (1, 4)), (7, (2, 3)), (7, (2, 4))]);
         assert_contains_each_by_tick!(results, TickInstant::new(2), &[(7, (1, 3)), (7, (1, 4)), (7, (2, 3)), (7, (2, 4))]);
     };
+}
+
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn loop_lifetimes() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result3_send, mut result3_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result4_send, mut result4_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        lb = source_stream(iter_batches_stream([
+            (7, 1),
+            (7, 2),
+            (7, 3),
+            (8, 4),
+        ], 2)) -> tee();
+        rb = source_stream(iter_batches_stream([
+            (7, 5),
+            (8, 6),
+            (7, 7),
+            (8, 8),
+        ], 2)) -> tee();
+
+        loop {
+            lb -> batch() -> [0]join1;
+            rb -> batch() -> [1]join1;
+            join1 = join::<'loop, 'loop>()
+                -> for_each(|x| result1_send.send((context.loop_iter_count(), x)).unwrap());
+
+            lb -> batch() -> [0]join2;
+            rb -> batch() -> [1]join2;
+            join2 = join::<'loop, 'none>()
+                -> for_each(|x| result2_send.send((context.loop_iter_count(), x)).unwrap());
+
+            lb -> batch() -> [0]join3;
+            rb -> batch() -> [1]join3;
+            join3 = join::<'none, 'loop>()
+                -> for_each(|x| result3_send.send((context.loop_iter_count(), x)).unwrap());
+
+            lb -> batch() -> [0]join4;
+            rb -> batch() -> [1]join4;
+            join4 = join::<'none, 'none>()
+                -> for_each(|x| result4_send.send((context.loop_iter_count(), x)).unwrap());
+        };
+    };
+    assert_graphvis_snapshots!(df);
+
+
+    df.run_available();
+
+    assert_eq!(
+        &[(0, (7, (1, 5))), (0, (7, (2, 5))), (1, (8, (4, 6))), (1, (8, (4, 8))), (1, (7, (1, 5))), (1, (7, (2, 5))), (1, (7, (3, 5))), (1, (7, (1, 7))), (1, (7, (2, 7))), (1, (7, (3, 7)))],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+    assert_eq!(
+        &[(1, (7, (1, 5))), (1, (7, (2, 5))), (2, (8, (4, 8))), (2, (7, (1, 7))), (2, (7, (2, 7))), (2, (7, (3, 7)))],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+    assert_eq!(
+        &[(1, (7, (1, 5))), (1, (7, (2, 5))), (2, (8, (4, 6))), (2, (8, (4, 8))), (2, (7, (3, 5))), (2, (7, (3, 7)))],
+        &*collect_ready::<Vec<_>, _>(&mut result3_recv)
+    );
+    assert_eq!(
+        &[(1, (7, (1, 5))), (1, (7, (2, 5))), (2, (8, (4, 8))), (2, (7, (3, 7)))],
+        &*collect_ready::<Vec<_>, _>(&mut result4_recv)
+    );
 }
