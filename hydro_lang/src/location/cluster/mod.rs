@@ -126,8 +126,9 @@ pub struct ClusterSelfId<'a> {
     _private: &'a (),
 }
 
-impl<'a, L: Location<'a>> FreeVariableWithContext<L> for ClusterSelfId<'a>
+impl<'a, L> FreeVariableWithContext<L> for ClusterSelfId<'a>
 where
+    L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
     type O = ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
@@ -156,10 +157,11 @@ where
     }
 }
 
-impl<'a, L: Location<'a>>
+impl<'a, L>
     QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
     for ClusterSelfId<'a>
 where
+    L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
 }

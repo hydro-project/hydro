@@ -28,14 +28,20 @@ pub trait CycleCollectionWithInitial<'a, T>: CycleComplete<'a, T> {
 /// by a stream that is not yet known.
 ///
 /// See [`crate::FlowBuilder`] for an explainer on the type parameters.
-pub struct ForwardRef<'a, S: CycleComplete<'a, ForwardRefMarker>> {
+pub struct ForwardRef<'a, S>
+where 
+    S: CycleComplete<'a, ForwardRefMarker>
+{
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
     pub(crate) expected_location: LocationId,
     pub(crate) _phantom: Invariant<'a, S>,
 }
 
-impl<'a, S: CycleComplete<'a, ForwardRefMarker>> Drop for ForwardRef<'a, S> {
+impl<'a, S> Drop for ForwardRef<'a, S>
+where
+    S: CycleComplete<'a, ForwardRefMarker>
+{
     fn drop(&mut self) {
         if !self.completed {
             panic!("ForwardRef dropped without being completed");
@@ -43,7 +49,10 @@ impl<'a, S: CycleComplete<'a, ForwardRefMarker>> Drop for ForwardRef<'a, S> {
     }
 }
 
-impl<'a, S: CycleComplete<'a, ForwardRefMarker>> ForwardRef<'a, S> {
+impl<'a, S> ForwardRef<'a, S>
+where
+    S: CycleComplete<'a, ForwardRefMarker>
+{
     pub fn complete(mut self, stream: S) {
         self.completed = true;
         let ident = self.ident.clone();
@@ -51,14 +60,20 @@ impl<'a, S: CycleComplete<'a, ForwardRefMarker>> ForwardRef<'a, S> {
     }
 }
 
-pub struct TickCycle<'a, S: CycleComplete<'a, TickCycleMarker> + DeferTick> {
+pub struct TickCycle<'a, S>
+where 
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+{
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
     pub(crate) expected_location: LocationId,
     pub(crate) _phantom: Invariant<'a, S>,
 }
 
-impl<'a, S: CycleComplete<'a, TickCycleMarker> + DeferTick> Drop for TickCycle<'a, S> {
+impl<'a, S> Drop for TickCycle<'a, S>
+where 
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+{
     fn drop(&mut self) {
         if !self.completed {
             panic!("TickCycle dropped without being completed");
@@ -66,7 +81,10 @@ impl<'a, S: CycleComplete<'a, TickCycleMarker> + DeferTick> Drop for TickCycle<'
     }
 }
 
-impl<'a, S: CycleComplete<'a, TickCycleMarker> + DeferTick> TickCycle<'a, S> {
+impl<'a, S> TickCycle<'a, S>
+where 
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+{
     pub fn complete_next_tick(mut self, stream: S) {
         self.completed = true;
         let ident = self.ident.clone();

@@ -23,7 +23,10 @@ pub struct ExternalBytesPort {
     pub(crate) port_id: usize,
 }
 
-pub struct ExternalBincodeSink<T: Serialize> {
+pub struct ExternalBincodeSink<T>
+where 
+    T: Serialize
+{
     #[cfg_attr(
         not(feature = "build"),
         expect(unused, reason = "unused without feature")
@@ -37,7 +40,10 @@ pub struct ExternalBincodeSink<T: Serialize> {
     pub(crate) _phantom: PhantomData<T>,
 }
 
-pub struct ExternalBincodeStream<T: DeserializeOwned> {
+pub struct ExternalBincodeStream<T>
+where 
+    T: DeserializeOwned
+{
     #[cfg_attr(
         not(feature = "build"),
         expect(unused, reason = "unused without feature")
@@ -90,10 +96,13 @@ impl<'a, P> Location<'a> for ExternalProcess<'a, P> {
 }
 
 impl<'a, P> ExternalProcess<'a, P> {
-    pub fn source_external_bytes<L: Location<'a> + NoTick>(
+    pub fn source_external_bytes<L>(
         &self,
         to: &L,
-    ) -> (ExternalBytesPort, Stream<Bytes, L, Unbounded>) {
+    ) -> (ExternalBytesPort, Stream<Bytes, L, Unbounded>)
+    where 
+        L: Location<'a> + NoTick
+    {
         let next_external_port_id = {
             let mut flow_state = self.flow_state.borrow_mut();
             let id = flow_state.next_external_out;
@@ -131,10 +140,14 @@ impl<'a, P> ExternalProcess<'a, P> {
         )
     }
 
-    pub fn source_external_bincode<L: Location<'a> + NoTick, T: Serialize + DeserializeOwned>(
+    pub fn source_external_bincode<L, T>(
         &self,
         to: &L,
-    ) -> (ExternalBincodeSink<T>, Stream<T, L, Unbounded>) {
+    ) -> (ExternalBincodeSink<T>, Stream<T, L, Unbounded>)
+    where 
+        L: Location<'a> + NoTick,
+        T: Serialize + DeserializeOwned
+    {
         let next_external_port_id = {
             let mut flow_state = self.flow_state.borrow_mut();
             let id = flow_state.next_external_out;

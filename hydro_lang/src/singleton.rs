@@ -22,7 +22,10 @@ pub struct Singleton<T, L, B> {
     _phantom: PhantomData<(T, L, B)>,
 }
 
-impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
+impl<'a, T, L, B> Singleton<T, L, B>
+where
+    L: Location<'a>,
+{
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
         Singleton {
             location,
@@ -36,20 +39,27 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>> From<Singleton<T, L, Bounded>> for Singleton<T, L, Unbounded> {
+impl<'a, T, L> From<Singleton<T, L, Bounded>> for Singleton<T, L, Unbounded>
+where
+    L: Location<'a>,
+{
     fn from(singleton: Singleton<T, L, Bounded>) -> Self {
         Singleton::new(singleton.location, singleton.ir_node.into_inner())
     }
 }
 
-impl<'a, T, L: Location<'a>> DeferTick for Singleton<T, Tick<L>, Bounded> {
+impl<'a, T, L> DeferTick for Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>
+{
     fn defer_tick(self) -> Self {
         Singleton::defer_tick(self)
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleCollectionWithInitial<'a, TickCycleMarker>
-    for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>
 {
     type Location = Tick<L>;
 
@@ -70,7 +80,10 @@ impl<'a, T, L: Location<'a>> CycleCollectionWithInitial<'a, TickCycleMarker>
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleComplete<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded> {
+impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>
+{
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
             self.location.id(),
@@ -92,8 +105,9 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, TickCycleMarker> for Singleton<T,
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
-    for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
 {
     type Location = Tick<L>;
 
@@ -110,8 +124,9 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleComplete<'a, ForwardRefMarker>
-    for Singleton<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
@@ -134,8 +149,9 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
-    for Singleton<T, L, B>
+impl<'a, T, L, B> CycleCollection<'a, ForwardRefMarker> for Singleton<T, L, B>
+where
+    L: Location<'a> + NoTick,
 {
     type Location = L;
 
@@ -155,8 +171,9 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker>
-    for Singleton<T, L, B>
+impl<'a, T, L, B> CycleComplete<'a, ForwardRefMarker> for Singleton<T, L, B>
+where
+    L: Location<'a> + NoTick,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
@@ -183,7 +200,11 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T: Clone, L: Location<'a>, B> Clone for Singleton<T, L, B> {
+impl<'a, T, L, B> Clone for Singleton<T, L, B>
+where
+    T: Clone,
+    L: Location<'a>,
+{
     fn clone(&self) -> Self {
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
@@ -209,8 +230,14 @@ impl<'a, T: Clone, L: Location<'a>, B> Clone for Singleton<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
-    pub fn map<U, F: Fn(T) -> U + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B> {
+impl<'a, T, L, B> Singleton<T, L, B>
+where
+    L: Location<'a>,
+{
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
+    where
+        F: Fn(T) -> U + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Singleton::new(
             self.location.clone(),
@@ -222,10 +249,14 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         )
     }
 
-    pub fn flat_map_ordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
+    pub fn flat_map_ordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B> {
+    ) -> Stream<U, L, B>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(T) -> I + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
             self.location.clone(),
@@ -237,10 +268,14 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         )
     }
 
-    pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
+    pub fn flat_map_unordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B> {
+    ) -> Stream<U, L, B>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(T) -> I + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
             self.location.clone(),
@@ -252,10 +287,13 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         )
     }
 
-    pub fn filter<F: Fn(&T) -> bool + 'a>(
+    pub fn filter<F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<T, L, B> {
+    ) -> Optional<T, L, B>
+    where
+        F: Fn(&T) -> bool + 'a,
+    {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
         Optional::new(
             self.location.clone(),
@@ -267,10 +305,13 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         )
     }
 
-    pub fn filter_map<U, F: Fn(T) -> Option<U> + 'a>(
+    pub fn filter_map<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<U, L, B> {
+    ) -> Optional<U, L, B>
+    where
+        F: Fn(T) -> Option<U> + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
             self.location.clone(),
@@ -282,9 +323,9 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
         )
     }
 
-    pub fn zip<Other>(self, other: Other) -> <Self as ZipResult<'a, Other>>::Out
+    pub fn zip<O>(self, other: O) -> <Self as ZipResult<'a, O>>::Out
     where
-        Self: ZipResult<'a, Other, Location = L>,
+        Self: ZipResult<'a, O, Location = L>,
     {
         check_matching_location(&self.location, &Self::other_location(&other));
 
@@ -308,11 +349,11 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
                         }),
                         metadata: self
                             .location
-                            .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                            .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
                     }),
                     metadata: self
                         .location
-                        .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                        .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
                 },
             )
         } else {
@@ -323,7 +364,7 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self
                         .location
-                        .new_node_metadata::<<Self as ZipResult<'a, Other>>::ElementType>(),
+                        .new_node_metadata::<<Self as ZipResult<'a, O>>::ElementType>(),
                 },
             )
         }
@@ -354,7 +395,10 @@ impl<'a, T, L: Location<'a>, B> Singleton<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Atomic<L>, B> {
+impl<'a, T, L, B> Singleton<T, Atomic<L>, B>
+where
+    L: Location<'a> + NoTick,
+{
     /// Returns a singleton value corresponding to the latest snapshot of the singleton
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
     /// at least all relevant data that contributed to the snapshot at tick `t`.
@@ -378,7 +422,10 @@ impl<'a, T, L: Location<'a> + NoTick, B> Singleton<T, Atomic<L>, B> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Singleton<T, L, B> {
+impl<'a, T, L, B> Singleton<T, L, B>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
     pub fn atomic(self, tick: &Tick<L>) -> Singleton<T, Atomic<L>, B> {
         Singleton::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -427,8 +474,6 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Singleton<T, L, B> {
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
     ) -> Stream<T, L, Unbounded>
-    where
-        L: NoAtomic,
     {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
@@ -445,7 +490,10 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Singleton<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>> Singleton<T, Tick<L>, Bounded> {
+impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
     pub fn all_ticks(self) -> Stream<T, L, Unbounded> {
         Stream::new(
             self.location.outer().clone(),
@@ -525,19 +573,22 @@ impl<'a, T, L: Location<'a>> Singleton<T, Tick<L>, Bounded> {
     }
 }
 
-pub trait ZipResult<'a, Other> {
+pub trait ZipResult<'a, O> {
     type Out;
     type ElementType;
     type Location;
 
-    fn other_location(other: &Other) -> Self::Location;
-    fn other_ir_node(other: Other) -> HydroNode;
+    fn other_location(other: &O) -> Self::Location;
+    fn other_ir_node(other: O) -> HydroNode;
 
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
-impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Tick<L>, B>>
+impl<'a, T, U, L, B> ZipResult<'a, Singleton<U, Tick<L>, B>>
     for Singleton<T, Tick<L>, B>
+where
+    U: Clone,
+    L: Location<'a>,
 {
     type Out = Singleton<(T, U), Tick<L>, B>;
     type ElementType = (T, U);
@@ -556,8 +607,11 @@ impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Singleton<U, Tick<L>, B>
     }
 }
 
-impl<'a, T, U: Clone, L: Location<'a>, B> ZipResult<'a, Optional<U, Tick<L>, B>>
+impl<'a, T, U, L, B> ZipResult<'a, Optional<U, Tick<L>, B>>
     for Singleton<T, Tick<L>, B>
+where
+    U: Clone,
+    L: Location<'a>,
 {
     type Out = Optional<(T, U), Tick<L>, B>;
     type ElementType = (T, U);
