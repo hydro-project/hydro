@@ -113,11 +113,12 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn source_stream<T, E: FuturesStream<Item = T> + Unpin>(
+    fn source_stream<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
     ) -> Stream<T, Self, Unbounded>
     where
+        E: FuturesStream<Item = T> + Unpin,
         Self: Sized + NoTick,
     {
         let e = e.splice_untyped_ctx(self);
@@ -135,11 +136,12 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn source_iter<T, E: IntoIterator<Item = T>>(
+    fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
     ) -> Stream<T, Self, Unbounded>
     where
+        E: IntoIterator<Item = T>,
         Self: Sized + NoTick,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
@@ -159,11 +161,9 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn singleton<T: Clone>(
-        &self,
-        e: impl QuotedWithContext<'a, T, Self>,
-    ) -> Singleton<T, Self, Unbounded>
+    fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where
+        T: Clone,
         Self: Sized + NoTick,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
@@ -235,10 +235,9 @@ pub trait Location<'a>: Clone {
         )))
     }
 
-    fn forward_ref<S: CycleCollection<'a, ForwardRefMarker, Location = Self>>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S)
+    fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
     where
+        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
         Self: NoTick,
     {
         let next_id = {

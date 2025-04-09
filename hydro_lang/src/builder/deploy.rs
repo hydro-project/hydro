@@ -24,7 +24,10 @@ use crate::location::external_process::{
 use crate::location::{Cluster, ExternalProcess, Location, LocationId, Process};
 use crate::staging_util::Invariant;
 
-pub struct DeployFlow<'a, D: LocalDeploy<'a>> {
+pub struct DeployFlow<'a, D>
+where
+    D: LocalDeploy<'a>,
+{
     // We need to grab an `&mut` reference to the IR in `preview_compile` even though
     // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
     // while still being able to lend out immutable references to the IR.

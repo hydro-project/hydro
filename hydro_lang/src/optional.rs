@@ -15,14 +15,17 @@ use crate::singleton::ZipResult;
 use crate::stream::NoOrder;
 use crate::{Bounded, Location, Singleton, Stream, Tick, Unbounded};
 
-pub struct Optional<T, L, B> {
-    pub(crate) location: L,
+pub struct Optional<Type, Loc, Bound> {
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
-    _phantom: PhantomData<(T, L, B)>,
+    _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
-impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
+impl<'a, T, L, B> Optional<T, L, B>
+where
+    L: Location<'a>,
+{
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
         Optional {
             location,
@@ -40,14 +43,18 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>> DeferTick for Optional<T, Tick<L>, Bounded> {
+impl<'a, T, L> DeferTick for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
     fn defer_tick(self) -> Self {
         Optional::defer_tick(self)
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleCollection<'a, TickCycleMarker>
-    for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
 {
     type Location = Tick<L>;
 
@@ -64,7 +71,10 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, TickCycleMarker>
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleComplete<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded> {
+impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
             self.location.id(),
@@ -86,8 +96,9 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, TickCycleMarker> for Optional<T, 
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
-    for Optional<T, Tick<L>, Bounded>
+impl<'a, T, L> CycleCollection<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
 {
     type Location = Tick<L>;
 
@@ -104,7 +115,10 @@ impl<'a, T, L: Location<'a>> CycleCollection<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T, L: Location<'a>> CycleComplete<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded> {
+impl<'a, T, L> CycleComplete<'a, ForwardRefMarker> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
             self.location.id(),
@@ -126,8 +140,9 @@ impl<'a, T, L: Location<'a>> CycleComplete<'a, ForwardRefMarker> for Optional<T,
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
-    for Optional<T, L, B>
+impl<'a, T, L, B> CycleCollection<'a, ForwardRefMarker> for Optional<T, L, B>
+where
+    L: Location<'a> + NoTick,
 {
     type Location = L;
 
@@ -147,7 +162,10 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleCollection<'a, ForwardRefMarker>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B> {
+impl<'a, T, L, B> CycleComplete<'a, ForwardRefMarker> for Optional<T, L, B>
+where
+    L: Location<'a> + NoTick,
+{
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
             self.location.id(),
@@ -173,19 +191,29 @@ impl<'a, T, L: Location<'a> + NoTick, B> CycleComplete<'a, ForwardRefMarker> for
     }
 }
 
-impl<'a, T, L: Location<'a>> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded> {
+impl<'a, T, L> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded>
+where
+    L: Location<'a>,
+{
     fn from(singleton: Optional<T, L, Bounded>) -> Self {
         Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 }
 
-impl<'a, T, L: Location<'a>, B> From<Singleton<T, L, B>> for Optional<T, L, B> {
+impl<'a, T, L, B> From<Singleton<T, L, B>> for Optional<T, L, B>
+where
+    L: Location<'a>,
+{
     fn from(singleton: Singleton<T, L, B>) -> Self {
         Optional::some(singleton)
     }
 }
 
-impl<'a, T: Clone, L: Location<'a>, B> Clone for Optional<T, L, B> {
+impl<'a, T, L, B> Clone for Optional<T, L, B>
+where
+    T: Clone,
+    L: Location<'a>,
+{
     fn clone(&self) -> Self {
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
@@ -211,7 +239,10 @@ impl<'a, T: Clone, L: Location<'a>, B> Clone for Optional<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
+impl<'a, T, L, B> Optional<T, L, B>
+where
+    L: Location<'a>,
+{
     /// Transforms the optional value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///
@@ -230,7 +261,10 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     /// # assert_eq!(stream.next().await.unwrap(), 2);
     /// # }));
     /// ```
-    pub fn map<U, F: Fn(T) -> U + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B> {
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
+    where
+        F: Fn(T) -> U + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
             self.location.clone(),
@@ -242,10 +276,11 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
         )
     }
 
-    pub fn flat_map_ordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B> {
+    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(T) -> I + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
             self.location.clone(),
@@ -257,10 +292,14 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
         )
     }
 
-    pub fn flat_map_unordered<U, I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a>(
+    pub fn flat_map_unordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B, NoOrder> {
+    ) -> Stream<U, L, B, NoOrder>
+    where
+        I: IntoIterator<Item = U>,
+        F: Fn(T) -> I + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Stream::new(
             self.location.clone(),
@@ -286,10 +325,10 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
         self.flat_map_unordered(q!(|v| v))
     }
 
-    pub fn filter<F: Fn(&T) -> bool + 'a>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<T, L, B> {
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
+    where
+        F: Fn(&T) -> bool + 'a,
+    {
         let f = f.splice_fn1_borrow_ctx(&self.location).into();
         Optional::new(
             self.location.clone(),
@@ -301,10 +340,10 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
         )
     }
 
-    pub fn filter_map<U, F: Fn(T) -> Option<U> + 'a>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<U, L, B> {
+    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
+    where
+        F: Fn(T) -> Option<U> + 'a,
+    {
         let f = f.splice_fn1_ctx(&self.location).into();
         Optional::new(
             self.location.clone(),
@@ -449,7 +488,10 @@ impl<'a, T, L: Location<'a>, B> Optional<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>> Optional<T, L, Bounded> {
+impl<'a, T, L> Optional<T, L, Bounded>
+where
+    L: Location<'a>,
+{
     pub fn continue_if<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
@@ -479,7 +521,10 @@ impl<'a, T, L: Location<'a>> Optional<T, L, Bounded> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B> Optional<T, Atomic<L>, B> {
+impl<'a, T, L, B> Optional<T, Atomic<L>, B>
+where
+    L: Location<'a> + NoTick,
+{
     /// Returns an optional value corresponding to the latest snapshot of the optional
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
     /// at least all relevant data that contributed to the snapshot at tick `t`.
@@ -503,7 +548,10 @@ impl<'a, T, L: Location<'a> + NoTick, B> Optional<T, Atomic<L>, B> {
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Optional<T, L, B> {
+impl<'a, T, L, B> Optional<T, L, B>
+where
+    L: Location<'a> + NoTick + NoAtomic,
+{
     pub fn atomic(self, tick: &Tick<L>) -> Optional<T, Atomic<L>, B> {
         Optional::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
     }
@@ -548,10 +596,7 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Optional<T, L, B> {
     pub unsafe fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-    ) -> Stream<T, L, Unbounded>
-    where
-        L: NoAtomic,
-    {
+    ) -> Stream<T, L, Unbounded> {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
             self.location.source_interval(interval)
@@ -567,7 +612,10 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, B> Optional<T, L, B> {
     }
 }
 
-impl<'a, T, L: Location<'a>> Optional<T, Tick<L>, Bounded> {
+impl<'a, T, L> Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
     pub fn all_ticks(self) -> Stream<T, L, Unbounded> {
         Stream::new(
             self.location.outer().clone(),
