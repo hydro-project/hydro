@@ -50,7 +50,7 @@ where
 
 impl<'a, T, L> DeferTick for Singleton<T, Tick<L>, Bounded>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     fn defer_tick(self) -> Self {
         Singleton::defer_tick(self)
@@ -59,7 +59,7 @@ where
 
 impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     type Location = Tick<L>;
 
@@ -82,7 +82,7 @@ where
 
 impl<'a, T, L> CycleComplete<'a, TickCycleMarker> for Singleton<T, Tick<L>, Bounded>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     fn complete(self, ident: syn::Ident, expected_location: LocationId) {
         assert_eq!(
@@ -249,10 +249,7 @@ where
         )
     }
 
-    pub fn flat_map_ordered<U, I, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B>
+    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -268,10 +265,7 @@ where
         )
     }
 
-    pub fn flat_map_unordered<U, I, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B>
+    pub fn flat_map_unordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -287,10 +281,7 @@ where
         )
     }
 
-    pub fn filter<F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<T, L, B>
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
         F: Fn(&T) -> bool + 'a,
     {
@@ -305,10 +296,7 @@ where
         )
     }
 
-    pub fn filter_map<U, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Optional<U, L, B>
+    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
         F: Fn(T) -> Option<U> + 'a,
     {
@@ -473,8 +461,7 @@ where
     pub unsafe fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-    ) -> Stream<T, L, Unbounded>
-    {
+    ) -> Stream<T, L, Unbounded> {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
             self.location.source_interval(interval)
@@ -584,8 +571,7 @@ pub trait ZipResult<'a, O> {
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
 
-impl<'a, T, U, L, B> ZipResult<'a, Singleton<U, Tick<L>, B>>
-    for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B> ZipResult<'a, Singleton<U, Tick<L>, B>> for Singleton<T, Tick<L>, B>
 where
     U: Clone,
     L: Location<'a>,
@@ -607,8 +593,7 @@ where
     }
 }
 
-impl<'a, T, U, L, B> ZipResult<'a, Optional<U, Tick<L>, B>>
-    for Singleton<T, Tick<L>, B>
+impl<'a, T, U, L, B> ZipResult<'a, Optional<U, Tick<L>, B>> for Singleton<T, Tick<L>, B>
 where
     U: Clone,
     L: Location<'a>,

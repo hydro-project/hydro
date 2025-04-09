@@ -27,19 +27,16 @@ impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
 impl<T> NoAtomic for Cluster<'_, T> {}
 #[sealed]
-impl<'a, L> NoAtomic for Tick<L> 
-where 
-    L: Location<'a>
-{}
+impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 
 #[derive(Clone)]
 pub struct Atomic<L> {
     pub(crate) tick: Tick<L>,
 }
 
-impl<'a, L> Location<'a> for Atomic<L> 
+impl<'a, L> Location<'a> for Atomic<L>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     type Root = L::Root;
 
@@ -70,9 +67,9 @@ pub struct Tick<L> {
     pub(crate) l: L,
 }
 
-impl<'a, L> Location<'a> for Tick<L> 
+impl<'a, L> Location<'a> for Tick<L>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     type Root = L::Root;
 
@@ -101,9 +98,9 @@ where
     }
 }
 
-impl<'a, L> Tick<L> 
+impl<'a, L> Tick<L>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     pub fn outer(&self) -> &L {
         &self.l
@@ -129,10 +126,7 @@ where
         }
     }
 
-    pub fn singleton<T>(
-        &self,
-        e: impl QuotedWithContext<'a, T, L>,
-    ) -> Singleton<T, Self, Bounded>
+    pub fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, L>) -> Singleton<T, Self, Bounded>
     where
         T: Clone,
         L: NoTick + NoAtomic,
@@ -163,12 +157,10 @@ where
         )
     }
 
-    pub fn forward_ref<S>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S)
+    pub fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
     where
         S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
-        L: NoTick
+        L: NoTick,
     {
         let next_id = {
             let on_id = match self.l.id() {
@@ -199,11 +191,9 @@ where
         )
     }
 
-    pub fn forward_ref_atomic<S>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S) 
+    pub fn forward_ref_atomic<S>(&self) -> (ForwardRef<'a, S>, S)
     where
-        S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>
+        S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>,
     {
         let next_id = {
             let on_id = match self.l.id() {
@@ -234,9 +224,7 @@ where
         )
     }
 
-    pub fn cycle<S>(
-        &self,
-    ) -> (TickCycle<'a, S>, S)
+    pub fn cycle<S>(&self) -> (TickCycle<'a, S>, S)
     where
         S: CycleCollection<'a, TickCycleMarker, Location = Self> + DeferTick,
         L: NoTick,
@@ -270,13 +258,10 @@ where
         )
     }
 
-    pub fn cycle_with_initial<S>(
-        &self,
-        initial: S,
-    ) -> (TickCycle<'a, S>, S)
+    pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycle<'a, S>, S)
     where
         S: CycleCollectionWithInitial<'a, TickCycleMarker, Location = Self> + DeferTick,
-        L: NoTick
+        L: NoTick,
     {
         let next_id = {
             let on_id = match self.l.id() {

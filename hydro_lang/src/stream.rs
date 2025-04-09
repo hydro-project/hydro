@@ -117,8 +117,7 @@ where
     }
 }
 
-impl<'a, T, L, O> CycleCollection<'a, TickCycleMarker>
-    for Stream<T, Tick<L>, Bounded, O>
+impl<'a, T, L, O> CycleCollection<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O>
 where
     L: Location<'a>,
 {
@@ -137,8 +136,7 @@ where
     }
 }
 
-impl<'a, T, L, O> CycleComplete<'a, TickCycleMarker>
-    for Stream<T, Tick<L>, Bounded, O>
+impl<'a, T, L, O> CycleComplete<'a, TickCycleMarker> for Stream<T, Tick<L>, Bounded, O>
 where
     L: Location<'a>,
 {
@@ -163,8 +161,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O> CycleCollection<'a, ForwardRefMarker>
-    for Stream<T, L, B, O>
+impl<'a, T, L, B, O> CycleCollection<'a, ForwardRefMarker> for Stream<T, L, B, O>
 where
     L: Location<'a> + NoTick,
 {
@@ -187,8 +184,7 @@ where
     }
 }
 
-impl<'a, T, L, B, O> CycleComplete<'a, ForwardRefMarker>
-    for Stream<T, L, B, O>
+impl<'a, T, L, B, O> CycleComplete<'a, ForwardRefMarker> for Stream<T, L, B, O>
 where
     L: Location<'a> + NoTick,
 {
@@ -318,10 +314,7 @@ where
     /// # }
     /// # }));
     /// ```
-    pub fn flat_map_ordered<U, I, F>(
-        self,
-        f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B, O>
+    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -575,10 +568,7 @@ where
     /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
-    pub fn cross_product<O2>(
-        self,
-        other: Stream<O2, L, B, O>,
-    ) -> Stream<(T, O2), L, B, NoOrder>
+    pub fn cross_product<O2>(self, other: Stream<O2, L, B, O>) -> Stream<(T, O2), L, B, NoOrder>
     where
         T: Clone,
         O2: Clone,
@@ -649,10 +639,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
-    pub fn filter_not_in<O2>(
-        self,
-        other: Stream<T, L, Bounded, O2>,
-    ) -> Stream<T, L, Bounded, O>
+    pub fn filter_not_in<O2>(self, other: Stream<T, L, Bounded, O2>) -> Stream<T, L, Bounded, O>
     where
         T: Eq + Hash,
     {
@@ -933,10 +920,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), 1);
     /// # }));
     /// ```
-    pub fn max_by_key<K, F>(
-        self,
-        key: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> Optional<T, L, B>
+    pub fn max_by_key<K, F>(self, key: impl IntoQuotedMut<'a, F, L> + Copy) -> Optional<T, L, B>
     where
         K: Ord,
         F: Fn(&T) -> K + 'a,
@@ -1021,7 +1005,7 @@ impl<'a, T, L, B> Stream<T, L, B, TotalOrder>
 where
     L: Location<'a>,
 {
-        /// Returns a stream with the current count tupled with each element in the input stream.
+    /// Returns a stream with the current count tupled with each element in the input stream.
     ///
     /// # Example
     /// ```rust
@@ -1247,8 +1231,8 @@ impl<'a, T, L: Location<'a> + NoTick + NoAtomic, O> Stream<T, L, Unbounded, O> {
 }
 
 impl<'a, T, L, O> Stream<T, L, Bounded, O>
-where 
-    L: Location<'a>
+where
+    L: Location<'a>,
 {
     /// Produces a new stream that emits the input elements in sorted order.
     ///
@@ -1329,8 +1313,8 @@ where
 }
 
 impl<'a, K, V1, L, B, O> Stream<(K, V1), L, B, O>
-where 
-    L: Location<'a>
+where
+    L: Location<'a>,
 {
     /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
     /// by equi-joining the two streams on the key attribute `K`.
@@ -1413,7 +1397,7 @@ where
 impl<'a, K, V, L> Stream<(K, V), Tick<L>, Bounded>
 where
     K: Eq + Hash,
-    L: Location<'a>
+    L: Location<'a>,
 {
     /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
@@ -1447,9 +1431,9 @@ where
         init: impl IntoQuotedMut<'a, I, Tick<L>>,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
     ) -> Stream<(K, A), Tick<L>, Bounded>
-    where 
+    where
         I: Fn() -> A + 'a,
-        F: Fn(&mut A, V) + 'a
+        F: Fn(&mut A, V) + 'a,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
@@ -1494,7 +1478,7 @@ where
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
     ) -> Stream<(K, V), Tick<L>, Bounded>
     where
-        F: Fn(&mut V, V) + 'a
+        F: Fn(&mut V, V) + 'a,
     {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
@@ -1510,9 +1494,9 @@ where
 }
 
 impl<'a, K, V, L, O> Stream<(K, V), Tick<L>, Bounded, O>
-where 
+where
     K: Eq + Hash,
-    L: Location<'a>
+    L: Location<'a>,
 {
     /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
@@ -1547,7 +1531,7 @@ where
     ) -> Stream<(K, A), Tick<L>, Bounded, O>
     where
         I: Fn() -> A + 'a,
-        F: Fn(&mut A, V) + 'a
+        F: Fn(&mut A, V) + 'a,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
@@ -1613,8 +1597,8 @@ where
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
     ) -> Stream<(K, V), Tick<L>, Bounded, O>
-    where 
-        F: Fn(&mut V, V) + 'a
+    where
+        F: Fn(&mut V, V) + 'a,
     {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
@@ -1631,7 +1615,7 @@ where
 
 impl<'a, T, L, B, O> Stream<T, Atomic<L>, B, O>
 where
-    L: Location<'a> + NoTick
+    L: Location<'a> + NoTick,
 {
     /// Returns a stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -1659,8 +1643,8 @@ where
 }
 
 impl<'a, T, L, B, O> Stream<T, L, B, O>
-where 
-    L: Location<'a> + NoTick + NoAtomic
+where
+    L: Location<'a> + NoTick + NoAtomic,
 {
     pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O> {
         Stream::new(Atomic { tick: tick.clone() }, self.ir_node.into_inner())
@@ -1788,9 +1772,9 @@ where
 }
 
 impl<'a, F, T, L, B, O> Stream<F, L, B, O>
-where 
+where
     L: Location<'a> + NoTick + NoAtomic,
-    F: Future<Output = T>
+    F: Future<Output = T>,
 {
     /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
     /// Future outputs are produced in the same order as the input stream.
@@ -1832,8 +1816,8 @@ where
 }
 
 impl<'a, T, L, B, O> Stream<T, L, B, O>
-where 
-    L: Location<'a> + NoTick
+where
+    L: Location<'a> + NoTick,
 {
     pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
         let f = f.splice_fn1_ctx(&self.location).into();
@@ -1855,8 +1839,8 @@ where
     }
 
     pub fn dest_sink<S>(self, sink: impl QuotedWithContext<'a, S, L>)
-    where 
-        S: 'a + futures::Sink<T> + Unpin
+    where
+        S: 'a + futures::Sink<T> + Unpin,
     {
         self.location
             .flow_state()
@@ -1874,7 +1858,7 @@ where
 
 impl<'a, T, L, O> Stream<T, Tick<L>, Bounded, O>
 where
-    L: Location<'a>
+    L: Location<'a>,
 {
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, O> {
         Stream::new(
@@ -1982,8 +1966,8 @@ pub(super) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
 }
 
 impl<'a, T, L, B, O> Stream<T, L, B, O>
-where 
-    L: Location<'a> + NoTick
+where
+    L: Location<'a> + NoTick,
 {
     pub fn send_bincode<L2, CoreType>(
         self,
@@ -2092,10 +2076,7 @@ where
         )
     }
 
-    pub fn send_bytes_external<L2>(
-        self,
-        other: &ExternalProcess<L2>
-    ) -> ExternalBytesPort
+    pub fn send_bytes_external<L2>(self, other: &ExternalProcess<L2>) -> ExternalBytesPort
     where
         L2: 'a,
         L::Root: CanSend<'a, ExternalProcess<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
@@ -2144,10 +2125,7 @@ where
         self.send_bincode::<L2, CoreType>(other).map(q!(|(_, b)| b))
     }
 
-    pub fn send_bytes_anonymous<L2, Tag>(
-        self,
-        other: &L2,
-    ) -> Stream<Bytes, L2, Unbounded, O::Min>
+    pub fn send_bytes_anonymous<L2, Tag>(self, other: &L2) -> Stream<Bytes, L2, Unbounded, O::Min>
     where
         L2: Location<'a>,
         L::Root: CanSend<'a, L2, In<Bytes> = T, Out<Bytes> = (Tag, Bytes)>,
@@ -2160,12 +2138,7 @@ where
     pub fn broadcast_bincode<C2>(
         self,
         other: &Cluster<'a, C2>,
-    ) -> Stream<
-        <L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<T>,
-        Cluster<'a, C2>,
-        Unbounded,
-        O::Min,
-    >
+    ) -> Stream<<L::Root as CanSend<'a, Cluster<'a, C2>>>::Out<T>, Cluster<'a, C2>, Unbounded, O::Min>
     where
         C2: 'a,
         L::Root: CanSend<'a, Cluster<'a, C2>, In<T> = (ClusterId<C2>, T)>,
@@ -2250,8 +2223,8 @@ where
 
 #[expect(clippy::type_complexity, reason = "ordering semantics for round-robin")]
 impl<'a, T, L, B> Stream<T, L, B, TotalOrder>
-where 
-    L: Location<'a> + NoTick
+where
+    L: Location<'a> + NoTick,
 {
     pub fn round_robin_bincode<C2>(
         self,

@@ -4,8 +4,8 @@ use super::{Cluster, ClusterId, ExternalProcess, Location, Process};
 use crate::stream::NoOrder;
 
 pub trait CanSend<'a, To>: Location<'a>
-where 
-    To: Location<'a>
+where
+    To: Location<'a>,
 {
     type In<T>;
     type Out<T>;

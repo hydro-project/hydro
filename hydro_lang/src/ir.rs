@@ -145,9 +145,9 @@ pub enum HydroSource {
 
 #[cfg(feature = "build")]
 pub enum BuildersOrCallback<'a, L, N>
-where 
+where
     L: FnMut(&mut HydroLeaf, &mut usize),
-    N: FnMut(&mut HydroNode, &mut usize)
+    N: FnMut(&mut HydroNode, &mut usize),
 {
     Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
     Callback(L, N),
@@ -186,9 +186,8 @@ impl HydroLeaf {
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    )
-    where 
-        D: Deploy<'a>
+    ) where
+        D: Deploy<'a>,
     {
         self.transform_children(
             |n, s| {
@@ -728,9 +727,8 @@ impl HydroNode {
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    )
-    where 
-        D: Deploy<'a>
+    ) where
+        D: Deploy<'a>,
     {
         let mut curr_location = None;
 
@@ -2251,8 +2249,8 @@ fn instantiate_network<'a, D>(
     externals: &HashMap<usize, D::ExternalProcess>,
     compile_env: &D::CompileEnv,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
-where 
-    D: Deploy<'a>
+where
+    D: Deploy<'a>,
 {
     let ((sink, source), connect_fn) = match (from_location, to_location) {
         (LocationId::Process(from), LocationId::Process(to)) => {

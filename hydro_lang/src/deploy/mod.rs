@@ -185,12 +185,12 @@ pub trait Deploy<'a> {
 }
 
 impl<'a, T, N, C, E, M, R> LocalDeploy<'a> for T
-where 
+where
     T: Deploy<'a, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R>,
     N: Node<Meta = M>,
     C: Node<Meta = M>,
     E: Node<Meta = M>,
-    M: Default
+    M: Default,
 {
     type Process = N;
     type Cluster = C;
@@ -212,24 +212,24 @@ where
 }
 
 pub trait ProcessSpec<'a, D>
-where 
-    D: LocalDeploy<'a> + ?Sized
+where
+    D: LocalDeploy<'a> + ?Sized,
 {
     fn build(self, id: usize, name_hint: &str) -> D::Process;
 }
 
 pub trait IntoProcessSpec<'a, D>
-where 
-    D: LocalDeploy<'a> + ?Sized
+where
+    D: LocalDeploy<'a> + ?Sized,
 {
     type ProcessSpec: ProcessSpec<'a, D>;
     fn into_process_spec(self) -> Self::ProcessSpec;
 }
 
 impl<'a, D, T> IntoProcessSpec<'a, D> for T
-where 
+where
     D: LocalDeploy<'a> + ?Sized,
-    T: ProcessSpec<'a, D>
+    T: ProcessSpec<'a, D>,
 {
     type ProcessSpec = T;
     fn into_process_spec(self) -> Self::ProcessSpec {
@@ -238,15 +238,15 @@ where
 }
 
 pub trait ClusterSpec<'a, D>
-where 
-    D: LocalDeploy<'a> + ?Sized
+where
+    D: LocalDeploy<'a> + ?Sized,
 {
     fn build(self, id: usize, name_hint: &str) -> D::Cluster;
 }
 
 pub trait ExternalSpec<'a, D>
-where 
-    D: LocalDeploy<'a> + ?Sized
+where
+    D: LocalDeploy<'a> + ?Sized,
 {
     fn build(self, id: usize, name_hint: &str) -> D::ExternalProcess;
 }
@@ -270,8 +270,8 @@ pub trait Node {
 }
 
 pub trait RegisterPort<'a, D>: Clone
-where 
-    D: Deploy<'a> + ?Sized
+where
+    D: Deploy<'a> + ?Sized,
 {
     fn register(&self, key: usize, port: D::Port);
     fn raw_port(&self, key: usize) -> D::ExternalRawPort;
@@ -285,7 +285,7 @@ where
         &self,
         key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a
-    where 
+    where
         T: Serialize + 'static;
 
     fn as_bytes_source(
@@ -297,6 +297,6 @@ where
         &self,
         key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
-    where 
+    where
         T: DeserializeOwned + 'static;
 }

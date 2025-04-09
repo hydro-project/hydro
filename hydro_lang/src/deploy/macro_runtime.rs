@@ -212,8 +212,8 @@ impl<'a> RegisterPort<'a, DeployRuntime> for DeployRuntimeNode {
         &self,
         _key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = std::io::Error>>>> + 'a
-    where 
-        T: serde::Serialize + 'static
+    where
+        T: serde::Serialize + 'static,
     {
         async { panic!() }
     }
@@ -237,8 +237,8 @@ impl<'a> RegisterPort<'a, DeployRuntime> for DeployRuntimeNode {
         &self,
         _key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
-    where 
-        T: serde::de::DeserializeOwned + 'static
+    where
+        T: serde::de::DeserializeOwned + 'static,
     {
         async { panic!() }
     }

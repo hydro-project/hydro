@@ -29,8 +29,8 @@ pub trait CycleCollectionWithInitial<'a, T>: CycleComplete<'a, T> {
 ///
 /// See [`crate::FlowBuilder`] for an explainer on the type parameters.
 pub struct ForwardRef<'a, S>
-where 
-    S: CycleComplete<'a, ForwardRefMarker>
+where
+    S: CycleComplete<'a, ForwardRefMarker>,
 {
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
@@ -40,7 +40,7 @@ where
 
 impl<'a, S> Drop for ForwardRef<'a, S>
 where
-    S: CycleComplete<'a, ForwardRefMarker>
+    S: CycleComplete<'a, ForwardRefMarker>,
 {
     fn drop(&mut self) {
         if !self.completed {
@@ -51,7 +51,7 @@ where
 
 impl<'a, S> ForwardRef<'a, S>
 where
-    S: CycleComplete<'a, ForwardRefMarker>
+    S: CycleComplete<'a, ForwardRefMarker>,
 {
     pub fn complete(mut self, stream: S) {
         self.completed = true;
@@ -61,8 +61,8 @@ where
 }
 
 pub struct TickCycle<'a, S>
-where 
-    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+where
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick,
 {
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
@@ -71,8 +71,8 @@ where
 }
 
 impl<'a, S> Drop for TickCycle<'a, S>
-where 
-    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+where
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick,
 {
     fn drop(&mut self) {
         if !self.completed {
@@ -82,8 +82,8 @@ where
 }
 
 impl<'a, S> TickCycle<'a, S>
-where 
-    S: CycleComplete<'a, TickCycleMarker> + DeferTick
+where
+    S: CycleComplete<'a, TickCycleMarker> + DeferTick,
 {
     pub fn complete_next_tick(mut self, stream: S) {
         self.completed = true;

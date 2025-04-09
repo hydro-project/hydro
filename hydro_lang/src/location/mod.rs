@@ -161,10 +161,7 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn singleton<T>(
-        &self,
-        e: impl QuotedWithContext<'a, T, Self>,
-    ) -> Singleton<T, Self, Unbounded>
+    fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where
         T: Clone,
         Self: Sized + NoTick,

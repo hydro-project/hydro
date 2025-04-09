@@ -157,8 +157,7 @@ where
     }
 }
 
-impl<'a, L>
-    QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
+impl<'a, L> QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
     for ClusterSelfId<'a>
 where
     L: Location<'a>,

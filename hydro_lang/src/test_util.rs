@@ -8,13 +8,9 @@ use serde::de::DeserializeOwned;
 use crate::{FlowBuilder, Process, Stream, Unbounded};
 
 pub async fn multi_location_test<'a, T, C, O>(
-    thunk: impl FnOnce(
-        &FlowBuilder<'a>,
-        &Process<'a, ()>,
-    ) -> Stream<T, Process<'a>, Unbounded, O>,
+    thunk: impl FnOnce(&FlowBuilder<'a>, &Process<'a, ()>) -> Stream<T, Process<'a>, Unbounded, O>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
-)
-where
+) where
     T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
 {
@@ -41,8 +37,7 @@ where
 pub async fn stream_transform_test<'a, T, C, O>(
     thunk: impl FnOnce(&Process<'a>) -> Stream<T, Process<'a>, Unbounded, O>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
-)
-where
+) where
     T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
 {

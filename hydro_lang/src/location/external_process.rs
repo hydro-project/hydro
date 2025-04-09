@@ -24,8 +24,8 @@ pub struct ExternalBytesPort {
 }
 
 pub struct ExternalBincodeSink<T>
-where 
-    T: Serialize
+where
+    T: Serialize,
 {
     #[cfg_attr(
         not(feature = "build"),
@@ -41,8 +41,8 @@ where
 }
 
 pub struct ExternalBincodeStream<T>
-where 
-    T: DeserializeOwned
+where
+    T: DeserializeOwned,
 {
     #[cfg_attr(
         not(feature = "build"),
@@ -100,8 +100,8 @@ impl<'a, P> ExternalProcess<'a, P> {
         &self,
         to: &L,
     ) -> (ExternalBytesPort, Stream<Bytes, L, Unbounded>)
-    where 
-        L: Location<'a> + NoTick
+    where
+        L: Location<'a> + NoTick,
     {
         let next_external_port_id = {
             let mut flow_state = self.flow_state.borrow_mut();
@@ -144,9 +144,9 @@ impl<'a, P> ExternalProcess<'a, P> {
         &self,
         to: &L,
     ) -> (ExternalBincodeSink<T>, Stream<T, L, Unbounded>)
-    where 
+    where
         L: Location<'a> + NoTick,
-        T: Serialize + DeserializeOwned
+        T: Serialize + DeserializeOwned,
     {
         let next_external_port_id = {
             let mut flow_state = self.flow_state.borrow_mut();
