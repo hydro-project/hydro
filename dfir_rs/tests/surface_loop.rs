@@ -405,3 +405,63 @@ fn test_state_codegen() {
     };
     df.run_available();
 }
+
+#[multiplatform_test]
+pub fn test_enumerate_loop() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let mut df = dfir_syntax! {
+        init = source_iter(0..5);
+        loop {
+            batch_init = init -> batch() -> tee();
+            loop {
+                batch_init -> repeat_n(3) -> enumerate::<'none>() -> for_each(|x| result1_send.send(x).unwrap());
+                batch_init -> repeat_n(3) -> enumerate::<'loop>() -> for_each(|x| result2_send.send(x).unwrap());
+            };
+        };
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4)
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (5, 0),
+            (6, 1),
+            (7, 2),
+            (8, 3),
+            (9, 4),
+            (10, 0),
+            (11, 1),
+            (12, 2),
+            (13, 3),
+            (14, 4)
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+}

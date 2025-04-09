@@ -918,7 +918,7 @@ impl FlatGraphBuilder {
                             ),
                         ));
                     }
-                    (None, p @ Persistence::Loop) => {
+                    (None, p @ (Persistence::None | Persistence::Loop)) => {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,
