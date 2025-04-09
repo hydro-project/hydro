@@ -60,9 +60,9 @@ impl MinOrder<TotalOrder> for NoOrder {
 /// An ordered sequence stream of elements of type `T`.
 ///
 /// Type Parameters:
-/// - `T`: the type of elements in the stream
-/// - `L`: the location where the stream is being materialized
-/// - `B`: the boundedness of the stream, which is either [`Bounded`]
+/// - `Type`: the type of elements in the stream
+/// - `Loc`: the location where the stream is being materialized
+/// - `Bound`: the boundedness of the stream, which is either [`Bounded`]
 ///   or [`Unbounded`]
 /// - `O`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
