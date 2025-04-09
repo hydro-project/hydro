@@ -1,10 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// Takes one stream as input and filters out any duplicate occurrences. The output
 /// contains all unique values from the input.
@@ -63,44 +61,14 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                    op_span,
                    context,
                    df_ident,
-                   loop_id,
                    ident,
                    inputs,
                    outputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistence = persistence_args
-            .first()
-            .copied()
-            .filter(|&p| {
-                if Persistence::Mutable == p {
-                    diagnostics.push(Diagnostic::spanned(
-                        op_span,
-                        Level::Error,
-                        "An implementation of 'mutable does not exist",
-                    ));
-                    false
-                } else {
-                    true
-                }
-            })
-            .unwrap_or_else(|| {
-                if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                }
-            });
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let input = &inputs[0];
         let output = &outputs[0];

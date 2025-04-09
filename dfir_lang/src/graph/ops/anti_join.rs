@@ -2,10 +2,9 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 2 input streams the first of type (K, T), the second of type K,
 /// > with output type (K, T)
@@ -49,48 +48,14 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
-                   loop_id,
                    op_span,
                    ident,
                    inputs,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistences = match persistence_args[..] {
-            [] => {
-                let p = if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                };
-                [p, p]
-            }
-            [Persistence::Mutable] | [Persistence::Mutable, Persistence::Mutable] => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                let p = if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                };
-                [p, p]
-            }
-            [a] => [a, a],
-            [a, b] => [a, b],
-            _ => unreachable!(),
-        };
+        let [pos_persistence, neg_persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let make_antijoindata = |persistence, side| {
             let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
@@ -116,9 +81,9 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         };
 
         let (pos_prologue, pos_prologue_after, pos_pre_write_iter, pos_borrow) =
-            make_antijoindata(persistences[0], "pos");
+            make_antijoindata(pos_persistence, "pos");
         let (neg_prologue, neg_prologue_after, neg_pre_write_iter, neg_borrow) =
-            make_antijoindata(persistences[1], "neg");
+            make_antijoindata(neg_persistence, "neg");
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];

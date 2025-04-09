@@ -17,7 +17,7 @@ use super::{
     GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
     PortIndexValue,
 };
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Level};
 use crate::parse::{Operator, PortIndex};
 
 /// The delay (soft barrier) type, for each input to an operator if needed.
@@ -424,6 +424,58 @@ impl WriteContextArgs<'_> {
         Some(quote_spanned! {self.op_span=>
             #root::scheduled::graph::StateLifespan::#variant
         })
+    }
+
+    /// Returns the given number of persistence arguments, disallowing mutable lifetimes.
+    pub fn persistence_args_disallow_mutable<const N: usize>(
+        &self,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) -> [Persistence; N] {
+        let len = self.op_inst.generics.persistence_args.len();
+        if 0 != len && 1 != len && N != len {
+            diagnostics.push(Diagnostic::spanned(
+                self.op_span,
+                Level::Error,
+                format!(
+                    "The operator `{}` only accepts 0, 1, or {} persistence arguments",
+                    self.op_name, N
+                ),
+            ));
+        }
+
+        let default_persistence = if self.loop_id.is_some() {
+            Persistence::None
+        } else {
+            Persistence::Tick
+        };
+        let mut out = [default_persistence; N];
+        self.op_inst
+            .generics
+            .persistence_args
+            .iter()
+            .copied()
+            .cycle() // Re-use the first element for both persistences.
+            .take(N)
+            .enumerate()
+            .filter(|&(_i, p)| {
+                if p == Persistence::Mutable {
+                    diagnostics.push(Diagnostic::spanned(
+                        self.op_span,
+                        Level::Error,
+                        format!(
+                            "An implementation of `'{}` does not exist",
+                            p.to_str_lowercase()
+                        ),
+                    ));
+                    false
+                } else {
+                    true
+                }
+            })
+            .for_each(|(i, p)| {
+                out[i] = p;
+            });
+        out
     }
 }
 

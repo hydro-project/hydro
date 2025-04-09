@@ -4,8 +4,8 @@ use syn::spanned::Spanned;
 use syn::{Expr, ExprCall, parse_quote};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -110,21 +110,13 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
                diagnostics| {
         assert!(is_pull);
 
-        let persistences = parse_persistences(persistence_args);
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let lhs_join_options =
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
@@ -336,21 +328,6 @@ pub(crate) fn make_joindata(
                 },
             )
         }
-        Persistence::Mutable => {
-            return Err(Diagnostic::spanned(
-                op_span,
-                Level::Error,
-                "An implementation of 'mutable does not exist",
-            ));
-        }
+        Persistence::Mutable => panic!(),
     })
-}
-
-pub(crate) fn parse_persistences(persistences: &[Persistence]) -> [Persistence; 2] {
-    match *persistences {
-        [] => [Persistence::Tick, Persistence::Tick],
-        [a] => [a, a],
-        [a, b] => [a, b],
-        _ => panic!("Too many persistences: {persistences:?}"),
-    }
 }

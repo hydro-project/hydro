@@ -2,10 +2,10 @@ use quote::quote_spanned;
 use syn::{Expr, parse_quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::Diagnostic;
 
 /// > 1 input stream, 1 output stream
 ///
@@ -90,53 +90,19 @@ pub(crate) fn fold_impl(
         root,
         context,
         df_ident,
-        loop_id,
         op_span,
         ident,
         is_pull,
         inputs,
         singleton_output_ident,
         work_fn,
-        op_inst:
-            OperatorInstance {
-                generics:
-                    OpInstGenerics {
-                        persistence_args, ..
-                    },
-                ..
-            },
         ..
     }: &WriteContextArgs,
     diagnostics: &mut Vec<Diagnostic>,
     init: &Expr,
     func: &Expr,
 ) -> Result<OperatorWriteOutput, ()> {
-    let persistence = match persistence_args[..] {
-        [] => {
-            if loop_id.is_some() {
-                Persistence::None
-            } else {
-                Persistence::Tick
-            }
-        }
-        [p @ Persistence::Mutable] => {
-            diagnostics.push(Diagnostic::spanned(
-                op_span,
-                Level::Error,
-                format!(
-                    "An implementation of `'{}` does not exist",
-                    p.to_str_lowercase()
-                ),
-            ));
-            if loop_id.is_some() {
-                Persistence::None
-            } else {
-                Persistence::Tick
-            }
-        }
-        [p] => p,
-        _ => unreachable!(),
-    };
+    let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
     let input = &inputs[0];
     let accumulator_ident = wc.make_ident("accumulator");

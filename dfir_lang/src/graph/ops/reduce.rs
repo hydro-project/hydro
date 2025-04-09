@@ -1,10 +1,9 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream, 1 output stream
 ///
@@ -51,51 +50,17 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
-                   loop_id,
                    op_span,
                    ident,
                    inputs,
                    is_pull,
                    singleton_output_ident,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
                diagnostics| {
-        let persistence = match persistence_args[..] {
-            [] => {
-                if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                }
-            }
-            [p @ Persistence::Mutable] => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    format!(
-                        "An implementation of `'{}` does not exist",
-                        p.to_str_lowercase()
-                    ),
-                ));
-                if loop_id.is_some() {
-                    Persistence::None
-                } else {
-                    Persistence::Tick
-                }
-            }
-            [p] => p,
-            _ => unreachable!(),
-        };
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let write_prologue = quote_spanned! {op_span=>
             let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));

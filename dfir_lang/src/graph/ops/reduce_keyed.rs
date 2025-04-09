@@ -4,7 +4,6 @@ use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream of type `(K, V)`, 1 output stream of type `(K, V)`.
 /// > The output will have one tuple for each distinct `K`, with an accumulated (reduced) value of
@@ -84,12 +83,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    op_name,
                    op_inst:
                        OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args,
-                                   type_args,
-                                   ..
-                               },
+                           generics: OpInstGenerics { type_args, .. },
                            ..
                        },
                    arguments,
@@ -98,19 +92,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
 
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [Persistence::Mutable] => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of `'mutable` does not exist",
-                ));
-                Persistence::Tick
-            }
-            [a] => a,
-            _ => unreachable!(),
-        };
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let generic_type_args = [
             type_args

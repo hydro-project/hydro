@@ -2,10 +2,9 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
+    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 // This implementation is largely redundant to ANTI_JOIN and should be DRY'ed
 /// > 2 input streams the first of type (K, T), the second of type K,
@@ -54,25 +53,12 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistences = match persistence_args[..] {
-            [] => [Persistence::Tick, Persistence::Tick],
-            [a] => [a, a],
-            [a, b] => [a, b],
-            _ => unreachable!(),
-        };
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let mut make_antijoindata = |persistence, side| {
+        let make_antijoindata = |persistence, side| {
             let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
             let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
             let (init, borrow) = match persistence {
@@ -92,14 +78,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                         (&mut *#borrow_ident)
                     },
                 ),
-                Persistence::Mutable => {
-                    diagnostics.push(Diagnostic::spanned(
-                        op_span,
-                        Level::Error,
-                        "An implementation of 'mutable does not exist",
-                    ));
-                    return Err(());
-                }
+                Persistence::Mutable => panic!(),
             };
             Ok((antijoindata_ident, borrow_ident, init, borrow))
         };
@@ -126,14 +105,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                     #neg_init
                 ));
             },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+            Persistence::Mutable => panic!(),
         };
 
         let input_neg = &inputs[0]; // N before P
@@ -198,14 +170,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                     .map(|(k, v)| (k.clone(), v.clone()))
                 };
             },
-            Persistence::Mutable => quote_spanned! {op_span =>
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            },
+            Persistence::Mutable => panic!(),
         };
 
         Ok(OperatorWriteOutput {

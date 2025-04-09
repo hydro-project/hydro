@@ -2,12 +2,11 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 use syn::spanned::Spanned;
 
-use super::join_fused::{JoinOptions, make_joindata, parse_argument, parse_persistences};
+use super::join_fused::{JoinOptions, make_joindata, parse_argument};
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
+    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// See `join_fused`
 ///
@@ -50,14 +49,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
@@ -66,7 +57,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
         let arg0_span = arguments[0].span();
 
-        let persistences = parse_persistences(persistence_args);
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let lhs_join_options =
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
@@ -85,14 +76,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     ::std::vec::Vec::new()
                 ));
             },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+            Persistence::Mutable => unreachable!(),
         };
 
         let lhs = &inputs[0];
@@ -144,14 +128,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
                 };
             },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+            Persistence::Mutable => unreachable!(),
         };
 
         let write_iterator_after =

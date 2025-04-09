@@ -1,10 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream of type `T`, 1 output stream of type `(usize, T)`
 ///
@@ -45,33 +43,10 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [p @ Persistence::Mutable] => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    format!(
-                        "An implementation of `'{}` does not exist",
-                        p.to_str_lowercase()
-                    ),
-                ));
-                Persistence::Tick
-            }
-            [p] => p,
-            _ => unreachable!(),
-        };
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let input = &inputs[0];
         let output = &outputs[0];

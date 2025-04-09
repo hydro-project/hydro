@@ -98,12 +98,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
                    is_pull,
                    op_inst:
                        OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   type_args,
-                                   persistence_args,
-                                   ..
-                               },
+                           generics: OpInstGenerics { type_args, .. },
                            ..
                        },
                    ..
@@ -129,7 +124,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
         } = (super::join_fused::JOIN_FUSED.write_fn)(&wc, diagnostics).unwrap();
 
         assert!(is_pull);
-        let persistences = super::join_fused::parse_persistences(persistence_args);
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let lhs_join_options = super::join_fused::parse_argument(&wc.arguments[0])
             .map_err(|err| diagnostics.push(err))?;
