@@ -285,7 +285,8 @@ impl<'a> Dfir<'a> {
                     sg_depth = sg_data.loop_depth,
                     sg_loop_nonce = sg_data.last_loop_nonce.0,
                     sg_iter_count = sg_data.last_loop_nonce.1,
-                ).entered();
+                )
+                .entered();
 
                 match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
@@ -332,10 +333,10 @@ impl<'a> Dfir<'a> {
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
                             // If the iteration count is the same as the previous execution, then
                             // we are on the next iteration.
-                            if loop_iter_count.is_none_or(|n| n == prev_iter_count) {
+                            if *loop_iter_count == prev_iter_count {
                                 // If not true, then we shall not run the next iteration.
                                 if !std::mem::take(allow_another_iteration) {
-                                    tracing::trace!(
+                                    tracing::debug!(
                                         "Loop will not continue to next iteration, skipping."
                                     );
                                     continue 'pop;
@@ -344,7 +345,10 @@ impl<'a> Dfir<'a> {
                                 loop_iter_count.map_or((0, true), |n| (n + 1, false))
                             } else {
                                 // Otherwise update the local iteration count to match the loop.
-                                debug_assert!(loop_iter_count.is_some_and(|n| prev_iter_count < n));
+                                debug_assert!(
+                                    prev_iter_count < *loop_iter_count,
+                                    "Expect loop iteration count to be increasing."
+                                );
                                 (loop_iter_count.unwrap(), false)
                             }
                         } else {
@@ -356,11 +360,12 @@ impl<'a> Dfir<'a> {
                         // Run state hooks.
                         self.context.run_state_hooks_loop(loop_id);
                     }
+                    tracing::debug!("Loop iteration count {}", curr_iter_count);
 
                     *loop_iter_count = Some(curr_iter_count);
                     self.context.loop_iter_count = curr_iter_count;
                     sg_data.last_loop_nonce =
-                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
+                        (curr_loop_nonce.unwrap_or_default(), Some(curr_iter_count));
                 }
 
                 // Run subgraph state hooks.
@@ -1098,7 +1103,7 @@ pub(super) struct SubgraphData<'a> {
     last_tick_run_in: Option<TickInstant>,
     /// A meaningless ID to track the last loop execution this subgraph was run in.
     /// `(loop_nonce, iter_count)` pair.
-    last_loop_nonce: (usize, usize),
+    last_loop_nonce: (usize, Option<usize>),
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
@@ -1129,7 +1134,7 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            last_loop_nonce: (0, 0),
+            last_loop_nonce: (0, None),
             is_lazy,
             loop_id,
             loop_depth,

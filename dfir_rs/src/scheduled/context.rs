@@ -387,7 +387,10 @@ impl Context {
     // Run the state hooks for each state in the loop.
     // Call at the end of each loop execution.
     pub(super) fn run_state_hooks_loop(&mut self, loop_id: LoopId) {
-        tracing::trace!(loop_id = loop_id.to_string(), "Running state hooks for loop.");
+        tracing::trace!(
+            loop_id = loop_id.to_string(),
+            "Running state hooks for loop."
+        );
         for state_id in self.loop_states.get(loop_id).into_iter().flatten() {
             let StateData {
                 state,
