@@ -64,7 +64,7 @@ impl MinOrder<TotalOrder> for NoOrder {
 /// - `Loc`: the location where the stream is being materialized
 /// - `Bound`: the boundedness of the stream, which is either [`Bounded`]
 ///   or [`Unbounded`]
-/// - `O`: the ordering of the stream, which is either [`TotalOrder`]
+/// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder> {
     location: Loc,
