@@ -133,8 +133,20 @@ pub fn test_loop_lifetime() {
 
     df.run_available();
 
-    assert_eq!(&[(0, (0, 0)), (0, (1, 1))], &*collect_ready::<Vec<_>, _>(&mut recv_nn));
-    assert_eq!(&[(0, (0, 0)), (0, (1, 1)), (1, (0, 2)), (1, (1, 3))], &*collect_ready::<Vec<_>, _>(&mut recv_nl));
-    assert_eq!(&[(0, (0, 0)), (0, (1, 1))], &*collect_ready::<Vec<_>, _>(&mut recv_ln));
-    assert_eq!(&[(0, (0, 0)), (0, (1, 1)), (1, (0, 2)), (1, (1, 3))], &*collect_ready::<Vec<_>, _>(&mut recv_ll));
+    assert_eq!(
+        &[(0, (0, 0)), (0, (1, 1))],
+        &*collect_ready::<Vec<_>, _>(&mut recv_nn)
+    );
+    assert_eq!(
+        &[(0, (0, 0)), (0, (1, 1)), (1, (0, 2)), (1, (1, 3))],
+        &*collect_ready::<Vec<_>, _>(&mut recv_nl)
+    );
+    assert_eq!(
+        &[(0, (0, 0)), (0, (1, 1))],
+        &*collect_ready::<Vec<_>, _>(&mut recv_ln)
+    );
+    assert_eq!(
+        &[(0, (0, 0)), (0, (1, 1)), (1, (0, 2)), (1, (1, 3))],
+        &*collect_ready::<Vec<_>, _>(&mut recv_ll)
+    );
 }
