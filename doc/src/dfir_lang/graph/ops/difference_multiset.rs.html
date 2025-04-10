@@ -54,21 +54,23 @@
 <a href=#54 id=54 data-nosnippet>54</a>               diagnostics| {
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span>OperatorWriteOutput {
 <a href=#56 id=56 data-nosnippet>56</a>            write_prologue,
-<a href=#57 id=57 data-nosnippet>57</a>            write_iterator,
-<a href=#58 id=58 data-nosnippet>58</a>            write_iterator_after,
-<a href=#59 id=59 data-nosnippet>59</a>        } = (<span class="kw">super</span>::anti_join_multiset::ANTI_JOIN_MULTISET.write_fn)(wc, diagnostics)<span class="question-mark">?</span>;
-<a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>pos = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-<a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#63 id=63 data-nosnippet>63</a>            <span class="kw">let </span>#pos = #pos.map(|k| (k, ()));
-<a href=#64 id=64 data-nosnippet>64</a>            #write_iterator
-<a href=#65 id=65 data-nosnippet>65</a>            <span class="kw">let </span>#ident = #ident.map(|(k, ())| k);
-<a href=#66 id=66 data-nosnippet>66</a>        };
-<a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#69 id=69 data-nosnippet>69</a>            write_prologue,
-<a href=#70 id=70 data-nosnippet>70</a>            write_iterator,
-<a href=#71 id=71 data-nosnippet>71</a>            write_iterator_after,
-<a href=#72 id=72 data-nosnippet>72</a>        })
-<a href=#73 id=73 data-nosnippet>73</a>    },
-<a href=#74 id=74 data-nosnippet>74</a>};</code></pre></div></section></main></body></html>
+<a href=#57 id=57 data-nosnippet>57</a>            write_prologue_after,
+<a href=#58 id=58 data-nosnippet>58</a>            write_iterator,
+<a href=#59 id=59 data-nosnippet>59</a>            write_iterator_after,
+<a href=#60 id=60 data-nosnippet>60</a>        } = (<span class="kw">super</span>::anti_join_multiset::ANTI_JOIN_MULTISET.write_fn)(wc, diagnostics)<span class="question-mark">?</span>;
+<a href=#61 id=61 data-nosnippet>61</a>
+<a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>pos = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
+<a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#64 id=64 data-nosnippet>64</a>            <span class="kw">let </span>#pos = #pos.map(|k| (k, ()));
+<a href=#65 id=65 data-nosnippet>65</a>            #write_iterator
+<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">let </span>#ident = #ident.map(|(k, ())| k);
+<a href=#67 id=67 data-nosnippet>67</a>        };
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#70 id=70 data-nosnippet>70</a>            write_prologue,
+<a href=#71 id=71 data-nosnippet>71</a>            write_prologue_after,
+<a href=#72 id=72 data-nosnippet>72</a>            write_iterator,
+<a href=#73 id=73 data-nosnippet>73</a>            write_iterator_after,
+<a href=#74 id=74 data-nosnippet>74</a>        })
+<a href=#75 id=75 data-nosnippet>75</a>    },
+<a href=#76 id=76 data-nosnippet>76</a>};</code></pre></div></section></main></body></html>

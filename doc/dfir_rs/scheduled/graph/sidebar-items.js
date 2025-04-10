@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Dfir"]};
+window.SIDEBAR_ITEMS = {"enum":["StateLifespan"],"struct":["Dfir"]};

@@ -49,73 +49,74 @@
 <a href=#49 id=49 data-nosnippet>49</a>        _else =&gt; <span class="prelude-val">None</span>,
 <a href=#50 id=50 data-nosnippet>50</a>    },
 <a href=#51 id=51 data-nosnippet>51</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#52 id=52 data-nosnippet>52</a>                   context,
-<a href=#53 id=53 data-nosnippet>53</a>                   df_ident,
-<a href=#54 id=54 data-nosnippet>54</a>                   ident,
-<a href=#55 id=55 data-nosnippet>55</a>                   op_span,
-<a href=#56 id=56 data-nosnippet>56</a>                   inputs,
-<a href=#57 id=57 data-nosnippet>57</a>                   is_pull,
-<a href=#58 id=58 data-nosnippet>58</a>                   work_fn,
-<a href=#59 id=59 data-nosnippet>59</a>                   ..
-<a href=#60 id=60 data-nosnippet>60</a>               },
-<a href=#61 id=61 data-nosnippet>61</a>               _diagnostics| {
-<a href=#62 id=62 data-nosnippet>62</a>        <span class="macro">assert!</span>(is_pull);
-<a href=#63 id=63 data-nosnippet>63</a>
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>stream_input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>singleton_input = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>singleton_handle_ident = wc.make_ident(<span class="string">"singleton_handle"</span>);
-<a href=#67 id=67 data-nosnippet>67</a>
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#69 id=69 data-nosnippet>69</a>            <span class="kw">let </span>#singleton_handle_ident = #df_ident.add_state(
-<a href=#70 id=70 data-nosnippet>70</a>                ::std::cell::RefCell::new(::std::option::Option::None)
-<a href=#71 id=71 data-nosnippet>71</a>            );
-<a href=#72 id=72 data-nosnippet>72</a>            <span class="comment">// Reset the value if it is a new tick.
-<a href=#73 id=73 data-nosnippet>73</a>            </span>#df_ident.set_state_tick_hook(#singleton_handle_ident, |rcell| { rcell.take(); });
-<a href=#74 id=74 data-nosnippet>74</a>        };
-<a href=#75 id=75 data-nosnippet>75</a>
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#77 id=77 data-nosnippet>77</a>            <span class="kw">let </span>#ident = {
-<a href=#78 id=78 data-nosnippet>78</a>                <span class="attr">#[inline(always)]
-<a href=#79 id=79 data-nosnippet>79</a>                </span><span class="kw">fn </span>cross_singleton_guard&lt;Singleton, Item, SingletonIter, Stream&gt;(
-<a href=#80 id=80 data-nosnippet>80</a>                    <span class="kw-2">mut </span>singleton_state_mut: std::cell::RefMut&lt;<span class="lifetime">'_</span>, <span class="prelude-ty">Option</span>&lt;Singleton&gt;&gt;,
-<a href=#81 id=81 data-nosnippet>81</a>                    <span class="kw-2">mut </span>singleton_input: SingletonIter,
-<a href=#82 id=82 data-nosnippet>82</a>                    stream_input: Stream,
-<a href=#83 id=83 data-nosnippet>83</a>                ) -&gt; <span class="kw">impl use</span>&lt;Item, Singleton, Stream, <span class="comment">/*TODO: https://github.com/rust-lang/rust/issues/130043 */ </span>SingletonIter&gt; + Iterator&lt;Item = (Item, Singleton)&gt;
-<a href=#84 id=84 data-nosnippet>84</a>                <span class="kw">where
-<a href=#85 id=85 data-nosnippet>85</a>                    </span>Singleton: ::std::clone::Clone,
-<a href=#86 id=86 data-nosnippet>86</a>                    SingletonIter: Iterator&lt;Item = Singleton&gt;,
-<a href=#87 id=87 data-nosnippet>87</a>                    Stream: Iterator&lt;Item = Item&gt;,
-<a href=#88 id=88 data-nosnippet>88</a>                {
-<a href=#89 id=89 data-nosnippet>89</a>                    <span class="kw">let </span>singleton_value_opt = #work_fn(|| <span class="kw">match </span><span class="kw-2">&amp;*</span>singleton_state_mut {
-<a href=#90 id=90 data-nosnippet>90</a>                        ::std::option::Option::Some(singleton_value) =&gt; <span class="prelude-val">Some</span>(singleton_value.clone()),
-<a href=#91 id=91 data-nosnippet>91</a>                        ::std::option::Option::None =&gt; {
-<a href=#92 id=92 data-nosnippet>92</a>                            <span class="kw">let </span>singleton_value_opt = singleton_input.next();
-<a href=#93 id=93 data-nosnippet>93</a>                            <span class="kw-2">*</span>singleton_state_mut = singleton_value_opt.clone();
-<a href=#94 id=94 data-nosnippet>94</a>                            singleton_value_opt
-<a href=#95 id=95 data-nosnippet>95</a>                        }
-<a href=#96 id=96 data-nosnippet>96</a>                    });
-<a href=#97 id=97 data-nosnippet>97</a>                    singleton_value_opt
-<a href=#98 id=98 data-nosnippet>98</a>                        .map(|singleton_value| {
-<a href=#99 id=99 data-nosnippet>99</a>                            stream_input.map(<span class="kw">move </span>|item| (item, ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>singleton_value)))
-<a href=#100 id=100 data-nosnippet>100</a>                        })
-<a href=#101 id=101 data-nosnippet>101</a>                        .into_iter()
-<a href=#102 id=102 data-nosnippet>102</a>                        .flatten()
-<a href=#103 id=103 data-nosnippet>103</a>                }
-<a href=#104 id=104 data-nosnippet>104</a>                cross_singleton_guard(
-<a href=#105 id=105 data-nosnippet>105</a>                    <span class="kw">unsafe </span>{
-<a href=#106 id=106 data-nosnippet>106</a>                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
-<a href=#107 id=107 data-nosnippet>107</a>                        </span>#context.state_ref_unchecked(#singleton_handle_ident)
-<a href=#108 id=108 data-nosnippet>108</a>                    }.borrow_mut(),
-<a href=#109 id=109 data-nosnippet>109</a>                    #singleton_input,
-<a href=#110 id=110 data-nosnippet>110</a>                    #stream_input,
-<a href=#111 id=111 data-nosnippet>111</a>                )
-<a href=#112 id=112 data-nosnippet>112</a>            };
-<a href=#113 id=113 data-nosnippet>113</a>        };
-<a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#116 id=116 data-nosnippet>116</a>            write_prologue,
-<a href=#117 id=117 data-nosnippet>117</a>            write_iterator,
-<a href=#118 id=118 data-nosnippet>118</a>            ..Default::default()
-<a href=#119 id=119 data-nosnippet>119</a>        })
-<a href=#120 id=120 data-nosnippet>120</a>    },
-<a href=#121 id=121 data-nosnippet>121</a>};</code></pre></div></section></main></body></html>
+<a href=#52 id=52 data-nosnippet>52</a>                   root,
+<a href=#53 id=53 data-nosnippet>53</a>                   context,
+<a href=#54 id=54 data-nosnippet>54</a>                   df_ident,
+<a href=#55 id=55 data-nosnippet>55</a>                   ident,
+<a href=#56 id=56 data-nosnippet>56</a>                   op_span,
+<a href=#57 id=57 data-nosnippet>57</a>                   inputs,
+<a href=#58 id=58 data-nosnippet>58</a>                   is_pull,
+<a href=#59 id=59 data-nosnippet>59</a>                   work_fn,
+<a href=#60 id=60 data-nosnippet>60</a>                   ..
+<a href=#61 id=61 data-nosnippet>61</a>               },
+<a href=#62 id=62 data-nosnippet>62</a>               _diagnostics| {
+<a href=#63 id=63 data-nosnippet>63</a>        <span class="macro">assert!</span>(is_pull);
+<a href=#64 id=64 data-nosnippet>64</a>
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>stream_input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>singleton_input = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>singleton_handle_ident = wc.make_ident(<span class="string">"singleton_handle"</span>);
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#70 id=70 data-nosnippet>70</a>            <span class="kw">let </span>#singleton_handle_ident = #df_ident.add_state(
+<a href=#71 id=71 data-nosnippet>71</a>                ::std::cell::RefCell::new(::std::option::Option::None)
+<a href=#72 id=72 data-nosnippet>72</a>            );
+<a href=#73 id=73 data-nosnippet>73</a>            <span class="comment">// Reset the value if it is a new tick. TODO(mingwei): handle other lifespans?
+<a href=#74 id=74 data-nosnippet>74</a>            </span>#df_ident.set_state_lifespan_hook(#singleton_handle_ident, #root::scheduled::graph::StateLifespan::Tick, |rcell| { rcell.take(); });
+<a href=#75 id=75 data-nosnippet>75</a>        };
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#78 id=78 data-nosnippet>78</a>            <span class="kw">let </span>#ident = {
+<a href=#79 id=79 data-nosnippet>79</a>                <span class="attr">#[inline(always)]
+<a href=#80 id=80 data-nosnippet>80</a>                </span><span class="kw">fn </span>cross_singleton_guard&lt;Singleton, Item, SingletonIter, Stream&gt;(
+<a href=#81 id=81 data-nosnippet>81</a>                    <span class="kw-2">mut </span>singleton_state_mut: std::cell::RefMut&lt;<span class="lifetime">'_</span>, <span class="prelude-ty">Option</span>&lt;Singleton&gt;&gt;,
+<a href=#82 id=82 data-nosnippet>82</a>                    <span class="kw-2">mut </span>singleton_input: SingletonIter,
+<a href=#83 id=83 data-nosnippet>83</a>                    stream_input: Stream,
+<a href=#84 id=84 data-nosnippet>84</a>                ) -&gt; <span class="kw">impl use</span>&lt;Item, Singleton, Stream, <span class="comment">/*TODO: https://github.com/rust-lang/rust/issues/130043 */ </span>SingletonIter&gt; + Iterator&lt;Item = (Item, Singleton)&gt;
+<a href=#85 id=85 data-nosnippet>85</a>                <span class="kw">where
+<a href=#86 id=86 data-nosnippet>86</a>                    </span>Singleton: ::std::clone::Clone,
+<a href=#87 id=87 data-nosnippet>87</a>                    SingletonIter: Iterator&lt;Item = Singleton&gt;,
+<a href=#88 id=88 data-nosnippet>88</a>                    Stream: Iterator&lt;Item = Item&gt;,
+<a href=#89 id=89 data-nosnippet>89</a>                {
+<a href=#90 id=90 data-nosnippet>90</a>                    <span class="kw">let </span>singleton_value_opt = #work_fn(|| <span class="kw">match </span><span class="kw-2">&amp;*</span>singleton_state_mut {
+<a href=#91 id=91 data-nosnippet>91</a>                        ::std::option::Option::Some(singleton_value) =&gt; <span class="prelude-val">Some</span>(singleton_value.clone()),
+<a href=#92 id=92 data-nosnippet>92</a>                        ::std::option::Option::None =&gt; {
+<a href=#93 id=93 data-nosnippet>93</a>                            <span class="kw">let </span>singleton_value_opt = singleton_input.next();
+<a href=#94 id=94 data-nosnippet>94</a>                            <span class="kw-2">*</span>singleton_state_mut = singleton_value_opt.clone();
+<a href=#95 id=95 data-nosnippet>95</a>                            singleton_value_opt
+<a href=#96 id=96 data-nosnippet>96</a>                        }
+<a href=#97 id=97 data-nosnippet>97</a>                    });
+<a href=#98 id=98 data-nosnippet>98</a>                    singleton_value_opt
+<a href=#99 id=99 data-nosnippet>99</a>                        .map(|singleton_value| {
+<a href=#100 id=100 data-nosnippet>100</a>                            stream_input.map(<span class="kw">move </span>|item| (item, ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>singleton_value)))
+<a href=#101 id=101 data-nosnippet>101</a>                        })
+<a href=#102 id=102 data-nosnippet>102</a>                        .into_iter()
+<a href=#103 id=103 data-nosnippet>103</a>                        .flatten()
+<a href=#104 id=104 data-nosnippet>104</a>                }
+<a href=#105 id=105 data-nosnippet>105</a>                cross_singleton_guard(
+<a href=#106 id=106 data-nosnippet>106</a>                    <span class="kw">unsafe </span>{
+<a href=#107 id=107 data-nosnippet>107</a>                        <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
+<a href=#108 id=108 data-nosnippet>108</a>                        </span>#context.state_ref_unchecked(#singleton_handle_ident)
+<a href=#109 id=109 data-nosnippet>109</a>                    }.borrow_mut(),
+<a href=#110 id=110 data-nosnippet>110</a>                    #singleton_input,
+<a href=#111 id=111 data-nosnippet>111</a>                    #stream_input,
+<a href=#112 id=112 data-nosnippet>112</a>                )
+<a href=#113 id=113 data-nosnippet>113</a>            };
+<a href=#114 id=114 data-nosnippet>114</a>        };
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#117 id=117 data-nosnippet>117</a>            write_prologue,
+<a href=#118 id=118 data-nosnippet>118</a>            write_iterator,
+<a href=#119 id=119 data-nosnippet>119</a>            ..Default::default()
+<a href=#120 id=120 data-nosnippet>120</a>        })
+<a href=#121 id=121 data-nosnippet>121</a>    },
+<a href=#122 id=122 data-nosnippet>122</a>};</code></pre></div></section></main></body></html>

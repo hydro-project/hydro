@@ -14,7 +14,7 @@
 <a href=#14 id=14 data-nosnippet>14</a>}
 <a href=#15 id=15 data-nosnippet>15</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized&gt; Key&lt;Tag&gt; {
 <a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// Creates a Key from a raw index. Avoid using this function directly.
-<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub fn </span>from_raw(index: usize) -&gt; <span class="self">Self </span>{
+<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub const fn </span>from_raw(index: usize) -&gt; <span class="self">Self </span>{
 <a href=#18 id=18 data-nosnippet>18</a>        Key {
 <a href=#19 id=19 data-nosnippet>19</a>            index,
 <a href=#20 id=20 data-nosnippet>20</a>            _phantom: PhantomData,
@@ -69,9 +69,9 @@
 <a href=#69 id=69 data-nosnippet>69</a>}
 <a href=#70 id=70 data-nosnippet>70</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; SlotVec&lt;Tag, Val&gt; {
 <a href=#71 id=71 data-nosnippet>71</a>    <span class="doccomment">/// Creates a new `SlotVec`.
-<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#72 id=72 data-nosnippet>72</a>    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="self">Self </span>{
-<a href=#74 id=74 data-nosnippet>74</a>            slots: Vec::default(),
+<a href=#74 id=74 data-nosnippet>74</a>            slots: Vec::new(),
 <a href=#75 id=75 data-nosnippet>75</a>            _phantom: PhantomData,
 <a href=#76 id=76 data-nosnippet>76</a>        }
 <a href=#77 id=77 data-nosnippet>77</a>    }
@@ -180,9 +180,9 @@
 <a href=#180 id=180 data-nosnippet>180</a>}
 <a href=#181 id=181 data-nosnippet>181</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; SecondarySlotVec&lt;Tag, Val&gt; {
 <a href=#182 id=182 data-nosnippet>182</a>    <span class="doccomment">/// Creates a new `SecondarySlotVec`.
-<a href=#183 id=183 data-nosnippet>183</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#183 id=183 data-nosnippet>183</a>    </span><span class="kw">pub const fn </span>new() -&gt; <span class="self">Self </span>{
 <a href=#184 id=184 data-nosnippet>184</a>        <span class="self">Self </span>{
-<a href=#185 id=185 data-nosnippet>185</a>            slots: Vec::default(),
+<a href=#185 id=185 data-nosnippet>185</a>            slots: Vec::new(),
 <a href=#186 id=186 data-nosnippet>186</a>            _phantom: PhantomData,
 <a href=#187 id=187 data-nosnippet>187</a>        }
 <a href=#188 id=188 data-nosnippet>188</a>    }
@@ -211,55 +211,64 @@
 <a href=#211 id=211 data-nosnippet>211</a>        <span class="self">self</span>.slots.get_mut(key.index).and_then(|v| v.as_mut())
 <a href=#212 id=212 data-nosnippet>212</a>    }
 <a href=#213 id=213 data-nosnippet>213</a>
-<a href=#214 id=214 data-nosnippet>214</a>    <span class="doccomment">/// Iterate the key-value pairs, where the value is a shared reference.
-<a href=#215 id=215 data-nosnippet>215</a>    </span><span class="kw">pub fn </span>iter(
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#217 id=217 data-nosnippet>217</a>    ) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = (Key&lt;Tag&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>Val)&gt; + FusedIterator + Clone {
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="self">self</span>.slots
-<a href=#219 id=219 data-nosnippet>219</a>            .iter()
-<a href=#220 id=220 data-nosnippet>220</a>            .enumerate()
-<a href=#221 id=221 data-nosnippet>221</a>            .filter_map(|(idx, opt_val)| <span class="prelude-val">Some</span>((Key::from_raw(idx), opt_val.as_ref()<span class="question-mark">?</span>)))
-<a href=#222 id=222 data-nosnippet>222</a>    }
-<a href=#223 id=223 data-nosnippet>223</a>
-<a href=#224 id=224 data-nosnippet>224</a>    <span class="doccomment">/// Iterate the key-value pairs, where the value is a exclusive reference.
-<a href=#225 id=225 data-nosnippet>225</a>    </span><span class="kw">pub fn </span>iter_mut(
-<a href=#226 id=226 data-nosnippet>226</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#227 id=227 data-nosnippet>227</a>    ) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = (Key&lt;Tag&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'_ </span><span class="kw-2">mut </span>Val)&gt; + FusedIterator {
-<a href=#228 id=228 data-nosnippet>228</a>        <span class="self">self</span>.slots
-<a href=#229 id=229 data-nosnippet>229</a>            .iter_mut()
-<a href=#230 id=230 data-nosnippet>230</a>            .enumerate()
-<a href=#231 id=231 data-nosnippet>231</a>            .filter_map(|(idx, opt_val)| <span class="prelude-val">Some</span>((Key::from_raw(idx), opt_val.as_mut()<span class="question-mark">?</span>)))
-<a href=#232 id=232 data-nosnippet>232</a>    }
-<a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>    <span class="doccomment">/// Iterate over the values by shared reference.
-<a href=#235 id=235 data-nosnippet>235</a>    </span><span class="kw">pub fn </span>values(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>Val&gt; + FusedIterator + Clone {
-<a href=#236 id=236 data-nosnippet>236</a>        <span class="self">self</span>.slots.iter().filter_map(Option::as_ref)
-<a href=#237 id=237 data-nosnippet>237</a>    }
-<a href=#238 id=238 data-nosnippet>238</a>
-<a href=#239 id=239 data-nosnippet>239</a>    <span class="doccomment">/// Iterate over the values by exclusive reference.
-<a href=#240 id=240 data-nosnippet>240</a>    </span><span class="kw">pub fn </span>values_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'_ </span><span class="kw-2">mut </span>Val&gt; + FusedIterator {
-<a href=#241 id=241 data-nosnippet>241</a>        <span class="self">self</span>.slots.iter_mut().filter_map(Option::as_mut)
-<a href=#242 id=242 data-nosnippet>242</a>    }
-<a href=#243 id=243 data-nosnippet>243</a>
-<a href=#244 id=244 data-nosnippet>244</a>    <span class="doccomment">/// Iterate over the keys.
-<a href=#245 id=245 data-nosnippet>245</a>    </span><span class="kw">pub fn </span>keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span><span class="lifetime">'_ </span>+ DoubleEndedIterator&lt;Item = Key&lt;Tag&gt;&gt; + FusedIterator + Clone {
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="self">self</span>.iter().map(|(key, <span class="kw">_</span>)| key)
-<a href=#247 id=247 data-nosnippet>247</a>    }
-<a href=#248 id=248 data-nosnippet>248</a>}
-<a href=#249 id=249 data-nosnippet>249</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; Default <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
-<a href=#250 id=250 data-nosnippet>250</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
-<a href=#251 id=251 data-nosnippet>251</a>        <span class="self">Self</span>::new()
-<a href=#252 id=252 data-nosnippet>252</a>    }
-<a href=#253 id=253 data-nosnippet>253</a>}
-<a href=#254 id=254 data-nosnippet>254</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; Index&lt;Key&lt;Tag&gt;&gt; <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
-<a href=#255 id=255 data-nosnippet>255</a>    <span class="kw">type </span>Output = Val;
-<a href=#256 id=256 data-nosnippet>256</a>
-<a href=#257 id=257 data-nosnippet>257</a>    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, key: Key&lt;Tag&gt;) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-<a href=#258 id=258 data-nosnippet>258</a>        <span class="self">self</span>.get(key).unwrap()
-<a href=#259 id=259 data-nosnippet>259</a>    }
-<a href=#260 id=260 data-nosnippet>260</a>}
-<a href=#261 id=261 data-nosnippet>261</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; IndexMut&lt;Key&lt;Tag&gt;&gt; <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
-<a href=#262 id=262 data-nosnippet>262</a>    <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: Key&lt;Tag&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="self">self</span>.get_mut(key).unwrap()
-<a href=#264 id=264 data-nosnippet>264</a>    }
-<a href=#265 id=265 data-nosnippet>265</a>}</code></pre></div></section></main></body></html>
+<a href=#214 id=214 data-nosnippet>214</a>    <span class="doccomment">/// Returns a mutable reference to the value associated with the key, inserting a default value
+<a href=#215 id=215 data-nosnippet>215</a>    /// if it doesn't yet exist.
+<a href=#216 id=216 data-nosnippet>216</a>    </span><span class="kw">pub fn </span>get_or_insert_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: Key&lt;Tag&gt;, default: <span class="kw">impl </span>FnOnce() -&gt; Val) -&gt; <span class="kw-2">&amp;mut </span>Val {
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">if </span>key.index &gt;= <span class="self">self</span>.slots.len() {
+<a href=#218 id=218 data-nosnippet>218</a>            <span class="self">self</span>.slots.resize_with(key.index + <span class="number">1</span>, || <span class="prelude-val">None</span>);
+<a href=#219 id=219 data-nosnippet>219</a>        }
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="self">self</span>.slots[key.index].get_or_insert_with(default)
+<a href=#221 id=221 data-nosnippet>221</a>    }
+<a href=#222 id=222 data-nosnippet>222</a>
+<a href=#223 id=223 data-nosnippet>223</a>    <span class="doccomment">/// Iterate the key-value pairs, where the value is a shared reference.
+<a href=#224 id=224 data-nosnippet>224</a>    </span><span class="kw">pub fn </span>iter(
+<a href=#225 id=225 data-nosnippet>225</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#226 id=226 data-nosnippet>226</a>    ) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = (Key&lt;Tag&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>Val)&gt; + FusedIterator + Clone {
+<a href=#227 id=227 data-nosnippet>227</a>        <span class="self">self</span>.slots
+<a href=#228 id=228 data-nosnippet>228</a>            .iter()
+<a href=#229 id=229 data-nosnippet>229</a>            .enumerate()
+<a href=#230 id=230 data-nosnippet>230</a>            .filter_map(|(idx, opt_val)| <span class="prelude-val">Some</span>((Key::from_raw(idx), opt_val.as_ref()<span class="question-mark">?</span>)))
+<a href=#231 id=231 data-nosnippet>231</a>    }
+<a href=#232 id=232 data-nosnippet>232</a>
+<a href=#233 id=233 data-nosnippet>233</a>    <span class="doccomment">/// Iterate the key-value pairs, where the value is a exclusive reference.
+<a href=#234 id=234 data-nosnippet>234</a>    </span><span class="kw">pub fn </span>iter_mut(
+<a href=#235 id=235 data-nosnippet>235</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#236 id=236 data-nosnippet>236</a>    ) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = (Key&lt;Tag&gt;, <span class="kw-2">&amp;</span><span class="lifetime">'_ </span><span class="kw-2">mut </span>Val)&gt; + FusedIterator {
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="self">self</span>.slots
+<a href=#238 id=238 data-nosnippet>238</a>            .iter_mut()
+<a href=#239 id=239 data-nosnippet>239</a>            .enumerate()
+<a href=#240 id=240 data-nosnippet>240</a>            .filter_map(|(idx, opt_val)| <span class="prelude-val">Some</span>((Key::from_raw(idx), opt_val.as_mut()<span class="question-mark">?</span>)))
+<a href=#241 id=241 data-nosnippet>241</a>    }
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a>    <span class="doccomment">/// Iterate over the values by shared reference.
+<a href=#244 id=244 data-nosnippet>244</a>    </span><span class="kw">pub fn </span>values(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>Val&gt; + FusedIterator + Clone {
+<a href=#245 id=245 data-nosnippet>245</a>        <span class="self">self</span>.slots.iter().filter_map(Option::as_ref)
+<a href=#246 id=246 data-nosnippet>246</a>    }
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>    <span class="doccomment">/// Iterate over the values by exclusive reference.
+<a href=#249 id=249 data-nosnippet>249</a>    </span><span class="kw">pub fn </span>values_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>DoubleEndedIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'_ </span><span class="kw-2">mut </span>Val&gt; + FusedIterator {
+<a href=#250 id=250 data-nosnippet>250</a>        <span class="self">self</span>.slots.iter_mut().filter_map(Option::as_mut)
+<a href=#251 id=251 data-nosnippet>251</a>    }
+<a href=#252 id=252 data-nosnippet>252</a>
+<a href=#253 id=253 data-nosnippet>253</a>    <span class="doccomment">/// Iterate over the keys.
+<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">pub fn </span>keys(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span><span class="lifetime">'_ </span>+ DoubleEndedIterator&lt;Item = Key&lt;Tag&gt;&gt; + FusedIterator + Clone {
+<a href=#255 id=255 data-nosnippet>255</a>        <span class="self">self</span>.iter().map(|(key, <span class="kw">_</span>)| key)
+<a href=#256 id=256 data-nosnippet>256</a>    }
+<a href=#257 id=257 data-nosnippet>257</a>}
+<a href=#258 id=258 data-nosnippet>258</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; Default <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
+<a href=#259 id=259 data-nosnippet>259</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#260 id=260 data-nosnippet>260</a>        <span class="self">Self</span>::new()
+<a href=#261 id=261 data-nosnippet>261</a>    }
+<a href=#262 id=262 data-nosnippet>262</a>}
+<a href=#263 id=263 data-nosnippet>263</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; Index&lt;Key&lt;Tag&gt;&gt; <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
+<a href=#264 id=264 data-nosnippet>264</a>    <span class="kw">type </span>Output = Val;
+<a href=#265 id=265 data-nosnippet>265</a>
+<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, key: Key&lt;Tag&gt;) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="self">self</span>.get(key).unwrap()
+<a href=#268 id=268 data-nosnippet>268</a>    }
+<a href=#269 id=269 data-nosnippet>269</a>}
+<a href=#270 id=270 data-nosnippet>270</a><span class="kw">impl</span>&lt;Tag: <span class="question-mark">?</span>Sized, Val&gt; IndexMut&lt;Key&lt;Tag&gt;&gt; <span class="kw">for </span>SecondarySlotVec&lt;Tag, Val&gt; {
+<a href=#271 id=271 data-nosnippet>271</a>    <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: Key&lt;Tag&gt;) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="self">self</span>.get_mut(key).unwrap()
+<a href=#273 id=273 data-nosnippet>273</a>    }
+<a href=#274 id=274 data-nosnippet>274</a>}</code></pre></div></section></main></body></html>

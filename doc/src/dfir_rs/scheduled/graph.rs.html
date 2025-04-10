@@ -278,855 +278,886 @@
 <a href=#278 id=278 data-nosnippet>278</a>                <span class="comment">// This must be true for the subgraph to be enqueued.
 <a href=#279 id=279 data-nosnippet>279</a>                </span><span class="macro">assert!</span>(sg_data.is_scheduled.take());
 <a href=#280 id=280 data-nosnippet>280</a>
-<a href=#281 id=281 data-nosnippet>281</a>                <span class="kw">match </span>sg_data.loop_depth.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.context.loop_nonce_stack.len()) {
-<a href=#282 id=282 data-nosnippet>282</a>                    Ordering::Greater =&gt; {
-<a href=#283 id=283 data-nosnippet>283</a>                        <span class="comment">// We have entered a loop.
-<a href=#284 id=284 data-nosnippet>284</a>                        </span><span class="self">self</span>.context.loop_nonce += <span class="number">1</span>;
-<a href=#285 id=285 data-nosnippet>285</a>                        <span class="self">self</span>.context.loop_nonce_stack.push(<span class="self">self</span>.context.loop_nonce);
-<a href=#286 id=286 data-nosnippet>286</a>                        <span class="macro">tracing::trace!</span>(loop_nonce = <span class="self">self</span>.context.loop_nonce, <span class="string">"Entered loop."</span>);
-<a href=#287 id=287 data-nosnippet>287</a>                    }
-<a href=#288 id=288 data-nosnippet>288</a>                    Ordering::Less =&gt; {
-<a href=#289 id=289 data-nosnippet>289</a>                        <span class="comment">// We have exited a loop.
-<a href=#290 id=290 data-nosnippet>290</a>                        </span><span class="self">self</span>.context.loop_nonce_stack.pop();
-<a href=#291 id=291 data-nosnippet>291</a>                        <span class="macro">tracing::trace!</span>(<span class="string">"Exited loop."</span>);
-<a href=#292 id=292 data-nosnippet>292</a>                    }
-<a href=#293 id=293 data-nosnippet>293</a>                    Ordering::Equal =&gt; {}
-<a href=#294 id=294 data-nosnippet>294</a>                }
-<a href=#295 id=295 data-nosnippet>295</a>
-<a href=#296 id=296 data-nosnippet>296</a>                <span class="self">self</span>.context.subgraph_id = sg_id;
-<a href=#297 id=297 data-nosnippet>297</a>                <span class="self">self</span>.context.is_first_run_this_tick = sg_data
-<a href=#298 id=298 data-nosnippet>298</a>                    .last_tick_run_in
-<a href=#299 id=299 data-nosnippet>299</a>                    .is_none_or(|last_tick| last_tick &lt; <span class="self">self</span>.context.current_tick);
-<a href=#300 id=300 data-nosnippet>300</a>
-<a href=#301 id=301 data-nosnippet>301</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(loop_id) = sg_data.loop_id {
-<a href=#302 id=302 data-nosnippet>302</a>                    <span class="comment">// Loop execution - running loop block, from start to finish, containing
-<a href=#303 id=303 data-nosnippet>303</a>                    // multiple iterations.
-<a href=#304 id=304 data-nosnippet>304</a>                    // Loop iteration - a single iteration of a loop block, all subgraphs within
-<a href=#305 id=305 data-nosnippet>305</a>                    // the loop should run (at most) once.
-<a href=#306 id=306 data-nosnippet>306</a>
-<a href=#307 id=307 data-nosnippet>307</a>                    // If the previous run of this subgraph had the same loop execution and
-<a href=#308 id=308 data-nosnippet>308</a>                    // iteration count, then we need to increment the iteration count.
-<a href=#309 id=309 data-nosnippet>309</a>                    </span><span class="kw">let </span>curr_loop_nonce = <span class="self">self</span>.context.loop_nonce_stack.last().copied();
+<a href=#281 id=281 data-nosnippet>281</a>                <span class="kw">let </span>_enter = <span class="macro">tracing::info_span!</span>(
+<a href=#282 id=282 data-nosnippet>282</a>                    <span class="string">"run-subgraph"</span>,
+<a href=#283 id=283 data-nosnippet>283</a>                    sg_id = sg_id.to_string(),
+<a href=#284 id=284 data-nosnippet>284</a>                    sg_name = <span class="kw-2">&amp;*</span>sg_data.name,
+<a href=#285 id=285 data-nosnippet>285</a>                    sg_depth = sg_data.loop_depth,
+<a href=#286 id=286 data-nosnippet>286</a>                    sg_loop_nonce = sg_data.last_loop_nonce.<span class="number">0</span>,
+<a href=#287 id=287 data-nosnippet>287</a>                    sg_iter_count = sg_data.last_loop_nonce.<span class="number">1</span>,
+<a href=#288 id=288 data-nosnippet>288</a>                )
+<a href=#289 id=289 data-nosnippet>289</a>                .entered();
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>                <span class="kw">match </span>sg_data.loop_depth.cmp(<span class="kw-2">&amp;</span><span class="self">self</span>.context.loop_nonce_stack.len()) {
+<a href=#292 id=292 data-nosnippet>292</a>                    Ordering::Greater =&gt; {
+<a href=#293 id=293 data-nosnippet>293</a>                        <span class="comment">// We have entered a loop.
+<a href=#294 id=294 data-nosnippet>294</a>                        </span><span class="self">self</span>.context.loop_nonce += <span class="number">1</span>;
+<a href=#295 id=295 data-nosnippet>295</a>                        <span class="self">self</span>.context.loop_nonce_stack.push(<span class="self">self</span>.context.loop_nonce);
+<a href=#296 id=296 data-nosnippet>296</a>                        <span class="macro">tracing::trace!</span>(loop_nonce = <span class="self">self</span>.context.loop_nonce, <span class="string">"Entered loop."</span>);
+<a href=#297 id=297 data-nosnippet>297</a>                    }
+<a href=#298 id=298 data-nosnippet>298</a>                    Ordering::Less =&gt; {
+<a href=#299 id=299 data-nosnippet>299</a>                        <span class="comment">// We have exited a loop.
+<a href=#300 id=300 data-nosnippet>300</a>                        </span><span class="self">self</span>.context.loop_nonce_stack.pop();
+<a href=#301 id=301 data-nosnippet>301</a>                        <span class="macro">tracing::trace!</span>(<span class="string">"Exited loop."</span>);
+<a href=#302 id=302 data-nosnippet>302</a>                    }
+<a href=#303 id=303 data-nosnippet>303</a>                    Ordering::Equal =&gt; {}
+<a href=#304 id=304 data-nosnippet>304</a>                }
+<a href=#305 id=305 data-nosnippet>305</a>
+<a href=#306 id=306 data-nosnippet>306</a>                <span class="self">self</span>.context.subgraph_id = sg_id;
+<a href=#307 id=307 data-nosnippet>307</a>                <span class="self">self</span>.context.is_first_run_this_tick = sg_data
+<a href=#308 id=308 data-nosnippet>308</a>                    .last_tick_run_in
+<a href=#309 id=309 data-nosnippet>309</a>                    .is_none_or(|last_tick| last_tick &lt; <span class="self">self</span>.context.current_tick);
 <a href=#310 id=310 data-nosnippet>310</a>
-<a href=#311 id=311 data-nosnippet>311</a>                    <span class="kw">let </span>LoopData {
-<a href=#312 id=312 data-nosnippet>312</a>                        iter_count: loop_iter_count,
-<a href=#313 id=313 data-nosnippet>313</a>                        allow_another_iteration,
-<a href=#314 id=314 data-nosnippet>314</a>                    } = <span class="kw-2">&amp;mut </span><span class="self">self</span>.loop_data[loop_id];
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a>                    <span class="kw">let </span>(prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
-<a href=#317 id=317 data-nosnippet>317</a>
-<a href=#318 id=318 data-nosnippet>318</a>                    <span class="comment">// If the loop nonce is the same as the previous execution, then we are in
-<a href=#319 id=319 data-nosnippet>319</a>                    // the same loop execution.
-<a href=#320 id=320 data-nosnippet>320</a>                    // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
-<a href=#321 id=321 data-nosnippet>321</a>                    // always in the same (singular) loop execution.
-<a href=#322 id=322 data-nosnippet>322</a>                    </span><span class="kw">let </span>curr_iter_count =
-<a href=#323 id=323 data-nosnippet>323</a>                        <span class="kw">if </span>curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
-<a href=#324 id=324 data-nosnippet>324</a>                            <span class="comment">// If the iteration count is the same as the previous execution, then
-<a href=#325 id=325 data-nosnippet>325</a>                            // we are on the next iteration.
-<a href=#326 id=326 data-nosnippet>326</a>                            </span><span class="kw">if </span>loop_iter_count.is_none_or(|n| n == prev_iter_count) {
-<a href=#327 id=327 data-nosnippet>327</a>                                <span class="comment">// If not true, then we shall not run the next iteration.
-<a href=#328 id=328 data-nosnippet>328</a>                                </span><span class="kw">if </span>!std::mem::take(allow_another_iteration) {
-<a href=#329 id=329 data-nosnippet>329</a>                                    <span class="macro">tracing::trace!</span>(
-<a href=#330 id=330 data-nosnippet>330</a>                                        <span class="string">"Loop will not continue to next iteration, skipping."
-<a href=#331 id=331 data-nosnippet>331</a>                                    </span>);
-<a href=#332 id=332 data-nosnippet>332</a>                                    <span class="kw">continue </span><span class="lifetime">'pop</span>;
-<a href=#333 id=333 data-nosnippet>333</a>                                }
-<a href=#334 id=334 data-nosnippet>334</a>                                <span class="comment">// Increment `loop_iter_count` or set it to 0.
-<a href=#335 id=335 data-nosnippet>335</a>                                </span>loop_iter_count.map_or(<span class="number">0</span>, |n| n + <span class="number">1</span>)
-<a href=#336 id=336 data-nosnippet>336</a>                            } <span class="kw">else </span>{
-<a href=#337 id=337 data-nosnippet>337</a>                                <span class="comment">// Otherwise update the local iteration count to match the loop.
-<a href=#338 id=338 data-nosnippet>338</a>                                </span><span class="macro">debug_assert!</span>(loop_iter_count.is_some_and(|n| prev_iter_count &lt; n));
-<a href=#339 id=339 data-nosnippet>339</a>                                loop_iter_count.unwrap()
-<a href=#340 id=340 data-nosnippet>340</a>                            }
-<a href=#341 id=341 data-nosnippet>341</a>                        } <span class="kw">else </span>{
-<a href=#342 id=342 data-nosnippet>342</a>                            <span class="comment">// We are in a new loop execution.
-<a href=#343 id=343 data-nosnippet>343</a>                            </span><span class="number">0
-<a href=#344 id=344 data-nosnippet>344</a>                        </span>};
-<a href=#345 id=345 data-nosnippet>345</a>                    <span class="kw-2">*</span>loop_iter_count = <span class="prelude-val">Some</span>(curr_iter_count);
-<a href=#346 id=346 data-nosnippet>346</a>                    <span class="self">self</span>.context.loop_iter_count = curr_iter_count;
-<a href=#347 id=347 data-nosnippet>347</a>                    sg_data.last_loop_nonce =
-<a href=#348 id=348 data-nosnippet>348</a>                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
-<a href=#349 id=349 data-nosnippet>349</a>                }
-<a href=#350 id=350 data-nosnippet>350</a>
-<a href=#351 id=351 data-nosnippet>351</a>                <span class="macro">tracing::info!</span>(
-<a href=#352 id=352 data-nosnippet>352</a>                    sg_id = sg_id.to_string(),
-<a href=#353 id=353 data-nosnippet>353</a>                    sg_name = <span class="kw-2">&amp;*</span>sg_data.name,
-<a href=#354 id=354 data-nosnippet>354</a>                    sg_depth = sg_data.loop_depth,
-<a href=#355 id=355 data-nosnippet>355</a>                    sg_loop_nonce = sg_data.last_loop_nonce.<span class="number">0</span>,
-<a href=#356 id=356 data-nosnippet>356</a>                    sg_iter_count = sg_data.last_loop_nonce.<span class="number">1</span>,
-<a href=#357 id=357 data-nosnippet>357</a>                    <span class="string">"Running subgraph."
-<a href=#358 id=358 data-nosnippet>358</a>                </span>);
-<a href=#359 id=359 data-nosnippet>359</a>                sg_data.subgraph.run(<span class="kw-2">&amp;mut </span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs);
-<a href=#360 id=360 data-nosnippet>360</a>
-<a href=#361 id=361 data-nosnippet>361</a>                sg_data.last_tick_run_in = <span class="prelude-val">Some</span>(<span class="self">self</span>.context.current_tick);
-<a href=#362 id=362 data-nosnippet>362</a>            }
-<a href=#363 id=363 data-nosnippet>363</a>
-<a href=#364 id=364 data-nosnippet>364</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#365 id=365 data-nosnippet>365</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>handoff_id <span class="kw">in </span>sg_data.succs.iter() {
-<a href=#366 id=366 data-nosnippet>366</a>                <span class="kw">let </span>handoff = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[handoff_id];
-<a href=#367 id=367 data-nosnippet>367</a>                <span class="kw">if </span>!handoff.handoff.is_bottom() {
-<a href=#368 id=368 data-nosnippet>368</a>                    <span class="kw">for </span><span class="kw-2">&amp;</span>succ_id <span class="kw">in </span>handoff.succs.iter() {
-<a href=#369 id=369 data-nosnippet>369</a>                        <span class="kw">let </span>succ_sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[succ_id];
-<a href=#370 id=370 data-nosnippet>370</a>                        <span class="comment">// If we have sent data to the next tick, then we can start the next tick.
-<a href=#371 id=371 data-nosnippet>371</a>                        </span><span class="kw">if </span>succ_sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum &amp;&amp; !sg_data.is_lazy {
-<a href=#372 id=372 data-nosnippet>372</a>                            <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
-<a href=#373 id=373 data-nosnippet>373</a>                        }
-<a href=#374 id=374 data-nosnippet>374</a>                        <span class="comment">// Add subgraph to stratum queue if it is not already scheduled.
-<a href=#375 id=375 data-nosnippet>375</a>                        </span><span class="kw">if </span>!succ_sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
-<a href=#376 id=376 data-nosnippet>376</a>                            <span class="self">self</span>.context.stratum_queues[succ_sg_data.stratum].push_back(succ_id);
-<a href=#377 id=377 data-nosnippet>377</a>                        }
-<a href=#378 id=378 data-nosnippet>378</a>                        <span class="comment">// Add stratum to stratum stack if it is within a loop.
-<a href=#379 id=379 data-nosnippet>379</a>                        </span><span class="kw">if </span><span class="number">0 </span>&lt; succ_sg_data.loop_depth {
-<a href=#380 id=380 data-nosnippet>380</a>                            <span class="comment">// TODO(mingwei): handle duplicates
-<a href=#381 id=381 data-nosnippet>381</a>                            </span><span class="self">self</span>.context
-<a href=#382 id=382 data-nosnippet>382</a>                                .stratum_stack
-<a href=#383 id=383 data-nosnippet>383</a>                                .push(succ_sg_data.loop_depth, succ_sg_data.stratum);
-<a href=#384 id=384 data-nosnippet>384</a>                        }
-<a href=#385 id=385 data-nosnippet>385</a>                    }
-<a href=#386 id=386 data-nosnippet>386</a>                }
-<a href=#387 id=387 data-nosnippet>387</a>            }
-<a href=#388 id=388 data-nosnippet>388</a>
-<a href=#389 id=389 data-nosnippet>389</a>            <span class="kw">let </span>reschedule = <span class="self">self</span>.context.reschedule_loop_block.take();
-<a href=#390 id=390 data-nosnippet>390</a>            <span class="kw">let </span>allow_another = <span class="self">self</span>.context.allow_another_iteration.take();
-<a href=#391 id=391 data-nosnippet>391</a>
-<a href=#392 id=392 data-nosnippet>392</a>            <span class="kw">if </span>reschedule {
-<a href=#393 id=393 data-nosnippet>393</a>                <span class="comment">// Re-enqueue the subgraph.
-<a href=#394 id=394 data-nosnippet>394</a>                </span><span class="self">self</span>.context.schedule_deferred.push(sg_id);
-<a href=#395 id=395 data-nosnippet>395</a>                <span class="self">self</span>.context
-<a href=#396 id=396 data-nosnippet>396</a>                    .stratum_stack
-<a href=#397 id=397 data-nosnippet>397</a>                    .push(sg_data.loop_depth, sg_data.stratum);
-<a href=#398 id=398 data-nosnippet>398</a>            }
-<a href=#399 id=399 data-nosnippet>399</a>            <span class="kw">if </span>reschedule || allow_another {
-<a href=#400 id=400 data-nosnippet>400</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(loop_id) = sg_data.loop_id {
-<a href=#401 id=401 data-nosnippet>401</a>                    <span class="self">self</span>.loop_data
-<a href=#402 id=402 data-nosnippet>402</a>                        .get_mut(loop_id)
-<a href=#403 id=403 data-nosnippet>403</a>                        .unwrap()
-<a href=#404 id=404 data-nosnippet>404</a>                        .allow_another_iteration = <span class="bool-val">true</span>;
-<a href=#405 id=405 data-nosnippet>405</a>                }
-<a href=#406 id=406 data-nosnippet>406</a>            }
+<a href=#311 id=311 data-nosnippet>311</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(loop_id) = sg_data.loop_id {
+<a href=#312 id=312 data-nosnippet>312</a>                    <span class="comment">// Loop execution - running loop block, from start to finish, containing
+<a href=#313 id=313 data-nosnippet>313</a>                    // multiple iterations.
+<a href=#314 id=314 data-nosnippet>314</a>                    // Loop iteration - a single iteration of a loop block, all subgraphs within
+<a href=#315 id=315 data-nosnippet>315</a>                    // the loop should run (at most) once.
+<a href=#316 id=316 data-nosnippet>316</a>
+<a href=#317 id=317 data-nosnippet>317</a>                    // If the previous run of this subgraph had the same loop execution and
+<a href=#318 id=318 data-nosnippet>318</a>                    // iteration count, then we need to increment the iteration count.
+<a href=#319 id=319 data-nosnippet>319</a>                    </span><span class="kw">let </span>curr_loop_nonce = <span class="self">self</span>.context.loop_nonce_stack.last().copied();
+<a href=#320 id=320 data-nosnippet>320</a>
+<a href=#321 id=321 data-nosnippet>321</a>                    <span class="kw">let </span>LoopData {
+<a href=#322 id=322 data-nosnippet>322</a>                        iter_count: loop_iter_count,
+<a href=#323 id=323 data-nosnippet>323</a>                        allow_another_iteration,
+<a href=#324 id=324 data-nosnippet>324</a>                    } = <span class="kw-2">&amp;mut </span><span class="self">self</span>.loop_data[loop_id];
+<a href=#325 id=325 data-nosnippet>325</a>
+<a href=#326 id=326 data-nosnippet>326</a>                    <span class="kw">let </span>(prev_loop_nonce, prev_iter_count) = sg_data.last_loop_nonce;
+<a href=#327 id=327 data-nosnippet>327</a>
+<a href=#328 id=328 data-nosnippet>328</a>                    <span class="comment">// If the loop nonce is the same as the previous execution, then we are in
+<a href=#329 id=329 data-nosnippet>329</a>                    // the same loop execution.
+<a href=#330 id=330 data-nosnippet>330</a>                    // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
+<a href=#331 id=331 data-nosnippet>331</a>                    // always in the same (singular) loop execution.
+<a href=#332 id=332 data-nosnippet>332</a>                    </span><span class="kw">let </span>(curr_iter_count, new_loop_execution) =
+<a href=#333 id=333 data-nosnippet>333</a>                        <span class="kw">if </span>curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
+<a href=#334 id=334 data-nosnippet>334</a>                            <span class="comment">// If the iteration count is the same as the previous execution, then
+<a href=#335 id=335 data-nosnippet>335</a>                            // we are on the next iteration.
+<a href=#336 id=336 data-nosnippet>336</a>                            </span><span class="kw">if </span><span class="kw-2">*</span>loop_iter_count == prev_iter_count {
+<a href=#337 id=337 data-nosnippet>337</a>                                <span class="comment">// If not true, then we shall not run the next iteration.
+<a href=#338 id=338 data-nosnippet>338</a>                                </span><span class="kw">if </span>!std::mem::take(allow_another_iteration) {
+<a href=#339 id=339 data-nosnippet>339</a>                                    <span class="macro">tracing::debug!</span>(
+<a href=#340 id=340 data-nosnippet>340</a>                                        <span class="string">"Loop will not continue to next iteration, skipping."
+<a href=#341 id=341 data-nosnippet>341</a>                                    </span>);
+<a href=#342 id=342 data-nosnippet>342</a>                                    <span class="kw">continue </span><span class="lifetime">'pop</span>;
+<a href=#343 id=343 data-nosnippet>343</a>                                }
+<a href=#344 id=344 data-nosnippet>344</a>                                <span class="comment">// Increment `loop_iter_count` or set it to 0.
+<a href=#345 id=345 data-nosnippet>345</a>                                </span>loop_iter_count.map_or((<span class="number">0</span>, <span class="bool-val">true</span>), |n| (n + <span class="number">1</span>, <span class="bool-val">false</span>))
+<a href=#346 id=346 data-nosnippet>346</a>                            } <span class="kw">else </span>{
+<a href=#347 id=347 data-nosnippet>347</a>                                <span class="comment">// Otherwise update the local iteration count to match the loop.
+<a href=#348 id=348 data-nosnippet>348</a>                                </span><span class="macro">debug_assert!</span>(
+<a href=#349 id=349 data-nosnippet>349</a>                                    prev_iter_count &lt; <span class="kw-2">*</span>loop_iter_count,
+<a href=#350 id=350 data-nosnippet>350</a>                                    <span class="string">"Expect loop iteration count to be increasing."
+<a href=#351 id=351 data-nosnippet>351</a>                                </span>);
+<a href=#352 id=352 data-nosnippet>352</a>                                (loop_iter_count.unwrap(), <span class="bool-val">false</span>)
+<a href=#353 id=353 data-nosnippet>353</a>                            }
+<a href=#354 id=354 data-nosnippet>354</a>                        } <span class="kw">else </span>{
+<a href=#355 id=355 data-nosnippet>355</a>                            <span class="comment">// We are in a new loop execution.
+<a href=#356 id=356 data-nosnippet>356</a>                            </span>(<span class="number">0</span>, <span class="bool-val">true</span>)
+<a href=#357 id=357 data-nosnippet>357</a>                        };
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>                    <span class="kw">if </span>new_loop_execution {
+<a href=#360 id=360 data-nosnippet>360</a>                        <span class="comment">// Run state hooks.
+<a href=#361 id=361 data-nosnippet>361</a>                        </span><span class="self">self</span>.context.run_state_hooks_loop(loop_id);
+<a href=#362 id=362 data-nosnippet>362</a>                    }
+<a href=#363 id=363 data-nosnippet>363</a>                    <span class="macro">tracing::debug!</span>(<span class="string">"Loop iteration count {}"</span>, curr_iter_count);
+<a href=#364 id=364 data-nosnippet>364</a>
+<a href=#365 id=365 data-nosnippet>365</a>                    <span class="kw-2">*</span>loop_iter_count = <span class="prelude-val">Some</span>(curr_iter_count);
+<a href=#366 id=366 data-nosnippet>366</a>                    <span class="self">self</span>.context.loop_iter_count = curr_iter_count;
+<a href=#367 id=367 data-nosnippet>367</a>                    sg_data.last_loop_nonce =
+<a href=#368 id=368 data-nosnippet>368</a>                        (curr_loop_nonce.unwrap_or_default(), <span class="prelude-val">Some</span>(curr_iter_count));
+<a href=#369 id=369 data-nosnippet>369</a>                }
+<a href=#370 id=370 data-nosnippet>370</a>
+<a href=#371 id=371 data-nosnippet>371</a>                <span class="comment">// Run subgraph state hooks.
+<a href=#372 id=372 data-nosnippet>372</a>                </span><span class="self">self</span>.context.run_state_hooks_subgraph(sg_id);
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a>                <span class="macro">tracing::info!</span>(<span class="string">"Running subgraph."</span>);
+<a href=#375 id=375 data-nosnippet>375</a>                sg_data.subgraph.run(<span class="kw-2">&amp;mut </span><span class="self">self</span>.context, <span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs);
+<a href=#376 id=376 data-nosnippet>376</a>
+<a href=#377 id=377 data-nosnippet>377</a>                sg_data.last_tick_run_in = <span class="prelude-val">Some</span>(<span class="self">self</span>.context.current_tick);
+<a href=#378 id=378 data-nosnippet>378</a>            }
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#381 id=381 data-nosnippet>381</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>handoff_id <span class="kw">in </span>sg_data.succs.iter() {
+<a href=#382 id=382 data-nosnippet>382</a>                <span class="kw">let </span>handoff = <span class="kw-2">&amp;</span><span class="self">self</span>.handoffs[handoff_id];
+<a href=#383 id=383 data-nosnippet>383</a>                <span class="kw">if </span>!handoff.handoff.is_bottom() {
+<a href=#384 id=384 data-nosnippet>384</a>                    <span class="kw">for </span><span class="kw-2">&amp;</span>succ_id <span class="kw">in </span>handoff.succs.iter() {
+<a href=#385 id=385 data-nosnippet>385</a>                        <span class="kw">let </span>succ_sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[succ_id];
+<a href=#386 id=386 data-nosnippet>386</a>                        <span class="comment">// If we have sent data to the next tick, then we can start the next tick.
+<a href=#387 id=387 data-nosnippet>387</a>                        </span><span class="kw">if </span>succ_sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum &amp;&amp; !sg_data.is_lazy {
+<a href=#388 id=388 data-nosnippet>388</a>                            <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
+<a href=#389 id=389 data-nosnippet>389</a>                        }
+<a href=#390 id=390 data-nosnippet>390</a>                        <span class="comment">// Add subgraph to stratum queue if it is not already scheduled.
+<a href=#391 id=391 data-nosnippet>391</a>                        </span><span class="kw">if </span>!succ_sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
+<a href=#392 id=392 data-nosnippet>392</a>                            <span class="self">self</span>.context.stratum_queues[succ_sg_data.stratum].push_back(succ_id);
+<a href=#393 id=393 data-nosnippet>393</a>                        }
+<a href=#394 id=394 data-nosnippet>394</a>                        <span class="comment">// Add stratum to stratum stack if it is within a loop.
+<a href=#395 id=395 data-nosnippet>395</a>                        </span><span class="kw">if </span><span class="number">0 </span>&lt; succ_sg_data.loop_depth {
+<a href=#396 id=396 data-nosnippet>396</a>                            <span class="comment">// TODO(mingwei): handle duplicates
+<a href=#397 id=397 data-nosnippet>397</a>                            </span><span class="self">self</span>.context
+<a href=#398 id=398 data-nosnippet>398</a>                                .stratum_stack
+<a href=#399 id=399 data-nosnippet>399</a>                                .push(succ_sg_data.loop_depth, succ_sg_data.stratum);
+<a href=#400 id=400 data-nosnippet>400</a>                        }
+<a href=#401 id=401 data-nosnippet>401</a>                    }
+<a href=#402 id=402 data-nosnippet>402</a>                }
+<a href=#403 id=403 data-nosnippet>403</a>            }
+<a href=#404 id=404 data-nosnippet>404</a>
+<a href=#405 id=405 data-nosnippet>405</a>            <span class="kw">let </span>reschedule = <span class="self">self</span>.context.reschedule_loop_block.take();
+<a href=#406 id=406 data-nosnippet>406</a>            <span class="kw">let </span>allow_another = <span class="self">self</span>.context.allow_another_iteration.take();
 <a href=#407 id=407 data-nosnippet>407</a>
-<a href=#408 id=408 data-nosnippet>408</a>            work_done = <span class="bool-val">true</span>;
-<a href=#409 id=409 data-nosnippet>409</a>        }
-<a href=#410 id=410 data-nosnippet>410</a>        work_done
-<a href=#411 id=411 data-nosnippet>411</a>    }
-<a href=#412 id=412 data-nosnippet>412</a>
-<a href=#413 id=413 data-nosnippet>413</a>    <span class="doccomment">/// Go to the next stratum which has work available, possibly the current stratum.
-<a href=#414 id=414 data-nosnippet>414</a>    /// Return true if more work is available, otherwise false if no work is immediately
-<a href=#415 id=415 data-nosnippet>415</a>    /// available on any strata.
-<a href=#416 id=416 data-nosnippet>416</a>    ///
-<a href=#417 id=417 data-nosnippet>417</a>    /// This will receive external events when at the start of a tick.
-<a href=#418 id=418 data-nosnippet>418</a>    ///
-<a href=#419 id=419 data-nosnippet>419</a>    /// If `current_tick_only` is set to `true`, will only return `true` if work is immediately
-<a href=#420 id=420 data-nosnippet>420</a>    /// available on the *current tick*.
-<a href=#421 id=421 data-nosnippet>421</a>    ///
-<a href=#422 id=422 data-nosnippet>422</a>    /// If this returns false then the graph will be at the start of a tick (at stratum 0, can
-<a href=#423 id=423 data-nosnippet>423</a>    /// receive more external events).
-<a href=#424 id=424 data-nosnippet>424</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
-<a href=#425 id=425 data-nosnippet>425</a>    </span><span class="kw">pub fn </span>next_stratum(<span class="kw-2">&amp;mut </span><span class="self">self</span>, current_tick_only: bool) -&gt; bool {
-<a href=#426 id=426 data-nosnippet>426</a>        <span class="macro">tracing::trace!</span>(
-<a href=#427 id=427 data-nosnippet>427</a>            events_received_tick = <span class="self">self</span>.context.events_received_tick,
-<a href=#428 id=428 data-nosnippet>428</a>            can_start_tick = <span class="self">self</span>.context.can_start_tick,
-<a href=#429 id=429 data-nosnippet>429</a>            <span class="string">"Starting `next_stratum` call."</span>,
-<a href=#430 id=430 data-nosnippet>430</a>        );
-<a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a>        <span class="comment">// The stratum we will stop searching at, i.e. made a full loop around.
-<a href=#433 id=433 data-nosnippet>433</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>end_stratum = <span class="self">self</span>.context.current_stratum;
-<a href=#434 id=434 data-nosnippet>434</a>        <span class="kw">let </span><span class="kw-2">mut </span>new_tick_started = <span class="bool-val">false</span>;
-<a href=#435 id=435 data-nosnippet>435</a>
-<a href=#436 id=436 data-nosnippet>436</a>        <span class="kw">if </span><span class="number">0 </span>== <span class="self">self</span>.context.current_stratum {
-<a href=#437 id=437 data-nosnippet>437</a>            new_tick_started = <span class="bool-val">true</span>;
-<a href=#438 id=438 data-nosnippet>438</a>
-<a href=#439 id=439 data-nosnippet>439</a>            <span class="comment">// Starting the tick, reset this to `false`.
-<a href=#440 id=440 data-nosnippet>440</a>            </span><span class="macro">tracing::trace!</span>(<span class="string">"Starting tick, setting `can_start_tick = false`."</span>);
-<a href=#441 id=441 data-nosnippet>441</a>            <span class="self">self</span>.context.can_start_tick = <span class="bool-val">false</span>;
-<a href=#442 id=442 data-nosnippet>442</a>            <span class="self">self</span>.context.current_tick_start = SystemTime::now();
-<a href=#443 id=443 data-nosnippet>443</a>
-<a href=#444 id=444 data-nosnippet>444</a>            <span class="comment">// Ensure external events are received before running the tick.
-<a href=#445 id=445 data-nosnippet>445</a>            </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick {
-<a href=#446 id=446 data-nosnippet>446</a>                <span class="comment">// Add any external jobs to ready queue.
-<a href=#447 id=447 data-nosnippet>447</a>                </span><span class="self">self</span>.try_recv_events();
-<a href=#448 id=448 data-nosnippet>448</a>            }
-<a href=#449 id=449 data-nosnippet>449</a>        }
-<a href=#450 id=450 data-nosnippet>450</a>
-<a href=#451 id=451 data-nosnippet>451</a>        <span class="kw">loop </span>{
-<a href=#452 id=452 data-nosnippet>452</a>            <span class="macro">tracing::trace!</span>(
-<a href=#453 id=453 data-nosnippet>453</a>                tick = u64::from(<span class="self">self</span>.context.current_tick),
-<a href=#454 id=454 data-nosnippet>454</a>                stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#455 id=455 data-nosnippet>455</a>                <span class="string">"Looking for work on stratum."
-<a href=#456 id=456 data-nosnippet>456</a>            </span>);
-<a href=#457 id=457 data-nosnippet>457</a>            <span class="comment">// If current stratum has work, return true.
-<a href=#458 id=458 data-nosnippet>458</a>            </span><span class="kw">if </span>!<span class="self">self</span>.context.stratum_queues[<span class="self">self</span>.context.current_stratum].is_empty() {
-<a href=#459 id=459 data-nosnippet>459</a>                <span class="macro">tracing::trace!</span>(
-<a href=#460 id=460 data-nosnippet>460</a>                    tick = u64::from(<span class="self">self</span>.context.current_tick),
-<a href=#461 id=461 data-nosnippet>461</a>                    stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#462 id=462 data-nosnippet>462</a>                    <span class="string">"Work found on stratum."
-<a href=#463 id=463 data-nosnippet>463</a>                </span>);
-<a href=#464 id=464 data-nosnippet>464</a>                <span class="kw">return </span><span class="bool-val">true</span>;
-<a href=#465 id=465 data-nosnippet>465</a>            }
+<a href=#408 id=408 data-nosnippet>408</a>            <span class="kw">if </span>reschedule {
+<a href=#409 id=409 data-nosnippet>409</a>                <span class="comment">// Re-enqueue the subgraph.
+<a href=#410 id=410 data-nosnippet>410</a>                </span><span class="self">self</span>.context.schedule_deferred.push(sg_id);
+<a href=#411 id=411 data-nosnippet>411</a>                <span class="self">self</span>.context
+<a href=#412 id=412 data-nosnippet>412</a>                    .stratum_stack
+<a href=#413 id=413 data-nosnippet>413</a>                    .push(sg_data.loop_depth, sg_data.stratum);
+<a href=#414 id=414 data-nosnippet>414</a>            }
+<a href=#415 id=415 data-nosnippet>415</a>            <span class="kw">if </span>reschedule || allow_another {
+<a href=#416 id=416 data-nosnippet>416</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(loop_id) = sg_data.loop_id {
+<a href=#417 id=417 data-nosnippet>417</a>                    <span class="self">self</span>.loop_data
+<a href=#418 id=418 data-nosnippet>418</a>                        .get_mut(loop_id)
+<a href=#419 id=419 data-nosnippet>419</a>                        .unwrap()
+<a href=#420 id=420 data-nosnippet>420</a>                        .allow_another_iteration = <span class="bool-val">true</span>;
+<a href=#421 id=421 data-nosnippet>421</a>                }
+<a href=#422 id=422 data-nosnippet>422</a>            }
+<a href=#423 id=423 data-nosnippet>423</a>
+<a href=#424 id=424 data-nosnippet>424</a>            work_done = <span class="bool-val">true</span>;
+<a href=#425 id=425 data-nosnippet>425</a>        }
+<a href=#426 id=426 data-nosnippet>426</a>        work_done
+<a href=#427 id=427 data-nosnippet>427</a>    }
+<a href=#428 id=428 data-nosnippet>428</a>
+<a href=#429 id=429 data-nosnippet>429</a>    <span class="doccomment">/// Go to the next stratum which has work available, possibly the current stratum.
+<a href=#430 id=430 data-nosnippet>430</a>    /// Return true if more work is available, otherwise false if no work is immediately
+<a href=#431 id=431 data-nosnippet>431</a>    /// available on any strata.
+<a href=#432 id=432 data-nosnippet>432</a>    ///
+<a href=#433 id=433 data-nosnippet>433</a>    /// This will receive external events when at the start of a tick.
+<a href=#434 id=434 data-nosnippet>434</a>    ///
+<a href=#435 id=435 data-nosnippet>435</a>    /// If `current_tick_only` is set to `true`, will only return `true` if work is immediately
+<a href=#436 id=436 data-nosnippet>436</a>    /// available on the *current tick*.
+<a href=#437 id=437 data-nosnippet>437</a>    ///
+<a href=#438 id=438 data-nosnippet>438</a>    /// If this returns false then the graph will be at the start of a tick (at stratum 0, can
+<a href=#439 id=439 data-nosnippet>439</a>    /// receive more external events).
+<a href=#440 id=440 data-nosnippet>440</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
+<a href=#441 id=441 data-nosnippet>441</a>    </span><span class="kw">pub fn </span>next_stratum(<span class="kw-2">&amp;mut </span><span class="self">self</span>, current_tick_only: bool) -&gt; bool {
+<a href=#442 id=442 data-nosnippet>442</a>        <span class="macro">tracing::trace!</span>(
+<a href=#443 id=443 data-nosnippet>443</a>            events_received_tick = <span class="self">self</span>.context.events_received_tick,
+<a href=#444 id=444 data-nosnippet>444</a>            can_start_tick = <span class="self">self</span>.context.can_start_tick,
+<a href=#445 id=445 data-nosnippet>445</a>            <span class="string">"Starting `next_stratum` call."</span>,
+<a href=#446 id=446 data-nosnippet>446</a>        );
+<a href=#447 id=447 data-nosnippet>447</a>
+<a href=#448 id=448 data-nosnippet>448</a>        <span class="comment">// The stratum we will stop searching at, i.e. made a full loop around.
+<a href=#449 id=449 data-nosnippet>449</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>end_stratum = <span class="self">self</span>.context.current_stratum;
+<a href=#450 id=450 data-nosnippet>450</a>        <span class="kw">let </span><span class="kw-2">mut </span>new_tick_started = <span class="bool-val">false</span>;
+<a href=#451 id=451 data-nosnippet>451</a>
+<a href=#452 id=452 data-nosnippet>452</a>        <span class="kw">if </span><span class="number">0 </span>== <span class="self">self</span>.context.current_stratum {
+<a href=#453 id=453 data-nosnippet>453</a>            new_tick_started = <span class="bool-val">true</span>;
+<a href=#454 id=454 data-nosnippet>454</a>
+<a href=#455 id=455 data-nosnippet>455</a>            <span class="comment">// Starting the tick, reset this to `false`.
+<a href=#456 id=456 data-nosnippet>456</a>            </span><span class="macro">tracing::trace!</span>(<span class="string">"Starting tick, setting `can_start_tick = false`."</span>);
+<a href=#457 id=457 data-nosnippet>457</a>            <span class="self">self</span>.context.can_start_tick = <span class="bool-val">false</span>;
+<a href=#458 id=458 data-nosnippet>458</a>            <span class="self">self</span>.context.current_tick_start = SystemTime::now();
+<a href=#459 id=459 data-nosnippet>459</a>
+<a href=#460 id=460 data-nosnippet>460</a>            <span class="comment">// Ensure external events are received before running the tick.
+<a href=#461 id=461 data-nosnippet>461</a>            </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick {
+<a href=#462 id=462 data-nosnippet>462</a>                <span class="comment">// Add any external jobs to ready queue.
+<a href=#463 id=463 data-nosnippet>463</a>                </span><span class="self">self</span>.try_recv_events();
+<a href=#464 id=464 data-nosnippet>464</a>            }
+<a href=#465 id=465 data-nosnippet>465</a>        }
 <a href=#466 id=466 data-nosnippet>466</a>
-<a href=#467 id=467 data-nosnippet>467</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(next_stratum) = <span class="self">self</span>.context.stratum_stack.pop() {
-<a href=#468 id=468 data-nosnippet>468</a>                <span class="self">self</span>.context.current_stratum = next_stratum;
-<a href=#469 id=469 data-nosnippet>469</a>
-<a href=#470 id=470 data-nosnippet>470</a>                <span class="comment">// Now schedule deferred subgraphs.
-<a href=#471 id=471 data-nosnippet>471</a>                </span>{
-<a href=#472 id=472 data-nosnippet>472</a>                    <span class="kw">for </span>sg_id <span class="kw">in </span><span class="self">self</span>.context.schedule_deferred.drain(..) {
-<a href=#473 id=473 data-nosnippet>473</a>                        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#474 id=474 data-nosnippet>474</a>                        <span class="macro">tracing::info!</span>(
-<a href=#475 id=475 data-nosnippet>475</a>                            tick = u64::from(<span class="self">self</span>.context.current_tick),
-<a href=#476 id=476 data-nosnippet>476</a>                            stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#477 id=477 data-nosnippet>477</a>                            sg_id = sg_id.to_string(),
-<a href=#478 id=478 data-nosnippet>478</a>                            sg_name = <span class="kw-2">&amp;*</span>sg_data.name,
-<a href=#479 id=479 data-nosnippet>479</a>                            is_scheduled = sg_data.is_scheduled.get(),
-<a href=#480 id=480 data-nosnippet>480</a>                            <span class="string">"Rescheduling deferred subgraph."
-<a href=#481 id=481 data-nosnippet>481</a>                        </span>);
-<a href=#482 id=482 data-nosnippet>482</a>                        <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
-<a href=#483 id=483 data-nosnippet>483</a>                            <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
-<a href=#484 id=484 data-nosnippet>484</a>                        }
-<a href=#485 id=485 data-nosnippet>485</a>                    }
-<a href=#486 id=486 data-nosnippet>486</a>                }
-<a href=#487 id=487 data-nosnippet>487</a>            } <span class="kw">else </span>{
-<a href=#488 id=488 data-nosnippet>488</a>                <span class="comment">// Increment stratum counter.
-<a href=#489 id=489 data-nosnippet>489</a>                </span><span class="self">self</span>.context.current_stratum += <span class="number">1</span>;
-<a href=#490 id=490 data-nosnippet>490</a>
-<a href=#491 id=491 data-nosnippet>491</a>                <span class="kw">if </span><span class="self">self</span>.context.current_stratum &gt;= <span class="self">self</span>.context.stratum_queues.len() {
-<a href=#492 id=492 data-nosnippet>492</a>                    new_tick_started = <span class="bool-val">true</span>;
-<a href=#493 id=493 data-nosnippet>493</a>
-<a href=#494 id=494 data-nosnippet>494</a>                    <span class="macro">tracing::trace!</span>(
-<a href=#495 id=495 data-nosnippet>495</a>                        can_start_tick = <span class="self">self</span>.context.can_start_tick,
-<a href=#496 id=496 data-nosnippet>496</a>                        <span class="string">"End of tick {}, starting tick {}."</span>,
-<a href=#497 id=497 data-nosnippet>497</a>                        <span class="self">self</span>.context.current_tick,
-<a href=#498 id=498 data-nosnippet>498</a>                        <span class="self">self</span>.context.current_tick + TickDuration::SINGLE_TICK,
-<a href=#499 id=499 data-nosnippet>499</a>                    );
-<a href=#500 id=500 data-nosnippet>500</a>                    <span class="self">self</span>.context.reset_state_at_end_of_tick();
-<a href=#501 id=501 data-nosnippet>501</a>
-<a href=#502 id=502 data-nosnippet>502</a>                    <span class="self">self</span>.context.current_stratum = <span class="number">0</span>;
-<a href=#503 id=503 data-nosnippet>503</a>                    <span class="self">self</span>.context.current_tick += TickDuration::SINGLE_TICK;
-<a href=#504 id=504 data-nosnippet>504</a>                    <span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
-<a href=#505 id=505 data-nosnippet>505</a>
-<a href=#506 id=506 data-nosnippet>506</a>                    <span class="kw">if </span>current_tick_only {
-<a href=#507 id=507 data-nosnippet>507</a>                        <span class="macro">tracing::trace!</span>(
-<a href=#508 id=508 data-nosnippet>508</a>                            <span class="string">"`current_tick_only` is `true`, returning `false` before receiving events."
-<a href=#509 id=509 data-nosnippet>509</a>                        </span>);
-<a href=#510 id=510 data-nosnippet>510</a>                        <span class="kw">return </span><span class="bool-val">false</span>;
-<a href=#511 id=511 data-nosnippet>511</a>                    } <span class="kw">else </span>{
-<a href=#512 id=512 data-nosnippet>512</a>                        <span class="self">self</span>.try_recv_events();
-<a href=#513 id=513 data-nosnippet>513</a>                        <span class="kw">if </span>std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.context.can_start_tick, <span class="bool-val">false</span>) {
-<a href=#514 id=514 data-nosnippet>514</a>                            <span class="macro">tracing::trace!</span>(
-<a href=#515 id=515 data-nosnippet>515</a>                                tick = u64::from(<span class="self">self</span>.context.current_tick),
-<a href=#516 id=516 data-nosnippet>516</a>                                <span class="string">"`can_start_tick` is `true`, continuing."
-<a href=#517 id=517 data-nosnippet>517</a>                            </span>);
-<a href=#518 id=518 data-nosnippet>518</a>                            <span class="comment">// Do a full loop more to find where events have been added.
-<a href=#519 id=519 data-nosnippet>519</a>                            </span>end_stratum = <span class="number">0</span>;
-<a href=#520 id=520 data-nosnippet>520</a>                            <span class="kw">continue</span>;
-<a href=#521 id=521 data-nosnippet>521</a>                        } <span class="kw">else </span>{
-<a href=#522 id=522 data-nosnippet>522</a>                            <span class="macro">tracing::trace!</span>(
-<a href=#523 id=523 data-nosnippet>523</a>                                <span class="string">"`can_start_tick` is `false`, re-setting `events_received_tick = false`, returning `false`."
-<a href=#524 id=524 data-nosnippet>524</a>                            </span>);
-<a href=#525 id=525 data-nosnippet>525</a>                            <span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
-<a href=#526 id=526 data-nosnippet>526</a>                            <span class="kw">return </span><span class="bool-val">false</span>;
-<a href=#527 id=527 data-nosnippet>527</a>                        }
-<a href=#528 id=528 data-nosnippet>528</a>                    }
-<a href=#529 id=529 data-nosnippet>529</a>                }
-<a href=#530 id=530 data-nosnippet>530</a>            }
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a>            <span class="comment">// After incrementing, exit if we made a full loop around the strata.
-<a href=#533 id=533 data-nosnippet>533</a>            </span><span class="kw">if </span>new_tick_started &amp;&amp; end_stratum == <span class="self">self</span>.context.current_stratum {
-<a href=#534 id=534 data-nosnippet>534</a>                <span class="macro">tracing::trace!</span>(
-<a href=#535 id=535 data-nosnippet>535</a>                    <span class="string">"Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`."
-<a href=#536 id=536 data-nosnippet>536</a>                </span>);
-<a href=#537 id=537 data-nosnippet>537</a>                <span class="comment">// Note: if current stratum had work, the very first loop iteration would've
-<a href=#538 id=538 data-nosnippet>538</a>                // returned true. Therefore we can return false without checking.
-<a href=#539 id=539 data-nosnippet>539</a>                // Also means nothing was done so we can reset the stratum to zero and wait for
-<a href=#540 id=540 data-nosnippet>540</a>                // events.
-<a href=#541 id=541 data-nosnippet>541</a>                </span><span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
-<a href=#542 id=542 data-nosnippet>542</a>                <span class="self">self</span>.context.current_stratum = <span class="number">0</span>;
-<a href=#543 id=543 data-nosnippet>543</a>                <span class="kw">return </span><span class="bool-val">false</span>;
-<a href=#544 id=544 data-nosnippet>544</a>            }
-<a href=#545 id=545 data-nosnippet>545</a>        }
-<a href=#546 id=546 data-nosnippet>546</a>    }
+<a href=#467 id=467 data-nosnippet>467</a>        <span class="kw">loop </span>{
+<a href=#468 id=468 data-nosnippet>468</a>            <span class="macro">tracing::trace!</span>(
+<a href=#469 id=469 data-nosnippet>469</a>                tick = u64::from(<span class="self">self</span>.context.current_tick),
+<a href=#470 id=470 data-nosnippet>470</a>                stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#471 id=471 data-nosnippet>471</a>                <span class="string">"Looking for work on stratum."
+<a href=#472 id=472 data-nosnippet>472</a>            </span>);
+<a href=#473 id=473 data-nosnippet>473</a>            <span class="comment">// If current stratum has work, return true.
+<a href=#474 id=474 data-nosnippet>474</a>            </span><span class="kw">if </span>!<span class="self">self</span>.context.stratum_queues[<span class="self">self</span>.context.current_stratum].is_empty() {
+<a href=#475 id=475 data-nosnippet>475</a>                <span class="macro">tracing::trace!</span>(
+<a href=#476 id=476 data-nosnippet>476</a>                    tick = u64::from(<span class="self">self</span>.context.current_tick),
+<a href=#477 id=477 data-nosnippet>477</a>                    stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#478 id=478 data-nosnippet>478</a>                    <span class="string">"Work found on stratum."
+<a href=#479 id=479 data-nosnippet>479</a>                </span>);
+<a href=#480 id=480 data-nosnippet>480</a>                <span class="kw">return </span><span class="bool-val">true</span>;
+<a href=#481 id=481 data-nosnippet>481</a>            }
+<a href=#482 id=482 data-nosnippet>482</a>
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(next_stratum) = <span class="self">self</span>.context.stratum_stack.pop() {
+<a href=#484 id=484 data-nosnippet>484</a>                <span class="self">self</span>.context.current_stratum = next_stratum;
+<a href=#485 id=485 data-nosnippet>485</a>
+<a href=#486 id=486 data-nosnippet>486</a>                <span class="comment">// Now schedule deferred subgraphs.
+<a href=#487 id=487 data-nosnippet>487</a>                </span>{
+<a href=#488 id=488 data-nosnippet>488</a>                    <span class="kw">for </span>sg_id <span class="kw">in </span><span class="self">self</span>.context.schedule_deferred.drain(..) {
+<a href=#489 id=489 data-nosnippet>489</a>                        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#490 id=490 data-nosnippet>490</a>                        <span class="macro">tracing::info!</span>(
+<a href=#491 id=491 data-nosnippet>491</a>                            tick = u64::from(<span class="self">self</span>.context.current_tick),
+<a href=#492 id=492 data-nosnippet>492</a>                            stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#493 id=493 data-nosnippet>493</a>                            sg_id = sg_id.to_string(),
+<a href=#494 id=494 data-nosnippet>494</a>                            sg_name = <span class="kw-2">&amp;*</span>sg_data.name,
+<a href=#495 id=495 data-nosnippet>495</a>                            is_scheduled = sg_data.is_scheduled.get(),
+<a href=#496 id=496 data-nosnippet>496</a>                            <span class="string">"Rescheduling deferred subgraph."
+<a href=#497 id=497 data-nosnippet>497</a>                        </span>);
+<a href=#498 id=498 data-nosnippet>498</a>                        <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
+<a href=#499 id=499 data-nosnippet>499</a>                            <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+<a href=#500 id=500 data-nosnippet>500</a>                        }
+<a href=#501 id=501 data-nosnippet>501</a>                    }
+<a href=#502 id=502 data-nosnippet>502</a>                }
+<a href=#503 id=503 data-nosnippet>503</a>            } <span class="kw">else </span>{
+<a href=#504 id=504 data-nosnippet>504</a>                <span class="comment">// Increment stratum counter.
+<a href=#505 id=505 data-nosnippet>505</a>                </span><span class="self">self</span>.context.current_stratum += <span class="number">1</span>;
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a>                <span class="kw">if </span><span class="self">self</span>.context.current_stratum &gt;= <span class="self">self</span>.context.stratum_queues.len() {
+<a href=#508 id=508 data-nosnippet>508</a>                    new_tick_started = <span class="bool-val">true</span>;
+<a href=#509 id=509 data-nosnippet>509</a>
+<a href=#510 id=510 data-nosnippet>510</a>                    <span class="macro">tracing::trace!</span>(
+<a href=#511 id=511 data-nosnippet>511</a>                        can_start_tick = <span class="self">self</span>.context.can_start_tick,
+<a href=#512 id=512 data-nosnippet>512</a>                        <span class="string">"End of tick {}, starting tick {}."</span>,
+<a href=#513 id=513 data-nosnippet>513</a>                        <span class="self">self</span>.context.current_tick,
+<a href=#514 id=514 data-nosnippet>514</a>                        <span class="self">self</span>.context.current_tick + TickDuration::SINGLE_TICK,
+<a href=#515 id=515 data-nosnippet>515</a>                    );
+<a href=#516 id=516 data-nosnippet>516</a>                    <span class="self">self</span>.context.run_state_hooks_tick();
+<a href=#517 id=517 data-nosnippet>517</a>
+<a href=#518 id=518 data-nosnippet>518</a>                    <span class="self">self</span>.context.current_stratum = <span class="number">0</span>;
+<a href=#519 id=519 data-nosnippet>519</a>                    <span class="self">self</span>.context.current_tick += TickDuration::SINGLE_TICK;
+<a href=#520 id=520 data-nosnippet>520</a>                    <span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
+<a href=#521 id=521 data-nosnippet>521</a>
+<a href=#522 id=522 data-nosnippet>522</a>                    <span class="kw">if </span>current_tick_only {
+<a href=#523 id=523 data-nosnippet>523</a>                        <span class="macro">tracing::trace!</span>(
+<a href=#524 id=524 data-nosnippet>524</a>                            <span class="string">"`current_tick_only` is `true`, returning `false` before receiving events."
+<a href=#525 id=525 data-nosnippet>525</a>                        </span>);
+<a href=#526 id=526 data-nosnippet>526</a>                        <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#527 id=527 data-nosnippet>527</a>                    } <span class="kw">else </span>{
+<a href=#528 id=528 data-nosnippet>528</a>                        <span class="self">self</span>.try_recv_events();
+<a href=#529 id=529 data-nosnippet>529</a>                        <span class="kw">if </span>std::mem::replace(<span class="kw-2">&amp;mut </span><span class="self">self</span>.context.can_start_tick, <span class="bool-val">false</span>) {
+<a href=#530 id=530 data-nosnippet>530</a>                            <span class="macro">tracing::trace!</span>(
+<a href=#531 id=531 data-nosnippet>531</a>                                tick = u64::from(<span class="self">self</span>.context.current_tick),
+<a href=#532 id=532 data-nosnippet>532</a>                                <span class="string">"`can_start_tick` is `true`, continuing."
+<a href=#533 id=533 data-nosnippet>533</a>                            </span>);
+<a href=#534 id=534 data-nosnippet>534</a>                            <span class="comment">// Do a full loop more to find where events have been added.
+<a href=#535 id=535 data-nosnippet>535</a>                            </span>end_stratum = <span class="number">0</span>;
+<a href=#536 id=536 data-nosnippet>536</a>                            <span class="kw">continue</span>;
+<a href=#537 id=537 data-nosnippet>537</a>                        } <span class="kw">else </span>{
+<a href=#538 id=538 data-nosnippet>538</a>                            <span class="macro">tracing::trace!</span>(
+<a href=#539 id=539 data-nosnippet>539</a>                                <span class="string">"`can_start_tick` is `false`, re-setting `events_received_tick = false`, returning `false`."
+<a href=#540 id=540 data-nosnippet>540</a>                            </span>);
+<a href=#541 id=541 data-nosnippet>541</a>                            <span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
+<a href=#542 id=542 data-nosnippet>542</a>                            <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#543 id=543 data-nosnippet>543</a>                        }
+<a href=#544 id=544 data-nosnippet>544</a>                    }
+<a href=#545 id=545 data-nosnippet>545</a>                }
+<a href=#546 id=546 data-nosnippet>546</a>            }
 <a href=#547 id=547 data-nosnippet>547</a>
-<a href=#548 id=548 data-nosnippet>548</a>    <span class="doccomment">/// Runs the dataflow graph forever.
-<a href=#549 id=549 data-nosnippet>549</a>    ///
-<a href=#550 id=550 data-nosnippet>550</a>    /// TODO(mingwei): Currently blocks forever, no notion of "completion."
-<a href=#551 id=551 data-nosnippet>551</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
-<a href=#552 id=552 data-nosnippet>552</a>    </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Never&gt; {
-<a href=#553 id=553 data-nosnippet>553</a>        <span class="kw">loop </span>{
-<a href=#554 id=554 data-nosnippet>554</a>            <span class="self">self</span>.run_tick();
-<a href=#555 id=555 data-nosnippet>555</a>        }
-<a href=#556 id=556 data-nosnippet>556</a>    }
-<a href=#557 id=557 data-nosnippet>557</a>
-<a href=#558 id=558 data-nosnippet>558</a>    <span class="doccomment">/// Runs the dataflow graph forever.
-<a href=#559 id=559 data-nosnippet>559</a>    ///
-<a href=#560 id=560 data-nosnippet>560</a>    /// TODO(mingwei): Currently blocks forever, no notion of "completion."
-<a href=#561 id=561 data-nosnippet>561</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
-<a href=#562 id=562 data-nosnippet>562</a>    </span><span class="kw">pub async fn </span>run_async(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Never&gt; {
-<a href=#563 id=563 data-nosnippet>563</a>        <span class="kw">loop </span>{
-<a href=#564 id=564 data-nosnippet>564</a>            <span class="comment">// Run any work which is immediately available.
-<a href=#565 id=565 data-nosnippet>565</a>            </span><span class="self">self</span>.run_available_async().<span class="kw">await</span>;
-<a href=#566 id=566 data-nosnippet>566</a>            <span class="comment">// When no work is available yield until more events occur.
-<a href=#567 id=567 data-nosnippet>567</a>            </span><span class="self">self</span>.recv_events_async().<span class="kw">await</span>;
-<a href=#568 id=568 data-nosnippet>568</a>        }
-<a href=#569 id=569 data-nosnippet>569</a>    }
-<a href=#570 id=570 data-nosnippet>570</a>
-<a href=#571 id=571 data-nosnippet>571</a>    <span class="doccomment">/// Enqueues subgraphs triggered by events without blocking.
-<a href=#572 id=572 data-nosnippet>572</a>    ///
-<a href=#573 id=573 data-nosnippet>573</a>    /// Returns the number of subgraphs enqueued, and if any were external.
-<a href=#574 id=574 data-nosnippet>574</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
-<a href=#575 id=575 data-nosnippet>575</a>    </span><span class="kw">pub fn </span>try_recv_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
-<a href=#576 id=576 data-nosnippet>576</a>        <span class="kw">let </span><span class="kw-2">mut </span>enqueued_count = <span class="number">0</span>;
-<a href=#577 id=577 data-nosnippet>577</a>        <span class="kw">while let </span><span class="prelude-val">Ok</span>((sg_id, is_external)) = <span class="self">self</span>.context.event_queue_recv.try_recv() {
-<a href=#578 id=578 data-nosnippet>578</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#579 id=579 data-nosnippet>579</a>            <span class="macro">tracing::trace!</span>(
-<a href=#580 id=580 data-nosnippet>580</a>                sg_id = sg_id.to_string(),
-<a href=#581 id=581 data-nosnippet>581</a>                is_external = is_external,
-<a href=#582 id=582 data-nosnippet>582</a>                sg_stratum = sg_data.stratum,
-<a href=#583 id=583 data-nosnippet>583</a>                <span class="string">"Event received."
-<a href=#584 id=584 data-nosnippet>584</a>            </span>);
-<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
-<a href=#586 id=586 data-nosnippet>586</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
-<a href=#587 id=587 data-nosnippet>587</a>                enqueued_count += <span class="number">1</span>;
-<a href=#588 id=588 data-nosnippet>588</a>            }
-<a href=#589 id=589 data-nosnippet>589</a>            <span class="kw">if </span>is_external {
-<a href=#590 id=590 data-nosnippet>590</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
-<a href=#591 id=591 data-nosnippet>591</a>                // Or if the stratum is in the next tick.
-<a href=#592 id=592 data-nosnippet>592</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
-<a href=#593 id=593 data-nosnippet>593</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
-<a href=#594 id=594 data-nosnippet>594</a>                {
-<a href=#595 id=595 data-nosnippet>595</a>                    <span class="macro">tracing::trace!</span>(
-<a href=#596 id=596 data-nosnippet>596</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#597 id=597 data-nosnippet>597</a>                        sg_stratum = sg_data.stratum,
-<a href=#598 id=598 data-nosnippet>598</a>                        <span class="string">"External event, setting `can_start_tick = true`."
-<a href=#599 id=599 data-nosnippet>599</a>                    </span>);
-<a href=#600 id=600 data-nosnippet>600</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
-<a href=#601 id=601 data-nosnippet>601</a>                }
-<a href=#602 id=602 data-nosnippet>602</a>            }
-<a href=#603 id=603 data-nosnippet>603</a>        }
-<a href=#604 id=604 data-nosnippet>604</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
-<a href=#605 id=605 data-nosnippet>605</a>
-<a href=#606 id=606 data-nosnippet>606</a>        enqueued_count
-<a href=#607 id=607 data-nosnippet>607</a>    }
-<a href=#608 id=608 data-nosnippet>608</a>
-<a href=#609 id=609 data-nosnippet>609</a>    <span class="doccomment">/// Enqueues subgraphs triggered by external events, blocking until at
-<a href=#610 id=610 data-nosnippet>610</a>    /// least one subgraph is scheduled **from an external event**.
-<a href=#611 id=611 data-nosnippet>611</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
-<a href=#612 id=612 data-nosnippet>612</a>    </span><span class="kw">pub fn </span>recv_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-<a href=#613 id=613 data-nosnippet>613</a>        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
-<a href=#614 id=614 data-nosnippet>614</a>        <span class="kw">loop </span>{
-<a href=#615 id=615 data-nosnippet>615</a>            <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.blocking_recv()<span class="question-mark">?</span>;
-<a href=#616 id=616 data-nosnippet>616</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#617 id=617 data-nosnippet>617</a>            <span class="macro">tracing::trace!</span>(
-<a href=#618 id=618 data-nosnippet>618</a>                sg_id = sg_id.to_string(),
-<a href=#619 id=619 data-nosnippet>619</a>                is_external = is_external,
-<a href=#620 id=620 data-nosnippet>620</a>                sg_stratum = sg_data.stratum,
-<a href=#621 id=621 data-nosnippet>621</a>                <span class="string">"Event received."
-<a href=#622 id=622 data-nosnippet>622</a>            </span>);
-<a href=#623 id=623 data-nosnippet>623</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
-<a href=#624 id=624 data-nosnippet>624</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
-<a href=#625 id=625 data-nosnippet>625</a>                count += <span class="number">1</span>;
-<a href=#626 id=626 data-nosnippet>626</a>            }
-<a href=#627 id=627 data-nosnippet>627</a>            <span class="kw">if </span>is_external {
-<a href=#628 id=628 data-nosnippet>628</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
-<a href=#629 id=629 data-nosnippet>629</a>                // Or if the stratum is in the next tick.
-<a href=#630 id=630 data-nosnippet>630</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
-<a href=#631 id=631 data-nosnippet>631</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
-<a href=#632 id=632 data-nosnippet>632</a>                {
-<a href=#633 id=633 data-nosnippet>633</a>                    <span class="macro">tracing::trace!</span>(
-<a href=#634 id=634 data-nosnippet>634</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#635 id=635 data-nosnippet>635</a>                        sg_stratum = sg_data.stratum,
-<a href=#636 id=636 data-nosnippet>636</a>                        <span class="string">"External event, setting `can_start_tick = true`."
-<a href=#637 id=637 data-nosnippet>637</a>                    </span>);
-<a href=#638 id=638 data-nosnippet>638</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
-<a href=#639 id=639 data-nosnippet>639</a>                }
-<a href=#640 id=640 data-nosnippet>640</a>                <span class="kw">break</span>;
-<a href=#641 id=641 data-nosnippet>641</a>            }
-<a href=#642 id=642 data-nosnippet>642</a>        }
-<a href=#643 id=643 data-nosnippet>643</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
-<a href=#644 id=644 data-nosnippet>644</a>
-<a href=#645 id=645 data-nosnippet>645</a>        <span class="comment">// Enqueue any other immediate events.
-<a href=#646 id=646 data-nosnippet>646</a>        </span><span class="kw">let </span>extra_count = <span class="self">self</span>.try_recv_events();
-<a href=#647 id=647 data-nosnippet>647</a>        <span class="prelude-val">Some</span>(count + extra_count)
-<a href=#648 id=648 data-nosnippet>648</a>    }
-<a href=#649 id=649 data-nosnippet>649</a>
-<a href=#650 id=650 data-nosnippet>650</a>    <span class="doccomment">/// Enqueues subgraphs triggered by external events asynchronously, waiting until at least one
-<a href=#651 id=651 data-nosnippet>651</a>    /// subgraph is scheduled **from an external event**. Returns the number of subgraphs enqueued,
-<a href=#652 id=652 data-nosnippet>652</a>    /// which may be zero if an external event scheduled an already-scheduled subgraph.
-<a href=#653 id=653 data-nosnippet>653</a>    ///
-<a href=#654 id=654 data-nosnippet>654</a>    /// Returns `None` if the event queue is closed, but that should not happen normally.
-<a href=#655 id=655 data-nosnippet>655</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
-<a href=#656 id=656 data-nosnippet>656</a>    </span><span class="kw">pub async fn </span>recv_events_async(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
-<a href=#657 id=657 data-nosnippet>657</a>        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
-<a href=#658 id=658 data-nosnippet>658</a>        <span class="kw">loop </span>{
-<a href=#659 id=659 data-nosnippet>659</a>            <span class="macro">tracing::trace!</span>(<span class="string">"Awaiting events (`event_queue_recv`)."</span>);
-<a href=#660 id=660 data-nosnippet>660</a>            <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.recv().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#661 id=661 data-nosnippet>661</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#662 id=662 data-nosnippet>662</a>            <span class="macro">tracing::trace!</span>(
-<a href=#663 id=663 data-nosnippet>663</a>                sg_id = sg_id.to_string(),
-<a href=#664 id=664 data-nosnippet>664</a>                is_external = is_external,
-<a href=#665 id=665 data-nosnippet>665</a>                sg_stratum = sg_data.stratum,
-<a href=#666 id=666 data-nosnippet>666</a>                <span class="string">"Event received."
-<a href=#667 id=667 data-nosnippet>667</a>            </span>);
-<a href=#668 id=668 data-nosnippet>668</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
-<a href=#669 id=669 data-nosnippet>669</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
-<a href=#670 id=670 data-nosnippet>670</a>                count += <span class="number">1</span>;
-<a href=#671 id=671 data-nosnippet>671</a>            }
-<a href=#672 id=672 data-nosnippet>672</a>            <span class="kw">if </span>is_external {
-<a href=#673 id=673 data-nosnippet>673</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
-<a href=#674 id=674 data-nosnippet>674</a>                // Or if the stratum is in the next tick.
-<a href=#675 id=675 data-nosnippet>675</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
-<a href=#676 id=676 data-nosnippet>676</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
-<a href=#677 id=677 data-nosnippet>677</a>                {
-<a href=#678 id=678 data-nosnippet>678</a>                    <span class="macro">tracing::trace!</span>(
-<a href=#679 id=679 data-nosnippet>679</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
-<a href=#680 id=680 data-nosnippet>680</a>                        sg_stratum = sg_data.stratum,
-<a href=#681 id=681 data-nosnippet>681</a>                        <span class="string">"External event, setting `can_start_tick = true`."
-<a href=#682 id=682 data-nosnippet>682</a>                    </span>);
-<a href=#683 id=683 data-nosnippet>683</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
-<a href=#684 id=684 data-nosnippet>684</a>                }
-<a href=#685 id=685 data-nosnippet>685</a>                <span class="kw">break</span>;
-<a href=#686 id=686 data-nosnippet>686</a>            }
-<a href=#687 id=687 data-nosnippet>687</a>        }
-<a href=#688 id=688 data-nosnippet>688</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
-<a href=#689 id=689 data-nosnippet>689</a>
-<a href=#690 id=690 data-nosnippet>690</a>        <span class="comment">// Enqueue any other immediate events.
-<a href=#691 id=691 data-nosnippet>691</a>        </span><span class="kw">let </span>extra_count = <span class="self">self</span>.try_recv_events();
-<a href=#692 id=692 data-nosnippet>692</a>        <span class="prelude-val">Some</span>(count + extra_count)
-<a href=#693 id=693 data-nosnippet>693</a>    }
-<a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a>    <span class="doccomment">/// Schedules a subgraph to be run. See also: [`Context::schedule_subgraph`].
-<a href=#696 id=696 data-nosnippet>696</a>    </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sg_id: SubgraphId) -&gt; bool {
-<a href=#697 id=697 data-nosnippet>697</a>        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
-<a href=#698 id=698 data-nosnippet>698</a>        <span class="kw">let </span>already_scheduled = sg_data.is_scheduled.replace(<span class="bool-val">true</span>);
-<a href=#699 id=699 data-nosnippet>699</a>        <span class="kw">if </span>!already_scheduled {
-<a href=#700 id=700 data-nosnippet>700</a>            <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
-<a href=#701 id=701 data-nosnippet>701</a>            <span class="bool-val">true
-<a href=#702 id=702 data-nosnippet>702</a>        </span>} <span class="kw">else </span>{
-<a href=#703 id=703 data-nosnippet>703</a>            <span class="bool-val">false
-<a href=#704 id=704 data-nosnippet>704</a>        </span>}
-<a href=#705 id=705 data-nosnippet>705</a>    }
-<a href=#706 id=706 data-nosnippet>706</a>
-<a href=#707 id=707 data-nosnippet>707</a>    <span class="doccomment">/// Adds a new compiled subgraph with the specified inputs and outputs in stratum 0.
-<a href=#708 id=708 data-nosnippet>708</a>    </span><span class="kw">pub fn </span>add_subgraph&lt;Name, R, W, F&gt;(
-<a href=#709 id=709 data-nosnippet>709</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#710 id=710 data-nosnippet>710</a>        name: Name,
-<a href=#711 id=711 data-nosnippet>711</a>        recv_ports: R,
-<a href=#712 id=712 data-nosnippet>712</a>        send_ports: W,
-<a href=#713 id=713 data-nosnippet>713</a>        subgraph: F,
-<a href=#714 id=714 data-nosnippet>714</a>    ) -&gt; SubgraphId
-<a href=#715 id=715 data-nosnippet>715</a>    <span class="kw">where
-<a href=#716 id=716 data-nosnippet>716</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#717 id=717 data-nosnippet>717</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
-<a href=#718 id=718 data-nosnippet>718</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
-<a href=#719 id=719 data-nosnippet>719</a>        F: <span class="lifetime">'static </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
-<a href=#720 id=720 data-nosnippet>720</a>    {
-<a href=#721 id=721 data-nosnippet>721</a>        <span class="self">self</span>.add_subgraph_stratified(name, <span class="number">0</span>, recv_ports, send_ports, <span class="bool-val">false</span>, subgraph)
-<a href=#722 id=722 data-nosnippet>722</a>    }
-<a href=#723 id=723 data-nosnippet>723</a>
-<a href=#724 id=724 data-nosnippet>724</a>    <span class="doccomment">/// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
-<a href=#725 id=725 data-nosnippet>725</a>    ///
-<a href=#726 id=726 data-nosnippet>726</a>    /// TODO(mingwei): add example in doc.
-<a href=#727 id=727 data-nosnippet>727</a>    </span><span class="kw">pub fn </span>add_subgraph_stratified&lt;Name, R, W, F&gt;(
-<a href=#728 id=728 data-nosnippet>728</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#729 id=729 data-nosnippet>729</a>        name: Name,
-<a href=#730 id=730 data-nosnippet>730</a>        stratum: usize,
-<a href=#731 id=731 data-nosnippet>731</a>        recv_ports: R,
-<a href=#732 id=732 data-nosnippet>732</a>        send_ports: W,
-<a href=#733 id=733 data-nosnippet>733</a>        laziness: bool,
-<a href=#734 id=734 data-nosnippet>734</a>        subgraph: F,
-<a href=#735 id=735 data-nosnippet>735</a>    ) -&gt; SubgraphId
-<a href=#736 id=736 data-nosnippet>736</a>    <span class="kw">where
-<a href=#737 id=737 data-nosnippet>737</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#738 id=738 data-nosnippet>738</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
-<a href=#739 id=739 data-nosnippet>739</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
-<a href=#740 id=740 data-nosnippet>740</a>        F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
-<a href=#741 id=741 data-nosnippet>741</a>    {
-<a href=#742 id=742 data-nosnippet>742</a>        <span class="self">self</span>.add_subgraph_full(
-<a href=#743 id=743 data-nosnippet>743</a>            name, stratum, recv_ports, send_ports, laziness, <span class="prelude-val">None</span>, subgraph,
-<a href=#744 id=744 data-nosnippet>744</a>        )
-<a href=#745 id=745 data-nosnippet>745</a>    }
-<a href=#746 id=746 data-nosnippet>746</a>
-<a href=#747 id=747 data-nosnippet>747</a>    <span class="doccomment">/// Adds a new compiled subgraph with all options.
-<a href=#748 id=748 data-nosnippet>748</a>    </span><span class="attr">#[expect(clippy::too_many_arguments, reason = <span class="string">"Mainly for internal use."</span>)]
-<a href=#749 id=749 data-nosnippet>749</a>    </span><span class="kw">pub fn </span>add_subgraph_full&lt;Name, R, W, F&gt;(
-<a href=#750 id=750 data-nosnippet>750</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#751 id=751 data-nosnippet>751</a>        name: Name,
-<a href=#752 id=752 data-nosnippet>752</a>        stratum: usize,
-<a href=#753 id=753 data-nosnippet>753</a>        recv_ports: R,
-<a href=#754 id=754 data-nosnippet>754</a>        send_ports: W,
-<a href=#755 id=755 data-nosnippet>755</a>        laziness: bool,
-<a href=#756 id=756 data-nosnippet>756</a>        loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
-<a href=#757 id=757 data-nosnippet>757</a>        <span class="kw-2">mut </span>subgraph: F,
-<a href=#758 id=758 data-nosnippet>758</a>    ) -&gt; SubgraphId
-<a href=#759 id=759 data-nosnippet>759</a>    <span class="kw">where
-<a href=#760 id=760 data-nosnippet>760</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#761 id=761 data-nosnippet>761</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
-<a href=#762 id=762 data-nosnippet>762</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
-<a href=#763 id=763 data-nosnippet>763</a>        F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
-<a href=#764 id=764 data-nosnippet>764</a>    {
-<a href=#765 id=765 data-nosnippet>765</a>        <span class="comment">// SAFETY: Check that the send and recv ports are from `self.handoffs`.
-<a href=#766 id=766 data-nosnippet>766</a>        </span>recv_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
-<a href=#767 id=767 data-nosnippet>767</a>        send_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
-<a href=#768 id=768 data-nosnippet>768</a>
-<a href=#769 id=769 data-nosnippet>769</a>        <span class="kw">let </span>loop_depth = loop_id
-<a href=#770 id=770 data-nosnippet>770</a>            .and_then(|loop_id| <span class="self">self</span>.context.loop_depth.get(loop_id))
-<a href=#771 id=771 data-nosnippet>771</a>            .copied()
-<a href=#772 id=772 data-nosnippet>772</a>            .unwrap_or(<span class="number">0</span>);
-<a href=#773 id=773 data-nosnippet>773</a>
-<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
-<a href=#775 id=775 data-nosnippet>775</a>            <span class="kw">let </span>(<span class="kw-2">mut </span>subgraph_preds, <span class="kw-2">mut </span>subgraph_succs) = Default::default();
-<a href=#776 id=776 data-nosnippet>776</a>            recv_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_preds, sg_id, <span class="bool-val">true</span>);
-<a href=#777 id=777 data-nosnippet>777</a>            send_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_succs, sg_id, <span class="bool-val">false</span>);
-<a href=#778 id=778 data-nosnippet>778</a>
-<a href=#779 id=779 data-nosnippet>779</a>            <span class="kw">let </span>subgraph =
-<a href=#780 id=780 data-nosnippet>780</a>                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
-<a href=#781 id=781 data-nosnippet>781</a>                    <span class="kw">let </span>(recv, send) = <span class="kw">unsafe </span>{
-<a href=#782 id=782 data-nosnippet>782</a>                        <span class="comment">// SAFETY:
-<a href=#783 id=783 data-nosnippet>783</a>                        // 1. We checked `assert_is_from` at assembly time, above.
-<a href=#784 id=784 data-nosnippet>784</a>                        // 2. `SlotVec` is insert-only so no handoffs could have changed since then.
-<a href=#785 id=785 data-nosnippet>785</a>                        </span>(
-<a href=#786 id=786 data-nosnippet>786</a>                            recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
-<a href=#787 id=787 data-nosnippet>787</a>                            send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
-<a href=#788 id=788 data-nosnippet>788</a>                        )
-<a href=#789 id=789 data-nosnippet>789</a>                    };
-<a href=#790 id=790 data-nosnippet>790</a>                    (subgraph)(context, recv, send);
-<a href=#791 id=791 data-nosnippet>791</a>                };
-<a href=#792 id=792 data-nosnippet>792</a>            SubgraphData::new(
-<a href=#793 id=793 data-nosnippet>793</a>                name.into(),
-<a href=#794 id=794 data-nosnippet>794</a>                stratum,
-<a href=#795 id=795 data-nosnippet>795</a>                subgraph,
-<a href=#796 id=796 data-nosnippet>796</a>                subgraph_preds,
-<a href=#797 id=797 data-nosnippet>797</a>                subgraph_succs,
-<a href=#798 id=798 data-nosnippet>798</a>                <span class="bool-val">true</span>,
-<a href=#799 id=799 data-nosnippet>799</a>                laziness,
-<a href=#800 id=800 data-nosnippet>800</a>                loop_id,
-<a href=#801 id=801 data-nosnippet>801</a>                loop_depth,
-<a href=#802 id=802 data-nosnippet>802</a>            )
-<a href=#803 id=803 data-nosnippet>803</a>        });
-<a href=#804 id=804 data-nosnippet>804</a>        <span class="self">self</span>.context.init_stratum(stratum);
-<a href=#805 id=805 data-nosnippet>805</a>        <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
-<a href=#806 id=806 data-nosnippet>806</a>
-<a href=#807 id=807 data-nosnippet>807</a>        sg_id
-<a href=#808 id=808 data-nosnippet>808</a>    }
-<a href=#809 id=809 data-nosnippet>809</a>
-<a href=#810 id=810 data-nosnippet>810</a>    <span class="doccomment">/// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-<a href=#811 id=811 data-nosnippet>811</a>    </span><span class="kw">pub fn </span>add_subgraph_n_m&lt;Name, R, W, F&gt;(
-<a href=#812 id=812 data-nosnippet>812</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#813 id=813 data-nosnippet>813</a>        name: Name,
-<a href=#814 id=814 data-nosnippet>814</a>        recv_ports: Vec&lt;RecvPort&lt;R&gt;&gt;,
-<a href=#815 id=815 data-nosnippet>815</a>        send_ports: Vec&lt;SendPort&lt;W&gt;&gt;,
-<a href=#816 id=816 data-nosnippet>816</a>        subgraph: F,
-<a href=#817 id=817 data-nosnippet>817</a>    ) -&gt; SubgraphId
-<a href=#818 id=818 data-nosnippet>818</a>    <span class="kw">where
-<a href=#819 id=819 data-nosnippet>819</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#820 id=820 data-nosnippet>820</a>        R: <span class="lifetime">'static </span>+ Handoff,
-<a href=#821 id=821 data-nosnippet>821</a>        W: <span class="lifetime">'static </span>+ Handoff,
-<a href=#822 id=822 data-nosnippet>822</a>        F: <span class="lifetime">'static
-<a href=#823 id=823 data-nosnippet>823</a>            </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>RecvCtx&lt;R&gt;], <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>SendCtx&lt;W&gt;]),
-<a href=#824 id=824 data-nosnippet>824</a>    {
-<a href=#825 id=825 data-nosnippet>825</a>        <span class="self">self</span>.add_subgraph_stratified_n_m(name, <span class="number">0</span>, recv_ports, send_ports, subgraph)
-<a href=#826 id=826 data-nosnippet>826</a>    }
-<a href=#827 id=827 data-nosnippet>827</a>
-<a href=#828 id=828 data-nosnippet>828</a>    <span class="doccomment">/// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-<a href=#829 id=829 data-nosnippet>829</a>    </span><span class="kw">pub fn </span>add_subgraph_stratified_n_m&lt;Name, R, W, F&gt;(
-<a href=#830 id=830 data-nosnippet>830</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#831 id=831 data-nosnippet>831</a>        name: Name,
-<a href=#832 id=832 data-nosnippet>832</a>        stratum: usize,
-<a href=#833 id=833 data-nosnippet>833</a>        recv_ports: Vec&lt;RecvPort&lt;R&gt;&gt;,
-<a href=#834 id=834 data-nosnippet>834</a>        send_ports: Vec&lt;SendPort&lt;W&gt;&gt;,
-<a href=#835 id=835 data-nosnippet>835</a>        <span class="kw-2">mut </span>subgraph: F,
-<a href=#836 id=836 data-nosnippet>836</a>    ) -&gt; SubgraphId
-<a href=#837 id=837 data-nosnippet>837</a>    <span class="kw">where
-<a href=#838 id=838 data-nosnippet>838</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#839 id=839 data-nosnippet>839</a>        R: <span class="lifetime">'static </span>+ Handoff,
-<a href=#840 id=840 data-nosnippet>840</a>        W: <span class="lifetime">'static </span>+ Handoff,
-<a href=#841 id=841 data-nosnippet>841</a>        F: <span class="lifetime">'static
-<a href=#842 id=842 data-nosnippet>842</a>            </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>RecvCtx&lt;R&gt;], <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>SendCtx&lt;W&gt;]),
-<a href=#843 id=843 data-nosnippet>843</a>    {
-<a href=#844 id=844 data-nosnippet>844</a>        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
-<a href=#845 id=845 data-nosnippet>845</a>            <span class="kw">let </span>subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
-<a href=#846 id=846 data-nosnippet>846</a>            <span class="kw">let </span>subgraph_succs = send_ports.iter().map(|port| port.handoff_id).collect();
-<a href=#847 id=847 data-nosnippet>847</a>
-<a href=#848 id=848 data-nosnippet>848</a>            <span class="kw">for </span>recv_port <span class="kw">in </span>recv_ports.iter() {
-<a href=#849 id=849 data-nosnippet>849</a>                <span class="self">self</span>.handoffs[recv_port.handoff_id].succs.push(sg_id);
-<a href=#850 id=850 data-nosnippet>850</a>            }
-<a href=#851 id=851 data-nosnippet>851</a>            <span class="kw">for </span>send_port <span class="kw">in </span>send_ports.iter() {
-<a href=#852 id=852 data-nosnippet>852</a>                <span class="self">self</span>.handoffs[send_port.handoff_id].preds.push(sg_id);
-<a href=#853 id=853 data-nosnippet>853</a>            }
-<a href=#854 id=854 data-nosnippet>854</a>
-<a href=#855 id=855 data-nosnippet>855</a>            <span class="kw">let </span>subgraph =
-<a href=#856 id=856 data-nosnippet>856</a>                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
-<a href=#857 id=857 data-nosnippet>857</a>                    <span class="kw">let </span>recvs: Vec&lt;<span class="kw-2">&amp;</span>RecvCtx&lt;R&gt;&gt; = recv_ports
-<a href=#858 id=858 data-nosnippet>858</a>                        .iter()
-<a href=#859 id=859 data-nosnippet>859</a>                        .map(|hid| hid.handoff_id)
-<a href=#860 id=860 data-nosnippet>860</a>                        .map(|hid| handoffs.get(hid).unwrap())
-<a href=#861 id=861 data-nosnippet>861</a>                        .map(|h_data| {
-<a href=#862 id=862 data-nosnippet>862</a>                            h_data
-<a href=#863 id=863 data-nosnippet>863</a>                                .handoff
-<a href=#864 id=864 data-nosnippet>864</a>                                .any_ref()
-<a href=#865 id=865 data-nosnippet>865</a>                                .downcast_ref()
-<a href=#866 id=866 data-nosnippet>866</a>                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
-<a href=#867 id=867 data-nosnippet>867</a>                        })
-<a href=#868 id=868 data-nosnippet>868</a>                        .map(RefCast::ref_cast)
-<a href=#869 id=869 data-nosnippet>869</a>                        .collect();
+<a href=#548 id=548 data-nosnippet>548</a>            <span class="comment">// After incrementing, exit if we made a full loop around the strata.
+<a href=#549 id=549 data-nosnippet>549</a>            </span><span class="kw">if </span>new_tick_started &amp;&amp; end_stratum == <span class="self">self</span>.context.current_stratum {
+<a href=#550 id=550 data-nosnippet>550</a>                <span class="macro">tracing::trace!</span>(
+<a href=#551 id=551 data-nosnippet>551</a>                    <span class="string">"Made full loop around stratum, re-setting `current_stratum = 0`, returning `false`."
+<a href=#552 id=552 data-nosnippet>552</a>                </span>);
+<a href=#553 id=553 data-nosnippet>553</a>                <span class="comment">// Note: if current stratum had work, the very first loop iteration would've
+<a href=#554 id=554 data-nosnippet>554</a>                // returned true. Therefore we can return false without checking.
+<a href=#555 id=555 data-nosnippet>555</a>                // Also means nothing was done so we can reset the stratum to zero and wait for
+<a href=#556 id=556 data-nosnippet>556</a>                // events.
+<a href=#557 id=557 data-nosnippet>557</a>                </span><span class="self">self</span>.context.events_received_tick = <span class="bool-val">false</span>;
+<a href=#558 id=558 data-nosnippet>558</a>                <span class="self">self</span>.context.current_stratum = <span class="number">0</span>;
+<a href=#559 id=559 data-nosnippet>559</a>                <span class="kw">return </span><span class="bool-val">false</span>;
+<a href=#560 id=560 data-nosnippet>560</a>            }
+<a href=#561 id=561 data-nosnippet>561</a>        }
+<a href=#562 id=562 data-nosnippet>562</a>    }
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>    <span class="doccomment">/// Runs the dataflow graph forever.
+<a href=#565 id=565 data-nosnippet>565</a>    ///
+<a href=#566 id=566 data-nosnippet>566</a>    /// TODO(mingwei): Currently blocks forever, no notion of "completion."
+<a href=#567 id=567 data-nosnippet>567</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
+<a href=#568 id=568 data-nosnippet>568</a>    </span><span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Never&gt; {
+<a href=#569 id=569 data-nosnippet>569</a>        <span class="kw">loop </span>{
+<a href=#570 id=570 data-nosnippet>570</a>            <span class="self">self</span>.run_tick();
+<a href=#571 id=571 data-nosnippet>571</a>        }
+<a href=#572 id=572 data-nosnippet>572</a>    }
+<a href=#573 id=573 data-nosnippet>573</a>
+<a href=#574 id=574 data-nosnippet>574</a>    <span class="doccomment">/// Runs the dataflow graph forever.
+<a href=#575 id=575 data-nosnippet>575</a>    ///
+<a href=#576 id=576 data-nosnippet>576</a>    /// TODO(mingwei): Currently blocks forever, no notion of "completion."
+<a href=#577 id=577 data-nosnippet>577</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), ret)]
+<a href=#578 id=578 data-nosnippet>578</a>    </span><span class="kw">pub async fn </span>run_async(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Never&gt; {
+<a href=#579 id=579 data-nosnippet>579</a>        <span class="kw">loop </span>{
+<a href=#580 id=580 data-nosnippet>580</a>            <span class="comment">// Run any work which is immediately available.
+<a href=#581 id=581 data-nosnippet>581</a>            </span><span class="self">self</span>.run_available_async().<span class="kw">await</span>;
+<a href=#582 id=582 data-nosnippet>582</a>            <span class="comment">// When no work is available yield until more events occur.
+<a href=#583 id=583 data-nosnippet>583</a>            </span><span class="self">self</span>.recv_events_async().<span class="kw">await</span>;
+<a href=#584 id=584 data-nosnippet>584</a>        }
+<a href=#585 id=585 data-nosnippet>585</a>    }
+<a href=#586 id=586 data-nosnippet>586</a>
+<a href=#587 id=587 data-nosnippet>587</a>    <span class="doccomment">/// Enqueues subgraphs triggered by events without blocking.
+<a href=#588 id=588 data-nosnippet>588</a>    ///
+<a href=#589 id=589 data-nosnippet>589</a>    /// Returns the number of subgraphs enqueued, and if any were external.
+<a href=#590 id=590 data-nosnippet>590</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
+<a href=#591 id=591 data-nosnippet>591</a>    </span><span class="kw">pub fn </span>try_recv_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; usize {
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="kw">let </span><span class="kw-2">mut </span>enqueued_count = <span class="number">0</span>;
+<a href=#593 id=593 data-nosnippet>593</a>        <span class="kw">while let </span><span class="prelude-val">Ok</span>((sg_id, is_external)) = <span class="self">self</span>.context.event_queue_recv.try_recv() {
+<a href=#594 id=594 data-nosnippet>594</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#595 id=595 data-nosnippet>595</a>            <span class="macro">tracing::trace!</span>(
+<a href=#596 id=596 data-nosnippet>596</a>                sg_id = sg_id.to_string(),
+<a href=#597 id=597 data-nosnippet>597</a>                is_external = is_external,
+<a href=#598 id=598 data-nosnippet>598</a>                sg_stratum = sg_data.stratum,
+<a href=#599 id=599 data-nosnippet>599</a>                <span class="string">"Event received."
+<a href=#600 id=600 data-nosnippet>600</a>            </span>);
+<a href=#601 id=601 data-nosnippet>601</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
+<a href=#602 id=602 data-nosnippet>602</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+<a href=#603 id=603 data-nosnippet>603</a>                enqueued_count += <span class="number">1</span>;
+<a href=#604 id=604 data-nosnippet>604</a>            }
+<a href=#605 id=605 data-nosnippet>605</a>            <span class="kw">if </span>is_external {
+<a href=#606 id=606 data-nosnippet>606</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
+<a href=#607 id=607 data-nosnippet>607</a>                // Or if the stratum is in the next tick.
+<a href=#608 id=608 data-nosnippet>608</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
+<a href=#609 id=609 data-nosnippet>609</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
+<a href=#610 id=610 data-nosnippet>610</a>                {
+<a href=#611 id=611 data-nosnippet>611</a>                    <span class="macro">tracing::trace!</span>(
+<a href=#612 id=612 data-nosnippet>612</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#613 id=613 data-nosnippet>613</a>                        sg_stratum = sg_data.stratum,
+<a href=#614 id=614 data-nosnippet>614</a>                        <span class="string">"External event, setting `can_start_tick = true`."
+<a href=#615 id=615 data-nosnippet>615</a>                    </span>);
+<a href=#616 id=616 data-nosnippet>616</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
+<a href=#617 id=617 data-nosnippet>617</a>                }
+<a href=#618 id=618 data-nosnippet>618</a>            }
+<a href=#619 id=619 data-nosnippet>619</a>        }
+<a href=#620 id=620 data-nosnippet>620</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
+<a href=#621 id=621 data-nosnippet>621</a>
+<a href=#622 id=622 data-nosnippet>622</a>        enqueued_count
+<a href=#623 id=623 data-nosnippet>623</a>    }
+<a href=#624 id=624 data-nosnippet>624</a>
+<a href=#625 id=625 data-nosnippet>625</a>    <span class="doccomment">/// Enqueues subgraphs triggered by external events, blocking until at
+<a href=#626 id=626 data-nosnippet>626</a>    /// least one subgraph is scheduled **from an external event**.
+<a href=#627 id=627 data-nosnippet>627</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
+<a href=#628 id=628 data-nosnippet>628</a>    </span><span class="kw">pub fn </span>recv_events(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+<a href=#629 id=629 data-nosnippet>629</a>        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
+<a href=#630 id=630 data-nosnippet>630</a>        <span class="kw">loop </span>{
+<a href=#631 id=631 data-nosnippet>631</a>            <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.blocking_recv()<span class="question-mark">?</span>;
+<a href=#632 id=632 data-nosnippet>632</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#633 id=633 data-nosnippet>633</a>            <span class="macro">tracing::trace!</span>(
+<a href=#634 id=634 data-nosnippet>634</a>                sg_id = sg_id.to_string(),
+<a href=#635 id=635 data-nosnippet>635</a>                is_external = is_external,
+<a href=#636 id=636 data-nosnippet>636</a>                sg_stratum = sg_data.stratum,
+<a href=#637 id=637 data-nosnippet>637</a>                <span class="string">"Event received."
+<a href=#638 id=638 data-nosnippet>638</a>            </span>);
+<a href=#639 id=639 data-nosnippet>639</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
+<a href=#640 id=640 data-nosnippet>640</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+<a href=#641 id=641 data-nosnippet>641</a>                count += <span class="number">1</span>;
+<a href=#642 id=642 data-nosnippet>642</a>            }
+<a href=#643 id=643 data-nosnippet>643</a>            <span class="kw">if </span>is_external {
+<a href=#644 id=644 data-nosnippet>644</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
+<a href=#645 id=645 data-nosnippet>645</a>                // Or if the stratum is in the next tick.
+<a href=#646 id=646 data-nosnippet>646</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
+<a href=#647 id=647 data-nosnippet>647</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
+<a href=#648 id=648 data-nosnippet>648</a>                {
+<a href=#649 id=649 data-nosnippet>649</a>                    <span class="macro">tracing::trace!</span>(
+<a href=#650 id=650 data-nosnippet>650</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#651 id=651 data-nosnippet>651</a>                        sg_stratum = sg_data.stratum,
+<a href=#652 id=652 data-nosnippet>652</a>                        <span class="string">"External event, setting `can_start_tick = true`."
+<a href=#653 id=653 data-nosnippet>653</a>                    </span>);
+<a href=#654 id=654 data-nosnippet>654</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
+<a href=#655 id=655 data-nosnippet>655</a>                }
+<a href=#656 id=656 data-nosnippet>656</a>                <span class="kw">break</span>;
+<a href=#657 id=657 data-nosnippet>657</a>            }
+<a href=#658 id=658 data-nosnippet>658</a>        }
+<a href=#659 id=659 data-nosnippet>659</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
+<a href=#660 id=660 data-nosnippet>660</a>
+<a href=#661 id=661 data-nosnippet>661</a>        <span class="comment">// Enqueue any other immediate events.
+<a href=#662 id=662 data-nosnippet>662</a>        </span><span class="kw">let </span>extra_count = <span class="self">self</span>.try_recv_events();
+<a href=#663 id=663 data-nosnippet>663</a>        <span class="prelude-val">Some</span>(count + extra_count)
+<a href=#664 id=664 data-nosnippet>664</a>    }
+<a href=#665 id=665 data-nosnippet>665</a>
+<a href=#666 id=666 data-nosnippet>666</a>    <span class="doccomment">/// Enqueues subgraphs triggered by external events asynchronously, waiting until at least one
+<a href=#667 id=667 data-nosnippet>667</a>    /// subgraph is scheduled **from an external event**. Returns the number of subgraphs enqueued,
+<a href=#668 id=668 data-nosnippet>668</a>    /// which may be zero if an external event scheduled an already-scheduled subgraph.
+<a href=#669 id=669 data-nosnippet>669</a>    ///
+<a href=#670 id=670 data-nosnippet>670</a>    /// Returns `None` if the event queue is closed, but that should not happen normally.
+<a href=#671 id=671 data-nosnippet>671</a>    </span><span class="attr">#[tracing::instrument(level = <span class="string">"trace"</span>, skip(<span class="self">self</span>), fields(events_received_tick = <span class="self">self</span>.context.events_received_tick), ret)]
+<a href=#672 id=672 data-nosnippet>672</a>    </span><span class="kw">pub async fn </span>recv_events_async(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;usize&gt; {
+<a href=#673 id=673 data-nosnippet>673</a>        <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
+<a href=#674 id=674 data-nosnippet>674</a>        <span class="kw">loop </span>{
+<a href=#675 id=675 data-nosnippet>675</a>            <span class="macro">tracing::trace!</span>(<span class="string">"Awaiting events (`event_queue_recv`)."</span>);
+<a href=#676 id=676 data-nosnippet>676</a>            <span class="kw">let </span>(sg_id, is_external) = <span class="self">self</span>.context.event_queue_recv.recv().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#677 id=677 data-nosnippet>677</a>            <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#678 id=678 data-nosnippet>678</a>            <span class="macro">tracing::trace!</span>(
+<a href=#679 id=679 data-nosnippet>679</a>                sg_id = sg_id.to_string(),
+<a href=#680 id=680 data-nosnippet>680</a>                is_external = is_external,
+<a href=#681 id=681 data-nosnippet>681</a>                sg_stratum = sg_data.stratum,
+<a href=#682 id=682 data-nosnippet>682</a>                <span class="string">"Event received."
+<a href=#683 id=683 data-nosnippet>683</a>            </span>);
+<a href=#684 id=684 data-nosnippet>684</a>            <span class="kw">if </span>!sg_data.is_scheduled.replace(<span class="bool-val">true</span>) {
+<a href=#685 id=685 data-nosnippet>685</a>                <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+<a href=#686 id=686 data-nosnippet>686</a>                count += <span class="number">1</span>;
+<a href=#687 id=687 data-nosnippet>687</a>            }
+<a href=#688 id=688 data-nosnippet>688</a>            <span class="kw">if </span>is_external {
+<a href=#689 id=689 data-nosnippet>689</a>                <span class="comment">// Next tick is triggered if we are at the start of the next tick (`!self.events_receved_tick`).
+<a href=#690 id=690 data-nosnippet>690</a>                // Or if the stratum is in the next tick.
+<a href=#691 id=691 data-nosnippet>691</a>                </span><span class="kw">if </span>!<span class="self">self</span>.context.events_received_tick
+<a href=#692 id=692 data-nosnippet>692</a>                    || sg_data.stratum &lt; <span class="self">self</span>.context.current_stratum
+<a href=#693 id=693 data-nosnippet>693</a>                {
+<a href=#694 id=694 data-nosnippet>694</a>                    <span class="macro">tracing::trace!</span>(
+<a href=#695 id=695 data-nosnippet>695</a>                        current_stratum = <span class="self">self</span>.context.current_stratum,
+<a href=#696 id=696 data-nosnippet>696</a>                        sg_stratum = sg_data.stratum,
+<a href=#697 id=697 data-nosnippet>697</a>                        <span class="string">"External event, setting `can_start_tick = true`."
+<a href=#698 id=698 data-nosnippet>698</a>                    </span>);
+<a href=#699 id=699 data-nosnippet>699</a>                    <span class="self">self</span>.context.can_start_tick = <span class="bool-val">true</span>;
+<a href=#700 id=700 data-nosnippet>700</a>                }
+<a href=#701 id=701 data-nosnippet>701</a>                <span class="kw">break</span>;
+<a href=#702 id=702 data-nosnippet>702</a>            }
+<a href=#703 id=703 data-nosnippet>703</a>        }
+<a href=#704 id=704 data-nosnippet>704</a>        <span class="self">self</span>.context.events_received_tick = <span class="bool-val">true</span>;
+<a href=#705 id=705 data-nosnippet>705</a>
+<a href=#706 id=706 data-nosnippet>706</a>        <span class="comment">// Enqueue any other immediate events.
+<a href=#707 id=707 data-nosnippet>707</a>        </span><span class="kw">let </span>extra_count = <span class="self">self</span>.try_recv_events();
+<a href=#708 id=708 data-nosnippet>708</a>        <span class="prelude-val">Some</span>(count + extra_count)
+<a href=#709 id=709 data-nosnippet>709</a>    }
+<a href=#710 id=710 data-nosnippet>710</a>
+<a href=#711 id=711 data-nosnippet>711</a>    <span class="doccomment">/// Schedules a subgraph to be run. See also: [`Context::schedule_subgraph`].
+<a href=#712 id=712 data-nosnippet>712</a>    </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sg_id: SubgraphId) -&gt; bool {
+<a href=#713 id=713 data-nosnippet>713</a>        <span class="kw">let </span>sg_data = <span class="kw-2">&amp;</span><span class="self">self</span>.subgraphs[sg_id];
+<a href=#714 id=714 data-nosnippet>714</a>        <span class="kw">let </span>already_scheduled = sg_data.is_scheduled.replace(<span class="bool-val">true</span>);
+<a href=#715 id=715 data-nosnippet>715</a>        <span class="kw">if </span>!already_scheduled {
+<a href=#716 id=716 data-nosnippet>716</a>            <span class="self">self</span>.context.stratum_queues[sg_data.stratum].push_back(sg_id);
+<a href=#717 id=717 data-nosnippet>717</a>            <span class="bool-val">true
+<a href=#718 id=718 data-nosnippet>718</a>        </span>} <span class="kw">else </span>{
+<a href=#719 id=719 data-nosnippet>719</a>            <span class="bool-val">false
+<a href=#720 id=720 data-nosnippet>720</a>        </span>}
+<a href=#721 id=721 data-nosnippet>721</a>    }
+<a href=#722 id=722 data-nosnippet>722</a>
+<a href=#723 id=723 data-nosnippet>723</a>    <span class="doccomment">/// Adds a new compiled subgraph with the specified inputs and outputs in stratum 0.
+<a href=#724 id=724 data-nosnippet>724</a>    </span><span class="kw">pub fn </span>add_subgraph&lt;Name, R, W, F&gt;(
+<a href=#725 id=725 data-nosnippet>725</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#726 id=726 data-nosnippet>726</a>        name: Name,
+<a href=#727 id=727 data-nosnippet>727</a>        recv_ports: R,
+<a href=#728 id=728 data-nosnippet>728</a>        send_ports: W,
+<a href=#729 id=729 data-nosnippet>729</a>        subgraph: F,
+<a href=#730 id=730 data-nosnippet>730</a>    ) -&gt; SubgraphId
+<a href=#731 id=731 data-nosnippet>731</a>    <span class="kw">where
+<a href=#732 id=732 data-nosnippet>732</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#733 id=733 data-nosnippet>733</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
+<a href=#734 id=734 data-nosnippet>734</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
+<a href=#735 id=735 data-nosnippet>735</a>        F: <span class="lifetime">'static </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
+<a href=#736 id=736 data-nosnippet>736</a>    {
+<a href=#737 id=737 data-nosnippet>737</a>        <span class="self">self</span>.add_subgraph_stratified(name, <span class="number">0</span>, recv_ports, send_ports, <span class="bool-val">false</span>, subgraph)
+<a href=#738 id=738 data-nosnippet>738</a>    }
+<a href=#739 id=739 data-nosnippet>739</a>
+<a href=#740 id=740 data-nosnippet>740</a>    <span class="doccomment">/// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
+<a href=#741 id=741 data-nosnippet>741</a>    ///
+<a href=#742 id=742 data-nosnippet>742</a>    /// TODO(mingwei): add example in doc.
+<a href=#743 id=743 data-nosnippet>743</a>    </span><span class="kw">pub fn </span>add_subgraph_stratified&lt;Name, R, W, F&gt;(
+<a href=#744 id=744 data-nosnippet>744</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#745 id=745 data-nosnippet>745</a>        name: Name,
+<a href=#746 id=746 data-nosnippet>746</a>        stratum: usize,
+<a href=#747 id=747 data-nosnippet>747</a>        recv_ports: R,
+<a href=#748 id=748 data-nosnippet>748</a>        send_ports: W,
+<a href=#749 id=749 data-nosnippet>749</a>        laziness: bool,
+<a href=#750 id=750 data-nosnippet>750</a>        subgraph: F,
+<a href=#751 id=751 data-nosnippet>751</a>    ) -&gt; SubgraphId
+<a href=#752 id=752 data-nosnippet>752</a>    <span class="kw">where
+<a href=#753 id=753 data-nosnippet>753</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#754 id=754 data-nosnippet>754</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
+<a href=#755 id=755 data-nosnippet>755</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
+<a href=#756 id=756 data-nosnippet>756</a>        F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
+<a href=#757 id=757 data-nosnippet>757</a>    {
+<a href=#758 id=758 data-nosnippet>758</a>        <span class="self">self</span>.add_subgraph_full(
+<a href=#759 id=759 data-nosnippet>759</a>            name, stratum, recv_ports, send_ports, laziness, <span class="prelude-val">None</span>, subgraph,
+<a href=#760 id=760 data-nosnippet>760</a>        )
+<a href=#761 id=761 data-nosnippet>761</a>    }
+<a href=#762 id=762 data-nosnippet>762</a>
+<a href=#763 id=763 data-nosnippet>763</a>    <span class="doccomment">/// Adds a new compiled subgraph with all options.
+<a href=#764 id=764 data-nosnippet>764</a>    </span><span class="attr">#[expect(clippy::too_many_arguments, reason = <span class="string">"Mainly for internal use."</span>)]
+<a href=#765 id=765 data-nosnippet>765</a>    </span><span class="kw">pub fn </span>add_subgraph_full&lt;Name, R, W, F&gt;(
+<a href=#766 id=766 data-nosnippet>766</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#767 id=767 data-nosnippet>767</a>        name: Name,
+<a href=#768 id=768 data-nosnippet>768</a>        stratum: usize,
+<a href=#769 id=769 data-nosnippet>769</a>        recv_ports: R,
+<a href=#770 id=770 data-nosnippet>770</a>        send_ports: W,
+<a href=#771 id=771 data-nosnippet>771</a>        laziness: bool,
+<a href=#772 id=772 data-nosnippet>772</a>        loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
+<a href=#773 id=773 data-nosnippet>773</a>        <span class="kw-2">mut </span>subgraph: F,
+<a href=#774 id=774 data-nosnippet>774</a>    ) -&gt; SubgraphId
+<a href=#775 id=775 data-nosnippet>775</a>    <span class="kw">where
+<a href=#776 id=776 data-nosnippet>776</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#777 id=777 data-nosnippet>777</a>        R: <span class="lifetime">'static </span>+ PortList&lt;RECV&gt;,
+<a href=#778 id=778 data-nosnippet>778</a>        W: <span class="lifetime">'static </span>+ PortList&lt;SEND&gt;,
+<a href=#779 id=779 data-nosnippet>779</a>        F: <span class="lifetime">'a </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, R::Ctx&lt;<span class="lifetime">'ctx</span>&gt;, W::Ctx&lt;<span class="lifetime">'ctx</span>&gt;),
+<a href=#780 id=780 data-nosnippet>780</a>    {
+<a href=#781 id=781 data-nosnippet>781</a>        <span class="comment">// SAFETY: Check that the send and recv ports are from `self.handoffs`.
+<a href=#782 id=782 data-nosnippet>782</a>        </span>recv_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
+<a href=#783 id=783 data-nosnippet>783</a>        send_ports.assert_is_from(<span class="kw-2">&amp;</span><span class="self">self</span>.handoffs);
+<a href=#784 id=784 data-nosnippet>784</a>
+<a href=#785 id=785 data-nosnippet>785</a>        <span class="kw">let </span>loop_depth = loop_id
+<a href=#786 id=786 data-nosnippet>786</a>            .and_then(|loop_id| <span class="self">self</span>.context.loop_depth.get(loop_id))
+<a href=#787 id=787 data-nosnippet>787</a>            .copied()
+<a href=#788 id=788 data-nosnippet>788</a>            .unwrap_or(<span class="number">0</span>);
+<a href=#789 id=789 data-nosnippet>789</a>
+<a href=#790 id=790 data-nosnippet>790</a>        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
+<a href=#791 id=791 data-nosnippet>791</a>            <span class="kw">let </span>(<span class="kw-2">mut </span>subgraph_preds, <span class="kw-2">mut </span>subgraph_succs) = Default::default();
+<a href=#792 id=792 data-nosnippet>792</a>            recv_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_preds, sg_id, <span class="bool-val">true</span>);
+<a href=#793 id=793 data-nosnippet>793</a>            send_ports.set_graph_meta(<span class="kw-2">&amp;mut </span><span class="self">self</span>.handoffs, <span class="kw-2">&amp;mut </span>subgraph_succs, sg_id, <span class="bool-val">false</span>);
+<a href=#794 id=794 data-nosnippet>794</a>
+<a href=#795 id=795 data-nosnippet>795</a>            <span class="kw">let </span>subgraph =
+<a href=#796 id=796 data-nosnippet>796</a>                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
+<a href=#797 id=797 data-nosnippet>797</a>                    <span class="kw">let </span>(recv, send) = <span class="kw">unsafe </span>{
+<a href=#798 id=798 data-nosnippet>798</a>                        <span class="comment">// SAFETY:
+<a href=#799 id=799 data-nosnippet>799</a>                        // 1. We checked `assert_is_from` at assembly time, above.
+<a href=#800 id=800 data-nosnippet>800</a>                        // 2. `SlotVec` is insert-only so no handoffs could have changed since then.
+<a href=#801 id=801 data-nosnippet>801</a>                        </span>(
+<a href=#802 id=802 data-nosnippet>802</a>                            recv_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
+<a href=#803 id=803 data-nosnippet>803</a>                            send_ports.make_ctx(<span class="kw-2">&amp;*</span>handoffs),
+<a href=#804 id=804 data-nosnippet>804</a>                        )
+<a href=#805 id=805 data-nosnippet>805</a>                    };
+<a href=#806 id=806 data-nosnippet>806</a>                    (subgraph)(context, recv, send);
+<a href=#807 id=807 data-nosnippet>807</a>                };
+<a href=#808 id=808 data-nosnippet>808</a>            SubgraphData::new(
+<a href=#809 id=809 data-nosnippet>809</a>                name.into(),
+<a href=#810 id=810 data-nosnippet>810</a>                stratum,
+<a href=#811 id=811 data-nosnippet>811</a>                subgraph,
+<a href=#812 id=812 data-nosnippet>812</a>                subgraph_preds,
+<a href=#813 id=813 data-nosnippet>813</a>                subgraph_succs,
+<a href=#814 id=814 data-nosnippet>814</a>                <span class="bool-val">true</span>,
+<a href=#815 id=815 data-nosnippet>815</a>                laziness,
+<a href=#816 id=816 data-nosnippet>816</a>                loop_id,
+<a href=#817 id=817 data-nosnippet>817</a>                loop_depth,
+<a href=#818 id=818 data-nosnippet>818</a>            )
+<a href=#819 id=819 data-nosnippet>819</a>        });
+<a href=#820 id=820 data-nosnippet>820</a>        <span class="self">self</span>.context.init_stratum(stratum);
+<a href=#821 id=821 data-nosnippet>821</a>        <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
+<a href=#822 id=822 data-nosnippet>822</a>
+<a href=#823 id=823 data-nosnippet>823</a>        sg_id
+<a href=#824 id=824 data-nosnippet>824</a>    }
+<a href=#825 id=825 data-nosnippet>825</a>
+<a href=#826 id=826 data-nosnippet>826</a>    <span class="doccomment">/// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
+<a href=#827 id=827 data-nosnippet>827</a>    </span><span class="kw">pub fn </span>add_subgraph_n_m&lt;Name, R, W, F&gt;(
+<a href=#828 id=828 data-nosnippet>828</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#829 id=829 data-nosnippet>829</a>        name: Name,
+<a href=#830 id=830 data-nosnippet>830</a>        recv_ports: Vec&lt;RecvPort&lt;R&gt;&gt;,
+<a href=#831 id=831 data-nosnippet>831</a>        send_ports: Vec&lt;SendPort&lt;W&gt;&gt;,
+<a href=#832 id=832 data-nosnippet>832</a>        subgraph: F,
+<a href=#833 id=833 data-nosnippet>833</a>    ) -&gt; SubgraphId
+<a href=#834 id=834 data-nosnippet>834</a>    <span class="kw">where
+<a href=#835 id=835 data-nosnippet>835</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#836 id=836 data-nosnippet>836</a>        R: <span class="lifetime">'static </span>+ Handoff,
+<a href=#837 id=837 data-nosnippet>837</a>        W: <span class="lifetime">'static </span>+ Handoff,
+<a href=#838 id=838 data-nosnippet>838</a>        F: <span class="lifetime">'static
+<a href=#839 id=839 data-nosnippet>839</a>            </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>RecvCtx&lt;R&gt;], <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>SendCtx&lt;W&gt;]),
+<a href=#840 id=840 data-nosnippet>840</a>    {
+<a href=#841 id=841 data-nosnippet>841</a>        <span class="self">self</span>.add_subgraph_stratified_n_m(name, <span class="number">0</span>, recv_ports, send_ports, subgraph)
+<a href=#842 id=842 data-nosnippet>842</a>    }
+<a href=#843 id=843 data-nosnippet>843</a>
+<a href=#844 id=844 data-nosnippet>844</a>    <span class="doccomment">/// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
+<a href=#845 id=845 data-nosnippet>845</a>    </span><span class="kw">pub fn </span>add_subgraph_stratified_n_m&lt;Name, R, W, F&gt;(
+<a href=#846 id=846 data-nosnippet>846</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#847 id=847 data-nosnippet>847</a>        name: Name,
+<a href=#848 id=848 data-nosnippet>848</a>        stratum: usize,
+<a href=#849 id=849 data-nosnippet>849</a>        recv_ports: Vec&lt;RecvPort&lt;R&gt;&gt;,
+<a href=#850 id=850 data-nosnippet>850</a>        send_ports: Vec&lt;SendPort&lt;W&gt;&gt;,
+<a href=#851 id=851 data-nosnippet>851</a>        <span class="kw-2">mut </span>subgraph: F,
+<a href=#852 id=852 data-nosnippet>852</a>    ) -&gt; SubgraphId
+<a href=#853 id=853 data-nosnippet>853</a>    <span class="kw">where
+<a href=#854 id=854 data-nosnippet>854</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#855 id=855 data-nosnippet>855</a>        R: <span class="lifetime">'static </span>+ Handoff,
+<a href=#856 id=856 data-nosnippet>856</a>        W: <span class="lifetime">'static </span>+ Handoff,
+<a href=#857 id=857 data-nosnippet>857</a>        F: <span class="lifetime">'static
+<a href=#858 id=858 data-nosnippet>858</a>            </span>+ <span class="kw">for</span>&lt;<span class="lifetime">'ctx</span>&gt; FnMut(<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Context, <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>RecvCtx&lt;R&gt;], <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>[<span class="kw-2">&amp;</span><span class="lifetime">'ctx </span>SendCtx&lt;W&gt;]),
+<a href=#859 id=859 data-nosnippet>859</a>    {
+<a href=#860 id=860 data-nosnippet>860</a>        <span class="kw">let </span>sg_id = <span class="self">self</span>.subgraphs.insert_with_key(|sg_id| {
+<a href=#861 id=861 data-nosnippet>861</a>            <span class="kw">let </span>subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
+<a href=#862 id=862 data-nosnippet>862</a>            <span class="kw">let </span>subgraph_succs = send_ports.iter().map(|port| port.handoff_id).collect();
+<a href=#863 id=863 data-nosnippet>863</a>
+<a href=#864 id=864 data-nosnippet>864</a>            <span class="kw">for </span>recv_port <span class="kw">in </span>recv_ports.iter() {
+<a href=#865 id=865 data-nosnippet>865</a>                <span class="self">self</span>.handoffs[recv_port.handoff_id].succs.push(sg_id);
+<a href=#866 id=866 data-nosnippet>866</a>            }
+<a href=#867 id=867 data-nosnippet>867</a>            <span class="kw">for </span>send_port <span class="kw">in </span>send_ports.iter() {
+<a href=#868 id=868 data-nosnippet>868</a>                <span class="self">self</span>.handoffs[send_port.handoff_id].preds.push(sg_id);
+<a href=#869 id=869 data-nosnippet>869</a>            }
 <a href=#870 id=870 data-nosnippet>870</a>
-<a href=#871 id=871 data-nosnippet>871</a>                    <span class="kw">let </span>sends: Vec&lt;<span class="kw-2">&amp;</span>SendCtx&lt;W&gt;&gt; = send_ports
-<a href=#872 id=872 data-nosnippet>872</a>                        .iter()
-<a href=#873 id=873 data-nosnippet>873</a>                        .map(|hid| hid.handoff_id)
-<a href=#874 id=874 data-nosnippet>874</a>                        .map(|hid| handoffs.get(hid).unwrap())
-<a href=#875 id=875 data-nosnippet>875</a>                        .map(|h_data| {
-<a href=#876 id=876 data-nosnippet>876</a>                            h_data
-<a href=#877 id=877 data-nosnippet>877</a>                                .handoff
-<a href=#878 id=878 data-nosnippet>878</a>                                .any_ref()
-<a href=#879 id=879 data-nosnippet>879</a>                                .downcast_ref()
-<a href=#880 id=880 data-nosnippet>880</a>                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
-<a href=#881 id=881 data-nosnippet>881</a>                        })
-<a href=#882 id=882 data-nosnippet>882</a>                        .map(RefCast::ref_cast)
-<a href=#883 id=883 data-nosnippet>883</a>                        .collect();
-<a href=#884 id=884 data-nosnippet>884</a>
-<a href=#885 id=885 data-nosnippet>885</a>                    (subgraph)(context, <span class="kw-2">&amp;</span>recvs, <span class="kw-2">&amp;</span>sends)
-<a href=#886 id=886 data-nosnippet>886</a>                };
-<a href=#887 id=887 data-nosnippet>887</a>            SubgraphData::new(
-<a href=#888 id=888 data-nosnippet>888</a>                name.into(),
-<a href=#889 id=889 data-nosnippet>889</a>                stratum,
-<a href=#890 id=890 data-nosnippet>890</a>                subgraph,
-<a href=#891 id=891 data-nosnippet>891</a>                subgraph_preds,
-<a href=#892 id=892 data-nosnippet>892</a>                subgraph_succs,
-<a href=#893 id=893 data-nosnippet>893</a>                <span class="bool-val">true</span>,
-<a href=#894 id=894 data-nosnippet>894</a>                <span class="bool-val">false</span>,
-<a href=#895 id=895 data-nosnippet>895</a>                <span class="prelude-val">None</span>,
-<a href=#896 id=896 data-nosnippet>896</a>                <span class="number">0</span>,
-<a href=#897 id=897 data-nosnippet>897</a>            )
-<a href=#898 id=898 data-nosnippet>898</a>        });
-<a href=#899 id=899 data-nosnippet>899</a>
-<a href=#900 id=900 data-nosnippet>900</a>        <span class="self">self</span>.context.init_stratum(stratum);
-<a href=#901 id=901 data-nosnippet>901</a>        <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
-<a href=#902 id=902 data-nosnippet>902</a>
-<a href=#903 id=903 data-nosnippet>903</a>        sg_id
-<a href=#904 id=904 data-nosnippet>904</a>    }
-<a href=#905 id=905 data-nosnippet>905</a>
-<a href=#906 id=906 data-nosnippet>906</a>    <span class="doccomment">/// Creates a handoff edge and returns the corresponding send and receive ports.
-<a href=#907 id=907 data-nosnippet>907</a>    </span><span class="kw">pub fn </span>make_edge&lt;Name, H&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: Name) -&gt; (SendPort&lt;H&gt;, RecvPort&lt;H&gt;)
-<a href=#908 id=908 data-nosnippet>908</a>    <span class="kw">where
-<a href=#909 id=909 data-nosnippet>909</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
-<a href=#910 id=910 data-nosnippet>910</a>        H: <span class="lifetime">'static </span>+ Handoff,
-<a href=#911 id=911 data-nosnippet>911</a>    {
-<a href=#912 id=912 data-nosnippet>912</a>        <span class="comment">// Create and insert handoff.
-<a href=#913 id=913 data-nosnippet>913</a>        </span><span class="kw">let </span>handoff = H::default();
-<a href=#914 id=914 data-nosnippet>914</a>        <span class="kw">let </span>handoff_id = <span class="self">self
-<a href=#915 id=915 data-nosnippet>915</a>            </span>.handoffs
-<a href=#916 id=916 data-nosnippet>916</a>            .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
-<a href=#917 id=917 data-nosnippet>917</a>
-<a href=#918 id=918 data-nosnippet>918</a>        <span class="comment">// Make ports.
-<a href=#919 id=919 data-nosnippet>919</a>        </span><span class="kw">let </span>input_port = SendPort {
-<a href=#920 id=920 data-nosnippet>920</a>            handoff_id,
-<a href=#921 id=921 data-nosnippet>921</a>            _marker: PhantomData,
-<a href=#922 id=922 data-nosnippet>922</a>        };
-<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>output_port = RecvPort {
-<a href=#924 id=924 data-nosnippet>924</a>            handoff_id,
-<a href=#925 id=925 data-nosnippet>925</a>            _marker: PhantomData,
-<a href=#926 id=926 data-nosnippet>926</a>        };
-<a href=#927 id=927 data-nosnippet>927</a>        (input_port, output_port)
-<a href=#928 id=928 data-nosnippet>928</a>    }
-<a href=#929 id=929 data-nosnippet>929</a>
-<a href=#930 id=930 data-nosnippet>930</a>    <span class="doccomment">/// Adds referenceable state into this instance. Returns a state handle which can be
-<a href=#931 id=931 data-nosnippet>931</a>    /// used externally or by operators to access the state.
-<a href=#932 id=932 data-nosnippet>932</a>    ///
-<a href=#933 id=933 data-nosnippet>933</a>    /// This is part of the "state API".
-<a href=#934 id=934 data-nosnippet>934</a>    </span><span class="kw">pub fn </span>add_state&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state: T) -&gt; StateHandle&lt;T&gt;
-<a href=#935 id=935 data-nosnippet>935</a>    <span class="kw">where
-<a href=#936 id=936 data-nosnippet>936</a>        </span>T: Any,
-<a href=#937 id=937 data-nosnippet>937</a>    {
-<a href=#938 id=938 data-nosnippet>938</a>        <span class="self">self</span>.context.add_state(state)
-<a href=#939 id=939 data-nosnippet>939</a>    }
-<a href=#940 id=940 data-nosnippet>940</a>
-<a href=#941 id=941 data-nosnippet>941</a>    <span class="doccomment">/// Sets a hook to modify the state at the end of each tick, using the supplied closure.
-<a href=#942 id=942 data-nosnippet>942</a>    ///
-<a href=#943 id=943 data-nosnippet>943</a>    /// This is part of the "state API".
-<a href=#944 id=944 data-nosnippet>944</a>    </span><span class="kw">pub fn </span>set_state_tick_hook&lt;T&gt;(
-<a href=#945 id=945 data-nosnippet>945</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#946 id=946 data-nosnippet>946</a>        handle: StateHandle&lt;T&gt;,
-<a href=#947 id=947 data-nosnippet>947</a>        tick_hook_fn: <span class="kw">impl </span><span class="lifetime">'static </span>+ FnMut(<span class="kw-2">&amp;mut </span>T),
-<a href=#948 id=948 data-nosnippet>948</a>    ) <span class="kw">where
-<a href=#949 id=949 data-nosnippet>949</a>        </span>T: Any,
-<a href=#950 id=950 data-nosnippet>950</a>    {
-<a href=#951 id=951 data-nosnippet>951</a>        <span class="self">self</span>.context.set_state_tick_hook(handle, tick_hook_fn)
-<a href=#952 id=952 data-nosnippet>952</a>    }
-<a href=#953 id=953 data-nosnippet>953</a>
-<a href=#954 id=954 data-nosnippet>954</a>    <span class="doccomment">/// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
-<a href=#955 id=955 data-nosnippet>955</a>    </span><span class="kw">pub fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sg_id: SubgraphId) -&gt; <span class="kw-2">&amp;mut </span>Context {
-<a href=#956 id=956 data-nosnippet>956</a>        <span class="self">self</span>.context.subgraph_id = sg_id;
-<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.context
-<a href=#958 id=958 data-nosnippet>958</a>    }
-<a href=#959 id=959 data-nosnippet>959</a>
-<a href=#960 id=960 data-nosnippet>960</a>    <span class="doccomment">/// Adds a new loop with the given parent (or `None` for top-level). Returns a loop ID which
-<a href=#961 id=961 data-nosnippet>961</a>    /// is used in [`Self::add_subgraph_stratified`] or for nested loops.
-<a href=#962 id=962 data-nosnippet>962</a>    ///
-<a href=#963 id=963 data-nosnippet>963</a>    /// TODO(mingwei): add loop names to ensure traceability while debugging?
-<a href=#964 id=964 data-nosnippet>964</a>    </span><span class="kw">pub fn </span>add_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;LoopId&gt;) -&gt; LoopId {
-<a href=#965 id=965 data-nosnippet>965</a>        <span class="kw">let </span>depth = parent.map_or(<span class="number">0</span>, |p| <span class="self">self</span>.context.loop_depth[p] + <span class="number">1</span>);
-<a href=#966 id=966 data-nosnippet>966</a>        <span class="kw">let </span>loop_id = <span class="self">self</span>.context.loop_depth.insert(depth);
-<a href=#967 id=967 data-nosnippet>967</a>        <span class="self">self</span>.loop_data.insert(
-<a href=#968 id=968 data-nosnippet>968</a>            loop_id,
-<a href=#969 id=969 data-nosnippet>969</a>            LoopData {
-<a href=#970 id=970 data-nosnippet>970</a>                iter_count: <span class="prelude-val">None</span>,
-<a href=#971 id=971 data-nosnippet>971</a>                allow_another_iteration: <span class="bool-val">true</span>,
-<a href=#972 id=972 data-nosnippet>972</a>            },
-<a href=#973 id=973 data-nosnippet>973</a>        );
-<a href=#974 id=974 data-nosnippet>974</a>        loop_id
-<a href=#975 id=975 data-nosnippet>975</a>    }
-<a href=#976 id=976 data-nosnippet>976</a>}
+<a href=#871 id=871 data-nosnippet>871</a>            <span class="kw">let </span>subgraph =
+<a href=#872 id=872 data-nosnippet>872</a>                <span class="kw">move </span>|context: <span class="kw-2">&amp;mut </span>Context, handoffs: <span class="kw-2">&amp;mut </span>SlotVec&lt;HandoffTag, HandoffData&gt;| {
+<a href=#873 id=873 data-nosnippet>873</a>                    <span class="kw">let </span>recvs: Vec&lt;<span class="kw-2">&amp;</span>RecvCtx&lt;R&gt;&gt; = recv_ports
+<a href=#874 id=874 data-nosnippet>874</a>                        .iter()
+<a href=#875 id=875 data-nosnippet>875</a>                        .map(|hid| hid.handoff_id)
+<a href=#876 id=876 data-nosnippet>876</a>                        .map(|hid| handoffs.get(hid).unwrap())
+<a href=#877 id=877 data-nosnippet>877</a>                        .map(|h_data| {
+<a href=#878 id=878 data-nosnippet>878</a>                            h_data
+<a href=#879 id=879 data-nosnippet>879</a>                                .handoff
+<a href=#880 id=880 data-nosnippet>880</a>                                .any_ref()
+<a href=#881 id=881 data-nosnippet>881</a>                                .downcast_ref()
+<a href=#882 id=882 data-nosnippet>882</a>                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
+<a href=#883 id=883 data-nosnippet>883</a>                        })
+<a href=#884 id=884 data-nosnippet>884</a>                        .map(RefCast::ref_cast)
+<a href=#885 id=885 data-nosnippet>885</a>                        .collect();
+<a href=#886 id=886 data-nosnippet>886</a>
+<a href=#887 id=887 data-nosnippet>887</a>                    <span class="kw">let </span>sends: Vec&lt;<span class="kw-2">&amp;</span>SendCtx&lt;W&gt;&gt; = send_ports
+<a href=#888 id=888 data-nosnippet>888</a>                        .iter()
+<a href=#889 id=889 data-nosnippet>889</a>                        .map(|hid| hid.handoff_id)
+<a href=#890 id=890 data-nosnippet>890</a>                        .map(|hid| handoffs.get(hid).unwrap())
+<a href=#891 id=891 data-nosnippet>891</a>                        .map(|h_data| {
+<a href=#892 id=892 data-nosnippet>892</a>                            h_data
+<a href=#893 id=893 data-nosnippet>893</a>                                .handoff
+<a href=#894 id=894 data-nosnippet>894</a>                                .any_ref()
+<a href=#895 id=895 data-nosnippet>895</a>                                .downcast_ref()
+<a href=#896 id=896 data-nosnippet>896</a>                                .expect(<span class="string">"Attempted to cast handoff to wrong type."</span>)
+<a href=#897 id=897 data-nosnippet>897</a>                        })
+<a href=#898 id=898 data-nosnippet>898</a>                        .map(RefCast::ref_cast)
+<a href=#899 id=899 data-nosnippet>899</a>                        .collect();
+<a href=#900 id=900 data-nosnippet>900</a>
+<a href=#901 id=901 data-nosnippet>901</a>                    (subgraph)(context, <span class="kw-2">&amp;</span>recvs, <span class="kw-2">&amp;</span>sends)
+<a href=#902 id=902 data-nosnippet>902</a>                };
+<a href=#903 id=903 data-nosnippet>903</a>            SubgraphData::new(
+<a href=#904 id=904 data-nosnippet>904</a>                name.into(),
+<a href=#905 id=905 data-nosnippet>905</a>                stratum,
+<a href=#906 id=906 data-nosnippet>906</a>                subgraph,
+<a href=#907 id=907 data-nosnippet>907</a>                subgraph_preds,
+<a href=#908 id=908 data-nosnippet>908</a>                subgraph_succs,
+<a href=#909 id=909 data-nosnippet>909</a>                <span class="bool-val">true</span>,
+<a href=#910 id=910 data-nosnippet>910</a>                <span class="bool-val">false</span>,
+<a href=#911 id=911 data-nosnippet>911</a>                <span class="prelude-val">None</span>,
+<a href=#912 id=912 data-nosnippet>912</a>                <span class="number">0</span>,
+<a href=#913 id=913 data-nosnippet>913</a>            )
+<a href=#914 id=914 data-nosnippet>914</a>        });
+<a href=#915 id=915 data-nosnippet>915</a>
+<a href=#916 id=916 data-nosnippet>916</a>        <span class="self">self</span>.context.init_stratum(stratum);
+<a href=#917 id=917 data-nosnippet>917</a>        <span class="self">self</span>.context.stratum_queues[stratum].push_back(sg_id);
+<a href=#918 id=918 data-nosnippet>918</a>
+<a href=#919 id=919 data-nosnippet>919</a>        sg_id
+<a href=#920 id=920 data-nosnippet>920</a>    }
+<a href=#921 id=921 data-nosnippet>921</a>
+<a href=#922 id=922 data-nosnippet>922</a>    <span class="doccomment">/// Creates a handoff edge and returns the corresponding send and receive ports.
+<a href=#923 id=923 data-nosnippet>923</a>    </span><span class="kw">pub fn </span>make_edge&lt;Name, H&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, name: Name) -&gt; (SendPort&lt;H&gt;, RecvPort&lt;H&gt;)
+<a href=#924 id=924 data-nosnippet>924</a>    <span class="kw">where
+<a href=#925 id=925 data-nosnippet>925</a>        </span>Name: Into&lt;Cow&lt;<span class="lifetime">'static</span>, str&gt;&gt;,
+<a href=#926 id=926 data-nosnippet>926</a>        H: <span class="lifetime">'static </span>+ Handoff,
+<a href=#927 id=927 data-nosnippet>927</a>    {
+<a href=#928 id=928 data-nosnippet>928</a>        <span class="comment">// Create and insert handoff.
+<a href=#929 id=929 data-nosnippet>929</a>        </span><span class="kw">let </span>handoff = H::default();
+<a href=#930 id=930 data-nosnippet>930</a>        <span class="kw">let </span>handoff_id = <span class="self">self
+<a href=#931 id=931 data-nosnippet>931</a>            </span>.handoffs
+<a href=#932 id=932 data-nosnippet>932</a>            .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
+<a href=#933 id=933 data-nosnippet>933</a>
+<a href=#934 id=934 data-nosnippet>934</a>        <span class="comment">// Make ports.
+<a href=#935 id=935 data-nosnippet>935</a>        </span><span class="kw">let </span>input_port = SendPort {
+<a href=#936 id=936 data-nosnippet>936</a>            handoff_id,
+<a href=#937 id=937 data-nosnippet>937</a>            _marker: PhantomData,
+<a href=#938 id=938 data-nosnippet>938</a>        };
+<a href=#939 id=939 data-nosnippet>939</a>        <span class="kw">let </span>output_port = RecvPort {
+<a href=#940 id=940 data-nosnippet>940</a>            handoff_id,
+<a href=#941 id=941 data-nosnippet>941</a>            _marker: PhantomData,
+<a href=#942 id=942 data-nosnippet>942</a>        };
+<a href=#943 id=943 data-nosnippet>943</a>        (input_port, output_port)
+<a href=#944 id=944 data-nosnippet>944</a>    }
+<a href=#945 id=945 data-nosnippet>945</a>
+<a href=#946 id=946 data-nosnippet>946</a>    <span class="doccomment">/// Adds referenceable state into this instance. Returns a state handle which can be
+<a href=#947 id=947 data-nosnippet>947</a>    /// used externally or by operators to access the state.
+<a href=#948 id=948 data-nosnippet>948</a>    ///
+<a href=#949 id=949 data-nosnippet>949</a>    /// This is part of the "state API".
+<a href=#950 id=950 data-nosnippet>950</a>    </span><span class="kw">pub fn </span>add_state&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state: T) -&gt; StateHandle&lt;T&gt;
+<a href=#951 id=951 data-nosnippet>951</a>    <span class="kw">where
+<a href=#952 id=952 data-nosnippet>952</a>        </span>T: Any,
+<a href=#953 id=953 data-nosnippet>953</a>    {
+<a href=#954 id=954 data-nosnippet>954</a>        <span class="self">self</span>.context.add_state(state)
+<a href=#955 id=955 data-nosnippet>955</a>    }
+<a href=#956 id=956 data-nosnippet>956</a>
+<a href=#957 id=957 data-nosnippet>957</a>    <span class="doccomment">/// Sets a hook to modify the state at the end of each tick, using the supplied closure.
+<a href=#958 id=958 data-nosnippet>958</a>    ///
+<a href=#959 id=959 data-nosnippet>959</a>    /// This is part of the "state API".
+<a href=#960 id=960 data-nosnippet>960</a>    </span><span class="kw">pub fn </span>set_state_lifespan_hook&lt;T&gt;(
+<a href=#961 id=961 data-nosnippet>961</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#962 id=962 data-nosnippet>962</a>        handle: StateHandle&lt;T&gt;,
+<a href=#963 id=963 data-nosnippet>963</a>        lifespan: StateLifespan,
+<a href=#964 id=964 data-nosnippet>964</a>        hook_fn: <span class="kw">impl </span><span class="lifetime">'static </span>+ FnMut(<span class="kw-2">&amp;mut </span>T),
+<a href=#965 id=965 data-nosnippet>965</a>    ) <span class="kw">where
+<a href=#966 id=966 data-nosnippet>966</a>        </span>T: Any,
+<a href=#967 id=967 data-nosnippet>967</a>    {
+<a href=#968 id=968 data-nosnippet>968</a>        <span class="self">self</span>.context
+<a href=#969 id=969 data-nosnippet>969</a>            .set_state_lifespan_hook(handle, lifespan, hook_fn)
+<a href=#970 id=970 data-nosnippet>970</a>    }
+<a href=#971 id=971 data-nosnippet>971</a>
+<a href=#972 id=972 data-nosnippet>972</a>    <span class="doccomment">/// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
+<a href=#973 id=973 data-nosnippet>973</a>    </span><span class="kw">pub fn </span>context_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, sg_id: SubgraphId) -&gt; <span class="kw-2">&amp;mut </span>Context {
+<a href=#974 id=974 data-nosnippet>974</a>        <span class="self">self</span>.context.subgraph_id = sg_id;
+<a href=#975 id=975 data-nosnippet>975</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.context
+<a href=#976 id=976 data-nosnippet>976</a>    }
 <a href=#977 id=977 data-nosnippet>977</a>
-<a href=#978 id=978 data-nosnippet>978</a><span class="kw">impl </span>Dfir&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#979 id=979 data-nosnippet>979</a>    <span class="doccomment">/// Alias for [`Context::request_task`].
-<a href=#980 id=980 data-nosnippet>980</a>    </span><span class="kw">pub fn </span>request_task&lt;Fut&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, future: Fut)
-<a href=#981 id=981 data-nosnippet>981</a>    <span class="kw">where
-<a href=#982 id=982 data-nosnippet>982</a>        </span>Fut: Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>,
-<a href=#983 id=983 data-nosnippet>983</a>    {
-<a href=#984 id=984 data-nosnippet>984</a>        <span class="self">self</span>.context.request_task(future);
-<a href=#985 id=985 data-nosnippet>985</a>    }
-<a href=#986 id=986 data-nosnippet>986</a>
-<a href=#987 id=987 data-nosnippet>987</a>    <span class="doccomment">/// Alias for [`Context::abort_tasks`].
-<a href=#988 id=988 data-nosnippet>988</a>    </span><span class="kw">pub fn </span>abort_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#989 id=989 data-nosnippet>989</a>        <span class="self">self</span>.context.abort_tasks()
-<a href=#990 id=990 data-nosnippet>990</a>    }
-<a href=#991 id=991 data-nosnippet>991</a>
-<a href=#992 id=992 data-nosnippet>992</a>    <span class="doccomment">/// Alias for [`Context::join_tasks`].
-<a href=#993 id=993 data-nosnippet>993</a>    </span><span class="kw">pub fn </span>join_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl use</span>&lt;<span class="lifetime">'_</span>&gt; + Future {
-<a href=#994 id=994 data-nosnippet>994</a>        <span class="self">self</span>.context.join_tasks()
-<a href=#995 id=995 data-nosnippet>995</a>    }
-<a href=#996 id=996 data-nosnippet>996</a>}
-<a href=#997 id=997 data-nosnippet>997</a>
-<a href=#998 id=998 data-nosnippet>998</a><span class="kw">impl </span>Drop <span class="kw">for </span>Dfir&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#999 id=999 data-nosnippet>999</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#1000 id=1000 data-nosnippet>1000</a>        <span class="self">self</span>.abort_tasks();
-<a href=#1001 id=1001 data-nosnippet>1001</a>    }
-<a href=#1002 id=1002 data-nosnippet>1002</a>}
-<a href=#1003 id=1003 data-nosnippet>1003</a>
-<a href=#1004 id=1004 data-nosnippet>1004</a><span class="doccomment">/// A handoff and its input and output [SubgraphId]s.
-<a href=#1005 id=1005 data-nosnippet>1005</a>///
-<a href=#1006 id=1006 data-nosnippet>1006</a>/// Internal use: used to track the dfir graph structure.
-<a href=#1007 id=1007 data-nosnippet>1007</a>///
-<a href=#1008 id=1008 data-nosnippet>1008</a>/// TODO(mingwei): restructure `PortList` so this can be crate-private.
-<a href=#1009 id=1009 data-nosnippet>1009</a></span><span class="attr">#[doc(hidden)]
-<a href=#1010 id=1010 data-nosnippet>1010</a></span><span class="kw">pub struct </span>HandoffData {
-<a href=#1011 id=1011 data-nosnippet>1011</a>    <span class="doccomment">/// A friendly name for diagnostics.
-<a href=#1012 id=1012 data-nosnippet>1012</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
-<a href=#1013 id=1013 data-nosnippet>1013</a>    <span class="doccomment">/// Crate-visible to crate for `handoff_list` internals.
-<a href=#1014 id=1014 data-nosnippet>1014</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) handoff: Box&lt;<span class="kw">dyn </span>HandoffMeta&gt;,
-<a href=#1015 id=1015 data-nosnippet>1015</a>    <span class="doccomment">/// Preceeding subgraphs (including the send side of a teeing handoff).
-<a href=#1016 id=1016 data-nosnippet>1016</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) preds: SmallVec&lt;[SubgraphId; <span class="number">1</span>]&gt;,
-<a href=#1017 id=1017 data-nosnippet>1017</a>    <span class="doccomment">/// Successor subgraphs (including recv sides of teeing handoffs).
-<a href=#1018 id=1018 data-nosnippet>1018</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) succs: SmallVec&lt;[SubgraphId; <span class="number">1</span>]&gt;,
-<a href=#1019 id=1019 data-nosnippet>1019</a>
-<a href=#1020 id=1020 data-nosnippet>1020</a>    <span class="doccomment">/// Predecessor handoffs, used by teeing handoffs.
-<a href=#1021 id=1021 data-nosnippet>1021</a>    /// Should be `self` on any teeing send sides (input).
-<a href=#1022 id=1022 data-nosnippet>1022</a>    /// Should be the send `HandoffId` if this is teeing recv side (output).
-<a href=#1023 id=1023 data-nosnippet>1023</a>    /// Should be just `self`'s `HandoffId` on other handoffs.
-<a href=#1024 id=1024 data-nosnippet>1024</a>    /// This field is only used in initialization.
-<a href=#1025 id=1025 data-nosnippet>1025</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) pred_handoffs: Vec&lt;HandoffId&gt;,
-<a href=#1026 id=1026 data-nosnippet>1026</a>    <span class="doccomment">/// Successor handoffs, used by teeing handoffs.
-<a href=#1027 id=1027 data-nosnippet>1027</a>    /// Should be a list of outputs on the teeing send side (input).
-<a href=#1028 id=1028 data-nosnippet>1028</a>    /// Should be `self` on any teeing recv sides (outputs).
-<a href=#1029 id=1029 data-nosnippet>1029</a>    /// Should be just `self`'s `HandoffId` on other handoffs.
-<a href=#1030 id=1030 data-nosnippet>1030</a>    /// This field is only used in initialization.
-<a href=#1031 id=1031 data-nosnippet>1031</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) succ_handoffs: Vec&lt;HandoffId&gt;,
-<a href=#1032 id=1032 data-nosnippet>1032</a>}
-<a href=#1033 id=1033 data-nosnippet>1033</a><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>HandoffData {
-<a href=#1034 id=1034 data-nosnippet>1034</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::fmt::Error&gt; {
-<a href=#1035 id=1035 data-nosnippet>1035</a>        f.debug_struct(<span class="string">"HandoffData"</span>)
-<a href=#1036 id=1036 data-nosnippet>1036</a>            .field(<span class="string">"preds"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.preds)
-<a href=#1037 id=1037 data-nosnippet>1037</a>            .field(<span class="string">"succs"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.succs)
-<a href=#1038 id=1038 data-nosnippet>1038</a>            .finish_non_exhaustive()
-<a href=#1039 id=1039 data-nosnippet>1039</a>    }
-<a href=#1040 id=1040 data-nosnippet>1040</a>}
-<a href=#1041 id=1041 data-nosnippet>1041</a><span class="kw">impl </span>HandoffData {
-<a href=#1042 id=1042 data-nosnippet>1042</a>    <span class="doccomment">/// New with `pred_handoffs` and `succ_handoffs` set to its own [`HandoffId`]: `vec![hoff_id]`.
-<a href=#1043 id=1043 data-nosnippet>1043</a>    </span><span class="kw">pub fn </span>new(
-<a href=#1044 id=1044 data-nosnippet>1044</a>        name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
-<a href=#1045 id=1045 data-nosnippet>1045</a>        handoff: <span class="kw">impl </span><span class="lifetime">'static </span>+ HandoffMeta,
-<a href=#1046 id=1046 data-nosnippet>1046</a>        hoff_id: HandoffId,
-<a href=#1047 id=1047 data-nosnippet>1047</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="kw">let </span>(preds, succs) = Default::default();
-<a href=#1049 id=1049 data-nosnippet>1049</a>        <span class="self">Self </span>{
-<a href=#1050 id=1050 data-nosnippet>1050</a>            name,
-<a href=#1051 id=1051 data-nosnippet>1051</a>            handoff: Box::new(handoff),
-<a href=#1052 id=1052 data-nosnippet>1052</a>            preds,
-<a href=#1053 id=1053 data-nosnippet>1053</a>            succs,
-<a href=#1054 id=1054 data-nosnippet>1054</a>            pred_handoffs: <span class="macro">vec!</span>[hoff_id],
-<a href=#1055 id=1055 data-nosnippet>1055</a>            succ_handoffs: <span class="macro">vec!</span>[hoff_id],
-<a href=#1056 id=1056 data-nosnippet>1056</a>        }
+<a href=#978 id=978 data-nosnippet>978</a>    <span class="doccomment">/// Adds a new loop with the given parent (or `None` for top-level). Returns a loop ID which
+<a href=#979 id=979 data-nosnippet>979</a>    /// is used in [`Self::add_subgraph_stratified`] or for nested loops.
+<a href=#980 id=980 data-nosnippet>980</a>    ///
+<a href=#981 id=981 data-nosnippet>981</a>    /// TODO(mingwei): add loop names to ensure traceability while debugging?
+<a href=#982 id=982 data-nosnippet>982</a>    </span><span class="kw">pub fn </span>add_loop(<span class="kw-2">&amp;mut </span><span class="self">self</span>, parent: <span class="prelude-ty">Option</span>&lt;LoopId&gt;) -&gt; LoopId {
+<a href=#983 id=983 data-nosnippet>983</a>        <span class="kw">let </span>depth = parent.map_or(<span class="number">0</span>, |p| <span class="self">self</span>.context.loop_depth[p] + <span class="number">1</span>);
+<a href=#984 id=984 data-nosnippet>984</a>        <span class="kw">let </span>loop_id = <span class="self">self</span>.context.loop_depth.insert(depth);
+<a href=#985 id=985 data-nosnippet>985</a>        <span class="self">self</span>.loop_data.insert(
+<a href=#986 id=986 data-nosnippet>986</a>            loop_id,
+<a href=#987 id=987 data-nosnippet>987</a>            LoopData {
+<a href=#988 id=988 data-nosnippet>988</a>                iter_count: <span class="prelude-val">None</span>,
+<a href=#989 id=989 data-nosnippet>989</a>                allow_another_iteration: <span class="bool-val">true</span>,
+<a href=#990 id=990 data-nosnippet>990</a>            },
+<a href=#991 id=991 data-nosnippet>991</a>        );
+<a href=#992 id=992 data-nosnippet>992</a>        loop_id
+<a href=#993 id=993 data-nosnippet>993</a>    }
+<a href=#994 id=994 data-nosnippet>994</a>}
+<a href=#995 id=995 data-nosnippet>995</a>
+<a href=#996 id=996 data-nosnippet>996</a><span class="kw">impl </span>Dfir&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#997 id=997 data-nosnippet>997</a>    <span class="doccomment">/// Alias for [`Context::request_task`].
+<a href=#998 id=998 data-nosnippet>998</a>    </span><span class="kw">pub fn </span>request_task&lt;Fut&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, future: Fut)
+<a href=#999 id=999 data-nosnippet>999</a>    <span class="kw">where
+<a href=#1000 id=1000 data-nosnippet>1000</a>        </span>Fut: Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>,
+<a href=#1001 id=1001 data-nosnippet>1001</a>    {
+<a href=#1002 id=1002 data-nosnippet>1002</a>        <span class="self">self</span>.context.request_task(future);
+<a href=#1003 id=1003 data-nosnippet>1003</a>    }
+<a href=#1004 id=1004 data-nosnippet>1004</a>
+<a href=#1005 id=1005 data-nosnippet>1005</a>    <span class="doccomment">/// Alias for [`Context::abort_tasks`].
+<a href=#1006 id=1006 data-nosnippet>1006</a>    </span><span class="kw">pub fn </span>abort_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#1007 id=1007 data-nosnippet>1007</a>        <span class="self">self</span>.context.abort_tasks()
+<a href=#1008 id=1008 data-nosnippet>1008</a>    }
+<a href=#1009 id=1009 data-nosnippet>1009</a>
+<a href=#1010 id=1010 data-nosnippet>1010</a>    <span class="doccomment">/// Alias for [`Context::join_tasks`].
+<a href=#1011 id=1011 data-nosnippet>1011</a>    </span><span class="kw">pub fn </span>join_tasks(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl use</span>&lt;<span class="lifetime">'_</span>&gt; + Future {
+<a href=#1012 id=1012 data-nosnippet>1012</a>        <span class="self">self</span>.context.join_tasks()
+<a href=#1013 id=1013 data-nosnippet>1013</a>    }
+<a href=#1014 id=1014 data-nosnippet>1014</a>}
+<a href=#1015 id=1015 data-nosnippet>1015</a>
+<a href=#1016 id=1016 data-nosnippet>1016</a><span class="kw">impl </span>Drop <span class="kw">for </span>Dfir&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#1017 id=1017 data-nosnippet>1017</a>    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#1018 id=1018 data-nosnippet>1018</a>        <span class="self">self</span>.abort_tasks();
+<a href=#1019 id=1019 data-nosnippet>1019</a>    }
+<a href=#1020 id=1020 data-nosnippet>1020</a>}
+<a href=#1021 id=1021 data-nosnippet>1021</a>
+<a href=#1022 id=1022 data-nosnippet>1022</a><span class="doccomment">/// A handoff and its input and output [SubgraphId]s.
+<a href=#1023 id=1023 data-nosnippet>1023</a>///
+<a href=#1024 id=1024 data-nosnippet>1024</a>/// Internal use: used to track the dfir graph structure.
+<a href=#1025 id=1025 data-nosnippet>1025</a>///
+<a href=#1026 id=1026 data-nosnippet>1026</a>/// TODO(mingwei): restructure `PortList` so this can be crate-private.
+<a href=#1027 id=1027 data-nosnippet>1027</a></span><span class="attr">#[doc(hidden)]
+<a href=#1028 id=1028 data-nosnippet>1028</a></span><span class="kw">pub struct </span>HandoffData {
+<a href=#1029 id=1029 data-nosnippet>1029</a>    <span class="doccomment">/// A friendly name for diagnostics.
+<a href=#1030 id=1030 data-nosnippet>1030</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
+<a href=#1031 id=1031 data-nosnippet>1031</a>    <span class="doccomment">/// Crate-visible to crate for `handoff_list` internals.
+<a href=#1032 id=1032 data-nosnippet>1032</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) handoff: Box&lt;<span class="kw">dyn </span>HandoffMeta&gt;,
+<a href=#1033 id=1033 data-nosnippet>1033</a>    <span class="doccomment">/// Preceeding subgraphs (including the send side of a teeing handoff).
+<a href=#1034 id=1034 data-nosnippet>1034</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) preds: SmallVec&lt;[SubgraphId; <span class="number">1</span>]&gt;,
+<a href=#1035 id=1035 data-nosnippet>1035</a>    <span class="doccomment">/// Successor subgraphs (including recv sides of teeing handoffs).
+<a href=#1036 id=1036 data-nosnippet>1036</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) succs: SmallVec&lt;[SubgraphId; <span class="number">1</span>]&gt;,
+<a href=#1037 id=1037 data-nosnippet>1037</a>
+<a href=#1038 id=1038 data-nosnippet>1038</a>    <span class="doccomment">/// Predecessor handoffs, used by teeing handoffs.
+<a href=#1039 id=1039 data-nosnippet>1039</a>    /// Should be `self` on any teeing send sides (input).
+<a href=#1040 id=1040 data-nosnippet>1040</a>    /// Should be the send `HandoffId` if this is teeing recv side (output).
+<a href=#1041 id=1041 data-nosnippet>1041</a>    /// Should be just `self`'s `HandoffId` on other handoffs.
+<a href=#1042 id=1042 data-nosnippet>1042</a>    /// This field is only used in initialization.
+<a href=#1043 id=1043 data-nosnippet>1043</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) pred_handoffs: Vec&lt;HandoffId&gt;,
+<a href=#1044 id=1044 data-nosnippet>1044</a>    <span class="doccomment">/// Successor handoffs, used by teeing handoffs.
+<a href=#1045 id=1045 data-nosnippet>1045</a>    /// Should be a list of outputs on the teeing send side (input).
+<a href=#1046 id=1046 data-nosnippet>1046</a>    /// Should be `self` on any teeing recv sides (outputs).
+<a href=#1047 id=1047 data-nosnippet>1047</a>    /// Should be just `self`'s `HandoffId` on other handoffs.
+<a href=#1048 id=1048 data-nosnippet>1048</a>    /// This field is only used in initialization.
+<a href=#1049 id=1049 data-nosnippet>1049</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) succ_handoffs: Vec&lt;HandoffId&gt;,
+<a href=#1050 id=1050 data-nosnippet>1050</a>}
+<a href=#1051 id=1051 data-nosnippet>1051</a><span class="kw">impl </span>std::fmt::Debug <span class="kw">for </span>HandoffData {
+<a href=#1052 id=1052 data-nosnippet>1052</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::fmt::Error&gt; {
+<a href=#1053 id=1053 data-nosnippet>1053</a>        f.debug_struct(<span class="string">"HandoffData"</span>)
+<a href=#1054 id=1054 data-nosnippet>1054</a>            .field(<span class="string">"preds"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.preds)
+<a href=#1055 id=1055 data-nosnippet>1055</a>            .field(<span class="string">"succs"</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.succs)
+<a href=#1056 id=1056 data-nosnippet>1056</a>            .finish_non_exhaustive()
 <a href=#1057 id=1057 data-nosnippet>1057</a>    }
 <a href=#1058 id=1058 data-nosnippet>1058</a>}
-<a href=#1059 id=1059 data-nosnippet>1059</a>
-<a href=#1060 id=1060 data-nosnippet>1060</a><span class="doccomment">/// A subgraph along with its predecessor and successor [SubgraphId]s.
-<a href=#1061 id=1061 data-nosnippet>1061</a>///
-<a href=#1062 id=1062 data-nosnippet>1062</a>/// Used internally by the [Dfir] struct to represent the dataflow graph
-<a href=#1063 id=1063 data-nosnippet>1063</a>/// structure and scheduled state.
-<a href=#1064 id=1064 data-nosnippet>1064</a></span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>SubgraphData&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#1065 id=1065 data-nosnippet>1065</a>    <span class="doccomment">/// A friendly name for diagnostics.
-<a href=#1066 id=1066 data-nosnippet>1066</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
-<a href=#1067 id=1067 data-nosnippet>1067</a>    <span class="doccomment">/// This subgraph's stratum number.
-<a href=#1068 id=1068 data-nosnippet>1068</a>    ///
-<a href=#1069 id=1069 data-nosnippet>1069</a>    /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
-<a href=#1070 id=1070 data-nosnippet>1070</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) stratum: usize,
-<a href=#1071 id=1071 data-nosnippet>1071</a>    <span class="doccomment">/// The actual execution code of the subgraph.
-<a href=#1072 id=1072 data-nosnippet>1072</a>    </span>subgraph: Box&lt;<span class="kw">dyn </span>Subgraph + <span class="lifetime">'a</span>&gt;,
-<a href=#1073 id=1073 data-nosnippet>1073</a>
-<a href=#1074 id=1074 data-nosnippet>1074</a>    <span class="attr">#[expect(dead_code, reason = <span class="string">"may be useful in the future"</span>)]
-<a href=#1075 id=1075 data-nosnippet>1075</a>    </span>preds: Vec&lt;HandoffId&gt;,
-<a href=#1076 id=1076 data-nosnippet>1076</a>    succs: Vec&lt;HandoffId&gt;,
+<a href=#1059 id=1059 data-nosnippet>1059</a><span class="kw">impl </span>HandoffData {
+<a href=#1060 id=1060 data-nosnippet>1060</a>    <span class="doccomment">/// New with `pred_handoffs` and `succ_handoffs` set to its own [`HandoffId`]: `vec![hoff_id]`.
+<a href=#1061 id=1061 data-nosnippet>1061</a>    </span><span class="kw">pub fn </span>new(
+<a href=#1062 id=1062 data-nosnippet>1062</a>        name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
+<a href=#1063 id=1063 data-nosnippet>1063</a>        handoff: <span class="kw">impl </span><span class="lifetime">'static </span>+ HandoffMeta,
+<a href=#1064 id=1064 data-nosnippet>1064</a>        hoff_id: HandoffId,
+<a href=#1065 id=1065 data-nosnippet>1065</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#1066 id=1066 data-nosnippet>1066</a>        <span class="kw">let </span>(preds, succs) = Default::default();
+<a href=#1067 id=1067 data-nosnippet>1067</a>        <span class="self">Self </span>{
+<a href=#1068 id=1068 data-nosnippet>1068</a>            name,
+<a href=#1069 id=1069 data-nosnippet>1069</a>            handoff: Box::new(handoff),
+<a href=#1070 id=1070 data-nosnippet>1070</a>            preds,
+<a href=#1071 id=1071 data-nosnippet>1071</a>            succs,
+<a href=#1072 id=1072 data-nosnippet>1072</a>            pred_handoffs: <span class="macro">vec!</span>[hoff_id],
+<a href=#1073 id=1073 data-nosnippet>1073</a>            succ_handoffs: <span class="macro">vec!</span>[hoff_id],
+<a href=#1074 id=1074 data-nosnippet>1074</a>        }
+<a href=#1075 id=1075 data-nosnippet>1075</a>    }
+<a href=#1076 id=1076 data-nosnippet>1076</a>}
 <a href=#1077 id=1077 data-nosnippet>1077</a>
-<a href=#1078 id=1078 data-nosnippet>1078</a>    <span class="doccomment">/// If this subgraph is scheduled in [`dfir_rs::stratum_queues`].
-<a href=#1079 id=1079 data-nosnippet>1079</a>    /// [`Cell`] allows modifying this field when iterating `Self::preds` or
-<a href=#1080 id=1080 data-nosnippet>1080</a>    /// `Self::succs`, as all `SubgraphData` are owned by the same vec
-<a href=#1081 id=1081 data-nosnippet>1081</a>    /// `dfir_rs::subgraphs`.
-<a href=#1082 id=1082 data-nosnippet>1082</a>    </span>is_scheduled: Cell&lt;bool&gt;,
-<a href=#1083 id=1083 data-nosnippet>1083</a>
-<a href=#1084 id=1084 data-nosnippet>1084</a>    <span class="doccomment">/// Keep track of the last tick that this subgraph was run in
-<a href=#1085 id=1085 data-nosnippet>1085</a>    </span>last_tick_run_in: <span class="prelude-ty">Option</span>&lt;TickInstant&gt;,
-<a href=#1086 id=1086 data-nosnippet>1086</a>    <span class="doccomment">/// A meaningless ID to track the last loop execution this subgraph was run in.
-<a href=#1087 id=1087 data-nosnippet>1087</a>    /// `(loop_nonce, iter_count)` pair.
-<a href=#1088 id=1088 data-nosnippet>1088</a>    </span>last_loop_nonce: (usize, usize),
-<a href=#1089 id=1089 data-nosnippet>1089</a>
-<a href=#1090 id=1090 data-nosnippet>1090</a>    <span class="doccomment">/// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
-<a href=#1091 id=1091 data-nosnippet>1091</a>    </span>is_lazy: bool,
-<a href=#1092 id=1092 data-nosnippet>1092</a>
-<a href=#1093 id=1093 data-nosnippet>1093</a>    <span class="doccomment">/// The subgraph's loop ID, or `None` for the top level.
-<a href=#1094 id=1094 data-nosnippet>1094</a>    </span>loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
-<a href=#1095 id=1095 data-nosnippet>1095</a>    <span class="doccomment">/// The loop depth of the subgraph.
-<a href=#1096 id=1096 data-nosnippet>1096</a>    </span>loop_depth: usize,
-<a href=#1097 id=1097 data-nosnippet>1097</a>}
-<a href=#1098 id=1098 data-nosnippet>1098</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; SubgraphData&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#1099 id=1099 data-nosnippet>1099</a>    <span class="attr">#[expect(clippy::too_many_arguments, reason = <span class="string">"internal use"</span>)]
-<a href=#1100 id=1100 data-nosnippet>1100</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-<a href=#1101 id=1101 data-nosnippet>1101</a>        name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
-<a href=#1102 id=1102 data-nosnippet>1102</a>        stratum: usize,
-<a href=#1103 id=1103 data-nosnippet>1103</a>        subgraph: <span class="kw">impl </span>Subgraph + <span class="lifetime">'a</span>,
-<a href=#1104 id=1104 data-nosnippet>1104</a>        preds: Vec&lt;HandoffId&gt;,
-<a href=#1105 id=1105 data-nosnippet>1105</a>        succs: Vec&lt;HandoffId&gt;,
-<a href=#1106 id=1106 data-nosnippet>1106</a>        is_scheduled: bool,
-<a href=#1107 id=1107 data-nosnippet>1107</a>        is_lazy: bool,
-<a href=#1108 id=1108 data-nosnippet>1108</a>        loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
-<a href=#1109 id=1109 data-nosnippet>1109</a>        loop_depth: usize,
-<a href=#1110 id=1110 data-nosnippet>1110</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#1111 id=1111 data-nosnippet>1111</a>        <span class="self">Self </span>{
-<a href=#1112 id=1112 data-nosnippet>1112</a>            name,
-<a href=#1113 id=1113 data-nosnippet>1113</a>            stratum,
-<a href=#1114 id=1114 data-nosnippet>1114</a>            subgraph: Box::new(subgraph),
-<a href=#1115 id=1115 data-nosnippet>1115</a>            preds,
-<a href=#1116 id=1116 data-nosnippet>1116</a>            succs,
-<a href=#1117 id=1117 data-nosnippet>1117</a>            is_scheduled: Cell::new(is_scheduled),
-<a href=#1118 id=1118 data-nosnippet>1118</a>            last_tick_run_in: <span class="prelude-val">None</span>,
-<a href=#1119 id=1119 data-nosnippet>1119</a>            last_loop_nonce: (<span class="number">0</span>, <span class="number">0</span>),
-<a href=#1120 id=1120 data-nosnippet>1120</a>            is_lazy,
-<a href=#1121 id=1121 data-nosnippet>1121</a>            loop_id,
-<a href=#1122 id=1122 data-nosnippet>1122</a>            loop_depth,
-<a href=#1123 id=1123 data-nosnippet>1123</a>        }
-<a href=#1124 id=1124 data-nosnippet>1124</a>    }
-<a href=#1125 id=1125 data-nosnippet>1125</a>}
-<a href=#1126 id=1126 data-nosnippet>1126</a>
-<a href=#1127 id=1127 data-nosnippet>1127</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LoopData {
-<a href=#1128 id=1128 data-nosnippet>1128</a>    <span class="doccomment">/// Count of iterations of this loop.
-<a href=#1129 id=1129 data-nosnippet>1129</a>    </span>iter_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-<a href=#1130 id=1130 data-nosnippet>1130</a>    <span class="doccomment">/// If the loop has reason to do another iteration.
-<a href=#1131 id=1131 data-nosnippet>1131</a>    </span>allow_another_iteration: bool,
-<a href=#1132 id=1132 data-nosnippet>1132</a>}</code></pre></div></section></main></body></html>
+<a href=#1078 id=1078 data-nosnippet>1078</a><span class="doccomment">/// A subgraph along with its predecessor and successor [SubgraphId]s.
+<a href=#1079 id=1079 data-nosnippet>1079</a>///
+<a href=#1080 id=1080 data-nosnippet>1080</a>/// Used internally by the [Dfir] struct to represent the dataflow graph
+<a href=#1081 id=1081 data-nosnippet>1081</a>/// structure and scheduled state.
+<a href=#1082 id=1082 data-nosnippet>1082</a></span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct </span>SubgraphData&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#1083 id=1083 data-nosnippet>1083</a>    <span class="doccomment">/// A friendly name for diagnostics.
+<a href=#1084 id=1084 data-nosnippet>1084</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
+<a href=#1085 id=1085 data-nosnippet>1085</a>    <span class="doccomment">/// This subgraph's stratum number.
+<a href=#1086 id=1086 data-nosnippet>1086</a>    ///
+<a href=#1087 id=1087 data-nosnippet>1087</a>    /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
+<a href=#1088 id=1088 data-nosnippet>1088</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) stratum: usize,
+<a href=#1089 id=1089 data-nosnippet>1089</a>    <span class="doccomment">/// The actual execution code of the subgraph.
+<a href=#1090 id=1090 data-nosnippet>1090</a>    </span>subgraph: Box&lt;<span class="kw">dyn </span>Subgraph + <span class="lifetime">'a</span>&gt;,
+<a href=#1091 id=1091 data-nosnippet>1091</a>
+<a href=#1092 id=1092 data-nosnippet>1092</a>    <span class="attr">#[expect(dead_code, reason = <span class="string">"may be useful in the future"</span>)]
+<a href=#1093 id=1093 data-nosnippet>1093</a>    </span>preds: Vec&lt;HandoffId&gt;,
+<a href=#1094 id=1094 data-nosnippet>1094</a>    succs: Vec&lt;HandoffId&gt;,
+<a href=#1095 id=1095 data-nosnippet>1095</a>
+<a href=#1096 id=1096 data-nosnippet>1096</a>    <span class="doccomment">/// If this subgraph is scheduled in [`dfir_rs::stratum_queues`].
+<a href=#1097 id=1097 data-nosnippet>1097</a>    /// [`Cell`] allows modifying this field when iterating `Self::preds` or
+<a href=#1098 id=1098 data-nosnippet>1098</a>    /// `Self::succs`, as all `SubgraphData` are owned by the same vec
+<a href=#1099 id=1099 data-nosnippet>1099</a>    /// `dfir_rs::subgraphs`.
+<a href=#1100 id=1100 data-nosnippet>1100</a>    </span>is_scheduled: Cell&lt;bool&gt;,
+<a href=#1101 id=1101 data-nosnippet>1101</a>
+<a href=#1102 id=1102 data-nosnippet>1102</a>    <span class="doccomment">/// Keep track of the last tick that this subgraph was run in
+<a href=#1103 id=1103 data-nosnippet>1103</a>    </span>last_tick_run_in: <span class="prelude-ty">Option</span>&lt;TickInstant&gt;,
+<a href=#1104 id=1104 data-nosnippet>1104</a>    <span class="doccomment">/// A meaningless ID to track the last loop execution this subgraph was run in.
+<a href=#1105 id=1105 data-nosnippet>1105</a>    /// `(loop_nonce, iter_count)` pair.
+<a href=#1106 id=1106 data-nosnippet>1106</a>    </span>last_loop_nonce: (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;),
+<a href=#1107 id=1107 data-nosnippet>1107</a>
+<a href=#1108 id=1108 data-nosnippet>1108</a>    <span class="doccomment">/// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
+<a href=#1109 id=1109 data-nosnippet>1109</a>    </span>is_lazy: bool,
+<a href=#1110 id=1110 data-nosnippet>1110</a>
+<a href=#1111 id=1111 data-nosnippet>1111</a>    <span class="doccomment">/// The subgraph's loop ID, or `None` for the top level.
+<a href=#1112 id=1112 data-nosnippet>1112</a>    </span>loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
+<a href=#1113 id=1113 data-nosnippet>1113</a>    <span class="doccomment">/// The loop depth of the subgraph.
+<a href=#1114 id=1114 data-nosnippet>1114</a>    </span>loop_depth: usize,
+<a href=#1115 id=1115 data-nosnippet>1115</a>}
+<a href=#1116 id=1116 data-nosnippet>1116</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; SubgraphData&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#1117 id=1117 data-nosnippet>1117</a>    <span class="attr">#[expect(clippy::too_many_arguments, reason = <span class="string">"internal use"</span>)]
+<a href=#1118 id=1118 data-nosnippet>1118</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+<a href=#1119 id=1119 data-nosnippet>1119</a>        name: Cow&lt;<span class="lifetime">'static</span>, str&gt;,
+<a href=#1120 id=1120 data-nosnippet>1120</a>        stratum: usize,
+<a href=#1121 id=1121 data-nosnippet>1121</a>        subgraph: <span class="kw">impl </span>Subgraph + <span class="lifetime">'a</span>,
+<a href=#1122 id=1122 data-nosnippet>1122</a>        preds: Vec&lt;HandoffId&gt;,
+<a href=#1123 id=1123 data-nosnippet>1123</a>        succs: Vec&lt;HandoffId&gt;,
+<a href=#1124 id=1124 data-nosnippet>1124</a>        is_scheduled: bool,
+<a href=#1125 id=1125 data-nosnippet>1125</a>        is_lazy: bool,
+<a href=#1126 id=1126 data-nosnippet>1126</a>        loop_id: <span class="prelude-ty">Option</span>&lt;LoopId&gt;,
+<a href=#1127 id=1127 data-nosnippet>1127</a>        loop_depth: usize,
+<a href=#1128 id=1128 data-nosnippet>1128</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#1129 id=1129 data-nosnippet>1129</a>        <span class="self">Self </span>{
+<a href=#1130 id=1130 data-nosnippet>1130</a>            name,
+<a href=#1131 id=1131 data-nosnippet>1131</a>            stratum,
+<a href=#1132 id=1132 data-nosnippet>1132</a>            subgraph: Box::new(subgraph),
+<a href=#1133 id=1133 data-nosnippet>1133</a>            preds,
+<a href=#1134 id=1134 data-nosnippet>1134</a>            succs,
+<a href=#1135 id=1135 data-nosnippet>1135</a>            is_scheduled: Cell::new(is_scheduled),
+<a href=#1136 id=1136 data-nosnippet>1136</a>            last_tick_run_in: <span class="prelude-val">None</span>,
+<a href=#1137 id=1137 data-nosnippet>1137</a>            last_loop_nonce: (<span class="number">0</span>, <span class="prelude-val">None</span>),
+<a href=#1138 id=1138 data-nosnippet>1138</a>            is_lazy,
+<a href=#1139 id=1139 data-nosnippet>1139</a>            loop_id,
+<a href=#1140 id=1140 data-nosnippet>1140</a>            loop_depth,
+<a href=#1141 id=1141 data-nosnippet>1141</a>        }
+<a href=#1142 id=1142 data-nosnippet>1142</a>    }
+<a href=#1143 id=1143 data-nosnippet>1143</a>}
+<a href=#1144 id=1144 data-nosnippet>1144</a>
+<a href=#1145 id=1145 data-nosnippet>1145</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>LoopData {
+<a href=#1146 id=1146 data-nosnippet>1146</a>    <span class="doccomment">/// Count of iterations of this loop.
+<a href=#1147 id=1147 data-nosnippet>1147</a>    </span>iter_count: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#1148 id=1148 data-nosnippet>1148</a>    <span class="doccomment">/// If the loop has reason to do another iteration.
+<a href=#1149 id=1149 data-nosnippet>1149</a>    </span>allow_another_iteration: bool,
+<a href=#1150 id=1150 data-nosnippet>1150</a>}
+<a href=#1151 id=1151 data-nosnippet>1151</a>
+<a href=#1152 id=1152 data-nosnippet>1152</a><span class="doccomment">/// Defines when state should be reset.
+<a href=#1153 id=1153 data-nosnippet>1153</a></span><span class="attr">#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+<a href=#1154 id=1154 data-nosnippet>1154</a></span><span class="kw">pub enum </span>StateLifespan {
+<a href=#1155 id=1155 data-nosnippet>1155</a>    <span class="doccomment">/// Always reset, a ssociated with the subgraph.
+<a href=#1156 id=1156 data-nosnippet>1156</a>    </span>Subgraph(SubgraphId),
+<a href=#1157 id=1157 data-nosnippet>1157</a>    <span class="doccomment">/// Reset between loop executions.
+<a href=#1158 id=1158 data-nosnippet>1158</a>    </span>Loop(LoopId),
+<a href=#1159 id=1159 data-nosnippet>1159</a>    <span class="doccomment">/// Reset between ticks.
+<a href=#1160 id=1160 data-nosnippet>1160</a>    </span>Tick,
+<a href=#1161 id=1161 data-nosnippet>1161</a>    <span class="doccomment">/// Never reset.
+<a href=#1162 id=1162 data-nosnippet>1162</a>    </span>Static,
+<a href=#1163 id=1163 data-nosnippet>1163</a>}</code></pre></div></section></main></body></html>
