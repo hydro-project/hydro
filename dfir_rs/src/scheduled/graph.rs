@@ -352,8 +352,8 @@ impl<'a> Dfir<'a> {
                                 (loop_iter_count.unwrap(), false)
                             }
                         } else {
-                            // We are in a new loop execution.
-                            (0, true)
+                            // The loop execution has already begun, but this is the first time this particular subgraph is running.
+                            (0, false)
                         };
 
                     if new_loop_execution {
