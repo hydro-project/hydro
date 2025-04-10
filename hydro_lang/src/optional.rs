@@ -15,11 +15,11 @@ use crate::singleton::ZipResult;
 use crate::stream::NoOrder;
 use crate::{Bounded, Location, Singleton, Stream, Tick, Unbounded};
 
-pub struct Optional<T, L, B> {
-    pub(crate) location: L,
+pub struct Optional<Type, Loc, Bound> {
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
-    _phantom: PhantomData<(T, L, B)>,
+    _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
 impl<'a, T, L, B> Optional<T, L, B>

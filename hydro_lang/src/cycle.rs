@@ -1,24 +1,38 @@
 use crate::location::{Location, LocationId};
 use crate::staging_util::Invariant;
 
+pub trait CycleMarker {}
+
 pub enum ForwardRefMarker {}
+impl CycleMarker for ForwardRefMarker {}
+
 pub enum TickCycleMarker {}
+impl CycleMarker for TickCycleMarker {}
 
 pub trait DeferTick {
     fn defer_tick(self) -> Self;
 }
 
-pub trait CycleComplete<'a, T> {
+pub trait CycleComplete<'a, Marker>
+where 
+    Marker: CycleMarker,
+{
     fn complete(self, ident: syn::Ident, expected_location: LocationId);
 }
 
-pub trait CycleCollection<'a, T>: CycleComplete<'a, T> {
+pub trait CycleCollection<'a, Marker>: CycleComplete<'a, Marker>
+where 
+    Marker: CycleMarker,
+{
     type Location: Location<'a>;
 
     fn create_source(ident: syn::Ident, location: Self::Location) -> Self;
 }
 
-pub trait CycleCollectionWithInitial<'a, T>: CycleComplete<'a, T> {
+pub trait CycleCollectionWithInitial<'a, Marker>: CycleComplete<'a, Marker>
+where 
+    Marker: CycleMarker,
+{
     type Location: Location<'a>;
 
     fn create_source(ident: syn::Ident, initial: Self, location: Self::Location) -> Self;

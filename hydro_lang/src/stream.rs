@@ -66,11 +66,11 @@ impl MinOrder<TotalOrder> for NoOrder {
 ///   or [`Unbounded`]
 /// - `O`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
-pub struct Stream<T, L, B, O = TotalOrder> {
-    location: L,
+pub struct Stream<Type, Loc, Bound, Order = TotalOrder> {
+    location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
-    _phantom: PhantomData<(T, L, B, O)>,
+    _phantom: PhantomData<(Type, Loc, Bound, Order)>,
 }
 
 impl<'a, T, L, O> From<Stream<T, L, Bounded, O>> for Stream<T, L, Unbounded, O>

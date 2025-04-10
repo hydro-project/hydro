@@ -13,10 +13,10 @@ use crate::staging_util::{Invariant, get_this_crate};
 pub mod cluster_id;
 pub use cluster_id::ClusterId;
 
-pub struct Cluster<'a, C> {
+pub struct Cluster<'a, ClusterKey> {
     pub(crate) id: usize,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, C>,
+    pub(crate) _phantom: Invariant<'a, ClusterKey>,
 }
 
 impl<C> Debug for Cluster<'_, C> {

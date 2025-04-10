@@ -7,8 +7,8 @@ pub trait CanSend<'a, To>: Location<'a>
 where
     To: Location<'a>,
 {
-    type In<T>;
-    type Out<T>;
+    type In<Type>;
+    type Out<Type>;
 
     /// Given the ordering guarantees of the input, determines the strongest possible
     /// ordering guarantees of the output.

@@ -30,8 +30,8 @@ impl<T> NoAtomic for Cluster<'_, T> {}
 impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 
 #[derive(Clone)]
-pub struct Atomic<L> {
-    pub(crate) tick: Tick<L>,
+pub struct Atomic<Loc> {
+    pub(crate) tick: Tick<Loc>,
 }
 
 impl<'a, L> Location<'a> for Atomic<L>
@@ -62,9 +62,9 @@ impl<L> NoTick for Atomic<L> {}
 
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
-pub struct Tick<L> {
+pub struct Tick<Loc> {
     pub(crate) id: usize,
-    pub(crate) l: L,
+    pub(crate) l: Loc,
 }
 
 impl<'a, L> Location<'a> for Tick<L>

@@ -23,9 +23,9 @@ pub struct ExternalBytesPort {
     pub(crate) port_id: usize,
 }
 
-pub struct ExternalBincodeSink<T>
+pub struct ExternalBincodeSink<Type>
 where
-    T: Serialize,
+    Type: Serialize,
 {
     #[cfg_attr(
         not(feature = "build"),
@@ -37,12 +37,12 @@ where
         expect(unused, reason = "unused without feature")
     )]
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<T>,
+    pub(crate) _phantom: PhantomData<Type>,
 }
 
-pub struct ExternalBincodeStream<T>
+pub struct ExternalBincodeStream<Type>
 where
-    T: DeserializeOwned,
+    Type: DeserializeOwned,
 {
     #[cfg_attr(
         not(feature = "build"),
@@ -54,15 +54,15 @@ where
         expect(unused, reason = "unused without feature")
     )]
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<T>,
+    pub(crate) _phantom: PhantomData<Type>,
 }
 
-pub struct ExternalProcess<'a, P> {
+pub struct ExternalProcess<'a, ProcessKey> {
     pub(crate) id: usize,
 
     pub(crate) flow_state: FlowState,
 
-    pub(crate) _phantom: Invariant<'a, P>,
+    pub(crate) _phantom: Invariant<'a, ProcessKey>,
 }
 
 impl<P> Clone for ExternalProcess<'_, P> {

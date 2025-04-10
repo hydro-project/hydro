@@ -15,11 +15,11 @@ use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
 use crate::{Bounded, Optional, Stream, Unbounded};
 
-pub struct Singleton<T, L, B> {
-    pub(crate) location: L,
+pub struct Singleton<Type, Loc, Bound> {
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
-    _phantom: PhantomData<(T, L, B)>,
+    _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
 impl<'a, T, L, B> Singleton<T, L, B>
@@ -560,13 +560,13 @@ where
     }
 }
 
-pub trait ZipResult<'a, O> {
+pub trait ZipResult<'a, Other> {
     type Out;
     type ElementType;
     type Location;
 
-    fn other_location(other: &O) -> Self::Location;
-    fn other_ir_node(other: O) -> HydroNode;
+    fn other_location(other: &Other) -> Self::Location;
+    fn other_ir_node(other: Other) -> HydroNode;
 
     fn make(location: Self::Location, ir_node: HydroNode) -> Self::Out;
 }
