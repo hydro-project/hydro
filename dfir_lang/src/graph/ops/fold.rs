@@ -83,12 +83,12 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             #[allow(clippy::redundant_closure_call)]
             let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#init));
         };
-        let write_prologue_after =wc
-        .persistence_as_state_lifespan(persistence)
-        .map(|lifespan| quote_spanned! {op_span=>
-            #[allow(clippy::redundant_closure_call)]
-            #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); });
-        }).unwrap_or_default();
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); });
+            }).unwrap_or_default();
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]

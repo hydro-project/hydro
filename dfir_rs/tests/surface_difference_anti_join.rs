@@ -407,15 +407,24 @@ pub fn test_difference_multiset_loop_lifetimes() {
         &*collect_ready::<Vec<_>, _>(&mut result_nn_recv)
     );
     assert_eq!(
-        &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
+        &[(0, 1), (0, 2), (1, 2), (2, 4)],
         &*collect_ready::<Vec<_>, _>(&mut result_nl_recv)
     );
     assert_eq!(
-        &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
+        &[
+            (0, 1),
+            (0, 2),
+            (1, 2),
+            (1, 2),
+            (1, 3),
+            (2, 1),
+            (2, 3),
+            (2, 4)
+        ],
         &*collect_ready::<Vec<_>, _>(&mut result_ln_recv)
     );
     assert_eq!(
-        &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
+        &[(0, 1), (0, 2), (1, 2), (1, 2), (2, 4)],
         &*collect_ready::<Vec<_>, _>(&mut result_ll_recv)
     );
 }
