@@ -70,7 +70,9 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             .persistence_as_state_lifespan(persistences[0])
             .map(|lifespan| quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #df_ident.set_state_lifespan_hook(#pos_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); });
+                #df_ident.set_state_lifespan_hook(
+                    #pos_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                );
             }).unwrap_or_default();
 
         let write_prologue_neg = quote_spanned! {op_span=>
@@ -82,7 +84,9 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             .persistence_as_state_lifespan(persistences[1])
             .map(|lifespan| quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #df_ident.set_state_lifespan_hook(#neg_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); });
+                #df_ident.set_state_lifespan_hook(
+                    #neg_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                );
             }).unwrap_or_default();
 
         let input_neg = &inputs[0]; // N before P
