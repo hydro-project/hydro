@@ -42,14 +42,14 @@ where
 /// by a stream that is not yet known.
 ///
 /// See [`crate::FlowBuilder`] for an explainer on the type parameters.
-pub struct ForwardRef<'a, S>
+pub struct ForwardRef<'a, Stream>
 where
-    S: CycleComplete<'a, ForwardRefMarker>,
+    Stream: CycleComplete<'a, ForwardRefMarker>,
 {
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
     pub(crate) expected_location: LocationId,
-    pub(crate) _phantom: Invariant<'a, S>,
+    pub(crate) _phantom: Invariant<'a, Stream>,
 }
 
 impl<'a, S> Drop for ForwardRef<'a, S>
@@ -74,14 +74,14 @@ where
     }
 }
 
-pub struct TickCycle<'a, S>
+pub struct TickCycle<'a, Stream>
 where
-    S: CycleComplete<'a, TickCycleMarker> + DeferTick,
+    Stream: CycleComplete<'a, TickCycleMarker> + DeferTick,
 {
     pub(crate) completed: bool,
     pub(crate) ident: syn::Ident,
     pub(crate) expected_location: LocationId,
-    pub(crate) _phantom: Invariant<'a, S>,
+    pub(crate) _phantom: Invariant<'a, Stream>,
 }
 
 impl<'a, S> Drop for TickCycle<'a, S>
