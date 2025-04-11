@@ -61,10 +61,12 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let neg_borrow_ident = wc.make_ident("antijoindata_neg_borrow");
         let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
 
-        let (neg_init, neg_borrow) = match persistences[1] {
+        let (write_prologue_neg, neg_borrow) = match persistences[1] {
             Persistence::None | Persistence::Tick | Persistence::Loop => (
                 quote_spanned! {op_span=>
-                    #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
+                    let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
+                    ));
                 },
                 quote_spanned! {op_span=>
                     (&mut *#neg_borrow_ident).get_mut_clear(#context.current_tick())
@@ -72,7 +74,9 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             ),
             Persistence::Static => (
                 quote_spanned! {op_span=>
-                    #root::rustc_hash::FxHashSet::default()
+                    let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                        #root::rustc_hash::FxHashSet::default()
+                    ));
                 },
                 quote_spanned! {op_span=>
                     (&mut *#neg_borrow_ident)
@@ -85,40 +89,36 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos_ident");
         let pos_borrow_ident = wc.make_ident("antijoindata_pos_borrow_ident");
 
-        let write_prologue = match persistences[0] {
-            Persistence::None => Default::default(),
-            Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
-                let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    #neg_init
-                ));
-            },
+        let write_prologue_pos = match persistences[0] {
+            Persistence::Tick | Persistence::Loop | Persistence::None => Default::default(),
             Persistence::Static => quote_spanned! {op_span=>
                 let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
-                let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    #neg_init
-                ));
             },
             Persistence::Mutable => panic!(),
+        };
+        let write_prologue = quote_spanned!{op_span=>
+            #write_prologue_neg
+            #write_prologue_pos
         };
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
         let write_iterator = match persistences[0] {
-            Persistence::None => quote_spanned! {op_span=>
-                let mut #neg_borrow_ident = #neg_init;
+            // Persistence::None => quote_spanned! {op_span=>
+            //     let mut #neg_borrow_ident = #neg_init;
 
-                #[allow(clippy::needless_borrow)]
-                #work_fn(|| #neg_borrow.extend(#input_neg));
+            //     #[allow(clippy::needless_borrow)]
+            //     #work_fn(|| #neg_borrow.extend(#input_neg));
 
-                let #ident = #input_pos.filter(|x: &(_,_)| {
-                    #[allow(clippy::needless_borrow)]
-                    #[allow(clippy::unnecessary_mut_passed)]
-                    !#neg_borrow.contains(&x.0)
-                });
-            },
-            Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
+            //     let #ident = #input_pos.filter(|x: &(_,_)| {
+            //         #[allow(clippy::needless_borrow)]
+            //         #[allow(clippy::unnecessary_mut_passed)]
+            //         !#neg_borrow.contains(&x.0)
+            //     });
+            // },
+            Persistence::None | Persistence::Tick | Persistence::Loop => quote_spanned! {op_span=>
                 let mut #neg_borrow_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#neg_antijoindata_ident)
