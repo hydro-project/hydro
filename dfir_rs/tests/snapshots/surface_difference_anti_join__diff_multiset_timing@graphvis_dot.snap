@@ -1,5 +1,5 @@
 ---
-source: dfir_rs/tests/surface_difference.rs
+source: dfir_rs/tests/surface_difference_anti_join.rs
 expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
 ---
 digraph {

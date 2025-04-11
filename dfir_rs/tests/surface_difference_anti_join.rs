@@ -255,3 +255,33 @@ pub fn test_diff_multiset_static_tick() {
 
     assert_eq!(&[1, 1, 2], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
+
+
+#[multiplatform_test]
+pub fn test_anti_join_multiset() {
+    let (inp_send, inp_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
+    let mut flow = dfir_rs::dfir_syntax! {
+        inp = source_stream(inp_recv) -> tee();
+        diff = anti_join_multiset() -> sort() -> for_each(|x| out_send.send(x).unwrap());
+        inp -> [pos]diff;
+        inp -> defer_tick() -> map(|x: (usize, usize)| x.0) -> [neg]diff;
+    };
+
+    for x in [(1, 2), (1, 2), (2, 3), (3, 4), (4, 5)] {
+        inp_send.send(x).unwrap();
+    }
+    flow.run_tick();
+
+    for x in [(3, 2), (4, 3), (5, 4), (6, 5)] {
+        inp_send.send(x).unwrap();
+    }
+    flow.run_tick();
+
+    flow.run_available();
+    let out: Vec<_> = collect_ready(&mut out_recv);
+    assert_eq!(
+        &[(1, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 4), (6, 5)],
+        &*out
+    );
+}
