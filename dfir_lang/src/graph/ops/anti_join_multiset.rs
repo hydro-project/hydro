@@ -58,33 +58,28 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let make_antijoindata = |persistence, side| {
-            let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
-            let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
-            let (init, borrow) = match persistence {
-                Persistence::None | Persistence::Tick | Persistence::Loop => (
-                    quote_spanned! {op_span=>
-                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
-                    },
-                    quote_spanned! {op_span=>
-                        (&mut *#borrow_ident).get_mut_clear(#context.current_tick())
-                    },
-                ),
-                Persistence::Static => (
-                    quote_spanned! {op_span=>
-                        #root::rustc_hash::FxHashSet::default()
-                    },
-                    quote_spanned! {op_span=>
-                        (&mut *#borrow_ident)
-                    },
-                ),
-                Persistence::Mutable => panic!(),
-            };
-            Ok((antijoindata_ident, borrow_ident, init, borrow))
-        };
+        let neg_borrow_ident = wc.make_ident("antijoindata_neg_borrow");
+        let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
 
-        let (neg_antijoindata_ident, neg_borrow_ident, neg_init, neg_borrow) =
-            make_antijoindata(persistences[1], "neg")?;
+        let (neg_init, neg_borrow) = match persistences[1] {
+            Persistence::None | Persistence::Tick | Persistence::Loop => (
+                quote_spanned! {op_span=>
+                    #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
+                },
+                quote_spanned! {op_span=>
+                    (&mut *#neg_borrow_ident).get_mut_clear(#context.current_tick())
+                },
+            ),
+            Persistence::Static => (
+                quote_spanned! {op_span=>
+                    #root::rustc_hash::FxHashSet::default()
+                },
+                quote_spanned! {op_span=>
+                    (&mut *#neg_borrow_ident)
+                },
+            ),
+            Persistence::Mutable => panic!(),
+        };
 
         // let vec_ident = wc.make_ident("persistvec");
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos_ident");
