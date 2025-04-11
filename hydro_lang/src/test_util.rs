@@ -7,18 +7,13 @@ use serde::de::DeserializeOwned;
 
 use crate::{FlowBuilder, Process, Stream, Unbounded};
 
-pub async fn multi_location_test<
-    'a,
-    O: Serialize + DeserializeOwned + 'static,
+pub async fn multi_location_test<'a, T, C, O>(
+    thunk: impl FnOnce(&FlowBuilder<'a>, &Process<'a, ()>) -> Stream<T, Process<'a>, Unbounded, O>,
+    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
+) where
+    T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
-    OutOrder,
->(
-    thunk: impl FnOnce(
-        &FlowBuilder<'a>,
-        &Process<'a, ()>,
-    ) -> Stream<O, Process<'a>, Unbounded, OutOrder>,
-    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = O>>>) -> C,
-) {
+{
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
     let process = flow.process::<()>();
@@ -39,15 +34,13 @@ pub async fn multi_location_test<
     check(external_out).await;
 }
 
-pub async fn stream_transform_test<
-    'a,
-    O: Serialize + DeserializeOwned + 'static,
+pub async fn stream_transform_test<'a, T, C, O>(
+    thunk: impl FnOnce(&Process<'a>) -> Stream<T, Process<'a>, Unbounded, O>,
+    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
+) where
+    T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
-    OutOrder,
->(
-    thunk: impl FnOnce(&Process<'a>) -> Stream<O, Process<'a>, Unbounded, OutOrder>,
-    check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = O>>>) -> C,
-) {
+{
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
     let process = flow.process::<()>();

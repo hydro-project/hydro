@@ -184,15 +184,13 @@ pub trait Deploy<'a> {
     fn cluster_self_id(env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a;
 }
 
-impl<
-    'a,
+impl<'a, T, N, C, E, M, R> LocalDeploy<'a> for T
+where
     T: Deploy<'a, Process = N, Cluster = C, ExternalProcess = E, Meta = M, GraphId = R>,
     N: Node<Meta = M>,
     C: Node<Meta = M>,
     E: Node<Meta = M>,
     M: Default,
-    R,
-> LocalDeploy<'a> for T
 {
     type Process = N;
     type Cluster = C;
@@ -213,27 +211,43 @@ impl<
     }
 }
 
-pub trait ProcessSpec<'a, D: LocalDeploy<'a> + ?Sized> {
+pub trait ProcessSpec<'a, D>
+where
+    D: LocalDeploy<'a> + ?Sized,
+{
     fn build(self, id: usize, name_hint: &str) -> D::Process;
 }
 
-pub trait IntoProcessSpec<'a, D: LocalDeploy<'a> + ?Sized> {
+pub trait IntoProcessSpec<'a, D>
+where
+    D: LocalDeploy<'a> + ?Sized,
+{
     type ProcessSpec: ProcessSpec<'a, D>;
     fn into_process_spec(self) -> Self::ProcessSpec;
 }
 
-impl<'a, D: LocalDeploy<'a> + ?Sized, T: ProcessSpec<'a, D>> IntoProcessSpec<'a, D> for T {
+impl<'a, D, T> IntoProcessSpec<'a, D> for T
+where
+    D: LocalDeploy<'a> + ?Sized,
+    T: ProcessSpec<'a, D>,
+{
     type ProcessSpec = T;
     fn into_process_spec(self) -> Self::ProcessSpec {
         self
     }
 }
 
-pub trait ClusterSpec<'a, D: LocalDeploy<'a> + ?Sized> {
+pub trait ClusterSpec<'a, D>
+where
+    D: LocalDeploy<'a> + ?Sized,
+{
     fn build(self, id: usize, name_hint: &str) -> D::Cluster;
 }
 
-pub trait ExternalSpec<'a, D: LocalDeploy<'a> + ?Sized> {
+pub trait ExternalSpec<'a, D>
+where
+    D: LocalDeploy<'a> + ?Sized,
+{
     fn build(self, id: usize, name_hint: &str) -> D::ExternalProcess;
 }
 
@@ -255,7 +269,10 @@ pub trait Node {
     );
 }
 
-pub trait RegisterPort<'a, D: Deploy<'a> + ?Sized>: Clone {
+pub trait RegisterPort<'a, D>: Clone
+where
+    D: Deploy<'a> + ?Sized,
+{
     fn register(&self, key: usize, port: D::Port);
     fn raw_port(&self, key: usize) -> D::ExternalRawPort;
 
@@ -264,18 +281,22 @@ pub trait RegisterPort<'a, D: Deploy<'a> + ?Sized>: Clone {
         key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Sink<Bytes, Error = Error>>>> + 'a;
 
-    fn as_bincode_sink<T: Serialize + 'static>(
+    fn as_bincode_sink<T>(
         &self,
         key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a;
+    ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a
+    where
+        T: Serialize + 'static;
 
     fn as_bytes_source(
         &self,
         key: usize,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = Bytes>>>> + 'a;
 
-    fn as_bincode_source<T: DeserializeOwned + 'static>(
+    fn as_bincode_source<T>(
         &self,
         key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a;
+    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
+    where
+        T: DeserializeOwned + 'static;
 }

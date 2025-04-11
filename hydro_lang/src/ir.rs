@@ -144,11 +144,11 @@ pub enum HydroSource {
 }
 
 #[cfg(feature = "build")]
-pub enum BuildersOrCallback<
-    'a,
+pub enum BuildersOrCallback<'a, L, N>
+where
     L: FnMut(&mut HydroLeaf, &mut usize),
     N: FnMut(&mut HydroNode, &mut usize),
-> {
+{
     Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
     Callback(L, N),
 }
@@ -178,7 +178,7 @@ pub enum HydroLeaf {
 
 impl HydroLeaf {
     #[cfg(feature = "build")]
-    pub fn compile_network<'a, D: Deploy<'a>>(
+    pub fn compile_network<'a, D>(
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
@@ -186,7 +186,9 @@ impl HydroLeaf {
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    ) {
+    ) where
+        D: Deploy<'a>,
+    {
         self.transform_children(
             |n, s| {
                 n.compile_network::<D>(
@@ -717,7 +719,7 @@ pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
 impl HydroNode {
     #[cfg(feature = "build")]
-    pub fn compile_network<'a, D: Deploy<'a>>(
+    pub fn compile_network<'a, D>(
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
@@ -725,7 +727,9 @@ impl HydroNode {
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    ) {
+    ) where
+        D: Deploy<'a>,
+    {
         let mut curr_location = None;
 
         self.transform_bottom_up(
@@ -2235,7 +2239,7 @@ impl HydroNode {
 
 #[cfg(feature = "build")]
 #[expect(clippy::too_many_arguments, reason = "networking internals")]
-fn instantiate_network<'a, D: Deploy<'a>>(
+fn instantiate_network<'a, D>(
     from_location: &LocationId,
     from_key: Option<usize>,
     to_location: &LocationId,
@@ -2244,7 +2248,10 @@ fn instantiate_network<'a, D: Deploy<'a>>(
     clusters: &HashMap<usize, D::Cluster>,
     externals: &HashMap<usize, D::ExternalProcess>,
     compile_env: &D::CompileEnv,
-) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>) {
+) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
+where
+    D: Deploy<'a>,
+{
     let ((sink, source), connect_fn) = match (from_location, to_location) {
         (LocationId::Process(from), LocationId::Process(to)) => {
             let from_node = nodes

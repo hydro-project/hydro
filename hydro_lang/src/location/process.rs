@@ -5,10 +5,10 @@ use super::{Location, LocationId};
 use crate::builder::FlowState;
 use crate::staging_util::Invariant;
 
-pub struct Process<'a, P = ()> {
+pub struct Process<'a, ProcessTag = ()> {
     pub(crate) id: usize,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, P>,
+    pub(crate) _phantom: Invariant<'a, ProcessTag>,
 }
 
 impl<P> Debug for Process<'_, P> {

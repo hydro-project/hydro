@@ -208,10 +208,13 @@ impl<'a> RegisterPort<'a, DeployRuntime> for DeployRuntimeNode {
         clippy::manual_async_fn,
         reason = "buggy Clippy lint for lifetime bounds"
     )]
-    fn as_bincode_sink<T: serde::Serialize + 'static>(
+    fn as_bincode_sink<T>(
         &self,
         _key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = std::io::Error>>>> + 'a {
+    ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = std::io::Error>>>> + 'a
+    where
+        T: serde::Serialize + 'static,
+    {
         async { panic!() }
     }
 
@@ -230,10 +233,13 @@ impl<'a> RegisterPort<'a, DeployRuntime> for DeployRuntimeNode {
         clippy::manual_async_fn,
         reason = "buggy Clippy lint for lifetime bounds"
     )]
-    fn as_bincode_source<T: serde::de::DeserializeOwned + 'static>(
+    fn as_bincode_source<T>(
         &self,
         _key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a {
+    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
+    where
+        T: serde::de::DeserializeOwned + 'static,
+    {
         async { panic!() }
     }
 }
