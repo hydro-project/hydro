@@ -15,7 +15,6 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 futures = "0.3.0"
-dfir_datalog_core = { path = "../dfir_datalog_core" }
 dfir_lang = { path = "../dfir_lang" }
 dfir_rs = { path = "../dfir_rs" }
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }

@@ -15,9 +15,8 @@ workspace = true
 default = [ "macros", "debugging", "meta" ]
 
 meta = [ "dep:dfir_lang" ]
-macros = [ "dfir_macro", "dfir_datalog" ]
+macros = [ "dfir_macro" ]
 dfir_macro = [ "dep:dfir_macro" ]
-dfir_datalog = [ "dep:dfir_datalog" ]
 deploy_integration = [ "dep:hydro_deploy_integration" ]
 python = [ "dep:pyo3" ]
 debugging = [ "dfir_lang/debugging" ]
@@ -36,7 +35,6 @@ required-features = [ "python" ]
 bincode = "1.3.1"
 byteorder = "1.3.2"
 bytes = "1.1.0"
-dfir_datalog = { optional = true, path = "../dfir_datalog", version = "^0.13.0" }
 dfir_lang = { path = "../dfir_lang", version = "^0.13.0", optional = true }
 dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.13.0" }
 futures = "0.3.0"
