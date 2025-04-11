@@ -57,12 +57,12 @@ where
     pub(crate) _phantom: PhantomData<Type>,
 }
 
-pub struct ExternalProcess<'a, ProcessKey> {
+pub struct ExternalProcess<'a, ProcessTag> {
     pub(crate) id: usize,
 
     pub(crate) flow_state: FlowState,
 
-    pub(crate) _phantom: Invariant<'a, ProcessKey>,
+    pub(crate) _phantom: Invariant<'a, ProcessTag>,
 }
 
 impl<P> Clone for ExternalProcess<'_, P> {

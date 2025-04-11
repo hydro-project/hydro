@@ -5,9 +5,9 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 #[repr(transparent)]
-pub struct ClusterId<ClusterKey> {
+pub struct ClusterId<ClusterTag> {
     pub raw_id: u32,
-    pub(crate) _phantom: PhantomData<ClusterKey>,
+    pub(crate) _phantom: PhantomData<ClusterTag>,
 }
 
 impl<C> Debug for ClusterId<C> {
