@@ -11,8 +11,8 @@ use super::{
 /// > with output type (K, T)
 ///
 /// For a given tick, computes the anti-join of the items in the input
-/// streams, returning items in the `pos` input --that do not have matching keys
-/// in the `neg` input. NOTE this uses multiset semantics on the positive side,
+/// streams, returning items in the `pos` input that do not have matching keys
+/// in the `neg` input. NOTE this uses multiset semantics only on the positive side,
 /// so duplicated positive inputs will appear in the output either 0 times (if matched in `neg`)
 /// or as many times as they appear in the input (if not matched in `neg`)
 ///
