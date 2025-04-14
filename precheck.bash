@@ -48,8 +48,10 @@ Try '$0 --help' for more information.
 done
 
 TARGETS=""
+FEATURES=""
 if [ "$TEST_DFIR" = true ]; then
     TARGETS="$TARGETS -p dfir_lang -p dfir_rs -p dfir_macro"
+    FEATURES="$FEATURES --features dfir_rs/python"
 fi
 if [ "$TEST_HYDRO" = true ]; then
     TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_local -p hydro_test_local_macro -p hydro_deploy -p hydro_deploy_integration"
@@ -71,11 +73,11 @@ fi
 set -x
 
 cargo +nightly fmt --all
-cargo clippy $TARGETS --all-targets --features dfir_rs/python -- -D warnings
+cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
 # `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.
-INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast --features dfir_rs/python
+INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast $FEATURES
 cargo test $TARGETS --doc
 
 [ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast

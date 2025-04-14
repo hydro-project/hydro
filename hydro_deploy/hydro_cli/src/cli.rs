@@ -28,8 +28,8 @@ enum Commands {
     },
 }
 
-fn async_wrapper_module(py: Python) -> Result<&PyModule, PyErr> {
-    PyModule::from_code(
+fn async_wrapper_module(py: Python<'_>) -> Result<Bound<'_, PyModule>, PyErr> {
+    PyModule::from_code_bound(
         py,
         include_str!("../hydro/async_wrapper.py"),
         "wrapper.py",
@@ -54,15 +54,15 @@ impl Display for PyErrWithTraceback {
 
 fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
     Python::with_gil(|py| -> anyhow::Result<()> {
-        let syspath: &PyList = py
-            .import("sys")
-            .and_then(|s| s.getattr("path"))
-            .and_then(|p| Ok(p.downcast::<PyList>()?))?;
+        let syspath = py.import_bound("sys")?.getattr("path")?;
+        let syspath: &Bound<'_, PyList> = syspath
+            .downcast::<PyList>()
+            .map_err(|downcast_error| anyhow::Error::msg(downcast_error.to_string()))?;
 
         syspath.insert(0, PathBuf::from(".").canonicalize().unwrap())?;
 
         let filename = config.canonicalize().unwrap();
-        let fun: Py<PyAny> = PyModule::from_code(
+        let fun: Py<PyAny> = PyModule::from_code_bound(
             py,
             std::fs::read_to_string(config).unwrap().as_str(),
             filename.to_str().unwrap(),
@@ -78,7 +78,7 @@ fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
             Ok(_) => Ok(()),
             Err(err) => {
                 let traceback = err
-                    .traceback(py)
+                    .traceback_bound(py)
                     .context("traceback was expected but none found")
                     .and_then(|tb| Ok(tb.format()?))?
                     .trim()
@@ -86,7 +86,7 @@ fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
 
                 if err.is_instance_of::<AnyhowError>(py) {
                     let args = err
-                        .value(py)
+                        .value_bound(py)
                         .getattr("args")?
                         .extract::<Vec<AnyhowWrapper>>()?;
                     let wrapper = args.first().unwrap();
@@ -131,7 +131,7 @@ fn cli_entrypoint(args: Vec<String>) -> PyResult<()> {
 }
 
 #[pymodule]
-pub fn cli(_py: Python, m: &PyModule) -> PyResult<()> {
+pub fn cli(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cli_entrypoint, m)?)?;
 
     Ok(())
