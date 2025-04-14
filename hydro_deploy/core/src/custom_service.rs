@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock, Weak};
 
@@ -155,6 +156,11 @@ impl RustCrateSink for CustomClientPort {
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
         Ok(Box::new(move |me| {
+            assert_eq!(
+                me.type_id(),
+                TypeId::of::<CustomClientPort>(),
+                "`instantiate_reverse` received different type than expected."
+            );
             me.downcast_ref::<CustomClientPort>()
                 .unwrap()
                 .record_server_config(client_port);
