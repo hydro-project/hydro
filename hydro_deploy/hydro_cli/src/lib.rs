@@ -1,9 +1,4 @@
-#![expect(
-    unused_qualifications,
-    non_local_definitions,
-    unsafe_op_in_unsafe_fn,
-    reason = "for pyo3 generated code"
-)]
+#![expect(unsafe_op_in_unsafe_fn, reason = "for pyo3 generated code")]
 
 use core::rust_crate::ports::RustCrateSource;
 use std::cell::OnceCell;
@@ -808,7 +803,7 @@ pub fn _core(py: Python<'_>, module: Bound<'_, PyModule>) -> PyResult<()> {
 
     CONVERTERS_MODULE
         .set(
-            PyModule::from_code(
+            PyModule::from_code_bound(
                 py,
                 "
 import asyncio
@@ -828,10 +823,10 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
         .unwrap();
 
     *TOKIO_RUNTIME.write().unwrap() = Some(tokio::runtime::Runtime::new().unwrap());
-    let atexit = PyModule::import(py, "atexit")?;
+    let atexit = PyModule::import_bound(py, "atexit")?;
     atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, &module)?,))?;
 
-    module.add("AnyhowError", py.get_type::<AnyhowError>())?;
+    module.add("AnyhowError", py.get_type_bound::<AnyhowError>())?;
     module.add_class::<AnyhowWrapper>()?;
 
     module.add_class::<HydroflowSink>()?;
