@@ -71,10 +71,10 @@ fi
 set -x
 
 cargo +nightly fmt --all
-cargo clippy $TARGETS --features python -- -D warnings
+cargo clippy $TARGETS --features dfir_rs/python -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
-INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --no-fail-fast --features python
+INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --no-fail-fast --features dfir_rs/python
 cargo test $TARGETS --doc
 
 [ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast

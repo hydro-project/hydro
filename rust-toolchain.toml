@@ -1,5 +1,5 @@
 [toolchain]
-channel = "nightly-2025-04-14" # Make sure to update `template/*/rust-toolchain.toml` as well.
+channel = "nightly-2025-04-05" # Make sure to update `template/*/rust-toolchain.toml` as well.
 components = [
     "rustfmt",
     "clippy",
