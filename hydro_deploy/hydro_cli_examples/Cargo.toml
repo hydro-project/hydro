@@ -7,36 +7,6 @@ edition = "2024"
 [lints]
 workspace = true
 
-[[example]]
-name = "empty_program"
-
-[[example]]
-name = "stdout_receiver"
-
-[[example]]
-name = "tagged_stdout_receiver"
-
-[[example]]
-name = "dedalus_sender"
-
-[[example]]
-name = "dedalus_receiver"
-
-[[example]]
-name = "dedalus_vote_leader"
-
-[[example]]
-name = "dedalus_vote_participant"
-
-[[example]]
-name = "dedalus_2pc_coordinator"
-
-[[example]]
-name = "dedalus_2pc_participant"
-
-[[example]]
-name = "ws_chat_server"
-
 [dev-dependencies]
 dfir_rs = { path = "../../dfir_rs", features = [ "deploy_integration" ] }
 
