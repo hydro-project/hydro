@@ -59,7 +59,7 @@ if [ "$TEST_HYDRO_CLI" = true ]; then
 fi
 
 if [ "$TEST_ALL" = true ]; then
-    TARGETS="--all-targets"
+    TARGETS="--workspace"
 elif [ "" = "$TARGETS" ]; then
     echo "$0: No targets specified.
 Try '$0 --help' for more information.
@@ -71,10 +71,11 @@ fi
 set -x
 
 cargo +nightly fmt --all
-cargo clippy $TARGETS --features dfir_rs/python -- -D warnings
+cargo clippy $TARGETS --all-targets --features dfir_rs/python -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
-INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --no-fail-fast --features dfir_rs/python
+# `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.
+INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast --features dfir_rs/python
 cargo test $TARGETS --doc
 
 [ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
