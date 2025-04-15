@@ -130,6 +130,7 @@ jobs:
       CARGO_PROFILE_TEST_STRIP: "debuginfo"
       CARGO_PROFILE_RELEASE_STRIP: "debuginfo"
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-stable' && 'stable' || '' }}
+      RUST_BACKTRACE: 1 # Needed since python tests don't use `cargo` i.e. `.cargo/config.toml`.
 
     steps:
       - name: Checkout sources
