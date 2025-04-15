@@ -1,4 +1,5 @@
 use dfir_rs::scheduled::ticks::TickInstant;
+use dfir_rs::util::collect_ready;
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
@@ -26,10 +27,7 @@ pub fn test_reduce_tick() {
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    assert_eq!(
-        &[3],
-        &*dfir_rs::util::collect_ready::<Vec<_>, _>(&mut result_recv)
-    );
+    assert_eq!(&[3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
@@ -39,10 +37,7 @@ pub fn test_reduce_tick() {
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    assert_eq!(
-        &[7],
-        &*dfir_rs::util::collect_ready::<Vec<_>, _>(&mut result_recv)
-    );
+    assert_eq!(&[7], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
 #[multiplatform_test]
@@ -69,10 +64,7 @@ pub fn test_reduce_static() {
         (TickInstant::new(1), 0),
         (df.current_tick(), df.current_stratum())
     );
-    assert_eq!(
-        &[3],
-        &*dfir_rs::util::collect_ready::<Vec<_>, _>(&mut result_recv)
-    );
+    assert_eq!(&[3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     items_send.send(3).unwrap();
     items_send.send(4).unwrap();
@@ -82,10 +74,7 @@ pub fn test_reduce_static() {
         (TickInstant::new(2), 0),
         (df.current_tick(), df.current_stratum())
     );
-    assert_eq!(
-        &[10],
-        &*dfir_rs::util::collect_ready::<Vec<_>, _>(&mut result_recv)
-    );
+    assert_eq!(&[10], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
 #[multiplatform_test]
@@ -184,5 +173,43 @@ pub fn test_reduce() {
     assert_eq!(
         (TickInstant::new(3), 0),
         (df.current_tick(), df.current_stratum())
+    );
+}
+
+#[test]
+fn test_reduce_loop_lifetime() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        a = source_iter(0..10);
+        loop {
+            b = a -> batch() -> tee();
+            loop {
+                b -> repeat_n(5)
+                    -> reduce::<'none>(|old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result1_send.send(v).unwrap());
+
+                b -> repeat_n(5)
+                    -> reduce::<'loop>(|old: &mut _, val| {
+                        *old += val;
+                    })
+                    -> for_each(|v| result2_send.send(v).unwrap());
+            };
+        };
+    };
+    df.run_available();
+
+    // `'none` resets each iteration.
+    assert_eq!(
+        &[45, 45, 45, 45, 45],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+    // `'loop` accumulates across iterations.
+    assert_eq!(
+        &[45, 90, 135, 180, 225],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
     );
 }

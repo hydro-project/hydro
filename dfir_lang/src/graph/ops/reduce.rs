@@ -1,10 +1,9 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream, 1 output stream
 ///
@@ -57,31 +56,20 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    is_pull,
                    singleton_output_ident,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
                diagnostics| {
-        let persistence = match persistence_args[..] {
-            [] => Persistence::Tick,
-            [a] => a,
-            _ => unreachable!(),
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+
+        let write_prologue = quote_spanned! {op_span=>
+            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));
         };
-        if Persistence::Mutable == persistence {
-            diagnostics.push(Diagnostic::spanned(
-                op_span,
-                Level::Error,
-                "An implementation of 'mutable does not exist",
-            ));
-            return Err(());
-        }
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(::std::option::Option::None); });
+            }).unwrap_or_default();
 
         let func = &arguments[0];
         let accumulator_ident = wc.make_ident("accumulator");
@@ -103,27 +91,19 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             call_comb_type(&mut *#accumulator_ident, #iterator_item_ident, #func);
         };
 
-        let mut write_prologue = quote_spanned! {op_span=>
-            #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(
-                ::std::cell::RefCell::new(::std::option::Option::None)
-            );
+        let assign_accum_ident = quote_spanned! {op_span=>
+            #[allow(unused_mut)]
+            let mut #accumulator_ident = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                #context.state_ref_unchecked(#singleton_output_ident)
+            }.borrow_mut();
         };
-        if Persistence::Tick == persistence {
-            write_prologue.extend(quote_spanned! {op_span=>
-                // Reset the value to the initializer fn at the end of each tick.
-                #df_ident.set_state_tick_hook(#singleton_output_ident, |rcell| { rcell.take(); });
-            });
-        }
 
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    let mut #accumulator_ident = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#singleton_output_ident)
-                    }.borrow_mut();
+                    #assign_accum_ident
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -138,17 +118,14 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         } else {
             // Is only push when used as a singleton, so no need to push to `outputs[0]`.
             quote_spanned! {op_span=>
-                let #ident = {
-                    #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        let mut #accumulator_ident = unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#singleton_output_ident)
-                        }.borrow_mut();
-                        #iterator_foreach
-                    })
-                };
+                let #ident = #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
+                    #assign_accum_ident
+
+                    #iterator_foreach
+                });
             }
         };
+
         let write_iterator_after = if Persistence::Static == persistence {
             quote_spanned! {op_span=>
                 #context.schedule_subgraph(#context.current_subgraph(), false);
@@ -159,6 +136,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

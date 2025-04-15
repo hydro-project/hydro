@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![cfg_attr(nightly, feature(file_lock))]
 
 stageleft::stageleft_no_entry_crate!();
 

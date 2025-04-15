@@ -246,7 +246,7 @@ pub fn test_persist_mut() {
     let mut df = dfir_syntax! {
 
         my_tee = source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])
-            -> persist_mut::<'static>() // pull
+            -> persist_mut::<'mutable>() // pull
             -> tee();
 
         my_tee
@@ -254,7 +254,7 @@ pub fn test_persist_mut() {
 
         my_tee
             -> flat_map(|x| if x == 3 {vec![Persist(x), Delete(x)]} else {vec![Persist(x)]})
-            -> persist_mut::<'static>() // push
+            -> persist_mut::<'mutable>() // push
             -> for_each(|v| push_tx.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
@@ -274,7 +274,7 @@ pub fn test_persist_mut_keyed() {
     let mut df = dfir_syntax! {
 
         my_tee = source_iter([Persist(1, 1), Persist(2, 2), Persist(3, 3), Persist(4, 4), Delete(2)])
-            -> persist_mut_keyed::<'static>() // pull
+            -> persist_mut_keyed::<'mutable>() // pull
             -> tee();
 
         my_tee
@@ -282,7 +282,7 @@ pub fn test_persist_mut_keyed() {
 
         my_tee
             -> flat_map(|(k, v)| if v == 3 {vec![Persist(k, v), Delete(k)]} else {vec![Persist(k, v)]})
-            -> persist_mut_keyed::<'static>() // push
+            -> persist_mut_keyed::<'mutable>() // push
             -> for_each(|(_k, v)| push_tx.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);

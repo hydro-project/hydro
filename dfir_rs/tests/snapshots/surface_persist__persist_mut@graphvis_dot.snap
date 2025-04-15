@@ -6,11 +6,11 @@ digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) persist_mut::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) persist_mut::<'mutable>()", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
     n4v1 [label="(n4v1) for_each(|v| pull_tx.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) flat_map(|x| if x == 3 { vec![Persist(x), Delete(x)] } else { vec![Persist(x)] })", shape=house, fillcolor="#ffff88"]
-    n6v1 [label="(n6v1) persist_mut::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) persist_mut::<'mutable>()", shape=invhouse, fillcolor="#88aaff"]
     n7v1 [label="(n7v1) for_each(|v| push_tx.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]

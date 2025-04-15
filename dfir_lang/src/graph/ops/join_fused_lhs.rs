@@ -1,13 +1,12 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 use syn::spanned::Spanned;
 
-use super::join_fused::{make_joindata, parse_argument, parse_persistences, JoinOptions};
+use super::join_fused::{JoinOptions, make_joindata, parse_argument};
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
+    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// See `join_fused`
 ///
@@ -50,14 +49,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
@@ -66,38 +57,26 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
         let arg0_span = arguments[0].span();
 
-        let persistences = parse_persistences(persistence_args);
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let lhs_join_options =
             parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
 
-        let (lhs_prologue, lhs_pre_write_iter, lhs_borrow) =
+        let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
                 .map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
 
-        let write_prologue_rhs = match persistences[1] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>},
+        let rhs_prologue = match persistences[1] {
+            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
                 let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
-        };
-
-        let write_prologue = quote_spanned! {op_span=>
-            #lhs_prologue
-            #write_prologue_rhs
+            Persistence::Mutable => unreachable!(),
         };
 
         let lhs = &inputs[0];
@@ -116,7 +95,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = match persistences[1] {
-            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+            Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
 
                 let #ident = {
@@ -149,14 +128,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
                 };
             },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+            Persistence::Mutable => unreachable!(),
         };
 
         let write_iterator_after =
@@ -170,7 +142,11 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #lhs_prologue
+                #rhs_prologue
+            },
+            write_prologue_after: lhs_prologue_after,
             write_iterator,
             write_iterator_after,
         })

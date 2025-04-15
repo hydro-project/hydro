@@ -11,8 +11,8 @@ workspace = true
 stageleft_devel = []
 
 [dependencies]
-dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false }
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
+dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.1", features = [
     "build",
     "staged_macro",
     "runtime_support",
@@ -29,7 +29,7 @@ hydro_test_local_macro = { path = "../hydro_test_local_macro" }
 stageleft_tool = "0.8.1"
 
 [dev-dependencies]
-dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false, features = [
+dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false, features = [
     "meta",
 ] }
 insta = "1.39"

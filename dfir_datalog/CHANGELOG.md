@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.13.0 (2025-04-11)
+
+Bumping dependencies before move to separate repo, no code changes.
+
+### Chore
+
+ - <csr-id-e37e35853b44e56d468c885307cbd4fac9a2fe9c/> bump versions, touch changelog, for final release in this repo
+
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Bump versions, touch changelog, for final release in this repo ([`e37e358`](https://github.com/hydro-project/hydro/commit/e37e35853b44e56d468c885307cbd4fac9a2fe9c))
+</details>
+
 ## 0.12.1 (2025-03-15)
 
 ### Documentation
@@ -25,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
+ - 6 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
@@ -37,12 +71,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
     - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
 </details>
 
 ## 0.12.0 (2025-03-08)
 
 <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
 <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/>
+<csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
 ### Chore
 
@@ -116,6 +154,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-5196f247e0124a31567af940541044ce1906cdc1/>
 <csr-id-03b3a349013a71b324276bca5329c33d400a73ff/>
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
+<csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/>
+<csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
+<csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
 ### Refactor (BREAKING)
 

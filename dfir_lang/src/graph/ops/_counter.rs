@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > Arguments: A `tag` string and a `Duration` for how long to wait between printing.
@@ -110,6 +110,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

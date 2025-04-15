@@ -76,6 +76,7 @@ pub const DEST_FILE: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue: write_prologue_sink,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::dest_sink::DEST_SINK.write_fn)(&wc, diagnostics)?;
@@ -91,6 +92,7 @@ pub const DEST_FILE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

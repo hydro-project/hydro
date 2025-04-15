@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.13.0 (2025-04-11)
+
+### New Features
+
+ - <csr-id-127df13b7d7fc12d5265f1d7517f3b66a774dc07/> add resolve_futures and resolve_futures_ordered APIs
+
+### Bug Fixes
+
+ - <csr-id-40075b198b13cb6b4804633b76c96c520394fa71/> fix loop hooks triggered too often, implement lifetimes for `zip`
+
+### Other
+
+ - <csr-id-3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a/> adjust env vars, make DFIR printed span paths relative & re-enable most trybuild tests
+   * Add `PYO3_USE_ABI3_FORWARD_COMPATIBILITY`, move
+   `RUST_LOG`/`RUST_BACKTRACE` env vars to `.cargo/config.toml` (removed
+   from `.vscode/settings.json`). Will now apply in general, so no need to
+   specify everywhere.
+   * Makes display of compiler spans' `source_file()` in `dfir_lang`
+   relative to `DFIR_BASE_DIR` (new) or `CARGO_MANIFEST_DIR`, if possible.
+   * Include `rust-src` `rustup` component to make trybuild error output
+   more consistent:
+   https://github.com/dtolnay/trybuild?tab=readme-ov-file#troubleshooting
+   * Almost all `dfir_rs` trybuild test are re-enabled (except a couple
+   obsolete ones are deleted, and two have inconsistent printing)
+   * Updates docs build to remove old operators
+
+### Refactor
+
+ - <csr-id-b07926f0b1007875eebf3fdc49223aa0cc0ed035/> update examples to use template, fix #1123
+
+### New Features (BREAKING)
+
+ - <csr-id-fbaab5b12c0c661ee08d8ded6862a38834ba62ae/> loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823
+   Also implements loop lifetimes for `difference_multiset` which uses the
+   `anti_join_multiset` codegen.
+   
+   Updates tests for `difference`, `difference_multiset`, `anti_join`, and
+   `anti_join_multiset`
+ - <csr-id-dfb7a1b5ad47f03822e9b7cae7dae81914b305e2/> don't pull in dfir_rs during the compilation stage
+   Because `hydro_lang` is responsible for _generating_ DFIR code, it
+   doesn't actually need to depend on the runtime (`dfir_rs`), other than
+   when it is used in the (legacy) macro mode or when we want to include
+   utilities for runtime logic (`resource_measurement`). This sticks those
+   pieces under feature flags and makes `dfir_rs` an optional dependency,
+   which reduces the compile tree for crates like `hydro_test`.
+
+### Refactor (BREAKING)
+
+ - <csr-id-2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f/> loop machinery, add `'loop` lifetimes, fix #1745
+ - <csr-id-304a8efd2213b31ff80d50925ebda177621dd6ee/> use slotvec for state, disallow state removal #1745
+   Refactor in prep for #1745
+   
+   Instead of each state having an optional end-of-tick reset hook, instead
+   each state will be tied to a particular lifespan (loop iteration, loop
+   execution, tick, static) for its reset hook. The scheduler will maintain
+   various lists of state for each lifespan, and removing state makes
+   maintaining those lists just a tiny bit harder. Since we have never
+   removed state (and its against the spirit of monotonicity), its easier
+   to just remove that unused functionality
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 8 commits contributed to the release over the course of 24 calendar days.
+ - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 8 unique issues were worked on: [#1741](https://github.com/hydro-project/hydro/issues/1741), [#1795](https://github.com/hydro-project/hydro/issues/1795), [#1797](https://github.com/hydro-project/hydro/issues/1797), [#1808](https://github.com/hydro-project/hydro/issues/1808), [#1815](https://github.com/hydro-project/hydro/issues/1815), [#1822](https://github.com/hydro-project/hydro/issues/1822), [#1833](https://github.com/hydro-project/hydro/issues/1833), [#1835](https://github.com/hydro-project/hydro/issues/1835)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1741](https://github.com/hydro-project/hydro/issues/1741)**
+    - Add resolve_futures and resolve_futures_ordered APIs ([`127df13`](https://github.com/hydro-project/hydro/commit/127df13b7d7fc12d5265f1d7517f3b66a774dc07))
+ * **[#1795](https://github.com/hydro-project/hydro/issues/1795)**
+    - Adjust env vars, make DFIR printed span paths relative & re-enable most trybuild tests ([`3aec2f7`](https://github.com/hydro-project/hydro/commit/3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a))
+ * **[#1797](https://github.com/hydro-project/hydro/issues/1797)**
+    - Don't pull in dfir_rs during the compilation stage ([`dfb7a1b`](https://github.com/hydro-project/hydro/commit/dfb7a1b5ad47f03822e9b7cae7dae81914b305e2))
+ * **[#1808](https://github.com/hydro-project/hydro/issues/1808)**
+    - Update examples to use template, fix #1123 ([`b07926f`](https://github.com/hydro-project/hydro/commit/b07926f0b1007875eebf3fdc49223aa0cc0ed035))
+ * **[#1815](https://github.com/hydro-project/hydro/issues/1815)**
+    - Use slotvec for state, disallow state removal #1745 ([`304a8ef`](https://github.com/hydro-project/hydro/commit/304a8efd2213b31ff80d50925ebda177621dd6ee))
+ * **[#1822](https://github.com/hydro-project/hydro/issues/1822)**
+    - Loop machinery, add `'loop` lifetimes, fix #1745 ([`2fdd5da`](https://github.com/hydro-project/hydro/commit/2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f))
+ * **[#1833](https://github.com/hydro-project/hydro/issues/1833)**
+    - Fix loop hooks triggered too often, implement lifetimes for `zip` ([`40075b1`](https://github.com/hydro-project/hydro/commit/40075b198b13cb6b4804633b76c96c520394fa71))
+ * **[#1835](https://github.com/hydro-project/hydro/issues/1835)**
+    - Loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823 ([`fbaab5b`](https://github.com/hydro-project/hydro/commit/fbaab5b12c0c661ee08d8ded6862a38834ba62ae))
+</details>
+
 ## 0.12.1 (2025-03-15)
 
 <csr-id-260902b210378af5291ec71a574256d7a5bcb463/>
@@ -12,6 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-8058d2d6fe45e0286feb8ad48a44b1228f56d9bc/>
 <csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/>
 <csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/>
+<csr-id-fb8393ae61091b04c0d29692aab097573b8db5e8/>
 
 ### Chore
 
@@ -54,7 +147,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 4 calendar days.
+ - 9 commits contributed to the release.
+ - 7 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#1768](https://github.com/hydro-project/hydro/issues/1768), [#1769](https://github.com/hydro-project/hydro/issues/1769), [#1773](https://github.com/hydro-project/hydro/issues/1773), [#1785](https://github.com/hydro-project/hydro/issues/1785), [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
@@ -75,6 +169,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
     - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
  * **Uncategorized**
+    - Release include_mdtests v0.0.0, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`faf0d3e`](https://github.com/hydro-project/hydro/commit/faf0d3ed9f172275f2e2f219c5ead1910c209a36))
     - Attempt to fix releasing of `include_mdtests`, `dfir_rs` ([`fb8393a`](https://github.com/hydro-project/hydro/commit/fb8393ae61091b04c0d29692aab097573b8db5e8))
     - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
     - Set `hydro_deploy_integration` to release as `0.12.1` ([`260902b`](https://github.com/hydro-project/hydro/commit/260902b210378af5291ec71a574256d7a5bcb463))

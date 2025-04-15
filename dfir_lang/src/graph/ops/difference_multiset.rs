@@ -8,7 +8,7 @@ use super::{
 
 /// > 2 input streams of the same type T, 1 output stream of type T
 ///
-/// Forms the set difference of the items in the input
+/// Forms the multiset difference of the items in the input
 /// streams, returning items in the `pos` input that are not found in the
 /// `neg` input.
 ///
@@ -54,6 +54,7 @@ pub const DIFFERENCE_MULTISET: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::anti_join_multiset::ANTI_JOIN_MULTISET.write_fn)(wc, diagnostics)?;
@@ -67,6 +68,7 @@ pub const DIFFERENCE_MULTISET: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

@@ -12,8 +12,8 @@ default = ["stageleft_devel"]
 stageleft_devel = []
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }
-hydro_std = { path = "../hydro_std", version = "^0.12.1" }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.1" }
+hydro_std = { path = "../hydro_std", version = "^0.13.0" }
 stageleft = "0.8.1"
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
@@ -27,10 +27,10 @@ stageleft_tool = "0.8.1"
 [dev-dependencies]
 async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
 ctor = "0.2"
-dfir_lang = { path = "../dfir_lang", version = "^0.12.1" }
+dfir_lang = { path = "../dfir_lang", version = "^0.13.0" }
 futures = "0.3.0"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.1" }
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.1", features = [
     "deploy",
 ] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }

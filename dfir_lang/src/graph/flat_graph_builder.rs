@@ -901,12 +901,41 @@ impl FlatGraphBuilder {
             let Some(op_inst) = self.flat_graph.node_op_inst(node_id) else {
                 continue;
             };
-            let Some(_loop_id) = self.flat_graph.node_loop(node_id) else {
-                continue;
-            };
+            let loop_opt = self.flat_graph.node_loop(node_id);
+
+            // Ensure no `'tick` or `'static` persistences are used WITHIN a loop context.
+            // Ensure no `'loop` persistences are used OUTSIDE a loop context.
+            for persistence in &op_inst.generics.persistence_args {
+                let span = op_inst.generics.generic_args.span();
+                match (loop_opt, persistence) {
+                    (Some(_loop_id), p @ (Persistence::Tick | Persistence::Static)) => {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Operator uses `'{}` persistence, which is not allowed within a `loop {{ ... }}` context.",
+                                p.to_str_lowercase(),
+                            ),
+                        ));
+                    }
+                    (None, p @ (Persistence::None | Persistence::Loop)) => {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Operator uses `'{}` persistence, but is not within a `loop {{ ... }}` context.",
+                                p.to_str_lowercase(),
+                            ),
+                        ));
+                    }
+                    _ => {}
+                }
+            }
 
             // All inputs must be declared in the root block.
-            if Some(FloType::Source) == op_inst.op_constraints.flo_type {
+            if let (Some(_loop_id), Some(FloType::Source)) =
+                (loop_opt, op_inst.op_constraints.flo_type)
+            {
                 self.diagnostics.push(Diagnostic::spanned(
                     node.span(),
                     Level::Error,
@@ -915,17 +944,6 @@ impl FlatGraphBuilder {
                         op_inst.op_constraints.name
                     )
                 ));
-            }
-
-            // Ensure no `'tick` or `'static` persistences are used in a loop context.
-            for persistence in &op_inst.generics.persistence_args {
-                if let Persistence::Tick | Persistence::Static = persistence {
-                    self.diagnostics.push(Diagnostic::spanned(
-                        op_inst.generics.generic_args.span(),
-                        Level::Error,
-                        "Operator uses a `'tick` or `'static` persistence, which is not allowed within a `loop {{ ... }}` context."
-                    ));
-                }
             }
         }
 

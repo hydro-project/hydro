@@ -1064,7 +1064,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_datalog"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "dfir_datalog_core",
  "proc-macro-crate",
@@ -1075,7 +1075,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_datalog_core"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "dfir_lang",
  "insta",
@@ -1091,7 +1091,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1111,7 +1111,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "dfir_lang",
  "itertools 0.13.0",
@@ -1124,7 +1124,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "bincode",
  "byteorder",
@@ -1901,7 +1901,7 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "hydro_cli"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "async-ssh2-lite",
@@ -1932,7 +1932,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "anyhow",
  "async-process",
@@ -1966,7 +1966,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_deploy_integration"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "async-recursion",
  "async-trait",
@@ -1982,7 +1982,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.12.1"
+version = "0.13.1"
 dependencies = [
  "async-ssh2-lite",
  "bincode",
@@ -2021,7 +2021,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.12.1"
+version = "0.13.0"
 dependencies = [
  "async-ssh2-lite",
  "ctor 0.2.9",

@@ -811,11 +811,6 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
-    /// Generate a deterministic `Ident` for the given loop ID.
-    fn loop_as_ident(loop_id: GraphLoopId) -> Ident {
-        Ident::new(&format!("loop_{:?}", loop_id.data()), Span::call_site())
-    }
-
     /// Code for adding all nested loops.
     fn codegen_nested_loops(&self, df: &Ident) -> TokenStream {
         // Breadth-first iteration from outermost (root) loops to deepest nested loops.
@@ -824,10 +819,10 @@ impl DfirGraph {
         while let Some(loop_id) = queue.pop_front() {
             let parent_opt = self
                 .loop_parent(loop_id)
-                .map(Self::loop_as_ident)
+                .map(|loop_id| loop_id.as_ident(Span::call_site()))
                 .map(|ident| quote! { Some(#ident) })
                 .unwrap_or_else(|| quote! { None });
-            let loop_name = Self::loop_as_ident(loop_id);
+            let loop_name = loop_id.as_ident(Span::call_site());
             out.append_all(quote! {
                 let #loop_name = #df.add_loop(#parent_opt);
             });
@@ -882,6 +877,7 @@ impl DfirGraph {
             });
 
         let mut op_prologue_code = Vec::new();
+        let mut op_prologue_after_code = Vec::new();
         let mut subgraphs = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in subgraphs_without_preds
@@ -1078,6 +1074,7 @@ impl DfirGraph {
                                 (op_constraints.write_fn)(&context_args, diagnostics);
                             let OperatorWriteOutput {
                                 write_prologue,
+                                write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
                             } = write_result.unwrap_or_else(|()| {
@@ -1097,7 +1094,7 @@ impl DfirGraph {
                                 }
                             });
                             op_prologue_code.push(write_prologue);
-
+                            op_prologue_after_code.push(write_prologue_after);
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
@@ -1218,12 +1215,14 @@ impl DfirGraph {
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
                 let loop_id_opt = loop_id
-                    .map(Self::loop_as_ident)
+                    .map(|loop_id| loop_id.as_ident(Span::call_site()))
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
 
+                let sg_ident = subgraph_id.as_ident(Span::call_site());
+
                 subgraphs.push(quote! {
-                    #df.add_subgraph_full(
+                    let #sg_ident = #df.add_subgraph_full(
                         #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),
@@ -1252,6 +1251,7 @@ impl DfirGraph {
             #loop_code
             #( #op_prologue_code )*
             #( #subgraphs )*
+            #( #op_prologue_after_code )*
         };
 
         let meta_graph_json = serde_json::to_string(&self).unwrap();

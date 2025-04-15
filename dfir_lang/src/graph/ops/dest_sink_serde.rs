@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    make_missing_runtime_msg, OperatorCategory, OperatorConstraints,
-    OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    make_missing_runtime_msg,
 };
 
 /// > Arguments: A [serializing async `Sink`](https://docs.rs/futures/latest/futures/sink/trait.Sink.html).
@@ -51,6 +51,7 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::dest_sink::DEST_SINK.write_fn)(wc, diagnostics)?;
@@ -66,6 +67,7 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

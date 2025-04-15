@@ -20,7 +20,7 @@ impl<P> Debug for Process<'_, P> {
 impl<P> Eq for Process<'_, P> {}
 impl<P> PartialEq for Process<'_, P> {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.flow_state.as_ptr() == other.flow_state.as_ptr()
+        self.id == other.id && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 

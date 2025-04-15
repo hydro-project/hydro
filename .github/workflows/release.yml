@@ -79,6 +79,14 @@ jobs:
           hydro_lang hydro_std
           hydro_deploy hydro_cli hydro_deploy_integration
           multiplatform_test
+          |& tee release.log
         env:
           # Make sure to set this so the `gh` CLI works using our token.
           GH_TOKEN: ${{ steps.generate_token.outputs.token }}
+
+      - name: Check release.log for changelog review
+        run: |
+          if grep "WOULD ask for review" release.log; then
+            echo "Changelog review required. Please see the line above and check RELEASING.md for more details."
+            exit 1
+          fi
