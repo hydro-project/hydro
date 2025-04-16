@@ -8,8 +8,7 @@ Run pre-check tests for the given targets.
   --dfir        Run DFIR tests
   --hydro       Run Hydro tests
   --hydro-cli   Run tests for the Hydro CLI python interface
-  --help        Display this help message
-"
+  --help        Display this help message"
 
 TEST_DFIR=false
 TEST_HYDRO=false
@@ -39,33 +38,36 @@ while (( $# )) do
         ;;
         *)
             echo "$0: Unknown option: $1
-Try '$0 --help' for more information.
-"
+Try '$0 --help' for more information."
             exit 1
         ;;
     esac
     shift
 done
 
-TARGETS=""
+TARGETS_TEST=""
+TARGETS_DOCS=""
 FEATURES=""
 if [ "$TEST_DFIR" = true ]; then
-    TARGETS="$TARGETS -p dfir_lang -p dfir_rs -p dfir_macro"
+    TARGETS_TEST="$TARGETS_TEST -p dfir_lang -p dfir_rs -p dfir_macro"
+    TARGETS_DOCS="$TARGETS_DOCS -p dfir_lang -p dfir_rs -p dfir_macro"
     FEATURES="$FEATURES --features dfir_rs/python"
 fi
 if [ "$TEST_HYDRO" = true ]; then
-    TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_local -p hydro_test_local_macro -p hydro_deploy -p hydro_deploy_integration"
+    TARGETS_TEST="$TARGETS_TEST -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_local -p hydro_test_local_macro -p hydro_deploy -p hydro_deploy_integration"
+    TARGETS_DOCS="$TARGETS_DOCS -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_local -p hydro_test_local_macro -p hydro_deploy -p hydro_deploy_integration"
 fi
 if [ "$TEST_HYDRO_CLI" = true ]; then
-    TARGETS="$TARGETS -p hydro_cli -p hydro_cli_examples"
+    TARGETS_TEST="$TARGETS_TEST -p hydro_cli -p hydro_cli_examples"
+    TARGETS_DOCS="$TARGETS_DOCS -p hydro_cli"
 fi
 
 if [ "$TEST_ALL" = true ]; then
-    TARGETS="--workspace"
-elif [ "" = "$TARGETS" ]; then
+    TARGETS_TEST="--workspace"
+    TARGETS_DOCS="--workspace"
+elif [ "" = "$TARGETS_TEST" ]; then
     echo "$0: No targets specified.
-Try '$0 --help' for more information.
-"
+Try '$0 --help' for more information."
     exit 2
 fi
 
@@ -73,12 +75,12 @@ fi
 set -x
 
 cargo +nightly fmt --all
-cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
+cargo clippy $TARGETS_TEST --all-targets $FEATURES -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 
 # `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.
-INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast $FEATURES
-[[ "$TEST_HYDRO_CLI" = true && "$TEST_ALL" = false ]] || cargo test $TARGETS --doc
+INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS_TEST --all-targets --no-fail-fast $FEATURES
+cargo test $TARGETS_DOCS --doc
 
 [ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 

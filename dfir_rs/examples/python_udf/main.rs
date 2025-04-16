@@ -1,3 +1,5 @@
+#![cfg(feature = "python")]
+
 use dfir_macro::dfir_syntax;
 use pyo3::{Py, PyAny, PyResult, Python};
 
