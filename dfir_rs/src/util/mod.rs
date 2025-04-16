@@ -33,6 +33,9 @@ pub use socket::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
 pub mod deploy;
 
+#[cfg(feature = "python")]
+pub use pyo3;
+
 use std::io::Read;
 use std::net::SocketAddr;
 use std::num::NonZeroUsize;

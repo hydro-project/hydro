@@ -1,15 +1,6 @@
-#![expect(
-    unused_qualifications,
-    non_local_definitions,
-    unsafe_op_in_unsafe_fn,
-    reason = "for pyo3 generated code"
-)]
-
 use core::rust_crate::ports::RustCrateSource;
-use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 
 use bytes::Bytes;
@@ -20,8 +11,7 @@ use hydro_deploy_integration::{
 use pyo3::exceptions::{PyException, PyStopAsyncIteration};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use pyo3::{create_exception, wrap_pymodule};
-use pyo3_asyncio::TaskLocals;
+use pyo3::{IntoPyObjectExt, create_exception, wrap_pymodule};
 use pythonize::pythonize;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{Mutex, RwLock};
@@ -36,49 +26,6 @@ static TOKIO_RUNTIME: std::sync::RwLock<Option<tokio::runtime::Runtime>> =
 #[pyfunction]
 fn cleanup_runtime() {
     drop(TOKIO_RUNTIME.write().unwrap().take());
-}
-
-struct TokioRuntime {}
-
-impl pyo3_asyncio::generic::Runtime for TokioRuntime {
-    type JoinError = tokio::task::JoinError;
-    type JoinHandle = tokio::task::JoinHandle<()>;
-
-    fn spawn<F>(fut: F) -> Self::JoinHandle
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        TOKIO_RUNTIME
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .spawn(async move {
-                fut.await;
-            })
-    }
-}
-
-tokio::task_local! {
-    static TASK_LOCALS: OnceCell<TaskLocals>;
-}
-
-impl pyo3_asyncio::generic::ContextExt for TokioRuntime {
-    fn scope<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R> + Send>>
-    where
-        F: Future<Output = R> + Send + 'static,
-    {
-        let cell = OnceCell::new();
-        cell.set(locals).unwrap();
-
-        Box::pin(TASK_LOCALS.scope(cell, fut))
-    }
-
-    fn get_task_locals() -> Option<TaskLocals> {
-        TASK_LOCALS
-            .try_with(|c| c.get().cloned())
-            .unwrap_or_default()
-    }
 }
 
 create_exception!(hydro_cli_core, AnyhowError, PyException);
@@ -99,16 +46,20 @@ impl SafeCancelToken {
 
 static CONVERTERS_MODULE: OnceLock<Py<PyModule>> = OnceLock::new();
 
-fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<&PyAny>
+fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<Bound<'_, PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'a> IntoPyObject<'a>,
 {
-    let module = CONVERTERS_MODULE.get().unwrap().clone().into_ref(py);
+    let module = CONVERTERS_MODULE
+        .get()
+        .unwrap()
+        .clone_ref(py)
+        .into_bound(py);
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
 
-    let base_coro = pyo3_asyncio::generic::future_into_py::<TokioRuntime, _, _>(py, async move {
+    let base_coro = pyo3_async_runtimes::tokio::future_into_py::<_, _>(py, async move {
         tokio::select! {
             biased;
             _ = cancel_rx => Ok(None),
@@ -174,7 +125,7 @@ impl Deployment {
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -207,7 +158,7 @@ impl Deployment {
             })
             .add_subclass(GcpComputeEngineHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -232,7 +183,7 @@ impl Deployment {
             })
             .add_subclass(AzureHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
     #[expect(non_snake_case, reason = "pymethods")]
@@ -256,7 +207,7 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -301,10 +252,10 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
-    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -317,7 +268,7 @@ impl Deployment {
         })
     }
 
-    fn start<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn start<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -353,7 +304,7 @@ impl LocalhostHost {
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 }
 
@@ -440,7 +391,7 @@ pub struct Service {
 
 #[pymethods]
 impl Service {
-    fn stop<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stop<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -461,7 +412,7 @@ impl PyReceiver {
         slf
     }
 
-    fn __anext__<'p>(&self, py: Python<'p>) -> Option<&'p PyAny> {
+    fn __anext__<'p>(&self, py: Python<'p>) -> Option<Bound<'p, PyAny>> {
         let receiver = self.receiver.clone();
         Some(
             interruptible_future_to_py(py, async move {
@@ -496,7 +447,7 @@ impl CustomService {
             })
             .add_subclass(CustomClientPort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 }
 
@@ -521,7 +472,7 @@ impl CustomClientPort {
         }
     }
 
-    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             Ok(ServerPort {
@@ -538,7 +489,7 @@ struct HydroflowCrate {
 
 #[pymethods]
 impl HydroflowCrate {
-    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -548,7 +499,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -558,7 +509,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -597,7 +548,7 @@ impl HydroflowCratePorts {
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 }
 
@@ -619,7 +570,7 @@ impl HydroflowCratePort {
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)?)
     }
 
     fn send_to(&self, to: &HydroflowSink) {
@@ -637,7 +588,7 @@ impl HydroflowCratePort {
 }
 
 #[pyfunction]
-fn demux(mapping: &PyDict) -> HydroflowSink {
+fn demux(mapping: Bound<'_, PyDict>) -> HydroflowSink {
     HydroflowSink {
         underlying: Arc::new(core::rust_crate::ports::DemuxSink {
             demux: mapping
@@ -707,7 +658,7 @@ fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
         })
         .add_subclass(HydroflowNull { underlying: arc }),
     )?
-    .into_py(py))
+    .into_py_any(py)?)
 }
 
 #[pyclass]
@@ -723,12 +674,12 @@ fn with_tokio_runtime<T>(f: impl Fn() -> T) -> T {
 
 #[pymethods]
 impl ServerPort {
-    fn json(&self, py: Python<'_>) -> Py<PyAny> {
+    fn json<'py>(&self, py: Python<'py>) -> Bound<'py, PyAny> {
         pythonize(py, &self.underlying).unwrap()
     }
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
-    fn into_source<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn into_source<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
@@ -741,7 +692,7 @@ impl ServerPort {
     }
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
-    fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
@@ -762,7 +713,7 @@ struct PythonSink {
 
 #[pymethods]
 impl PythonSink {
-    fn send<'p>(&self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn send<'p>(&self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let bytes = Bytes::from(data.as_bytes(py).to_vec());
         interruptible_future_to_py(py, async move {
@@ -784,7 +735,7 @@ impl PythonStream {
         slf
     }
 
-    fn __anext__<'p>(&self, py: Python<'p>) -> Option<&'p PyAny> {
+    fn __anext__<'p>(&self, py: Python<'p>) -> Option<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         Some(
             interruptible_future_to_py(py, async move {
@@ -800,7 +751,7 @@ impl PythonStream {
 }
 
 #[pymodule]
-pub fn _core(py: Python<'_>, module: &PyModule) -> PyResult<()> {
+pub fn _core(py: Python<'_>, module: Bound<'_, PyModule>) -> PyResult<()> {
     unsafe {
         pyo3::ffi::PyEval_InitThreads();
     }
@@ -809,7 +760,7 @@ pub fn _core(py: Python<'_>, module: &PyModule) -> PyResult<()> {
         .set(
             PyModule::from_code(
                 py,
-                "
+                c"
 import asyncio
 async def coroutine_to_safely_cancellable(c, cancel_token):
     try:
@@ -819,8 +770,8 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
         await c
         raise asyncio.CancelledError()
 ",
-                "converters",
-                "converters",
+                c"converters",
+                c"converters",
             )?
             .into(),
         )
@@ -828,7 +779,7 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
 
     *TOKIO_RUNTIME.write().unwrap() = Some(tokio::runtime::Runtime::new().unwrap());
     let atexit = PyModule::import(py, "atexit")?;
-    atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, module)?,))?;
+    atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, &module)?,))?;
 
     module.add("AnyhowError", py.get_type::<AnyhowError>())?;
     module.add_class::<AnyhowWrapper>()?;
@@ -852,8 +803,8 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
     module.add_class::<PythonSink>()?;
     module.add_class::<PythonStream>()?;
 
-    module.add_function(wrap_pyfunction!(demux, module)?)?;
-    module.add_function(wrap_pyfunction!(null, module)?)?;
+    module.add_function(wrap_pyfunction!(demux, &module)?)?;
+    module.add_function(wrap_pyfunction!(null, &module)?)?;
 
     module.add_wrapped(wrap_pymodule!(cli::cli))?;
 

@@ -2,8 +2,7 @@ use proc_macro2::Literal;
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs,
-    RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > Arguments: First, the source code for a python module, second, the name of a unary function
@@ -98,9 +97,10 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
                         let func = #root::pyo3::Python::with_gil::<_, #root::pyo3::PyResult<#root::pyo3::Py<#root::pyo3::PyAny>>>(|py| {
                             Ok(#root::pyo3::types::PyModule::from_code(
                                 py,
-                                #py_src,
-                                "_filename",
-                                "_modulename",
+                                &::std::ffi::CString::new(#py_src)
+                                    .expect("Failed to clone python source code into CString"),
+                                c"_filename",
+                                c"_modulename",
                             )?
                             .getattr(#py_func_name)?
                             .into())
