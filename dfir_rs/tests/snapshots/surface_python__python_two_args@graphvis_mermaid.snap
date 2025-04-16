@@ -10,7 +10,7 @@ classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter([(5, 1)])</code>"/]:::pullClass
 2v1[\"<div style=text-align:center>(2v1)</div> <code>py_udf(&quot;<br>def add(a, b):<br>return a + b<br>&quot;, &quot;add&quot;)</code>"/]:::pullClass
-3v1[\"<div style=text-align:center>(3v1)</div> <code>map(|x: PyResult&lt;Py&lt;PyAny&gt;&gt;| Python::with_gil(|py| {<br>    usize::extract(x.unwrap().as_ref(py)).unwrap()<br>}))</code>"/]:::pullClass
+3v1[\"<div style=text-align:center>(3v1)</div> <code>map(|x: PyResult&lt;Py&lt;PyAny&gt;&gt;| Python::with_gil(|py| {<br>    x.unwrap().extract::&lt;usize&gt;(py).unwrap()<br>}))</code>"/]:::pullClass
 4v1[/"(4v1) <code>assert_eq([6])</code>"\]:::pushClass
 3v1-->4v1
 2v1-->3v1

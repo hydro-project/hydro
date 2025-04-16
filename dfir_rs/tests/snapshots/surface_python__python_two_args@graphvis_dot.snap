@@ -7,7 +7,7 @@ digraph {
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([(5, 1)])", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) py_udf(\"\ldef add(a, b):\lreturn a + b\l\", \"add\")\l", shape=invhouse, fillcolor="#88aaff"]
-    n3v1 [label="(n3v1) map(|x: PyResult<Py<PyAny>>| Python::with_gil(|py| {\l    usize::extract(x.unwrap().as_ref(py)).unwrap()\l}))\l", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) map(|x: PyResult<Py<PyAny>>| Python::with_gil(|py| {\l    x.unwrap().extract::<usize>(py).unwrap()\l}))\l", shape=invhouse, fillcolor="#88aaff"]
     n4v1 [label="(n4v1) assert_eq([6])", shape=house, fillcolor="#ffff88"]
     n3v1 -> n4v1
     n2v1 -> n3v1
