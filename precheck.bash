@@ -78,7 +78,7 @@ cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
 
 # `--all-targets` is everything except `--doc`: https://github.com/rust-lang/cargo/issues/6669.
 INSTA_FORCE_PASS=1 INSTA_UPDATE=always TRYBUILD=overwrite cargo test $TARGETS --all-targets --no-fail-fast $FEATURES
-cargo test $TARGETS --doc
+[[ "$TEST_HYDRO_CLI" = true && "$TEST_ALL" = false ]] || cargo test $TARGETS --doc
 
 [ "$TEST_DFIR" = false ] || CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner cargo test -p dfir_rs --target wasm32-unknown-unknown --tests --no-fail-fast
 

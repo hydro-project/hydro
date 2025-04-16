@@ -1,5 +1,3 @@
-#![expect(unsafe_op_in_unsafe_fn, reason = "for pyo3 generated code")]
-
 use core::rust_crate::ports::RustCrateSource;
 use std::collections::HashMap;
 use std::ops::Deref;
@@ -13,7 +11,7 @@ use hydro_deploy_integration::{
 use pyo3::exceptions::{PyException, PyStopAsyncIteration};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
-use pyo3::{create_exception, wrap_pymodule};
+use pyo3::{IntoPyObjectExt, create_exception, wrap_pymodule};
 use pythonize::pythonize;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{Mutex, RwLock};
@@ -94,7 +92,7 @@ static CONVERTERS_MODULE: OnceLock<Py<PyModule>> = OnceLock::new();
 fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<Bound<'_, PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
-    T: IntoPy<PyObject>,
+    T: for<'py> IntoPyObject<'py>,
 {
     let module = CONVERTERS_MODULE
         .get()
@@ -163,14 +161,14 @@ impl Deployment {
     fn Localhost(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_read().Localhost();
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -204,7 +202,7 @@ impl Deployment {
             })
             .add_subclass(GcpComputeEngineHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_any())
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -223,14 +221,14 @@ impl Deployment {
             core::AzureHost::new(id, project, os_type, machine_size, image, region, user)
         });
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(AzureHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, reason = "pymethods")]
@@ -245,7 +243,7 @@ impl Deployment {
             .blocking_write()
             .CustomService(on.underlying.clone(), external_ports);
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Service {
                 underlying: service.clone(),
@@ -254,7 +252,7 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -291,7 +289,7 @@ impl Deployment {
             )
         });
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Service {
                 underlying: service.clone(),
@@ -300,7 +298,7 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 
     fn deploy<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
@@ -345,14 +343,14 @@ impl LocalhostHost {
     fn client_only(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(self.underlying.client_only());
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 }
 
@@ -489,14 +487,14 @@ impl CustomService {
             &self.underlying,
         )));
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(CustomClientPort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 }
 
@@ -590,14 +588,14 @@ impl HydroflowCratePorts {
                 .get_port(name, &self.underlying),
         );
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 }
 
@@ -612,14 +610,14 @@ impl HydroflowCratePort {
     fn merge(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(self.underlying.clone().merge());
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py(py))
+        .into_py_any(py)
     }
 
     fn send_to(&self, to: &HydroflowSink) {
@@ -700,14 +698,14 @@ impl HydroflowNull {
 fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let arc = Arc::new(core::rust_crate::ports::NullSourceSink);
 
-    Ok(Py::new(
+    Py::new(
         py,
         PyClassInitializer::from(HydroflowSink {
             underlying: arc.clone(),
         })
         .add_subclass(HydroflowNull { underlying: arc }),
     )?
-    .into_py(py))
+    .into_py_any(py)
 }
 
 #[pyclass]
@@ -807,9 +805,9 @@ pub fn _core(py: Python<'_>, module: Bound<'_, PyModule>) -> PyResult<()> {
 
     CONVERTERS_MODULE
         .set(
-            PyModule::from_code_bound(
+            PyModule::from_code(
                 py,
-                "
+                c"
 import asyncio
 async def coroutine_to_safely_cancellable(c, cancel_token):
     try:
@@ -819,18 +817,18 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
         await c
         raise asyncio.CancelledError()
 ",
-                "converters",
-                "converters",
+                c"converters",
+                c"converters",
             )?
             .into(),
         )
         .unwrap();
 
     *TOKIO_RUNTIME.write().unwrap() = Some(tokio::runtime::Runtime::new().unwrap());
-    let atexit = PyModule::import_bound(py, "atexit")?;
+    let atexit = PyModule::import(py, "atexit")?;
     atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, &module)?,))?;
 
-    module.add("AnyhowError", py.get_type_bound::<AnyhowError>())?;
+    module.add("AnyhowError", py.get_type::<AnyhowError>())?;
     module.add_class::<AnyhowWrapper>()?;
 
     module.add_class::<HydroflowSink>()?;

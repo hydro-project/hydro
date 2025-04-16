@@ -1,9 +1,11 @@
+use std::ffi::CString;
 use std::fmt::Display;
 use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::{Parser, Subcommand};
 use pyo3::exceptions::PyException;
+use pyo3::ffi::c_str;
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
@@ -29,11 +31,11 @@ enum Commands {
 }
 
 fn async_wrapper_module(py: Python<'_>) -> Result<Bound<'_, PyModule>, PyErr> {
-    PyModule::from_code_bound(
+    PyModule::from_code(
         py,
-        include_str!("../hydro/async_wrapper.py"),
-        "wrapper.py",
-        "wrapper",
+        c_str!(include_str!("../hydro/async_wrapper.py")),
+        c"wrapper.py",
+        c"wrapper",
     )
 }
 
@@ -54,7 +56,7 @@ impl Display for PyErrWithTraceback {
 
 fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
     Python::with_gil(|py| -> anyhow::Result<()> {
-        let syspath = py.import_bound("sys")?.getattr("path")?;
+        let syspath = py.import("sys")?.getattr("path")?;
         let syspath: &Bound<'_, PyList> = syspath
             .downcast::<PyList>()
             .map_err(|downcast_error| anyhow::Error::msg(downcast_error.to_string()))?;
@@ -62,11 +64,11 @@ fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
         syspath.insert(0, PathBuf::from(".").canonicalize().unwrap())?;
 
         let filename = config.canonicalize().unwrap();
-        let fun: Py<PyAny> = PyModule::from_code_bound(
+        let fun: Py<PyAny> = PyModule::from_code(
             py,
-            std::fs::read_to_string(config).unwrap().as_str(),
-            filename.to_str().unwrap(),
-            "",
+            &CString::new(std::fs::read(config).unwrap()).unwrap(),
+            &CString::new(&*filename.to_string_lossy()).unwrap(),
+            c"",
         )
         .with_context(|| format!("failed to load deployment script: {}", filename.display()))?
         .getattr("main")
@@ -78,7 +80,7 @@ fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
             Ok(_) => Ok(()),
             Err(err) => {
                 let traceback = err
-                    .traceback_bound(py)
+                    .traceback(py)
                     .context("traceback was expected but none found")
                     .and_then(|tb| Ok(tb.format()?))?
                     .trim()
@@ -86,7 +88,7 @@ fn deploy(config: PathBuf, args: Vec<String>) -> anyhow::Result<()> {
 
                 if err.is_instance_of::<AnyhowError>(py) {
                     let args = err
-                        .value_bound(py)
+                        .value(py)
                         .getattr("args")?
                         .extract::<Vec<AnyhowWrapper>>()?;
                     let wrapper = args.first().unwrap();
