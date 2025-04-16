@@ -118,14 +118,14 @@ impl Deployment {
     fn Localhost(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_read().Localhost();
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -151,14 +151,14 @@ impl Deployment {
             )
         });
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(GcpComputeEngineHost { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -176,14 +176,14 @@ impl Deployment {
             core::AzureHost::new(id, project, os_type, machine_size, image, region, user)
         });
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(AzureHost { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, reason = "pymethods")]
@@ -198,7 +198,7 @@ impl Deployment {
             .blocking_write()
             .CustomService(on.underlying.clone(), external_ports);
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Service {
                 underlying: service.clone(),
@@ -207,7 +207,7 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
@@ -243,7 +243,7 @@ impl Deployment {
             )
         });
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Service {
                 underlying: service.clone(),
@@ -252,7 +252,7 @@ impl Deployment {
                 underlying: service,
             }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     fn deploy<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
@@ -297,14 +297,14 @@ impl LocalhostHost {
     fn client_only(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(self.underlying.client_only());
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(Host {
                 underlying: arc.clone(),
             })
             .add_subclass(LocalhostHost { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 }
 
@@ -440,14 +440,14 @@ impl CustomService {
             &self.underlying,
         )));
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(CustomClientPort { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 }
 
@@ -541,14 +541,14 @@ impl HydroflowCratePorts {
                 .get_port(name, &self.underlying),
         );
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 }
 
@@ -563,14 +563,14 @@ impl HydroflowCratePort {
     fn merge(&self, py: Python<'_>) -> PyResult<Py<PyAny>> {
         let arc = Arc::new(self.underlying.clone().merge());
 
-        Ok(Py::new(
+        Py::new(
             py,
             PyClassInitializer::from(HydroflowSink {
                 underlying: arc.clone(),
             })
             .add_subclass(HydroflowCratePort { underlying: arc }),
         )?
-        .into_py_any(py)?)
+        .into_py_any(py)
     }
 
     fn send_to(&self, to: &HydroflowSink) {
@@ -651,14 +651,14 @@ impl HydroflowNull {
 fn null(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let arc = Arc::new(core::rust_crate::ports::NullSourceSink);
 
-    Ok(Py::new(
+    Py::new(
         py,
         PyClassInitializer::from(HydroflowSink {
             underlying: arc.clone(),
         })
         .add_subclass(HydroflowNull { underlying: arc }),
     )?
-    .into_py_any(py)?)
+    .into_py_any(py)
 }
 
 #[pyclass]

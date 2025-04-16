@@ -33,9 +33,6 @@ pub use socket::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
 pub mod deploy;
 
-#[cfg(feature = "python")]
-pub use pyo3;
-
 use std::io::Read;
 use std::net::SocketAddr;
 use std::num::NonZeroUsize;
@@ -43,6 +40,8 @@ use std::process::{Child, ChildStdin, ChildStdout, Stdio};
 use std::task::{Context, Poll};
 
 use futures::Stream;
+#[cfg(feature = "python")]
+pub use pyo3;
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
