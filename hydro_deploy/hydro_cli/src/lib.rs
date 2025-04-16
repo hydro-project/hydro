@@ -1,10 +1,8 @@
 #![expect(unsafe_op_in_unsafe_fn, reason = "for pyo3 generated code")]
 
 use core::rust_crate::ports::RustCrateSource;
-use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 
 use bytes::Bytes;
@@ -16,7 +14,6 @@ use pyo3::exceptions::{PyException, PyStopAsyncIteration};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use pyo3::{create_exception, wrap_pymodule};
-use pyo3_async_runtimes::TaskLocals;
 use pythonize::pythonize;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{Mutex, RwLock};
@@ -33,48 +30,48 @@ fn cleanup_runtime() {
     drop(TOKIO_RUNTIME.write().unwrap().take());
 }
 
-struct TokioRuntime {}
+// struct TokioRuntime {}
 
-impl pyo3_async_runtimes::generic::Runtime for TokioRuntime {
-    type JoinError = tokio::task::JoinError;
-    type JoinHandle = tokio::task::JoinHandle<()>;
+// impl pyo3_async_runtimes::generic::Runtime for TokioRuntime {
+//     type JoinError = tokio::task::JoinError;
+//     type JoinHandle = tokio::task::JoinHandle<()>;
 
-    fn spawn<F>(fut: F) -> Self::JoinHandle
-    where
-        F: Future<Output = ()> + Send + 'static,
-    {
-        TOKIO_RUNTIME
-            .read()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .spawn(async move {
-                fut.await;
-            })
-    }
-}
+//     fn spawn<F>(fut: F) -> Self::JoinHandle
+//     where
+//         F: Future<Output = ()> + Send + 'static,
+//     {
+//         TOKIO_RUNTIME
+//             .read()
+//             .unwrap()
+//             .as_ref()
+//             .unwrap()
+//             .spawn(async move {
+//                 fut.await;
+//             })
+//     }
+// }
 
-tokio::task_local! {
-    static TASK_LOCALS: OnceCell<TaskLocals>;
-}
+// tokio::task_local! {
+//     static TASK_LOCALS: OnceCell<TaskLocals>;
+// }
 
-impl pyo3_async_runtimes::generic::ContextExt for TokioRuntime {
-    fn scope<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R> + Send>>
-    where
-        F: Future<Output = R> + Send + 'static,
-    {
-        let cell = OnceCell::new();
-        cell.set(locals).unwrap();
+// impl pyo3_async_runtimes::generic::ContextExt for TokioRuntime {
+//     fn scope<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R> + Send>>
+//     where
+//         F: Future<Output = R> + Send + 'static,
+//     {
+//         let cell = OnceCell::new();
+//         cell.set(locals).unwrap();
 
-        Box::pin(TASK_LOCALS.scope(cell, fut))
-    }
+//         Box::pin(TASK_LOCALS.scope(cell, fut))
+//     }
 
-    fn get_task_locals() -> Option<TaskLocals> {
-        TASK_LOCALS
-            .try_with(|c| c.get().cloned())
-            .unwrap_or_default()
-    }
-}
+//     fn get_task_locals() -> Option<TaskLocals> {
+//         TASK_LOCALS
+//             .try_with(|c| c.get())
+//             .unwrap_or_default()
+//     }
+// }
 
 create_exception!(hydro_cli_core, AnyhowError, PyException);
 
@@ -99,18 +96,21 @@ where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: IntoPy<PyObject>,
 {
-    let module = CONVERTERS_MODULE.get().unwrap().clone().into_bound(py);
+    let module = CONVERTERS_MODULE
+        .get()
+        .unwrap()
+        .clone_ref(py)
+        .into_bound(py);
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
 
-    let base_coro =
-        pyo3_async_runtimes::generic::future_into_py::<TokioRuntime, _, _>(py, async move {
-            tokio::select! {
-                biased;
-                _ = cancel_rx => Ok(None),
-                r = fut => r.map(|o| Some(o))
-            }
-        })?;
+    let base_coro = pyo3_async_runtimes::tokio::future_into_py::<_, _>(py, async move {
+        tokio::select! {
+            biased;
+            _ = cancel_rx => Ok(None),
+            r = fut => r.map(|o| Some(o))
+        }
+    })?;
 
     module.call_method1(
         "coroutine_to_safely_cancellable",
@@ -174,6 +174,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (project, machine_type, image, region, network, user=None))]
     fn GcpComputeEngineHost(
         &self,
         py: Python<'_>,
@@ -207,6 +208,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (project, os_type, machine_size, region, image=None, user=None))]
     fn AzureHost(
         &self,
         py: Python<'_>,
@@ -256,6 +258,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (src, on, bin=None, example=None, profile=None, features=None, args=None, display_id=None, external_ports=None))]
     fn HydroflowCrate(
         &self,
         py: Python<'_>,
@@ -362,6 +365,7 @@ struct GcpNetwork {
 #[pymethods]
 impl GcpNetwork {
     #[new]
+    #[pyo3(signature = (project, existing=None))]
     fn new(project: String, existing: Option<String>) -> Self {
         GcpNetwork {
             underlying: Arc::new(RwLock::new(core::gcp::GcpNetwork::new(project, existing))),
@@ -719,7 +723,7 @@ fn with_tokio_runtime<T>(f: impl Fn() -> T) -> T {
 
 #[pymethods]
 impl ServerPort {
-    fn json(&self, py: Python<'_>) -> Py<PyAny> {
+    fn json<'py>(&self, py: Python<'py>) -> Bound<'py, PyAny> {
         pythonize(py, &self.underlying).unwrap()
     }
 
