@@ -96,14 +96,14 @@ pub const PY_UDF: OperatorConstraints = OperatorConstraints {
                         #root::pyo3::prepare_freethreaded_python();
                         let func = #root::pyo3::Python::with_gil::<_, #root::pyo3::PyResult<#root::pyo3::Py<#root::pyo3::PyAny>>>(|py| {
                             Ok(
-                                #root::pyo3::types::PyAnyMethods::get_attr(
+                                #root::pyo3::types::PyAnyMethods::getattr(
                                     #root::pyo3::types::PyModule::from_code(
                                         py,
                                         &::std::ffi::CString::new(#py_src)
                                             .expect("Failed to clone python source code into CString"),
                                         c"_filename",
                                         c"_modulename",
-                                    )?,
+                                    )?.as_any(),
                                     #py_func_name,
                                 )?
                                 .into()

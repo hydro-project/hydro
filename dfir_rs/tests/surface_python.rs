@@ -17,7 +17,7 @@ def fib(n):
         return fib(n - 2) + fib(n - 1)
 ", "fib")
             -> map(|x: PyResult<Py<PyAny>>| Python::with_gil(|py| {
-                usize::extract(x.unwrap().as_ref(py)).unwrap()
+                x.unwrap().extract::<usize>(py).unwrap()
             }))
             -> assert_eq([0, 1, 1, 2, 3, 5, 8, 13, 21, 34]);
     };
@@ -52,7 +52,7 @@ def add(a, b):
     return a + b
 ", "add")
             -> map(|x: PyResult<Py<PyAny>>| Python::with_gil(|py| {
-                usize::extract(x.unwrap().as_ref(py)).unwrap()
+                x.unwrap().extract::<usize>(py).unwrap()
             }))
             -> assert_eq([6]);
     };
