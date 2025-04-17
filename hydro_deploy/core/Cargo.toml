@@ -13,9 +13,9 @@ workspace = true
 
 [dependencies]
 anyhow = { version = "1.0.82", features = ["backtrace"] }
+async_ssh2_russh = { path = "../../async_ssh2_russh", version = "^0.1.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
-async-ssh2-lite = { version = "0.5.0", features = ["tokio"] }
 async-trait = "0.1.54"
 buildstructor = "0.6.0"
 bytes = "1.1.0"
@@ -37,6 +37,6 @@ serde_path_to_error = "0.1.0"
 shell-escape = "0.1.0"
 tempfile = "3.0.0"
 tokio = { version = "1.29.0", features = ["full"] }
-tokio-stream = { version = "0.1.3", default-features = false }
+tokio-stream = { version = "0.1.3", default-features = false, features = ["io-util"] }
 tokio-util = { version = "0.7.5", features = ["compat", "io-util"] }
 wholesym = "0.8.1"

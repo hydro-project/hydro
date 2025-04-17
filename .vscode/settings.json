@@ -11,6 +11,7 @@
     "rust-analyzer.cargo.features": [
         "hydro_lang/deploy",
         "dfir_rs/deploy_integration",
+        "async_ssh2_russh/sftp",
     ],
     "rust-analyzer.check.features": "all",
     "editor.semanticTokenColorCustomizations": {

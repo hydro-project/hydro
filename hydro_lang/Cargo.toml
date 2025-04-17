@@ -80,7 +80,6 @@ stageleft_tool = "0.8.1"
 rustc_version = "0.4.0"
 
 [dev-dependencies]
-async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
 ctor = "0.2"
 insta = "1.39"
