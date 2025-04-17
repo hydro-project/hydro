@@ -35,9 +35,6 @@ pub use {
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
 mod declarative_macro;
-#[cfg(feature = "dfir_datalog")]
-#[cfg_attr(docsrs, doc(cfg(feature = "dfir_datalog")))]
-pub use dfir_datalog::*;
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 #[cfg(feature = "dfir_macro")]
 pub use dfir_macro::{

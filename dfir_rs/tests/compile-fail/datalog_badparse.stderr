@@ -1,5 +1,0 @@
-error: Failed to parse
- --> tests/compile-fail/datalog_badparse.rs:8:28
-  |
-8 |         out(a) :- in1(a, b), in2
-  |                            ^^^^^

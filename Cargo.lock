@@ -544,26 +544,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d71b6127be86fdcfddb610f7182ac57211d4b18a3e9c82eb2d17662f2227ad6a"
 
 [[package]]
-name = "c2rust-bitfields"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb34f0c0ace43530b2df7f18bc69ee0c4082158aa451ece29602f8c841e73764"
-dependencies = [
- "c2rust-bitfields-derive",
-]
-
-[[package]]
-name = "c2rust-bitfields-derive"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3dd1601a7b828ab874d890e5a895563ca8ad485bdd3d2a359f148c8b72537241"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "cab"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1063,33 +1043,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dfir_datalog"
-version = "0.13.0"
-dependencies = [
- "dfir_datalog_core",
- "proc-macro-crate",
- "proc-macro2",
- "quote",
- "syn 2.0.98",
-]
-
-[[package]]
-name = "dfir_datalog_core"
-version = "0.13.0"
-dependencies = [
- "dfir_lang",
- "insta",
- "prettyplease",
- "proc-macro2",
- "quote",
- "rust-sitter",
- "rust-sitter-tool",
- "slotmap",
- "syn 2.0.98",
- "tempfile",
-]
-
-[[package]]
 name = "dfir_lang"
 version = "0.13.0"
 dependencies = [
@@ -1133,7 +1086,6 @@ dependencies = [
  "clap",
  "colored 2.1.0",
  "criterion",
- "dfir_datalog",
  "dfir_lang",
  "dfir_macro",
  "futures",
@@ -1920,7 +1872,6 @@ dependencies = [
 name = "hydro_cli_examples"
 version = "0.0.0"
 dependencies = [
- "dfir_datalog",
  "dfir_rs",
  "futures",
  "rand 0.8.5",
@@ -4150,55 +4101,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-sitter"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "890cd29b9cd344678003f03f22d8b171a4d4b333f1ba88e2804b1ef7dd39b1d5"
-dependencies = [
- "rust-sitter-macro",
- "tree-sitter-c2rust",
-]
-
-[[package]]
-name = "rust-sitter-common"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d8e1c8d26b8d5fb23415a5123588669e776ad934abbfbe6d8677ed322694216"
-dependencies = [
- "quote",
- "syn 2.0.98",
-]
-
-[[package]]
-name = "rust-sitter-macro"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07defe73314513d2b671b4c81603a236193eabe8ec7afd480dd3ed769dd75fb6"
-dependencies = [
- "proc-macro2",
- "quote",
- "rust-sitter-common",
- "syn 2.0.98",
-]
-
-[[package]]
-name = "rust-sitter-tool"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e666bbe8cf47a6ba0c88da4f2b98ebadb98bc1b5b9723aa5784137ae93f9436"
-dependencies = [
- "cc",
- "rust-sitter-common",
- "serde",
- "serde_json",
- "syn 2.0.98",
- "syn-inline-mod",
- "tempfile",
- "tree-sitter",
- "tree-sitter-generate",
-]
-
-[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4490,7 +4392,6 @@ version = "1.0.128"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ff5456707a1de34e7e37f2a6fd3d3f808c318259cbd01ab6377795054b483d8"
 dependencies = [
- "indexmap",
  "itoa",
  "memchr",
  "ryu",
@@ -4623,12 +4524,6 @@ dependencies = [
  "serde",
  "version_check",
 ]
-
-[[package]]
-name = "smallbitvec"
-version = "2.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcc3fc564a4b53fd1e8589628efafe57602d91bde78be18186b5f61e8faea470"
 
 [[package]]
 name = "smallvec"
@@ -4779,12 +4674,6 @@ name = "str_stack"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9091b6114800a5f2141aee1d1b9d6ca3592ac062dc5decb3764ec5895a47b4eb"
-
-[[package]]
-name = "streaming-iterator"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
 
 [[package]]
 name = "strsim"
@@ -5251,7 +5140,6 @@ dependencies = [
 name = "topolotree"
 version = "0.0.0"
 dependencies = [
- "dfir_datalog",
  "dfir_rs",
  "futures",
  "procinfo",
@@ -5349,62 +5237,6 @@ dependencies = [
  "tracing-core",
  "tracing-log",
 ]
-
-[[package]]
-name = "tree-sitter"
-version = "0.24.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9871f16d6cf5c4757dcf30d5d2172a2df6987c510c017bbb7abfb7f9aa24d06"
-dependencies = [
- "cc",
- "regex",
- "regex-syntax 0.8.5",
- "streaming-iterator",
- "tree-sitter-language",
-]
-
-[[package]]
-name = "tree-sitter-c2rust"
-version = "0.24.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5f97c8ed19295f92e02af90c915c72d0836e08132f155709bc45b66acdfde35"
-dependencies = [
- "c2rust-bitfields",
- "once_cell",
- "regex",
- "regex-syntax 0.8.5",
- "streaming-iterator",
- "tree-sitter-language",
-]
-
-[[package]]
-name = "tree-sitter-generate"
-version = "0.24.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "169563a4e3713ad23a2a755446ed1e3af7db5cfc3b8beb0986b7e96f3619aec3"
-dependencies = [
- "anyhow",
- "heck 0.5.0",
- "indexmap",
- "indoc",
- "lazy_static",
- "log",
- "regex",
- "regex-syntax 0.8.5",
- "rustc-hash 2.0.0",
- "semver 1.0.23",
- "serde",
- "serde_json",
- "smallbitvec",
- "tree-sitter",
- "url",
-]
-
-[[package]]
-name = "tree-sitter-language"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8ddffe35a0e5eeeadf13ff7350af564c6e73993a24db62caee1822b185c2600"
 
 [[package]]
 name = "trim-in-place"
@@ -5580,7 +5412,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]
@@ -5879,7 +5710,6 @@ name = "website_playground"
 version = "0.0.0"
 dependencies = [
  "console_error_panic_hook",
- "dfir_datalog_core",
  "dfir_lang",
  "dfir_rs",
  "futures",

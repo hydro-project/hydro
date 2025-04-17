@@ -25,7 +25,6 @@ path = "src/latency_measure.rs"
 
 [dependencies]
 dfir_rs = { path = "../dfir_rs", features = [ "deploy_integration" ] }
-dfir_datalog = { path = "../dfir_datalog" }
 
 tokio = { version = "1.29.0", features = [ "full" ] }
 serde = { version = "1.0.197", features = ["rc"] }

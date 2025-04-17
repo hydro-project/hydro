@@ -4,8 +4,6 @@
 members = [
     "benches",
     "datastores/gossip_kv",
-    "dfir_datalog_core",
-    "dfir_datalog",
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",

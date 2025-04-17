@@ -64,34 +64,3 @@ async def test_python_sender():
     async for log in receiver_out:
         assert log == "echo \"hi 2!\""
         break
-
-@pytest.mark.asyncio
-async def test_python_receiver():
-    deployment = hydro.Deployment()
-    localhost_machine = deployment.Localhost()
-
-    sender = deployment.HydroflowCrate(
-        src=str((Path(__file__).parent.parent.parent / "hydro_cli_examples").absolute()),
-        example="dedalus_sender",
-        profile="dev",
-        args=[json.dumps(([0], 123))],
-        on=localhost_machine
-    )
-
-    receiver = deployment.CustomService(
-        external_ports=[],
-        on=localhost_machine.client_only(),
-    )
-
-    receiver_port_0 = receiver.client_port()
-    sender.ports.broadcast.send_to(hydro.demux({
-        0: receiver_port_0,
-    }))
-
-    await deployment.deploy()
-    await deployment.start()
-
-    receiver_0_connection = await (await receiver_port_0.server_port()).into_source()
-    async for received in receiver_0_connection:
-        assert decode(bytes(received[8:]), "utf-8") == "Hello 123"
-        break
