@@ -16,7 +16,7 @@ TEST_HYDRO=false
 TEST_HYDRO_CLI=false
 TEST_ALL=false
 
-while (( $# )) do
+while (( $# )); do
     case $1 in
         --dfir)
             TEST_DFIR=true
