@@ -5,10 +5,10 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span><span class="kw">crate</span>::builder::FlowState;
 <a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 <a href=#7 id=7 data-nosnippet>7</a>
-<a href=#8 id=8 data-nosnippet>8</a><span class="kw">pub struct </span>Process&lt;<span class="lifetime">'a</span>, P = ()&gt; {
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">pub struct </span>Process&lt;<span class="lifetime">'a</span>, ProcessTag = ()&gt; {
 <a href=#9 id=9 data-nosnippet>9</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) id: usize,
 <a href=#10 id=10 data-nosnippet>10</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) flow_state: FlowState,
-<a href=#11 id=11 data-nosnippet>11</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, P&gt;,
+<a href=#11 id=11 data-nosnippet>11</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: Invariant&lt;<span class="lifetime">'a</span>, ProcessTag&gt;,
 <a href=#12 id=12 data-nosnippet>12</a>}
 <a href=#13 id=13 data-nosnippet>13</a>
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">impl</span>&lt;P&gt; Debug <span class="kw">for </span>Process&lt;<span class="lifetime">'_</span>, P&gt; {

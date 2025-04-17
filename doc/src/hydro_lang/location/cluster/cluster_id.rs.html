@@ -5,9 +5,9 @@
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>serde::{Deserialize, Serialize};
 <a href=#6 id=6 data-nosnippet>6</a>
 <a href=#7 id=7 data-nosnippet>7</a><span class="attr">#[repr(transparent)]
-<a href=#8 id=8 data-nosnippet>8</a></span><span class="kw">pub struct </span>ClusterId&lt;C&gt; {
+<a href=#8 id=8 data-nosnippet>8</a></span><span class="kw">pub struct </span>ClusterId&lt;ClusterTag&gt; {
 <a href=#9 id=9 data-nosnippet>9</a>    <span class="kw">pub </span>raw_id: u32,
-<a href=#10 id=10 data-nosnippet>10</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: PhantomData&lt;C&gt;,
+<a href=#10 id=10 data-nosnippet>10</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) _phantom: PhantomData&lt;ClusterTag&gt;,
 <a href=#11 id=11 data-nosnippet>11</a>}
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">impl</span>&lt;C&gt; Debug <span class="kw">for </span>ClusterId&lt;C&gt; {

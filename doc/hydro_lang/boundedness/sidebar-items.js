@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Bounded","Unbounded"]};
+window.SIDEBAR_ITEMS = {"enum":["Bounded","Unbounded"],"trait":["Boundedness"]};
