@@ -364,7 +364,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Add globbing utility for testing Markdown as doctests ([`8fc582d`](https://github.com/hydro-project/hydro/commit/8fc582d54ebc7dc974d2fd849b9de59134c1428d))
  * **[#1684](https://github.com/hydro-project/hydro/issues/1684)**
     - Switch transducer -> process (fix #1572) ([`bf4b401`](https://github.com/hydro-project/hydro/commit/bf4b40151f98439570ac81ee6d23440a629b972f))
- * **[#1686](https://github.com/hydro-project/hydro/issues/1686)**
+ * **[#1463](https://github.com/hydro-project/hydro/issues/1463)**
+    - Refactor SSH handling to use `russh` instead of `libssh2`, introducing `async_ssh2_russh` crate ([`commit_hash`](https://github.com/hydro-project/hydro/commit/commit_hash))
+
+* **[#1686](https://github.com/hydro-project/hydro/issues/1686)**
     - Fix broken links, fix #1613 ([`d452739`](https://github.com/hydro-project/hydro/commit/d45273943b0ca087b05f0fe4331b12cbe2ff4e90))
  * **[#1688](https://github.com/hydro-project/hydro/issues/1688)**
     - Remove unused cross_join, fix #1616 ([`c3eedc6`](https://github.com/hydro-project/hydro/commit/c3eedc6b44367519b6055bcdf7366b0a15efb17d))
