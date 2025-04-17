@@ -1,9 +1,19 @@
+//! A simple promise implementation that allows for a single producer to resolve a value to multiple consumers.
+//!
+//! Similar to a oneshot channel, but allows for multiple consumers to wait for the value to be resolved, which will be
+//! provided as a reference (`&T`).
+//!
+//! Similar to an async `OnceCell`, but consumers may only await the value, and may not attempt to set it.
+//!
+//! Use [`channel()`] to create a new promise and resolver pair.
+
 use std::cell::UnsafeCell;
 use std::mem::MaybeUninit;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex, Weak};
 use std::task::{Context, Poll, Waker};
 
+/// Creates a new promise and resolver pair.
 pub fn channel<T>() -> (Resolve<T>, Promise<T>) {
     let inner = Arc::new(Inner::new());
     (
@@ -16,11 +26,7 @@ pub fn channel<T>() -> (Resolve<T>, Promise<T>) {
 
 /// A container for a value of type `T` that may not yet be resolved.
 ///
-/// Similar to a [oneshot channel](`tokio::sync::oneshot`), but allows for multiple consumers to wait for the value to
-/// be resolved, which will be provided as a reference (`&T`).
-///
-/// Similar to a [`OnceCell`](tokio::sync::OnceCell), but consumers may only await the value, and may not attempt to set
-/// it.
+/// Multiple consumers may obtain the value via shared reference (`&`) once resolved.
 pub struct Promise<T> {
     inner: Arc<Inner<T>>,
 }
@@ -55,23 +61,31 @@ pub enum PromiseError {
     Dropped,
 }
 
-// SAFETY: must not be clonable.
-pub(crate) struct Resolve<T> {
+// SAFETY: must not be clonable, as that would allow simultaneous write access to the `Inner` value.
+/// The resolve/send half of a promise. Created via [`channel`], and used to resolve the corresponding [`Promise`] with
+/// a value.
+pub struct Resolve<T> {
     inner: Option<Weak<Inner<T>>>,
 }
 impl<T> Resolve<T> {
-    #[expect(dead_code, reason = "unused")]
+    /// Resolves the promise with the given value, consuming this `Resolve` in the process.
+    ///
+    /// This will panic if the promise has already been resolved.
     pub fn into_resolve(mut self, value: T) {
         self.resolve(value).unwrap_or_else(|_| panic!("already resolved"));
     }
 
+    /// Resolves the promise with the given value, returning an error if the promise has already been resolved.
     pub fn resolve(&mut self, value: T) -> Result<(), T> {
-        let Some(inner) = self.inner.take().and_then(|weak| weak.upgrade()) else {
+        let Some(inner) = self.inner.take() else {
             return Err(value);
         };
-        // SAFETY: `&mut self: Resolve` has exclusive access to `resolve` once.
-        unsafe {
-            inner.resolve(Some(value));
+
+        if let Some(inner) = inner.upgrade() {
+            // SAFETY: `&mut self: Resolve` has exclusive access to `resolve` once.
+            unsafe {
+                inner.resolve(Some(value));
+            }
         }
         Ok(())
     }

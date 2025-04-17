@@ -1,12 +1,13 @@
 //! SFTP support for the `async_ssh2_russh` crate.
 
+use russh::client::Handler;
 use russh_sftp::client::SftpSession;
 #[doc(no_inline)]
 pub use russh_sftp::client::error::Error as SftpError;
 
 use crate::{AsyncChannel, AsyncSession, SshError};
 
-impl AsyncSession {
+impl<H: 'static + Handler> AsyncSession<H> {
     /// Opens an SFTP channel.
     ///
     /// Equivalent to [`AsyncSession::open_channel()`] followed by requesting the SFTP subsystem:

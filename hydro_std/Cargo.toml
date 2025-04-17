@@ -30,5 +30,4 @@ hydro_lang = { path = "../hydro_lang", version = "^0.13.0", features = [
 ] }
 insta = "1.39"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
-async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
 ctor = "0.2"
