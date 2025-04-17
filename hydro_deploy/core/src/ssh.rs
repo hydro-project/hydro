@@ -5,11 +5,11 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
-use async_ssh2_russh::russh::client::Config;
+use async_ssh2_russh::russh::client::{Config, Handler};
 use async_ssh2_russh::russh::{Disconnect, compression};
 use async_ssh2_russh::russh_sftp::protocol::{Status, StatusCode};
 use async_ssh2_russh::sftp::SftpError;
-use async_ssh2_russh::{AsyncChannel, AsyncSession};
+use async_ssh2_russh::{AsyncChannel, AsyncSession, NoCheckHandler};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
 use inferno::collapse::Collapse;
@@ -36,7 +36,10 @@ pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>)
 
 struct LaunchedSshBinary {
     _resource_result: Arc<ResourceResult>,
-    session: Option<AsyncSession>,
+    // TODO(mingwei): instead of using `NoCheckHandler`, we should check the server's public key
+    // fingerprint (get it somehow via terraform), but ssh `publickey` authentication already
+    // generally prevents MITM attacks.
+    session: Option<AsyncSession<NoCheckHandler>>,
     channel: AsyncChannel,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
@@ -273,7 +276,7 @@ pub trait LaunchedSshHost: Send + Sync {
         }
     }
 
-    async fn open_ssh_session(&self) -> Result<AsyncSession> {
+    async fn open_ssh_session(&self) -> Result<AsyncSession<NoCheckHandler>> {
         let target_addr = SocketAddr::new(
             self.get_external_ip()
                 .as_ref()
@@ -318,7 +321,10 @@ pub trait LaunchedSshHost: Send + Sync {
     }
 }
 
-async fn create_channel(session: &AsyncSession) -> Result<AsyncChannel> {
+async fn create_channel<H>(session: &AsyncSession<H>) -> Result<AsyncChannel>
+where
+    H: 'static + Handler,
+{
     async_retry(
         &|| async {
             Ok(tokio::time::timeout(Duration::from_secs(60), session.open_channel()).await??)

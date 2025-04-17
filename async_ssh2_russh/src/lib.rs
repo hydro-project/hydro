@@ -24,36 +24,38 @@ pub use russh::Error as SshError;
 #[cfg(feature = "sftp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "sftp")))]
 pub use russh_sftp;
+use tracing::Instrument;
 pub use {russh, tokio};
-mod promise;
-pub use promise::{Promise, PromiseError};
+pub mod promise;
+use promise::Promise;
 mod read_stream;
 pub use read_stream::ReadStream;
 
-/// A handler that does not check the server's public key.
+/// A handler that does NOT check the server's public key.
 ///
-/// This should NOT be used unless
+/// This should NOT be used unless you are certain that the SSH server is trusted and you are aware of the security
+/// implications of not verifying the server's public key, particularly the risk of man-in-the-middle (MITM) attacks.
+///
+/// This should only be used with public key authentication, as it provides
+/// [some protection against MITM attacks](https://security.stackexchange.com/questions/67242/does-public-key-auth-in-ssh-prevent-most-mitm-attacks).
 pub struct NoCheckHandler;
 impl Handler for NoCheckHandler {
     type Error = SshError;
 
     async fn check_server_key(&mut self, _server_public_key: &ssh_key::PublicKey) -> Result<bool, Self::Error> {
-        // TODO(mingwei): we technically should check the server's public key fingerprint here
-        // (get it somehow via terraform), but ssh `publickey` authentication already generally
-        // prevents MITM attacks.
         Ok(true)
     }
 }
 
-/// A thin wrapper around [`russh::client::Handle`] which provides basic authentication and channel
-/// management for a SSH session.
+/// An SSH session, which may open multiple [`AsyncChannel`]s.
 ///
-/// Implements [`Deref`] to allow access to the underlying [`russh::client::Handle`].
-pub struct AsyncSession<H: Handler = NoCheckHandler> {
+/// This struct is a thin wrapper around [`russh::client::Handle`] which provides basic authentication and channel
+/// management for a SSH session. Implements [`Deref`] to allow access to the underlying [`russh::client::Handle`].
+pub struct AsyncSession<H: Handler> {
     session: Handle<H>,
 }
-impl<H: Handler + 'static> AsyncSession<H> {
-    /// Connect to an SSH server using the provided configuration and handler, without begining
+impl<H: 'static + Handler> AsyncSession<H> {
+    /// Connect to an SSH server using the provided configuration and handler, without beginning
     /// authentication.
     pub async fn connect_unauthenticated(
         config: Arc<Config>,
@@ -63,9 +65,17 @@ impl<H: Handler + 'static> AsyncSession<H> {
         let session = connect(config, addrs, handler).await?;
         Ok(Self { session })
     }
+
+    /// Opens an [`AsyncChannel`] in this session.
+    ///
+    /// [`AsyncChannel`] is the asnyc wrapper for [`russh::Channel`].
+    pub async fn open_channel(&self) -> Result<AsyncChannel, SshError> {
+        let russh_channel = self.session.channel_open_session().await?;
+        Ok(AsyncChannel::from(russh_channel))
+    }
 }
 
-impl AsyncSession {
+impl AsyncSession<NoCheckHandler> {
     /// Connect to an SSH server and authenticate with the given `user` and `key_path` via publickey
     /// authentication.
     ///
@@ -95,14 +105,6 @@ impl AsyncSession {
             Err(SshError::NotAuthenticated)
         }
     }
-
-    /// Opens an [`AsyncChannel`] in this session.
-    ///
-    /// [`AsyncChannel`] is the asnyc wrapper for [`russh::Channel`].
-    pub async fn open_channel(&self) -> Result<AsyncChannel, SshError> {
-        let russh_channel = self.session.channel_open_session().await?;
-        Ok(AsyncChannel::from(russh_channel))
-    }
 }
 
 impl<H: Handler> Deref for AsyncSession<H> {
@@ -112,12 +114,14 @@ impl<H: Handler> Deref for AsyncSession<H> {
     }
 }
 
-/// A thin wrapper around [`russh::Channel`] which provides access to async read/write streams (stdout/stderr/stdin) and
-/// async event handling.
+/// An asynchronous SSH channel, one of possibly many within a single SSH [`AsyncSession`]. Each channel represents a
+/// separate command, shell, SFTP session, X11 forwarding, or other SSH subsystem.
 ///
-/// Implements [`Deref`] to allow access to the underlying [`russh::ChannelWriteHalf`].
+/// This struct is a thin wrapper around [`russh::Channel`] which provides access to async read/write streams
+/// (stdout/stderr/stdin) and async event handling Implements [`Deref`] to allow access to the underlying
+/// [`russh::ChannelWriteHalf`].
 ///
-/// # Shutdown lifecycle
+/// # Shutdown Lifecycle
 ///
 /// During shutdown, events _may_ be received in the following order. However this should not be relied upon, as the
 /// order may be different and none of these events are guaranteed to occur, except for [`Self::wait_close`] which will
@@ -145,18 +149,25 @@ impl From<russh::Channel<Msg>> for AsyncChannel {
         let (mut resolve_exit_status, exit_status) = promise::channel();
         let (subscribe_send, mut subscribe_recv) = mpsc::unbounded_channel();
 
-        let reader = tokio::task::spawn(async move {
-            type Subscribers = Option<HashMap<Option<u32>, mpsc::UnboundedSender<CryptoVec>>>;
+        let reader = async move {
             // Map from `ext` to a sender for `CryptoVec`s of data.
-            let mut subscribers: Subscribers = Some(HashMap::new());
+            type Subscribers = HashMap<Option<u32>, mpsc::UnboundedSender<CryptoVec>>;
+            let mut subscribers = Some(Subscribers::new());
 
-            fn receive_data(subscribers: &Subscribers, ext: Option<u32>, data: CryptoVec) {
+            #[tracing::instrument(level = "INFO", skip_all, fields(?ext))]
+            fn receive_data(subscribers: &Option<Subscribers>, ext: Option<u32>, data: CryptoVec) {
                 if let Some(subscribers) = &subscribers {
                     if let Some(send) = subscribers.get(&ext) {
-                        let _ = send.send(data);
+                        if let Err(e) = send.send(data) {
+                            tracing::warn!("Failed to send data to subscriber: {e}");
+                        } else {
+                            tracing::debug!("Successfully sent data to subscriber.");
+                        }
+                    } else {
+                        tracing::debug!("No subscriber for ext, dropping data.");
                     }
                 } else {
-                    // Unexpectedly received data after EOF.
+                    tracing::warn!("Unexpectedly received data from server after receiving EOF.");
                 }
             }
 
@@ -167,7 +178,7 @@ impl From<russh::Channel<Msg>> for AsyncChannel {
                         if let Some(subscribers) = &mut subscribers {
                             subscribers.insert(ext, send);
                         } else {
-                            // Subscribing after EOF was received.
+                            tracing::debug!(ext, "Received stream subscriber after EOF, ignoring.");
                         }
                     },
                     opt_msg = read_half.wait() => {
@@ -175,33 +186,48 @@ impl From<russh::Channel<Msg>> for AsyncChannel {
                             // No more messages, exit!
                             break;
                         };
-                        match msg {
-                            ChannelMsg::Data { data } => receive_data(&subscribers, None, data),
-                            ChannelMsg::ExtendedData { data, ext } => receive_data(&subscribers, Some(ext), data),
-                            ChannelMsg::Success => {
-                                let _ = resolve_success_failure.resolve(true);
+
+                        tracing::info_span!("Message", ?msg).in_scope(|| {
+                            match msg {
+                                ChannelMsg::Data { data } => receive_data(&subscribers, None, data),
+                                ChannelMsg::ExtendedData { data, ext } => receive_data(&subscribers, Some(ext), data),
+                                ChannelMsg::Success | ChannelMsg::Failure => {
+                                    tracing::debug!("Resolving success/failure.");
+                                    let is_success = matches!(msg, ChannelMsg::Success);
+                                    if resolve_success_failure.resolve(is_success).is_err() {
+                                        tracing::warn!("Success/failure already resolved, ignoring.");
+                                    }
+                                }
+                                // The command has indicated no more `ChannelMsg::Data`/`ChannelMsg::ExtendedData` will be
+                                // sent.
+                                ChannelMsg::Eof => {
+                                    tracing::debug!("Resolving EOF and dropping stream subscribers.");
+                                    if resolve_eof.resolve(()).is_err() {
+                                        tracing::warn!("EOF already resolved, ignoring.");
+                                    }
+                                    // Disconnect all subscribers.
+                                    drop(std::mem::take(&mut subscribers));
+                                }
+                                // The command has returned an exit code
+                                ChannelMsg::ExitStatus { exit_status } => {
+                                    tracing::debug!(exit_status, "Resolving exit status.");
+                                    if resolve_exit_status.resolve(exit_status).is_err() {
+                                        tracing::warn!("Exit status already resolved, ignoring.");
+                                    }
+                                }
+                                // Other
+                                _ => {
+                                    tracing::trace!("Ignoring message.");
+                                }
                             }
-                            ChannelMsg::Failure => {
-                                let _ = resolve_success_failure.resolve(false);
-                            }
-                            // The command has indicated no more `ChannelMsg::Data`/`ChannelMsg::ExtendedData` will be sent.
-                            ChannelMsg::Eof => {
-                                let _ = resolve_eof.resolve(());
-                                // Disconnect all subscribers.
-                                drop(std::mem::take(&mut subscribers));
-                            }
-                            // The command has returned an exit code
-                            ChannelMsg::ExitStatus { exit_status } => {
-                                let _ = resolve_exit_status.resolve(exit_status);
-                            }
-                            // Other
-                            _ => {}
-                        }
+                        });
                     },
                 }
             }
+            tracing::debug!("Channel read half finished, reader exiting.");
             // Exiting causes the `self.reader` `JoinHandle` to close.
-        });
+        };
+        let reader = tokio::task::spawn(reader.instrument(tracing::info_span!("Reader")));
 
         Self {
             write_half,
@@ -228,7 +254,7 @@ impl AsyncChannel {
         ReadStream::from_recv(recv)
     }
 
-    /// Returns stdout as an stream as a [`ReadStream`].
+    /// Returns stdout as a [`ReadStream`].
     ///
     /// Note that the returned stream will only receive data after this call, so call this before calling
     /// [`exec`](ChannelWriteHalf::exec).
@@ -238,7 +264,7 @@ impl AsyncChannel {
         self.read_stream(None)
     }
 
-    /// Returns stderr as an stream as a [`ReadStream`].
+    /// Returns stderr as a [`ReadStream`].
     ///
     /// Note that the returned stream will only receive data after this call, so call this before calling
     /// [`exec`](ChannelWriteHalf::exec).

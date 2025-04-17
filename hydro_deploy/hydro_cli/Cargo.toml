@@ -27,6 +27,3 @@ pyo3 = { version = "0.20.0", features = ["abi3-py37"] }
 pyo3-asyncio = { version = "0.20.0", features = ["attributes", "tokio-runtime"] }
 pythonize = "0.20.0"
 tokio = { version = "1.29.0", features = [ "full" ] }
-
-# request vendored openssl
-async-ssh2-lite = { version = "0.5.0", features = [ "vendored-openssl" ] }
