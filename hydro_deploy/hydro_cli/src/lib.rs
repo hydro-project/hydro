@@ -213,6 +213,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (src, on, bin=None, example=None, profile=None, features=None, args=None, display_id=None, external_ports=None))]
     fn HydroflowCrate(
         &self,
         py: Python<'_>,
@@ -319,6 +320,7 @@ struct GcpNetwork {
 #[pymethods]
 impl GcpNetwork {
     #[new]
+    #[pyo3(signature = (project, existing=None))]
     fn new(project: String, existing: Option<String>) -> Self {
         GcpNetwork {
             underlying: Arc::new(RwLock::new(core::gcp::GcpNetwork::new(project, existing))),
