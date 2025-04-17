@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    pieces under feature flags and makes `dfir_rs` an optional dependency,
    which reduces the compile tree for crates like `hydro_test`.
 
+ - <csr-id-xxxxxx/> refactor SSH handling to use `russh` instead of `libssh2`, introducing `async_ssh2_russh` crate
+   This change replaces the `libssh2` dependency with `russh`, providing a more efficient and flexible SSH handling
+   mechanism. The new `async_ssh2_russh` crate wraps `russh` to offer asynchronous SSH operations, including SFTP support.
+
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
