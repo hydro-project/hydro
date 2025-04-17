@@ -13,6 +13,11 @@ Bumping dependencies before move to separate repo, no code changes.
 
  - <csr-id-e37e35853b44e56d468c885307cbd4fac9a2fe9c/> bump versions, touch changelog, for final release in this repo
 
+### Refactor
+
+ - <csr-id-xxxxxx/> refactor(hydro_deploy): use `russh` (instead of `libssh2` bindings), fix #1463
+   Replaced `libssh2` with `russh` for SSH handling, introducing the new crate `async_ssh2_russh`. This change improves asynchronous SSH operations and simplifies the codebase by removing the dependency on `libssh2`.
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
