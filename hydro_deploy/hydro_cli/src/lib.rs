@@ -129,6 +129,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (project, machine_type, image, region, network, user=None))]
     fn GcpComputeEngineHost(
         &self,
         py: Python<'_>,
@@ -162,6 +163,7 @@ impl Deployment {
     }
 
     #[expect(non_snake_case, clippy::too_many_arguments, reason = "pymethods")]
+    #[pyo3(signature = (project, os_type, machine_size, region, image=None, user=None))]
     fn AzureHost(
         &self,
         py: Python<'_>,
