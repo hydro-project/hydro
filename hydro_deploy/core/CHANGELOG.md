@@ -281,7 +281,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  * **[#1648](https://github.com/hydro-project/hydro/issues/1648)**
     - Fix all unexpected cfgs ([`3f76e91`](https://github.com/hydro-project/hydro/commit/3f76e91766a0bd9e61f11f9013d76f688467fb5e))
- * **[#1657](https://github.com/hydro-project/hydro/issues/1657)**
+ * **[#1463](https://github.com/hydro-project/hydro/issues/1463)**
+    - Refactor SSH handling to use `russh` instead of `libssh2` bindings, introducing the `async_ssh2_russh` crate ([`3f76e91766a0bd9e61f11f9013d76f688467fb5e`](https://github.com/hydro-project/hydro/commit/3f76e91766a0bd9e61f11f9013d76f688467fb5e))
+
+* **[#1657](https://github.com/hydro-project/hydro/issues/1657)**
     - Use correct `__staged` path when rewriting `crate::` imports ([`48b275c`](https://github.com/hydro-project/hydro/commit/48b275c1247f4f6fe7e6b63a5ae184c5d85b6fa1))
  * **[#1691](https://github.com/hydro-project/hydro/issues/1691)**
     - Improve error message when crates fail to build ([`f8000c5`](https://github.com/hydro-project/hydro/commit/f8000c503de2236552fa430ed859e15ce594d3ec))
