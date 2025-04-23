@@ -3583,7 +3583,8 @@ dependencies = [
 [[package]]
 name = "pageant"
 version = "0.0.3"
-source = "git+https://github.com/Eugeny/russh.git?rev=7b093027fb4ca0a8865ee0d85d5ed160f2097e3a#7b093027fb4ca0a8865ee0d85d5ed160f2097e3a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdd27df01428302f915ea74737fe88170dd1bab4cbd00ff9548ca85618fcd4e4"
 dependencies = [
  "bytes",
  "delegate",
@@ -4623,8 +4624,9 @@ dependencies = [
 
 [[package]]
 name = "russh"
-version = "0.51.1"
-source = "git+https://github.com/Eugeny/russh.git?rev=7b093027fb4ca0a8865ee0d85d5ed160f2097e3a#7b093027fb4ca0a8865ee0d85d5ed160f2097e3a"
+version = "0.52.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1145af7a6343b4654ec2cd56c38ad69e72d18b67a9fbcd11bea45c0481231a95"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -4686,8 +4688,9 @@ dependencies = [
 
 [[package]]
 name = "russh-cryptovec"
-version = "0.51.1"
-source = "git+https://github.com/Eugeny/russh.git?rev=7b093027fb4ca0a8865ee0d85d5ed160f2097e3a#7b093027fb4ca0a8865ee0d85d5ed160f2097e3a"
+version = "0.52.0-beta.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfd39c5f554dfc6bd098b5e56bfd1718562feee6321ddf48f7c65dac986010e1"
 dependencies = [
  "libc",
  "log",
@@ -4698,10 +4701,10 @@ dependencies = [
 
 [[package]]
 name = "russh-sftp"
-version = "2.0.8"
-source = "git+https://github.com/MrAliSalehi/russh-sftp.git?rev=c5958a688dd5bfdb3f6615ea650aa47d15ff4fe3#c5958a688dd5bfdb3f6615ea650aa47d15ff4fe3"
+version = "2.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bb94393cafad0530145b8f626d8687f1ee1dedb93d7ba7740d6ae81868b13b5"
 dependencies = [
- "async-trait",
  "bitflags 2.9.0",
  "bytes",
  "chrono",
@@ -4716,7 +4719,8 @@ dependencies = [
 [[package]]
 name = "russh-util"
 version = "0.51.0"
-source = "git+https://github.com/Eugeny/russh.git?rev=7b093027fb4ca0a8865ee0d85d5ed160f2097e3a#7b093027fb4ca0a8865ee0d85d5ed160f2097e3a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0c3f1ba8f8ccbe1af83c1a5dc325ecb0b6e176d1444c241c1d684ab216d1b24"
 dependencies = [
  "chrono",
  "tokio",
