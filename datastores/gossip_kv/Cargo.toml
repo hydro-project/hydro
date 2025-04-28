@@ -7,6 +7,9 @@ edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 
+[lints]
+workspace = true
+
 [dependencies]
 clap = { version = "4.5.4", features = ["derive", "env"] }
 config = "0.15.0"
