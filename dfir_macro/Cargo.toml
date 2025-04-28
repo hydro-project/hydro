@@ -19,7 +19,7 @@ proc-macro = true
 # building on a WASM host), we may need to turn diagnostics off for WASM if
 # proc_macro2 still does not support WASM.
 dfir_lang = { path = "../dfir_lang", version = "^0.13.0" }
-proc-macro2 = "1.0.74"
+proc-macro2 = "1.0.95"
 proc-macro-crate = "1.0.0"
 quote = "1.0.35"
 syn = { version = "2.0.46", features = [ "parsing", "extra-traits" ] }

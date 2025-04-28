@@ -3,7 +3,6 @@
 extern crate proc_macro;
 
 use std::hash::{Hash, Hasher};
-use std::path::PathBuf;
 
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote_spanned;
@@ -182,7 +181,7 @@ impl std::fmt::Display for Diagnostic<SerdeSpan> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SerdeSpan {
     /// The source file path.
-    pub path: Option<PathBuf>,
+    pub file: Option<String>,
     /// Line number, one-indexed.
     pub line: usize,
     /// Column number, one-indexed.
@@ -194,17 +193,17 @@ impl From<Span> for SerdeSpan {
             not(nightly),
             expect(unused_labels, reason = "conditional compilation")
         )]
-        let path = 'a: {
+        let file = 'a: {
             #[cfg(nightly)]
             if proc_macro::is_available() {
-                break 'a Some(span.unwrap().source_file().path());
+                break 'a Some(span.unwrap().file());
             }
 
             None
         };
 
         Self {
-            path,
+            file,
             line: span.start().line,
             column: span.start().column,
         }
@@ -215,8 +214,8 @@ impl std::fmt::Display for SerdeSpan {
         write!(
             f,
             "{}:{}:{}",
-            self.path
-                .as_deref()
+            self.file
+                .as_ref()
                 .map(make_source_path_relative)
                 .map(|path| path.display().to_string())
                 .as_deref()

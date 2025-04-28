@@ -45,7 +45,7 @@ match_box = "0.0.2"
 nameof = { version = "1.0.0", optional = true }
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
 proc-macro-crate = "1.0.0"
-proc-macro2 = "1.0.74"
+proc-macro2 = "1.0.95"
 quote = "1.0.35"
 regex = "1.11.1"
 sealed = "0.6.0"

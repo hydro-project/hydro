@@ -1020,7 +1020,7 @@ impl DfirGraph {
                                     break 'a format!(
                                         "loc_{}_{}_{}_{}_{}",
                                         crate::pretty_span::make_source_path_relative(
-                                            &op_span.source_file().path()
+                                            &op_span.file()
                                         )
                                         .display()
                                         .to_string()

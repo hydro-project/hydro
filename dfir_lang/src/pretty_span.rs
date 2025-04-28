@@ -15,7 +15,7 @@ impl std::fmt::Display for PrettySpan {
 
             let span = self.0.unwrap();
 
-            let path = span.source_file().path();
+            let path = span.file();
             let path = make_source_path_relative(&path);
             let mut path_str = path.display().to_string();
             if '/' != MAIN_SEPARATOR && path.is_relative() {
@@ -52,7 +52,8 @@ impl std::fmt::Display for PrettyRowCol {
 }
 
 /// Strip `DFIR_BASE_DIR` or `CARGO_MANIFEST_DIR` from the path prefix if possible.
-pub fn make_source_path_relative(source_path: &Path) -> &Path {
+pub fn make_source_path_relative(source_path: &impl AsRef<Path>) -> &Path {
+    let source_path = source_path.as_ref();
     std::env::var_os("DFIR_BASE_DIR")
         .and_then(|base_dir| source_path.strip_prefix(base_dir).ok())
         .or_else(|| {
