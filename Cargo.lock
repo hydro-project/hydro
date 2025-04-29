@@ -304,6 +304,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-promise"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "89ec425ee5fc50a9920787f4b3f221d41c68bacb4fb9257a078b89c81cac5e1e"
+dependencies = [
+ "thiserror 2.0.12",
+]
+
+[[package]]
 name = "async-recursion"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -330,6 +339,20 @@ dependencies = [
  "signal-hook-registry",
  "slab",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "async-ssh2-russh"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7b31fb71a813ca189ad1145e2603e2729e652cfe12622dc4427fb577ad417dd"
+dependencies = [
+ "async-promise",
+ "russh",
+ "russh-sftp",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -369,17 +392,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.100",
-]
-
-[[package]]
-name = "async_ssh2_russh"
-version = "0.1.0"
-dependencies = [
- "russh",
- "russh-sftp",
- "thiserror 2.0.12",
- "tokio",
- "tracing",
 ]
 
 [[package]]
@@ -2209,8 +2221,8 @@ dependencies = [
  "anyhow",
  "async-process",
  "async-recursion",
+ "async-ssh2-russh",
  "async-trait",
- "async_ssh2_russh",
  "buildstructor",
  "bytes",
  "cargo_metadata",
