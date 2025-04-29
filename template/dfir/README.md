@@ -1,6 +1,6 @@
 ## Getting Started
-This is a template for a Rust project that uses [Hydroflow](http://github.com/hydro-project/hydro) for 
-distributed services. It implements a simple echo server and client over UDP. 
+This is a template for a Rust project that uses [Hydroflow](http://github.com/hydro-project/hydro) for
+distributed services. It implements a simple echo server and client over UDP.
 
 ## Using the Template
 ```bash
@@ -40,7 +40,7 @@ cargo run -- --help
 ## Template Project Structure
 The `src` directory contains the following files:
 
-| File          | Description                                                                                                                          | 
+| File          | Description                                                                                                                          |
 |---------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | `main.rs`     | Contains `main` entry-point function for both client and server. Performs command-line argument parsing.                             |
 | `protocol.rs` | Contains the `Message` enum that defines the messages that can be sent between instances.                                            |
@@ -48,8 +48,8 @@ The `src` directory contains the following files:
 | `helpers.rs`  | Contains helper functions that are invoked from Hydroflow code in multiple services.                                                 |
 
 ## Communication Patterns
-No particular communication pattern is assumed by Hydroflow. The unmodified template application is designed to be used in a "star topology": 
-multiple independent clients talking to a single server. However, the template can be easily modified to support other topologies. 
+No particular communication pattern is assumed by Hydroflow. The unmodified template application is designed to be used in a "star topology":
+multiple independent clients talking to a single server. However, the template can be easily modified to support other topologies.
 Additional examples are provided in the [hydroflow](https://github.com/hydro-project/hydro) repository in the `hydroflow/examples` directory.
 
 ## Where do you go from here?
@@ -59,9 +59,9 @@ In our experience, when starting a Hydroflow project we recommend a four-step ap
 
 1. **Roles**: Identify the roles that your services will play (in the `Opts` struct in `src/main.rs`)
 2. **Messages**: Define the basic message types that services will send to each other (in the `Message` enum in `src/protocol.rs`).
-3. **Print Received Messages**: Utilize the template logic at each service that prints out messages received. 
+3. **Print Received Messages**: Utilize the template logic at each service that prints out messages received.
 4. **Exercise Sending Patterns**:  Make sure the right messages get to the right recipients! Write simple logic to send out messages in all the message patterns you expect to see (in the `src/<role>.rs` files).
-5. **Service Programming**: Begin writing the actual logic for each service, with plenty of `inspect(|m| println!("{:?}", m))` operators 
+5. **Service Programming**: Begin writing the actual logic for each service, with plenty of `inspect(|m| println!("{:?}", m))` operators
 peppered throughout!
 
 Have fun!

@@ -79,7 +79,7 @@ pub fn setup_settings_watch() -> (
     let (tx, rx) = dfir_rs::util::unbounded_channel();
 
     // Setup the watcher
-    let mut watcher = notify::RecommendedWatcher::new(
+    let mut watcher = RecommendedWatcher::new(
         UnboundedSenderEventHandler::new(tx),
         notify::Config::default(),
     )
