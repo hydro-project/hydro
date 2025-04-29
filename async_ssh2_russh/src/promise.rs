@@ -102,22 +102,31 @@ impl<T> Drop for Resolve<T> {
     }
 }
 
+const BIT: u8 = 0b1;
 /// Flag for when the [`Resolve`] will no longer change the value of the [`Inner`], because it was either resolved or
 /// dropped.
-const FLAG_COMPLETED: u8 = 0b01;
+const FLAG_COMPLETED: u8 = BIT;
 /// Flag for when the value is set and can be read.
-const FLAG_VALUE_SET: u8 = 0b10;
+const FLAG_VALUE_SET: u8 = BIT << 1;
 
+/// # Safety
+///
 /// Any thread with an `&self` may access the `value` field according the following rules:
 ///
-///  1. Iff `flag & FLAG_COMPLETED` is false, the `value` field may be modified by the owning `Resolve` once.
-///  2. Iff `flag & FLAG_VALUE_SET` is true, the `value` field may be accessed immutably by any thread.
+///  1. Iff NOT `FLAG_COMPLETED`, the `value` field may be initialized by the owning `Resolve` once.
+///  2. Iff `FLAG_VALUE_SET`, the `value` field may be accessed immutably by any thread.
 ///
-/// If `flag & FLAG_COMPLETED` is true, but `flag & FLAG_VALUE_SET` is false, then the owning `Resolve` was dropped
-/// before the value was set.
+/// If `FLAG_COMPLETED` but NOT `FLAG_VALUE_SET`, then the owning `Resolve` was dropped before the value was set.
+///
+/// # Table of possible states
+/// |                       | NOT `FLAG_COMPLETED`  | `FLAG_COMPLETED`                   |
+/// |-----------------------|-----------------------|------------------------------------|
+/// | NOT `FLAG_VALUE_SET`  | Waiting for `Resolve` | `Resolve` dropped, `value` not set |
+/// | `FLAG_VALUE_SET`      | INVALID               | `value` set, accessible            |
 struct Inner<T> {
     flag: AtomicU8,
     value: UnsafeCell<MaybeUninit<T>>,
+    /// List of wakers waiting for the value to be set.
     wakers: Mutex<Vec<Waker>>,
 }
 impl<T> Inner<T> {
@@ -129,6 +138,7 @@ impl<T> Inner<T> {
         }
     }
 
+    /// Polls the promise, storing the `Waker` if needed.
     fn poll_get<'a>(&'a self, cx: &mut Context<'_>) -> Poll<Option<&'a T>> {
         if let Some(value_opt) = self.get() {
             return Poll::Ready(value_opt);
@@ -146,18 +156,26 @@ impl<T> Inner<T> {
         Poll::Pending
     }
 
+    /// # Returns
+    /// * `None` if the value is not yet set.
+    /// * `Some(None)` if the resolver was dropped before setting a value.
+    /// * `Some(Some(&T))` if the value has been set.
     fn get(&self) -> Option<Option<&T>> {
         // Using acquire ordering so any threads that read a true from this
         // atomic is able to read the value.
         let flag = self.flag.load(Ordering::Acquire);
-        let resolved = 0 != flag & FLAG_COMPLETED;
-        if resolved {
-            let initialized = 0 != flag & FLAG_VALUE_SET;
-            initialized.then(|| {
+        let completed = 0 != (flag & FLAG_COMPLETED);
+        if completed {
+            let value_set = 0 != (flag & FLAG_VALUE_SET);
+            if value_set {
                 // SAFETY: Value is initialized.
-                Some(unsafe { &*(*self.value.get()).as_ptr() })
-            })
+                Some(Some(unsafe { &*(*self.value.get()).as_ptr() }))
+            } else {
+                // The resolver was dropped before setting a value.
+                Some(None)
+            }
         } else {
+            // The value is not yet set.
             None
         }
     }
@@ -182,14 +200,11 @@ impl<T> Inner<T> {
     }
 }
 
-// Since `get` gives us access to immutable references of the OnceCell, OnceCell
-// can only be Sync if T is Sync, otherwise OnceCell would allow sharing
-// references of !Sync values across threads. We need T to be Send in order for
-// OnceCell to by Sync because we can use `set` on `&OnceCell<T>` to send values
-// (of type T) across threads.
+/// Since we can get immutable references to [`Self::value`], this is only `Sync` if `T` is `Sync`, otherwise this
+/// would allow sharing references of `!Sync` values across threads. We need `T` to be `Send` in order for this to be
+/// `Sync` because we can use [`Self::resolve`] to send values (of type T) across threads.
 unsafe impl<T: Sync + Send> Sync for Inner<T> {}
 
-// Access to OnceCell's value is guarded by the semaphore permit
-// and atomic operations on `value_set`, so as long as T itself is Send
-// it's safe to send it to another thread
+/// Access to [`Self::value`] is guarded by the atomic operations on [`Self::flag`], so as long as `T` itself is `Send`
+/// it's safe to send it to another thread
 unsafe impl<T: Send> Send for Inner<T> {}
