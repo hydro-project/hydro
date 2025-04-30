@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["compile_datalog","compile_dfir","init","init_datalog_boolean_demo","send_datalog_boolean_demo"],"struct":["DfirOutput","DfirResult","JsDiagnostic","JsLineColumn","JsSpan"]};
+window.SIDEBAR_ITEMS = {"fn":["compile_dfir","init"],"struct":["DfirOutput","DfirResult","JsDiagnostic","JsLineColumn","JsSpan"]};
