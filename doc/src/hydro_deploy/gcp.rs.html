@@ -388,7 +388,7 @@
 <a href=#388 id=388 data-nosnippet>388</a>        }
 <a href=#389 id=389 data-nosnippet>389</a>        drop(external_ports); <span class="comment">// Drop the lock as soon as possible.
 <a href=#390 id=390 data-nosnippet>390</a>
-<a href=#391 id=391 data-nosnippet>391</a>        </span><span class="kw">let </span>user = <span class="self">self</span>.user.as_ref().cloned().unwrap_or(<span class="string">"hydro"</span>.to_string());
+<a href=#391 id=391 data-nosnippet>391</a>        </span><span class="kw">let </span>user = <span class="self">self</span>.user.as_deref().unwrap_or(<span class="string">"hydro"</span>);
 <a href=#392 id=392 data-nosnippet>392</a>        resource_batch
 <a href=#393 id=393 data-nosnippet>393</a>            .terraform
 <a href=#394 id=394 data-nosnippet>394</a>            .resource
