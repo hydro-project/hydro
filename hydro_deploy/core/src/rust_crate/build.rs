@@ -76,10 +76,7 @@ pub struct BuildOutput {
     pub bin_path: PathBuf,
 }
 impl BuildOutput {
-    pub fn new(bin_data: Vec<u8>, bin_path: PathBuf) -> Self {
-        Self { bin_data, bin_path }
-    }
-
+    /// A unique ID for the binary, based its contents.
     pub fn unique_id(&self) -> impl use<> + Display {
         blake3::hash(&self.bin_data).to_hex()
     }
