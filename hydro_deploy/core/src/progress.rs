@@ -83,7 +83,7 @@ impl BarTree {
                         started_or_finished_count,
                         anticipated_total
                             .filter(|&total| started_or_finished_count <= total)
-                            .map_or("?", |total| &*total.to_string()),
+                            .map_or(|| "?".to_string(), |total| total.to_string()),
                     )
                 };
 
