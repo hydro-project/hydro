@@ -55,183 +55,179 @@
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="self">self</span>.id
 <a href=#56 id=56 data-nosnippet>56</a>    }
 <a href=#57 id=57 data-nosnippet>57</a>
-<a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">fn </span>as_any(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>std::any::Any {
-<a href=#59 id=59 data-nosnippet>59</a>        <span class="self">self
-<a href=#60 id=60 data-nosnippet>60</a>    </span>}
+<a href=#58 id=58 data-nosnippet>58</a>    <span class="kw">fn </span>launched(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;&gt; {
+<a href=#59 id=59 data-nosnippet>59</a>        <span class="prelude-val">Some</span>(Arc::new(LaunchedLocalhost))
+<a href=#60 id=60 data-nosnippet>60</a>    }
 <a href=#61 id=61 data-nosnippet>61</a>
-<a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">fn </span>launched(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;&gt; {
-<a href=#63 id=63 data-nosnippet>63</a>        <span class="prelude-val">Some</span>(Arc::new(LaunchedLocalhost))
+<a href=#62 id=62 data-nosnippet>62</a>    <span class="kw">fn </span>provision(<span class="kw-2">&amp;</span><span class="self">self</span>, _resource_result: <span class="kw-2">&amp;</span>Arc&lt;ResourceResult&gt;) -&gt; Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt; {
+<a href=#63 id=63 data-nosnippet>63</a>        Arc::new(LaunchedLocalhost)
 <a href=#64 id=64 data-nosnippet>64</a>    }
 <a href=#65 id=65 data-nosnippet>65</a>
-<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">fn </span>provision(<span class="kw-2">&amp;</span><span class="self">self</span>, _resource_result: <span class="kw-2">&amp;</span>Arc&lt;ResourceResult&gt;) -&gt; Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt; {
-<a href=#67 id=67 data-nosnippet>67</a>        Arc::new(LaunchedLocalhost)
-<a href=#68 id=68 data-nosnippet>68</a>    }
-<a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>strategy_as_server&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
-<a href=#72 id=72 data-nosnippet>72</a>        connection_from: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Host,
-<a href=#73 id=73 data-nosnippet>73</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ClientStrategy&lt;<span class="lifetime">'a</span>&gt;, HostStrategyGetter)&gt; {
-<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">if </span><span class="self">self</span>.client_only {
-<a href=#75 id=75 data-nosnippet>75</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Localhost cannot be a server if it is client only"</span>)
-<a href=#76 id=76 data-nosnippet>76</a>        }
-<a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">if </span>connection_from.can_connect_to(ClientStrategy::UnixSocket(<span class="self">self</span>.id)) {
-<a href=#79 id=79 data-nosnippet>79</a>            <span class="prelude-val">Ok</span>((
-<a href=#80 id=80 data-nosnippet>80</a>                ClientStrategy::UnixSocket(<span class="self">self</span>.id),
-<a href=#81 id=81 data-nosnippet>81</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::UnixSocket),
-<a href=#82 id=82 data-nosnippet>82</a>            ))
-<a href=#83 id=83 data-nosnippet>83</a>        } <span class="kw">else if </span>connection_from.can_connect_to(ClientStrategy::InternalTcpPort(<span class="self">self</span>)) {
-<a href=#84 id=84 data-nosnippet>84</a>            <span class="prelude-val">Ok</span>((
-<a href=#85 id=85 data-nosnippet>85</a>                ClientStrategy::InternalTcpPort(<span class="self">self</span>),
-<a href=#86 id=86 data-nosnippet>86</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::InternalTcpPort),
-<a href=#87 id=87 data-nosnippet>87</a>            ))
-<a href=#88 id=88 data-nosnippet>88</a>        } <span class="kw">else </span>{
-<a href=#89 id=89 data-nosnippet>89</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Could not find a strategy to connect to localhost"</span>)
-<a href=#90 id=90 data-nosnippet>90</a>        }
-<a href=#91 id=91 data-nosnippet>91</a>    }
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">match </span>typ {
-<a href=#95 id=95 data-nosnippet>95</a>            ClientStrategy::UnixSocket(id) =&gt; {
-<a href=#96 id=96 data-nosnippet>96</a>                <span class="attr">#[cfg(unix)]
-<a href=#97 id=97 data-nosnippet>97</a>                </span>{
-<a href=#98 id=98 data-nosnippet>98</a>                    <span class="self">self</span>.id == id
-<a href=#99 id=99 data-nosnippet>99</a>                }
-<a href=#100 id=100 data-nosnippet>100</a>
-<a href=#101 id=101 data-nosnippet>101</a>                <span class="attr">#[cfg(not(unix))]
-<a href=#102 id=102 data-nosnippet>102</a>                </span>{
-<a href=#103 id=103 data-nosnippet>103</a>                    <span class="kw">let _ </span>= id;
-<a href=#104 id=104 data-nosnippet>104</a>                    <span class="bool-val">false
-<a href=#105 id=105 data-nosnippet>105</a>                </span>}
-<a href=#106 id=106 data-nosnippet>106</a>            }
-<a href=#107 id=107 data-nosnippet>107</a>            ClientStrategy::InternalTcpPort(target_host) =&gt; <span class="self">self</span>.id == target_host.id(),
-<a href=#108 id=108 data-nosnippet>108</a>            ClientStrategy::ForwardedTcpPort(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
-<a href=#109 id=109 data-nosnippet>109</a>        }
-<a href=#110 id=110 data-nosnippet>110</a>    }
-<a href=#111 id=111 data-nosnippet>111</a>}
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a><span class="kw">struct </span>LaunchedLocalhost;
-<a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a><span class="attr">#[async_trait]
-<a href=#116 id=116 data-nosnippet>116</a></span><span class="kw">impl </span>LaunchedHost <span class="kw">for </span>LaunchedLocalhost {
-<a href=#117 id=117 data-nosnippet>117</a>    <span class="kw">fn </span>server_config(<span class="kw-2">&amp;</span><span class="self">self</span>, bind_type: <span class="kw-2">&amp;</span>ServerStrategy) -&gt; ServerBindConfig {
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">match </span>bind_type {
-<a href=#119 id=119 data-nosnippet>119</a>            ServerStrategy::UnixSocket =&gt; ServerBindConfig::UnixSocket,
-<a href=#120 id=120 data-nosnippet>120</a>            ServerStrategy::InternalTcpPort =&gt; ServerBindConfig::TcpPort(<span class="string">"127.0.0.1"</span>.to_string()),
-<a href=#121 id=121 data-nosnippet>121</a>            ServerStrategy::ExternalTcpPort(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot bind to external port"</span>),
-<a href=#122 id=122 data-nosnippet>122</a>            ServerStrategy::Demux(demux) =&gt; {
-<a href=#123 id=123 data-nosnippet>123</a>                <span class="kw">let </span><span class="kw-2">mut </span>config_map = HashMap::new();
-<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw">for </span>(key, underlying) <span class="kw">in </span>demux {
-<a href=#125 id=125 data-nosnippet>125</a>                    config_map.insert(<span class="kw-2">*</span>key, <span class="self">self</span>.server_config(underlying));
-<a href=#126 id=126 data-nosnippet>126</a>                }
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>                ServerBindConfig::Demux(config_map)
-<a href=#129 id=129 data-nosnippet>129</a>            }
-<a href=#130 id=130 data-nosnippet>130</a>            ServerStrategy::Merge(merge) =&gt; {
-<a href=#131 id=131 data-nosnippet>131</a>                <span class="kw">let </span><span class="kw-2">mut </span>configs = <span class="macro">vec!</span>[];
-<a href=#132 id=132 data-nosnippet>132</a>                <span class="kw">for </span>underlying <span class="kw">in </span>merge {
-<a href=#133 id=133 data-nosnippet>133</a>                    configs.push(<span class="self">self</span>.server_config(underlying));
-<a href=#134 id=134 data-nosnippet>134</a>                }
-<a href=#135 id=135 data-nosnippet>135</a>
-<a href=#136 id=136 data-nosnippet>136</a>                ServerBindConfig::Merge(configs)
-<a href=#137 id=137 data-nosnippet>137</a>            }
-<a href=#138 id=138 data-nosnippet>138</a>            ServerStrategy::Tagged(underlying, id) =&gt; {
-<a href=#139 id=139 data-nosnippet>139</a>                ServerBindConfig::Tagged(Box::new(<span class="self">self</span>.server_config(underlying)), <span class="kw-2">*</span>id)
-<a href=#140 id=140 data-nosnippet>140</a>            }
-<a href=#141 id=141 data-nosnippet>141</a>            ServerStrategy::Null =&gt; ServerBindConfig::Null,
-<a href=#142 id=142 data-nosnippet>142</a>        }
+<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">fn </span>strategy_as_server&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
+<a href=#68 id=68 data-nosnippet>68</a>        connection_from: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Host,
+<a href=#69 id=69 data-nosnippet>69</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ClientStrategy&lt;<span class="lifetime">'a</span>&gt;, HostStrategyGetter)&gt; {
+<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">if </span><span class="self">self</span>.client_only {
+<a href=#71 id=71 data-nosnippet>71</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Localhost cannot be a server if it is client only"</span>)
+<a href=#72 id=72 data-nosnippet>72</a>        }
+<a href=#73 id=73 data-nosnippet>73</a>
+<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">if </span>connection_from.can_connect_to(ClientStrategy::UnixSocket(<span class="self">self</span>.id)) {
+<a href=#75 id=75 data-nosnippet>75</a>            <span class="prelude-val">Ok</span>((
+<a href=#76 id=76 data-nosnippet>76</a>                ClientStrategy::UnixSocket(<span class="self">self</span>.id),
+<a href=#77 id=77 data-nosnippet>77</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::UnixSocket),
+<a href=#78 id=78 data-nosnippet>78</a>            ))
+<a href=#79 id=79 data-nosnippet>79</a>        } <span class="kw">else if </span>connection_from.can_connect_to(ClientStrategy::InternalTcpPort(<span class="self">self</span>)) {
+<a href=#80 id=80 data-nosnippet>80</a>            <span class="prelude-val">Ok</span>((
+<a href=#81 id=81 data-nosnippet>81</a>                ClientStrategy::InternalTcpPort(<span class="self">self</span>),
+<a href=#82 id=82 data-nosnippet>82</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::InternalTcpPort),
+<a href=#83 id=83 data-nosnippet>83</a>            ))
+<a href=#84 id=84 data-nosnippet>84</a>        } <span class="kw">else </span>{
+<a href=#85 id=85 data-nosnippet>85</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Could not find a strategy to connect to localhost"</span>)
+<a href=#86 id=86 data-nosnippet>86</a>        }
+<a href=#87 id=87 data-nosnippet>87</a>    }
+<a href=#88 id=88 data-nosnippet>88</a>
+<a href=#89 id=89 data-nosnippet>89</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">match </span>typ {
+<a href=#91 id=91 data-nosnippet>91</a>            ClientStrategy::UnixSocket(id) =&gt; {
+<a href=#92 id=92 data-nosnippet>92</a>                <span class="attr">#[cfg(unix)]
+<a href=#93 id=93 data-nosnippet>93</a>                </span>{
+<a href=#94 id=94 data-nosnippet>94</a>                    <span class="self">self</span>.id == id
+<a href=#95 id=95 data-nosnippet>95</a>                }
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>                <span class="attr">#[cfg(not(unix))]
+<a href=#98 id=98 data-nosnippet>98</a>                </span>{
+<a href=#99 id=99 data-nosnippet>99</a>                    <span class="kw">let _ </span>= id;
+<a href=#100 id=100 data-nosnippet>100</a>                    <span class="bool-val">false
+<a href=#101 id=101 data-nosnippet>101</a>                </span>}
+<a href=#102 id=102 data-nosnippet>102</a>            }
+<a href=#103 id=103 data-nosnippet>103</a>            ClientStrategy::InternalTcpPort(target_host) =&gt; <span class="self">self</span>.id == target_host.id(),
+<a href=#104 id=104 data-nosnippet>104</a>            ClientStrategy::ForwardedTcpPort(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
+<a href=#105 id=105 data-nosnippet>105</a>        }
+<a href=#106 id=106 data-nosnippet>106</a>    }
+<a href=#107 id=107 data-nosnippet>107</a>}
+<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#109 id=109 data-nosnippet>109</a><span class="kw">struct </span>LaunchedLocalhost;
+<a href=#110 id=110 data-nosnippet>110</a>
+<a href=#111 id=111 data-nosnippet>111</a><span class="attr">#[async_trait]
+<a href=#112 id=112 data-nosnippet>112</a></span><span class="kw">impl </span>LaunchedHost <span class="kw">for </span>LaunchedLocalhost {
+<a href=#113 id=113 data-nosnippet>113</a>    <span class="kw">fn </span>server_config(<span class="kw-2">&amp;</span><span class="self">self</span>, bind_type: <span class="kw-2">&amp;</span>ServerStrategy) -&gt; ServerBindConfig {
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">match </span>bind_type {
+<a href=#115 id=115 data-nosnippet>115</a>            ServerStrategy::UnixSocket =&gt; ServerBindConfig::UnixSocket,
+<a href=#116 id=116 data-nosnippet>116</a>            ServerStrategy::InternalTcpPort =&gt; ServerBindConfig::TcpPort(<span class="string">"127.0.0.1"</span>.to_string()),
+<a href=#117 id=117 data-nosnippet>117</a>            ServerStrategy::ExternalTcpPort(<span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(<span class="string">"Cannot bind to external port"</span>),
+<a href=#118 id=118 data-nosnippet>118</a>            ServerStrategy::Demux(demux) =&gt; {
+<a href=#119 id=119 data-nosnippet>119</a>                <span class="kw">let </span><span class="kw-2">mut </span>config_map = HashMap::new();
+<a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">for </span>(key, underlying) <span class="kw">in </span>demux {
+<a href=#121 id=121 data-nosnippet>121</a>                    config_map.insert(<span class="kw-2">*</span>key, <span class="self">self</span>.server_config(underlying));
+<a href=#122 id=122 data-nosnippet>122</a>                }
+<a href=#123 id=123 data-nosnippet>123</a>
+<a href=#124 id=124 data-nosnippet>124</a>                ServerBindConfig::Demux(config_map)
+<a href=#125 id=125 data-nosnippet>125</a>            }
+<a href=#126 id=126 data-nosnippet>126</a>            ServerStrategy::Merge(merge) =&gt; {
+<a href=#127 id=127 data-nosnippet>127</a>                <span class="kw">let </span><span class="kw-2">mut </span>configs = <span class="macro">vec!</span>[];
+<a href=#128 id=128 data-nosnippet>128</a>                <span class="kw">for </span>underlying <span class="kw">in </span>merge {
+<a href=#129 id=129 data-nosnippet>129</a>                    configs.push(<span class="self">self</span>.server_config(underlying));
+<a href=#130 id=130 data-nosnippet>130</a>                }
+<a href=#131 id=131 data-nosnippet>131</a>
+<a href=#132 id=132 data-nosnippet>132</a>                ServerBindConfig::Merge(configs)
+<a href=#133 id=133 data-nosnippet>133</a>            }
+<a href=#134 id=134 data-nosnippet>134</a>            ServerStrategy::Tagged(underlying, id) =&gt; {
+<a href=#135 id=135 data-nosnippet>135</a>                ServerBindConfig::Tagged(Box::new(<span class="self">self</span>.server_config(underlying)), <span class="kw-2">*</span>id)
+<a href=#136 id=136 data-nosnippet>136</a>            }
+<a href=#137 id=137 data-nosnippet>137</a>            ServerStrategy::Null =&gt; ServerBindConfig::Null,
+<a href=#138 id=138 data-nosnippet>138</a>        }
+<a href=#139 id=139 data-nosnippet>139</a>    }
+<a href=#140 id=140 data-nosnippet>140</a>
+<a href=#141 id=141 data-nosnippet>141</a>    <span class="kw">async fn </span>copy_binary(<span class="kw-2">&amp;</span><span class="self">self</span>, _binary: <span class="kw-2">&amp;</span>BuildOutput) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+<a href=#142 id=142 data-nosnippet>142</a>        <span class="prelude-val">Ok</span>(())
 <a href=#143 id=143 data-nosnippet>143</a>    }
 <a href=#144 id=144 data-nosnippet>144</a>
-<a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">async fn </span>copy_binary(<span class="kw-2">&amp;</span><span class="self">self</span>, _binary: <span class="kw-2">&amp;</span>BuildOutput) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-<a href=#146 id=146 data-nosnippet>146</a>        <span class="prelude-val">Ok</span>(())
-<a href=#147 id=147 data-nosnippet>147</a>    }
-<a href=#148 id=148 data-nosnippet>148</a>
-<a href=#149 id=149 data-nosnippet>149</a>    <span class="kw">async fn </span>launch_binary(
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#151 id=151 data-nosnippet>151</a>        id: String,
-<a href=#152 id=152 data-nosnippet>152</a>        binary: <span class="kw-2">&amp;</span>BuildOutput,
-<a href=#153 id=153 data-nosnippet>153</a>        args: <span class="kw-2">&amp;</span>[String],
-<a href=#154 id=154 data-nosnippet>154</a>        tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
-<a href=#155 id=155 data-nosnippet>155</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>LaunchedBinary&gt;&gt; {
-<a href=#156 id=156 data-nosnippet>156</a>        <span class="kw">let </span>(maybe_perf_outfile, <span class="kw-2">mut </span>command) = <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = tracing.as_ref() {
-<a href=#157 id=157 data-nosnippet>157</a>            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"macos"</span>) || <span class="macro">cfg!</span>(target_family = <span class="string">"windows"</span>) {
-<a href=#158 id=158 data-nosnippet>158</a>                <span class="comment">// samply
-<a href=#159 id=159 data-nosnippet>159</a>                </span>ProgressTracker::println(
-<a href=#160 id=160 data-nosnippet>160</a>                    <span class="macro">format!</span>(<span class="string">"[{id} tracing] Profiling binary with `samply`."</span>,),
-<a href=#161 id=161 data-nosnippet>161</a>                );
-<a href=#162 id=162 data-nosnippet>162</a>                <span class="kw">let </span>samply_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
-<a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>                <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"samply"</span>);
-<a href=#165 id=165 data-nosnippet>165</a>                command
-<a href=#166 id=166 data-nosnippet>166</a>                    .arg(<span class="string">"record"</span>)
-<a href=#167 id=167 data-nosnippet>167</a>                    .arg(<span class="string">"--save-only"</span>)
-<a href=#168 id=168 data-nosnippet>168</a>                    .arg(<span class="string">"--output"</span>)
-<a href=#169 id=169 data-nosnippet>169</a>                    .arg(samply_outfile.as_ref())
-<a href=#170 id=170 data-nosnippet>170</a>                    .arg(<span class="kw-2">&amp;</span>binary.bin_path)
-<a href=#171 id=171 data-nosnippet>171</a>                    .args(args);
-<a href=#172 id=172 data-nosnippet>172</a>                (<span class="prelude-val">Some</span>(samply_outfile), command)
-<a href=#173 id=173 data-nosnippet>173</a>            } <span class="kw">else if </span><span class="macro">cfg!</span>(target_family = <span class="string">"unix"</span>) {
-<a href=#174 id=174 data-nosnippet>174</a>                <span class="comment">// perf
-<a href=#175 id=175 data-nosnippet>175</a>                </span>ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{} tracing] Tracing binary with `perf`."</span>, id));
-<a href=#176 id=176 data-nosnippet>176</a>                <span class="kw">let </span>perf_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
-<a href=#177 id=177 data-nosnippet>177</a>
-<a href=#178 id=178 data-nosnippet>178</a>                <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"perf"</span>);
-<a href=#179 id=179 data-nosnippet>179</a>                command
-<a href=#180 id=180 data-nosnippet>180</a>                    .args([
-<a href=#181 id=181 data-nosnippet>181</a>                        <span class="string">"record"</span>,
-<a href=#182 id=182 data-nosnippet>182</a>                        <span class="string">"-F"</span>,
-<a href=#183 id=183 data-nosnippet>183</a>                        <span class="kw-2">&amp;</span>tracing.frequency.to_string(),
-<a href=#184 id=184 data-nosnippet>184</a>                        <span class="string">"-e"</span>,
-<a href=#185 id=185 data-nosnippet>185</a>                        <span class="string">"cycles:u"</span>,
-<a href=#186 id=186 data-nosnippet>186</a>                        <span class="string">"--call-graph"</span>,
-<a href=#187 id=187 data-nosnippet>187</a>                        <span class="string">"dwarf,65528"</span>,
-<a href=#188 id=188 data-nosnippet>188</a>                        <span class="string">"-o"</span>,
-<a href=#189 id=189 data-nosnippet>189</a>                    ])
-<a href=#190 id=190 data-nosnippet>190</a>                    .arg(perf_outfile.as_ref())
-<a href=#191 id=191 data-nosnippet>191</a>                    .arg(<span class="kw-2">&amp;</span>binary.bin_path)
-<a href=#192 id=192 data-nosnippet>192</a>                    .args(args);
-<a href=#193 id=193 data-nosnippet>193</a>
-<a href=#194 id=194 data-nosnippet>194</a>                (<span class="prelude-val">Some</span>(perf_outfile), command)
-<a href=#195 id=195 data-nosnippet>195</a>            } <span class="kw">else </span>{
-<a href=#196 id=196 data-nosnippet>196</a>                <span class="macro">bail!</span>(
-<a href=#197 id=197 data-nosnippet>197</a>                    <span class="string">"Unknown OS for perf/dtrace tracing: {}"</span>,
-<a href=#198 id=198 data-nosnippet>198</a>                    std::env::consts::OS
-<a href=#199 id=199 data-nosnippet>199</a>                );
-<a href=#200 id=200 data-nosnippet>200</a>            }
-<a href=#201 id=201 data-nosnippet>201</a>        } <span class="kw">else </span>{
-<a href=#202 id=202 data-nosnippet>202</a>            <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="kw-2">&amp;</span>binary.bin_path);
-<a href=#203 id=203 data-nosnippet>203</a>            command.args(args);
-<a href=#204 id=204 data-nosnippet>204</a>            (<span class="prelude-val">None</span>, command)
-<a href=#205 id=205 data-nosnippet>205</a>        };
-<a href=#206 id=206 data-nosnippet>206</a>
-<a href=#207 id=207 data-nosnippet>207</a>        command
-<a href=#208 id=208 data-nosnippet>208</a>            .stdin(Stdio::piped())
-<a href=#209 id=209 data-nosnippet>209</a>            .stdout(Stdio::piped())
-<a href=#210 id=210 data-nosnippet>210</a>            .stderr(Stdio::piped());
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a>        <span class="attr">#[cfg(not(target_family = <span class="string">"unix"</span>))]
-<a href=#213 id=213 data-nosnippet>213</a>        </span>command.kill_on_drop(<span class="bool-val">true</span>);
-<a href=#214 id=214 data-nosnippet>214</a>
-<a href=#215 id=215 data-nosnippet>215</a>        ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{}] running command: `{:?}`"</span>, id, command));
-<a href=#216 id=216 data-nosnippet>216</a>
-<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>child = command.spawn().map_err(|e| {
-<a href=#218 id=218 data-nosnippet>218</a>            <span class="kw">let </span>msg = <span class="kw">if </span>maybe_perf_outfile.is_some() &amp;&amp; std::io::ErrorKind::NotFound == e.kind() {
-<a href=#219 id=219 data-nosnippet>219</a>                <span class="string">"Tracing executable not found, ensure it is installed"
-<a href=#220 id=220 data-nosnippet>220</a>            </span>} <span class="kw">else </span>{
-<a href=#221 id=221 data-nosnippet>221</a>                <span class="string">"Failed to execute command"
-<a href=#222 id=222 data-nosnippet>222</a>            </span>};
-<a href=#223 id=223 data-nosnippet>223</a>            anyhow::Error::new(e).context(<span class="macro">format!</span>(<span class="string">"{}: {:?}"</span>, msg, command))
-<a href=#224 id=224 data-nosnippet>224</a>        })<span class="question-mark">?</span>;
-<a href=#225 id=225 data-nosnippet>225</a>
-<a href=#226 id=226 data-nosnippet>226</a>        <span class="prelude-val">Ok</span>(Box::new(LaunchedLocalhostBinary::new(
-<a href=#227 id=227 data-nosnippet>227</a>            child,
-<a href=#228 id=228 data-nosnippet>228</a>            id,
-<a href=#229 id=229 data-nosnippet>229</a>            tracing,
-<a href=#230 id=230 data-nosnippet>230</a>            maybe_perf_outfile.map(|f| TracingDataLocal { outfile: f }),
-<a href=#231 id=231 data-nosnippet>231</a>        )))
+<a href=#145 id=145 data-nosnippet>145</a>    <span class="kw">async fn </span>launch_binary(
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#147 id=147 data-nosnippet>147</a>        id: String,
+<a href=#148 id=148 data-nosnippet>148</a>        binary: <span class="kw-2">&amp;</span>BuildOutput,
+<a href=#149 id=149 data-nosnippet>149</a>        args: <span class="kw-2">&amp;</span>[String],
+<a href=#150 id=150 data-nosnippet>150</a>        tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
+<a href=#151 id=151 data-nosnippet>151</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>LaunchedBinary&gt;&gt; {
+<a href=#152 id=152 data-nosnippet>152</a>        <span class="kw">let </span>(maybe_perf_outfile, <span class="kw-2">mut </span>command) = <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = tracing.as_ref() {
+<a href=#153 id=153 data-nosnippet>153</a>            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"macos"</span>) || <span class="macro">cfg!</span>(target_family = <span class="string">"windows"</span>) {
+<a href=#154 id=154 data-nosnippet>154</a>                <span class="comment">// samply
+<a href=#155 id=155 data-nosnippet>155</a>                </span>ProgressTracker::println(
+<a href=#156 id=156 data-nosnippet>156</a>                    <span class="macro">format!</span>(<span class="string">"[{id} tracing] Profiling binary with `samply`."</span>,),
+<a href=#157 id=157 data-nosnippet>157</a>                );
+<a href=#158 id=158 data-nosnippet>158</a>                <span class="kw">let </span>samply_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
+<a href=#159 id=159 data-nosnippet>159</a>
+<a href=#160 id=160 data-nosnippet>160</a>                <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"samply"</span>);
+<a href=#161 id=161 data-nosnippet>161</a>                command
+<a href=#162 id=162 data-nosnippet>162</a>                    .arg(<span class="string">"record"</span>)
+<a href=#163 id=163 data-nosnippet>163</a>                    .arg(<span class="string">"--save-only"</span>)
+<a href=#164 id=164 data-nosnippet>164</a>                    .arg(<span class="string">"--output"</span>)
+<a href=#165 id=165 data-nosnippet>165</a>                    .arg(samply_outfile.as_ref())
+<a href=#166 id=166 data-nosnippet>166</a>                    .arg(<span class="kw-2">&amp;</span>binary.bin_path)
+<a href=#167 id=167 data-nosnippet>167</a>                    .args(args);
+<a href=#168 id=168 data-nosnippet>168</a>                (<span class="prelude-val">Some</span>(samply_outfile), command)
+<a href=#169 id=169 data-nosnippet>169</a>            } <span class="kw">else if </span><span class="macro">cfg!</span>(target_family = <span class="string">"unix"</span>) {
+<a href=#170 id=170 data-nosnippet>170</a>                <span class="comment">// perf
+<a href=#171 id=171 data-nosnippet>171</a>                </span>ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{} tracing] Tracing binary with `perf`."</span>, id));
+<a href=#172 id=172 data-nosnippet>172</a>                <span class="kw">let </span>perf_outfile = tempfile::NamedTempFile::new()<span class="question-mark">?</span>;
+<a href=#173 id=173 data-nosnippet>173</a>
+<a href=#174 id=174 data-nosnippet>174</a>                <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"perf"</span>);
+<a href=#175 id=175 data-nosnippet>175</a>                command
+<a href=#176 id=176 data-nosnippet>176</a>                    .args([
+<a href=#177 id=177 data-nosnippet>177</a>                        <span class="string">"record"</span>,
+<a href=#178 id=178 data-nosnippet>178</a>                        <span class="string">"-F"</span>,
+<a href=#179 id=179 data-nosnippet>179</a>                        <span class="kw-2">&amp;</span>tracing.frequency.to_string(),
+<a href=#180 id=180 data-nosnippet>180</a>                        <span class="string">"-e"</span>,
+<a href=#181 id=181 data-nosnippet>181</a>                        <span class="string">"cycles:u"</span>,
+<a href=#182 id=182 data-nosnippet>182</a>                        <span class="string">"--call-graph"</span>,
+<a href=#183 id=183 data-nosnippet>183</a>                        <span class="string">"dwarf,65528"</span>,
+<a href=#184 id=184 data-nosnippet>184</a>                        <span class="string">"-o"</span>,
+<a href=#185 id=185 data-nosnippet>185</a>                    ])
+<a href=#186 id=186 data-nosnippet>186</a>                    .arg(perf_outfile.as_ref())
+<a href=#187 id=187 data-nosnippet>187</a>                    .arg(<span class="kw-2">&amp;</span>binary.bin_path)
+<a href=#188 id=188 data-nosnippet>188</a>                    .args(args);
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a>                (<span class="prelude-val">Some</span>(perf_outfile), command)
+<a href=#191 id=191 data-nosnippet>191</a>            } <span class="kw">else </span>{
+<a href=#192 id=192 data-nosnippet>192</a>                <span class="macro">bail!</span>(
+<a href=#193 id=193 data-nosnippet>193</a>                    <span class="string">"Unknown OS for perf/dtrace tracing: {}"</span>,
+<a href=#194 id=194 data-nosnippet>194</a>                    std::env::consts::OS
+<a href=#195 id=195 data-nosnippet>195</a>                );
+<a href=#196 id=196 data-nosnippet>196</a>            }
+<a href=#197 id=197 data-nosnippet>197</a>        } <span class="kw">else </span>{
+<a href=#198 id=198 data-nosnippet>198</a>            <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="kw-2">&amp;</span>binary.bin_path);
+<a href=#199 id=199 data-nosnippet>199</a>            command.args(args);
+<a href=#200 id=200 data-nosnippet>200</a>            (<span class="prelude-val">None</span>, command)
+<a href=#201 id=201 data-nosnippet>201</a>        };
+<a href=#202 id=202 data-nosnippet>202</a>
+<a href=#203 id=203 data-nosnippet>203</a>        command
+<a href=#204 id=204 data-nosnippet>204</a>            .stdin(Stdio::piped())
+<a href=#205 id=205 data-nosnippet>205</a>            .stdout(Stdio::piped())
+<a href=#206 id=206 data-nosnippet>206</a>            .stderr(Stdio::piped());
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a>        <span class="attr">#[cfg(not(target_family = <span class="string">"unix"</span>))]
+<a href=#209 id=209 data-nosnippet>209</a>        </span>command.kill_on_drop(<span class="bool-val">true</span>);
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>        ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{}] running command: `{:?}`"</span>, id, command));
+<a href=#212 id=212 data-nosnippet>212</a>
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">let </span>child = command.spawn().map_err(|e| {
+<a href=#214 id=214 data-nosnippet>214</a>            <span class="kw">let </span>msg = <span class="kw">if </span>maybe_perf_outfile.is_some() &amp;&amp; std::io::ErrorKind::NotFound == e.kind() {
+<a href=#215 id=215 data-nosnippet>215</a>                <span class="string">"Tracing executable not found, ensure it is installed"
+<a href=#216 id=216 data-nosnippet>216</a>            </span>} <span class="kw">else </span>{
+<a href=#217 id=217 data-nosnippet>217</a>                <span class="string">"Failed to execute command"
+<a href=#218 id=218 data-nosnippet>218</a>            </span>};
+<a href=#219 id=219 data-nosnippet>219</a>            anyhow::Error::new(e).context(<span class="macro">format!</span>(<span class="string">"{}: {:?}"</span>, msg, command))
+<a href=#220 id=220 data-nosnippet>220</a>        })<span class="question-mark">?</span>;
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="prelude-val">Ok</span>(Box::new(LaunchedLocalhostBinary::new(
+<a href=#223 id=223 data-nosnippet>223</a>            child,
+<a href=#224 id=224 data-nosnippet>224</a>            id,
+<a href=#225 id=225 data-nosnippet>225</a>            tracing,
+<a href=#226 id=226 data-nosnippet>226</a>            maybe_perf_outfile.map(|f| TracingDataLocal { outfile: f }),
+<a href=#227 id=227 data-nosnippet>227</a>        )))
+<a href=#228 id=228 data-nosnippet>228</a>    }
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>    <span class="kw">async fn </span>forward_port(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;SocketAddr&gt; {
+<a href=#231 id=231 data-nosnippet>231</a>        <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>addr)
 <a href=#232 id=232 data-nosnippet>232</a>    }
-<a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>    <span class="kw">async fn </span>forward_port(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;SocketAddr&gt; {
-<a href=#235 id=235 data-nosnippet>235</a>        <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>addr)
-<a href=#236 id=236 data-nosnippet>236</a>    }
-<a href=#237 id=237 data-nosnippet>237</a>}</code></pre></div></section></main></body></html>
+<a href=#233 id=233 data-nosnippet>233</a>}</code></pre></div></section></main></body></html>

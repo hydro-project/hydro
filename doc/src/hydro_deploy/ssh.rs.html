@@ -348,7 +348,7 @@
 <a href=#348 id=348 data-nosnippet>348</a>
 <a href=#349 id=349 data-nosnippet>349</a>        <span class="kw">let </span>user = <span class="self">self</span>.ssh_user();
 <a href=#350 id=350 data-nosnippet>350</a>        <span class="comment">// we may be deploying multiple binaries, so give each a unique name
-<a href=#351 id=351 data-nosnippet>351</a>        </span><span class="kw">let </span>binary_path = <span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id);
+<a href=#351 id=351 data-nosnippet>351</a>        </span><span class="kw">let </span>binary_path = <span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id());
 <a href=#352 id=352 data-nosnippet>352</a>
 <a href=#353 id=353 data-nosnippet>353</a>        <span class="kw">if </span>sftp.metadata(<span class="kw-2">&amp;</span>binary_path).<span class="kw">await</span>.is_err() {
 <a href=#354 id=354 data-nosnippet>354</a>            <span class="kw">let </span>random = <span class="macro">nanoid!</span>(<span class="number">8</span>);
@@ -413,7 +413,7 @@
 <a href=#413 id=413 data-nosnippet>413</a>        <span class="kw">let </span>session = <span class="self">self</span>.open_ssh_session().<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#414 id=414 data-nosnippet>414</a>
 <a href=#415 id=415 data-nosnippet>415</a>        <span class="kw">let </span>user = <span class="self">self</span>.ssh_user();
-<a href=#416 id=416 data-nosnippet>416</a>        <span class="kw">let </span>binary_path = PathBuf::from(<span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id));
+<a href=#416 id=416 data-nosnippet>416</a>        <span class="kw">let </span>binary_path = PathBuf::from(<span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id()));
 <a href=#417 id=417 data-nosnippet>417</a>
 <a href=#418 id=418 data-nosnippet>418</a>        <span class="kw">let </span><span class="kw-2">mut </span>command = binary_path.to_str().unwrap().to_owned();
 <a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">for </span>arg <span class="kw">in </span>args {

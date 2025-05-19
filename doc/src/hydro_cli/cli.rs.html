@@ -28,8 +28,8 @@
 <a href=#28 id=28 data-nosnippet>28</a>    },
 <a href=#29 id=29 data-nosnippet>29</a>}
 <a href=#30 id=30 data-nosnippet>30</a>
-<a href=#31 id=31 data-nosnippet>31</a><span class="kw">fn </span>async_wrapper_module(py: Python) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw-2">&amp;</span>PyModule, PyErr&gt; {
-<a href=#32 id=32 data-nosnippet>32</a>    PyModule::from_code(
+<a href=#31 id=31 data-nosnippet>31</a><span class="kw">fn </span>async_wrapper_module(py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Bound&lt;<span class="lifetime">'_</span>, PyModule&gt;, PyErr&gt; {
+<a href=#32 id=32 data-nosnippet>32</a>    PyModule::from_code_bound(
 <a href=#33 id=33 data-nosnippet>33</a>        py,
 <a href=#34 id=34 data-nosnippet>34</a>        <span class="macro">include_str!</span>(<span class="string">"../hydro/async_wrapper.py"</span>),
 <a href=#35 id=35 data-nosnippet>35</a>        <span class="string">"wrapper.py"</span>,
@@ -54,15 +54,15 @@
 <a href=#54 id=54 data-nosnippet>54</a>
 <a href=#55 id=55 data-nosnippet>55</a><span class="kw">fn </span>deploy(config: PathBuf, args: Vec&lt;String&gt;) -&gt; anyhow::Result&lt;()&gt; {
 <a href=#56 id=56 data-nosnippet>56</a>    Python::with_gil(|py| -&gt; anyhow::Result&lt;()&gt; {
-<a href=#57 id=57 data-nosnippet>57</a>        <span class="kw">let </span>syspath: <span class="kw-2">&amp;</span>PyList = py
-<a href=#58 id=58 data-nosnippet>58</a>            .import(<span class="string">"sys"</span>)
-<a href=#59 id=59 data-nosnippet>59</a>            .and_then(|s| s.getattr(<span class="string">"path"</span>))
-<a href=#60 id=60 data-nosnippet>60</a>            .and_then(|p| <span class="prelude-val">Ok</span>(p.downcast::&lt;PyList&gt;()<span class="question-mark">?</span>))<span class="question-mark">?</span>;
+<a href=#57 id=57 data-nosnippet>57</a>        <span class="kw">let </span>syspath = py.import_bound(<span class="string">"sys"</span>)<span class="question-mark">?</span>.getattr(<span class="string">"path"</span>)<span class="question-mark">?</span>;
+<a href=#58 id=58 data-nosnippet>58</a>        <span class="kw">let </span>syspath: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyList&gt; = syspath
+<a href=#59 id=59 data-nosnippet>59</a>            .downcast::&lt;PyList&gt;()
+<a href=#60 id=60 data-nosnippet>60</a>            .map_err(|downcast_error| anyhow::Error::msg(downcast_error.to_string()))<span class="question-mark">?</span>;
 <a href=#61 id=61 data-nosnippet>61</a>
 <a href=#62 id=62 data-nosnippet>62</a>        syspath.insert(<span class="number">0</span>, PathBuf::from(<span class="string">"."</span>).canonicalize().unwrap())<span class="question-mark">?</span>;
 <a href=#63 id=63 data-nosnippet>63</a>
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>filename = config.canonicalize().unwrap();
-<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>fun: Py&lt;PyAny&gt; = PyModule::from_code(
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>fun: Py&lt;PyAny&gt; = PyModule::from_code_bound(
 <a href=#66 id=66 data-nosnippet>66</a>            py,
 <a href=#67 id=67 data-nosnippet>67</a>            std::fs::read_to_string(config).unwrap().as_str(),
 <a href=#68 id=68 data-nosnippet>68</a>            filename.to_str().unwrap(),
@@ -78,7 +78,7 @@
 <a href=#78 id=78 data-nosnippet>78</a>            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
 <a href=#79 id=79 data-nosnippet>79</a>            <span class="prelude-val">Err</span>(err) =&gt; {
 <a href=#80 id=80 data-nosnippet>80</a>                <span class="kw">let </span>traceback = err
-<a href=#81 id=81 data-nosnippet>81</a>                    .traceback(py)
+<a href=#81 id=81 data-nosnippet>81</a>                    .traceback_bound(py)
 <a href=#82 id=82 data-nosnippet>82</a>                    .context(<span class="string">"traceback was expected but none found"</span>)
 <a href=#83 id=83 data-nosnippet>83</a>                    .and_then(|tb| <span class="prelude-val">Ok</span>(tb.format()<span class="question-mark">?</span>))<span class="question-mark">?
 <a href=#84 id=84 data-nosnippet>84</a>                    </span>.trim()
@@ -86,7 +86,7 @@
 <a href=#86 id=86 data-nosnippet>86</a>
 <a href=#87 id=87 data-nosnippet>87</a>                <span class="kw">if </span>err.is_instance_of::&lt;AnyhowError&gt;(py) {
 <a href=#88 id=88 data-nosnippet>88</a>                    <span class="kw">let </span>args = err
-<a href=#89 id=89 data-nosnippet>89</a>                        .value(py)
+<a href=#89 id=89 data-nosnippet>89</a>                        .value_bound(py)
 <a href=#90 id=90 data-nosnippet>90</a>                        .getattr(<span class="string">"args"</span>)<span class="question-mark">?
 <a href=#91 id=91 data-nosnippet>91</a>                        </span>.extract::&lt;Vec&lt;AnyhowWrapper&gt;&gt;()<span class="question-mark">?</span>;
 <a href=#92 id=92 data-nosnippet>92</a>                    <span class="kw">let </span>wrapper = args.first().unwrap();
@@ -131,7 +131,7 @@
 <a href=#131 id=131 data-nosnippet>131</a>}
 <a href=#132 id=132 data-nosnippet>132</a>
 <a href=#133 id=133 data-nosnippet>133</a><span class="attr">#[pymodule]
-<a href=#134 id=134 data-nosnippet>134</a></span><span class="kw">pub fn </span>cli(_py: Python, m: <span class="kw-2">&amp;</span>PyModule) -&gt; PyResult&lt;()&gt; {
+<a href=#134 id=134 data-nosnippet>134</a></span><span class="kw">pub fn </span>cli(_py: Python&lt;<span class="lifetime">'_</span>&gt;, m: <span class="kw-2">&amp;</span>Bound&lt;<span class="lifetime">'_</span>, PyModule&gt;) -&gt; PyResult&lt;()&gt; {
 <a href=#135 id=135 data-nosnippet>135</a>    m.add_function(<span class="macro">wrap_pyfunction!</span>(cli_entrypoint, m)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 <a href=#136 id=136 data-nosnippet>136</a>
 <a href=#137 id=137 data-nosnippet>137</a>    <span class="prelude-val">Ok</span>(())
