@@ -72,25 +72,20 @@ impl BarTree {
                     .iter()
                     .filter(|child| child.status() == LeafStatus::Started)
                     .count();
-                let queued_count =
-                    anticipated_total.map(|total| total - finished_count - started_count);
 
-                let progress_str =
-                    if anticipated_total.iter().any(|v| *v == 1) && started_count == 1 {
-                        "".to_string()
-                    } else {
-                        match queued_count {
-                            Some(queued_count) => {
-                                format!(
-                                    " ({}/{}/{})",
-                                    finished_count,
-                                    started_count,
-                                    queued_count + finished_count + started_count
-                                )
-                            }
-                            None => format!(" ({}/{}/?)", finished_count, started_count),
-                        }
-                    };
+                let progress_str = if Some(1) == *anticipated_total {
+                    String::new()
+                } else {
+                    let started_or_finished_count = finished_count + started_count;
+                    format!(
+                        " ({}/{}/{})",
+                        finished_count,
+                        started_or_finished_count,
+                        anticipated_total
+                            .filter(|&total| total <= started_or_finished_count)
+                            .map_or("?", |total| &*total.to_string()),
+                    )
+                };
 
                 if cur_path.is_empty() {
                     pb.set_prefix(format!("{}{}", name, progress_str));
