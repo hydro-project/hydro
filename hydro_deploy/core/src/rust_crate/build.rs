@@ -7,7 +7,6 @@ use std::sync::OnceLock;
 
 use cargo_metadata::diagnostic::Diagnostic;
 use memo_map::MemoMap;
-use nanoid::nanoid;
 use tokio::sync::OnceCell;
 
 use crate::HostTargetType;
@@ -71,12 +70,19 @@ impl BuildParams {
 
 /// Information about a built crate. See [`build_crate`].
 pub struct BuildOutput {
-    /// A unique but meaningless id.
-    pub unique_id: String,
     /// The binary contents as a byte array.
     pub bin_data: Vec<u8>,
     /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
     pub bin_path: PathBuf,
+}
+impl BuildOutput {
+    pub fn new(bin_data: Vec<u8>, bin_path: PathBuf) -> Self {
+        Self { bin_data, bin_path }
+    }
+
+    pub fn unique_id(&self) -> impl use<> + Display {
+        blake3::hash(&self.bin_data).to_hex()
+    }
 }
 
 /// Build memoization cache.
@@ -170,7 +176,6 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     let data = std::fs::read(path).unwrap();
                                     assert!(spawned.wait().unwrap().success());
                                     return Ok(BuildOutput {
-                                        unique_id: nanoid!(8),
                                         bin_data: data,
                                         bin_path: path_buf,
                                     });

@@ -17,6 +17,7 @@ async-ssh2-russh = { version = "0.1.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.54"
+blake3 = "1.8.2"
 buildstructor = "0.6.0"
 bytes = "1.1.0"
 cargo_metadata = "0.18.0"

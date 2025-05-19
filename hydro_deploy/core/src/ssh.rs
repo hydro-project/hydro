@@ -348,7 +348,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
 
         let user = self.ssh_user();
         // we may be deploying multiple binaries, so give each a unique name
-        let binary_path = format!("/home/{user}/hydro-{}", binary.unique_id);
+        let binary_path = format!("/home/{user}/hydro-{}", binary.unique_id());
 
         if sftp.metadata(&binary_path).await.is_err() {
             let random = nanoid!(8);
@@ -413,7 +413,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         let session = self.open_ssh_session().await?;
 
         let user = self.ssh_user();
-        let binary_path = PathBuf::from(format!("/home/{user}/hydro-{}", binary.unique_id));
+        let binary_path = PathBuf::from(format!("/home/{user}/hydro-{}", binary.unique_id()));
 
         let mut command = binary_path.to_str().unwrap().to_owned();
         for arg in args {
