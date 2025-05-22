@@ -182,10 +182,8 @@ fn main() {
 
 #[test]
 fn test() {
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
+    use example_test::run_current_example;
 
-    let (_server, _, mut server_stdout) = run_cargo_example("kvs_bench", "bench --threads 2");
-
-    let mut server_output = String::new();
-    wait_for_process_output(&mut server_output, &mut server_stdout, r#"[0-9]+\.[0-9]+"#);
+    let mut server = run_current_example!("bench --threads 2");
+    server.wait_for_output(r#"[0-9]+\.[0-9]+"#);
 }

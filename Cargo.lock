@@ -1305,6 +1305,7 @@ dependencies = [
  "criterion",
  "dfir_lang",
  "dfir_macro",
+ "example_test",
  "futures",
  "getrandom 0.2.15",
  "hydro_deploy_integration",
@@ -1618,6 +1619,13 @@ checksum = "8be9f3dfaaffdae2972880079a491a1a8bb7cbed0b8dd7a347f668b4150a3b93"
 dependencies = [
  "event-listener",
  "pin-project-lite",
+]
+
+[[package]]
+name = "example_test"
+version = "0.0.0"
+dependencies = [
+ "regex",
 ]
 
 [[package]]
@@ -2350,6 +2358,7 @@ dependencies = [
  "colored 3.0.0",
  "ctor 0.2.9",
  "dfir_lang",
+ "dfir_rs",
  "futures",
  "hydro_deploy",
  "hydro_lang",

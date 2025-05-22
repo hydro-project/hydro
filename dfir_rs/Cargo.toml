@@ -44,7 +44,6 @@ lattices = { path = "../lattices", version = "^0.6.1", features = [ "serde" ] }
 pusherator = { path = "../pusherator", version = "^0.0.12" }
 pyo3 = { optional = true, version = "0.21.0", features = [ "gil-refs" ] }
 ref-cast = "1.0.0"
-regex = "1.10.4"
 rustc-hash = "1.1.0"
 sealed = "0.5.0"
 serde = { version = "1.0.197", features = [ "derive" ] }
@@ -80,6 +79,7 @@ dfir_lang = { path = "../dfir_lang", version = "^0.13.0", features = [ "clap-der
 chrono = { version = "0.4.20", features = [ "serde", "clock" ], default-features = false }
 clap = { version = "4.5.4", features = [ "derive" ] }
 colored = "2.0"
+example_test = { path = "../example_test", version = "^0.0.0" }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 insta = "1.39"
 multiplatform_test = { path = "../multiplatform_test", version = "^0.5.0" }

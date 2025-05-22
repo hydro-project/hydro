@@ -73,63 +73,29 @@ enum Role {
 
 #[test]
 fn test() {
-    use std::io::Write;
+    use example_test::run_current_example;
 
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
-
-    let (_server_1, _, mut server_1_stdout) =
-        run_cargo_example("kvs_replicated", "--role server --address 127.0.0.1:2071");
-
-    let (_client_1, mut client_1_stdin, mut client_1_stdout) =
-        run_cargo_example("kvs_replicated", "--role client --address 127.0.0.1:2071");
-
-    let mut server_1_output = String::new();
-    wait_for_process_output(
-        &mut server_1_output,
-        &mut server_1_stdout,
-        "Server is live! Listening on 127\\.0\\.0\\.1:2071 and talking to peer server None\n",
+    let mut server_1 = run_current_example!("--role server --address 127.0.0.1:2071");
+    server_1.wait_for_output(
+        "Server is live! Listening on 127\\.0\\.0\\.1:2071 and talking to peer server None",
     );
 
-    let mut client_1_output = String::new();
-    wait_for_process_output(
-        &mut client_1_output,
-        &mut client_1_stdout,
-        "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2071\n",
+    let mut client_1 = run_current_example!("--role client --address 127.0.0.1:2071");
+    client_1.wait_for_output("Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2071");
+
+    client_1.write_line("PUT a,7");
+
+    let mut server_2 = run_current_example!(
+        "--role server --address 127.0.0.1:2073 --peer-address 127.0.0.1:2071"
     );
-
-    client_1_stdin.write_all(b"PUT a,7\n").unwrap();
-
-    let (_server_2, _, mut server_2_stdout) = run_cargo_example(
-        "kvs_replicated",
-        "--role server --address 127.0.0.1:2073 --peer-address 127.0.0.1:2071",
-    );
-
-    let (_client_2, mut client_2_stdin, mut client_2_stdout) =
-        run_cargo_example("kvs_replicated", "--role client --address 127.0.0.1:2073");
-
-    let mut server_2_output = String::new();
-    wait_for_process_output(
-        &mut server_2_output,
-        &mut server_2_stdout,
-        "Server is live! Listening on 127\\.0\\.0\\.1:2073 and talking to peer server Some\\(127\\.0\\.0\\.1\\:2071\\)\n",
-    );
-    wait_for_process_output(
-        &mut server_2_output,
-        &mut server_2_stdout,
+    server_2.wait_for_output("Server is live! Listening on 127\\.0\\.0\\.1:2073 and talking to peer server Some\\(127\\.0\\.0\\.1:2071\\)");
+    server_2.wait_for_output(
         r#"Message received PeerGossip \{ key: "a", value: "7" \} from 127\.0\.0\.1:2071"#,
     );
 
-    let mut client_2_output = String::new();
-    wait_for_process_output(
-        &mut client_2_output,
-        &mut client_2_stdout,
-        "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2073\n",
-    );
+    let mut client_2 = run_current_example!("--role client --address 127.0.0.1:2073");
+    client_2.wait_for_output("Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2073");
 
-    client_2_stdin.write_all(b"GET a\n").unwrap();
-    wait_for_process_output(
-        &mut client_2_output,
-        &mut client_2_stdout,
-        r#"Got a Response: ServerResponse \{ key: "a", value: "7" \}"#,
-    );
+    client_2.write_line("GET a");
+    client_2.wait_for_output(r#"Got a Response: ServerResponse \{ key: "a", value: "7" \}"#);
 }

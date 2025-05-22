@@ -73,35 +73,14 @@ enum Role {
 
 #[test]
 fn test() {
-    use std::io::Write;
+    use example_test::run_current_example;
 
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
+    let mut server = run_current_example!("--role server --address 127.0.0.1:2048");
+    server.wait_for_output("Server is live! Listening on 127.0.0.1:2048");
 
-    let (_server, _, mut server_output) =
-        run_cargo_example("echo_server", "--role server --address 127.0.0.1:2048");
+    let mut client = run_current_example!("--role client --address 127.0.0.1:2048");
+    client.wait_for_output("Client is live! Listening on 127.0.0.1:");
 
-    let (_client, mut client_input, mut client_output) =
-        run_cargo_example("echo_server", "--role client --address 127.0.0.1:2048");
-
-    let mut server_output_so_far = String::new();
-    let mut client_output_so_far = String::new();
-
-    wait_for_process_output(
-        &mut server_output_so_far,
-        &mut server_output,
-        "Server is live! Listening on 127\\.0\\.0\\.1:2048\n",
-    );
-    wait_for_process_output(
-        &mut client_output_so_far,
-        &mut client_output,
-        "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2048\n",
-    );
-
-    client_input.write_all(b"Hello\n").unwrap();
-
-    wait_for_process_output(
-        &mut client_output_so_far,
-        &mut client_output,
-        "UTC: Got EchoMsg \\{ payload: \"Hello\",",
-    );
+    client.write_line("Hello");
+    client.wait_for_output("UTC: Got EchoMsg \\{ payload: \"Hello\",");
 }

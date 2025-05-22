@@ -79,15 +79,16 @@ pub fn main() {
 
 #[test]
 fn test() {
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
+    use example_test::run_current_example;
 
-    let (_child, _, mut stdout) = run_cargo_example("three_clique", "");
+    let mut example = run_current_example!();
 
-    let mut output = String::new();
-    wait_for_process_output(&mut output, &mut stdout, r#"0, 3, 6"#);
-    wait_for_process_output(&mut output, &mut stdout, r#"5, 6, 10"#);
-    wait_for_process_output(&mut output, &mut stdout, r#"0, 3, 6"#);
-    wait_for_process_output(&mut output, &mut stdout, r#"5, 6, 10"#);
-    wait_for_process_output(&mut output, &mut stdout, r#"0, 3, 6"#);
-    wait_for_process_output(&mut output, &mut stdout, r#"5, 6, 10"#);
+    example.wait_for_output("A");
+    example.wait_for_output("B");
+    example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
+    example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
+    // example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
+    // example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
+    // example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
+    // example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
 }

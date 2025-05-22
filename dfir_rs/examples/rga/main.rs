@@ -164,7 +164,7 @@ fn format_dot_node(n: Token) -> String {
 
 #[test]
 fn test() {
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
+    use example_test::run_current_example;
 
     fn escape_regex(input: &str) -> String {
         input
@@ -175,39 +175,31 @@ fn test() {
     }
 
     {
-        let (_child, _, mut stdout) = run_cargo_example("rga", "--impl adjacency");
-
-        let mut output = String::new();
-        for line in EXPECTED_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
+        let mut example = run_current_example!("--impl adjacency");
+        for line in EXPECTED_OUTPUT.split('\n') {
+            example.wait_for_output(&escape_regex(line));
         }
     }
 
     {
-        let (_child, _, mut stdout) = run_cargo_example("rga", "--impl datalog");
-
-        let mut output = String::new();
-        for line in EXPECTED_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
+        let mut example = run_current_example!("--impl datalog");
+        for line in EXPECTED_OUTPUT.split('\n') {
+            example.wait_for_output(&escape_regex(line));
         }
     }
 
     {
-        let (_child, _, mut stdout) = run_cargo_example("rga", "--impl minimal");
-
-        let mut output = String::new();
-        for line in EXPECTED_OUTPUT_MINIMAL.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
+        let mut example = run_current_example!("--impl minimal");
+        for line in EXPECTED_OUTPUT_MINIMAL.split('\n') {
+            example.wait_for_output(&escape_regex(line));
         }
     }
 
     // TODO: This implementation appears to be broken.
     // {
-    //     let (_, _, mut stdout) = spawn("rga", "--impl datalog-agg");
-
-    //     let mut output = String::new();
-    //     for line in EXPECTED_OUTPUT_MINIMAL.split("\n") {
-    //         wait_for_output(&mut output, &mut stdout, &escape_regex(line));
+    //     let mut example = run_current_example!("--impl datalog-agg");
+    //     for line in EXPECTED_OUTPUT_MINIMAL.split('\n') {
+    //         example.wait_for_output(&escape_regex(line));
     //     }
     // }
 }

@@ -36,3 +36,4 @@ include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 insta = "1.39"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"
+dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false }
