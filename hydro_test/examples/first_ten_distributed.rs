@@ -75,26 +75,3 @@ async fn main() {
 
     deployment.stop().await.unwrap();
 }
-
-#[test]
-fn test() {
-    use std::io::Write;
-
-    pub use dfir_rs::util::{run_cargo_example, wait_for_process_output};
-
-    let (_example, _, mut example_stdout) = run_cargo_example("first_ten_distributed", "");
-
-    let mut server_output = String::new();
-    wait_for_process_output(
-        &mut server_output,
-        &mut example_stdout,
-        "Server is live! Listening on 127\\.0\\.0\\.1:2051\n",
-    );
-
-    let mut client1_output = String::new();
-    wait_for_process_output(
-        &mut client1_output,
-        &mut client1_stdout,
-        "Client is live! Listening on 127\\.0\\.0\\.1:\\d+ and talking to server on 127\\.0\\.0\\.1:2051\n",
-    );
-}
