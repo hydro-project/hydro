@@ -76,12 +76,13 @@ fn test() {
     use example_test::run_current_example;
 
     let mut server_1 = run_current_example!("--role server --address 127.0.0.1:2071");
-    server_1.read_string(
-        "Server is live! Listening on 127.0.0.1:2071 and talking to peer server None",
-    );
+    server_1
+        .read_string("Server is live! Listening on 127.0.0.1:2071 and talking to peer server None");
 
     let mut client_1 = run_current_example!("--role client --address 127.0.0.1:2071");
-    client_1.read_regex(r"Client is live! Listening on 127\.0\.0\.1:\d+ and talking to server on 127\.0\.0\.1:2071");
+    client_1.read_regex(
+        r"Client is live! Listening on 127\.0\.0\.1:\d+ and talking to server on 127\.0\.0\.1:2071",
+    );
 
     client_1.write_line("PUT a,7");
 
@@ -89,12 +90,13 @@ fn test() {
         "--role server --address 127.0.0.1:2073 --peer-address 127.0.0.1:2071"
     );
     server_2.read_string("Server is live! Listening on 127.0.0.1:2073 and talking to peer server Some(127.0.0.1:2071)");
-    server_2.read_string(
-        r#"Message received PeerGossip { key: "a", value: "7" } from 127.0.0.1:2071"#,
-    );
+    server_2
+        .read_string(r#"Message received PeerGossip { key: "a", value: "7" } from 127.0.0.1:2071"#);
 
     let mut client_2 = run_current_example!("--role client --address 127.0.0.1:2073");
-    client_2.read_regex(r"Client is live! Listening on 127\.0\.0\.1:\d+ and talking to server on 127\.0\.0\.1:2073");
+    client_2.read_regex(
+        r"Client is live! Listening on 127\.0\.0\.1:\d+ and talking to server on 127\.0\.0\.1:2073",
+    );
 
     client_2.write_line("GET a");
     client_2.read_string(r#"Got a Response: ServerResponse { key: "a", value: "7" }"#);

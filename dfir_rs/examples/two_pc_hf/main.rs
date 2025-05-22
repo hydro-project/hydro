@@ -95,12 +95,9 @@ fn test() {
 
     coordinator.write_line("1");
 
-    coordinator
-        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12347");
-    coordinator
-        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12348");
-    coordinator
-        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12349");
+    coordinator.read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12347");
+    coordinator.read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12348");
+    coordinator.read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12349");
 
     // Wait for either Commit or Ended response.
     coordinator.read_regex(r"(Received SubordResponse \{ xid: 1, mtype: Commit \}|Received SubordResponse \{ xid: 1, mtype: Ended \})");

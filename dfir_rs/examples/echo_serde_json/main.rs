@@ -79,8 +79,8 @@ fn test() {
     server.read_string("Server is live! Listening on 127.0.0.1:2049");
 
     let mut client = run_current_example!("--role client --address 127.0.0.1:2049");
-    client.read_string(
-        r"Client is live! Listening on 127.0.0.1:\d+ and talking to server on 127.0.0.1:2049",
+    client.read_regex(
+        r"Client is live! Listening on 127\.0\.0\.1:\d+ and talking to server on 127\.0\.0\.1:2049",
     );
 
     client.write_line("Hello");

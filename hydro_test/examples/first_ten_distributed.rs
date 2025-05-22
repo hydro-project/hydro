@@ -86,7 +86,5 @@ fn test() {
     );
     run.read_string("[hydro_test::distributed::first_ten::P2 (process 2)] 9");
     run.write_line("Hello World");
-    run.read_string(
-        r#"[hydro_test::distributed::first_ten::P1 (process 1)] hi: "Hello World\n"#,
-    );
+    run.read_string(r#"[hydro_test::distributed::first_ten::P1 (process 1)] hi: "Hello World\n"#);
 }
