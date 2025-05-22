@@ -78,15 +78,15 @@ fn test() {
         .split_whitespace()
     );
 
-    peer1.wait_for_output("Type in an edge as a tuple of two integers \\(x,y\\):");
-    peer2.wait_for_output("Type in an edge as a tuple of two integers \\(x,y\\):");
-    peer3.wait_for_output("Type in an edge as a tuple of two integers \\(x,y\\):");
+    peer1.read_string("Type in an edge as a tuple of two integers (x,y):");
+    peer2.read_string("Type in an edge as a tuple of two integers (x,y):");
+    peer3.read_string("Type in an edge as a tuple of two integers (x,y):");
 
     peer1.write_line("(1, 2)");
     peer2.write_line("(2, 3)");
     peer3.write_line("(3, 1)");
 
-    peer1.wait_for_output("path found: 1 -> 2 -> 3 -> 1");
-    peer2.wait_for_output("path found: 1 -> 2 -> 3 -> 1");
-    peer3.wait_for_output("path found: 1 -> 2 -> 3 -> 1");
+    peer1.read_string("path found: 1 -> 2 -> 3 -> 1");
+    peer2.read_string("path found: 1 -> 2 -> 3 -> 1");
+    peer3.read_string("path found: 1 -> 2 -> 3 -> 1");
 }

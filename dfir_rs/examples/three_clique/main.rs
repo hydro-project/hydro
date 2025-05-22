@@ -83,12 +83,12 @@ fn test() {
 
     let mut example = run_current_example!();
 
-    example.wait_for_output("A");
-    example.wait_for_output("B");
-    example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
-    example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
-    // example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
-    // example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
-    // example.wait_for_output(r"three_clique found: \(0, 3, 6\)");
-    // example.wait_for_output(r"three_clique found: \(5, 6, 10\)");
+    example.read_string("A");
+    example.read_string("B");
+    example.read_string("three_clique found: (0, 3, 6)");
+    example.read_string("three_clique found: (5, 6, 10)");
+    // example.wait_for_output_string("three_clique found: (0, 3, 6)");
+    // example.wait_for_output_string("three_clique found: (5, 6, 10)");
+    // example.wait_for_output_string("three_clique found: (0, 3, 6)");
+    // example.wait_for_output_string("three_clique found: (5, 6, 10)");
 }

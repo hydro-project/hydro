@@ -166,32 +166,24 @@ fn format_dot_node(n: Token) -> String {
 fn test() {
     use example_test::run_current_example;
 
-    fn escape_regex(input: &str) -> String {
-        input
-            .replace("[", "\\[")
-            .replace("]", "\\]")
-            .replace("{", "\\{")
-            .replace("}", "\\}")
-    }
-
     {
         let mut example = run_current_example!("--impl adjacency");
         for line in EXPECTED_OUTPUT.split('\n') {
-            example.wait_for_output(&escape_regex(line));
+            example.read_string(line);
         }
     }
 
     {
         let mut example = run_current_example!("--impl datalog");
         for line in EXPECTED_OUTPUT.split('\n') {
-            example.wait_for_output(&escape_regex(line));
+            example.read_string(line);
         }
     }
 
     {
         let mut example = run_current_example!("--impl minimal");
         for line in EXPECTED_OUTPUT_MINIMAL.split('\n') {
-            example.wait_for_output(&escape_regex(line));
+            example.read_string(line);
         }
     }
 

@@ -185,5 +185,5 @@ fn test() {
     use example_test::run_current_example;
 
     let mut server = run_current_example!("bench --threads 2");
-    server.wait_for_output(r#"[0-9]+\.[0-9]+"#);
+    server.read_regex(r#"[0-9]+\.[0-9]+"#);
 }

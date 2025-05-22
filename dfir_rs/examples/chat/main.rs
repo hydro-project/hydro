@@ -68,22 +68,22 @@ fn test() {
     use example_test::run_current_example;
 
     let mut server = run_current_example!("--role server --name server --address 127.0.0.1:11247");
-    server.wait_for_output("Server live!");
+    server.read_regex("Server live!");
 
     let mut client1 =
         run_current_example!("--role client --name client1 --address 127.0.0.1:11247");
     let mut client2 =
         run_current_example!("--role client --name client2 --address 127.0.0.1:11247");
 
-    client1.wait_for_output("Client is live!");
-    client2.wait_for_output("Client is live!");
+    client1.read_regex("Client is live!");
+    client2.read_regex("Client is live!");
 
     // wait 100ms so we don't drop a packet
     let hundo_millis = std::time::Duration::from_millis(100);
     std::thread::sleep(hundo_millis);
 
     client1.write_line("Hello");
-    client2.wait_for_output(".*, .* client1: Hello");
+    client2.read_regex(".*, .* client1: Hello");
 }
 
 #[test]
@@ -92,19 +92,19 @@ fn test_gossip() {
 
     let mut server1 =
         run_current_example!("--role gossiping-server1 --name server --address 127.0.0.1:11248");
-    server1.wait_for_output("Server is live!");
+    server1.read_regex("Server is live!");
 
     let mut server2 =
         run_current_example!("--role gossiping-server2 --name server --address 127.0.0.1:11249");
-    server2.wait_for_output("Server is live!");
+    server2.read_regex("Server is live!");
 
     let mut client1 =
         run_current_example!("--role client --name client1 --address 127.0.0.1:11248");
     let mut client2 =
         run_current_example!("--role client --name client2 --address 127.0.0.1:11249");
 
-    client1.wait_for_output("Client is live!");
-    client2.wait_for_output("Client is live!");
+    client1.read_string("Client is live!");
+    client2.read_string("Client is live!");
 
     // wait 100ms so we don't drop a packet
     let hundo_millis = std::time::Duration::from_millis(100);
@@ -116,5 +116,5 @@ fn test_gossip() {
         client1.write_line("Hello");
     }
 
-    client2.wait_for_output(".*, .* client1: Hello");
+    client2.read_regex(".*, .* client1: Hello");
 }

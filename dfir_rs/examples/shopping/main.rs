@@ -39,16 +39,6 @@ async fn main() {
 fn test() {
     use example_test::run_current_example;
 
-    fn escape_regex(input: &str) -> String {
-        input
-            .replace("(", "\\(")
-            .replace(")", "\\)")
-            .replace("{", "\\{")
-            .replace("}", "\\}")
-            .replace("[", "\\[")
-            .replace("]", "\\]")
-    }
-
     let opts_outputs = [
         ("--opt=1", OPT1_OUTPUT),
         ("--opt=2", OPT2_OUTPUT),
@@ -63,7 +53,7 @@ fn test() {
         let mut proc = run_current_example!([opt]);
         for line in expected_output.split('\n') {
             if !line.trim().is_empty() {
-                proc.wait_for_output(&escape_regex(line));
+                proc.read_string(line);
             }
         }
     }

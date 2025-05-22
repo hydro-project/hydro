@@ -71,27 +71,27 @@ fn test() {
     use example_test::run_current_example;
 
     let mut server = run_current_example!("--role server --address 127.0.0.1:2051");
-    server.wait_for_output("Server is live! Listening on 127.0.0.1:2051");
+    server.read_string("Server is live! Listening on 127.0.0.1:2051");
 
     let mut client1 = run_current_example!("--role client --address 127.0.0.1:2051");
-    client1.wait_for_output(
+    client1.read_regex(
         "Client is live! Listening on 127.0.0.1:\\d+ and talking to server on 127.0.0.1:2051",
     );
 
     client1.write_line("PUT a,7");
 
     let mut client2 = run_current_example!("--role client --address 127.0.0.1:2051");
-    client2.wait_for_output(
+    client2.read_regex(
         "Client is live! Listening on 127.0.0.1:\\d+ and talking to server on 127.0.0.1:2051",
     );
 
     client2.write_line("GET a");
-    client2.wait_for_output(r#"Got a Response: KvsResponse \{ key: "a", value: "7" \}"#);
+    client2.read_string(r#"Got a Response: KvsResponse { key: "a", value: "7" }"#);
 
     client1.write_line("PUT a,8");
     client1.write_line("GET a");
-    client1.wait_for_output(
-        r#"Got a Response: KvsResponse \{ key: "a", value: "7" \}
-Got a Response: KvsResponse \{ key: "a", value: "8" \}"#,
+    client1.read_string(
+        r#"Got a Response: KvsResponse { key: "a", value: "7" }
+Got a Response: KvsResponse { key: "a", value: "8" }"#,
     );
 }
