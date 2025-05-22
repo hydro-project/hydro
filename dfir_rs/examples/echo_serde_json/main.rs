@@ -76,13 +76,13 @@ fn test() {
     use example_test::run_current_example;
 
     let mut server = run_current_example!("--role server --address 127.0.0.1:2049");
-    server.wait_for_output("Server is live! Listening on 127.0.0.1:2049");
+    server.read_string("Server is live! Listening on 127.0.0.1:2049");
 
     let mut client = run_current_example!("--role client --address 127.0.0.1:2049");
-    client.wait_for_output(
+    client.read_string(
         r"Client is live! Listening on 127.0.0.1:\d+ and talking to server on 127.0.0.1:2049",
     );
 
     client.write_line("Hello");
-    client.wait_for_output(r#"EchoMsg \{ payload: \"Hello\", ts: .* \}"#);
+    client.read_regex(r#"EchoMsg \{ payload: \"Hello\", ts: .* \}"#);
 }

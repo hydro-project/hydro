@@ -73,35 +73,35 @@ fn test() {
         format!("--path {MEMBERS_PATH} --role coordinator --addr 127.0.0.1:12346")
             .split_whitespace()
     );
-    coordinator.wait_for_output("Coordinator live!");
+    coordinator.read_string("Coordinator live!");
 
     let mut subordinate1 = run_current_example!(
         format!("--path {MEMBERS_PATH} --role subordinate --addr 127.0.0.1:12347")
             .split_whitespace()
     );
-    subordinate1.wait_for_output("Subordinate live!");
+    subordinate1.read_string("Subordinate live!");
 
     let mut subordinate2 = run_current_example!(
         format!("--path {MEMBERS_PATH} --role subordinate --addr 127.0.0.1:12348")
             .split_whitespace()
     );
-    subordinate2.wait_for_output("Subordinate live!");
+    subordinate2.read_string("Subordinate live!");
 
     let mut subordinate3 = run_current_example!(
         format!("--path {MEMBERS_PATH} --role subordinate --addr 127.0.0.1:12349")
             .split_whitespace()
     );
-    subordinate3.wait_for_output("Subordinate live!");
+    subordinate3.read_string("Subordinate live!");
 
     coordinator.write_line("1");
 
     coordinator
-        .wait_for_output(r"Sending CoordMsg \{ xid: 1, mtype: Prepare \} to 127.0.0.1:12347");
+        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12347");
     coordinator
-        .wait_for_output(r"Sending CoordMsg \{ xid: 1, mtype: Prepare \} to 127.0.0.1:12348");
+        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12348");
     coordinator
-        .wait_for_output(r"Sending CoordMsg \{ xid: 1, mtype: Prepare \} to 127.0.0.1:12349");
+        .read_string("Sending CoordMsg { xid: 1, mtype: Prepare } to 127.0.0.1:12349");
 
     // Wait for either Commit or Ended response.
-    coordinator.wait_for_output(r"(Received SubordResponse \{ xid: 1, mtype: Commit \}|Received SubordResponse \{ xid: 1, mtype: Ended \})");
+    coordinator.read_regex(r"(Received SubordResponse \{ xid: 1, mtype: Commit \}|Received SubordResponse \{ xid: 1, mtype: Ended \})");
 }

@@ -71,21 +71,21 @@ fn test_vector_clock() {
     use example_test::run_current_example;
 
     let mut server = run_current_example!("--role server --address 127.0.0.1:12053");
-    server.wait_for_output("Server is live! Listening on 127.0.0.1:12053");
+    server.read_string("Server is live! Listening on 127.0.0.1:12053");
 
     let mut client1 = run_current_example!("--role client --address 127.0.0.1:12053");
     let mut client2 = run_current_example!("--role client --address 127.0.0.1:12053");
 
-    client1.wait_for_output("Client is live! Listening on 127.0.0.1:");
-    client2.wait_for_output("Client is live! Listening on 127.0.0.1:");
+    client1.read_string("Client is live! Listening on 127.0.0.1:");
+    client2.read_string("Client is live! Listening on 127.0.0.1:");
 
     client1.write_line("Hello1");
-    client1.wait_for_output(
+    client1.read_regex(
         r#"payload: "Hello1", vc: .*"127.0.0.1:12053": Max\(1\).*from 127.0.0.1:12053"#,
     );
 
     client2.write_line("Hello2");
-    client2.wait_for_output(
+    client2.read_regex(
         r#"payload: "Hello2", vc: .*"127.0.0.1:12053": Max\(2\).*from 127.0.0.1:12053"#,
     );
 }

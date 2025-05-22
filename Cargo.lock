@@ -2359,6 +2359,7 @@ dependencies = [
  "ctor 0.2.9",
  "dfir_lang",
  "dfir_rs",
+ "example_test",
  "futures",
  "hydro_deploy",
  "hydro_lang",

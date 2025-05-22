@@ -53,3 +53,12 @@ async fn main() {
 
     deployment.run_ctrl_c().await.unwrap();
 }
+
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!();
+    run.read_string("[hydro_test::cluster::map_reduce::Leader (process 0)] xyz: 1");
+    run.read_string("[hydro_test::cluster::map_reduce::Leader (process 0)] abc: 3");
+}
