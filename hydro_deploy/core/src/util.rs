@@ -42,12 +42,10 @@ impl PriorityBroadcast {
 
         if let Some(internal) = self.0.upgrade() {
             let mut internal = internal.lock().unwrap();
-            if let Some(priority_sender) = internal.priority_sender.take() {
-                priority_sender
-                    .send("Priority receiver already exists".to_string())
-                    .ok();
+            let prev_sender = internal.priority_sender.replace(sender);
+            if prev_sender.is_some() {
+                panic!("Only one deploy stdout receiver is allowed at a time");
             }
-            internal.priority_sender = Some(sender);
         }
 
         receiver

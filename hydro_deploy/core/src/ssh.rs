@@ -479,7 +479,6 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             session: Some(session),
             channel,
             stdin_sender,
-            // stdout_deploy_receivers,
             stdout_broadcast,
             stderr_broadcast,
             tracing,
