@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, Weak};
 use std::time::Duration;
 
 use futures::{Future, Stream, StreamExt};
@@ -29,7 +29,7 @@ pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>)
 // );
 
 #[derive(Clone)]
-pub struct PriorityBroadcast(Arc<Mutex<PriorityBroadcastInternal>>);
+pub struct PriorityBroadcast(Weak<Mutex<PriorityBroadcastInternal>>);
 
 struct PriorityBroadcastInternal {
     priority_sender: Option<oneshot::Sender<String>>,
@@ -38,20 +38,29 @@ struct PriorityBroadcastInternal {
 
 impl PriorityBroadcast {
     pub fn receive_priority(&self) -> oneshot::Receiver<String> {
-        let mut this = self.0.lock().unwrap();
-        if this.priority_sender.is_some() {
-            panic!("Only one deploy priority receiver is allowed at a time");
+        let (sender, receiver) = oneshot::channel::<String>();
+
+        if let Some(internal) = self.0.upgrade() {
+            let mut internal = internal.lock().unwrap();
+            if let Some(priority_sender) = internal.priority_sender.take() {
+                priority_sender
+                    .send("Priority receiver already exists".to_string())
+                    .ok();
+            }
+            internal.priority_sender = Some(sender);
         }
 
-        let (sender, receiver) = oneshot::channel::<String>();
-        this.priority_sender = Some(sender);
         receiver
     }
 
     pub fn receive(&self, prefix: Option<String>) -> mpsc::UnboundedReceiver<String> {
-        let mut this = self.0.lock().unwrap();
         let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        this.senders.push((prefix, sender));
+
+        if let Some(internal) = self.0.upgrade() {
+            let mut internal = internal.lock().unwrap();
+            internal.senders.push((prefix, sender));
+        }
+
         receiver
     }
 }
@@ -69,9 +78,6 @@ pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + 
 
     tokio::spawn(async move {
         while let Some(Ok(line)) = lines.next().await {
-            let Some(internal) = weak_internal.upgrade() else {
-                break;
-            };
             let mut internal = internal.lock().unwrap();
 
             // Priority receiver
@@ -100,15 +106,10 @@ pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + 
                 (fallback_receiver)(line);
             }
         }
-
-        if let Some(internal) = weak_internal.upgrade() {
-            let mut internal = internal.lock().unwrap();
-            drop(std::mem::take(&mut internal.priority_sender));
-            drop(std::mem::take(&mut internal.senders));
-        };
+        // Dropping `internal` will close all senders because it is the only strong `Arc` reference.
     });
 
-    PriorityBroadcast(internal)
+    PriorityBroadcast(weak_internal)
 }
 
 #[cfg(test)]
