@@ -92,7 +92,6 @@ impl LaunchedLocalhostBinary {
             tracing_data_local,
             tracing_results: None,
             stdin_sender,
-            // stdout_deploy_receivers,
             stdout_broadcast,
             stderr_broadcast,
         }
