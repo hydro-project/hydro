@@ -21,19 +21,12 @@ pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     thunk().await
 }
 
-pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>);
-
-// pub type PriorityBroadcast = (
-//     Arc<Mutex<Option<oneshot::Sender<String>>>>,
-//     Arc<Mutex<Vec<PrefixFilteredChannel>>>,
-// );
-
 #[derive(Clone)]
 pub struct PriorityBroadcast(Weak<Mutex<PriorityBroadcastInternal>>);
 
 struct PriorityBroadcastInternal {
     priority_sender: Option<oneshot::Sender<String>>,
-    senders: Vec<PrefixFilteredChannel>,
+    senders: Vec<(Option<String>, mpsc::UnboundedSender<String>)>,
 }
 
 impl PriorityBroadcast {
