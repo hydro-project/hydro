@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
@@ -27,12 +27,10 @@ use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
-use crate::util::{async_retry, prioritized_broadcast};
+use crate::util::{PriorityBroadcast, async_retry, prioritized_broadcast};
 use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
-
-pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>);
 
 struct LaunchedSshBinary {
     _resource_result: Arc<ResourceResult>,
@@ -42,9 +40,8 @@ struct LaunchedSshBinary {
     session: Option<AsyncSession<NoCheckHandler>>,
     channel: AsyncChannel,
     stdin_sender: mpsc::UnboundedSender<String>,
-    stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
-    stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    stderr_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
+    stdout_broadcast: PriorityBroadcast,
+    stderr_broadcast: PriorityBroadcast,
     tracing: Option<TracingOptions>,
     tracing_results: Option<TracingResults>,
 }
@@ -56,43 +53,23 @@ impl LaunchedBinary for LaunchedSshBinary {
     }
 
     fn deploy_stdout(&self) -> oneshot::Receiver<String> {
-        let mut receivers = self.stdout_deploy_receivers.lock().unwrap();
-
-        if receivers.is_some() {
-            panic!("Only one deploy stdout receiver is allowed at a time");
-        }
-
-        let (sender, receiver) = oneshot::channel::<String>();
-        *receivers = Some(sender);
-        receiver
+        self.stdout_broadcast.receive_priority()
     }
 
     fn stdout(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stdout_broadcast.receive(None)
     }
 
     fn stderr(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stderr_broadcast.receive(None)
     }
 
     fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stdout_broadcast.receive(Some(prefix))
     }
 
     fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stderr_broadcast.receive(Some(prefix))
     }
 
     fn tracing_results(&self) -> Option<&TracingResults> {
@@ -490,23 +467,21 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         });
 
         let id_clone = id.clone();
-        let (stdout_deploy_receivers, stdout_receivers) =
-            prioritized_broadcast(LinesStream::new(stdout.lines()), move |s| {
-                ProgressTracker::println(format!("[{id_clone}] {s}"));
-            });
-        let (_, stderr_receivers) =
-            prioritized_broadcast(LinesStream::new(stderr.lines()), move |s| {
-                ProgressTracker::println(format!("[{id} stderr] {s}"));
-            });
+        let stdout_broadcast = prioritized_broadcast(LinesStream::new(stdout.lines()), move |s| {
+            ProgressTracker::println(format!("[{id_clone}] {s}"));
+        });
+        let stderr_broadcast = prioritized_broadcast(LinesStream::new(stderr.lines()), move |s| {
+            ProgressTracker::println(format!("[{id} stderr] {s}"));
+        });
 
         Ok(Box::new(LaunchedSshBinary {
             _resource_result: self.resource_result().clone(),
             session: Some(session),
             channel,
             stdin_sender,
-            stdout_deploy_receivers,
-            stdout_receivers,
-            stderr_receivers,
+            // stdout_deploy_receivers,
+            stdout_broadcast,
+            stderr_broadcast,
             tracing,
             tracing_results: None,
         }))

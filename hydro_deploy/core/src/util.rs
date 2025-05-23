@@ -2,9 +2,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::{Future, Stream, StreamExt};
-use tokio::sync::oneshot;
-
-use crate::ssh::PrefixFilteredChannel;
+use tokio::sync::{mpsc, oneshot};
 
 pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     mut thunk: impl FnMut() -> F,
@@ -23,74 +21,94 @@ pub async fn async_retry<T, E, F: Future<Output = Result<T, E>>>(
     thunk().await
 }
 
-type PriorityBroadcast = (
-    Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    Arc<Mutex<Vec<PrefixFilteredChannel>>>,
-);
+pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>);
+
+// pub type PriorityBroadcast = (
+//     Arc<Mutex<Option<oneshot::Sender<String>>>>,
+//     Arc<Mutex<Vec<PrefixFilteredChannel>>>,
+// );
+
+#[derive(Clone)]
+pub struct PriorityBroadcast(Arc<Mutex<PriorityBroadcastInternal>>);
+
+struct PriorityBroadcastInternal {
+    priority_sender: Option<oneshot::Sender<String>>,
+    senders: Vec<PrefixFilteredChannel>,
+}
+
+impl PriorityBroadcast {
+    pub fn receive_priority(&self) -> oneshot::Receiver<String> {
+        let mut this = self.0.lock().unwrap();
+        if this.priority_sender.is_some() {
+            panic!("Only one deploy priority receiver is allowed at a time");
+        }
+
+        let (sender, receiver) = oneshot::channel::<String>();
+        this.priority_sender = Some(sender);
+        receiver
+    }
+
+    pub fn receive(&self, prefix: Option<String>) -> mpsc::UnboundedReceiver<String> {
+        let mut this = self.0.lock().unwrap();
+        let (sender, receiver) = mpsc::unbounded_channel::<String>();
+        this.senders.push((prefix, sender));
+        receiver
+    }
+}
 
 pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + Unpin + 'static>(
     mut lines: T,
-    default: impl Fn(String) + Send + 'static,
+    fallback_receiver: impl Fn(String) + Send + 'static,
 ) -> PriorityBroadcast {
-    let priority_receivers = Arc::new(Mutex::new(None::<oneshot::Sender<String>>));
-    // Option<String> is the prefix to separate special stdout messages from regular ones
-    let receivers = Arc::new(Mutex::new(Vec::<PrefixFilteredChannel>::new()));
+    let internal = Arc::new(Mutex::new(PriorityBroadcastInternal {
+        priority_sender: None,
+        senders: Vec::new(),
+    }));
 
-    let weak_priority_receivers = Arc::downgrade(&priority_receivers);
-    let weak_receivers = Arc::downgrade(&receivers);
+    let weak_internal = Arc::downgrade(&internal);
 
     tokio::spawn(async move {
         while let Some(Ok(line)) = lines.next().await {
-            if let Some(deploy_receivers) = weak_priority_receivers.upgrade() {
-                let mut deploy_receivers = deploy_receivers.lock().unwrap();
-
-                let successful_send = if let Some(r) = deploy_receivers.take() {
-                    r.send(line.clone()).is_ok()
-                } else {
-                    false
-                };
-                drop(deploy_receivers);
-
-                if successful_send {
-                    continue;
-                }
-            }
-
-            if let Some(receivers) = weak_receivers.upgrade() {
-                let mut receivers = receivers.lock().unwrap();
-                receivers.retain(|receiver| !receiver.1.is_closed());
-
-                let mut successful_send = false;
-                // Send to specific receivers if the filter prefix matches
-                for (prefix_filter, receiver) in receivers.iter() {
-                    if prefix_filter
-                        .as_ref()
-                        .map(|prefix| line.starts_with(prefix))
-                        .unwrap_or(true)
-                    {
-                        successful_send |= receiver.send(line.clone()).is_ok();
-                    }
-                }
-                if !successful_send {
-                    (default)(line);
-                }
-            } else {
+            let Some(internal) = weak_internal.upgrade() else {
                 break;
+            };
+            let mut internal = internal.lock().unwrap();
+
+            // Priority receiver
+            if let Some(priority_sender) = internal.priority_sender.take() {
+                if priority_sender.send(line.clone()).is_ok() {
+                    continue; // Skip regular receivers if successfully sent to the priority receiver.
+                }
+            }
+
+            // Regular receivers
+            internal.senders.retain(|receiver| !receiver.1.is_closed());
+
+            let mut successful_send = false;
+            for (prefix_filter, sender) in internal.senders.iter() {
+                // Send to specific receivers if the filter prefix matches
+                if prefix_filter
+                    .as_ref()
+                    .is_none_or(|prefix| line.starts_with(prefix))
+                {
+                    successful_send |= sender.send(line.clone()).is_ok();
+                }
+            }
+
+            // If no receivers successfully received the line, use the fallback receiver.
+            if !successful_send {
+                (fallback_receiver)(line);
             }
         }
 
-        if let Some(deploy_receivers) = weak_priority_receivers.upgrade() {
-            let mut deploy_receivers = deploy_receivers.lock().unwrap();
-            drop(deploy_receivers.take());
-        }
-
-        if let Some(receivers) = weak_receivers.upgrade() {
-            let mut receivers = receivers.lock().unwrap();
-            receivers.clear();
-        }
+        if let Some(internal) = weak_internal.upgrade() {
+            let mut internal = internal.lock().unwrap();
+            drop(std::mem::take(&mut internal.priority_sender));
+            drop(std::mem::take(&mut internal.senders));
+        };
     });
 
-    (priority_receivers, receivers)
+    PriorityBroadcast(internal)
 }
 
 #[cfg(test)]
@@ -103,11 +121,9 @@ mod test {
     #[tokio::test]
     async fn broadcast_listeners_close_when_source_does() {
         let (tx, rx) = mpsc::unbounded_channel();
-        let (_, receivers) = prioritized_broadcast(UnboundedReceiverStream::new(rx), |_| {});
+        let priority_broadcast = prioritized_broadcast(UnboundedReceiverStream::new(rx), |_| {});
 
-        let (tx2, mut rx2) = mpsc::unbounded_channel();
-
-        receivers.lock().unwrap().push((None, tx2));
+        let mut rx2 = priority_broadcast.receive(None);
 
         tx.send(Ok("hello".to_string())).unwrap();
         assert_eq!(rx2.recv().await, Some("hello".to_string()));
