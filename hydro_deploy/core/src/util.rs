@@ -74,6 +74,7 @@ pub fn prioritized_broadcast<T: Stream<Item = std::io::Result<String>> + Send + 
 
     let weak_internal = Arc::downgrade(&internal);
 
+    // TODO(mingwei): eliminate the need for a separate task.
     tokio::spawn(async move {
         while let Some(Ok(line)) = lines.next().await {
             let mut internal = internal.lock().unwrap();

@@ -277,9 +277,9 @@ impl Service for RustCrateService {
                 .await
                 .context("Timed out waiting for ready")?
                 .context("Program unexpectedly quit")?;
-                if ready_line.starts_with("ready: ") {
+                if let Some(line_rest) = ready_line.strip_prefix("ready: ") {
                     *self.server_defns.try_write().unwrap() =
-                        serde_json::from_str(ready_line.trim_start_matches("ready: ")).unwrap();
+                        serde_json::from_str(line_rest).unwrap();
                 } else {
                     bail!("expected ready");
                 }
