@@ -179,6 +179,7 @@ pub struct GcpComputeEngineHost {
     network: Arc<RwLock<GcpNetwork>>,
     user: Option<String>,
     startup_script: Option<String>,
+    display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedComputeEngine>>, // TODO(mingwei): fix pub
     external_ports: Mutex<Vec<u16>>,
 }
@@ -197,6 +198,7 @@ impl GcpComputeEngineHost {
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
         startup_script: Option<String>,
+        display_name: Option<String>,
     ) -> Self {
         Self {
             id,
@@ -207,6 +209,7 @@ impl GcpComputeEngineHost {
             network,
             user,
             startup_script,
+            display_name,
             launched: OnceLock::new(),
             external_ports: Mutex::new(Vec::new()),
         }
@@ -340,7 +343,7 @@ impl Host for GcpComputeEngineHost {
             );
 
         let vm_key = format!("vm-instance-{}", self.id);
-        let vm_name = format!("hydro-vm-instance-{}", nanoid!(8, &TERRAFORM_ALPHABET));
+        let vm_name = format!("hydro-vm-instance-{}-{}", nanoid!(8, &TERRAFORM_ALPHABET), self.display_name.clone().unwrap_or_default());
 
         let mut tags = vec![];
         let mut external_interfaces = vec![];

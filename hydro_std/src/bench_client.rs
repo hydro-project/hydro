@@ -173,10 +173,10 @@ pub unsafe fn bench_client<'a, Client>(
 
 /// Prints transaction latency and throughput results to stdout,
 /// with percentiles for latency and a confidence interval for throughput.
-pub fn print_bench_results<'a, Client, Aggregator>(
+pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     results: BenchResult<'a, Client>,
     aggregator: &Process<'a, Aggregator>,
-    num_client_machines: usize,
+    clients: &Cluster<'a, Client>,
 ) {
     let keyed_latencies = unsafe {
         // SAFETY: intentional non-determinism
@@ -246,11 +246,13 @@ pub fn print_bench_results<'a, Client, Aggregator>(
     }
     .latest();
 
+    let client_members = clients.members();
     unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }
     .for_each(q!(move |throughputs| {
         let confidence = Confidence::new(0.99);
 
         if throughputs.sample_count() >= 2 {
+            let num_client_machines = client_members.len();
             // ci_mean crashes if there are fewer than two samples
             let mean = throughputs.sample_mean() * num_client_machines as f64;
             if let Ok(interval) = throughputs.ci_mean(confidence) {

@@ -59,7 +59,6 @@ async fn main() {
 
     hydro_test::cluster::paxos_bench::paxos_bench(
         num_clients_per_node,
-        num_clients,
         checkpoint_frequency,
         f,
         num_replicas,
