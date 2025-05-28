@@ -212,6 +212,7 @@ export function EditorDemo({ compileFn, examples, mermaidId }) {
     noPullPush: false,
     noHandoffs: false,
     noReferences: false,
+    noLoops: false,
     opShortText: false,
   });
   const writeGraphConfigOnChange = (name) => {
