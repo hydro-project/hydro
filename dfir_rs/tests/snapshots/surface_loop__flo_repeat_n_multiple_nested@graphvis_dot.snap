@@ -34,40 +34,6 @@ digraph {
     n13v1 -> n3v1
     n14v1 -> n6v1
     n15v1 -> n9v1
-    subgraph loop_2v1 {
-        cluster=true
-        fillcolor="#ee88ee"
-        style=filled
-        label = loop_2v1
-        subgraph sg_3v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_3v1\nstratum 2"
-            subgraph sg_3v1_var_usrs3 {
-                cluster=true
-                label="var usrs3"
-                n3v1
-                n4v1
-                n5v1
-            }
-        }
-    }
-    subgraph loop_4v1 {
-        cluster=true
-        fillcolor="#ee88ee"
-        style=filled
-        label = loop_4v1
-        subgraph sg_5v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_5v1\nstratum 3"
-            n9v1
-            n10v1
-            n11v1
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -96,6 +62,25 @@ digraph {
             }
         }
     }
+    subgraph loop_2v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_2v1
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 2"
+            subgraph sg_3v1_var_usrs3 {
+                cluster=true
+                label="var usrs3"
+                n3v1
+                n4v1
+                n5v1
+            }
+        }
+    }
     subgraph loop_3v1 {
         cluster=true
         fillcolor="#ee88ee"
@@ -109,6 +94,21 @@ digraph {
             n6v1
             n7v1
             n8v1
+        }
+    }
+    subgraph loop_4v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_4v1
+        subgraph sg_5v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_5v1\nstratum 3"
+            n9v1
+            n10v1
+            n11v1
         }
     }
 }

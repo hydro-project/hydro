@@ -33,12 +33,6 @@ digraph {
         n3v1
         n8v1
         n9v1
-        subgraph sg_1v1_var_reached_vertices {
-            cluster=true
-            label="var reached_vertices"
-            n1v1
-            n2v1
-        }
         subgraph sg_1v1_var_my_join_tee {
             cluster=true
             label="var my_join_tee"
@@ -46,6 +40,12 @@ digraph {
             n5v1
             n6v1
             n7v1
+        }
+        subgraph sg_1v1_var_reached_vertices {
+            cluster=true
+            label="var reached_vertices"
+            n1v1
+            n2v1
         }
     }
 }

@@ -28,10 +28,6 @@ linkStyle default stroke:#aaa
 7v1-->8v1
 9v1-->10v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    subgraph sg_1v1_var_m2 ["var <tt>m2</tt>"]
-        9v1
-        10v1
-    end
     1v1
     2v1
     3v1
@@ -41,5 +37,9 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_m1 ["var <tt>m1</tt>"]
         5v1
         6v1
+    end
+    subgraph sg_1v1_var_m2 ["var <tt>m2</tt>"]
+        9v1
+        10v1
     end
 end

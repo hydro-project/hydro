@@ -26,18 +26,28 @@ digraph {
     n9v1 -> n3v1
     n10v1 -> n4v1
     n11v1 -> n6v1
+    subgraph var_messages {
+        cluster=true
+        label="var messages"
+        n2v1
+    }
+    subgraph var_users {
+        cluster=true
+        label="var users"
+        n1v1
+    }
     subgraph loop_1v1 {
         cluster=true
         fillcolor="#ee88ee"
         style=filled
         label = loop_1v1
+        n3v1
+        n4v1
         subgraph var_cp {
             cluster=true
             label="var cp"
             n5v1
         }
-        n3v1
-        n4v1
     }
     subgraph loop_2v1 {
         cluster=true
@@ -47,15 +57,5 @@ digraph {
         n6v1
         n7v1
         n8v1
-    }
-    subgraph var_users {
-        cluster=true
-        label="var users"
-        n1v1
-    }
-    subgraph var_messages {
-        cluster=true
-        label="var messages"
-        n2v1
     }
 }

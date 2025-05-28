@@ -51,14 +51,15 @@ linkStyle default stroke:#aaa
 20v1--o8v1; linkStyle 18 stroke:red
 21v1-->22v1
 22v1--o7v1; linkStyle 20 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+    2v1
+end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
     4v1
 end
-subgraph sg_7v1 ["sg_7v1 stratum 2"]
-    19v1
-end
-subgraph sg_6v1 ["sg_6v1 stratum 2"]
-    17v1
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    6v1
 end
 subgraph sg_4v1 ["sg_4v1 stratum 0"]
     7v1
@@ -76,13 +77,12 @@ subgraph sg_5v1 ["sg_5v1 stratum 1"]
         9v1
     end
 end
+subgraph sg_6v1 ["sg_6v1 stratum 2"]
+    17v1
+end
+subgraph sg_7v1 ["sg_7v1 stratum 2"]
+    19v1
+end
 subgraph sg_8v1 ["sg_8v1 stratum 2"]
     21v1
-end
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
-    2v1
-end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    6v1
 end

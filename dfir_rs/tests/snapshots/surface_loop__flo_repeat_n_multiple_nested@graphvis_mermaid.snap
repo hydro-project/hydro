@@ -42,11 +42,11 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
         1v1
     end
 end
-subgraph loop_4v1 ["loop_4v1"]
-    subgraph sg_5v1 ["sg_5v1 stratum 3"]
-        9v1
-        10v1
-        11v1
+subgraph loop_1v1 ["loop_1v1"]
+    subgraph sg_2v1 ["sg_2v1 stratum 1"]
+        subgraph sg_2v1_var_usrs2 ["var <tt>usrs2</tt>"]
+            2v1
+        end
     end
 end
 subgraph loop_2v1 ["loop_2v1"]
@@ -58,17 +58,17 @@ subgraph loop_2v1 ["loop_2v1"]
         end
     end
 end
-subgraph loop_1v1 ["loop_1v1"]
-    subgraph sg_2v1 ["sg_2v1 stratum 1"]
-        subgraph sg_2v1_var_usrs2 ["var <tt>usrs2</tt>"]
-            2v1
-        end
-    end
-end
 subgraph loop_3v1 ["loop_3v1"]
     subgraph sg_4v1 ["sg_4v1 stratum 3"]
         6v1
         7v1
         8v1
+    end
+end
+subgraph loop_4v1 ["loop_4v1"]
+    subgraph sg_5v1 ["sg_5v1 stratum 3"]
+        9v1
+        10v1
+        11v1
     end
 end

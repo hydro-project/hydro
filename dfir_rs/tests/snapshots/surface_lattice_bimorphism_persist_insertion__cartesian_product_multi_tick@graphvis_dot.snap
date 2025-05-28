@@ -30,17 +30,6 @@ digraph {
     n12v1 -> n8v1 [color=red]
     n3v1 -> n7v1 [color=red]
     n6v1 -> n7v1 [color=red]
-    subgraph sg_3v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1\nstratum 1"
-        subgraph sg_3v1_var_my_join {
-            cluster=true
-            label="var my_join"
-            n7v1
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -54,18 +43,6 @@ digraph {
             n3v1
         }
     }
-    subgraph sg_4v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_4v1\nstratum 1"
-        subgraph sg_4v1_var_my_join {
-            cluster=true
-            label="var my_join"
-            n8v1
-            n9v1
-        }
-    }
     subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -77,6 +54,29 @@ digraph {
             n4v1
             n5v1
             n6v1
+        }
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 1"
+        subgraph sg_3v1_var_my_join {
+            cluster=true
+            label="var my_join"
+            n7v1
+        }
+    }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 1"
+        subgraph sg_4v1_var_my_join {
+            cluster=true
+            label="var my_join"
+            n8v1
+            n9v1
         }
     }
 }

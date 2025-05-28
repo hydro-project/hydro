@@ -31,16 +31,16 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     2v1
 end
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
-    5v1
-end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
     3v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 2"]
+    4v1
     subgraph sg_3v1_var_product_node ["var <tt>product_node</tt>"]
         6v1
         7v1
     end
-    4v1
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    5v1
 end

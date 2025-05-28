@@ -74,20 +74,23 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
         4v1
     end
 end
-subgraph loop_2v1 ["loop_2v1"]
-    subgraph sg_6v1 ["sg_6v1 stratum 2"]
-        subgraph sg_6v1_var_cj ["var <tt>cj</tt>"]
-            11v1
-            12v1
-            13v1
-            14v1
-            15v1
-            16v1
-        end
-        subgraph sg_6v1_var_points ["var <tt>points</tt>"]
-            7v1
+subgraph loop_1v1 ["loop_1v1"]
+    subgraph sg_3v1 ["sg_3v1 stratum 1"]
+        subgraph sg_3v1_var_batch_points ["var <tt>batch_points</tt>"]
+            5v1
         end
     end
+    subgraph sg_4v1 ["sg_4v1 stratum 1"]
+        subgraph sg_4v1_var_batch_centroids ["var <tt>batch_centroids</tt>"]
+            6v1
+        end
+    end
+    subgraph sg_7v1 ["sg_7v1 stratum 3"]
+        19v1
+        20v1
+    end
+end
+subgraph loop_2v1 ["loop_2v1"]
     subgraph sg_5v1 ["sg_5v1 stratum 2"]
         8v1
         subgraph sg_5v1_var_centroids ["var <tt>centroids</tt>"]
@@ -99,20 +102,17 @@ subgraph loop_2v1 ["loop_2v1"]
             18v1
         end
     end
-end
-subgraph loop_1v1 ["loop_1v1"]
-    subgraph sg_7v1 ["sg_7v1 stratum 3"]
-        19v1
-        20v1
-    end
-    subgraph sg_3v1 ["sg_3v1 stratum 1"]
-        subgraph sg_3v1_var_batch_points ["var <tt>batch_points</tt>"]
-            5v1
+    subgraph sg_6v1 ["sg_6v1 stratum 2"]
+        subgraph sg_6v1_var_cj ["var <tt>cj</tt>"]
+            11v1
+            12v1
+            13v1
+            14v1
+            15v1
+            16v1
         end
-    end
-    subgraph sg_4v1 ["sg_4v1 stratum 1"]
-        subgraph sg_4v1_var_batch_centroids ["var <tt>batch_centroids</tt>"]
-            6v1
+        subgraph sg_6v1_var_points ["var <tt>points</tt>"]
+            7v1
         end
     end
 end

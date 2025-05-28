@@ -34,10 +34,6 @@ linkStyle default stroke:#aaa
 6v1
 7v1
 8v1
-subgraph var_users ["var <tt>users</tt>"]
-    style var_users fill:transparent
-    1v1
-end
 subgraph var_cp ["var <tt>cp</tt>"]
     style var_cp fill:transparent
     5v1
@@ -45,4 +41,8 @@ end
 subgraph var_messages ["var <tt>messages</tt>"]
     style var_messages fill:transparent
     2v1
+end
+subgraph var_users ["var <tt>users</tt>"]
+    style var_users fill:transparent
+    1v1
 end

@@ -37,15 +37,15 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 0"
+        n3v1
+        n5v1
+        n6v1
         subgraph sg_2v1_var_a {
             cluster=true
             label="var a"
             n1v1
             n2v1
         }
-        n3v1
-        n5v1
-        n6v1
     }
     subgraph sg_3v1 {
         cluster=true

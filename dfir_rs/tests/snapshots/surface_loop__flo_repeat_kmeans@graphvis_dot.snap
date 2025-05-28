@@ -88,13 +88,16 @@ digraph {
         fillcolor="#ee88ee"
         style=filled
         label = loop_1v1
-        subgraph sg_7v1 {
+        subgraph sg_3v1 {
             cluster=true
             fillcolor="#dddddd"
             style=filled
-            label = "sg_7v1\nstratum 3"
-            n19v1
-            n20v1
+            label = "sg_3v1\nstratum 1"
+            subgraph sg_3v1_var_batch_points {
+                cluster=true
+                label="var batch_points"
+                n5v1
+            }
         }
         subgraph sg_4v1 {
             cluster=true
@@ -107,16 +110,13 @@ digraph {
                 n6v1
             }
         }
-        subgraph sg_3v1 {
+        subgraph sg_7v1 {
             cluster=true
             fillcolor="#dddddd"
             style=filled
-            label = "sg_3v1\nstratum 1"
-            subgraph sg_3v1_var_batch_points {
-                cluster=true
-                label="var batch_points"
-                n5v1
-            }
+            label = "sg_7v1\nstratum 3"
+            n19v1
+            n20v1
         }
     }
     subgraph loop_2v1 {
@@ -129,30 +129,25 @@ digraph {
             fillcolor="#dddddd"
             style=filled
             label = "sg_5v1\nstratum 2"
-            subgraph sg_5v1_var_cj {
-                cluster=true
-                label="var cj"
-                n17v1
-                n18v1
-            }
+            n8v1
             subgraph sg_5v1_var_centroids {
                 cluster=true
                 label="var centroids"
                 n9v1
                 n10v1
             }
-            n8v1
+            subgraph sg_5v1_var_cj {
+                cluster=true
+                label="var cj"
+                n17v1
+                n18v1
+            }
         }
         subgraph sg_6v1 {
             cluster=true
             fillcolor="#dddddd"
             style=filled
             label = "sg_6v1\nstratum 2"
-            subgraph sg_6v1_var_points {
-                cluster=true
-                label="var points"
-                n7v1
-            }
             subgraph sg_6v1_var_cj {
                 cluster=true
                 label="var cj"
@@ -162,6 +157,11 @@ digraph {
                 n14v1
                 n15v1
                 n16v1
+            }
+            subgraph sg_6v1_var_points {
+                cluster=true
+                label="var points"
+                n7v1
             }
         }
     }

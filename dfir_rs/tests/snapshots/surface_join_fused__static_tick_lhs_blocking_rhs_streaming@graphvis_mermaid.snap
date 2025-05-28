@@ -63,16 +63,16 @@ subgraph sg_4v1 ["sg_4v1 stratum 0"]
     7v1
 end
 subgraph sg_5v1 ["sg_5v1 stratum 1"]
-    subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
-        9v1
-    end
+    3v1
+    5v1
+    8v1
     subgraph sg_5v1_var_my_join ["var <tt>my_join</tt>"]
         10v1
         11v1
     end
-    3v1
-    5v1
-    8v1
+    subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
+        9v1
+    end
 end
 subgraph sg_6v1 ["sg_6v1 stratum 2"]
     16v1

@@ -25,15 +25,15 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     3v1
     6v1
     7v1
-    subgraph sg_1v1_var_stream_of_edges ["var <tt>stream_of_edges</tt>"]
-        2v1
+    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
+        4v1
+        5v1
     end
     subgraph sg_1v1_var_origin ["var <tt>origin</tt>"]
         1v1
     end
-    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
-        4v1
-        5v1
+    subgraph sg_1v1_var_stream_of_edges ["var <tt>stream_of_edges</tt>"]
+        2v1
     end
 end
 

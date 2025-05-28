@@ -27,24 +27,24 @@ linkStyle default stroke:#aaa
 8v1--x2v1; linkStyle 6 stroke:red
 9v1-->|1|6v1
 10v1-->|0|6v1
-subgraph sg_3v1 ["sg_3v1 stratum 1"]
-    subgraph sg_3v1_var_join_node ["var <tt>join_node</tt>"]
-        6v1
-    end
-    7v1
-end
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
-    5v1
-end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_teed_fold ["var <tt>teed_fold</tt>"]
         1v1
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
+    4v1
     subgraph sg_2v1_var_teed_fold ["var <tt>teed_fold</tt>"]
         2v1
         3v1
     end
-    4v1
+end
+subgraph sg_3v1 ["sg_3v1 stratum 1"]
+    7v1
+    subgraph sg_3v1_var_join_node ["var <tt>join_node</tt>"]
+        6v1
+    end
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    5v1
 end

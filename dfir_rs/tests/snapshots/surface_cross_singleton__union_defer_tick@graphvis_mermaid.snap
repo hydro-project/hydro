@@ -59,40 +59,32 @@ linkStyle default stroke:#aaa
 23v1--x13v1; linkStyle 23 stroke:red
 24v1-->25v1
 25v1--o4v1; linkStyle 25 stroke:red
-subgraph sg_4v1 ["sg_4v1 stratum 1"]
-    subgraph sg_4v1_var_join ["var <tt>join</tt>"]
-        8v1
-        9v1
-    end
-    10v1
-end
-subgraph sg_7v1 ["sg_7v1 stratum 4"]
-    subgraph sg_7v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
-        13v1
-    end
-end
-subgraph sg_9v1 ["sg_9v1 stratum 5"]
-    24v1
-end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_teed_in ["var <tt>teed_in</tt>"]
         1v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    subgraph sg_3v1_var_unioned_stream ["var <tt>unioned_stream</tt>"]
-        7v1
-    end
-    subgraph sg_3v1_var_persisted_stream ["var <tt>persisted_stream</tt>"]
-        5v1
-        6v1
-    end
-    4v1
-end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
     subgraph sg_2v1_var_teed_in ["var <tt>teed_in</tt>"]
         2v1
         3v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    4v1
+    subgraph sg_3v1_var_persisted_stream ["var <tt>persisted_stream</tt>"]
+        5v1
+        6v1
+    end
+    subgraph sg_3v1_var_unioned_stream ["var <tt>unioned_stream</tt>"]
+        7v1
+    end
+end
+subgraph sg_4v1 ["sg_4v1 stratum 1"]
+    10v1
+    subgraph sg_4v1_var_join ["var <tt>join</tt>"]
+        8v1
+        9v1
     end
 end
 subgraph sg_5v1 ["sg_5v1 stratum 2"]
@@ -105,8 +97,16 @@ subgraph sg_6v1 ["sg_6v1 stratum 3"]
         12v1
     end
 end
+subgraph sg_7v1 ["sg_7v1 stratum 4"]
+    subgraph sg_7v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
+        13v1
+    end
+end
 subgraph sg_8v1 ["sg_8v1 stratum 4"]
     subgraph sg_8v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
         14v1
     end
+end
+subgraph sg_9v1 ["sg_9v1 stratum 5"]
+    24v1
 end

@@ -26,20 +26,20 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        subgraph sg_1v1_var_my_union_tee {
-            cluster=true
-            label="var my_union_tee"
-            n4v1
-            n5v1
-        }
+        n3v1
+        n6v1
+        n7v1
         subgraph sg_1v1_var_in1 {
             cluster=true
             label="var in1"
             n1v1
             n2v1
         }
-        n3v1
-        n6v1
-        n7v1
+        subgraph sg_1v1_var_my_union_tee {
+            cluster=true
+            label="var my_union_tee"
+            n4v1
+            n5v1
+        }
     }
 }

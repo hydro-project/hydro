@@ -31,10 +31,10 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    3v1
+    4v1
     subgraph sg_2v1_var_my_union ["var <tt>my_union</tt>"]
         5v1
         6v1
     end
-    3v1
-    4v1
 end

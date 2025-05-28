@@ -36,16 +36,16 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
         3v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 1"]
-    subgraph sg_3v1_var_my_join ["var <tt>my_join</tt>"]
-        7v1
-        8v1
-    end
-end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
     subgraph sg_2v1_var_rhs ["var <tt>rhs</tt>"]
         4v1
         5v1
         6v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 1"]
+    subgraph sg_3v1_var_my_join ["var <tt>my_join</tt>"]
+        7v1
+        8v1
     end
 end

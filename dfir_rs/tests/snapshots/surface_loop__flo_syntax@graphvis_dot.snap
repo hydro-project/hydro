@@ -54,6 +54,8 @@ digraph {
             fillcolor="#dddddd"
             style=filled
             label = "sg_3v1\nstratum 1"
+            n3v1
+            n4v1
             subgraph sg_3v1_var_cp {
                 cluster=true
                 label="var cp"
@@ -61,8 +63,6 @@ digraph {
                 n6v1
                 n7v1
             }
-            n3v1
-            n4v1
         }
     }
 }

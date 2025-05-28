@@ -47,17 +47,6 @@ digraph {
             n3v1
         }
     }
-    subgraph sg_4v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_4v1\nstratum 0"
-        subgraph sg_4v1_var_poss {
-            cluster=true
-            label="var poss"
-            n4v1
-        }
-    }
     subgraph sg_3v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -69,6 +58,17 @@ digraph {
             label="var negs"
             n5v1
             n6v1
+        }
+    }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 0"
+        subgraph sg_4v1_var_poss {
+            cluster=true
+            label="var poss"
+            n4v1
         }
     }
 }

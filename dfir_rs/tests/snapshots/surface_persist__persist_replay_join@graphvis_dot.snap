@@ -32,13 +32,6 @@ digraph {
         n1v1
         n2v1
     }
-    subgraph sg_4v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_4v1\nstratum 0"
-        n5v1
-    }
     subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -58,5 +51,12 @@ digraph {
             n6v1
             n7v1
         }
+    }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 0"
+        n5v1
     }
 }

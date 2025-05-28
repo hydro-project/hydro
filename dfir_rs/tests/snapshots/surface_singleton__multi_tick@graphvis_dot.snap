@@ -22,25 +22,6 @@ digraph {
     n8v1 -> n9v1
     n4v1 -> n8v1
     n4v1 -> n5v1 [color=red]
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1\nstratum 0"
-        subgraph sg_2v1_var_stream2 {
-            cluster=true
-            label="var stream2"
-            n2v1
-            n3v1
-        }
-        n8v1
-        n9v1
-        subgraph sg_2v1_var_max_of_stream2 {
-            cluster=true
-            label="var max_of_stream2"
-            n4v1
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -57,6 +38,25 @@ digraph {
             cluster=true
             label="var stream1"
             n1v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        n8v1
+        n9v1
+        subgraph sg_2v1_var_max_of_stream2 {
+            cluster=true
+            label="var max_of_stream2"
+            n4v1
+        }
+        subgraph sg_2v1_var_stream2 {
+            cluster=true
+            label="var stream2"
+            n2v1
+            n3v1
         }
     }
 }

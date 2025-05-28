@@ -31,12 +31,12 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
+    4v1
+    5v1
     subgraph sg_2v1_var_my_tee ["var <tt>my_tee</tt>"]
         2v1
         3v1
     end
-    4v1
-    5v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 2"]
     6v1

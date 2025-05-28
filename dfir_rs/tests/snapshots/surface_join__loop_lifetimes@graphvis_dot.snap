@@ -63,68 +63,6 @@ digraph {
     n26v1 -> n14v1
     n27v1 -> n17v1
     n28v1 -> n18v1
-    subgraph loop_1v1 {
-        cluster=true
-        fillcolor="#ee88ee"
-        style=filled
-        label = loop_1v1
-        subgraph sg_5v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_5v1\nstratum 1"
-            subgraph sg_5v1_var_join3 {
-                cluster=true
-                label="var join3"
-                n15v1
-                n16v1
-            }
-            n13v1
-            n14v1
-        }
-        subgraph sg_3v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_3v1\nstratum 1"
-            n5v1
-            n6v1
-            subgraph sg_3v1_var_join1 {
-                cluster=true
-                label="var join1"
-                n7v1
-                n8v1
-            }
-        }
-        subgraph sg_6v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_6v1\nstratum 1"
-            n17v1
-            n18v1
-            subgraph sg_6v1_var_join4 {
-                cluster=true
-                label="var join4"
-                n19v1
-                n20v1
-            }
-        }
-        subgraph sg_4v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_4v1\nstratum 1"
-            subgraph sg_4v1_var_join2 {
-                cluster=true
-                label="var join2"
-                n11v1
-                n12v1
-            }
-            n9v1
-            n10v1
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -147,6 +85,68 @@ digraph {
             label="var rb"
             n3v1
             n4v1
+        }
+    }
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_1v1
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 1"
+            n5v1
+            n6v1
+            subgraph sg_3v1_var_join1 {
+                cluster=true
+                label="var join1"
+                n7v1
+                n8v1
+            }
+        }
+        subgraph sg_4v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_4v1\nstratum 1"
+            n9v1
+            n10v1
+            subgraph sg_4v1_var_join2 {
+                cluster=true
+                label="var join2"
+                n11v1
+                n12v1
+            }
+        }
+        subgraph sg_5v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_5v1\nstratum 1"
+            n13v1
+            n14v1
+            subgraph sg_5v1_var_join3 {
+                cluster=true
+                label="var join3"
+                n15v1
+                n16v1
+            }
+        }
+        subgraph sg_6v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_6v1\nstratum 1"
+            n17v1
+            n18v1
+            subgraph sg_6v1_var_join4 {
+                cluster=true
+                label="var join4"
+                n19v1
+                n20v1
+            }
         }
     }
 }

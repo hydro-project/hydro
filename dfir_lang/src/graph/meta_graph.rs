@@ -1474,32 +1474,32 @@ impl DfirGraph {
         // Flo loops).
 
         // Loop -> Subgraphs
-        let loop_subgraphs = self.subgraph_ids().into_group_map_by(|&sg_id| {
-            if write_config.no_loops {
+        let loop_subgraphs = self.subgraph_ids().map(|sg_id| {
+            let loop_id = if write_config.no_loops {
                 None
             } else {
                 self.subgraph_loop(sg_id)
-            }
+            };
+            (loop_id, sg_id)
         });
+        let loop_subgraphs = into_group_map(loop_subgraphs);
         for (loop_id, subgraph_ids) in loop_subgraphs {
             if let Some(loop_id) = loop_id {
                 graph_write.write_loop_start(loop_id)?;
             }
 
             // Subgraph -> Varnames.
-            let subgraph_varnames_nodes = subgraph_ids
-                .into_iter()
-                .flat_map(|sg_id| {
-                    self.subgraph(sg_id).iter().copied().map(move |node_id| {
-                        let opt_sg_id = if write_config.no_subgraphs {
-                            None
-                        } else {
-                            Some(sg_id)
-                        };
-                        (opt_sg_id, (self.node_varname(node_id), node_id))
-                    })
+            let subgraph_varnames_nodes = subgraph_ids.into_iter().flat_map(|sg_id| {
+                self.subgraph(sg_id).iter().copied().map(move |node_id| {
+                    let opt_sg_id = if write_config.no_subgraphs {
+                        None
+                    } else {
+                        Some(sg_id)
+                    };
+                    (opt_sg_id, (self.node_varname(node_id), node_id))
                 })
-                .into_group_map();
+            });
+            let subgraph_varnames_nodes = into_group_map(subgraph_varnames_nodes);
             for (sg_id, varnames) in subgraph_varnames_nodes {
                 if let Some(sg_id) = sg_id {
                     let stratum = self.subgraph_stratum(sg_id).unwrap();
@@ -1507,17 +1507,15 @@ impl DfirGraph {
                 }
 
                 // Varnames -> Nodes.
-                let varname_nodes = varnames
-                    .into_iter()
-                    .map(|(varname, node)| {
-                        let varname = if write_config.no_varnames {
-                            None
-                        } else {
-                            varname
-                        };
-                        (varname, node)
-                    })
-                    .into_group_map();
+                let varname_nodes = varnames.into_iter().map(|(varname, node)| {
+                    let varname = if write_config.no_varnames {
+                        None
+                    } else {
+                        varname
+                    };
+                    (varname, node)
+                });
+                let varname_nodes = into_group_map(varname_nodes);
                 for (varname, node_ids) in varname_nodes {
                     if let Some(varname) = varname {
                         graph_write.write_varname_start(&varname.0.to_string(), sg_id)?;
@@ -1720,4 +1718,16 @@ pub enum WriteGraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
+}
+
+/// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.
+fn into_group_map<K, V>(iter: impl IntoIterator<Item = (K, V)>) -> BTreeMap<K, Vec<V>>
+where
+    K: Ord,
+{
+    let mut out: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    for (k, v) in iter {
+        out.entry(k).or_default().push(v);
+    }
+    out
 }

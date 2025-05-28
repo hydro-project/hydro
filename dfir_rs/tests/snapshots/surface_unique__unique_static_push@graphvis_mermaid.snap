@@ -26,10 +26,6 @@ linkStyle default stroke:#aaa
 6v1-->7v1
 6v1-->9v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    subgraph sg_1v1_var_pivot ["var <tt>pivot</tt>"]
-        5v1
-        6v1
-    end
     1v1
     2v1
     3v1
@@ -37,4 +33,8 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     7v1
     8v1
     9v1
+    subgraph sg_1v1_var_pivot ["var <tt>pivot</tt>"]
+        5v1
+        6v1
+    end
 end

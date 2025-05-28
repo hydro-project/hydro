@@ -48,6 +48,25 @@ digraph {
             n2v1
         }
     }
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_1v1
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 1"
+            n3v1
+            n4v1
+            subgraph sg_3v1_var_cp {
+                cluster=true
+                label="var cp"
+                n5v1
+            }
+        }
+    }
     subgraph loop_2v1 {
         cluster=true
         fillcolor="#ee88ee"
@@ -61,25 +80,6 @@ digraph {
             n6v1
             n7v1
             n8v1
-        }
-    }
-    subgraph loop_1v1 {
-        cluster=true
-        fillcolor="#ee88ee"
-        style=filled
-        label = loop_1v1
-        subgraph sg_3v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_3v1\nstratum 1"
-            subgraph sg_3v1_var_cp {
-                cluster=true
-                label="var cp"
-                n5v1
-            }
-            n3v1
-            n4v1
         }
     }
 }

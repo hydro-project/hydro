@@ -28,12 +28,12 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     3v1
     6v1
     7v1
-    subgraph sg_1v1_var_my_union_tee ["var <tt>my_union_tee</tt>"]
-        4v1
-        5v1
-    end
     subgraph sg_1v1_var_in1 ["var <tt>in1</tt>"]
         1v1
         2v1
+    end
+    subgraph sg_1v1_var_my_union_tee ["var <tt>my_union_tee</tt>"]
+        4v1
+        5v1
     end
 end

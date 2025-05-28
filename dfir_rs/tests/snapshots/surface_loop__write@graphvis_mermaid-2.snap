@@ -29,6 +29,16 @@ linkStyle default stroke:#aaa
 9v1-->3v1
 10v1-->4v1
 11v1-->6v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_users ["var <tt>users</tt>"]
+        1v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    subgraph sg_2v1_var_messages ["var <tt>messages</tt>"]
+        2v1
+    end
+end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
     3v1
     4v1
@@ -36,18 +46,8 @@ subgraph sg_3v1 ["sg_3v1 stratum 1"]
         5v1
     end
 end
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    subgraph sg_1v1_var_users ["var <tt>users</tt>"]
-        1v1
-    end
-end
 subgraph sg_4v1 ["sg_4v1 stratum 2"]
     6v1
     7v1
     8v1
-end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    subgraph sg_2v1_var_messages ["var <tt>messages</tt>"]
-        2v1
-    end
 end

@@ -48,18 +48,18 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 0"
+        n9v1
+        n10v1
+        subgraph sg_2v1_var_max_of_stream2 {
+            cluster=true
+            label="var max_of_stream2"
+            n4v1
+        }
         subgraph sg_2v1_var_stream2 {
             cluster=true
             label="var stream2"
             n2v1
             n3v1
         }
-        subgraph sg_2v1_var_max_of_stream2 {
-            cluster=true
-            label="var max_of_stream2"
-            n4v1
-        }
-        n9v1
-        n10v1
     }
 }

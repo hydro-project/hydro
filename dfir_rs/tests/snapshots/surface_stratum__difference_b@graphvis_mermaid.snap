@@ -24,18 +24,18 @@ linkStyle default stroke:#aaa
 6v1--x|neg|1v1; linkStyle 5 stroke:red
 7v1--o4v1; linkStyle 6 stroke:red
 8v1-->|pos|1v1
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    2v1
-end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     4v1
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
-    subgraph sg_2v1_var_b ["var <tt>b</tt>"]
-        3v1
-    end
+    5v1
     subgraph sg_2v1_var_a ["var <tt>a</tt>"]
         1v1
     end
-    5v1
+    subgraph sg_2v1_var_b ["var <tt>b</tt>"]
+        3v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    2v1
 end
