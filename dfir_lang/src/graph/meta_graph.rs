@@ -1464,14 +1464,14 @@ impl DfirGraph {
             }
         }
 
-        // The following code is a little bit tricky.
-        // Generally, the graph has the heirarchy: `loop -> subgraph -> varname -> node`.
-        // However, each of these can be disabled via the `write_config`.
-        // To handle both the enabled and disabled case, this code is structured as a series of nested loops.
-        // If the layer is disabled, the corresponding `HashMap<Option<KEY>, Vec<VALUE>>` will be a degenerate `None => Vec<ALL VALUES>`.
-        // This way no special handlig is needed for the next layer.
+        // The following code is a little bit tricky. Generally, the graph has the heirarchy:
+        // `loop -> subgraph -> varname -> node`. However, each of these can be disabled via the `write_config`. To
+        // handle both the enabled and disabled case, this code is structured as a series of nested loops. If the layer
+        // is disabled, then the HashMap<Option<KEY>, Vec<VALUE>> will only have a single key (`None`) with a
+        // corresponding `Vec` value containing everything. This way no special handling is needed for the next layer.
         //
-        // (Note: `stratum` could also be included in this heirarchy, but it is being phased-out/deprecated in favor of Flo loops).
+        // (Note: `stratum` could also be included in this heirarchy, but it is being phased-out/deprecated in favor of
+        // Flo loops).
 
         // Loop -> Subgraphs
         let loop_subgraphs = self.subgraph_ids().into_group_map_by(|&sg_id| {
