@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_loop.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -34,54 +34,81 @@ digraph {
     n13v1 -> n3v1
     n14v1 -> n6v1
     n15v1 -> n9v1
-    subgraph "cluster n1v1" {
+    subgraph loop_3v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_3v1
+        subgraph sg_4v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_4v1\nstratum 3"
+            n6v1
+            n7v1
+            n8v1
+        }
+    }
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n1v1
-        subgraph "cluster_sg_1v1_var_usrs1" {
+        subgraph sg_1v1_var_usrs1 {
+            cluster=true
             label="var usrs1"
             n1v1
         }
     }
-    subgraph "cluster n2v1" {
-        fillcolor="#dddddd"
+    subgraph loop_4v1 {
+        cluster=true
+        fillcolor="#ee88ee"
         style=filled
-        label = "sg_2v1\nstratum 1"
-        n2v1
-        subgraph "cluster_sg_2v1_var_usrs2" {
-            label="var usrs2"
-            n2v1
+        label = loop_4v1
+        subgraph sg_5v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_5v1\nstratum 3"
+            n9v1
+            n10v1
+            n11v1
         }
     }
-    subgraph "cluster n3v1" {
-        fillcolor="#dddddd"
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
         style=filled
-        label = "sg_3v1\nstratum 2"
-        n3v1
-        n4v1
-        n5v1
-        subgraph "cluster_sg_3v1_var_usrs3" {
-            label="var usrs3"
-            n3v1
-            n4v1
-            n5v1
+        label = loop_1v1
+        subgraph sg_2v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_2v1\nstratum 1"
+            subgraph sg_2v1_var_usrs2 {
+                cluster=true
+                label="var usrs2"
+                n2v1
+            }
         }
     }
-    subgraph "cluster n4v1" {
-        fillcolor="#dddddd"
+    subgraph loop_2v1 {
+        cluster=true
+        fillcolor="#ee88ee"
         style=filled
-        label = "sg_4v1\nstratum 3"
-        n6v1
-        n7v1
-        n8v1
-    }
-    subgraph "cluster n5v1" {
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_5v1\nstratum 3"
-        n9v1
-        n10v1
-        n11v1
+        label = loop_2v1
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 2"
+            subgraph sg_3v1_var_usrs3 {
+                cluster=true
+                label="var usrs3"
+                n3v1
+                n4v1
+                n5v1
+            }
+        }
     }
 }

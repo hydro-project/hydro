@@ -45,48 +45,43 @@ linkStyle default stroke:#aaa
 16v1-->|1|5v1
 17v1-->|pos|11v1
 18v1--x|neg|11v1; linkStyle 18 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    15v1
-    1v1
-    4v1
-    5v1
-    6v1
-    7v1
-    8v1
-    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
-        5v1
-        6v1
-    end
-    subgraph sg_1v1_var_origin ["var <tt>origin</tt>"]
-        1v1
-    end
-    subgraph sg_1v1_var_reached_vertices ["var <tt>reached_vertices</tt>"]
-        7v1
-        8v1
-    end
-end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    2v1
-    3v1
-    9v1
-    10v1
-    12v1
-    13v1
-    subgraph sg_2v1_var_all_vertices ["var <tt>all_vertices</tt>"]
-        9v1
-        10v1
-    end
     subgraph sg_2v1_var_stream_of_edges ["var <tt>stream_of_edges</tt>"]
+        style sg_2v1_var_stream_of_edges fill:transparent
         2v1
         3v1
     end
+    subgraph sg_2v1_var_all_vertices ["var <tt>all_vertices</tt>"]
+        style sg_2v1_var_all_vertices fill:transparent
+        9v1
+        10v1
+    end
+    12v1
+    13v1
+end
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
+        style sg_1v1_var_my_join fill:transparent
+        5v1
+        6v1
+    end
+    subgraph sg_1v1_var_reached_vertices ["var <tt>reached_vertices</tt>"]
+        style sg_1v1_var_reached_vertices fill:transparent
+        7v1
+        8v1
+    end
+    subgraph sg_1v1_var_origin ["var <tt>origin</tt>"]
+        style sg_1v1_var_origin fill:transparent
+        1v1
+    end
+    4v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
-    11v1
-    14v1
     subgraph sg_3v1_var_unreached_vertices ["var <tt>unreached_vertices</tt>"]
+        style sg_3v1_var_unreached_vertices fill:transparent
         11v1
     end
+    14v1
 end
 
 Received vertex: 5

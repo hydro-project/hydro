@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_context.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -8,7 +8,8 @@ digraph {
     n1v1 [label="(n1v1) source_iter([()])", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) for_each(|()| {\l    println!(\l        \"Current tick: {}, stratum: {}\",\l        context.current_tick(),\l        context.current_stratum(),\l    )\l})\l", shape=house, fillcolor="#ffff88"]
     n1v1 -> n2v1
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"

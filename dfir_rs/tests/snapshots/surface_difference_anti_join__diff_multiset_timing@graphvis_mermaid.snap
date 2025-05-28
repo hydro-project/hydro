@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_difference_anti_join.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -23,9 +23,8 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     2v1
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
-    3v1
-    4v1
     subgraph sg_2v1_var_diff ["var <tt>diff</tt>"]
+        style sg_2v1_var_diff fill:transparent
         3v1
         4v1
     end

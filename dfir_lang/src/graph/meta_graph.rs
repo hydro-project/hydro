@@ -1375,28 +1375,6 @@ impl DfirGraph {
         // Make node color map one time.
         let node_color_map = self.node_color_map();
 
-        // // Collect varnames.
-        // let mut sg_varname_nodes =
-        //     <SparseSecondaryMap<GraphSubgraphId, BTreeMap<Varname, BTreeSet<GraphNodeId>>>>::new();
-        // let mut varname_nodes = <BTreeMap<Varname, BTreeSet<GraphNodeId>>>::new();
-        // if !write_config.no_varnames {
-        //     for (node_id, varname) in self.node_varnames.iter() {
-        //         // Only collect if needed.
-        //         let varname_map = if !write_config.no_subgraphs {
-        //             let Some(sg_id) = self.node_subgraph(node_id) else {
-        //                 continue;
-        //             };
-        //             sg_varname_nodes.entry(sg_id).unwrap().or_default()
-        //         } else {
-        //             &mut varname_nodes
-        //         };
-        //         varname_map
-        //             .entry(varname.clone())
-        //             .or_default()
-        //             .insert(node_id);
-        //     }
-        // }
-
         // Write prologue.
         graph_write.write_prologue()?;
 
@@ -1550,62 +1528,20 @@ impl DfirGraph {
                         graph_write.write_node(node_id)?;
                     }
 
-                    if let Some(_) = varname {
+                    if varname.is_some() {
                         graph_write.write_varname_end()?;
                     }
                 }
 
-                if let Some(_) = sg_id {
+                if sg_id.is_some() {
                     graph_write.write_subgraph_end()?;
                 }
             }
 
-            if let Some(_) = loop_id {
+            if loop_id.is_some() {
                 graph_write.write_loop_end()?;
             }
         }
-
-        // // Write subgraphs.
-        // if !write_config.no_subgraphs {
-        //     for (subgraph_id, subgraph_node_ids) in self.subgraphs() {
-        //         let handoff_node_ids = subgraph_handoffs.get(&subgraph_id).into_iter().flatten();
-        //         let subgraph_node_ids = subgraph_node_ids.iter();
-        //         let all_node_ids = handoff_node_ids.chain(subgraph_node_ids).copied();
-
-        //         let stratum: Option<&usize> = self.subgraph_stratum.get(subgraph_id);
-        //         graph_write.write_subgraph_start(subgraph_id, *stratum.unwrap(), all_node_ids)?;
-        //         // Write out any variable names within the subgraph.
-        //         if !write_config.no_varnames {
-        //             for (varname, varname_node_ids) in
-        //                 sg_varname_nodes.remove(subgraph_id).into_iter().flatten()
-        //             {
-        //                 assert!(!varname_node_ids.is_empty());
-        //                 graph_write.write_varname(
-        //                     &varname.0.to_string(),
-        //                     varname_node_ids,
-        //                     Some(subgraph_id),
-        //                 )?;
-        //             }
-        //         }
-        //         graph_write.write_subgraph_end()?;
-        //     }
-        // } else if !write_config.no_varnames {
-        //     for (varname, varname_node_ids) in varname_nodes {
-        //         graph_write.write_varname(&varname.0.to_string(), varname_node_ids, None)?;
-        //     }
-        // }
-
-        // // Write loops.
-        // if !write_config.no_loops {
-        //     let loop_subgraphs = self
-        //         .subgraph_ids()
-        //         .filter_map(|sg_id| self.subgraph_loop(sg_id).map(|loop_id| (loop_id, sg_id)))
-        //         .into_group_map();
-        //     for (loop_id, subgraph_ids) in loop_subgraphs {
-        //         let child_loops = self.loop_children(loop_id);
-        //         graph_write.write_loop(loop_id, subgraph_ids, child_loops.iter().copied())?;
-        //     }
-        // }
 
         // Write epilogue.
         graph_write.write_epilogue()?;

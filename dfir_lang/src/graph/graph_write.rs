@@ -260,7 +260,13 @@ where
     }
 
     fn write_node(&mut self, node_id: GraphNodeId) -> Result<(), Self::Err> {
-        writeln!(self.write, "{:?}", node_id.data())
+        writeln!(
+            self.write,
+            "{b:i$}{nid:?}",
+            nid = node_id.data(),
+            b = "",
+            i = self.indent
+        )
     }
 
     fn write_varname_end(&mut self) -> Result<(), Self::Err> {

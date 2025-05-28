@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_stratum.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -42,37 +42,33 @@ linkStyle default stroke:#aaa
 14v1-->|1|7v1
 15v1-->|1|5v1
 16v1-->|1|3v1
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    subgraph sg_4v1_var_d ["var <tt>d</tt>"]
+        style sg_4v1_var_d fill:transparent
+        7v1
+        8v1
+    end
+end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    9v1
-    10v1
-    1v1
-    2v1
     subgraph sg_1v1_var_a ["var <tt>a</tt>"]
+        style sg_1v1_var_a fill:transparent
         1v1
         2v1
     end
+    9v1
+    10v1
 end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    3v1
-    4v1
     subgraph sg_2v1_var_b ["var <tt>b</tt>"]
+        style sg_2v1_var_b fill:transparent
         3v1
         4v1
     end
 end
 subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    5v1
-    6v1
     subgraph sg_3v1_var_c ["var <tt>c</tt>"]
+        style sg_3v1_var_c fill:transparent
         5v1
         6v1
-    end
-end
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
-    7v1
-    8v1
-    subgraph sg_4v1_var_d ["var <tt>d</tt>"]
-        7v1
-        8v1
     end
 end

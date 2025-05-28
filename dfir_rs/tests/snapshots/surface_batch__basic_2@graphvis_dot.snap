@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_batch.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -16,27 +16,30 @@ digraph {
     n1v1 -> n4v1
     n5v1 -> n1v1 [label="input", color=red]
     n6v1 -> n1v1 [label="signal", color=red]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
         n2v1
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 1"
+        subgraph sg_3v1_var_gate {
+            cluster=true
+            label="var gate"
+            n1v1
+        }
+        n4v1
+    }
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 0"
         n3v1
-    }
-    subgraph "cluster n3v1" {
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1\nstratum 1"
-        n1v1
-        n4v1
-        subgraph "cluster_sg_3v1_var_gate" {
-            label="var gate"
-            n1v1
-        }
     }
 }

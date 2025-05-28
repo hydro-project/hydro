@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_stratum.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -42,30 +42,29 @@ linkStyle default stroke:#aaa
 15v1--o5v1; linkStyle 14 stroke:red
 16v1-->17v1
 17v1--o4v1; linkStyle 16 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    4v1
-end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    5v1
+subgraph sg_6v1 ["sg_6v1 stratum 1"]
+    16v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 0"]
     3v1
     6v1
     7v1
-    1v1
-    2v1
     8v1
     subgraph sg_3v1_var_a ["var <tt>a</tt>"]
+        style sg_3v1_var_a fill:transparent
         1v1
         2v1
     end
 end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    5v1
+end
 subgraph sg_4v1 ["sg_4v1 stratum 1"]
     12v1
 end
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    4v1
+end
 subgraph sg_5v1 ["sg_5v1 stratum 1"]
     14v1
-end
-subgraph sg_6v1 ["sg_6v1 stratum 1"]
-    16v1
 end

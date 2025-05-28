@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_unique.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -30,12 +30,11 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     2v1
     3v1
     4v1
-    5v1
-    6v1
     7v1
     8v1
     9v1
     subgraph sg_1v1_var_pivot ["var <tt>pivot</tt>"]
+        style sg_1v1_var_pivot fill:transparent
         5v1
         6v1
     end

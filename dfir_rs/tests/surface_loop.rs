@@ -1,4 +1,3 @@
-use dfir_lang::graph::WriteConfig;
 use dfir_rs::util::{collect_ready, iter_batches_stream};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
@@ -467,8 +466,10 @@ pub fn test_enumerate_loop() {
     );
 }
 
-#[multiplatform_test(test, wasm, env_tracing)]
+#[multiplatform_test(test, env_tracing)]
 pub fn test_write() {
+    use dfir_lang::graph::WriteConfig;
+
     let (result_send, _result_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let df = dfir_syntax! {

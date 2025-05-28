@@ -50,12 +50,12 @@ digraph {
         fillcolor="#ee88ee"
         style=filled
         label = loop_1v1
+        n3v1
+        n4v1
         subgraph var_cp {
             cluster=true
             label="var cp"
             n5v1
         }
-        n3v1
-        n4v1
     }
 }

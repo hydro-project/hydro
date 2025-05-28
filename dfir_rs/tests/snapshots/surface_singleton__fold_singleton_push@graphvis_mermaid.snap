@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_singleton.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -23,31 +23,28 @@ linkStyle default stroke:#aaa
 1v1-->4v1
 8v1--x3v1; linkStyle 5 stroke:red
 3v1--x5v1; linkStyle 6 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    2v1
-    subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
-        2v1
-    end
-end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
-    3v1
     subgraph sg_2v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
+        style sg_2v1_var_max_of_stream2 fill:transparent
         3v1
     end
 end
 subgraph sg_3v1 ["sg_3v1 stratum 2"]
-    1v1
-    4v1
-    5v1
-    6v1
-    7v1
     subgraph sg_3v1_var_filtered_stream1 ["var <tt>filtered_stream1</tt>"]
+        style sg_3v1_var_filtered_stream1 fill:transparent
         4v1
         5v1
         6v1
         7v1
     end
     subgraph sg_3v1_var_stream1 ["var <tt>stream1</tt>"]
+        style sg_3v1_var_stream1 fill:transparent
         1v1
+    end
+end
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
+        style sg_1v1_var_stream2 fill:transparent
+        2v1
     end
 end
