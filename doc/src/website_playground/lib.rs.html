@@ -91,56 +91,63 @@
 <a href=#91 id=91 data-nosnippet>91</a>}
 <a href=#92 id=92 data-nosnippet>92</a>
 <a href=#93 id=93 data-nosnippet>93</a><span class="attr">#[wasm_bindgen]
-<a href=#94 id=94 data-nosnippet>94</a></span><span class="kw">pub fn </span>compile_dfir(
-<a href=#95 id=95 data-nosnippet>95</a>    program: String,
-<a href=#96 id=96 data-nosnippet>96</a>    no_subgraphs: bool,
-<a href=#97 id=97 data-nosnippet>97</a>    no_varnames: bool,
-<a href=#98 id=98 data-nosnippet>98</a>    no_pull_push: bool,
-<a href=#99 id=99 data-nosnippet>99</a>    no_handoffs: bool,
-<a href=#100 id=100 data-nosnippet>100</a>    no_references: bool,
-<a href=#101 id=101 data-nosnippet>101</a>    op_short_text: bool,
-<a href=#102 id=102 data-nosnippet>102</a>) -&gt; JsValue {
-<a href=#103 id=103 data-nosnippet>103</a>    <span class="kw">let </span>write_config = WriteConfig {
-<a href=#104 id=104 data-nosnippet>104</a>        no_subgraphs,
-<a href=#105 id=105 data-nosnippet>105</a>        no_varnames,
-<a href=#106 id=106 data-nosnippet>106</a>        no_pull_push,
-<a href=#107 id=107 data-nosnippet>107</a>        no_handoffs,
-<a href=#108 id=108 data-nosnippet>108</a>        no_references,
-<a href=#109 id=109 data-nosnippet>109</a>        op_short_text,
-<a href=#110 id=110 data-nosnippet>110</a>        op_text_no_imports: <span class="bool-val">false</span>,
-<a href=#111 id=111 data-nosnippet>111</a>    };
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>    <span class="kw">let </span>out = <span class="kw">match </span>syn::parse_str(<span class="kw-2">&amp;</span>program) {
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="prelude-val">Ok</span>(input) =&gt; {
-<a href=#115 id=115 data-nosnippet>115</a>            <span class="kw">let </span>(graph_code_opt, diagnostics) = build_hfcode(input, <span class="kw-2">&amp;</span><span class="macro">quote!</span>(dfir_rs));
-<a href=#116 id=116 data-nosnippet>116</a>            <span class="kw">let </span>output = graph_code_opt.map(|(graph, code)| {
-<a href=#117 id=117 data-nosnippet>117</a>                <span class="kw">let </span>mermaid = graph.to_mermaid(<span class="kw-2">&amp;</span>write_config);
-<a href=#118 id=118 data-nosnippet>118</a>                <span class="kw">let </span>file = <span class="macro">syn::parse_quote!</span> {
-<a href=#119 id=119 data-nosnippet>119</a>                    <span class="kw">fn </span>main() {
-<a href=#120 id=120 data-nosnippet>120</a>                        <span class="kw">let </span><span class="kw-2">mut </span>df = #code;
-<a href=#121 id=121 data-nosnippet>121</a>                        df.run_available();
-<a href=#122 id=122 data-nosnippet>122</a>                    }
-<a href=#123 id=123 data-nosnippet>123</a>                };
-<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw">let </span>compiled = prettyplease::unparse(<span class="kw-2">&amp;</span>file);
-<a href=#125 id=125 data-nosnippet>125</a>                DfirOutput { mermaid, compiled }
-<a href=#126 id=126 data-nosnippet>126</a>            });
-<a href=#127 id=127 data-nosnippet>127</a>            DfirResult {
-<a href=#128 id=128 data-nosnippet>128</a>                output,
-<a href=#129 id=129 data-nosnippet>129</a>                diagnostics: diagnostics.into_iter().map(Into::into).collect(),
-<a href=#130 id=130 data-nosnippet>130</a>            }
-<a href=#131 id=131 data-nosnippet>131</a>        }
-<a href=#132 id=132 data-nosnippet>132</a>        <span class="prelude-val">Err</span>(errors) =&gt; DfirResult {
-<a href=#133 id=133 data-nosnippet>133</a>            output: <span class="prelude-val">None</span>,
-<a href=#134 id=134 data-nosnippet>134</a>            diagnostics: errors
-<a href=#135 id=135 data-nosnippet>135</a>                .into_iter()
-<a href=#136 id=136 data-nosnippet>136</a>                .map(|e| JsDiagnostic {
-<a href=#137 id=137 data-nosnippet>137</a>                    span: e.span().into(),
-<a href=#138 id=138 data-nosnippet>138</a>                    message: e.to_string(),
-<a href=#139 id=139 data-nosnippet>139</a>                    is_error: <span class="bool-val">true</span>,
-<a href=#140 id=140 data-nosnippet>140</a>                })
-<a href=#141 id=141 data-nosnippet>141</a>                .collect(),
-<a href=#142 id=142 data-nosnippet>142</a>        },
-<a href=#143 id=143 data-nosnippet>143</a>    };
-<a href=#144 id=144 data-nosnippet>144</a>
-<a href=#145 id=145 data-nosnippet>145</a>    serde_wasm_bindgen::to_value(<span class="kw-2">&amp;</span>out).unwrap()
-<a href=#146 id=146 data-nosnippet>146</a>}</code></pre></div></section></main></body></html>
+<a href=#94 id=94 data-nosnippet>94</a>#[allow(
+<a href=#95 id=95 data-nosnippet>95</a>    clippy::allow_attributes,
+<a href=#96 id=96 data-nosnippet>96</a>    clippy::too_many_arguments,
+<a href=#97 id=97 data-nosnippet>97</a>    reason = <span class="string">"Easier to expose `bool` to JS than a config struct. TODO(mingwei):"
+<a href=#98 id=98 data-nosnippet>98</a></span>)]
+<a href=#99 id=99 data-nosnippet>99</a></span><span class="kw">pub fn </span>compile_dfir(
+<a href=#100 id=100 data-nosnippet>100</a>    program: String,
+<a href=#101 id=101 data-nosnippet>101</a>    no_subgraphs: bool,
+<a href=#102 id=102 data-nosnippet>102</a>    no_varnames: bool,
+<a href=#103 id=103 data-nosnippet>103</a>    no_pull_push: bool,
+<a href=#104 id=104 data-nosnippet>104</a>    no_handoffs: bool,
+<a href=#105 id=105 data-nosnippet>105</a>    no_references: bool,
+<a href=#106 id=106 data-nosnippet>106</a>    no_loops: bool,
+<a href=#107 id=107 data-nosnippet>107</a>    op_short_text: bool,
+<a href=#108 id=108 data-nosnippet>108</a>) -&gt; JsValue {
+<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">let </span>write_config = WriteConfig {
+<a href=#110 id=110 data-nosnippet>110</a>        no_subgraphs,
+<a href=#111 id=111 data-nosnippet>111</a>        no_varnames,
+<a href=#112 id=112 data-nosnippet>112</a>        no_pull_push,
+<a href=#113 id=113 data-nosnippet>113</a>        no_handoffs,
+<a href=#114 id=114 data-nosnippet>114</a>        no_references,
+<a href=#115 id=115 data-nosnippet>115</a>        no_loops,
+<a href=#116 id=116 data-nosnippet>116</a>        op_short_text,
+<a href=#117 id=117 data-nosnippet>117</a>        op_text_no_imports: <span class="bool-val">false</span>,
+<a href=#118 id=118 data-nosnippet>118</a>    };
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>    <span class="kw">let </span>out = <span class="kw">match </span>syn::parse_str(<span class="kw-2">&amp;</span>program) {
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="prelude-val">Ok</span>(input) =&gt; {
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="kw">let </span>(graph_code_opt, diagnostics) = build_hfcode(input, <span class="kw-2">&amp;</span><span class="macro">quote!</span>(dfir_rs));
+<a href=#123 id=123 data-nosnippet>123</a>            <span class="kw">let </span>output = graph_code_opt.map(|(graph, code)| {
+<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw">let </span>mermaid = graph.to_mermaid(<span class="kw-2">&amp;</span>write_config);
+<a href=#125 id=125 data-nosnippet>125</a>                <span class="kw">let </span>file = <span class="macro">syn::parse_quote!</span> {
+<a href=#126 id=126 data-nosnippet>126</a>                    <span class="kw">fn </span>main() {
+<a href=#127 id=127 data-nosnippet>127</a>                        <span class="kw">let </span><span class="kw-2">mut </span>df = #code;
+<a href=#128 id=128 data-nosnippet>128</a>                        df.run_available();
+<a href=#129 id=129 data-nosnippet>129</a>                    }
+<a href=#130 id=130 data-nosnippet>130</a>                };
+<a href=#131 id=131 data-nosnippet>131</a>                <span class="kw">let </span>compiled = prettyplease::unparse(<span class="kw-2">&amp;</span>file);
+<a href=#132 id=132 data-nosnippet>132</a>                DfirOutput { mermaid, compiled }
+<a href=#133 id=133 data-nosnippet>133</a>            });
+<a href=#134 id=134 data-nosnippet>134</a>            DfirResult {
+<a href=#135 id=135 data-nosnippet>135</a>                output,
+<a href=#136 id=136 data-nosnippet>136</a>                diagnostics: diagnostics.into_iter().map(Into::into).collect(),
+<a href=#137 id=137 data-nosnippet>137</a>            }
+<a href=#138 id=138 data-nosnippet>138</a>        }
+<a href=#139 id=139 data-nosnippet>139</a>        <span class="prelude-val">Err</span>(errors) =&gt; DfirResult {
+<a href=#140 id=140 data-nosnippet>140</a>            output: <span class="prelude-val">None</span>,
+<a href=#141 id=141 data-nosnippet>141</a>            diagnostics: errors
+<a href=#142 id=142 data-nosnippet>142</a>                .into_iter()
+<a href=#143 id=143 data-nosnippet>143</a>                .map(|e| JsDiagnostic {
+<a href=#144 id=144 data-nosnippet>144</a>                    span: e.span().into(),
+<a href=#145 id=145 data-nosnippet>145</a>                    message: e.to_string(),
+<a href=#146 id=146 data-nosnippet>146</a>                    is_error: <span class="bool-val">true</span>,
+<a href=#147 id=147 data-nosnippet>147</a>                })
+<a href=#148 id=148 data-nosnippet>148</a>                .collect(),
+<a href=#149 id=149 data-nosnippet>149</a>        },
+<a href=#150 id=150 data-nosnippet>150</a>    };
+<a href=#151 id=151 data-nosnippet>151</a>
+<a href=#152 id=152 data-nosnippet>152</a>    serde_wasm_bindgen::to_value(<span class="kw-2">&amp;</span>out).unwrap()
+<a href=#153 id=153 data-nosnippet>153</a>}</code></pre></div></section></main></body></html>
