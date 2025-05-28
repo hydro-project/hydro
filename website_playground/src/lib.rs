@@ -91,6 +91,10 @@ pub struct DfirOutput {
 }
 
 #[wasm_bindgen]
+#[expect(
+    clippy::too_many_arguments,
+    reason = "Easier to expose `bool` to JS than a config struct. TODO(mingwei):"
+)]
 pub fn compile_dfir(
     program: String,
     no_subgraphs: bool,
