@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["LaunchedSshHost"],"type":["PrefixFilteredChannel"]};
+window.SIDEBAR_ITEMS = {"trait":["LaunchedSshHost"]};

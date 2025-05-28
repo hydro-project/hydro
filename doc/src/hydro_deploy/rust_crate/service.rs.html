@@ -277,9 +277,9 @@
 <a href=#277 id=277 data-nosnippet>277</a>                .<span class="kw">await
 <a href=#278 id=278 data-nosnippet>278</a>                </span>.context(<span class="string">"Timed out waiting for ready"</span>)<span class="question-mark">?
 <a href=#279 id=279 data-nosnippet>279</a>                </span>.context(<span class="string">"Program unexpectedly quit"</span>)<span class="question-mark">?</span>;
-<a href=#280 id=280 data-nosnippet>280</a>                <span class="kw">if </span>ready_line.starts_with(<span class="string">"ready: "</span>) {
+<a href=#280 id=280 data-nosnippet>280</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(line_rest) = ready_line.strip_prefix(<span class="string">"ready: "</span>) {
 <a href=#281 id=281 data-nosnippet>281</a>                    <span class="kw-2">*</span><span class="self">self</span>.server_defns.try_write().unwrap() =
-<a href=#282 id=282 data-nosnippet>282</a>                        serde_json::from_str(ready_line.trim_start_matches(<span class="string">"ready: "</span>)).unwrap();
+<a href=#282 id=282 data-nosnippet>282</a>                        serde_json::from_str(line_rest).unwrap();
 <a href=#283 id=283 data-nosnippet>283</a>                } <span class="kw">else </span>{
 <a href=#284 id=284 data-nosnippet>284</a>                    <span class="macro">bail!</span>(<span class="string">"expected ready"</span>);
 <a href=#285 id=285 data-nosnippet>285</a>                }
