@@ -1,0 +1,61 @@
+---
+source: dfir_rs/tests/surface_loop.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter([\"alice\", \"bob\"])", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) source_stream(iter_batches_stream(0..12, 3))", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) prefix()", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) batch()", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) cross_join()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) all_once()", shape=invhouse, fillcolor="#88aaff"]
+    n7v1 [label="(n7v1) map(|item| (context.current_tick().0, item))", shape=invhouse, fillcolor="#88aaff"]
+    n8v1 [label="(n8v1) for_each(|x| result_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n10v1 [label="(n10v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n11v1 [label="(n11v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n3v1 -> n5v1 [label="0"]
+    n1v1 -> n9v1
+    n4v1 -> n5v1 [label="1"]
+    n2v1 -> n10v1
+    n7v1 -> n8v1
+    n6v1 -> n7v1
+    n5v1 -> n11v1
+    n9v1 -> n3v1
+    n10v1 -> n4v1
+    n11v1 -> n6v1
+    subgraph loop_2v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_2v1
+        n6v1
+        n7v1
+        n8v1
+    }
+    subgraph var_users {
+        cluster=true
+        label="var users"
+        n1v1
+    }
+    subgraph var_messages {
+        cluster=true
+        label="var messages"
+        n2v1
+    }
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_1v1
+        subgraph var_cp {
+            cluster=true
+            label="var cp"
+            n5v1
+        }
+        n3v1
+        n4v1
+    }
+}

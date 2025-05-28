@@ -94,8 +94,11 @@ mod serde_syn {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
-struct Varname(#[serde(with = "serde_syn")] pub Ident);
+/// A variable name assigned to a pipeline in DFIR syntax.
+///
+/// Fundamentally a serializable/deserializable wrapper around [`syn::Ident`].
+#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Varname(#[serde(with = "serde_syn")] pub Ident);
 
 /// A node, corresponding to an operator or a handoff.
 #[derive(Clone, Serialize, Deserialize)]
