@@ -54,12 +54,21 @@ pub(crate) trait GraphWrite {
     /// Write a node within a stack of loops, subgraphs, and/or varname blocks.
     fn write_node(&mut self, node_id: GraphNodeId) -> Result<(), Self::Err>;
 
+    // Generic end method for loops, subgraphs, and varname blocks.
+    fn write_end(&mut self) -> Result<(), Self::Err>;
+
     /// End writing a varname block.
-    fn write_varname_end(&mut self) -> Result<(), Self::Err>;
+    fn write_varname_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
     /// End writing a subgraph.
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err>;
+    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
     /// End writing a loop.
-    fn write_loop_end(&mut self) -> Result<(), Self::Err>;
+    fn write_loop_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
 
     /// End the graph. Last method called.
     fn write_epilogue(&mut self) -> Result<(), Self::Err>;
@@ -269,17 +278,8 @@ where
         )
     }
 
-    fn write_varname_end(&mut self) -> Result<(), Self::Err> {
+    fn write_end(&mut self) -> Result<(), Self::Err> {
         self.write_loop_end()
-    }
-
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
-        self.write_loop_end()
-    }
-
-    fn write_loop_end(&mut self) -> Result<(), Self::Err> {
-        self.indent -= 4;
-        writeln!(self.write, "{b:i$}end", b = "", i = self.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
@@ -501,20 +501,12 @@ where
         )
     }
 
-    fn write_varname_end(&mut self) -> Result<(), Self::Err> {
-        self.write_epilogue()
-    }
-
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
-        self.write_epilogue()
-    }
-
-    fn write_loop_end(&mut self) -> Result<(), Self::Err> {
-        self.write_epilogue()
+    fn write_end(&mut self) -> Result<(), Self::Err> {
+        self.indent -= 4;
+        writeln!(self.write, "{b:i$}}}", b = "", i = self.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
-        self.indent -= 4;
-        writeln!(self.write, "{b:i$}}}", b = "", i = self.indent)
+        self.write_end()
     }
 }
