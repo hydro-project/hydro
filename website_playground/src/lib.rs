@@ -91,7 +91,8 @@ pub struct DfirOutput {
 }
 
 #[wasm_bindgen]
-#[expect(
+#[allow(
+    clippy::allow_attributes,
     clippy::too_many_arguments,
     reason = "Easier to expose `bool` to JS than a config struct. TODO(mingwei):"
 )]
