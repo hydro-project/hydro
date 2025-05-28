@@ -36,16 +36,16 @@ subgraph loop_1v1 ["loop_1v1"]
         5v1
     end
 end
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    2v1
+end
 subgraph loop_2v1 ["loop_2v1"]
     subgraph sg_4v1 ["sg_4v1 stratum 2"]
         6v1
         7v1
         8v1
     end
-end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    2v1
-end
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
 end

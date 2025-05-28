@@ -16,6 +16,13 @@ digraph {
     n3v1 -> n4v1
     n5v1 -> n3v1 [label="neg", color=red]
     n6v1 -> n3v1 [label="pos"]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n2v1
+    }
     subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -27,13 +34,6 @@ digraph {
             n3v1
             n4v1
         }
-    }
-    subgraph sg_1v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_1v1\nstratum 0"
-        n2v1
     }
     subgraph sg_3v1 {
         cluster=true

@@ -24,6 +24,14 @@ digraph {
     n8v1 -> n9v1
     n6v1 -> n10v1
     n10v1 -> n8v1 [color=red]
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 1"
+        n8v1
+        n9v1
+    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -44,13 +52,5 @@ digraph {
             n5v1
             n6v1
         }
-    }
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1\nstratum 1"
-        n8v1
-        n9v1
     }
 }

@@ -27,6 +27,12 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_pivot {
+            cluster=true
+            label="var pivot"
+            n5v1
+            n6v1
+        }
         n1v1
         n2v1
         n3v1
@@ -34,11 +40,5 @@ digraph {
         n7v1
         n8v1
         n9v1
-        subgraph sg_1v1_var_pivot {
-            cluster=true
-            label="var pivot"
-            n5v1
-            n6v1
-        }
     }
 }

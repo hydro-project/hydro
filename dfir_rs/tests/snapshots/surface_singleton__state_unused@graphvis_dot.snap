@@ -15,16 +15,16 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_max_of_stream2 {
+            cluster=true
+            label="var max_of_stream2"
+            n3v1
+        }
         subgraph sg_1v1_var_stream2 {
             cluster=true
             label="var stream2"
             n1v1
             n2v1
-        }
-        subgraph sg_1v1_var_max_of_stream2 {
-            cluster=true
-            label="var max_of_stream2"
-            n3v1
         }
     }
 }

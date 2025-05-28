@@ -24,23 +24,15 @@ digraph {
     n8v1 -> n2v1 [color=red]
     n9v1 -> n6v1 [label="1"]
     n10v1 -> n6v1 [label="0"]
-    subgraph sg_4v1 {
+    subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_4v1\nstratum 0"
-        n5v1
-    }
-    subgraph sg_3v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1\nstratum 1"
-        n7v1
-        subgraph sg_3v1_var_join_node {
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_teed_fold {
             cluster=true
-            label="var join_node"
-            n6v1
+            label="var teed_fold"
+            n1v1
         }
     }
     subgraph sg_2v1 {
@@ -56,15 +48,23 @@ digraph {
             n3v1
         }
     }
-    subgraph sg_1v1 {
+    subgraph sg_3v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
-        subgraph sg_1v1_var_teed_fold {
+        label = "sg_3v1\nstratum 1"
+        n7v1
+        subgraph sg_3v1_var_join_node {
             cluster=true
-            label="var teed_fold"
-            n1v1
+            label="var join_node"
+            n6v1
         }
+    }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 0"
+        n5v1
     }
 }

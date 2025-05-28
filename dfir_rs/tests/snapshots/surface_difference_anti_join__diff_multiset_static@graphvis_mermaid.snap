@@ -27,30 +27,26 @@ linkStyle default stroke:#aaa
 8v1--x2v1; linkStyle 6 stroke:red
 9v1--x|neg|1v1; linkStyle 7 stroke:red
 10v1-->|pos|1v1
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
-    subgraph sg_4v1_var_poss ["var <tt>poss</tt>"]
-        style sg_4v1_var_poss fill:transparent
-        4v1
-    end
-end
-subgraph sg_1v1 ["sg_1v1 stratum 1"]
-    subgraph sg_1v1_var_diff ["var <tt>diff</tt>"]
-        style sg_1v1_var_diff fill:transparent
-        1v1
-    end
-end
 subgraph sg_2v1 ["sg_2v1 stratum 2"]
     subgraph sg_2v1_var_diff ["var <tt>diff</tt>"]
-        style sg_2v1_var_diff fill:transparent
         2v1
         3v1
     end
 end
+subgraph sg_1v1 ["sg_1v1 stratum 1"]
+    subgraph sg_1v1_var_diff ["var <tt>diff</tt>"]
+        1v1
+    end
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    subgraph sg_4v1_var_poss ["var <tt>poss</tt>"]
+        4v1
+    end
+end
 subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    7v1
     subgraph sg_3v1_var_negs ["var <tt>negs</tt>"]
-        style sg_3v1_var_negs fill:transparent
         5v1
         6v1
     end
+    7v1
 end

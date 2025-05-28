@@ -15,12 +15,10 @@ linkStyle default stroke:#aaa
 2v1-->3v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
-        style sg_1v1_var_stream2 fill:transparent
         1v1
         2v1
     end
     subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
-        style sg_1v1_var_max_of_stream2 fill:transparent
         3v1
     end
 end

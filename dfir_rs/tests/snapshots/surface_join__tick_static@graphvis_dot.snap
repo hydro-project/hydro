@@ -42,6 +42,20 @@ digraph {
     n17v1 -> n7v1 [color=red]
     n18v1 -> n19v1
     n19v1 -> n6v1 [color=red]
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        n5v1
+    }
+    subgraph sg_3v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_3v1\nstratum 0"
+        n6v1
+    }
     subgraph sg_5v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -49,12 +63,12 @@ digraph {
         label = "sg_5v1\nstratum 1"
         n14v1
     }
-    subgraph sg_6v1 {
+    subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_6v1\nstratum 1"
-        n16v1
+        label = "sg_1v1\nstratum 0"
+        n3v1
     }
     subgraph sg_4v1 {
         cluster=true
@@ -77,32 +91,18 @@ digraph {
             n10v1
         }
     }
+    subgraph sg_6v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_6v1\nstratum 1"
+        n16v1
+    }
     subgraph sg_7v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_7v1\nstratum 1"
         n18v1
-    }
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1\nstratum 0"
-        n5v1
-    }
-    subgraph sg_1v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_1v1\nstratum 0"
-        n3v1
-    }
-    subgraph sg_3v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1\nstratum 0"
-        n6v1
     }
 }

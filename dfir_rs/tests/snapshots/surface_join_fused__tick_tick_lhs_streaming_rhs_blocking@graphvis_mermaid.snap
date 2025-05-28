@@ -49,39 +49,37 @@ linkStyle default stroke:#aaa
 19v1--o8v1; linkStyle 17 stroke:red
 20v1-->21v1
 21v1--o7v1; linkStyle 19 stroke:red
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    4v1
-end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    6v1
-end
-subgraph sg_8v1 ["sg_8v1 stratum 2"]
-    20v1
-end
 subgraph sg_5v1 ["sg_5v1 stratum 1"]
-    subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
-        style sg_5v1_var_unioner fill:transparent
-        9v1
-    end
     subgraph sg_5v1_var_my_join ["var <tt>my_join</tt>"]
-        style sg_5v1_var_my_join fill:transparent
         10v1
         11v1
     end
     3v1
     5v1
     8v1
+    subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
+        9v1
+    end
+end
+subgraph sg_7v1 ["sg_7v1 stratum 2"]
+    18v1
 end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     2v1
 end
-subgraph sg_4v1 ["sg_4v1 stratum 0"]
-    7v1
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    4v1
+end
+subgraph sg_8v1 ["sg_8v1 stratum 2"]
+    20v1
 end
 subgraph sg_6v1 ["sg_6v1 stratum 2"]
     16v1
 end
-subgraph sg_7v1 ["sg_7v1 stratum 2"]
-    18v1
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    6v1
+end
+subgraph sg_4v1 ["sg_4v1 stratum 0"]
+    7v1
 end

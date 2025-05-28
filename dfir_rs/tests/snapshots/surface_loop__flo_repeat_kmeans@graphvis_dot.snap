@@ -59,42 +59,6 @@ digraph {
     n25v1 -> n11v1 [label="1"]
     n26v1 -> n17v1
     n27v1 -> n19v1
-    subgraph loop_1v1 {
-        cluster=true
-        fillcolor="#ee88ee"
-        style=filled
-        label = loop_1v1
-        subgraph sg_4v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_4v1\nstratum 1"
-            subgraph sg_4v1_var_batch_centroids {
-                cluster=true
-                label="var batch_centroids"
-                n6v1
-            }
-        }
-        subgraph sg_7v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_7v1\nstratum 3"
-            n19v1
-            n20v1
-        }
-        subgraph sg_3v1 {
-            cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_3v1\nstratum 1"
-            subgraph sg_3v1_var_batch_points {
-                cluster=true
-                label="var batch_points"
-                n5v1
-            }
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -119,6 +83,42 @@ digraph {
             n4v1
         }
     }
+    subgraph loop_1v1 {
+        cluster=true
+        fillcolor="#ee88ee"
+        style=filled
+        label = loop_1v1
+        subgraph sg_7v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_7v1\nstratum 3"
+            n19v1
+            n20v1
+        }
+        subgraph sg_4v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_4v1\nstratum 1"
+            subgraph sg_4v1_var_batch_centroids {
+                cluster=true
+                label="var batch_centroids"
+                n6v1
+            }
+        }
+        subgraph sg_3v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 1"
+            subgraph sg_3v1_var_batch_points {
+                cluster=true
+                label="var batch_points"
+                n5v1
+            }
+        }
+    }
     subgraph loop_2v1 {
         cluster=true
         fillcolor="#ee88ee"
@@ -129,7 +129,6 @@ digraph {
             fillcolor="#dddddd"
             style=filled
             label = "sg_5v1\nstratum 2"
-            n8v1
             subgraph sg_5v1_var_cj {
                 cluster=true
                 label="var cj"
@@ -142,12 +141,18 @@ digraph {
                 n9v1
                 n10v1
             }
+            n8v1
         }
         subgraph sg_6v1 {
             cluster=true
             fillcolor="#dddddd"
             style=filled
             label = "sg_6v1\nstratum 2"
+            subgraph sg_6v1_var_points {
+                cluster=true
+                label="var points"
+                n7v1
+            }
             subgraph sg_6v1_var_cj {
                 cluster=true
                 label="var cj"
@@ -157,11 +162,6 @@ digraph {
                 n14v1
                 n15v1
                 n16v1
-            }
-            subgraph sg_6v1_var_points {
-                cluster=true
-                label="var points"
-                n7v1
             }
         }
     }

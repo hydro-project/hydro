@@ -68,6 +68,20 @@ digraph {
         fillcolor="#ee88ee"
         style=filled
         label = loop_1v1
+        subgraph sg_5v1 {
+            cluster=true
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_5v1\nstratum 1"
+            subgraph sg_5v1_var_join3 {
+                cluster=true
+                label="var join3"
+                n15v1
+                n16v1
+            }
+            n13v1
+            n14v1
+        }
         subgraph sg_3v1 {
             cluster=true
             fillcolor="#dddddd"
@@ -82,18 +96,18 @@ digraph {
                 n8v1
             }
         }
-        subgraph sg_5v1 {
+        subgraph sg_6v1 {
             cluster=true
             fillcolor="#dddddd"
             style=filled
-            label = "sg_5v1\nstratum 1"
-            n13v1
-            n14v1
-            subgraph sg_5v1_var_join3 {
+            label = "sg_6v1\nstratum 1"
+            n17v1
+            n18v1
+            subgraph sg_6v1_var_join4 {
                 cluster=true
-                label="var join3"
-                n15v1
-                n16v1
+                label="var join4"
+                n19v1
+                n20v1
             }
         }
         subgraph sg_4v1 {
@@ -110,19 +124,17 @@ digraph {
             n9v1
             n10v1
         }
-        subgraph sg_6v1 {
+    }
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_lb {
             cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_6v1\nstratum 1"
-            n17v1
-            n18v1
-            subgraph sg_6v1_var_join4 {
-                cluster=true
-                label="var join4"
-                n19v1
-                n20v1
-            }
+            label="var lb"
+            n1v1
+            n2v1
         }
     }
     subgraph sg_2v1 {
@@ -135,18 +147,6 @@ digraph {
             label="var rb"
             n3v1
             n4v1
-        }
-    }
-    subgraph sg_1v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_1v1\nstratum 0"
-        subgraph sg_1v1_var_lb {
-            cluster=true
-            label="var lb"
-            n1v1
-            n2v1
         }
     }
 }

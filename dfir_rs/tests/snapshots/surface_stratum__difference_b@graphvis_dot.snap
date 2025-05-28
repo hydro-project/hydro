@@ -21,12 +21,22 @@ digraph {
     n6v1 -> n1v1 [label="neg", color=red]
     n7v1 -> n4v1 [color=red]
     n8v1 -> n1v1 [label="pos"]
-    subgraph sg_1v1 {
+    subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
-        n4v1
+        label = "sg_2v1\nstratum 1"
+        subgraph sg_2v1_var_a {
+            cluster=true
+            label="var a"
+            n1v1
+        }
+        n5v1
+        subgraph sg_2v1_var_b {
+            cluster=true
+            label="var b"
+            n3v1
+        }
     }
     subgraph sg_3v1 {
         cluster=true
@@ -35,21 +45,11 @@ digraph {
         label = "sg_3v1\nstratum 0"
         n2v1
     }
-    subgraph sg_2v1 {
+    subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 1"
-        subgraph sg_2v1_var_b {
-            cluster=true
-            label="var b"
-            n3v1
-        }
-        subgraph sg_2v1_var_a {
-            cluster=true
-            label="var a"
-            n1v1
-        }
-        n5v1
+        label = "sg_1v1\nstratum 0"
+        n4v1
     }
 }

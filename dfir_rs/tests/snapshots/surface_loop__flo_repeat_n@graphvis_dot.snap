@@ -26,23 +26,26 @@ digraph {
     n9v1 -> n3v1
     n10v1 -> n4v1
     n11v1 -> n6v1
-    subgraph loop_1v1 {
+    subgraph sg_1v1 {
         cluster=true
-        fillcolor="#ee88ee"
+        fillcolor="#dddddd"
         style=filled
-        label = loop_1v1
-        subgraph sg_3v1 {
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_users {
             cluster=true
-            fillcolor="#dddddd"
-            style=filled
-            label = "sg_3v1\nstratum 1"
-            n3v1
-            n4v1
-            subgraph sg_3v1_var_cp {
-                cluster=true
-                label="var cp"
-                n5v1
-            }
+            label="var users"
+            n1v1
+        }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        subgraph sg_2v1_var_messages {
+            cluster=true
+            label="var messages"
+            n2v1
         }
     }
     subgraph loop_2v1 {
@@ -60,26 +63,23 @@ digraph {
             n8v1
         }
     }
-    subgraph sg_2v1 {
+    subgraph loop_1v1 {
         cluster=true
-        fillcolor="#dddddd"
+        fillcolor="#ee88ee"
         style=filled
-        label = "sg_2v1\nstratum 0"
-        subgraph sg_2v1_var_messages {
+        label = loop_1v1
+        subgraph sg_3v1 {
             cluster=true
-            label="var messages"
-            n2v1
-        }
-    }
-    subgraph sg_1v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_1v1\nstratum 0"
-        subgraph sg_1v1_var_users {
-            cluster=true
-            label="var users"
-            n1v1
+            fillcolor="#dddddd"
+            style=filled
+            label = "sg_3v1\nstratum 1"
+            subgraph sg_3v1_var_cp {
+                cluster=true
+                label="var cp"
+                n5v1
+            }
+            n3v1
+            n4v1
         }
     }
 }

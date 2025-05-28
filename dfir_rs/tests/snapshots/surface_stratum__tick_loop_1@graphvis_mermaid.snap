@@ -28,18 +28,17 @@ linkStyle default stroke:#aaa
 8v1-->9v1
 9v1-->10v1
 10v1--o4v1; linkStyle 9 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    4v1
+end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    3v1
-    5v1
-    6v1
     subgraph sg_2v1_var_a ["var <tt>a</tt>"]
-        style sg_2v1_var_a fill:transparent
         1v1
         2v1
     end
-end
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    4v1
+    3v1
+    5v1
+    6v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
     9v1

@@ -43,34 +43,30 @@ linkStyle default stroke:#aaa
 15v1-->|1|1v1
 16v1-->13v1
 17v1--x|neg|11v1; linkStyle 17 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_edges ["var <tt>edges</tt>"]
+        4v1
+        5v1
+    end
+end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
     3v1
+    subgraph sg_2v1_var_reached_vertices ["var <tt>reached_vertices</tt>"]
+        1v1
+        2v1
+    end
     subgraph sg_2v1_var_my_join_tee ["var <tt>my_join_tee</tt>"]
-        style sg_2v1_var_my_join_tee fill:transparent
         6v1
         7v1
         8v1
         9v1
         10v1
     end
-    subgraph sg_2v1_var_reached_vertices ["var <tt>reached_vertices</tt>"]
-        style sg_2v1_var_reached_vertices fill:transparent
-        1v1
-        2v1
-    end
 end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
     13v1
     subgraph sg_3v1_var_diff ["var <tt>diff</tt>"]
-        style sg_3v1_var_diff fill:transparent
         11v1
         12v1
-    end
-end
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    subgraph sg_1v1_var_edges ["var <tt>edges</tt>"]
-        style sg_1v1_var_edges fill:transparent
-        4v1
-        5v1
     end
 end

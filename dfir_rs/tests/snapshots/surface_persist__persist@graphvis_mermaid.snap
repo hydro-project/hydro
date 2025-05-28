@@ -20,13 +20,12 @@ linkStyle default stroke:#aaa
 5v1-->6v1
 3v1-->5v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    4v1
+    5v1
+    6v1
     subgraph sg_1v1_var_my_tee ["var <tt>my_tee</tt>"]
-        style sg_1v1_var_my_tee fill:transparent
         1v1
         2v1
         3v1
     end
-    4v1
-    5v1
-    6v1
 end

@@ -19,7 +19,6 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     3v1
     4v1
     subgraph sg_1v1_var_m ["var <tt>m</tt>"]
-        style sg_1v1_var_m fill:transparent
         1v1
         2v1
     end

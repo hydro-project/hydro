@@ -21,9 +21,6 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n4v1
-        n5v1
-        n6v1
         subgraph sg_1v1_var_my_tee {
             cluster=true
             label="var my_tee"
@@ -31,5 +28,8 @@ digraph {
             n2v1
             n3v1
         }
+        n4v1
+        n5v1
+        n6v1
     }
 }

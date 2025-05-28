@@ -39,19 +39,17 @@ digraph {
     n14v1 -> n7v1 [label="1"]
     n15v1 -> n5v1 [label="1"]
     n16v1 -> n3v1 [label="1"]
-    subgraph sg_1v1 {
+    subgraph sg_3v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
-        subgraph sg_1v1_var_a {
+        label = "sg_3v1\nstratum 0"
+        subgraph sg_3v1_var_c {
             cluster=true
-            label="var a"
-            n1v1
-            n2v1
+            label="var c"
+            n5v1
+            n6v1
         }
-        n9v1
-        n10v1
     }
     subgraph sg_4v1 {
         cluster=true
@@ -77,16 +75,18 @@ digraph {
             n4v1
         }
     }
-    subgraph sg_3v1 {
+    subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 0"
-        subgraph sg_3v1_var_c {
+        label = "sg_1v1\nstratum 0"
+        subgraph sg_1v1_var_a {
             cluster=true
-            label="var c"
-            n5v1
-            n6v1
+            label="var a"
+            n1v1
+            n2v1
         }
+        n9v1
+        n10v1
     }
 }

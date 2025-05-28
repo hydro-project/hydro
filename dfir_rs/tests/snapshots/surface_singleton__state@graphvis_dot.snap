@@ -29,11 +29,6 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 1"
-        subgraph sg_1v1_var_stream1 {
-            cluster=true
-            label="var stream1"
-            n1v1
-        }
         subgraph sg_1v1_var_filtered_stream1 {
             cluster=true
             label="var filtered_stream1"
@@ -41,6 +36,11 @@ digraph {
             n6v1
             n7v1
             n8v1
+        }
+        subgraph sg_1v1_var_stream1 {
+            cluster=true
+            label="var stream1"
+            n1v1
         }
     }
     subgraph sg_2v1 {
@@ -54,12 +54,12 @@ digraph {
             n2v1
             n3v1
         }
-        n9v1
-        n10v1
         subgraph sg_2v1_var_max_of_stream2 {
             cluster=true
             label="var max_of_stream2"
             n4v1
         }
+        n9v1
+        n10v1
     }
 }

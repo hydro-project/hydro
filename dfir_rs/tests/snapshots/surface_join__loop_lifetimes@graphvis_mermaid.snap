@@ -67,29 +67,10 @@ linkStyle default stroke:#aaa
 27v1-->17v1
 28v1-->18v1
 subgraph loop_1v1 ["loop_1v1"]
-    subgraph sg_4v1 ["sg_4v1 stratum 1"]
-        9v1
-        10v1
-        subgraph sg_4v1_var_join2 ["var <tt>join2</tt>"]
-            style sg_4v1_var_join2 fill:transparent
-            11v1
-            12v1
-        end
-    end
-    subgraph sg_3v1 ["sg_3v1 stratum 1"]
-        5v1
-        6v1
-        subgraph sg_3v1_var_join1 ["var <tt>join1</tt>"]
-            style sg_3v1_var_join1 fill:transparent
-            7v1
-            8v1
-        end
-    end
     subgraph sg_5v1 ["sg_5v1 stratum 1"]
         13v1
         14v1
         subgraph sg_5v1_var_join3 ["var <tt>join3</tt>"]
-            style sg_5v1_var_join3 fill:transparent
             15v1
             16v1
         end
@@ -98,22 +79,35 @@ subgraph loop_1v1 ["loop_1v1"]
         17v1
         18v1
         subgraph sg_6v1_var_join4 ["var <tt>join4</tt>"]
-            style sg_6v1_var_join4 fill:transparent
             19v1
             20v1
         end
     end
+    subgraph sg_3v1 ["sg_3v1 stratum 1"]
+        5v1
+        6v1
+        subgraph sg_3v1_var_join1 ["var <tt>join1</tt>"]
+            7v1
+            8v1
+        end
+    end
+    subgraph sg_4v1 ["sg_4v1 stratum 1"]
+        subgraph sg_4v1_var_join2 ["var <tt>join2</tt>"]
+            11v1
+            12v1
+        end
+        9v1
+        10v1
+    end
 end
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_lb ["var <tt>lb</tt>"]
-        style sg_1v1_var_lb fill:transparent
         1v1
         2v1
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
     subgraph sg_2v1_var_rb ["var <tt>rb</tt>"]
-        style sg_2v1_var_rb fill:transparent
         3v1
         4v1
     end

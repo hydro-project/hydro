@@ -23,21 +23,6 @@ digraph {
     n5v1 -> n7v1
     n8v1 -> n3v1 [color=red]
     n9v1 -> n6v1
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1\nstratum 1"
-        n3v1
-        n6v1
-        n7v1
-        subgraph sg_2v1_var_my_union_tee {
-            cluster=true
-            label="var my_union_tee"
-            n4v1
-            n5v1
-        }
-    }
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -49,5 +34,20 @@ digraph {
             n1v1
             n2v1
         }
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 1"
+        subgraph sg_2v1_var_my_union_tee {
+            cluster=true
+            label="var my_union_tee"
+            n4v1
+            n5v1
+        }
+        n3v1
+        n6v1
+        n7v1
     }
 }

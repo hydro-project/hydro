@@ -32,14 +32,14 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n3v1
-        n7v1
         subgraph sg_1v1_var_reached_vertices {
             cluster=true
             label="var reached_vertices"
             n1v1
             n2v1
         }
+        n3v1
+        n7v1
         subgraph sg_1v1_var_my_join_tee {
             cluster=true
             label="var my_join_tee"

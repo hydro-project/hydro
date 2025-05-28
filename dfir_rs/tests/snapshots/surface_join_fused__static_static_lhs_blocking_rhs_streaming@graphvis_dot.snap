@@ -46,39 +46,12 @@ digraph {
     n19v1 -> n8v1 [color=red]
     n20v1 -> n21v1
     n21v1 -> n7v1 [color=red]
-    subgraph sg_7v1 {
+    subgraph sg_6v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_7v1\nstratum 2"
-        n18v1
-    }
-    subgraph sg_5v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_5v1\nstratum 1"
-        n3v1
-        n5v1
-        n8v1
-        subgraph sg_5v1_var_unioner {
-            cluster=true
-            label="var unioner"
-            n9v1
-        }
-        subgraph sg_5v1_var_my_join {
-            cluster=true
-            label="var my_join"
-            n10v1
-            n11v1
-        }
-    }
-    subgraph sg_4v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_4v1\nstratum 0"
-        n7v1
+        label = "sg_6v1\nstratum 2"
+        n16v1
     }
     subgraph sg_3v1 {
         cluster=true
@@ -94,12 +67,12 @@ digraph {
         label = "sg_2v1\nstratum 0"
         n4v1
     }
-    subgraph sg_6v1 {
+    subgraph sg_7v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_6v1\nstratum 2"
-        n16v1
+        label = "sg_7v1\nstratum 2"
+        n18v1
     }
     subgraph sg_1v1 {
         cluster=true
@@ -109,11 +82,38 @@ digraph {
         n1v1
         n2v1
     }
+    subgraph sg_4v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_4v1\nstratum 0"
+        n7v1
+    }
     subgraph sg_8v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_8v1\nstratum 2"
         n20v1
+    }
+    subgraph sg_5v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_5v1\nstratum 1"
+        subgraph sg_5v1_var_unioner {
+            cluster=true
+            label="var unioner"
+            n9v1
+        }
+        n3v1
+        n5v1
+        n8v1
+        subgraph sg_5v1_var_my_join {
+            cluster=true
+            label="var my_join"
+            n10v1
+            n11v1
+        }
     }
 }

@@ -259,12 +259,15 @@ where
             i = self.indent,
         )?;
         self.indent += 4;
-        writeln!(
-            self.write,
-            "{b:i$}style {varname_id} fill:transparent",
-            b = "",
-            i = self.indent
-        )?;
+        if sg_id.is_none() {
+            // From https://github.com/hydro-project/hydro/pull/932
+            writeln!(
+                self.write,
+                "{b:i$}style {varname_id} fill:transparent",
+                b = "",
+                i = self.indent
+            )?;
+        }
         Ok(())
     }
 

@@ -19,14 +19,12 @@ linkStyle default stroke:#aaa
 5v1--x3v1; linkStyle 3 stroke:red
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     subgraph sg_1v1_var_a ["var <tt>a</tt>"]
-        style sg_1v1_var_a fill:transparent
         1v1
         2v1
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
     subgraph sg_2v1_var_a ["var <tt>a</tt>"]
-        style sg_2v1_var_a fill:transparent
         3v1
         4v1
     end

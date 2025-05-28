@@ -34,6 +34,25 @@ digraph {
     n14v1 -> n10v1 [color=red]
     n3v1 -> n9v1 [color=red]
     n6v1 -> n9v1 [color=red]
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 0"
+        n8v1
+        subgraph sg_2v1_var_rhs {
+            cluster=true
+            label="var rhs"
+            n4v1
+            n5v1
+            n6v1
+        }
+        subgraph sg_2v1_var_rhs_tee {
+            cluster=true
+            label="var rhs_tee"
+            n7v1
+        }
+    }
     subgraph sg_4v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -57,25 +76,6 @@ digraph {
             n1v1
             n2v1
             n3v1
-        }
-    }
-    subgraph sg_2v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_2v1\nstratum 0"
-        subgraph sg_2v1_var_rhs_tee {
-            cluster=true
-            label="var rhs_tee"
-            n7v1
-        }
-        n8v1
-        subgraph sg_2v1_var_rhs {
-            cluster=true
-            label="var rhs"
-            n4v1
-            n5v1
-            n6v1
         }
     }
     subgraph sg_3v1 {

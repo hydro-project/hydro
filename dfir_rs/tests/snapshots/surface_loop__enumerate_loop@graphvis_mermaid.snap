@@ -31,16 +31,9 @@ linkStyle default stroke:#aaa
 10v1-->2v1
 11v1-->4v1
 12v1-->7v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    subgraph sg_1v1_var_init ["var <tt>init</tt>"]
-        style sg_1v1_var_init fill:transparent
-        1v1
-    end
-end
 subgraph loop_1v1 ["loop_1v1"]
     subgraph sg_2v1 ["sg_2v1 stratum 1"]
         subgraph sg_2v1_var_batch_init ["var <tt>batch_init</tt>"]
-            style sg_2v1_var_batch_init fill:transparent
             2v1
             3v1
         end
@@ -56,5 +49,10 @@ subgraph loop_2v1 ["loop_2v1"]
         7v1
         8v1
         9v1
+    end
+end
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    subgraph sg_1v1_var_init ["var <tt>init</tt>"]
+        1v1
     end
 end

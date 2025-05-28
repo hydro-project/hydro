@@ -45,13 +45,13 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1\nstratum 1"
-        n7v1
-        n8v1
         subgraph sg_3v1_var_max_of_stream2 {
             cluster=true
             label="var max_of_stream2"
             n3v1
         }
+        n7v1
+        n8v1
     }
     subgraph sg_1v1 {
         cluster=true

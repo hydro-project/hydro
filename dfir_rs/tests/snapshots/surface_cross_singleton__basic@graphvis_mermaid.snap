@@ -27,7 +27,6 @@ subgraph sg_2v1 ["sg_2v1 stratum 1"]
     3v1
     5v1
     subgraph sg_2v1_var_join ["var <tt>join</tt>"]
-        style sg_2v1_var_join fill:transparent
         1v1
     end
 end
