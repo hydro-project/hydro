@@ -279,7 +279,8 @@ where
     }
 
     fn write_end(&mut self) -> Result<(), Self::Err> {
-        self.write_loop_end()
+        self.indent -= 4;
+        writeln!(self.write, "{b:i$}end", b = "", i = self.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
