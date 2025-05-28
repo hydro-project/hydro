@@ -1,6 +1,6 @@
 ---
 source: hydro_test_local/src/local/teed_join.rs
-expression: "joined.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: joined.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -12,7 +12,6 @@ linkStyle default stroke:#aaa
 2v1[/"<div style=text-align:center>(2v1)</div> <code>for_each({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::teed_join::*;<br>    let output__free = output;<br>    |v| {<br>        output__free.send(v).unwrap();<br>    }<br>})</code>"\]:::pushClass
 1v1-->2v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
     2v1
     subgraph sg_1v1_var_stream_11 ["var <tt>stream_11</tt>"]
         1v1

@@ -1,6 +1,6 @@
 ---
 source: hydro_test_local/src/local/teed_join.rs
-expression: "joined.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: joined.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -8,13 +8,14 @@ digraph {
     n1v1 [label="(n1v1) source_iter({\l    use crate::__staged::__deps::*;\l    use crate::__staged::local::teed_join::*;\l    0..5\l})\l", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) for_each({\l    use crate::__staged::__deps::*;\l    use crate::__staged::local::teed_join::*;\l    let output__free = output;\l    |v| {\l        output__free.send(v).unwrap();\l    }\l})\l", shape=house, fillcolor="#ffff88"]
     n1v1 -> n2v1
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n1v1
         n2v1
-        subgraph "cluster_sg_1v1_var_stream_11" {
+        subgraph sg_1v1_var_stream_11 {
+            cluster=true
             label="var stream_11"
             n1v1
         }

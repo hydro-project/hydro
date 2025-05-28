@@ -1,6 +1,6 @@
 ---
 source: hydro_test_local/src/local/teed_join.rs
-expression: "joined.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: joined.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -31,10 +31,6 @@ linkStyle default stroke:#aaa
 10v1-->|0|5v1
 11v1-->|1|5v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
-    2v1
-    3v1
-    4v1
     subgraph sg_1v1_var_stream_0 ["var <tt>stream_0</tt>"]
         1v1
     end
@@ -49,9 +45,6 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 0"]
-    5v1
-    6v1
-    7v1
     8v1
     9v1
     subgraph sg_2v1_var_stream_5 ["var <tt>stream_5</tt>"]
