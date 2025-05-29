@@ -11,7 +11,7 @@ import { getLines, extractOutput, extractMermaid } from '../../../src/util';
 > * Extending a program with additional downstream logic.
 > * DFIR's ([`difference`](../syntax/surface_ops_gen.md#difference)) operator
 > * A first exposure to the concepts of _strata_ and _ticks_
-> * An example of how a cyclic dataflow in one stratum executes to completion before starting the next stratum.
+> * An example of how a [cyclic dataflow](../concepts/cyclic_flows) in one stratum executes to completion before starting the next stratum.
 
 Our next example builds on the previous by finding vertices that are _not_ reachable. To do this, we need to capture the set `all_vertices`, and use a [difference](../syntax/surface_ops_gen.md#difference) operator to form the difference between that set of vertices and `reachable_vertices`.
 
@@ -85,7 +85,7 @@ how the `difference` operator has two inputs (labeled `pos` and `neg`), and only
 
 In this Mermaid graph, note that stratum 0 has a recursive loop back through `my_join`, and `tee`s off output to the `difference` operator in stratum 1 via the handoff and the blocking `neg` input. This means that DFIR will first run the loop of stratum 0 repeatedly until all the transitive reached vertices are passed to the handoff (a [fixpoint](../concepts/cyclic_flows)), before moving on to compute the unreached vertices via stratum 1.
 
-After all strata are run, DFIR returns to stratum 0; this begins the next _tick_. This doesn't really matter for this example, but it is important for long-running DFIR services that accept input from the outside world. More on this topic in the chapter on [time](../concepts/life_and_times.md).
+After all strata are run, DFIR returns to stratum 0; this begins the next _tick_. This doesn't really matter for this example, but it is important for long-running DFIR services that accept input from the outside world. More on this topic in the chapter on [time](../concepts/life_and_times).
 
 
 

@@ -7,13 +7,13 @@ Streams are the most common type of live collection in Hydro; they can be used t
 
 Streams have several type parameters:
 - `T`: the type of elements in the stream
-- `L`: the location the stream is on (see [Locations](../locations/index.md))
-- `B`: indicates whether the stream is [bounded or unbounded](./bounded-unbounded.md)
+- `L`: the location the stream is on (see [Locations](../locations/index))
+- `B`: indicates whether the stream is [bounded or unbounded](./bounded-unbounded)
 - `Order`: indicates whether the elements in the stream have a deterministic order or not
   - This type parameter is _optional_; by default the order is deterministic
 
 ## Creating a Stream
-The simplest way to create a stream is to use [`Location::source_iter`](https://hydro.run/rustdoc/hydro_lang/location/trait.Location#method.source_iter), which creates a stream from any Rust type that can be converted into an [`Iterator`](https://doc.rust-lang.org/beta/std/iter/trait.Iterator.html) (via [`IntoIterator`](https://doc.rust-lang.org/std/iter/trait.IntoIterator.html)). For example, we can create a stream of integers on a [process](../locations/processes.md) and transform it:
+The simplest way to create a stream is to use [`Location::source_iter`](https://hydro.run/rustdoc/hydro_lang/location/trait.Location#method.source_iter), which creates a stream from any Rust type that can be converted into an [`Iterator`](https://doc.rust-lang.org/beta/std/iter/trait.Iterator.html) (via [`IntoIterator`](https://doc.rust-lang.org/std/iter/trait.IntoIterator.html)). For example, we can create a stream of integers on a [process](../locations/processes) and transform it:
 
 ```rust
 # use hydro_lang::*;
@@ -90,9 +90,9 @@ let words_concat = all_words
 
 :::tip
 
-We use `send_bincode_anonymous` here to drop the cluster IDs which are included in `send_bincode`. See [Clusters](../locations/clusters.md) for more details.
+We use `send_bincode_anonymous` here to drop the cluster IDs which are included in `send_bincode`. See [Clusters](../locations/clusters) for more details.
 
-Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](./index.md), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](./singletons-optionals.md) for more information.
+Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](./index), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](./singletons-optionals) for more information.
 
 :::
 

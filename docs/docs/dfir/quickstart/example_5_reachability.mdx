@@ -11,7 +11,7 @@ import { getLines, extractOutput, extractMermaid } from '../../../src/util';
 > * Implementing a recursive algorithm (graph reachability) via cyclic dataflow
 > * Operators to union data from multiple inputs ([`union`](../syntax/surface_ops_gen.md#union)), and send data to multiple outputs ([`tee`](../syntax/surface_ops_gen.md#tee))
 > * Indexing multi-output operators by appending a bracket expression
-> * A first example of a cyclic (recursive) flow and the concept of fixpoint.
+> * A first example of a [cyclic dataflow](../concepts/cyclic_flows).
 
 To expand from graph neighbors to graph reachability, we want to find vertices that are connected not just to `origin`,
 but also to vertices reachable *transitively* from `origin`. Said differently, a vertex is reachable from `origin` if it is

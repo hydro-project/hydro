@@ -19,7 +19,7 @@ The basic pattern for cycles in DFIR looks something like this:
 ```
 That is, we can trace a cycle of operators in the graph, where one operator is a `union()` that accepts two inputs, one of which is the "back edge" that closes the cycle. 
 
-For a concrete example, we can revisit the code in the [Graph Reachability](../quickstart/example_5_reachability.mdx) quickstart program:
+For a concrete example, we can revisit the code in the [Graph Reachability](../quickstart/example_5_reachability) quickstart program:
 
 <CodeBlock language="rust">{getLines(exampleCode, 7, 22)}</CodeBlock>
 

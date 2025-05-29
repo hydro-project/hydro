@@ -55,11 +55,16 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = if host_arg == "gcp" {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    let rustflags;
+    if host_arg == "gcp" {
+        //[rustflags_gcp]//
+        rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment";
+        //[/rustflags_gcp]//
     } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
+        //[rustflags]//
+        rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+        //[/rustflags]//
+    }
 
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
@@ -72,11 +77,15 @@ async fn main() {
         .optimize_with(|ir| insert_counter::insert_counter(ir, counter_output_duration));
     let mut ir = deep_clone(optimized.ir());
     let nodes = optimized
+        //[trybuildhost]//
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment))
                 .rustflags(rustflags)
                 .additional_hydro_features(vec!["runtime_measure".to_string()])
+                // ...
+                //[/trybuildhost]//
+                //[tracing]//
                 .tracing(
                     TracingOptions::builder()
                         .perf_raw_outfile("leader.perf.data")
@@ -87,6 +96,7 @@ async fn main() {
                         .setup_command(DEBIAN_PERF_SETUP_COMMAND)
                         .build(),
                 ),
+                //[/tracing]//
         )
         .with_cluster(
             &cluster,
