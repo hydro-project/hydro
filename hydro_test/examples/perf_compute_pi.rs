@@ -55,6 +55,7 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
+    #[expect(clippy::needless_late_init, reason = "Better clarity for code extract into docs.")]
     let rustflags;
     if host_arg == "gcp" {
         //[rustflags_gcp]//
