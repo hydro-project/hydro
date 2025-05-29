@@ -131,13 +131,13 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
                     while let Some(item) = recv.recv().await {
                         sink.feed(item)
                             .await
-                            .expect("Error processing async sink item.");
+                            .expect("Error processing async sink item");
                         while let Ok(item) = recv.try_recv() {
                             sink.feed(item)
                                 .await
-                                .expect("Error processing async sink item.");
+                                .expect("Error processing async sink item");
                         }
-                        sink.flush().await.expect("Failed to flush sink.");
+                        sink.flush().await.expect("Failed to flush sink");
                     }
                 }
                 #df_ident
@@ -148,7 +148,7 @@ pub const DEST_SINK: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = #root::pusherator::for_each::ForEach::new(|item| {
                 if let Err(err) = #send_ident.send(item) {
-                    panic!("Failed to send async write item for processing.: {}", err);
+                    panic!("Failed to send async write item for processing: {}", err);
                 }
             });
         };

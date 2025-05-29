@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
-    RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Given an _unbounded_ input stream, emits full prefixes of the input, of arbitrarily increasing length, in the same order.
@@ -63,6 +63,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

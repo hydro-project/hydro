@@ -5,7 +5,114 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.13.0 (2025-04-11)
+
+### New Features
+
+ - <csr-id-127df13b7d7fc12d5265f1d7517f3b66a774dc07/> add resolve_futures and resolve_futures_ordered APIs
+
+### Bug Fixes
+
+ - <csr-id-40075b198b13cb6b4804633b76c96c520394fa71/> fix loop hooks triggered too often, implement lifetimes for `zip`
+ - <csr-id-fbb5fab72c5a64a07653c9b6389186ad079703ec/> handle `-1` addresses from samply, fix `_counter()` rollover
+   This fixes samply profiling on my "ancient" 2019 x86-64 macbook pro
+   15.3.2 (24D81)
+   
+   This pull request aims to fix the handling of –1 address values from
+   samply by updating tracing filenames and refactoring related error and
+   type handling. Key changes include:
+   - Better error messages when `dtrace` or `samply` are not instaled.
+   - Fix integer rollover in `_counter()` by using `u64` instead of
+   inferred `i32`.
+   - Refactor samply profile conversion for asynchronous frame lookup.
+   
+   <details>
+   <summary>Show a summary per file</summary>
+   
+   | File | Description |
+   | ---- | ----------- |
+   | hydro_lang/src/rewrites/analyze_counter.rs | Adds custom panic with
+   measurement details if regex matching fails. (Used to diagnose
+   `_counter()` `i32` rollover) |
+   | hydro_deploy/core/src/localhost/samply.rs | Updates type for
+   addresses/resources, refactors frame lookup to use asynchronous
+   join_all, and adjusts string output for missing symbols. |
+   | hydro_deploy/core/src/localhost/mod.rs | Improves error handling
+   during command spawning with conditional context messages for when
+   `samply` or `dtrace` executables are not found. |
+   | hydro_deploy/core/src/localhost/launched_binary.rs | Uses
+   serde_path_to_error for improved deserialization error context. |
+   | dfir_lang/src/graph/ops/dest_sink.rs | Standardizes error messages by
+   removing extraneous punctuation. |
+   | dfir_lang/src/graph/ops/_counter.rs | Adds explicit type annotation
+   for a cell initialization to prevent `i32` rollover. |
+   </details>
+
+### Other
+
+ - <csr-id-3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a/> adjust env vars, make DFIR printed span paths relative & re-enable most trybuild tests
+   * Add `PYO3_USE_ABI3_FORWARD_COMPATIBILITY`, move
+   `RUST_LOG`/`RUST_BACKTRACE` env vars to `.cargo/config.toml` (removed
+   from `.vscode/settings.json`). Will now apply in general, so no need to
+   specify everywhere.
+   * Makes display of compiler spans' `source_file()` in `dfir_lang`
+   relative to `DFIR_BASE_DIR` (new) or `CARGO_MANIFEST_DIR`, if possible.
+   * Include `rust-src` `rustup` component to make trybuild error output
+   more consistent:
+   https://github.com/dtolnay/trybuild?tab=readme-ov-file#troubleshooting
+   * Almost all `dfir_rs` trybuild test are re-enabled (except a couple
+   obsolete ones are deleted, and two have inconsistent printing)
+   * Updates docs build to remove old operators
+ - <csr-id-7f3ec9dcce0ef9d52af03083970c8d26b9993fc0/> fix `docsrs` broken stable test, actually run `dfir_lang` op doc tests
+
+### New Features (BREAKING)
+
+ - <csr-id-fbaab5b12c0c661ee08d8ded6862a38834ba62ae/> loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823
+   Also implements loop lifetimes for `difference_multiset` which uses the
+   `anti_join_multiset` codegen.
+   
+   Updates tests for `difference`, `difference_multiset`, `anti_join`, and
+   `anti_join_multiset`
+
+### Refactor (BREAKING)
+
+ - <csr-id-2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f/> loop machinery, add `'loop` lifetimes, fix #1745
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release over the course of 24 calendar days.
+ - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 7 unique issues were worked on: [#1741](https://github.com/hydro-project/hydro/issues/1741), [#1790](https://github.com/hydro-project/hydro/issues/1790), [#1795](https://github.com/hydro-project/hydro/issues/1795), [#1814](https://github.com/hydro-project/hydro/issues/1814), [#1822](https://github.com/hydro-project/hydro/issues/1822), [#1833](https://github.com/hydro-project/hydro/issues/1833), [#1835](https://github.com/hydro-project/hydro/issues/1835)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1741](https://github.com/hydro-project/hydro/issues/1741)**
+    - Add resolve_futures and resolve_futures_ordered APIs ([`127df13`](https://github.com/hydro-project/hydro/commit/127df13b7d7fc12d5265f1d7517f3b66a774dc07))
+ * **[#1790](https://github.com/hydro-project/hydro/issues/1790)**
+    - Fix `docsrs` broken stable test, actually run `dfir_lang` op doc tests ([`7f3ec9d`](https://github.com/hydro-project/hydro/commit/7f3ec9dcce0ef9d52af03083970c8d26b9993fc0))
+ * **[#1795](https://github.com/hydro-project/hydro/issues/1795)**
+    - Adjust env vars, make DFIR printed span paths relative & re-enable most trybuild tests ([`3aec2f7`](https://github.com/hydro-project/hydro/commit/3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a))
+ * **[#1814](https://github.com/hydro-project/hydro/issues/1814)**
+    - Handle `-1` addresses from samply, fix `_counter()` rollover ([`fbb5fab`](https://github.com/hydro-project/hydro/commit/fbb5fab72c5a64a07653c9b6389186ad079703ec))
+ * **[#1822](https://github.com/hydro-project/hydro/issues/1822)**
+    - Loop machinery, add `'loop` lifetimes, fix #1745 ([`2fdd5da`](https://github.com/hydro-project/hydro/commit/2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f))
+ * **[#1833](https://github.com/hydro-project/hydro/issues/1833)**
+    - Fix loop hooks triggered too often, implement lifetimes for `zip` ([`40075b1`](https://github.com/hydro-project/hydro/commit/40075b198b13cb6b4804633b76c96c520394fa71))
+ * **[#1835](https://github.com/hydro-project/hydro/issues/1835)**
+    - Loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823 ([`fbaab5b`](https://github.com/hydro-project/hydro/commit/fbaab5b12c0c661ee08d8ded6862a38834ba62ae))
+</details>
+
 ## 0.12.1 (2025-03-15)
+
+<csr-id-f14174e92875b3264ef811effd954ed76cb3c948/>
+<csr-id-c944371ba1c290f38c02f60979b381a53c39e680/>
+<csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/>
 
 ### Chore
 
@@ -42,7 +149,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release.
+ - 5 commits contributed to the release.
+ - 6 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1766](https://github.com/hydro-project/hydro/issues/1766), [#1768](https://github.com/hydro-project/hydro/issues/1768), [#1785](https://github.com/hydro-project/hydro/issues/1785), [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
@@ -60,6 +168,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Cleanup old clippy lints, remove deprecated `relalg` crate ([`056ac62`](https://github.com/hydro-project/hydro/commit/056ac62611319b7bd10a751d7e231423a1b8dc4e))
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
     - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
+ * **Uncategorized**
+    - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
 </details>
 
 ## 0.12.0 (2025-03-08)
@@ -71,6 +181,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/>
 <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/>
 <csr-id-3c5bb05487a25345ea2f70b5a1ffbe74a216c684/>
+<csr-id-e0d9b26709011a2d5d56cc3f86a3ee640983e75a/>
+<csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/>
+<csr-id-fd85262930c678601a80c080fb79778675124964/>
+<csr-id-e5c2e23359055f41492344edf19efbe3f2afd7ce/>
+<csr-id-5cd0a9625822620dcc99b99356edfecbf0549497/>
+<csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
+<csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
 
 ### Chore
 
@@ -283,6 +400,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-5196f247e0124a31567af940541044ce1906cdc1/>
 <csr-id-03b3a349013a71b324276bca5329c33d400a73ff/>
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
+<csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/>
+<csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
+<csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
 ### New Features
 
@@ -432,9 +552,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release dfir_lang v0.11.0, dfir_datalog_core v0.11.0, dfir_datalog v0.11.0, dfir_macro v0.11.0, hydroflow_deploy_integration v0.11.0, lattices_macro v0.5.8, variadics v0.0.8, variadics_macro v0.5.6, lattices v0.5.9, multiplatform_test v0.4.0, pusherator v0.0.10, dfir_rs v0.11.0, hydro_deploy v0.11.0, stageleft_macro v0.5.0, stageleft v0.6.0, stageleft_tool v0.5.0, hydro_lang v0.11.0, hydro_std v0.11.0, hydro_cli v0.11.0, safety bump 6 crates ([`361b443`](https://github.com/hydro-project/hydro/commit/361b4439ef9c781860f18d511668ab463a8c5203))
     - Update `CHANGELOG.md`s for big rename ([`27c40e2`](https://github.com/hydro-project/hydro/commit/27c40e2ca5a822f6ebd31c7f01213aa6d407418a))
 </details>
-
-<csr-unknown>
-Implement un-windowing operators<csr-unknown/>
 
 ## 0.10.0 (2024-11-08)
 

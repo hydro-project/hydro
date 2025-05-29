@@ -37,78 +37,24 @@ async fn main() {
 
 #[test]
 fn test() {
-    use dfir_rs::util::{run_cargo_example, wait_for_process_output};
+    use example_test::run_current_example;
 
-    fn escape_regex(input: &str) -> String {
-        input
-            .replace("(", "\\(")
-            .replace(")", "\\)")
-            .replace("{", "\\{")
-            .replace("}", "\\}")
-            .replace("[", "\\[")
-            .replace("]", "\\]")
-    }
+    let opts_outputs = [
+        ("--opt=1", OPT1_OUTPUT),
+        ("--opt=2", OPT2_OUTPUT),
+        ("--opt=3", OPT3_OUTPUT),
+        ("--opt=4", OPT4_OUTPUT),
+        ("--opt=5", OPT5_OUTPUT),
+        ("--opt=6", OPT6_OUTPUT),
+        ("--opt=7", OPT7_OUTPUT),
+    ];
 
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 1");
-
-        let mut output = String::new();
-        for line in OPT1_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 2");
-
-        let mut output = String::new();
-        for line in OPT2_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 3");
-
-        let mut output = String::new();
-        for line in OPT3_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 4");
-
-        let mut output = String::new();
-        for line in OPT4_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 5");
-
-        let mut output = String::new();
-        for line in OPT5_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 6");
-
-        let mut output = String::new();
-        for line in OPT6_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
-        }
-    }
-
-    {
-        let (_child, _, mut stdout) = run_cargo_example("shopping", "--opt 7");
-
-        let mut output = String::new();
-        for line in OPT7_OUTPUT.split("\n") {
-            wait_for_process_output(&mut output, &mut stdout, &escape_regex(line));
+    for (opt, expected_output) in opts_outputs {
+        let mut proc = run_current_example!([opt]);
+        for line in expected_output.split('\n') {
+            if !line.trim().is_empty() {
+                proc.read_string(line);
+            }
         }
     }
 }

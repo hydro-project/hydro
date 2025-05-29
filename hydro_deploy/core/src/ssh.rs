@@ -1,48 +1,47 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
-use async_ssh2_lite::ssh2::ErrorCode;
-use async_ssh2_lite::{AsyncChannel, AsyncSession, SessionConfiguration};
+use async_ssh2_russh::russh::client::{Config, Handler};
+use async_ssh2_russh::russh::{Disconnect, compression};
+use async_ssh2_russh::russh_sftp::protocol::{Status, StatusCode};
+use async_ssh2_russh::sftp::SftpError;
+use async_ssh2_russh::{AsyncChannel, AsyncSession, NoCheckHandler};
 use async_trait::async_trait;
-use futures::io::BufReader as FuturesBufReader;
-use futures::{AsyncBufReadExt, AsyncWriteExt};
 use hydro_deploy_integration::ServerBindConfig;
 use inferno::collapse::Collapse;
 use inferno::collapse::perf::Folder;
 use nanoid::nanoid;
 use tokio::fs::File;
-use tokio::io::{AsyncReadExt, BufReader as TokioBufReader};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::runtime::Handle;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
-use tokio_util::compat::FuturesAsyncReadCompatExt;
+use tokio_stream::wrappers::LinesStream;
 use tokio_util::io::SyncIoBridge;
 
 use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
-use crate::util::{async_retry, prioritized_broadcast};
+use crate::util::{PriorityBroadcast, async_retry, prioritized_broadcast};
 use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
-pub type PrefixFilteredChannel = (Option<String>, mpsc::UnboundedSender<String>);
-
 struct LaunchedSshBinary {
     _resource_result: Arc<ResourceResult>,
-    session: Option<AsyncSession<TcpStream>>,
-    channel: AsyncChannel<TcpStream>,
+    // TODO(mingwei): instead of using `NoCheckHandler`, we should check the server's public key
+    // fingerprint (get it somehow via terraform), but ssh `publickey` authentication already
+    // generally prevents MITM attacks.
+    session: Option<AsyncSession<NoCheckHandler>>,
+    channel: AsyncChannel,
     stdin_sender: mpsc::UnboundedSender<String>,
-    stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
-    stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    stderr_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
+    stdout_broadcast: PriorityBroadcast,
+    stderr_broadcast: PriorityBroadcast,
     tracing: Option<TracingOptions>,
     tracing_results: Option<TracingResults>,
 }
@@ -54,43 +53,23 @@ impl LaunchedBinary for LaunchedSshBinary {
     }
 
     fn deploy_stdout(&self) -> oneshot::Receiver<String> {
-        let mut receivers = self.stdout_deploy_receivers.lock().unwrap();
-
-        if receivers.is_some() {
-            panic!("Only one deploy stdout receiver is allowed at a time");
-        }
-
-        let (sender, receiver) = oneshot::channel::<String>();
-        *receivers = Some(sender);
-        receiver
+        self.stdout_broadcast.receive_priority()
     }
 
     fn stdout(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stdout_broadcast.receive(None)
     }
 
     fn stderr(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stderr_broadcast.receive(None)
     }
 
     fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stdout_broadcast.receive(Some(prefix))
     }
 
     fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stderr_broadcast.receive(Some(prefix))
     }
 
     fn tracing_results(&self) -> Option<&TracingResults> {
@@ -99,29 +78,29 @@ impl LaunchedBinary for LaunchedSshBinary {
 
     fn exit_code(&self) -> Option<i32> {
         // until the program exits, the exit status is meaningless
-        if self.channel.eof() {
-            self.channel.exit_status().ok()
-        } else {
-            None
-        }
+        self.channel
+            .recv_exit_status()
+            .try_get()
+            .map(|&ec| ec as _)
+            .ok()
     }
 
     async fn wait(&mut self) -> Result<i32> {
-        self.channel.wait_eof().await.unwrap();
-        let exit_code = self.channel.exit_status()?;
-        self.channel.wait_close().await.unwrap();
-
-        Ok(exit_code)
+        self.channel.wait_close().await;
+        Ok(self
+            .channel
+            .recv_exit_status()
+            .try_get()
+            .map(|&ec| ec as _)?)
     }
 
     async fn stop(&mut self) -> Result<()> {
-        if !self.channel.eof() {
+        if !self.channel.is_closed() {
             ProgressTracker::leaf("force stopping", async {
-                self.channel.write_all(b"\x03").await?; // `^C`
-                self.channel.send_eof().await?;
-                self.channel.wait_eof().await?;
-                // `exit_status()`
-                self.channel.wait_close().await?;
+                // self.channel.signal(russh::Sig::INT).await?; // `^C`
+                self.channel.eof().await?; // Send EOF.
+                self.channel.close().await?; // Close the channel.
+                self.channel.wait_close().await;
                 Result::<_>::Ok(())
             })
             .await?;
@@ -132,24 +111,19 @@ impl LaunchedBinary for LaunchedSshBinary {
             let session = self.session.as_ref().unwrap();
             if let Some(local_raw_perf) = tracing.perf_raw_outfile.as_ref() {
                 ProgressTracker::progress_leaf("downloading perf data", |progress, _| async move {
-                    let sftp = async_retry(
-                        &|| async { Ok(session.sftp().await?) },
-                        10,
-                        Duration::from_secs(1),
-                    )
-                    .await?;
+                    let sftp =
+                        async_retry(&|| session.open_sftp(), 10, Duration::from_secs(1)).await?;
 
-                    let mut remote_raw_perf = sftp.open(&PathBuf::from(PERF_OUTFILE)).await?;
+                    let mut remote_raw_perf = sftp.open(PERF_OUTFILE).await?;
                     let mut local_raw_perf = File::create(local_raw_perf).await?;
 
-                    let total_size = remote_raw_perf.stat().await?.size.unwrap();
-                    let mut remote_tokio = remote_raw_perf.compat();
+                    let total_size = remote_raw_perf.metadata().await?.size.unwrap();
 
                     use tokio::io::AsyncWriteExt;
                     let mut index = 0;
                     loop {
                         let mut buffer = [0; 16 * 1024];
-                        let n = remote_tokio.read(&mut buffer).await?;
+                        let n = remote_raw_perf.read(&mut buffer).await?;
                         if n == 0 {
                             break;
                         }
@@ -163,18 +137,18 @@ impl LaunchedBinary for LaunchedSshBinary {
                 .await?;
             }
 
-            let mut script_channel = session.channel_session().await?;
+            let script_channel = session.open_channel().await?;
             let mut fold_er = Folder::from(tracing.fold_perf_options.clone().unwrap_or_default());
 
             let fold_data = ProgressTracker::leaf("perf script & folding", async move {
-                let mut stderr_lines = FuturesBufReader::new(script_channel.stderr()).lines();
-                let stdout = script_channel.stream(0);
+                let mut stderr_lines = script_channel.stderr().lines();
+                let stdout = script_channel.stdout();
 
                 // Pattern on `()` to make sure no `Result`s are ignored.
                 let ((), fold_data, ()) = tokio::try_join!(
                     async move {
                         // Log stderr.
-                        while let Some(Ok(s)) = stderr_lines.next().await {
+                        while let Ok(Some(s)) = stderr_lines.next_line().await {
                             ProgressTracker::eprintln(format!("[perf stderr] {s}"));
                         }
                         Result::<_>::Ok(())
@@ -184,7 +158,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                         tokio::task::spawn_blocking(move || {
                             let mut fold_data = Vec::new();
                             fold_er.collapse(
-                                SyncIoBridge::new(TokioBufReader::new(stdout)),
+                                SyncIoBridge::new(BufReader::new(stdout)),
                                 &mut fold_data,
                             )?;
                             Ok(fold_data)
@@ -194,7 +168,7 @@ impl LaunchedBinary for LaunchedSshBinary {
                     async move {
                         // Run command (last!).
                         script_channel
-                            .exec(&format!("perf script --symfs=/ -i {PERF_OUTFILE}"))
+                            .exec(false, format!("perf script --symfs=/ -i {PERF_OUTFILE}"))
                             .await?;
                         Ok(())
                     },
@@ -218,7 +192,11 @@ impl Drop for LaunchedSshBinary {
     fn drop(&mut self) {
         if let Some(session) = self.session.take() {
             tokio::task::block_in_place(|| {
-                Handle::current().block_on(session.disconnect(None, "", None))
+                tokio::runtime::Handle::current().block_on(session.disconnect(
+                    Disconnect::ByApplication,
+                    "",
+                    "",
+                ))
             })
             .unwrap();
         }
@@ -275,7 +253,7 @@ pub trait LaunchedSshHost: Send + Sync {
         }
     }
 
-    async fn open_ssh_session(&self) -> Result<AsyncSession<TcpStream>> {
+    async fn open_ssh_session(&self) -> Result<AsyncSession<NoCheckHandler>> {
         let target_addr = SocketAddr::new(
             self.get_external_ip()
                 .as_ref()
@@ -295,24 +273,20 @@ pub trait LaunchedSshHost: Send + Sync {
             ),
             async_retry(
                 &|| async {
-                    let mut config = SessionConfiguration::new();
-                    config.set_compress(true);
-
-                    let mut session =
-                        AsyncSession::<TcpStream>::connect(target_addr, Some(config)).await?;
-
-                    session.handshake().await?;
-
-                    session
-                        .userauth_pubkey_file(
-                            self.ssh_user(),
-                            None,
-                            self.ssh_key_path().as_path(),
-                            None,
-                        )
-                        .await?;
-
-                    Ok(session)
+                    let mut config = Config::default();
+                    config.preferred.compression = (&[
+                        compression::ZLIB,
+                        compression::ZLIB_LEGACY,
+                        compression::NONE,
+                    ])
+                        .into();
+                    AsyncSession::connect_publickey(
+                        config,
+                        target_addr,
+                        self.ssh_user(),
+                        self.ssh_key_path(),
+                    )
+                    .await
                 },
                 10,
                 Duration::from_secs(1),
@@ -324,18 +298,18 @@ pub trait LaunchedSshHost: Send + Sync {
     }
 }
 
-async fn create_channel(session: &AsyncSession<TcpStream>) -> Result<AsyncChannel<TcpStream>> {
+async fn create_channel<H>(session: &AsyncSession<H>) -> Result<AsyncChannel>
+where
+    H: 'static + Handler,
+{
     async_retry(
         &|| async {
-            Ok(tokio::time::timeout(
-                Duration::from_secs(60),
-                session.channel_session(),
-            )
-            .await??)
+            Ok(tokio::time::timeout(Duration::from_secs(60), session.open_channel()).await??)
         },
         10,
         Duration::from_secs(1),
-    ).await
+    )
+    .await
 }
 
 #[async_trait]
@@ -347,29 +321,20 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
     async fn copy_binary(&self, binary: &BuildOutput) -> Result<()> {
         let session = self.open_ssh_session().await?;
 
-        let sftp = async_retry(
-            &|| async { Ok(session.sftp().await?) },
-            10,
-            Duration::from_secs(1),
-        )
-        .await?;
-
-        // we may be deploying multiple binaries, so give each a unique name
-        let unique_name = &binary.unique_id;
+        let sftp = async_retry(&|| session.open_sftp(), 10, Duration::from_secs(1)).await?;
 
         let user = self.ssh_user();
-        let binary_path = PathBuf::from(format!("/home/{user}/hydro-{unique_name}"));
+        // we may be deploying multiple binaries, so give each a unique name
+        let binary_path = format!("/home/{user}/hydro-{}", binary.unique_id());
 
-        if sftp.stat(&binary_path).await.is_err() {
+        if sftp.metadata(&binary_path).await.is_err() {
             let random = nanoid!(8);
-            let temp_path = PathBuf::from(format!("/home/{user}/hydro-{random}"));
+            let temp_path = format!("/home/{user}/hydro-{random}");
             let sftp = &sftp;
 
             ProgressTracker::progress_leaf(
-                format!("uploading binary to {}", binary_path.display()),
+                format!("uploading binary to {}", binary_path),
                 |set_progress, _| {
-                    let binary = &binary;
-                    let binary_path = &binary_path;
                     async move {
                         let mut created_file = sftp.create(&temp_path).await?;
 
@@ -386,19 +351,20 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
                                 ((index as f64 / binary.bin_data.len() as f64) * 100.0) as u64,
                             );
                         }
-                        let mut orig_file_stat = sftp.stat(&temp_path).await?;
-                        orig_file_stat.perm = Some(0o755); // allow the copied binary to be executed by anyone
-                        created_file.setstat(orig_file_stat).await?;
-                        created_file.close().await?;
+                        let mut orig_file_stat = sftp.metadata(&temp_path).await?;
+                        orig_file_stat.permissions = Some(0o755); // allow the copied binary to be executed by anyone
+                        created_file.set_metadata(orig_file_stat).await?;
+                        created_file.sync_all().await?;
                         drop(created_file);
 
-                        match sftp.rename(&temp_path, binary_path, None).await {
+                        match sftp.rename(&temp_path, binary_path).await {
                             Ok(_) => {}
-                            Err(async_ssh2_lite::Error::Ssh2(e))
-                                if e.code() == ErrorCode::SFTP(4) =>
-                            {
+                            Err(SftpError::Status(Status {
+                                status_code: StatusCode::Failure, // SSH_FXP_STATUS = 4
+                                ..
+                            })) => {
                                 // file already exists
-                                sftp.unlink(&temp_path).await?;
+                                sftp.remove_file(temp_path).await?;
                             }
                             Err(e) => return Err(e.into()),
                         }
@@ -409,7 +375,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             )
             .await?;
         }
-        drop(sftp);
+        sftp.close().await?;
 
         Ok(())
     }
@@ -425,83 +391,98 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
     ) -> Result<Box<dyn LaunchedBinary>> {
         let session = self.open_ssh_session().await?;
 
-        let unique_name = &binary.unique_id;
-
         let user = self.ssh_user();
-        let binary_path = PathBuf::from(format!("/home/{user}/hydro-{unique_name}"));
+        let binary_path = PathBuf::from(format!("/home/{user}/hydro-{}", binary.unique_id()));
 
-        let channel = ProgressTracker::leaf(format!("launching binary {}", binary_path.display()),
-            async {
-                let mut channel = create_channel(&session).await?;
+        let mut command = binary_path.to_str().unwrap().to_owned();
+        for arg in args {
+            command.push(' ');
+            command.push_str(&shell_escape::unix::escape(arg.into()))
+        }
 
-                let mut command = binary_path.to_str().unwrap().to_owned();
-                for arg in args{
-                    command.push(' ');
-                    command.push_str(&shell_escape::unix::escape(Cow::Borrowed(arg)))
-                }
-                // Launch with perf if specified, also copy local binary to expected place for perf report to work
-                if let Some(TracingOptions { frequency, .. }) = tracing.clone() {
-
-                    // Install perf
-                    let mut perf_install_channel = create_channel(&session).await?;
-                    perf_install_channel
-                        .exec("sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'")
-                        .await?;
+        // Launch with tracing if specified.
+        if let Some(TracingOptions {
+            frequency,
+            setup_command,
+            ..
+        }) = tracing.clone()
+        {
+            let id_clone = id.clone();
+            ProgressTracker::leaf("install perf", async {
+                // Run setup command
+                if let Some(setup_command) = setup_command {
+                    let mut setup_channel = create_channel(&session).await?;
+                    let (setup_stdout, setup_stderr) =
+                        (setup_channel.stdout(), setup_channel.stderr());
+                    setup_channel.exec(false, &*setup_command).await?;
 
                     // log outputs
-                    let mut perf_install_out = FuturesBufReader::new(perf_install_channel.stream(0)).lines();
-                    while let Some(line) = perf_install_out.next().await {
-                        ProgressTracker::eprintln(format!("[install perf] {}", line.unwrap()));
-                    }
-                    
-                    perf_install_channel.wait_eof().await?;
-                    let exit_code = perf_install_channel.exit_status()?;
-                    perf_install_channel.wait_close().await?;
-                    if exit_code != 0 {
-                        anyhow::bail!("Failed to install perf on remote host");
+                    let mut output_lines = LinesStream::new(setup_stdout.lines())
+                        .merge(LinesStream::new(setup_stderr.lines()));
+                    while let Some(line) = output_lines.next().await {
+                        ProgressTracker::eprintln(format!(
+                            "[{} install perf] {}",
+                            id_clone,
+                            line.unwrap()
+                        ));
                     }
 
-                    // Attach perf to the command
-                    command = format!(
-                        "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
-                    );
+                    let exit_code = setup_channel.recv_exit_status().wait().await.copied();
+                    setup_channel.wait_close().await;
+                    if Some(0) != exit_code {
+                        anyhow::bail!("Failed to install perf on remote host");
+                    }
                 }
-                channel.exec(&command).await?;
-                anyhow::Ok(channel)
-            }
+                Ok(())
+            })
+            .await?;
+
+            // Attach perf to the command
+            // Note: `LaunchedSshHost` assumes `perf` on linux.
+            command = format!(
+                "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
+            );
+        }
+
+        let (channel, stdout, stderr) = ProgressTracker::leaf(
+            format!("launching binary {}", binary_path.display()),
+            async {
+                let channel = create_channel(&session).await?;
+                // Make sure to begin reading stdout/stderr before running the command.
+                let (stdout, stderr) = (channel.stdout(), channel.stderr());
+                channel.exec(false, command).await?;
+                anyhow::Ok((channel, stdout, stderr))
+            },
         )
         .await?;
 
         let (stdin_sender, mut stdin_receiver) = mpsc::unbounded_channel::<String>();
-        let mut stdin = channel.stream(0); // stream 0 is stdout/stdin, we use it for stdin
+        let mut stdin = channel.stdin();
+
         tokio::spawn(async move {
             while let Some(line) = stdin_receiver.recv().await {
                 if stdin.write_all(line.as_bytes()).await.is_err() {
                     break;
                 }
-
                 stdin.flush().await.unwrap();
             }
         });
 
         let id_clone = id.clone();
-        let (stdout_deploy_receivers, stdout_receivers) =
-            prioritized_broadcast(FuturesBufReader::new(channel.stream(0)).lines(), move |s| {
-                ProgressTracker::println(format!("[{id_clone}] {s}"));
-            });
-        let (_, stderr_receivers) =
-            prioritized_broadcast(FuturesBufReader::new(channel.stderr()).lines(), move |s| {
-                ProgressTracker::println(format!("[{id} stderr] {s}"));
-            });
+        let stdout_broadcast = prioritized_broadcast(LinesStream::new(stdout.lines()), move |s| {
+            ProgressTracker::println(format!("[{id_clone}] {s}"));
+        });
+        let stderr_broadcast = prioritized_broadcast(LinesStream::new(stderr.lines()), move |s| {
+            ProgressTracker::println(format!("[{id} stderr] {s}"));
+        });
 
         Ok(Box::new(LaunchedSshBinary {
             _resource_result: self.resource_result().clone(),
             session: Some(session),
             channel,
             stdin_sender,
-            stdout_deploy_receivers,
-            stdout_receivers,
-            stderr_receivers,
+            stdout_broadcast,
+            stderr_broadcast,
             tracing,
             tracing_results: None,
         }))
@@ -520,9 +501,10 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             #[expect(clippy::never_loop, reason = "tcp accept loop pattern")]
             while let Ok((mut local_stream, _)) = local_port.accept().await {
                 let mut channel = session
-                    .channel_direct_tcpip(&internal_ip, port, None)
+                    .channel_open_direct_tcpip(internal_ip, port.into(), "127.0.0.1", 22)
                     .await
-                    .unwrap();
+                    .unwrap()
+                    .into_stream();
                 let _ = tokio::io::copy_bidirectional(&mut local_stream, &mut channel).await;
                 break;
                 // TODO(shadaj): we should be returning an Arc so that we know

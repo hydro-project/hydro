@@ -2,7 +2,7 @@ use quote::quote_spanned;
 
 use super::{
     DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -20,7 +20,7 @@ use crate::diagnostic::{Diagnostic, Level};
 ///         PersistenceKeyed::Persist(1, 1),
 ///         PersistenceKeyed::Delete(1),
 ///     ])
-///     -> persist_mut_keyed::<'static>()
+///     -> persist_mut_keyed::<'mutable>()
 ///     -> assert_eq([(0, 1)]);
 /// ```
 pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
@@ -34,7 +34,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_1,
     type_args: RANGE_0,
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
+    // If this is set to true, the state will need to be cleared using `#context.set_state_lifespan_hook`
     // to prevent reading uncleared data if this subgraph doesn't run.
     // https://github.com/hydro-project/hydro/issues/1298
     // If `'tick` lifetimes are added.
@@ -65,11 +65,15 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        if [Persistence::Static] != persistence_args[..] {
+        if [Persistence::Mutable] != persistence_args[..] {
             diagnostics.push(Diagnostic::spanned(
                 op_span,
                 Level::Error,
-                format!("{} only supports `'static`.", op_name),
+                format!(
+                    "{} only supports `'{}`.",
+                    op_name,
+                    Persistence::Mutable.to_str_lowercase()
+                ),
             ));
         }
 
@@ -127,6 +131,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

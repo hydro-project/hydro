@@ -8,7 +8,7 @@ use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{DebugType, HydroIrMetadata, HydroNode, HydroSource};
+use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
 use crate::{Singleton, Stream, Unbounded};
 
 pub mod external_process;
@@ -101,7 +101,7 @@ pub trait Location<'a>: Clone {
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         HydroIrMetadata {
             location_kind: self.id(),
-            output_type: Some(DebugType(stageleft::quote_type::<T>())),
+            output_type: Some(stageleft::quote_type::<T>().into()),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,
@@ -126,11 +126,12 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn source_stream<T, E: FuturesStream<Item = T> + Unpin>(
+    fn source_stream<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
     ) -> Stream<T, Self, Unbounded>
     where
+        E: FuturesStream<Item = T> + Unpin,
         Self: Sized + NoTick,
     {
         let e = e.splice_untyped_ctx(self);
@@ -148,11 +149,12 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn source_iter<T, E: IntoIterator<Item = T>>(
+    fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
     ) -> Stream<T, Self, Unbounded>
     where
+        E: IntoIterator<Item = T>,
         Self: Sized + NoTick,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
@@ -172,11 +174,9 @@ pub trait Location<'a>: Clone {
         )
     }
 
-    fn singleton<T: Clone>(
-        &self,
-        e: impl QuotedWithContext<'a, T, Self>,
-    ) -> Singleton<T, Self, Unbounded>
+    fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Unbounded>
     where
+        T: Clone,
         Self: Sized + NoTick,
     {
         // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
@@ -248,10 +248,9 @@ pub trait Location<'a>: Clone {
         )))
     }
 
-    fn forward_ref<S: CycleCollection<'a, ForwardRefMarker, Location = Self>>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S)
+    fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
     where
+        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
         Self: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();

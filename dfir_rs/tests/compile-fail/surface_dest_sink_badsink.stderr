@@ -8,21 +8,62 @@ error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
   |                               required by a bound introduced by this call
   |
   = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
-            <&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T> as dfir_rs::futures::Sink<T>>
-            <&mut S as dfir_rs::futures::Sink<Item>>
-            <Box<S> as dfir_rs::futures::Sink<Item>>
-            <BufferUnordered<S> as dfir_rs::futures::Sink<Item>>
-            <Buffered<S> as dfir_rs::futures::Sink<Item>>
-            <DemuxDrain<T, S> as dfir_rs::futures::Sink<(u32, T)>>
-            <Fanout<Si1, Si2> as dfir_rs::futures::Sink<Item>>
-            <FlatMapUnordered<St, U, F> as dfir_rs::futures::Sink<_Item>>
+            `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+            `&mut S` implements `dfir_rs::futures::Sink<Item>`
+            `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+            `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `DemuxDrain<T, S>` implements `dfir_rs::futures::Sink<(u32, T)>`
+            `Fanout<Si1, Si2>` implements `dfir_rs::futures::Sink<Item>`
+            `FlatMapUnordered<St, U, F>` implements `dfir_rs::futures::Sink<_Item>`
           and $N others
-note: required by a bound in `sink_feed_flush`
- --> tests/compile-fail/surface_dest_sink_badsink.rs:5:18
+note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
+ --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
   |
-5 |       let mut df = dfir_syntax! {
-  |  __________________^
-6 | |         source_iter(0..10) -> dest_sink(sink);
-7 | |     };
-  | |_____^ required by this bound in `sink_feed_flush`
+6 |         source_iter(0..10) -> dest_sink(sink);
+  |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
+
+error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
+ --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+  |
+6 |         source_iter(0..10) -> dest_sink(sink);
+  |                               ^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<_>` is not implemented for `&str`
+  |
+  = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+            `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+            `&mut S` implements `dfir_rs::futures::Sink<Item>`
+            `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+            `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `DemuxDrain<T, S>` implements `dfir_rs::futures::Sink<(u32, T)>`
+            `Fanout<Si1, Si2>` implements `dfir_rs::futures::Sink<Item>`
+            `FlatMapUnordered<St, U, F>` implements `dfir_rs::futures::Sink<_Item>`
+          and $N others
+note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
+ --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+  |
+6 |         source_iter(0..10) -> dest_sink(sink);
+  |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
+
+error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
+ --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+  |
+6 |         source_iter(0..10) -> dest_sink(sink);
+  |                               ^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<_>` is not implemented for `&str`
+  |
+  = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
+            `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
+            `&mut S` implements `dfir_rs::futures::Sink<Item>`
+            `Box<S>` implements `dfir_rs::futures::Sink<Item>`
+            `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
+            `DemuxDrain<T, S>` implements `dfir_rs::futures::Sink<(u32, T)>`
+            `Fanout<Si1, Si2>` implements `dfir_rs::futures::Sink<Item>`
+            `FlatMapUnordered<St, U, F>` implements `dfir_rs::futures::Sink<_Item>`
+          and $N others
+note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
+ --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+  |
+6 |         source_iter(0..10) -> dest_sink(sink);
+  |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
   = note: this error originates in the macro `dfir_syntax` (in Nightly builds, run with -Z macro-backtrace for more info)

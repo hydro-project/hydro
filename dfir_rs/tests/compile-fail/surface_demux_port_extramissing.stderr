@@ -1,10 +1,10 @@
-error: Argument specifying the output ports in `demux(..)` does not contain extra port `d`: ($DIR/tests/compile-fail/surface_demux_port_extramissing.rs:14:18) (1/2).
+error: Argument specifying the output ports in `demux(..)` does not contain extra port `d`: (dfir_rs/tests/compile-fail/surface_demux_port_extramissing.rs:14:18) (1/2).
  --> tests/compile-fail/surface_demux_port_extramissing.rs:5:55
   |
 5 |         my_demux = source_iter(0..10) -> demux(|item, var_args!(a, b, c)| {
   |                                                       ^^^^^^^^^^^^^^^^^^
 
-error: Port `d` not found in the arguments specified in `demux(..)`'s closure: ($DIR/tests/compile-fail/surface_demux_port_extramissing.rs:5:55) (2/2).
+error: Port `d` not found in the arguments specified in `demux(..)`'s closure: (dfir_rs/tests/compile-fail/surface_demux_port_extramissing.rs:5:55) (2/2).
   --> tests/compile-fail/surface_demux_port_extramissing.rs:14:18
    |
 14 |         my_demux[d] -> for_each(std::mem::drop);

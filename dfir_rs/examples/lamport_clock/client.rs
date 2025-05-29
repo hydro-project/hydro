@@ -3,17 +3,40 @@ use std::net::SocketAddr;
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
 use dfir_rs::lattices::{Max, Merge};
-use dfir_rs::util::{UdpSink, UdpStream};
+use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 
 use crate::Opts;
+use crate::helpers::print_graph;
 use crate::protocol::EchoMsg;
 
-pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts) {
-    // server_addr is required for client
-    let server_addr = opts.server_addr.expect("Client requires a server address");
-    let bot: Max<usize> = Max::new(0);
+pub(crate) async fn run_client(opts: Opts) {
+    // Client listens on a port picked by the OS.
+    let client_addr = ipv4_resolve("localhost:0").unwrap();
 
-    println!("Client live!");
+    // Use the server address that was provided in the command-line arguments, or use the default
+    // if one was not provided.
+    let server_addr = opts.address;
+    assert_ne!(
+        0,
+        server_addr.port(),
+        "Client cannot connect to server port 0."
+    );
+
+    // Bind a client-side socket to the requested address and port. The OS will allocate a port and
+    // the actual port used will be available in `actual_client_addr`.
+    //
+    // `outbound` is a `UdpSink`, we use it to send messages. `inbound` is `UdpStream`, we use it
+    // to receive messages.
+    //
+    // bind_udp_bytes is an async function, so we need to await it.
+    let (outbound, inbound, allocated_client_addr) = bind_udp_bytes(client_addr).await;
+
+    println!(
+        "Client is live! Listening on {:?} and talking to server on {:?}",
+        allocated_client_addr, server_addr
+    );
+
+    let bot: Max<usize> = Max::new(0);
 
     let mut flow = dfir_syntax! {
         // Define shared inbound and outbound channels
@@ -49,12 +72,9 @@ pub(crate) async fn run_client(outbound: UdpSink, inbound: UdpStream, opts: Opts
         stamped_output[send] -> outbound_chan;
     };
 
-    #[cfg(feature = "debugging")]
+    // If a graph was requested to be printed, print it.
     if let Some(graph) = opts.graph {
-        let serde_graph = flow
-            .meta_graph()
-            .expect("No graph found, maybe failed to parse.");
-        serde_graph.open_graph(graph, opts.write_config).unwrap();
+        print_graph(&flow, graph, opts.write_config);
     }
 
     flow.run_async().await.unwrap();

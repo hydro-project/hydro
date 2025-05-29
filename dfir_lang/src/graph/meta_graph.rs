@@ -106,8 +106,8 @@ impl DfirGraph {
     }
 
     /// Get the debug variable name attached to a graph node.
-    pub fn node_varname(&self, node_id: GraphNodeId) -> Option<Ident> {
-        self.node_varnames.get(node_id).map(|x| x.0.clone())
+    pub fn node_varname(&self, node_id: GraphNodeId) -> Option<&Varname> {
+        self.node_varnames.get(node_id)
     }
 
     /// Get subgraph for node.
@@ -811,11 +811,6 @@ impl DfirGraph {
         subgraph_handoffs
     }
 
-    /// Generate a deterministic `Ident` for the given loop ID.
-    fn loop_as_ident(loop_id: GraphLoopId) -> Ident {
-        Ident::new(&format!("loop_{:?}", loop_id.data()), Span::call_site())
-    }
-
     /// Code for adding all nested loops.
     fn codegen_nested_loops(&self, df: &Ident) -> TokenStream {
         // Breadth-first iteration from outermost (root) loops to deepest nested loops.
@@ -824,10 +819,10 @@ impl DfirGraph {
         while let Some(loop_id) = queue.pop_front() {
             let parent_opt = self
                 .loop_parent(loop_id)
-                .map(Self::loop_as_ident)
+                .map(|loop_id| loop_id.as_ident(Span::call_site()))
                 .map(|ident| quote! { Some(#ident) })
                 .unwrap_or_else(|| quote! { None });
-            let loop_name = Self::loop_as_ident(loop_id);
+            let loop_name = loop_id.as_ident(Span::call_site());
             out.append_all(quote! {
                 let #loop_name = #df.add_loop(#parent_opt);
             });
@@ -882,6 +877,7 @@ impl DfirGraph {
             });
 
         let mut op_prologue_code = Vec::new();
+        let mut op_prologue_after_code = Vec::new();
         let mut subgraphs = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in subgraphs_without_preds
@@ -1023,12 +1019,12 @@ impl DfirGraph {
                                     let op_span = op_span.unwrap();
                                     break 'a format!(
                                         "loc_{}_{}_{}_{}_{}",
-                                        op_span
-                                            .source_file()
-                                            .path()
-                                            .display()
-                                            .to_string()
-                                            .replace(|x: char| !x.is_alphanumeric(), "_"),
+                                        crate::pretty_span::make_source_path_relative(
+                                            &op_span.file()
+                                        )
+                                        .display()
+                                        .to_string()
+                                        .replace(|x: char| !x.is_ascii_alphanumeric(), "_"),
                                         op_span.start().line(),
                                         op_span.start().column(),
                                         op_span.end().line(),
@@ -1078,6 +1074,7 @@ impl DfirGraph {
                                 (op_constraints.write_fn)(&context_args, diagnostics);
                             let OperatorWriteOutput {
                                 write_prologue,
+                                write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
                             } = write_result.unwrap_or_else(|()| {
@@ -1097,7 +1094,7 @@ impl DfirGraph {
                                 }
                             });
                             op_prologue_code.push(write_prologue);
-
+                            op_prologue_after_code.push(write_prologue_after);
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
@@ -1218,12 +1215,14 @@ impl DfirGraph {
 
                 // Codegen: the loop that this subgraph is in `Some(<loop_id>)`, or `None` if not in a loop.
                 let loop_id_opt = loop_id
-                    .map(Self::loop_as_ident)
+                    .map(|loop_id| loop_id.as_ident(Span::call_site()))
                     .map(|ident| quote! { Some(#ident) })
                     .unwrap_or_else(|| quote! { None });
 
+                let sg_ident = subgraph_id.as_ident(Span::call_site());
+
                 subgraphs.push(quote! {
-                    #df.add_subgraph_full(
+                    let #sg_ident = #df.add_subgraph_full(
                         #subgraph_name,
                         #stratum,
                         var_expr!( #( #recv_ports ),* ),
@@ -1252,6 +1251,7 @@ impl DfirGraph {
             #loop_code
             #( #op_prologue_code )*
             #( #subgraphs )*
+            #( #op_prologue_after_code )*
         };
 
         let meta_graph_json = serde_json::to_string(&self).unwrap();
@@ -1375,32 +1375,10 @@ impl DfirGraph {
         // Make node color map one time.
         let node_color_map = self.node_color_map();
 
-        // Collect varnames.
-        let mut sg_varname_nodes =
-            <SparseSecondaryMap<GraphSubgraphId, BTreeMap<Varname, BTreeSet<GraphNodeId>>>>::new();
-        let mut varname_nodes = <BTreeMap<Varname, BTreeSet<GraphNodeId>>>::new();
-        if !write_config.no_varnames {
-            for (node_id, varname) in self.node_varnames.iter() {
-                // Only collect if needed.
-                let varname_map = if !write_config.no_subgraphs {
-                    let Some(sg_id) = self.node_subgraph(node_id) else {
-                        continue;
-                    };
-                    sg_varname_nodes.entry(sg_id).unwrap().or_default()
-                } else {
-                    &mut varname_nodes
-                };
-                varname_map
-                    .entry(varname.clone())
-                    .or_default()
-                    .insert(node_id);
-            }
-        }
-
         // Write prologue.
         graph_write.write_prologue()?;
 
-        // Write nodes.
+        // Define nodes.
         let mut skipped_handoffs = BTreeSet::new();
         let mut subgraph_handoffs = <BTreeMap<GraphSubgraphId, Vec<GraphNodeId>>>::new();
         for (node_id, node) in self.nodes() {
@@ -1420,7 +1398,7 @@ impl DfirGraph {
                     }
                 }
             }
-            graph_write.write_node(
+            graph_write.write_node_definition(
                 node_id,
                 &if write_config.op_short_text {
                     node.to_name_string()
@@ -1486,37 +1464,80 @@ impl DfirGraph {
             }
         }
 
-        // Write subgraphs.
-        if !write_config.no_subgraphs {
-            for (subgraph_id, subgraph_node_ids) in self.subgraph_nodes.iter() {
-                let handoff_node_ids = subgraph_handoffs.get(&subgraph_id).into_iter().flatten();
-                let subgraph_node_ids = subgraph_node_ids.iter();
-                let all_node_ids = handoff_node_ids.chain(subgraph_node_ids).copied();
+        // The following code is a little bit tricky. Generally, the graph has the hierarchy:
+        // `loop -> subgraph -> varname -> node`. However, each of these can be disabled via the `write_config`. To
+        // handle both the enabled and disabled case, this code is structured as a series of nested loops. If the layer
+        // is disabled, then the HashMap<Option<KEY>, Vec<VALUE>> will only have a single key (`None`) with a
+        // corresponding `Vec` value containing everything. This way no special handling is needed for the next layer.
+        //
+        // (Note: `stratum` could also be included in this hierarchy, but it is being phased-out/deprecated in favor of
+        // Flo loops).
 
-                let stratum = self.subgraph_stratum.get(subgraph_id);
-                graph_write.write_subgraph_start(subgraph_id, *stratum.unwrap(), all_node_ids)?;
-                // Write out any variable names within the subgraph.
-                if !write_config.no_varnames {
-                    for (varname, varname_node_ids) in
-                        sg_varname_nodes.remove(subgraph_id).into_iter().flatten()
-                    {
-                        assert!(!varname_node_ids.is_empty());
-                        graph_write.write_varname(
-                            &varname.0.to_string(),
-                            varname_node_ids.into_iter(),
-                            Some(subgraph_id),
-                        )?;
+        // Loop -> Subgraphs
+        let loop_subgraphs = self.subgraph_ids().map(|sg_id| {
+            let loop_id = if write_config.no_loops {
+                None
+            } else {
+                self.subgraph_loop(sg_id)
+            };
+            (loop_id, sg_id)
+        });
+        let loop_subgraphs = into_group_map(loop_subgraphs);
+        for (loop_id, subgraph_ids) in loop_subgraphs {
+            if let Some(loop_id) = loop_id {
+                graph_write.write_loop_start(loop_id)?;
+            }
+
+            // Subgraph -> Varnames.
+            let subgraph_varnames_nodes = subgraph_ids.into_iter().flat_map(|sg_id| {
+                self.subgraph(sg_id).iter().copied().map(move |node_id| {
+                    let opt_sg_id = if write_config.no_subgraphs {
+                        None
+                    } else {
+                        Some(sg_id)
+                    };
+                    (opt_sg_id, (self.node_varname(node_id), node_id))
+                })
+            });
+            let subgraph_varnames_nodes = into_group_map(subgraph_varnames_nodes);
+            for (sg_id, varnames) in subgraph_varnames_nodes {
+                if let Some(sg_id) = sg_id {
+                    let stratum = self.subgraph_stratum(sg_id).unwrap();
+                    graph_write.write_subgraph_start(sg_id, stratum)?;
+                }
+
+                // Varnames -> Nodes.
+                let varname_nodes = varnames.into_iter().map(|(varname, node)| {
+                    let varname = if write_config.no_varnames {
+                        None
+                    } else {
+                        varname
+                    };
+                    (varname, node)
+                });
+                let varname_nodes = into_group_map(varname_nodes);
+                for (varname, node_ids) in varname_nodes {
+                    if let Some(varname) = varname {
+                        graph_write.write_varname_start(&varname.0.to_string(), sg_id)?;
+                    }
+
+                    // Write all nodes.
+                    for node_id in node_ids {
+                        graph_write.write_node(node_id)?;
+                    }
+
+                    if varname.is_some() {
+                        graph_write.write_varname_end()?;
                     }
                 }
-                graph_write.write_subgraph_end()?;
+
+                if sg_id.is_some() {
+                    graph_write.write_subgraph_end()?;
+                }
             }
-        } else if !write_config.no_varnames {
-            for (varname, varname_node_ids) in varname_nodes {
-                graph_write.write_varname(
-                    &varname.0.to_string(),
-                    varname_node_ids.into_iter(),
-                    None,
-                )?;
+
+            if loop_id.is_some() {
+                graph_write.write_loop_end()?;
             }
         }
 
@@ -1677,6 +1698,9 @@ pub struct WriteConfig {
     /// Will not render singleton references if set.
     #[cfg_attr(feature = "clap-derive", arg(long))]
     pub no_references: bool,
+    /// Will not render loops if set.
+    #[cfg_attr(feature = "clap-derive", arg(long))]
+    pub no_loops: bool,
 
     /// Op text will only be their name instead of the whole source.
     #[cfg_attr(feature = "clap-derive", arg(long))]
@@ -1694,4 +1718,16 @@ pub enum WriteGraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
+}
+
+/// [`itertools::Itertools::into_group_map`], but for `BTreeMap`.
+fn into_group_map<K, V>(iter: impl IntoIterator<Item = (K, V)>) -> BTreeMap<K, Vec<V>>
+where
+    K: Ord,
+{
+    let mut out: BTreeMap<_, Vec<_>> = BTreeMap::new();
+    for (k, v) in iter {
+        out.entry(k).or_default().push(v);
+    }
+    out
 }

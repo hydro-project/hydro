@@ -17,7 +17,7 @@ use super::{
     GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
     PortIndexValue,
 };
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Level};
 use crate::parse::{Operator, PortIndex};
 
 /// The delay (soft barrier) type, for each input to an operator if needed.
@@ -115,9 +115,13 @@ impl Debug for OperatorConstraints {
 #[derive(Default)]
 #[non_exhaustive]
 pub struct OperatorWriteOutput {
-    /// Code which runs once outside the subgraph to set up any external stuff
-    /// like state API stuff, external chanels, network connections, etc.
+    /// Code which runs once outside any subgraphs, BEFORE subgraphs are initialized,
+    /// to set up any external state (state API, chanels, network connections, etc.)
+    /// to be used by the subgraph.
     pub write_prologue: TokenStream,
+    /// Code which runs once outside the subgraph, AFTER subgraphs are initialized,
+    /// to set up state hooks which may need the subgraph ID.
+    pub write_prologue_after: TokenStream,
     /// Iterator (or pusherator) code inside the subgraphs. The code for each
     /// operator is emitted in order.
     ///
@@ -410,6 +414,69 @@ impl WriteContextArgs<'_> {
             self.op_span,
         )
     }
+
+    /// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
+    /// peristence.
+    pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> Option<TokenStream> {
+        let root = self.root;
+        let variant =
+            persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span)?;
+        Some(quote_spanned! {self.op_span=>
+            #root::scheduled::graph::StateLifespan::#variant
+        })
+    }
+
+    /// Returns the given number of persistence arguments, disallowing mutable lifetimes.
+    pub fn persistence_args_disallow_mutable<const N: usize>(
+        &self,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) -> [Persistence; N] {
+        let len = self.op_inst.generics.persistence_args.len();
+        if 0 != len && 1 != len && N != len {
+            diagnostics.push(Diagnostic::spanned(
+                self.op_span,
+                Level::Error,
+                format!(
+                    "The operator `{}` only accepts 0, 1, or {} persistence arguments",
+                    self.op_name, N
+                ),
+            ));
+        }
+
+        let default_persistence = if self.loop_id.is_some() {
+            Persistence::None
+        } else {
+            Persistence::Tick
+        };
+        let mut out = [default_persistence; N];
+        self.op_inst
+            .generics
+            .persistence_args
+            .iter()
+            .copied()
+            .cycle() // Re-use the first element for both persistences.
+            .take(N)
+            .enumerate()
+            .filter(|&(_i, p)| {
+                if p == Persistence::Mutable {
+                    diagnostics.push(Diagnostic::spanned(
+                        self.op_span,
+                        Level::Error,
+                        format!(
+                            "An implementation of `'{}` does not exist",
+                            p.to_str_lowercase()
+                        ),
+                    ));
+                    false
+                } else {
+                    true
+                }
+            })
+            .for_each(|(i, p)| {
+                out[i] = p;
+            });
+        out
+    }
 }
 
 /// An object-safe version of [`RangeBounds`].
@@ -477,17 +544,55 @@ where
     }
 }
 
-/// Persistence lifetimes: `'tick`, `'static`, or `'mutable`.
+/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Persistence {
     /// No persistence, for within a loop iteration.
     None,
-    /// Persistence for one tick at-a-time only.
+    /// Persistence throughout a single loop execution, across iterations.
+    Loop,
+    /// Persistence for one tick, at the top-level only (outside any loops).
     Tick,
-    /// Persistene across all ticks.
+    /// Persistence across all ticks.
     Static,
-    /// Mutability.
+    /// The static lifetime but allowing non-monotonic mutability.
     Mutable,
+}
+impl Persistence {
+    /// Returns just the variant of `#root::scheduled::graph::StateLifespan::VARIANT` for use in macros.
+    pub fn as_state_lifespan_variant(
+        self,
+        subgraph_id: GraphSubgraphId,
+        loop_id: Option<GraphLoopId>,
+        span: Span,
+    ) -> Option<TokenStream> {
+        match self {
+            Persistence::None => {
+                let sg_ident = subgraph_id.as_ident(span);
+                Some(quote_spanned!(span=> Subgraph(#sg_ident)))
+            }
+            Persistence::Loop => {
+                let loop_ident = loop_id
+                    .expect("`Persistence::Loop` outside of a loop context.")
+                    .as_ident(span);
+                Some(quote_spanned!(span=> Loop(#loop_ident)))
+            }
+            Persistence::Tick => Some(quote_spanned!(span=> Tick)),
+            Persistence::Static => None,
+            Persistence::Mutable => None,
+        }
+    }
+
+    /// Returns a lowercase string for the persistence type.
+    pub fn to_str_lowercase(self) -> &'static str {
+        match self {
+            Persistence::None => "none",
+            Persistence::Tick => "tick",
+            Persistence::Loop => "loop",
+            Persistence::Static => "static",
+            Persistence::Mutable => "mutable",
+        }
+    }
 }
 
 /// Helper which creates a error message string literal for when the Tokio runtime is not found.

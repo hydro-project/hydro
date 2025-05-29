@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
-    RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Given a _bounded_ input stream, emits all values repeatedly over `N` iterations, in the same order.
@@ -43,10 +43,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             let #singleton_output_ident = #df_ident.add_state(
                 ::std::cell::RefCell::new(::std::vec::Vec::new())
             );
-
-            // TODO(mingwei): Is this needed?
-            // Reset the value to the initializer fn if it is a new tick.
-            #df_ident.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.take(); });
         };
 
         let vec_ident = wc.make_ident("vec");
@@ -78,6 +74,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

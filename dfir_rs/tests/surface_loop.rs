@@ -3,6 +3,36 @@ use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test(test, env_tracing, wasm)]
+pub fn test_batches_basic() {
+    let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let mut df = dfir_syntax! {
+        x = source_stream(iter_batches_stream(0..10, 1));
+        loop {
+            x -> batch()
+                -> for_each(|x| result_send.send((context.loop_iter_count(), x)).unwrap());
+        };
+    };
+    df.run_available();
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (5, 5),
+            (6, 6),
+            (7, 7),
+            (8, 8),
+            (9, 9),
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+    );
+}
+
+#[multiplatform_test(test, env_tracing, wasm)]
 pub fn test_flo_syntax() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
 
@@ -374,4 +404,142 @@ fn test_state_codegen() {
         };
     };
     df.run_available();
+}
+
+#[multiplatform_test]
+pub fn test_enumerate_loop() {
+    let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
+    let mut df = dfir_syntax! {
+        init = source_iter(0..5);
+        loop {
+            batch_init = init -> batch() -> tee();
+            loop {
+                batch_init -> repeat_n(3) -> enumerate::<'none>() -> for_each(|x| result1_send.send(x).unwrap());
+                batch_init -> repeat_n(3) -> enumerate::<'loop>() -> for_each(|x| result2_send.send(x).unwrap());
+            };
+        };
+    };
+    assert_graphvis_snapshots!(df);
+    df.run_available();
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4)
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result1_recv)
+    );
+
+    assert_eq!(
+        &[
+            (0, 0),
+            (1, 1),
+            (2, 2),
+            (3, 3),
+            (4, 4),
+            (5, 0),
+            (6, 1),
+            (7, 2),
+            (8, 3),
+            (9, 4),
+            (10, 0),
+            (11, 1),
+            (12, 2),
+            (13, 3),
+            (14, 4)
+        ],
+        &*collect_ready::<Vec<_>, _>(&mut result2_recv)
+    );
+}
+
+#[multiplatform_test(test, env_tracing)]
+pub fn test_write() {
+    use dfir_lang::graph::WriteConfig;
+
+    let (result_send, _result_recv) = dfir_rs::util::unbounded_channel::<_>();
+
+    let df = dfir_syntax! {
+        users = source_iter(["alice", "bob"]);
+        messages = source_stream(iter_batches_stream(0..12, 3));
+        loop {
+            users -> prefix() -> [0]cp;
+            messages -> batch() -> [1]cp;
+            cp = cross_join();
+            loop {
+                cp
+                    -> all_once()
+                    -> map(|item| (context.current_tick().0, item))
+                    -> for_each(|x| result_send.send(x).unwrap());
+            };
+        };
+    };
+    assert_graphvis_snapshots!(df, &WriteConfig::default());
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_loops: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_subgraphs: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_varnames: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_loops: true,
+            no_subgraphs: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_loops: true,
+            no_varnames: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_subgraphs: true,
+            no_varnames: true,
+            ..WriteConfig::default()
+        }
+    );
+    assert_graphvis_snapshots!(
+        df,
+        &WriteConfig {
+            no_loops: true,
+            no_subgraphs: true,
+            no_varnames: true,
+            ..WriteConfig::default()
+        }
+    );
 }

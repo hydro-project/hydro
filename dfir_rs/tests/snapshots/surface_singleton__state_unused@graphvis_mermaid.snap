@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_singleton.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -14,9 +14,6 @@ linkStyle default stroke:#aaa
 1v1-->2v1
 2v1-->3v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
-    2v1
-    3v1
     subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
         3v1
     end

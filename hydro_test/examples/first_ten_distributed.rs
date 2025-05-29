@@ -75,3 +75,16 @@ async fn main() {
 
     deployment.stop().await.unwrap();
 }
+
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!();
+    run.read_string(
+        "Enter characters and press enter to send them over the network (ctrl-d to stop):",
+    );
+    run.read_string("[hydro_test::distributed::first_ten::P2 (process 2)] 9");
+    run.write_line("Hello World");
+    run.read_string(r#"[hydro_test::distributed::first_ten::P1 (process 1)] hi: "Hello World\n"#);
+}

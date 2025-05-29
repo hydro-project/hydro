@@ -2,18 +2,17 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 // This implementation is largely redundant to ANTI_JOIN and should be DRY'ed
 /// > 2 input streams the first of type (K, T), the second of type K,
 /// > with output type (K, T)
 ///
 /// For a given tick, computes the anti-join of the items in the input
-/// streams, returning items in the `pos` input --that do not have matching keys
-/// in the `neg` input. NOTE this uses multiset semantics on the positive side,
+/// streams, returning items in the `pos` input that do not have matching keys
+/// in the `neg` input. NOTE this uses multiset semantics only on the positive side,
 /// so duplicated positive inputs will appear in the output either 0 times (if matched in `neg`)
 /// or as many times as they appear in the input (if not matched in `neg`)
 ///
@@ -54,162 +53,85 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistences = match persistence_args[..] {
-            [] => [Persistence::Tick, Persistence::Tick],
-            [a] => [a, a],
-            [a, b] => [a, b],
-            _ => unreachable!(),
+        let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+
+        let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
+        let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
+
+        let write_prologue_pos = quote_spanned! {op_span=>
+            let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                ::std::vec::Vec::new()
+            ));
         };
+        let write_prologue_after_pos = wc
+            .persistence_as_state_lifespan(persistences[0])
+            .map(|lifespan| quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                #df_ident.set_state_lifespan_hook(
+                    #pos_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                );
+            }).unwrap_or_default();
 
-        let mut make_antijoindata = |persistence, side| {
-            let antijoindata_ident = wc.make_ident(format!("antijoindata_{}", side));
-            let borrow_ident = wc.make_ident(format!("antijoindata_{}_borrow", side));
-            let (init, borrow) = match persistence {
-                Persistence::None | Persistence::Tick => (
-                    quote_spanned! {op_span=>
-                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default()
-                    },
-                    quote_spanned! {op_span=>
-                        (&mut *#borrow_ident).get_mut_clear(#context.current_tick())
-                    },
-                ),
-                Persistence::Static => (
-                    quote_spanned! {op_span=>
-                        #root::rustc_hash::FxHashSet::default()
-                    },
-                    quote_spanned! {op_span=>
-                        (&mut *#borrow_ident)
-                    },
-                ),
-                Persistence::Mutable => {
-                    diagnostics.push(Diagnostic::spanned(
-                        op_span,
-                        Level::Error,
-                        "An implementation of 'mutable does not exist",
-                    ));
-                    return Err(());
-                }
-            };
-            Ok((antijoindata_ident, borrow_ident, init, borrow))
+        let write_prologue_neg = quote_spanned! {op_span=>
+            let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                #root::rustc_hash::FxHashSet::default()
+            ));
         };
-
-        let (neg_antijoindata_ident, neg_borrow_ident, neg_init, neg_borrow) =
-            make_antijoindata(persistences[1], "neg")?;
-
-        // let vec_ident = wc.make_ident("persistvec");
-        let pos_antijoindata_ident = wc.make_ident("antijoindata_pos_ident");
-        let pos_borrow_ident = wc.make_ident("antijoindata_pos_borrow_ident");
-
-        let write_prologue = match persistences[0] {
-            Persistence::None => Default::default(),
-            Persistence::Tick => quote_spanned! {op_span=>
-                let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    #neg_init
-                ));
-            },
-            Persistence::Static => quote_spanned! {op_span=>
-                let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    ::std::vec::Vec::new()
-                ));
-                let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    #neg_init
-                ));
-            },
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
-        };
+        let write_prologue_after_neg = wc
+            .persistence_as_state_lifespan(persistences[1])
+            .map(|lifespan| quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                #df_ident.set_state_lifespan_hook(
+                    #neg_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
+                );
+            }).unwrap_or_default();
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
-        let write_iterator = match persistences[0] {
-            Persistence::None => quote_spanned! {op_span=>
-                let mut #neg_borrow_ident = #neg_init;
+        let write_iterator = quote_spanned! {op_span =>
+            let (mut neg_borrow, mut pos_borrow) = unsafe {
+                // SAFETY: handles from `#df_ident`.
+                (
+                    #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
+                    #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
+                )
+            };
 
-                #[allow(clippy::needless_borrow)]
-                #work_fn(|| #neg_borrow.extend(#input_neg));
-
-                let #ident = #input_pos.filter(|x: &(_,_)| {
-                    #[allow(clippy::needless_borrow)]
+            #[allow(clippy::needless_borrow)]
+            let #ident = {
+                #[allow(clippy::clone_on_copy)]
+                #[allow(suspicious_double_ref_op)]
+                if context.is_first_run_this_tick() {
+                    // Start of new tick
+                    #work_fn(|| neg_borrow.extend(#input_neg));
+                    #work_fn(|| pos_borrow.extend(#input_pos));
+                    pos_borrow.iter()
+                } else {
+                    // Called second or later times on the same tick.
+                    let len = pos_borrow.len();
+                    #work_fn(|| pos_borrow.extend(#input_pos));
+                    pos_borrow[len..].iter()
+                }
+                .filter(|x: &&(_,_)| {
                     #[allow(clippy::unnecessary_mut_passed)]
-                    !#neg_borrow.contains(&x.0)
-                });
-            },
-            Persistence::Tick => quote_spanned! {op_span=>
-                let mut #neg_borrow_ident = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#neg_antijoindata_ident)
-                }.borrow_mut();
-
-                #[allow(clippy::needless_borrow)]
-                #work_fn(|| #neg_borrow.extend(#input_neg));
-
-                let #ident = #input_pos.filter(|x: &(_,_)| {
-                    #[allow(clippy::needless_borrow)]
-                    #[allow(clippy::unnecessary_mut_passed)]
-                    !#neg_borrow.contains(&x.0)
-                });
-            },
-            Persistence::Static => quote_spanned! {op_span =>
-                let (mut #neg_borrow_ident, mut #pos_borrow_ident) = unsafe {
-                    // SAFETY: handles from `#df_ident`.
-                    (
-                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
-                    )
-                };
-
-                #[allow(clippy::needless_borrow)]
-                let #ident = {
-                    #[allow(clippy::clone_on_copy)]
-                    #[allow(suspicious_double_ref_op)]
-                    if context.is_first_run_this_tick() {
-                        // Start of new tick
-                        #work_fn(|| #neg_borrow.extend(#input_neg));
-
-                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
-                        #pos_borrow_ident.iter()
-                    } else {
-                        // Called second or later times on the same tick.
-                        let len = #pos_borrow_ident.len();
-                        #work_fn(|| #pos_borrow_ident.extend(#input_pos));
-                        #pos_borrow_ident[len..].iter()
-                    }
-                    .filter(|x: &&(_,_)| {
-                        #[allow(clippy::unnecessary_mut_passed)]
-                        !#neg_borrow.contains(&x.0)
-                    })
-                    .map(|(k, v)| (k.clone(), v.clone()))
-                };
-            },
-            Persistence::Mutable => quote_spanned! {op_span =>
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            },
+                    !neg_borrow.contains(&x.0)
+                })
+                .map(|(k, v)| (k.clone(), v.clone()))
+            };
         };
 
         Ok(OperatorWriteOutput {
-            write_prologue,
+            write_prologue: quote_spanned! {op_span=>
+                #write_prologue_pos
+                #write_prologue_neg
+            },
+            write_prologue_after: quote_spanned! {op_span=>
+                #write_prologue_after_pos
+                #write_prologue_after_neg
+            },
             write_iterator,
             ..Default::default()
         })

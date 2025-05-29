@@ -116,6 +116,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: "Build wheels"
         uses: PyO3/maturin-action@v1
+        env:
+          # Workaround ring 0.17 build issue (kudos to uv)
+          CFLAGS_aarch64_unknown_linux_gnu: "-D__ARM_ARCH=8"
         with:
           working-directory: hydro_deploy/hydro_cli
           target: ${{ matrix.platform.target }}
@@ -140,6 +143,10 @@ jobs:
             arch: x86
           - target: aarch64-pc-windows-msvc
             arch: x64
+        exclude:
+          # aarch64 doesn't compile due to ring dependency
+          - platform:
+              target: aarch64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

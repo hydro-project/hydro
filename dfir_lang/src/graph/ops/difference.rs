@@ -1,9 +1,9 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > 2 input streams of the same type T, 1 output stream of type T
@@ -53,6 +53,7 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::anti_join::ANTI_JOIN.write_fn)(wc, diagnostics)?;
@@ -66,6 +67,7 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > Arguments: A `tag` string and a `Duration` for how long to wait between printing.
@@ -68,7 +68,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let duration_ident = wc.make_ident("duration");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0));
+            let #write_ident = ::std::rc::Rc::new(::std::cell::Cell::new(0_u64));
 
             let #read_ident = ::std::rc::Rc::clone(&#write_ident);
             let #duration_ident = #duration_expr;
@@ -110,6 +110,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             write_prologue,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

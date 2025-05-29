@@ -65,11 +65,8 @@ impl Dfir<'_> {
         let tee_root_data_name = tee_root_data.name.clone();
 
         // Insert new handoff output.
-        let teeing_handoff = tee_root_data
-            .handoff
-            .any_ref()
-            .downcast_ref::<TeeingHandoff<T>>()
-            .unwrap();
+        let teeing_handoff =
+            <dyn Any>::downcast_ref::<TeeingHandoff<T>>(&*tee_root_data.handoff).unwrap();
         let new_handoff = teeing_handoff.tee();
 
         // Handoff ID of new tee output.
@@ -111,11 +108,7 @@ impl Dfir<'_> {
         T: Clone,
     {
         let data = &self.handoffs[tee_port.handoff_id];
-        let teeing_handoff = data
-            .handoff
-            .any_ref()
-            .downcast_ref::<TeeingHandoff<T>>()
-            .unwrap();
+        let teeing_handoff = <dyn Any>::downcast_ref::<TeeingHandoff<T>>(&*data.handoff).unwrap();
         teeing_handoff.drop();
 
         let tee_root = data.pred_handoffs[0];
@@ -278,6 +271,16 @@ impl<'a> Dfir<'a> {
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
+                let _enter = tracing::info_span!(
+                    "run-subgraph",
+                    sg_id = sg_id.to_string(),
+                    sg_name = &*sg_data.name,
+                    sg_depth = sg_data.loop_depth,
+                    sg_loop_nonce = sg_data.last_loop_nonce.0,
+                    sg_iter_count = sg_data.last_loop_nonce.1,
+                )
+                .entered();
+
                 match sg_data.loop_depth.cmp(&self.context.loop_nonce_stack.len()) {
                     Ordering::Greater => {
                         // We have entered a loop.
@@ -319,43 +322,49 @@ impl<'a> Dfir<'a> {
                     // the same loop execution.
                     // `curr_loop_nonce` is `None` for top-level loops, and top-level loops are
                     // always in the same (singular) loop execution.
-                    let curr_iter_count =
+                    let (curr_iter_count, new_loop_execution) =
                         if curr_loop_nonce.is_none_or(|nonce| nonce == prev_loop_nonce) {
                             // If the iteration count is the same as the previous execution, then
                             // we are on the next iteration.
-                            if loop_iter_count.is_none_or(|n| n == prev_iter_count) {
+                            if *loop_iter_count == prev_iter_count {
                                 // If not true, then we shall not run the next iteration.
                                 if !std::mem::take(allow_another_iteration) {
-                                    tracing::trace!(
+                                    tracing::debug!(
                                         "Loop will not continue to next iteration, skipping."
                                     );
                                     continue 'pop;
                                 }
                                 // Increment `loop_iter_count` or set it to 0.
-                                loop_iter_count.map_or(0, |n| n + 1)
+                                loop_iter_count.map_or((0, true), |n| (n + 1, false))
                             } else {
                                 // Otherwise update the local iteration count to match the loop.
-                                debug_assert!(loop_iter_count.is_some_and(|n| prev_iter_count < n));
-                                loop_iter_count.unwrap()
+                                debug_assert!(
+                                    prev_iter_count < *loop_iter_count,
+                                    "Expect loop iteration count to be increasing."
+                                );
+                                (loop_iter_count.unwrap(), false)
                             }
                         } else {
-                            // We are in a new loop execution.
-                            0
+                            // The loop execution has already begun, but this is the first time this particular subgraph is running.
+                            (0, false)
                         };
+
+                    if new_loop_execution {
+                        // Run state hooks.
+                        self.context.run_state_hooks_loop(loop_id);
+                    }
+                    tracing::debug!("Loop iteration count {}", curr_iter_count);
+
                     *loop_iter_count = Some(curr_iter_count);
                     self.context.loop_iter_count = curr_iter_count;
                     sg_data.last_loop_nonce =
-                        (curr_loop_nonce.unwrap_or_default(), curr_iter_count);
+                        (curr_loop_nonce.unwrap_or_default(), Some(curr_iter_count));
                 }
 
-                tracing::info!(
-                    sg_id = sg_id.to_string(),
-                    sg_name = &*sg_data.name,
-                    sg_depth = sg_data.loop_depth,
-                    sg_loop_nonce = sg_data.last_loop_nonce.0,
-                    sg_iter_count = sg_data.last_loop_nonce.1,
-                    "Running subgraph."
-                );
+                // Run subgraph state hooks.
+                self.context.run_state_hooks_subgraph(sg_id);
+
+                tracing::info!("Running subgraph.");
                 sg_data.subgraph.run(&mut self.context, &mut self.handoffs);
 
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
@@ -497,7 +506,7 @@ impl<'a> Dfir<'a> {
                         self.context.current_tick,
                         self.context.current_tick + TickDuration::SINGLE_TICK,
                     );
-                    self.context.reset_state_at_end_of_tick();
+                    self.context.run_state_hooks_tick();
 
                     self.context.current_stratum = 0;
                     self.context.current_tick += TickDuration::SINGLE_TICK;
@@ -859,10 +868,7 @@ impl<'a> Dfir<'a> {
                         .map(|hid| hid.handoff_id)
                         .map(|hid| handoffs.get(hid).unwrap())
                         .map(|h_data| {
-                            h_data
-                                .handoff
-                                .any_ref()
-                                .downcast_ref()
+                            <dyn Any>::downcast_ref(&*h_data.handoff)
                                 .expect("Attempted to cast handoff to wrong type.")
                         })
                         .map(RefCast::ref_cast)
@@ -873,10 +879,7 @@ impl<'a> Dfir<'a> {
                         .map(|hid| hid.handoff_id)
                         .map(|hid| handoffs.get(hid).unwrap())
                         .map(|h_data| {
-                            h_data
-                                .handoff
-                                .any_ref()
-                                .downcast_ref()
+                            <dyn Any>::downcast_ref(&*h_data.handoff)
                                 .expect("Attempted to cast handoff to wrong type.")
                         })
                         .map(RefCast::ref_cast)
@@ -941,14 +944,16 @@ impl<'a> Dfir<'a> {
     /// Sets a hook to modify the state at the end of each tick, using the supplied closure.
     ///
     /// This is part of the "state API".
-    pub fn set_state_tick_hook<T>(
+    pub fn set_state_lifespan_hook<T>(
         &mut self,
         handle: StateHandle<T>,
-        tick_hook_fn: impl 'static + FnMut(&mut T),
+        lifespan: StateLifespan,
+        hook_fn: impl 'static + FnMut(&mut T),
     ) where
         T: Any,
     {
-        self.context.set_state_tick_hook(handle, tick_hook_fn)
+        self.context
+            .set_state_lifespan_hook(handle, lifespan, hook_fn)
     }
 
     /// Gets a exclusive (mut) ref to the internal context, setting the subgraph ID.
@@ -1085,7 +1090,7 @@ pub(super) struct SubgraphData<'a> {
     last_tick_run_in: Option<TickInstant>,
     /// A meaningless ID to track the last loop execution this subgraph was run in.
     /// `(loop_nonce, iter_count)` pair.
-    last_loop_nonce: (usize, usize),
+    last_loop_nonce: (usize, Option<usize>),
 
     /// If this subgraph is marked as lazy, then sending data back to a lower stratum does not trigger a new tick to be run.
     is_lazy: bool,
@@ -1116,7 +1121,7 @@ impl<'a> SubgraphData<'a> {
             succs,
             is_scheduled: Cell::new(is_scheduled),
             last_tick_run_in: None,
-            last_loop_nonce: (0, 0),
+            last_loop_nonce: (0, None),
             is_lazy,
             loop_id,
             loop_depth,
@@ -1129,4 +1134,17 @@ pub(crate) struct LoopData {
     iter_count: Option<usize>,
     /// If the loop has reason to do another iteration.
     allow_another_iteration: bool,
+}
+
+/// Defines when state should be reset.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateLifespan {
+    /// Always reset, a ssociated with the subgraph.
+    Subgraph(SubgraphId),
+    /// Reset between loop executions.
+    Loop(LoopId),
+    /// Reset between ticks.
+    Tick,
+    /// Never reset.
+    Static,
 }

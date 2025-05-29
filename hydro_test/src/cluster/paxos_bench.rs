@@ -147,12 +147,10 @@ mod tests {
             insta::assert_snapshot!(
                 preview.dfir_for(&proposers).to_mermaid(&WriteConfig {
                     no_subgraphs: true,
-                    no_varnames: false,
                     no_pull_push: true,
                     no_handoffs: true,
-                    no_references: false,
-                    op_short_text: false,
                     op_text_no_imports: true,
+                    ..WriteConfig::default()
                 })
             );
         });

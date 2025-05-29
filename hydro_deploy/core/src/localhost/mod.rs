@@ -1,10 +1,8 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::ops::Deref;
 use std::sync::Arc;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use async_process::{Command, Stdio};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
@@ -19,6 +17,7 @@ use crate::{
 
 pub mod launched_binary;
 pub use launched_binary::*;
+mod samply;
 
 #[derive(Debug)]
 pub struct LocalhostHost {
@@ -54,10 +53,6 @@ impl Host for LocalhostHost {
 
     fn id(&self) -> usize {
         self.id
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 
     fn launched(&self) -> Option<Arc<dyn LaunchedHost>> {
@@ -156,56 +151,22 @@ impl LaunchedHost for LaunchedLocalhost {
     ) -> Result<Box<dyn LaunchedBinary>> {
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
             if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
-                // dtrace
+                // samply
                 ProgressTracker::println(
-                    format!("[{id} tracing] Profiling binary with `dtrace`.",),
+                    format!("[{id} tracing] Profiling binary with `samply`.",),
                 );
-                let dtrace_outfile = tempfile::NamedTempFile::new()?;
+                let samply_outfile = tempfile::NamedTempFile::new()?;
 
-                // TODO(mingwei): use std `intersperse` when stabilized.
-                let inner_command = itertools::Itertools::intersperse(
-                    std::iter::once(binary.bin_path.to_str().unwrap())
-                        .chain(args.iter().map(Deref::deref))
-                        .map(|s| shell_escape::unix::escape(s.into())),
-                    Cow::Borrowed(" "),
-                )
-                .collect::<String>();
-
-                let mut command = Command::new("dtrace");
+                let mut command = Command::new("samply");
                 command
-                    .arg("-o")
-                    .arg(dtrace_outfile.as_ref())
-                    .arg("-n")
-                    .arg(format!(
-                        "profile-{} /pid == $target/ {{ @[ustack()] = count(); }}",
-                        tracing.frequency
-                    ))
-                    .arg("-c")
-                    .arg(&*shell_escape::unix::escape(inner_command.into()));
-                (Some(dtrace_outfile), command)
-            }
-            // else if cfg!(target_family = "windows") {
-            //     // blondie_dtrace
-            //     ProgressTracker::println(&format!(
-            //         "[{id} tracing] Profiling binary with `blondie`. `TracingOptions::frequency` is ignored. Ensure that this is run as admin.",
-            //     ));
-            //     ProgressTracker::println(&format!(
-            //         "[{id} tracing] Install `blondie` via `cargo install blondie --all-features`.",
-            //     ));
-            //     let _ = tracing;
-            //     let mut command = Command::new("blondie");
-            //     command
-            //         .arg("-o")
-            //         .arg(format!(
-            //             "./blondie-{}.stacks",
-            //             nanoid::nanoid!(5), // TODO!
-            //         ))
-            //         .arg("folded-text")
-            //         .arg(&binary.bin_path)
-            //         .args(args);
-            //     command
-            // }
-            else if cfg!(target_family = "unix") {
+                    .arg("record")
+                    .arg("--save-only")
+                    .arg("--output")
+                    .arg(samply_outfile.as_ref())
+                    .arg(&binary.bin_path)
+                    .args(args);
+                (Some(samply_outfile), command)
+            } else if cfg!(target_family = "unix") {
                 // perf
                 ProgressTracker::println(format!("[{} tracing] Tracing binary with `perf`.", id));
                 let perf_outfile = tempfile::NamedTempFile::new()?;
@@ -249,9 +210,14 @@ impl LaunchedHost for LaunchedLocalhost {
 
         ProgressTracker::println(format!("[{}] running command: `{:?}`", id, command));
 
-        let child = command
-            .spawn()
-            .with_context(|| format!("Failed to execute command: {:?}", command))?;
+        let child = command.spawn().map_err(|e| {
+            let msg = if maybe_perf_outfile.is_some() && std::io::ErrorKind::NotFound == e.kind() {
+                "Tracing executable not found, ensure it is installed"
+            } else {
+                "Failed to execute command"
+            };
+            anyhow::Error::new(e).context(format!("{}: {:?}", msg, command))
+        })?;
 
         Ok(Box::new(LaunchedLocalhostBinary::new(
             child,

@@ -1,10 +1,10 @@
-error: Argument specifying the output ports in `partition(..)` does not contain extra port `d`: ($DIR/tests/compile-fail/surface_partition_port_extra.rs:15:22) (1/2).
+error: Argument specifying the output ports in `partition(..)` does not contain extra port `d`: (dfir_rs/tests/compile-fail/surface_partition_port_extra.rs:15:22) (1/2).
  --> tests/compile-fail/surface_partition_port_extra.rs:5:63
   |
 5 |         my_partition = source_iter(0..10) -> partition(|item, [a, b, c]| {
   |                                                               ^^^^^^^^^
 
-error: Port `d` not found in the arguments specified in `partition(..)`'s closure: ($DIR/tests/compile-fail/surface_partition_port_extra.rs:5:63) (2/2).
+error: Port `d` not found in the arguments specified in `partition(..)`'s closure: (dfir_rs/tests/compile-fail/surface_partition_port_extra.rs:5:63) (2/2).
   --> tests/compile-fail/surface_partition_port_extra.rs:15:22
    |
 15 |         my_partition[d] -> for_each(std::mem::drop);

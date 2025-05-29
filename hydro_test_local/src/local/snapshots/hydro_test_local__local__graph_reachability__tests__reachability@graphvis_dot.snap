@@ -1,6 +1,6 @@
 ---
 source: hydro_test_local/src/local/graph_reachability.rs
-expression: "reachability.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: reachability.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -46,89 +46,94 @@ digraph {
     n18v1 -> n19v1
     n19v1 -> n9v1 [color=red]
     n20v1 -> n6v1 [label="1"]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n1v1
-        subgraph "cluster_sg_1v1_var_stream_0" {
+        subgraph sg_1v1_var_stream_0 {
+            cluster=true
             label="var stream_0"
             n1v1
         }
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 2"
-        n6v1
-        n7v1
-        n8v1
-        subgraph "cluster_sg_2v1_var_stream_7" {
+        subgraph sg_2v1_var_stream_7 {
+            cluster=true
             label="var stream_7"
             n6v1
         }
-        subgraph "cluster_sg_2v1_var_stream_8" {
+        subgraph sg_2v1_var_stream_8 {
+            cluster=true
             label="var stream_8"
             n7v1
         }
-        subgraph "cluster_sg_2v1_var_stream_9" {
+        subgraph sg_2v1_var_stream_9 {
+            cluster=true
             label="var stream_9"
             n8v1
         }
     }
-    subgraph "cluster n3v1" {
+    subgraph sg_3v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1\nstratum 1"
-        n9v1
-        n2v1
-        n3v1
-        n4v1
-        n10v1
-        n11v1
-        n12v1
         n13v1
-        subgraph "cluster_sg_3v1_var_stream_10" {
+        subgraph sg_3v1_var_stream_10 {
+            cluster=true
             label="var stream_10"
             n9v1
         }
-        subgraph "cluster_sg_3v1_var_stream_12" {
+        subgraph sg_3v1_var_stream_12 {
+            cluster=true
             label="var stream_12"
             n10v1
         }
-        subgraph "cluster_sg_3v1_var_stream_13" {
+        subgraph sg_3v1_var_stream_13 {
+            cluster=true
             label="var stream_13"
             n11v1
         }
-        subgraph "cluster_sg_3v1_var_stream_14" {
+        subgraph sg_3v1_var_stream_14 {
+            cluster=true
             label="var stream_14"
             n12v1
         }
-        subgraph "cluster_sg_3v1_var_stream_2" {
+        subgraph sg_3v1_var_stream_2 {
+            cluster=true
             label="var stream_2"
             n2v1
         }
-        subgraph "cluster_sg_3v1_var_stream_3" {
+        subgraph sg_3v1_var_stream_3 {
+            cluster=true
             label="var stream_3"
             n3v1
         }
-        subgraph "cluster_sg_3v1_var_stream_5" {
+        subgraph sg_3v1_var_stream_5 {
+            cluster=true
             label="var stream_5"
             n4v1
         }
     }
-    subgraph "cluster n4v1" {
+    subgraph sg_4v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_4v1\nstratum 3"
         n18v1
     }
-    subgraph "cluster n5v1" {
+    subgraph sg_5v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_5v1\nstratum 0"
-        n5v1
-        subgraph "cluster_sg_5v1_var_stream_6" {
+        subgraph sg_5v1_var_stream_6 {
+            cluster=true
             label="var stream_6"
             n5v1
         }

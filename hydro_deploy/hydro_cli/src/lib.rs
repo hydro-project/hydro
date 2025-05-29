@@ -1,9 +1,4 @@
-#![expect(
-    unused_qualifications,
-    non_local_definitions,
-    unsafe_op_in_unsafe_fn,
-    reason = "for pyo3 generated code"
-)]
+#![expect(unsafe_op_in_unsafe_fn, reason = "for pyo3 generated code")]
 
 use core::rust_crate::ports::RustCrateSource;
 use std::cell::OnceCell;
@@ -21,7 +16,7 @@ use pyo3::exceptions::{PyException, PyStopAsyncIteration};
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyDict};
 use pyo3::{create_exception, wrap_pymodule};
-use pyo3_asyncio::TaskLocals;
+use pyo3_async_runtimes::TaskLocals;
 use pythonize::pythonize;
 use tokio::sync::oneshot::Sender;
 use tokio::sync::{Mutex, RwLock};
@@ -40,7 +35,7 @@ fn cleanup_runtime() {
 
 struct TokioRuntime {}
 
-impl pyo3_asyncio::generic::Runtime for TokioRuntime {
+impl pyo3_async_runtimes::generic::Runtime for TokioRuntime {
     type JoinError = tokio::task::JoinError;
     type JoinHandle = tokio::task::JoinHandle<()>;
 
@@ -63,7 +58,7 @@ tokio::task_local! {
     static TASK_LOCALS: OnceCell<TaskLocals>;
 }
 
-impl pyo3_asyncio::generic::ContextExt for TokioRuntime {
+impl pyo3_async_runtimes::generic::ContextExt for TokioRuntime {
     fn scope<F, R>(locals: TaskLocals, fut: F) -> Pin<Box<dyn Future<Output = R> + Send>>
     where
         F: Future<Output = R> + Send + 'static,
@@ -99,22 +94,23 @@ impl SafeCancelToken {
 
 static CONVERTERS_MODULE: OnceLock<Py<PyModule>> = OnceLock::new();
 
-fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<&PyAny>
+fn interruptible_future_to_py<F, T>(py: Python<'_>, fut: F) -> PyResult<Bound<'_, PyAny>>
 where
     F: Future<Output = PyResult<T>> + Send + 'static,
     T: IntoPy<PyObject>,
 {
-    let module = CONVERTERS_MODULE.get().unwrap().clone().into_ref(py);
+    let module = CONVERTERS_MODULE.get().unwrap().clone().into_bound(py);
 
     let (cancel_tx, cancel_rx) = tokio::sync::oneshot::channel::<()>();
 
-    let base_coro = pyo3_asyncio::generic::future_into_py::<TokioRuntime, _, _>(py, async move {
-        tokio::select! {
-            biased;
-            _ = cancel_rx => Ok(None),
-            r = fut => r.map(|o| Some(o))
-        }
-    })?;
+    let base_coro =
+        pyo3_async_runtimes::generic::future_into_py::<TokioRuntime, _, _>(py, async move {
+            tokio::select! {
+                biased;
+                _ = cancel_rx => Ok(None),
+                r = fut => r.map(|o| Some(o))
+            }
+        })?;
 
     module.call_method1(
         "coroutine_to_safely_cancellable",
@@ -187,7 +183,6 @@ impl Deployment {
         region: String,
         network: GcpNetwork,
         user: Option<String>,
-        startup_script: Option<String>,
         display_name: Option<String>,
     ) -> PyResult<Py<PyAny>> {
         let arc = self.underlying.blocking_write().add_host(|id| {
@@ -199,7 +194,6 @@ impl Deployment {
                 region,
                 network.underlying,
                 user,
-                startup_script,
                 display_name,
             )
         });
@@ -308,7 +302,7 @@ impl Deployment {
         .into_py(py))
     }
 
-    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn deploy<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -321,7 +315,7 @@ impl Deployment {
         })
     }
 
-    fn start<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn start<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -444,7 +438,7 @@ pub struct Service {
 
 #[pymethods]
 impl Service {
-    fn stop<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stop<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let py_none = py.None();
         interruptible_future_to_py(py, async move {
@@ -465,7 +459,7 @@ impl PyReceiver {
         slf
     }
 
-    fn __anext__<'p>(&self, py: Python<'p>) -> Option<&'p PyAny> {
+    fn __anext__<'p>(&self, py: Python<'p>) -> Option<Bound<'p, PyAny>> {
         let receiver = self.receiver.clone();
         Some(
             interruptible_future_to_py(py, async move {
@@ -525,7 +519,7 @@ impl CustomClientPort {
         }
     }
 
-    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn server_port<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             Ok(ServerPort {
@@ -542,7 +536,7 @@ struct HydroflowCrate {
 
 #[pymethods]
 impl HydroflowCrate {
-    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stdout<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -552,7 +546,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn stderr<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -562,7 +556,7 @@ impl HydroflowCrate {
         })
     }
 
-    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn exit_code<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         interruptible_future_to_py(py, async move {
             let underlying = underlying.read().await;
@@ -641,7 +635,7 @@ impl HydroflowCratePort {
 }
 
 #[pyfunction]
-fn demux(mapping: &PyDict) -> HydroflowSink {
+fn demux(mapping: Bound<'_, PyDict>) -> HydroflowSink {
     HydroflowSink {
         underlying: Arc::new(core::rust_crate::ports::DemuxSink {
             demux: mapping
@@ -732,7 +726,7 @@ impl ServerPort {
     }
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
-    fn into_source<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn into_source<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
@@ -745,7 +739,7 @@ impl ServerPort {
     }
 
     #[expect(clippy::wrong_self_convention, reason = "pymethods")]
-    fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn into_sink<'p>(&self, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let realized = with_tokio_runtime(|| Connection::AsClient(self.underlying.connect()));
 
         interruptible_future_to_py(py, async move {
@@ -766,7 +760,7 @@ struct PythonSink {
 
 #[pymethods]
 impl PythonSink {
-    fn send<'p>(&self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<&'p PyAny> {
+    fn send<'p>(&self, data: Py<PyBytes>, py: Python<'p>) -> PyResult<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         let bytes = Bytes::from(data.as_bytes(py).to_vec());
         interruptible_future_to_py(py, async move {
@@ -788,7 +782,7 @@ impl PythonStream {
         slf
     }
 
-    fn __anext__<'p>(&self, py: Python<'p>) -> Option<&'p PyAny> {
+    fn __anext__<'p>(&self, py: Python<'p>) -> Option<Bound<'p, PyAny>> {
         let underlying = self.underlying.clone();
         Some(
             interruptible_future_to_py(py, async move {
@@ -804,14 +798,14 @@ impl PythonStream {
 }
 
 #[pymodule]
-pub fn _core(py: Python<'_>, module: &PyModule) -> PyResult<()> {
+pub fn _core(py: Python<'_>, module: Bound<'_, PyModule>) -> PyResult<()> {
     unsafe {
         pyo3::ffi::PyEval_InitThreads();
     }
 
     CONVERTERS_MODULE
         .set(
-            PyModule::from_code(
+            PyModule::from_code_bound(
                 py,
                 "
 import asyncio
@@ -831,10 +825,10 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
         .unwrap();
 
     *TOKIO_RUNTIME.write().unwrap() = Some(tokio::runtime::Runtime::new().unwrap());
-    let atexit = PyModule::import(py, "atexit")?;
-    atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, module)?,))?;
+    let atexit = PyModule::import_bound(py, "atexit")?;
+    atexit.call_method1("register", (wrap_pyfunction!(cleanup_runtime, &module)?,))?;
 
-    module.add("AnyhowError", py.get_type::<AnyhowError>())?;
+    module.add("AnyhowError", py.get_type_bound::<AnyhowError>())?;
     module.add_class::<AnyhowWrapper>()?;
 
     module.add_class::<HydroflowSink>()?;
@@ -856,8 +850,8 @@ async def coroutine_to_safely_cancellable(c, cancel_token):
     module.add_class::<PythonSink>()?;
     module.add_class::<PythonStream>()?;
 
-    module.add_function(wrap_pyfunction!(demux, module)?)?;
-    module.add_function(wrap_pyfunction!(null, module)?)?;
+    module.add_function(wrap_pyfunction!(demux, &module)?)?;
+    module.add_function(wrap_pyfunction!(null, &module)?)?;
 
     module.add_wrapped(wrap_pymodule!(cli::cli))?;
 

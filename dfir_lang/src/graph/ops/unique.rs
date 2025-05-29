@@ -1,10 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// Takes one stream as input and filters out any duplicate occurrences. The output
 /// contains all unique values from the input.
@@ -63,82 +61,36 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
                    op_span,
                    context,
                    df_ident,
-                   loop_id,
                    ident,
                    inputs,
                    outputs,
                    is_pull,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    ..
                },
                diagnostics| {
-        let persistence = persistence_args.first().copied().unwrap_or_else(|| {
-            if loop_id.is_some() {
-                Persistence::None
-            } else {
-                Persistence::Tick
-            }
-        });
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let input = &inputs[0];
         let output = &outputs[0];
 
         let uniquedata_ident = wc.make_ident("uniquedata");
 
-        let (write_prologue, get_set) = match persistence {
-            Persistence::None => (
-                Default::default(),
-                quote_spanned! {op_span=>
-                    let mut set = #root::rustc_hash::FxHashSet::default();
-                },
-            ),
-            Persistence::Tick => {
-                let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                        #root::util::monotonic_map::MonotonicMap::<_, #root::rustc_hash::FxHashSet<_>>::default(),
-                    ));
-                };
-                let get_set = quote_spanned! {op_span=>
-                    let mut borrow = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#uniquedata_ident)
-                    }.borrow_mut();
-                    let set = borrow.get_mut_clear((#context.current_tick(), #context.current_stratum()));
-                };
-                (write_prologue, get_set)
-            }
-            Persistence::Static => {
-                let write_prologue = quote_spanned! {op_span=>
-                    let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
-                };
-                let get_set = quote_spanned! {op_span=>
-                    let mut set = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#uniquedata_ident)
-                    }.borrow_mut();
-                };
-                (write_prologue, get_set)
-            }
-            Persistence::Mutable => {
-                diagnostics.push(Diagnostic::spanned(
-                    op_span,
-                    Level::Error,
-                    "An implementation of 'mutable does not exist",
-                ));
-                return Err(());
-            }
+        let write_prologue = quote_spanned! {op_span=>
+            let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
         };
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #df_ident.set_state_lifespan_hook(#uniquedata_ident, #lifespan, |rcell| { rcell.take(); });
+            }).unwrap_or_default();
 
         let filter_fn = quote_spanned! {op_span=>
             |item| {
-                #get_set
+                let mut set = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    #context.state_ref_unchecked(#uniquedata_ident)
+                }.borrow_mut();
+
                 if !set.contains(item) {
                     set.insert(::std::clone::Clone::clone(item));
                     true
@@ -159,6 +111,7 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             ..Default::default()
         })

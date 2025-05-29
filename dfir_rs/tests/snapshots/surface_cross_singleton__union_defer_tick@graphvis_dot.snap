@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_cross_singleton.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -56,100 +56,106 @@ digraph {
     n23v1 -> n13v1 [color=red]
     n24v1 -> n25v1
     n25v1 -> n4v1 [color=red]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n1v1
-        subgraph "cluster_sg_1v1_var_teed_in" {
+        subgraph sg_1v1_var_teed_in {
+            cluster=true
             label="var teed_in"
             n1v1
         }
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 1"
-        n2v1
-        n3v1
-        subgraph "cluster_sg_2v1_var_teed_in" {
+        subgraph sg_2v1_var_teed_in {
+            cluster=true
             label="var teed_in"
             n2v1
             n3v1
         }
     }
-    subgraph "cluster n3v1" {
+    subgraph sg_3v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1\nstratum 0"
         n4v1
-        n5v1
-        n6v1
-        n7v1
-        subgraph "cluster_sg_3v1_var_persisted_stream" {
+        subgraph sg_3v1_var_persisted_stream {
+            cluster=true
             label="var persisted_stream"
             n5v1
             n6v1
         }
-        subgraph "cluster_sg_3v1_var_unioned_stream" {
+        subgraph sg_3v1_var_unioned_stream {
+            cluster=true
             label="var unioned_stream"
             n7v1
         }
     }
-    subgraph "cluster n4v1" {
+    subgraph sg_4v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_4v1\nstratum 1"
-        n8v1
-        n9v1
         n10v1
-        subgraph "cluster_sg_4v1_var_join" {
+        subgraph sg_4v1_var_join {
+            cluster=true
             label="var join"
             n8v1
             n9v1
         }
     }
-    subgraph "cluster n5v1" {
+    subgraph sg_5v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_5v1\nstratum 2"
-        n11v1
-        subgraph "cluster_sg_5v1_var_folded_thing" {
+        subgraph sg_5v1_var_folded_thing {
+            cluster=true
             label="var folded_thing"
             n11v1
         }
     }
-    subgraph "cluster n6v1" {
+    subgraph sg_6v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_6v1\nstratum 3"
-        n12v1
-        subgraph "cluster_sg_6v1_var_joined_folded" {
+        subgraph sg_6v1_var_joined_folded {
+            cluster=true
             label="var joined_folded"
             n12v1
         }
     }
-    subgraph "cluster n7v1" {
+    subgraph sg_7v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_7v1\nstratum 4"
-        n13v1
-        subgraph "cluster_sg_7v1_var_deferred_stream" {
+        subgraph sg_7v1_var_deferred_stream {
+            cluster=true
             label="var deferred_stream"
             n13v1
         }
     }
-    subgraph "cluster n8v1" {
+    subgraph sg_8v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_8v1\nstratum 4"
-        n14v1
-        subgraph "cluster_sg_8v1_var_deferred_stream" {
+        subgraph sg_8v1_var_deferred_stream {
+            cluster=true
             label="var deferred_stream"
             n14v1
         }
     }
-    subgraph "cluster n9v1" {
+    subgraph sg_9v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_9v1\nstratum 5"

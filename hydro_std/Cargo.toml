@@ -1,7 +1,7 @@
 [package]
 name = "hydro_std"
 publish = true
-version = "0.12.1"
+version = "0.13.0"
 documentation = "https://docs.rs/hydro_plus/"
 description = "Standard library of distributed systems building blocks for Hydro"
 edition = { workspace = true }
@@ -15,8 +15,9 @@ workspace = true
 all-features = true
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1" }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.0" }
 stageleft = "0.8.1"
+serde = "1"
 hdrhistogram = "7.5.4"
 stats-ci = { git = "https://github.com/hydro-project/stats-ci.git", branch = "main", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
@@ -25,10 +26,9 @@ serde = { version = "1", features = ["derive"] }
 stageleft_tool = "0.8.1"
 
 [dev-dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
+hydro_lang = { path = "../hydro_lang", version = "^0.13.0", features = [
     "deploy",
 ] }
 insta = "1.39"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.12.1" }
-async-ssh2-lite = { version = "0.5.0", features = ["vendored-openssl"] }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
 ctor = "0.2"

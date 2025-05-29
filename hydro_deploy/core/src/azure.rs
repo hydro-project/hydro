@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -123,10 +124,6 @@ impl Host for AzureHost {
 
     fn id(&self) -> usize {
         self.id
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 
     fn collect_resources(&self, resource_batch: &mut ResourceBatch) {
@@ -474,7 +471,7 @@ impl Host for AzureHost {
                 }
             }
             ClientStrategy::InternalTcpPort(target_host) => {
-                if let Some(provider_target) = target_host.as_any().downcast_ref::<AzureHost>() {
+                if let Some(provider_target) = <dyn Any>::downcast_ref::<AzureHost>(target_host) {
                     self.project == provider_target.project
                 } else {
                     false

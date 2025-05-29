@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_fold.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -8,7 +8,7 @@ classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
 classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
-1v1[\"(1v1) <code>source_iter(Vec::&lt;usize&gt;::new())</code>"/]:::pullClass
+1v1[\"(1v1) <code>source_iter([])</code>"/]:::pullClass
 2v1[\"<div style=text-align:center>(2v1)</div> <code>fold::&lt;<br>    'tick,<br>&gt;(<br>    || 0,<br>    |old: &amp;mut usize, _: usize| {<br>        *old += 1;<br>    },<br>)</code>"/]:::pullClass
 3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
 4v1[/"(4v1) <code>for_each(|_| {})</code>"\]:::pushClass
@@ -28,14 +28,11 @@ linkStyle default stroke:#aaa
 9v1-->|1|6v1
 10v1-->|0|6v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
-    1v1
     subgraph sg_1v1_var_teed_fold ["var <tt>teed_fold</tt>"]
         1v1
     end
 end
 subgraph sg_2v1 ["sg_2v1 stratum 1"]
-    2v1
-    3v1
     4v1
     subgraph sg_2v1_var_teed_fold ["var <tt>teed_fold</tt>"]
         2v1
@@ -43,7 +40,6 @@ subgraph sg_2v1 ["sg_2v1 stratum 1"]
     end
 end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
-    6v1
     7v1
     subgraph sg_3v1_var_join_node ["var <tt>join_node</tt>"]
         6v1

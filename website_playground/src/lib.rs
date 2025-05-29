@@ -1,14 +1,7 @@
 mod utils;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::task::{Context, Poll};
-use std::thread_local;
 
-use dfir_datalog_core::gen_dfir_graph;
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{WriteConfig, build_hfcode, partition_graph};
-use dfir_rs::datalog;
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_lang::graph::{WriteConfig, build_hfcode};
 use proc_macro2::{LineColumn, Span};
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -98,6 +91,11 @@ pub struct DfirOutput {
 }
 
 #[wasm_bindgen]
+#[allow(
+    clippy::allow_attributes,
+    clippy::too_many_arguments,
+    reason = "Easier to expose `bool` to JS than a config struct. TODO(mingwei):"
+)]
 pub fn compile_dfir(
     program: String,
     no_subgraphs: bool,
@@ -105,6 +103,7 @@ pub fn compile_dfir(
     no_pull_push: bool,
     no_handoffs: bool,
     no_references: bool,
+    no_loops: bool,
     op_short_text: bool,
 ) -> JsValue {
     let write_config = WriteConfig {
@@ -113,6 +112,7 @@ pub fn compile_dfir(
         no_pull_push,
         no_handoffs,
         no_references,
+        no_loops,
         op_short_text,
         op_text_no_imports: false,
     };
@@ -150,130 +150,4 @@ pub fn compile_dfir(
     };
 
     serde_wasm_bindgen::to_value(&out).unwrap()
-}
-
-#[wasm_bindgen]
-pub fn compile_datalog(
-    program: String,
-    no_subgraphs: bool,
-    no_varnames: bool,
-    no_pull_push: bool,
-    no_handoffs: bool,
-    no_references: bool,
-    op_short_text: bool,
-) -> JsValue {
-    let write_config = WriteConfig {
-        no_subgraphs,
-        no_varnames,
-        no_pull_push,
-        no_handoffs,
-        no_references,
-        op_short_text,
-        op_text_no_imports: false,
-    };
-
-    let wrapped = format!("r#\"{}\"#", program);
-    let out = match syn::parse_str(&wrapped) {
-        Ok(input) => match gen_dfir_graph(input) {
-            Ok(flat_graph) => {
-                let mut diagnostics = Vec::new();
-                let output = match partition_graph(flat_graph) {
-                    Ok(part_graph) => {
-                        let out =
-                            part_graph.as_code(&quote!(dfir_rs), true, quote!(), &mut diagnostics);
-                        let file: syn::File = syn::parse_quote! {
-                            fn main() {
-                                #out
-                            }
-                        };
-
-                        Some(DfirOutput {
-                            compiled: prettyplease::unparse(&file),
-                            mermaid: part_graph.to_mermaid(&write_config),
-                        })
-                    }
-                    Err(diagnostic) => {
-                        diagnostics.push(diagnostic);
-                        None
-                    }
-                };
-                DfirResult {
-                    output,
-                    diagnostics: diagnostics.into_iter().map(Into::into).collect(),
-                }
-            }
-            Err(diagnostics) => DfirResult {
-                output: None,
-                diagnostics: diagnostics.into_iter().map(Into::into).collect(),
-            },
-        },
-        Err(err) => DfirResult {
-            output: None,
-            diagnostics: vec![
-                Diagnostic {
-                    span: Span::call_site(),
-                    level: Level::Error,
-                    message: format!("Error: Could not parse input: {}", err),
-                }
-                .into(),
-            ],
-        },
-    };
-
-    serde_wasm_bindgen::to_value(&out).unwrap()
-}
-
-struct DfirInstance<'a, In, Out> {
-    dfir: Dfir<'a>,
-    input: tokio::sync::mpsc::UnboundedSender<In>,
-    output: tokio::sync::mpsc::UnboundedReceiver<Out>,
-}
-
-type DatalogBooleanDemoInstance = DfirInstance<'static, (i32,), (i32,)>;
-
-thread_local! {
-    static DATALOG_BOOLEAN_DEMO_INSTANCES: RefCell<HashMap<String, DatalogBooleanDemoInstance>> =
-        RefCell::new(HashMap::new());
-}
-
-#[wasm_bindgen]
-pub fn init_datalog_boolean_demo(instance_name: &str) {
-    DATALOG_BOOLEAN_DEMO_INSTANCES.with(|map| {
-        let (in_send, input) = dfir_rs::util::unbounded_channel::<(i32,)>();
-        let (out, out_recv) = dfir_rs::util::unbounded_channel::<(i32,)>();
-        let dfir = datalog!(
-            r#"
-              .input ints `source_stream(input)`
-              .output result `for_each(|v| out.send(v).unwrap())`
-
-              result(a) :- ints(a), ( a >= 0 ).
-            "#
-        );
-
-        map.borrow_mut().insert(
-            instance_name.into(),
-            DatalogBooleanDemoInstance {
-                dfir,
-                input: in_send,
-                output: out_recv.into_inner(),
-            },
-        );
-    })
-}
-
-#[wasm_bindgen]
-pub fn send_datalog_boolean_demo(instance_name: &str, input: i32) -> Option<i32> {
-    DATALOG_BOOLEAN_DEMO_INSTANCES.with(|map| -> Option<i32> {
-        let mut map = map.borrow_mut();
-        let instance = map.get_mut(instance_name)?;
-        instance.input.send((input,)).unwrap();
-        instance.dfir.run_tick();
-        match instance
-            .output
-            .poll_recv(&mut Context::from_waker(futures::task::noop_waker_ref()))
-        {
-            Poll::Pending => None,
-            Poll::Ready(opt) => Some(opt?.0),
-        }
-    })
 }

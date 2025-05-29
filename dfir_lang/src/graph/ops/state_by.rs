@@ -1,8 +1,8 @@
-use quote::{quote_spanned, ToTokens};
+use quote::{ToTokens, quote_spanned};
 
 use super::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, WriteContextArgs, RANGE_1,
+    Persistence, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -29,13 +29,13 @@ use crate::diagnostic::{Diagnostic, Level};
 ///
 /// An example of preallocating the capacity in a hashmap:
 ///
-///```dfir
+/// ```dfir
 /// use std::collections::HashSet;
 /// use lattices::set_union::{SetUnion, CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 ///
 /// my_state = source_iter(0..3)
 ///     -> state_by::<SetUnionHashSet<usize>>(SetUnionSingletonSet::new_from, {|| SetUnion::new(HashSet::<usize>::with_capacity(1_000)) });
-///```
+/// ```
 ///
 /// The `state` operator is equivalent to `state_by` used with an identity mapping operator with
 /// `Default::default` providing the factory function.
@@ -55,7 +55,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
                    df_ident,
@@ -99,22 +99,21 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             _ => unreachable!(),
         };
 
-
         let state_ident = singleton_output_ident;
         let factory_fn = &arguments[1];
 
-        let mut write_prologue = quote_spanned! { op_span=>
-                    let #state_ident = {
-                        let data_struct : #lattice_type = (#factory_fn)();
-                        ::std::debug_assert!(::lattices::IsBot::is_bot(&data_struct));
-                        #df_ident.add_state(::std::cell::RefCell::new(data_struct))
-                    };
+        let write_prologue = quote_spanned! {op_span=>
+            let #state_ident = {
+                let data_struct: #lattice_type = (#factory_fn)();
+                ::std::debug_assert!(::lattices::IsBot::is_bot(&data_struct));
+                #df_ident.add_state(::std::cell::RefCell::new(data_struct))
+            };
         };
-        if Persistence::Tick == persistence {
-            write_prologue.extend(quote_spanned! {op_span=>
-                #df_ident.set_state_tick_hook(#state_ident, |rcell| { rcell.take(); }); // Resets state to `Default::default()`.
-            });
-        }
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #df_ident.set_state_lifespan_hook(#state_ident, #lifespan, |rcell| { rcell.take(); });
+            }).unwrap_or_default();
 
         let by_fn = &arguments[0];
 
@@ -203,6 +202,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         };
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             ..Default::default()
         })

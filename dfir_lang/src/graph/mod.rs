@@ -49,6 +49,22 @@ new_key_type! {
     pub struct GraphLoopId;
 }
 
+impl GraphSubgraphId {
+    /// Generate a deterministic `Ident` for the given loop ID.
+    pub fn as_ident(self, span: Span) -> Ident {
+        use slotmap::Key;
+        Ident::new(&format!("sgid_{:?}", self.data()), span)
+    }
+}
+
+impl GraphLoopId {
+    /// Generate a deterministic `Ident` for the given loop ID.
+    pub fn as_ident(self, span: Span) -> Ident {
+        use slotmap::Key;
+        Ident::new(&format!("loop_{:?}", self.data()), span)
+    }
+}
+
 /// Context identifier as a string.
 const CONTEXT: &str = "context";
 /// Runnable DFIR graph object identifier as a string.
@@ -78,8 +94,11 @@ mod serde_syn {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq)]
-struct Varname(#[serde(with = "serde_syn")] pub Ident);
+/// A variable name assigned to a pipeline in DFIR syntax.
+///
+/// Fundamentally a serializable/deserializable wrapper around [`syn::Ident`].
+#[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Varname(#[serde(with = "serde_syn")] pub Ident);
 
 /// A node, corresponding to an operator or a handoff.
 #[derive(Clone, Serialize, Deserialize)]
@@ -208,6 +227,7 @@ pub fn get_operator_generics(
             GenericArgument::Lifetime(lifetime) => {
                 match &*lifetime.ident.to_string() {
                     "none" => Some(Persistence::None),
+                    "loop" => Some(Persistence::Loop),
                     "tick" => Some(Persistence::Tick),
                     "static" => Some(Persistence::Static),
                     "mutable" => Some(Persistence::Mutable),
@@ -215,7 +235,7 @@ pub fn get_operator_generics(
                         diagnostics.push(Diagnostic::spanned(
                             generic_arg.span(),
                             Level::Error,
-                            format!("Unknown lifetime generic argument `'{}`, expected `'tick`, `'static`, or `'mutable`.", lifetime.ident),
+                            format!("Unknown lifetime generic argument `'{}`, expected `'none`, `'loop`, `'tick`, `'static`, or `'mutable`.", lifetime.ident),
                         ));
                         // TODO(mingwei): should really keep going and not short circuit?
                         None

@@ -1,0 +1,20 @@
+error[E0271]: type mismatch resolving `<impl Pusherator<Item = (Bytes, SocketAddr)> as Pusherator>::Item == Bytes`
+  --> tests/compile-fail/surface_dest_sink_baditem.rs:14:16
+   |
+13 |               -> map(|i| bytes::Bytes::from_static(&b"hello world!"[i..(i + 2)]))
+   |  ________________-
+14 | |             -> dest_sink(outbound);
+   | |                ^^^^^^^^^^^^^^^^^^-
+   | |________________|_________________|
+   |                  |                 required by a bound introduced by this call
+   |                  expected `Bytes`, found `(Bytes, SocketAddr)`
+   |
+   = note: expected struct `bytes::Bytes`
+               found tuple `(bytes::Bytes, SocketAddr)`
+note: required by a bound in `pivot_run_sg_1v1`
+  --> tests/compile-fail/surface_dest_sink_baditem.rs:13:16
+   |
+13 |               -> map(|i| bytes::Bytes::from_static(&b"hello world!"[i..(i + 2)]))
+   |  ________________^
+14 | |             -> dest_sink(outbound);
+   | |__________________________________^ required by this bound in `pivot_run_sg_1v1`

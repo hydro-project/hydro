@@ -1,0 +1,15 @@
+[package]
+name = "example_test"
+publish = true
+version = "0.0.0"
+documentation = "https://docs.rs/example_test/"
+description = "Test `cargo example` code."
+edition = { workspace = true }
+license = { workspace = true }
+repository = { workspace = true }
+
+[dependencies]
+regex = "1.10.4"
+
+[lints]
+workspace = true

@@ -27,14 +27,17 @@ impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
 impl<T> NoAtomic for Cluster<'_, T> {}
 #[sealed]
-impl<'a, L: Location<'a>> NoAtomic for Tick<L> {}
+impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 
 #[derive(Clone)]
-pub struct Atomic<L> {
-    pub(crate) tick: Tick<L>,
+pub struct Atomic<Loc> {
+    pub(crate) tick: Tick<Loc>,
 }
 
-impl<'a, L: Location<'a>> Location<'a> for Atomic<L> {
+impl<'a, L> Location<'a> for Atomic<L>
+where
+    L: Location<'a>,
+{
     type Root = L::Root;
 
     fn root(&self) -> Self::Root {
@@ -59,12 +62,15 @@ impl<L> NoTick for Atomic<L> {}
 
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
-pub struct Tick<L> {
+pub struct Tick<Loc> {
     pub(crate) id: usize,
-    pub(crate) l: L,
+    pub(crate) l: Loc,
 }
 
-impl<'a, L: Location<'a>> Location<'a> for Tick<L> {
+impl<'a, L> Location<'a> for Tick<L>
+where
+    L: Location<'a>,
+{
     type Root = L::Root;
 
     fn root(&self) -> Self::Root {
@@ -88,7 +94,10 @@ impl<'a, L: Location<'a>> Location<'a> for Tick<L> {
     }
 }
 
-impl<'a, L: Location<'a>> Tick<L> {
+impl<'a, L> Tick<L>
+where
+    L: Location<'a>,
+{
     pub fn outer(&self) -> &L {
         &self.l
     }
@@ -113,11 +122,9 @@ impl<'a, L: Location<'a>> Tick<L> {
         }
     }
 
-    pub fn singleton<T: Clone>(
-        &self,
-        e: impl QuotedWithContext<'a, T, L>,
-    ) -> Singleton<T, Self, Bounded>
+    pub fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, L>) -> Singleton<T, Self, Bounded>
     where
+        T: Clone,
         L: NoTick + NoAtomic,
     {
         unsafe {
@@ -146,10 +153,9 @@ impl<'a, L: Location<'a>> Tick<L> {
         )
     }
 
-    pub fn forward_ref<S: CycleCollection<'a, ForwardRefMarker, Location = Self>>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S)
+    pub fn forward_ref<S>(&self) -> (ForwardRef<'a, S>, S)
     where
+        S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
@@ -166,10 +172,21 @@ impl<'a, L: Location<'a>> Tick<L> {
         )
     }
 
-    pub fn forward_ref_atomic<S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>>(
-        &self,
-    ) -> (ForwardRef<'a, S>, S) {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
+    pub fn forward_ref_atomic<S>(&self) -> (ForwardRef<'a, S>, S)
+    where
+        S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>,
+    {
+        let next_id = {
+            let on_id = match self.l.id() {
+                LocationId::Process(id) => id,
+                LocationId::Cluster(id) => id,
+                LocationId::Tick(_, _) => panic!(),
+                LocationId::ExternalProcess(_) => panic!(),
+            };
+
+            self.flow_state().borrow_mut().next_cycle_id()
+        };
+        
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
@@ -183,10 +200,9 @@ impl<'a, L: Location<'a>> Tick<L> {
         )
     }
 
-    pub fn cycle<S: CycleCollection<'a, TickCycleMarker, Location = Self> + DeferTick>(
-        &self,
-    ) -> (TickCycle<'a, S>, S)
+    pub fn cycle<S>(&self) -> (TickCycle<'a, S>, S)
     where
+        S: CycleCollection<'a, TickCycleMarker, Location = Self> + DeferTick,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
@@ -203,13 +219,9 @@ impl<'a, L: Location<'a>> Tick<L> {
         )
     }
 
-    pub fn cycle_with_initial<
-        S: CycleCollectionWithInitial<'a, TickCycleMarker, Location = Self> + DeferTick,
-    >(
-        &self,
-        initial: S,
-    ) -> (TickCycle<'a, S>, S)
+    pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycle<'a, S>, S)
     where
+        S: CycleCollectionWithInitial<'a, TickCycleMarker, Location = Self> + DeferTick,
         L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();

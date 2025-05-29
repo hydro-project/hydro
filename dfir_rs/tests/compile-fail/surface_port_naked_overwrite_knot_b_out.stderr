@@ -1,10 +1,10 @@
-error: Indexing on output is overwritten below ($DIR/tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:11:13) (1/2).
+error: Indexing on output is overwritten below (dfir_rs/tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:11:13) (1/2).
  --> tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:8:21
   |
 8 |         x_1 = pivot[1];
   |                     ^
 
-error: Cannot index on already-indexed output, previously indexed above ($DIR/tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:8:21) (2/2).
+error: Cannot index on already-indexed output, previously indexed above (dfir_rs/tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:8:21) (2/2).
   --> tests/compile-fail/surface_port_naked_overwrite_knot_b_out.rs:11:13
    |
 11 |         x_1[0] -> [1]x_1; // Error: `pivot[1][0]`

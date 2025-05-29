@@ -1,5 +1,46 @@
 
 
+## v0.13.0 (2025-04-11)
+
+### New Features
+
+ - <csr-id-5ac247ca2006bbb45c5511c78dc6d9028f7451da/> update Stageleft and reduce reliance on DFIR re-exports
+ - <csr-id-e0c4abb02054fc3d5dc866286b18f3f2bcd2ad36/> update Stageleft to reduce viral dependencies
+   Now that Stageleft handles quoted snippets that refer to local
+   dependencies, we do not need to duplicate deps into downstream crates.
+
+### New Features (BREAKING)
+
+ - <csr-id-dfb7a1b5ad47f03822e9b7cae7dae81914b305e2/> don't pull in dfir_rs during the compilation stage
+   Because `hydro_lang` is responsible for _generating_ DFIR code, it
+   doesn't actually need to depend on the runtime (`dfir_rs`), other than
+   when it is used in the (legacy) macro mode or when we want to include
+   utilities for runtime logic (`resource_measurement`). This sticks those
+   pieces under feature flags and makes `dfir_rs` an optional dependency,
+   which reduces the compile tree for crates like `hydro_test`.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 23 calendar days.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 3 unique issues were worked on: [#1791](https://github.com/hydro-project/hydro/issues/1791), [#1796](https://github.com/hydro-project/hydro/issues/1796), [#1797](https://github.com/hydro-project/hydro/issues/1797)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1791](https://github.com/hydro-project/hydro/issues/1791)**
+    - Update Stageleft to reduce viral dependencies ([`e0c4abb`](https://github.com/hydro-project/hydro/commit/e0c4abb02054fc3d5dc866286b18f3f2bcd2ad36))
+ * **[#1796](https://github.com/hydro-project/hydro/issues/1796)**
+    - Update Stageleft and reduce reliance on DFIR re-exports ([`5ac247c`](https://github.com/hydro-project/hydro/commit/5ac247ca2006bbb45c5511c78dc6d9028f7451da))
+ * **[#1797](https://github.com/hydro-project/hydro/issues/1797)**
+    - Don't pull in dfir_rs during the compilation stage ([`dfb7a1b`](https://github.com/hydro-project/hydro/commit/dfb7a1b5ad47f03822e9b7cae7dae81914b305e2))
+</details>
+
 ## v0.12.1 (2025-03-15)
 
 <csr-id-38e6721be69f6a41aa47a01a9d06d56a01be1355/>
@@ -31,7 +72,8 @@
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 3 calendar days.
+ - 5 commits contributed to the release.
+ - 7 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1765](https://github.com/hydro-project/hydro/issues/1765), [#1774](https://github.com/hydro-project/hydro/issues/1774), [#1787](https://github.com/hydro-project/hydro/issues/1787)
 
@@ -48,6 +90,7 @@
  * **[#1787](https://github.com/hydro-project/hydro/issues/1787)**
     - Demote python deploy docs, fix docsrs configs, fix #1392, fix #1629 ([`b235a42`](https://github.com/hydro-project/hydro/commit/b235a42a3071e55da7b09bdc8bc710b18e0fe053))
  * **Uncategorized**
+    - Release include_mdtests v0.0.0, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`faf0d3e`](https://github.com/hydro-project/hydro/commit/faf0d3ed9f172275f2e2f219c5ead1910c209a36))
     - Release dfir_lang v0.12.1, dfir_datalog_core v0.12.1, dfir_datalog v0.12.1, dfir_macro v0.12.1, hydro_deploy_integration v0.12.1, lattices v0.6.1, pusherator v0.0.12, dfir_rs v0.12.1, hydro_deploy v0.12.1, hydro_lang v0.12.1, hydro_std v0.12.1, hydro_cli v0.12.1 ([`23221b5`](https://github.com/hydro-project/hydro/commit/23221b53b30918707ddaa85529d04cd7919166b4))
 </details>
 

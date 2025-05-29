@@ -7,7 +7,7 @@ use auto_impl::auto_impl;
 use slotmap::Key;
 
 use super::ops::DelayType;
-use super::{Color, GraphNodeId, GraphSubgraphId};
+use super::{Color, GraphLoopId, GraphNodeId, GraphSubgraphId};
 
 /// Trait for writing textual representations of graphs, i.e. mermaid or dot graphs.
 #[auto_impl(&mut, Box)]
@@ -19,7 +19,7 @@ pub(crate) trait GraphWrite {
     fn write_prologue(&mut self) -> Result<(), Self::Err>;
 
     /// Write a node, with styling.
-    fn write_node(
+    fn write_node_definition(
         &mut self,
         node_id: GraphNodeId,
         node: &str,
@@ -36,22 +36,39 @@ pub(crate) trait GraphWrite {
         is_reference: bool,
     ) -> Result<(), Self::Err>;
 
+    /// Begin writing a loop.
+    fn write_loop_start(&mut self, loop_id: GraphLoopId) -> Result<(), Self::Err>;
     /// Begin writing a subgraph.
     fn write_subgraph_start(
         &mut self,
         sg_id: GraphSubgraphId,
         stratum: usize,
-        subgraph_nodes: impl Iterator<Item = GraphNodeId>,
     ) -> Result<(), Self::Err>;
-    /// Write the nodes associated with a single variable name, within a subgraph.
-    fn write_varname(
+    /// Begin writing a varname block.
+    fn write_varname_start(
         &mut self,
         varname: &str,
-        varname_nodes: impl Iterator<Item = GraphNodeId>,
         sg_id: Option<GraphSubgraphId>,
     ) -> Result<(), Self::Err>;
+
+    /// Write a node within a stack of loops, subgraphs, and/or varname blocks.
+    fn write_node(&mut self, node_id: GraphNodeId) -> Result<(), Self::Err>;
+
+    // Generic end method for loops, subgraphs, and varname blocks.
+    fn write_end(&mut self) -> Result<(), Self::Err>;
+
+    /// End writing a varname block.
+    fn write_varname_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
     /// End writing a subgraph.
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err>;
+    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
+    /// End writing a loop.
+    fn write_loop_end(&mut self) -> Result<(), Self::Err> {
+        self.write_end()
+    }
 
     /// End the graph. Last method called.
     fn write_epilogue(&mut self) -> Result<(), Self::Err>;
@@ -80,6 +97,7 @@ pub fn escape_mermaid(string: &str) -> String {
 
 pub struct Mermaid<W> {
     write: W,
+    indent: usize,
     // How many links have been written, for styling
     // https://mermaid.js.org/syntax/flowchart.html#styling-links
     link_count: usize,
@@ -88,6 +106,7 @@ impl<W> Mermaid<W> {
     pub fn new(write: W) -> Self {
         Self {
             write,
+            indent: 0,
             link_count: 0,
         }
     }
@@ -101,27 +120,19 @@ where
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            r"%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#ddd','clusterBorder':'#888'}}}}}}%%",
+            "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#ddd','clusterBorder':'#888'}}}}}}%%
+{b:i$}flowchart TD
+{b:i$}classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+{b:i$}classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+{b:i$}classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+{b:i$}linkStyle default stroke:#aaa",
+            b = "",
+            i = self.indent
         )?;
-        writeln!(self.write, "flowchart TD")?;
-        writeln!(
-            self.write,
-            "classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre",
-        )?;
-        writeln!(
-            self.write,
-            "classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre",
-        )?;
-        writeln!(
-            self.write,
-            "classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre",
-        )?;
-
-        writeln!(self.write, "linkStyle default stroke:#aaa")?;
         Ok(())
     }
 
-    fn write_node(
+    fn write_node_definition(
         &mut self,
         node_id: GraphNodeId,
         node: &str,
@@ -153,7 +164,7 @@ where
                 _ => "]",
             },
         );
-        writeln!(self.write, "{}", label)?;
+        writeln!(self.write, "{b:i$}{label}", b = "", i = self.indent)?;
         Ok(())
     }
 
@@ -170,7 +181,7 @@ where
         #[expect(clippy::write_literal, reason = "code readability")]
         write!(
             self.write,
-            "{src}{arrow_body}{arrow_head}{label}{dst}",
+            "{b:i$}{src}{arrow_body}{arrow_head}{label}{dst}",
             src = src_str.trim(),
             arrow_body = "--",
             arrow_head = match delay_type {
@@ -184,6 +195,8 @@ where
                 Cow::Borrowed("")
             },
             dst = dest_str.trim(),
+            b = "",
+            i = self.indent,
         )?;
         if let Some(delay_type) = delay_type {
             write!(
@@ -201,57 +214,76 @@ where
         Ok(())
     }
 
+    fn write_loop_start(&mut self, loop_id: GraphLoopId) -> Result<(), Self::Err> {
+        writeln!(
+            self.write,
+            "{b:i$}subgraph loop_{lid:?} [\"loop_{lid:?}\"]",
+            lid = loop_id.data(),
+            b = "",
+            i = self.indent,
+        )?;
+        self.indent += 4;
+        Ok(())
+    }
+
     fn write_subgraph_start(
         &mut self,
         sg_id: GraphSubgraphId,
         stratum: usize,
-        subgraph_nodes: impl Iterator<Item = GraphNodeId>,
     ) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            "subgraph sg_{sg:?} [\"sg_{sg:?} stratum {:?}\"]",
+            "{b:i$}subgraph sg_{sg:?} [\"sg_{sg:?} stratum {:?}\"]",
             stratum,
             sg = sg_id.data(),
+            b = "",
+            i = self.indent,
         )?;
-        for node_id in subgraph_nodes {
-            writeln!(self.write, "    {node_id:?}", node_id = node_id.data())?;
-        }
+        self.indent += 4;
         Ok(())
     }
 
-    fn write_varname(
+    fn write_varname_start(
         &mut self,
         varname: &str,
-        varname_nodes: impl Iterator<Item = GraphNodeId>,
         sg_id: Option<GraphSubgraphId>,
     ) -> Result<(), Self::Err> {
-        let pad = if let Some(sg_id) = sg_id {
-            writeln!(
-                self.write,
-                "    subgraph sg_{sg:?}_var_{var} [\"var <tt>{var}</tt>\"]",
-                sg = sg_id.data(),
-                var = varname,
-            )?;
-            "    "
-        } else {
-            writeln!(
-                self.write,
-                "subgraph var_{0} [\"var <tt>{0}</tt>\"]",
-                varname,
-            )?;
-            writeln!(self.write, "style var_{} fill:transparent", varname)?;
-            ""
-        };
-        for local_named_node in varname_nodes {
-            writeln!(self.write, "    {}{:?}", pad, local_named_node.data())?;
+        let mut varname_id = format!("var_{varname}");
+        if let Some(sg_id) = sg_id {
+            varname_id = format!("sg_{sg:?}_{varname_id}", sg = sg_id.data());
         }
-        writeln!(self.write, "{}end", pad)?;
+        writeln!(
+            self.write,
+            "{b:i$}subgraph {varname_id} [\"var <tt>{varname}</tt>\"]",
+            b = "",
+            i = self.indent,
+        )?;
+        self.indent += 4;
+        if sg_id.is_none() {
+            // From https://github.com/hydro-project/hydro/pull/932
+            writeln!(
+                self.write,
+                "{b:i$}style {varname_id} fill:transparent",
+                b = "",
+                i = self.indent
+            )?;
+        }
         Ok(())
     }
 
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
-        writeln!(self.write, "end")?;
-        Ok(())
+    fn write_node(&mut self, node_id: GraphNodeId) -> Result<(), Self::Err> {
+        writeln!(
+            self.write,
+            "{b:i$}{nid:?}",
+            nid = node_id.data(),
+            b = "",
+            i = self.indent
+        )
+    }
+
+    fn write_end(&mut self) -> Result<(), Self::Err> {
+        self.indent -= 4;
+        writeln!(self.write, "{b:i$}end", b = "", i = self.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
@@ -272,10 +304,11 @@ pub fn escape_dot(string: &str, newline: &str) -> String {
 
 pub struct Dot<W> {
     write: W,
+    indent: usize,
 }
 impl<W> Dot<W> {
     pub fn new(write: W) -> Self {
-        Self { write }
+        Self { write, indent: 0 }
     }
 }
 impl<W> GraphWrite for Dot<W>
@@ -285,14 +318,28 @@ where
     type Err = std::fmt::Error;
 
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
-        writeln!(self.write, "digraph {{")?;
+        writeln!(self.write, "{b:i$}digraph {{", b = "", i = self.indent)?;
+        self.indent += 4;
+
         const FONTS: &str = "\"Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace\"";
-        writeln!(self.write, "    node [fontname={}, style=filled];", FONTS)?;
-        writeln!(self.write, "    edge [fontname={}];", FONTS)?;
+        writeln!(
+            self.write,
+            "{b:i$}node [fontname={}, style=filled];",
+            FONTS,
+            b = "",
+            i = self.indent
+        )?;
+        writeln!(
+            self.write,
+            "{b:i$}edge [fontname={}];",
+            FONTS,
+            b = "",
+            i = self.indent
+        )?;
         Ok(())
     }
 
-    fn write_node(
+    fn write_node_definition(
         &mut self,
         node_id: GraphNodeId,
         node: &str,
@@ -316,14 +363,13 @@ where
         };
         write!(
             self.write,
-            "    {} [label=\"({}) {}{}\"",
-            label,
-            label,
-            nm,
+            "{b:i$}{label} [label=\"({label}) {nm}{}\"",
             // if contains linebreak left-justify by appending another "\\l"
             if nm.contains("\\l") { "\\l" } else { "" },
+            b = "",
+            i = self.indent,
         )?;
-        write!(self.write, ", shape={}, fillcolor={}", shape_str, color_str)?;
+        write!(self.write, ", shape={shape_str}, fillcolor={color_str}")?;
         writeln!(self.write, "]")?;
         Ok(())
     }
@@ -347,9 +393,11 @@ where
 
         write!(
             self.write,
-            "    n{:?} -> n{:?}",
+            "{b:i$}n{:?} -> n{:?}",
             src_id.data(),
             dst_id.data(),
+            b = "",
+            i = self.indent,
         )?;
         if !properties.is_empty() {
             write!(self.write, " [")?;
@@ -362,74 +410,107 @@ where
         Ok(())
     }
 
+    fn write_loop_start(&mut self, loop_id: GraphLoopId) -> Result<(), Self::Err> {
+        writeln!(
+            self.write,
+            "{b:i$}subgraph loop_{lid:?} {{",
+            lid = loop_id.data(),
+            b = "",
+            i = self.indent,
+        )?;
+        self.indent += 4;
+        writeln!(self.write, "{b:i$}cluster=true", b = "", i = self.indent)?;
+        writeln!(
+            self.write,
+            "{b:i$}fillcolor=\"#ee88ee\"",
+            b = "",
+            i = self.indent,
+        )?;
+        writeln!(self.write, "{b:i$}style=filled", b = "", i = self.indent)?;
+        writeln!(
+            self.write,
+            "{b:i$}label = loop_{lid:?}",
+            lid = loop_id.data(),
+            b = "",
+            i = self.indent
+        )?;
+        Ok(())
+    }
+
     fn write_subgraph_start(
         &mut self,
         sg_id: GraphSubgraphId,
         stratum: usize,
-        subgraph_nodes: impl Iterator<Item = GraphNodeId>,
     ) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            "    subgraph \"cluster n{:?}\" {{",
-            sg_id.data(),
+            "{b:i$}subgraph sg_{sg:?} {{",
+            sg = sg_id.data(),
+            b = "",
+            i = self.indent
         )?;
-        writeln!(self.write, "        fillcolor=\"#dddddd\"")?;
-        writeln!(self.write, "        style=filled")?;
+        self.indent += 4;
+        writeln!(self.write, "{b:i$}cluster=true", b = "", i = self.indent)?;
         writeln!(
             self.write,
-            "        label = \"sg_{:?}\\nstratum {}\"",
-            sg_id.data(),
-            stratum,
+            "{b:i$}fillcolor=\"#dddddd\"",
+            b = "",
+            i = self.indent
         )?;
-        for node_id in subgraph_nodes {
-            writeln!(self.write, "        n{:?}", node_id.data(),)?;
-        }
+        writeln!(self.write, "{b:i$}style=filled", b = "", i = self.indent)?;
+        writeln!(
+            self.write,
+            "{b:i$}label = \"sg_{sg:?}\\nstratum {stratum}\"",
+            sg = sg_id.data(),
+            b = "",
+            i = self.indent
+        )?;
         Ok(())
     }
 
-    fn write_varname(
+    fn write_varname_start(
         &mut self,
         varname: &str,
-        varname_nodes: impl Iterator<Item = GraphNodeId>,
         sg_id: Option<GraphSubgraphId>,
     ) -> Result<(), Self::Err> {
-        let pad = if let Some(sg_id) = sg_id {
-            writeln!(
-                self.write,
-                "        subgraph \"cluster_sg_{sg:?}_var_{var}\" {{",
-                sg = sg_id.data(),
-                var = varname,
-            )?;
-            "    "
-        } else {
-            writeln!(
-                self.write,
-                "    subgraph \"cluster_var_{var}\" {{",
-                var = varname,
-            )?;
-            ""
-        };
+        let mut varname_id = format!("var_{varname}");
+        if let Some(sg_id) = sg_id {
+            varname_id = format!("sg_{sg:?}_{varname_id}", sg = sg_id.data());
+        }
         writeln!(
             self.write,
-            "        {}label=\"var {var}\"",
-            pad,
-            var = varname
+            "{b:i$}subgraph {varname_id} {{",
+            b = "",
+            i = self.indent
         )?;
-        for local_named_node in varname_nodes {
-            writeln!(self.write, "        {}n{:?}", pad, local_named_node.data())?;
-        }
-        writeln!(self.write, "    {}}}", pad)?;
+        self.indent += 4;
+        writeln!(self.write, "{b:i$}cluster=true", b = "", i = self.indent)?;
+        writeln!(
+            self.write,
+            "{b:i$}label=\"var {var}\"",
+            var = varname,
+            b = "",
+            i = self.indent
+        )?;
         Ok(())
     }
 
-    fn write_subgraph_end(&mut self) -> Result<(), Self::Err> {
-        // subgraph footer
-        writeln!(self.write, "    }}")?;
-        Ok(())
+    fn write_node(&mut self, node_id: GraphNodeId) -> Result<(), Self::Err> {
+        writeln!(
+            self.write,
+            "{b:i$}n{nid:?}",
+            nid = node_id.data(),
+            b = "",
+            i = self.indent
+        )
+    }
+
+    fn write_end(&mut self) -> Result<(), Self::Err> {
+        self.indent -= 4;
+        writeln!(self.write, "{b:i$}}}", b = "", i = self.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {
-        writeln!(self.write, "}}")?;
-        Ok(())
+        self.write_end()
     }
 }

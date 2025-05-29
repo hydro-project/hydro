@@ -12,8 +12,8 @@ proc-macro = true
 path = "../hydro_test_local/src/lib.rs"
 
 [dependencies]
-dfir_rs = { path = "../dfir_rs", version = "^0.12.1", default-features = false }
-hydro_lang = { path = "../hydro_lang", version = "^0.12.1", features = [
+dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.2", features = [
     "build",
     "staged_macro",
 ] }

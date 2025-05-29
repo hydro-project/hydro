@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_persist.rs
-expression: "hf.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: hf.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -24,33 +24,36 @@ digraph {
     n8v1 -> n4v1 [color=red]
     n9v1 -> n3v1 [color=red]
     n10v1 -> n6v1 [label="1"]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
         n1v1
         n2v1
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 1"
         n3v1
     }
-    subgraph "cluster n3v1" {
+    subgraph sg_3v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1\nstratum 2"
         n4v1
-        n6v1
-        n7v1
-        subgraph "cluster_sg_3v1_var_product_node" {
+        subgraph sg_3v1_var_product_node {
+            cluster=true
             label="var product_node"
             n6v1
             n7v1
         }
     }
-    subgraph "cluster n4v1" {
+    subgraph sg_4v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_4v1\nstratum 0"

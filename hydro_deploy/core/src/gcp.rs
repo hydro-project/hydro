@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -178,17 +179,12 @@ pub struct GcpComputeEngineHost {
     region: String,
     network: Arc<RwLock<GcpNetwork>>,
     user: Option<String>,
-    startup_script: Option<String>,
     display_name: Option<String>,
     pub launched: OnceLock<Arc<LaunchedComputeEngine>>, // TODO(mingwei): fix pub
     external_ports: Mutex<Vec<u16>>,
 }
 
 impl GcpComputeEngineHost {
-    #[expect(
-        clippy::too_many_arguments,
-        reason = "internal code called by builder elsewhere"
-    )]
     pub fn new(
         id: usize,
         project: impl Into<String>,
@@ -197,7 +193,6 @@ impl GcpComputeEngineHost {
         region: impl Into<String>,
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
-        startup_script: Option<String>,
         display_name: Option<String>,
     ) -> Self {
         Self {
@@ -208,7 +203,6 @@ impl GcpComputeEngineHost {
             region: region.into(),
             network,
             user,
-            startup_script,
             display_name,
             launched: OnceLock::new(),
             external_ports: Mutex::new(Vec::new()),
@@ -258,10 +252,6 @@ impl Host for GcpComputeEngineHost {
 
     fn id(&self) -> usize {
         self.id
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
     }
 
     fn collect_resources(&self, resource_batch: &mut ResourceBatch) {
@@ -398,7 +388,7 @@ impl Host for GcpComputeEngineHost {
         }
         drop(external_ports); // Drop the lock as soon as possible.
 
-        let user = self.user.as_ref().cloned().unwrap_or("hydro".to_string());
+        let user = self.user.as_deref().unwrap_or("hydro");
         resource_batch
             .terraform
             .resource
@@ -425,7 +415,6 @@ impl Host for GcpComputeEngineHost {
                         }
                     ],
                     "network_interface": external_interfaces,
-                    "metadata_startup_script": self.startup_script,
                 }),
             );
 
@@ -519,7 +508,7 @@ impl Host for GcpComputeEngineHost {
             }
             ClientStrategy::InternalTcpPort(target_host) => {
                 if let Some(gcp_target) =
-                    target_host.as_any().downcast_ref::<GcpComputeEngineHost>()
+                    <dyn Any>::downcast_ref::<GcpComputeEngineHost>(target_host)
                 {
                     self.project == gcp_target.project
                 } else {

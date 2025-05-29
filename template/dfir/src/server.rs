@@ -3,20 +3,18 @@ use std::net::SocketAddr;
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
-use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
+use dfir_rs::util::bind_udp_bytes;
 
-use crate::DEFAULT_SERVER_ADDRESS;
+use crate::Opts;
 use crate::helpers::print_graph;
 use crate::protocol::Message;
 
 /// Runs the server. The server is a long-running process that listens for messages and echoes
 /// them back the client.
-pub(crate) async fn run_server(opts: crate::Opts) {
+pub(crate) async fn run_server(opts: Opts) {
     // If a server address & port are provided as command-line inputs, use those, else use the
     // default.
-    let server_address = opts
-        .address
-        .unwrap_or_else(|| ipv4_resolve(DEFAULT_SERVER_ADDRESS).unwrap());
+    let server_address = opts.address;
 
     println!("Starting server on {:?}", server_address);
 

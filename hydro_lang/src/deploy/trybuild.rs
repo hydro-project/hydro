@@ -54,29 +54,36 @@ pub fn create_graph_trybuild(
     .visit_file_mut(&mut generated_code);
 
     let inlined_staged: syn::File = if is_test {
-        stageleft_tool::gen_staged_trybuild(
+        let gen_staged = stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
             &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             is_test,
-        )
+        );
+
+        syn::parse_quote! {
+            #[allow(
+                unused,
+                ambiguous_glob_reexports,
+                clippy::suspicious_else_formatting,
+                unexpected_cfgs,
+                reason = "generated code"
+            )]
+            pub mod __staged {
+                #gen_staged
+            }
+        }
     } else {
-        syn::parse_quote!()
+        let crate_name_ident = syn::Ident::new(crate_name, proc_macro2::Span::call_site());
+        syn::parse_quote!(
+            pub use #crate_name_ident::__staged;
+        )
     };
 
     let source = prettyplease::unparse(&syn::parse_quote! {
         #generated_code
 
-        #[allow(
-            unused,
-            ambiguous_glob_reexports,
-            clippy::suspicious_else_formatting,
-            unexpected_cfgs,
-            reason = "generated code"
-        )]
-        pub mod __staged {
-            #inlined_staged
-        }
+        #inlined_staged
     });
 
     let hash = format!("{:X}", Sha256::digest(&source))
@@ -265,10 +272,12 @@ pub fn create_trybuild()
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
 
-        #[cfg(nightly)]
         let project_lock = File::create(path!(project.dir / ".hydro-trybuild-lock"))?;
+        // TODO(mingwei): remove cfg once file locking is stable: https://github.com/rust-lang/rust/issues/130994
         #[cfg(nightly)]
         project_lock.lock()?;
+        #[cfg(not(nightly))]
+        fs2::FileExt::lock_exclusive(&project_lock)?;
 
         let manifest_toml = toml::to_string(&project.manifest)?;
         write_atomic(manifest_toml.as_ref(), &path!(project.dir / "Cargo.toml"))?;
@@ -309,8 +318,12 @@ fn write_atomic(contents: &[u8], path: &Path) -> Result<(), std::io::Error> {
         .create(true)
         .truncate(false)
         .open(path)?;
+
+    // TODO(mingwei): remove cfg once file locking is stable: https://github.com/rust-lang/rust/issues/130994
     #[cfg(nightly)]
     file.lock()?;
+    #[cfg(not(nightly))]
+    fs2::FileExt::lock_exclusive(&file)?;
 
     let mut existing_contents = Vec::new();
     file.read_to_end(&mut existing_contents)?;

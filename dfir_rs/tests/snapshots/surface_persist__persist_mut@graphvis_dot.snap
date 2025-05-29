@@ -1,16 +1,16 @@
 ---
 source: dfir_rs/tests/surface_persist.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) persist_mut::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) persist_mut::<'mutable>()", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
     n4v1 [label="(n4v1) for_each(|v| pull_tx.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) flat_map(|x| if x == 3 { vec![Persist(x), Delete(x)] } else { vec![Persist(x)] })", shape=house, fillcolor="#ffff88"]
-    n6v1 [label="(n6v1) persist_mut::<'static>()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) persist_mut::<'mutable>()", shape=invhouse, fillcolor="#88aaff"]
     n7v1 [label="(n7v1) for_each(|v| push_tx.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
@@ -22,31 +22,33 @@ digraph {
     n3v1 -> n5v1
     n8v1 -> n2v1 [color=red]
     n9v1 -> n6v1 [color=red]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n1v1
-        subgraph "cluster_sg_1v1_var_my_tee" {
+        subgraph sg_1v1_var_my_tee {
+            cluster=true
             label="var my_tee"
             n1v1
         }
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 1"
-        n2v1
-        n3v1
         n4v1
         n5v1
-        subgraph "cluster_sg_2v1_var_my_tee" {
+        subgraph sg_2v1_var_my_tee {
+            cluster=true
             label="var my_tee"
             n2v1
             n3v1
         }
     }
-    subgraph "cluster n3v1" {
+    subgraph sg_3v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1\nstratum 2"

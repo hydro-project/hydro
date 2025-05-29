@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_codegen.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -18,8 +18,6 @@ linkStyle default stroke:#aaa
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     3v1
     4v1
-    1v1
-    2v1
     subgraph sg_1v1_var_m ["var <tt>m</tt>"]
         1v1
         2v1

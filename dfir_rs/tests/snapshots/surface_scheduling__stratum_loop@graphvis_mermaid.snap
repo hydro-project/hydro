@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_scheduling.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -31,8 +31,6 @@ linkStyle default stroke:#aaa
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
     7v1
-    2v1
-    3v1
     4v1
     5v1
     8v1

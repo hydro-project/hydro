@@ -1,9 +1,5 @@
 {
     "rust-analyzer.runnables.extraEnv": {
-        // Stack backtraces.
-        "RUST_BACKTRACE": "full",
-        // Set output levels for `tracing` logging.
-        "RUST_LOG": "debug,dfir_rs=trace",
         // Make sure all snapshots are written instead of just the first failure.
         "INSTA_FORCE_PASS": "1",
         "INSTA_UPDATE": "always",
@@ -12,7 +8,11 @@
     "rust-analyzer.runnables.extraTestBinaryArgs": [
         "--nocapture"
     ],
-    "rust-analyzer.cargo.features": ["deploy"],
+    "rust-analyzer.cargo.features": [
+        "hydro_lang/deploy",
+        "dfir_rs/deploy_integration",
+    ],
+    "rust-analyzer.check.features": "all",
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {
@@ -25,4 +25,16 @@
     "files.watcherExclude": {
         "**/target": true
     },
+    "evenBetterToml.formatter.columnWidth": 80,
+    "evenBetterToml.formatter.compactArrays": true,
+    "evenBetterToml.formatter.allowedBlankLines": 2,
+    "evenBetterToml.formatter.trailingNewline": true,
+    "evenBetterToml.formatter.arrayAutoCollapse": true,
+    "evenBetterToml.formatter.arrayAutoExpand": true,
+    "evenBetterToml.formatter.arrayTrailingComma": true,
+    "evenBetterToml.formatter.compactEntries": false,
+    "evenBetterToml.formatter.compactInlineTables": false,
+    "evenBetterToml.formatter.crlf": false,
+    "evenBetterToml.formatter.indentEntries": false,
+    "evenBetterToml.formatter.indentTables": false,
 }

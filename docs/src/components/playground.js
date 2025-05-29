@@ -10,11 +10,9 @@ import * as wasm from "website_playground/website_playground_bg.wasm";
 import * as playgroundJS from "website_playground/website_playground_bg.js";
 
 let compile_DFIR = null;
-let compile_datalog = null;
 
 if (siteConfig.customFields.LOAD_PLAYGROUND === "1") {
   compile_DFIR = playgroundJS.compile_dfir;
-  compile_datalog = playgroundJS.compile_datalog;
 
   if (ExecutionEnvironment.canUseDOM) {
     playgroundJS.__wbg_set_wasm(wasm);
@@ -191,15 +189,6 @@ export function DfirSurfaceDemo() {
     ></EditorDemo>
   );
 }
-export function DatalogDemo() {
-  return (
-    <EditorDemo
-      compileFn={compile_datalog}
-      examples={datalogExamples}
-      mermaidId="mermaid-datalog"
-    ></EditorDemo>
-  );
-}
 
 export function EditorDemo({ compileFn, examples, mermaidId }) {
   if (siteConfig.customFields.LOAD_PLAYGROUND !== "1") {
@@ -223,6 +212,7 @@ export function EditorDemo({ compileFn, examples, mermaidId }) {
     noPullPush: false,
     noHandoffs: false,
     noReferences: false,
+    noLoops: false,
     opShortText: false,
   });
   const writeGraphConfigOnChange = (name) => {

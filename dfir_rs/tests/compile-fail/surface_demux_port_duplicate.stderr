@@ -1,10 +1,10 @@
-error: Output connection conflicts with below ($DIR/tests/compile-fail/surface_demux_port_duplicate.rs:15:18) (1/2)
+error: Output connection conflicts with below (dfir_rs/tests/compile-fail/surface_demux_port_duplicate.rs:15:18) (1/2)
   --> tests/compile-fail/surface_demux_port_duplicate.rs:14:18
    |
 14 |         my_demux[c] -> for_each(std::mem::drop);
    |                  ^
 
-error: Output connection conflicts with above ($DIR/tests/compile-fail/surface_demux_port_duplicate.rs:14:18) (2/2)
+error: Output connection conflicts with above (dfir_rs/tests/compile-fail/surface_demux_port_duplicate.rs:14:18) (2/2)
   --> tests/compile-fail/surface_demux_port_duplicate.rs:15:18
    |
 15 |         my_demux[c] -> for_each(std::mem::drop);

@@ -1,10 +1,9 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
 
 /// > 1 input stream, 1 output stream
 ///
@@ -53,49 +52,53 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                    root,
                    context,
                    df_ident,
-                   loop_id,
                    op_span,
                    ident,
                    is_pull,
                    inputs,
                    singleton_output_ident,
                    work_fn,
-                   op_inst:
-                       OperatorInstance {
-                           generics:
-                               OpInstGenerics {
-                                   persistence_args, ..
-                               },
-                           ..
-                       },
                    arguments,
                    ..
                },
                diagnostics| {
+        let init_fn = &arguments[0];
+        let func = &arguments[1];
 
-        let persistence = persistence_args.first().copied().unwrap_or_else(|| {
-            if loop_id.is_some() {
-                Persistence::None
-            } else {
-                Persistence::Tick
-            }
-        });
-        if Persistence::Mutable == persistence {
-            diagnostics.push(Diagnostic::spanned(
-                op_span,
-                Level::Error,
-                "An implementation of 'mutable does not exist",
-            ));
-            return Err(());
-        }
+        let initializer_func_ident = wc.make_ident("initializer_func");
+        let init = quote_spanned! {op_span=>
+            (#initializer_func_ident)()
+        };
+
+        let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let input = &inputs[0];
-        let init = &arguments[0];
-        let func = &arguments[1];
-        let initializer_func_ident = wc.make_ident("initializer_func");
         let accumulator_ident = wc.make_ident("accumulator");
         let iterator_item_ident = wc.make_ident("iterator_item");
 
+        let write_prologue = quote_spanned! {op_span=>
+            #[allow(unused_mut, reason = "for if `Fn` instead of `FnMut`.")]
+            let mut #initializer_func_ident = #init_fn;
+
+            #[allow(clippy::redundant_closure_call)]
+            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#init));
+        };
+        let write_prologue_after = wc
+            .persistence_as_state_lifespan(persistence)
+            .map(|lifespan| quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                #df_ident.set_state_lifespan_hook(
+                    #singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); },
+                );
+            }).unwrap_or_default();
+
+        let assign_accum_ident = quote_spanned! {op_span=>
+            #[allow(unused_mut)]
+            let mut #accumulator_ident = unsafe {
+                // SAFETY: handle from `#df_ident.add_state(..)`.
+                #context.state_ref_unchecked(#singleton_output_ident)
+            }.borrow_mut();
+        };
         let iterator_foreach = quote_spanned! {op_span=>
             #[inline(always)]
             fn call_comb_type<Accum, Item>(
@@ -109,28 +112,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             call_comb_type(&mut *#accumulator_ident, #iterator_item_ident, #func);
         };
 
-        let mut write_prologue = quote_spanned! {op_span=>
-            #[allow(unused_mut)]
-            let mut #initializer_func_ident = #init;
-
-            #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(
-                ::std::cell::RefCell::new((#initializer_func_ident)())
-            );
-        };
-        if Persistence::Tick == persistence {
-            write_prologue.extend(quote_spanned! {op_span=>
-                // Reset the value to the initializer fn if it is a new tick.
-                #df_ident.set_state_tick_hook(#singleton_output_ident, move |rcell| { rcell.replace((#initializer_func_ident)()); });
-            });
-        }
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let mut #accumulator_ident = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#singleton_output_ident)
-                    }.borrow_mut();
+                    #assign_accum_ident
 
                     #work_fn(|| #input.for_each(|#iterator_item_ident| {
                         #iterator_foreach
@@ -144,23 +129,25 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             }
         } else {
             quote_spanned! {op_span=>
-                let #ident = {
-                    #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
-                        let mut #accumulator_ident = unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#singleton_output_ident)
-                        }.borrow_mut();
-                        #iterator_foreach
-                    })
-                };
+                let #ident = #root::pusherator::for_each::ForEach::new(|#iterator_item_ident| {
+                    #assign_accum_ident
+
+                    #iterator_foreach
+                });
             }
         };
-        let write_iterator_after = quote_spanned! {op_span=>
-            #context.schedule_subgraph(#context.current_subgraph(), false);
+
+        let write_iterator_after = if let Persistence::Static | Persistence::Tick = persistence {
+            quote_spanned! {op_span=>
+                #context.schedule_subgraph(#context.current_subgraph(), false);
+            }
+        } else {
+            Default::default()
         };
 
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

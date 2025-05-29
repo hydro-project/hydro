@@ -2,8 +2,8 @@ use quote::quote_spanned;
 use syn::parse_quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput,
-    WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 1 input stream, 1 output stream
@@ -64,6 +64,7 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         } = (super::reduce::REDUCE.write_fn)(&wc, diagnostics)?;
@@ -88,6 +89,7 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
         };
         Ok(OperatorWriteOutput {
             write_prologue,
+            write_prologue_after,
             write_iterator,
             write_iterator_after,
         })

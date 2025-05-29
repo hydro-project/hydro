@@ -23,12 +23,15 @@ use syn::parse_quote;
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
 
+/// Debug displays the type's tokens.
+///
+/// Boxes `syn::Type` which is ~240 bytes.
 #[derive(Clone, Hash)]
-pub struct DebugExpr(pub syn::Expr);
+pub struct DebugExpr(pub Box<syn::Expr>);
 
 impl From<syn::Expr> for DebugExpr {
-    fn from(expr: syn::Expr) -> DebugExpr {
-        DebugExpr(expr)
+    fn from(expr: syn::Expr) -> Self {
+        Self(Box::new(expr))
     }
 }
 
@@ -52,12 +55,15 @@ impl Debug for DebugExpr {
     }
 }
 
+/// Debug displays the type's tokens.
+///
+/// Boxes `syn::Type` which is ~320 bytes.
 #[derive(Clone, Hash)]
-pub struct DebugType(pub syn::Type);
+pub struct DebugType(pub Box<syn::Type>);
 
 impl From<syn::Type> for DebugType {
-    fn from(t: syn::Type) -> DebugType {
-        DebugType(t)
+    fn from(t: syn::Type) -> Self {
+        Self(Box::new(t))
     }
 }
 
@@ -81,14 +87,28 @@ impl Debug for DebugType {
     }
 }
 
-#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
-#[allow(
-    clippy::large_enum_variant,
-    reason = "`Building` is just equivalent to `None`."
-)]
 pub enum DebugInstantiate {
     Building,
-    Finalized(syn::Expr, syn::Expr, Option<Box<dyn FnOnce()>>),
+    Finalized(Box<DebugInstantiateFinalized>),
+}
+
+#[cfg_attr(
+    not(feature = "build"),
+    expect(
+        dead_code,
+        reason = "sink, source unused without `feature = \"build\"`."
+    )
+)]
+pub struct DebugInstantiateFinalized {
+    sink: syn::Expr,
+    source: syn::Expr,
+    connect_fn: Option<Box<dyn FnOnce()>>,
+}
+
+impl From<DebugInstantiateFinalized> for DebugInstantiate {
+    fn from(f: DebugInstantiateFinalized) -> Self {
+        Self::Finalized(Box::new(f))
+    }
 }
 
 impl Debug for DebugInstantiate {
@@ -107,7 +127,7 @@ impl Clone for DebugInstantiate {
     fn clone(&self) -> Self {
         match self {
             DebugInstantiate::Building => DebugInstantiate::Building,
-            DebugInstantiate::Finalized(_, _, _) => {
+            DebugInstantiate::Finalized(_) => {
                 panic!("DebugInstantiate::Finalized should not be cloned")
             }
         }
@@ -124,11 +144,11 @@ pub enum HydroSource {
 }
 
 #[cfg(feature = "build")]
-pub enum BuildersOrCallback<
-    'a,
+pub enum BuildersOrCallback<'a, L, N>
+where
     L: FnMut(&mut HydroLeaf, &mut usize),
     N: FnMut(&mut HydroNode, &mut usize),
-> {
+{
     Builders(&'a mut BTreeMap<usize, FlatGraphBuilder>),
     Callback(L, N),
 }
@@ -158,7 +178,7 @@ pub enum HydroLeaf {
 
 impl HydroLeaf {
     #[cfg(feature = "build")]
-    pub fn compile_network<'a, D: Deploy<'a>>(
+    pub fn compile_network<'a, D>(
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
@@ -166,7 +186,9 @@ impl HydroLeaf {
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    ) {
+    ) where
+        D: Deploy<'a>,
+    {
         self.transform_children(
             |n, s| {
                 n.compile_network::<D>(
@@ -480,6 +502,12 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
 
 pub struct TeeNode(pub Rc<RefCell<HydroNode>>);
 
+impl TeeNode {
+    pub fn as_ptr(&self) -> *const RefCell<HydroNode> {
+        Rc::as_ptr(&self.0)
+    }
+}
+
 impl Debug for TeeNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         PRINTED_TEES.with(|printed_tees| {
@@ -542,8 +570,6 @@ impl Eq for HydroIrMetadata {}
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[allow(clippy::allow_attributes, reason = "Only triggered on nightly.")]
-#[allow(clippy::large_enum_variant, reason = "TODO(mingwei):")]
 #[derive(Debug, Hash)]
 pub enum HydroNode {
     Placeholder,
@@ -716,9 +742,9 @@ pub enum HydroNode {
 pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
 pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
-impl<'a> HydroNode {
+impl HydroNode {
     #[cfg(feature = "build")]
-    pub fn compile_network<D: Deploy<'a>>(
+    pub fn compile_network<'a, D>(
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
@@ -726,7 +752,9 @@ impl<'a> HydroNode {
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::ExternalProcess>,
-    ) {
+    ) where
+        D: Deploy<'a>,
+    {
         let mut curr_location = None;
 
         self.transform_bottom_up(
@@ -751,11 +779,15 @@ impl<'a> HydroNode {
                             compile_env,
                         ),
 
-                        DebugInstantiate::Finalized(_, _, _) => panic!("network already finalized"),
+                        DebugInstantiate::Finalized(_) => panic!("network already finalized"),
                     };
 
-                    *instantiate_fn =
-                        DebugInstantiate::Finalized(sink_expr, source_expr, Some(connect_fn));
+                    *instantiate_fn = DebugInstantiateFinalized {
+                        sink: sink_expr,
+                        source: source_expr,
+                        connect_fn: Some(connect_fn),
+                    }
+                    .into();
                 }
 
                 // Calculate location of current node to use as from_location
@@ -769,12 +801,11 @@ impl<'a> HydroNode {
                         curr_location = Some(location_kind.root().clone());
                     }
                     HydroNode::Tee { inner, .. } => {
-                        let inner_ref = inner.0.as_ref() as *const RefCell<HydroNode>;
-                        if let Some(tee_location) = seen_tee_locations.get(&inner_ref) {
+                        if let Some(tee_location) = seen_tee_locations.get(&inner.as_ptr()) {
                             curr_location = Some(tee_location.clone());
                         } else {
                             seen_tee_locations
-                                .insert(inner_ref, curr_location.as_ref().unwrap().clone());
+                                .insert(inner.as_ptr(), curr_location.as_ref().unwrap().clone());
                         }
                     }
                     _ => {}
@@ -791,8 +822,8 @@ impl<'a> HydroNode {
                     match instantiate_fn {
                         DebugInstantiate::Building => panic!("network not built"),
 
-                        DebugInstantiate::Finalized(_, _, connect_fn) => {
-                            (connect_fn.take().unwrap())();
+                        DebugInstantiate::Finalized(finalized) => {
+                            (finalized.connect_fn.take().unwrap())();
                         }
                     }
                 }
@@ -825,16 +856,11 @@ impl<'a> HydroNode {
             HydroNode::Source { .. } | HydroNode::CycleSource { .. } => {}
 
             HydroNode::Tee { inner, .. } => {
-                if let Some(transformed) =
-                    seen_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
-                {
+                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     *inner = TeeNode(transformed.clone());
                 } else {
                     let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
-                    seen_tees.insert(
-                        inner.0.as_ref() as *const RefCell<HydroNode>,
-                        transformed_cell.clone(),
-                    );
+                    seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
                     transform(&mut orig, seen_tees);
                     *transformed_cell.borrow_mut() = orig;
@@ -909,19 +935,14 @@ impl<'a> HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Tee { inner, metadata } => {
-                if let Some(transformed) =
-                    seen_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
-                {
+                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     HydroNode::Tee {
                         inner: TeeNode(transformed.clone()),
                         metadata: metadata.clone(),
                     }
                 } else {
                     let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
-                    seen_tees.insert(
-                        inner.0.as_ref() as *const RefCell<HydroNode>,
-                        new_rc.clone(),
-                    );
+                    seen_tees.insert(inner.as_ptr(), new_rc.clone());
                     let cloned = inner.0.borrow().deep_clone(seen_tees);
                     *new_rc.borrow_mut() = cloned;
                     HydroNode::Tee {
@@ -1972,8 +1993,8 @@ impl<'a> HydroNode {
                                 syn::parse_quote!(DUMMY_SOURCE),
                             ),
 
-                            DebugInstantiate::Finalized(sink, source, _connect_fn) => {
-                                (sink.clone(), source.clone())
+                            DebugInstantiate::Finalized(finalized) => {
+                                (finalized.sink.clone(), finalized.source.clone())
                             }
                         };
 
@@ -2305,7 +2326,7 @@ impl<'a> HydroNode {
 
 #[cfg(feature = "build")]
 #[expect(clippy::too_many_arguments, reason = "networking internals")]
-fn instantiate_network<'a, D: Deploy<'a>>(
+fn instantiate_network<'a, D>(
     from_location: &LocationId,
     from_key: Option<usize>,
     to_location: &LocationId,
@@ -2314,7 +2335,10 @@ fn instantiate_network<'a, D: Deploy<'a>>(
     clusters: &HashMap<usize, D::Cluster>,
     externals: &HashMap<usize, D::ExternalProcess>,
     compile_env: &D::CompileEnv,
-) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>) {
+) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
+where
+    D: Deploy<'a>,
+{
     let ((sink, source), connect_fn) = match (from_location, to_location) {
         (LocationId::Process(from), LocationId::Process(to)) => {
             let from_node = nodes
@@ -2476,4 +2500,21 @@ fn instantiate_network<'a, D: Deploy<'a>>(
         (_, LocationId::Tick(_, _)) => panic!(),
     };
     (sink, source, connect_fn)
+}
+
+#[cfg(test)]
+mod test {
+    use std::mem::size_of;
+
+    use super::*;
+
+    #[test]
+    fn hydro_node_size() {
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"152");
+    }
+
+    #[test]
+    fn hydro_leaf_size() {
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"128");
+    }
 }

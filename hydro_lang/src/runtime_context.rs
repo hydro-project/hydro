@@ -11,7 +11,10 @@ pub struct RuntimeContext<'a> {
     _private: &'a (),
 }
 
-impl<'a, L: Location<'a>> FreeVariableWithContext<L> for RuntimeContext<'a> {
+impl<'a, L> FreeVariableWithContext<L> for RuntimeContext<'a>
+where
+    L: Location<'a>,
+{
     type O = &'a Context;
 
     fn to_tokens(self, _ctx: &L) -> QuoteTokens {

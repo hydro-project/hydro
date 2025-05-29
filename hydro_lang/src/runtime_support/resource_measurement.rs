@@ -54,5 +54,25 @@ pub async fn run(flow: Dfir<'_>) {
         );
     }
 
+    #[cfg(not(target_os = "linux"))]
+    {
+        // TODO(shadaj): can enable on next sysinfo release
+        // use sysinfo::{Pid, System};
+        // let system = System::new_all();
+        // let process = system.process(Pid::from_u32(std::process::id())).unwrap();
+        // let run_time = process.run_time() * 1000;
+        // let cpu_time = process.accumulated_cpu_time();
+        // let user_cpu_use = cpu_time.user() as f32 / run_time as f32;
+        let user_cpu_use = 100.0;
+
+        println!(
+            "{} Total {:.4}%, User {:.4}%, System {:.4}%",
+            crate::internal_constants::CPU_USAGE_PREFIX,
+            user_cpu_use,
+            user_cpu_use,
+            0.0
+        );
+    }
+
     res.unwrap();
 }

@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_unique.rs
-expression: "df.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -10,7 +10,8 @@ digraph {
     n3v1 [label="(n3v1) for_each(|v| print!(\"{:?}, \", v))", shape=house, fillcolor="#ffff88"]
     n2v1 -> n3v1
     n1v1 -> n2v1
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"

@@ -10,7 +10,7 @@ error: lifetime may not live long enough
   |
   = help: consider adding the following bound: `'b: 'a`
   = note: requirement occurs because of the type `hydro_lang::Process<'_, P1>`, which makes the generic argument `'_` invariant
-  = note: the struct `hydro_lang::Process<'a, P>` is invariant over the parameter `'a`
+  = note: the struct `hydro_lang::Process<'a, ProcessTag>` is invariant over the parameter `'a`
   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
@@ -25,7 +25,7 @@ error: lifetime may not live long enough
   |
   = help: consider adding the following bound: `'a: 'b`
   = note: requirement occurs because of the type `hydro_lang::Process<'_, P2>`, which makes the generic argument `'_` invariant
-  = note: the struct `hydro_lang::Process<'a, P>` is invariant over the parameter `'a`
+  = note: the struct `hydro_lang::Process<'a, ProcessTag>` is invariant over the parameter `'a`
   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other

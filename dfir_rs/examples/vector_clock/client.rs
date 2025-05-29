@@ -2,23 +2,40 @@ use std::net::SocketAddr;
 
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
-use dfir_rs::util::{UdpSink, UdpStream};
+use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 use lattices::map_union::MapUnionSingletonMap;
 use lattices::{Max, Merge};
 
 use crate::Opts;
+use crate::helpers::print_graph;
 use crate::protocol::{EchoMsg, VecClock};
 
-pub(crate) async fn run_client(
-    outbound: UdpSink,
-    inbound: UdpStream,
-    opts: Opts,
-    addr: SocketAddr,
-) {
-    // server_addr is required for client
-    let server_addr = opts.server_addr.expect("Client requires a server address");
+pub(crate) async fn run_client(opts: Opts) {
+    // Client listens on a port picked by the OS.
+    let client_addr = ipv4_resolve("localhost:0").unwrap();
 
-    println!("Client live!");
+    // Use the server address that was provided in the command-line arguments, or use the default
+    // if one was not provided.
+    let server_addr = opts.address;
+    assert_ne!(
+        0,
+        server_addr.port(),
+        "Client cannot connect to server port 0."
+    );
+
+    // Bind a client-side socket to the requested address and port. The OS will allocate a port and
+    // the actual port used will be available in `actual_client_addr`.
+    //
+    // `outbound` is a `UdpSink`, we use it to send messages. `inbound` is `UdpStream`, we use it
+    // to receive messages.
+    //
+    // bind_udp_bytes is an async function, so we need to await it.
+    let (outbound, inbound, allocated_client_addr) = bind_udp_bytes(client_addr).await;
+
+    println!(
+        "Client is live! Listening on {:?} and talking to server on {:?}",
+        allocated_client_addr, server_addr
+    );
 
     let mut flow = dfir_syntax! {
         // Define shared inbound and outbound channels
@@ -33,7 +50,7 @@ pub(crate) async fn run_client(
         // given the inbound packet, bump the local clock and merge this in
         inbound_chan[merge] -> map(|(msg, _sender): (EchoMsg, SocketAddr)| msg.vc) -> [net]mergevc;
         mergevc = union() -> fold::<'static> (VecClock::default, |old: &mut VecClock, vc| {
-                    let my_addr = format!("{:?}", addr);
+                    let my_addr = format!("{:?}", allocated_client_addr);
                     let bump = MapUnionSingletonMap::new_from((my_addr.clone(), Max::new(old.as_reveal_mut().entry(my_addr).or_insert(Max::new(0)).into_reveal() + 1)));
                     old.merge(bump);
                     old.merge(vc);
@@ -53,22 +70,9 @@ pub(crate) async fn run_client(
         stamped_output[send] -> outbound_chan;
     };
 
-    #[cfg(feature = "debugging")]
+    // If a graph was requested to be printed, print it.
     if let Some(graph) = opts.graph {
-        let serde_graph = flow
-            .meta_graph()
-            .expect("No graph found, maybe failed to parse.");
-        match graph {
-            crate::GraphType::Mermaid => {
-                serde_graph.open_mermaid(&Default::default()).unwrap();
-            }
-            crate::GraphType::Dot => {
-                serde_graph.open_dot(&Default::default()).unwrap();
-            }
-            crate::GraphType::Json => {
-                unimplemented!();
-            }
-        }
+        print_graph(&flow, graph, opts.write_config);
     }
 
     flow.run_async().await.unwrap();

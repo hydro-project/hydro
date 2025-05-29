@@ -2,6 +2,7 @@
 
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
+use std::iter::FusedIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
 
@@ -13,7 +14,7 @@ pub struct Key<Tag: ?Sized> {
 }
 impl<Tag: ?Sized> Key<Tag> {
     /// Creates a Key from a raw index. Avoid using this function directly.
-    pub fn from_raw(index: usize) -> Self {
+    pub const fn from_raw(index: usize) -> Self {
         Key {
             index,
             _phantom: PhantomData,
@@ -68,9 +69,9 @@ pub struct SlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     /// Creates a new `SlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -111,6 +112,46 @@ impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     pub fn is_empty(&self) -> bool {
         self.slots.is_empty()
     }
+
+    /// Iterate the key-value pairs, where the value is a shared reference.
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ Val)> + ExactSizeIterator + FusedIterator + Clone
+    {
+        self.slots
+            .iter()
+            .enumerate()
+            .map(|(idx, val)| (Key::from_raw(idx), val))
+    }
+
+    /// Iterate the key-value pairs, where the value is a exclusive reference.
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ mut Val)> + ExactSizeIterator + FusedIterator
+    {
+        self.slots
+            .iter_mut()
+            .enumerate()
+            .map(|(idx, val)| (Key::from_raw(idx), val))
+    }
+
+    /// Iterate over the values by shared reference.
+    pub fn values(&self) -> std::slice::Iter<'_, Val> {
+        self.slots.iter()
+    }
+
+    /// Iterate over the values by exclusive reference.
+    pub fn values_mut(&mut self) -> std::slice::IterMut<'_, Val> {
+        self.slots.iter_mut()
+    }
+
+    /// Iterate over the keys.
+    pub fn keys(
+        &self,
+    ) -> impl '_ + DoubleEndedIterator<Item = Key<Tag>> + ExactSizeIterator + FusedIterator + Clone
+    {
+        self.iter().map(|(key, _)| key)
+    }
 }
 impl<Tag: ?Sized, Val> Index<Key<Tag>> for SlotVec<Tag, Val> {
     type Output = Val;
@@ -139,9 +180,9 @@ pub struct SecondarySlotVec<Tag: ?Sized, Val> {
 }
 impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Creates a new `SecondarySlotVec`.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
-            slots: Vec::default(),
+            slots: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -168,6 +209,50 @@ impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
     /// Returns a mutable reference to the value associated with the key.
     pub fn get_mut(&mut self, key: Key<Tag>) -> Option<&mut Val> {
         self.slots.get_mut(key.index).and_then(|v| v.as_mut())
+    }
+
+    /// Returns a mutable reference to the value associated with the key, inserting a default value
+    /// if it doesn't yet exist.
+    pub fn get_or_insert_with(&mut self, key: Key<Tag>, default: impl FnOnce() -> Val) -> &mut Val {
+        if key.index >= self.slots.len() {
+            self.slots.resize_with(key.index + 1, || None);
+        }
+        self.slots[key.index].get_or_insert_with(default)
+    }
+
+    /// Iterate the key-value pairs, where the value is a shared reference.
+    pub fn iter(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ Val)> + FusedIterator + Clone {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, opt_val)| Some((Key::from_raw(idx), opt_val.as_ref()?)))
+    }
+
+    /// Iterate the key-value pairs, where the value is a exclusive reference.
+    pub fn iter_mut(
+        &mut self,
+    ) -> impl DoubleEndedIterator<Item = (Key<Tag>, &'_ mut Val)> + FusedIterator {
+        self.slots
+            .iter_mut()
+            .enumerate()
+            .filter_map(|(idx, opt_val)| Some((Key::from_raw(idx), opt_val.as_mut()?)))
+    }
+
+    /// Iterate over the values by shared reference.
+    pub fn values(&self) -> impl DoubleEndedIterator<Item = &'_ Val> + FusedIterator + Clone {
+        self.slots.iter().filter_map(Option::as_ref)
+    }
+
+    /// Iterate over the values by exclusive reference.
+    pub fn values_mut(&mut self) -> impl DoubleEndedIterator<Item = &'_ mut Val> + FusedIterator {
+        self.slots.iter_mut().filter_map(Option::as_mut)
+    }
+
+    /// Iterate over the keys.
+    pub fn keys(&self) -> impl '_ + DoubleEndedIterator<Item = Key<Tag>> + FusedIterator + Clone {
+        self.iter().map(|(key, _)| key)
     }
 }
 impl<Tag: ?Sized, Val> Default for SecondarySlotVec<Tag, Val> {

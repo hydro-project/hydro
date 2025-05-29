@@ -1,4 +1,4 @@
-use std::any::Any;
+use std::any::TypeId;
 use std::ops::Deref;
 use std::sync::{Arc, OnceLock, Weak};
 
@@ -136,10 +136,6 @@ impl RustCrateSource for CustomClientPort {
 }
 
 impl RustCrateSink for CustomClientPort {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
     fn instantiate(&self, _client_path: &SourcePath) -> Result<Box<dyn FnOnce() -> ServerConfig>> {
         bail!("Custom services cannot be used as the server")
     }
@@ -160,10 +156,15 @@ impl RustCrateSink for CustomClientPort {
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
         Ok(Box::new(move |me| {
+            assert_eq!(
+                me.type_id(),
+                TypeId::of::<CustomClientPort>(),
+                "`instantiate_reverse` received different type than expected."
+            );
             me.downcast_ref::<CustomClientPort>()
                 .unwrap()
                 .record_server_config(client_port);
-            bind_type(server_host.as_any())
+            bind_type(&*server_host)
         }))
     }
 }

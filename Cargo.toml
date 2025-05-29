@@ -4,11 +4,10 @@
 members = [
     "benches",
     "datastores/gossip_kv",
-    "dfir_datalog_core",
-    "dfir_datalog",
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",
+    "example_test",
     "hydro_deploy/core",
     "hydro_deploy/hydro_cli_examples",
     "hydro_deploy/hydro_cli",
@@ -68,4 +67,5 @@ allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
 explicit_into_iter_loop = "warn"
 let_and_return = "allow"
+uninlined_format_args = "allow"
 upper_case_acronyms = "warn"

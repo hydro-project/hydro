@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_forwardref.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -15,7 +15,6 @@ linkStyle default stroke:#aaa
 3v1-->2v1
 subgraph sg_1v1 ["sg_1v1 stratum 0"]
     1v1
-    3v1
     2v1
     subgraph sg_1v1_var_forward_ref ["var <tt>forward_ref</tt>"]
         3v1

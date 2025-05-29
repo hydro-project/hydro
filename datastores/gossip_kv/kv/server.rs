@@ -62,7 +62,7 @@ lazy_static! {
 /// -- `client_outputs`: The output sink of client responses for the client protocol.
 /// -- `member_info`: The membership information of the server.
 /// -- `seed_nodes`: A list of seed nodes that can be used to bootstrap the gossip cluster.
-#[expect(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments, reason = "TODO(mingwei)")]
 pub fn server<
     ClientInput,
     ClientOutput,

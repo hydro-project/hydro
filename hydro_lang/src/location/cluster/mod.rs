@@ -13,10 +13,10 @@ use crate::staging_util::{Invariant, get_this_crate};
 pub mod cluster_id;
 pub use cluster_id::ClusterId;
 
-pub struct Cluster<'a, C> {
+pub struct Cluster<'a, ClusterTag> {
     pub(crate) id: usize,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, C>,
+    pub(crate) _phantom: Invariant<'a, ClusterTag>,
 }
 
 impl<C> Debug for Cluster<'_, C> {
@@ -28,7 +28,7 @@ impl<C> Debug for Cluster<'_, C> {
 impl<C> Eq for Cluster<'_, C> {}
 impl<C> PartialEq for Cluster<'_, C> {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.flow_state.as_ptr() == other.flow_state.as_ptr()
+        self.id == other.id && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
@@ -126,8 +126,9 @@ pub struct ClusterSelfId<'a> {
     _private: &'a (),
 }
 
-impl<'a, L: Location<'a>> FreeVariableWithContext<L> for ClusterSelfId<'a>
+impl<'a, L> FreeVariableWithContext<L> for ClusterSelfId<'a>
 where
+    L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
     type O = ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
@@ -156,10 +157,10 @@ where
     }
 }
 
-impl<'a, L: Location<'a>>
-    QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
+impl<'a, L> QuotedWithContext<'a, ClusterId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
     for ClusterSelfId<'a>
 where
+    L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
 }

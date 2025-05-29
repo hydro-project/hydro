@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_batch.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -26,7 +26,6 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
     3v1
 end
 subgraph sg_3v1 ["sg_3v1 stratum 1"]
-    1v1
     4v1
     subgraph sg_3v1_var_gate ["var <tt>gate</tt>"]
         1v1

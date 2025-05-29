@@ -1,6 +1,6 @@
 ---
 source: hydro_test_local/src/local/negation.rs
-expression: "flow.meta_graph().unwrap().to_dot(& Default :: default())"
+expression: flow.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
@@ -14,28 +14,30 @@ digraph {
     n2v1 -> n5v1
     n3v1 -> n4v1
     n5v1 -> n3v1 [label="neg", color=red]
-    subgraph "cluster n1v1" {
+    subgraph sg_1v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1\nstratum 0"
-        n2v1
-        subgraph "cluster_sg_1v1_var_stream_1" {
+        subgraph sg_1v1_var_stream_1 {
+            cluster=true
             label="var stream_1"
             n2v1
         }
     }
-    subgraph "cluster n2v1" {
+    subgraph sg_2v1 {
+        cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1\nstratum 1"
-        n1v1
-        n3v1
         n4v1
-        subgraph "cluster_sg_2v1_var_stream_0" {
+        subgraph sg_2v1_var_stream_0 {
+            cluster=true
             label="var stream_0"
             n1v1
         }
-        subgraph "cluster_sg_2v1_var_stream_2" {
+        subgraph sg_2v1_var_stream_2 {
+            cluster=true
             label="var stream_2"
             n3v1
         }

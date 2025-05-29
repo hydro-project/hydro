@@ -1,7 +1,7 @@
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 
 use anyhow::{Result, bail};
 use async_process::Command;
@@ -17,11 +17,11 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
+use super::samply::{FxProfile, samply_to_folded};
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
-use crate::ssh::PrefixFilteredChannel;
-use crate::util::prioritized_broadcast;
+use crate::util::{PriorityBroadcast, prioritized_broadcast};
 use crate::{LaunchedBinary, TracingResults};
 
 pub(super) struct TracingDataLocal {
@@ -34,9 +34,8 @@ pub struct LaunchedLocalhostBinary {
     tracing_data_local: Option<TracingDataLocal>,
     tracing_results: Option<TracingResults>,
     stdin_sender: mpsc::UnboundedSender<String>,
-    stdout_deploy_receivers: Arc<Mutex<Option<oneshot::Sender<String>>>>,
-    stdout_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
-    stderr_receivers: Arc<Mutex<Vec<PrefixFilteredChannel>>>,
+    stdout_broadcast: PriorityBroadcast,
+    stderr_broadcast: PriorityBroadcast,
 }
 
 #[cfg(unix)]
@@ -78,11 +77,11 @@ impl LaunchedLocalhostBinary {
         });
 
         let id_clone = id.clone();
-        let (stdout_deploy_receivers, stdout_receivers) = prioritized_broadcast(
+        let stdout_broadcast = prioritized_broadcast(
             FuturesBufReader::new(child.stdout.take().unwrap()).lines(),
             move |s| ProgressTracker::println(format!("[{id_clone}] {s}")),
         );
-        let (_, stderr_receivers) = prioritized_broadcast(
+        let stderr_broadcast = prioritized_broadcast(
             FuturesBufReader::new(child.stderr.take().unwrap()).lines(),
             move |s| ProgressTracker::println(format!("[{id} stderr] {s}")),
         );
@@ -93,9 +92,8 @@ impl LaunchedLocalhostBinary {
             tracing_data_local,
             tracing_results: None,
             stdin_sender,
-            stdout_deploy_receivers,
-            stdout_receivers,
-            stderr_receivers,
+            stdout_broadcast,
+            stderr_broadcast,
         }
     }
 }
@@ -107,43 +105,23 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
     }
 
     fn deploy_stdout(&self) -> oneshot::Receiver<String> {
-        let mut receivers = self.stdout_deploy_receivers.lock().unwrap();
-
-        if receivers.is_some() {
-            panic!("Only one deploy stdout receiver is allowed at a time");
-        }
-
-        let (sender, receiver) = oneshot::channel::<String>();
-        *receivers = Some(sender);
-        receiver
+        self.stdout_broadcast.receive_priority()
     }
 
     fn stdout(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stdout_broadcast.receive(None)
     }
 
     fn stderr(&self) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((None, sender));
-        receiver
+        self.stderr_broadcast.receive(None)
     }
 
     fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stdout_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stdout_broadcast.receive(Some(prefix))
     }
 
     fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String> {
-        let mut receivers = self.stderr_receivers.lock().unwrap();
-        let (sender, receiver) = mpsc::unbounded_channel::<String>();
-        receivers.push((Some(prefix), sender));
-        receiver
+        self.stderr_broadcast.receive(Some(prefix))
     }
 
     fn tracing_results(&self) -> Option<&TracingResults> {
@@ -177,8 +155,8 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 let tracing_data = self.tracing_data_local.take().unwrap();
 
                 if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
-                    if let Some(dtrace_outfile) = tracing_config.dtrace_outfile.as_ref() {
-                        std::fs::copy(&tracing_data.outfile, dtrace_outfile)?;
+                    if let Some(samply_outfile) = tracing_config.samply_outfile.as_ref() {
+                        std::fs::copy(&tracing_data.outfile, samply_outfile)?;
                     }
                 } else if cfg!(target_family = "unix") {
                     if let Some(perf_outfile) = tracing_config.perf_raw_outfile.as_ref() {
@@ -186,7 +164,14 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     }
                 }
 
-                let fold_data = if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+                let fold_data = if cfg!(target_os = "macos") {
+                    let deserializer = &mut serde_json::Deserializer::from_reader(
+                        std::fs::File::open(tracing_data.outfile.path())?,
+                    );
+                    let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
+
+                    samply_to_folded(loaded).await.into()
+                } else if cfg!(target_family = "windows") {
                     let mut fold_er = DtraceFolder::from(
                         tracing_config
                             .fold_dtrace_options
@@ -215,8 +200,9 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     let mut stderr_lines =
                         TokioBufReader::new(perf_script.stderr.take().unwrap().compat()).lines();
 
-                    let mut fold_er =
-                        PerfFolder::from(tracing_config.fold_perf_options.clone().unwrap_or_default());
+                    let mut fold_er = PerfFolder::from(
+                        tracing_config.fold_perf_options.clone().unwrap_or_default(),
+                    );
 
                     // Pattern on `()` to make sure no `Result`s are ignored.
                     let ((), fold_data, ()) = tokio::try_join!(

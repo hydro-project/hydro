@@ -111,14 +111,18 @@ macro_rules! dfir_expect_warnings {
 #[macro_export]
 macro_rules! assert_graphvis_snapshots {
     ($df:ident) => {
+        $crate::assert_graphvis_snapshots!($df, &Default::default())
+    };
+    ($df:ident, $cfg:expr) => {
         {
             #[cfg(not(target_arch = "wasm32"))]
             {
+                let cfg = $cfg;
                 insta::with_settings!({snapshot_suffix => "graphvis_mermaid"}, {
-                    insta::assert_snapshot!($df.meta_graph().unwrap().to_mermaid(&Default::default()));
+                    insta::assert_snapshot!($df.meta_graph().unwrap().to_mermaid(cfg));
                 });
                 insta::with_settings!({snapshot_suffix => "graphvis_dot"}, {
-                    insta::assert_snapshot!($df.meta_graph().unwrap().to_dot(&Default::default()));
+                    insta::assert_snapshot!($df.meta_graph().unwrap().to_dot(cfg));
                 });
             }
         }

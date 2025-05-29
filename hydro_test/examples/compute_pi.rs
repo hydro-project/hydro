@@ -54,3 +54,11 @@ async fn main() {
 
     deployment.run_ctrl_c().await.unwrap();
 }
+
+#[test]
+fn test() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!();
+    run.read_regex(r"\[hydro_test::cluster::compute_pi::Leader \(process 1\)\] pi: 3\.141\d+ \(\d{8,} trials\)");
+}

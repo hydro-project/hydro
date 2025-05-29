@@ -1,6 +1,6 @@
 ---
 source: dfir_rs/tests/surface_join_fused.rs
-expression: "df.meta_graph().unwrap().to_mermaid(& Default :: default())"
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -68,14 +68,11 @@ subgraph sg_5v1 ["sg_5v1 stratum 0"]
     3v1
     5v1
     8v1
-    9v1
     subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
         9v1
     end
 end
 subgraph sg_6v1 ["sg_6v1 stratum 1"]
-    10v1
-    11v1
     subgraph sg_6v1_var_my_join ["var <tt>my_join</tt>"]
         10v1
         11v1
