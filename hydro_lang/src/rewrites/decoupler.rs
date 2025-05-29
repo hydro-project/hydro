@@ -44,7 +44,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(node_content),
         metadata: HydroIrMetadata {
             location_kind: metadata.location_kind.root().clone(), // Remove any ticks
-            output_type: Some(DebugType(mapped_output_type.clone())),
+            output_type: Some(DebugType(Box::new(mapped_output_type.clone()))),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,
@@ -58,18 +58,18 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         from_key: None,
         to_location: new_location.clone(),
         to_key: None,
-        serialize_fn: Some(serialize_bincode_with_type(true, output_type.clone()))
+        serialize_fn: Some(serialize_bincode_with_type(true, &output_type))
             .map(|e| e.into()),
         instantiate_fn: DebugInstantiate::Building,
         deserialize_fn: Some(deserialize_bincode_with_type(
-            Some(quote_type::<()>()),
-            output_type,
+            Some(&quote_type::<()>()),
+            &output_type,
         ))
         .map(|e| e.into()),
         input: Box::new(mapped_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
-            output_type: Some(DebugType(mapped_output_type)),
+            output_type: Some(DebugType(Box::new(mapped_output_type))),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,

@@ -176,17 +176,7 @@ where
     where
         S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>,
     {
-        let next_id = {
-            let on_id = match self.l.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            self.flow_state().borrow_mut().next_cycle_id()
-        };
-        
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (

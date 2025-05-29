@@ -1,6 +1,5 @@
 use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
-use std::hash::Hash;
 use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;

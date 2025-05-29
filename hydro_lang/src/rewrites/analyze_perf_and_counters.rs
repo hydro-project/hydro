@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::rust_crate::tracing_options::TracingOptions;
+use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
 use hydro_deploy::{Deployment, Host};
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::RwLock;
@@ -75,6 +75,7 @@ pub fn perf_cluster_specs(
                         .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
                         .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
                         .frequency(128)
+                        .setup_command(DEBIAN_PERF_SETUP_COMMAND)
                         .build(),
                 )
         })
