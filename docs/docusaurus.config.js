@@ -1,11 +1,10 @@
 // @ts-check
 // Note: type annotations allow type checking and IDEs autocompletion
 
-const lightCodeTheme = require("prism-react-renderer").themes.github;
-const darkCodeTheme = require("prism-react-renderer").themes.dracula;
+import { themes } from "prism-react-renderer";
 
-const math = require("remark-math");
-const katex = require("rehype-katex");
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -65,8 +64,8 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl: "https://github.com/hydro-project/hydro/tree/main/docs/",
-          remarkPlugins: [math],
-          rehypePlugins: [katex],
+          remarkPlugins: [remarkMath],
+          rehypePlugins: [rehypeKatex],
         },
         // blog: {
         //   showReadingTime: true,
@@ -200,8 +199,8 @@ const config = {
         copyright: `Hydro is a project in the <a href="https://sky.cs.berkeley.edu">Sky Computing Lab</a> at UC Berkeley. We are grateful to be supported by <a href="https://shv.com">Sutter Hill Ventures</a>.`,
       },
       prism: {
-        theme: lightCodeTheme,
-        darkTheme: darkCodeTheme,
+        theme: themes.github,
+        darkTheme: themes.dracula,
         additionalLanguages: ["rust", "bash"],
         magicComments: [
           {
