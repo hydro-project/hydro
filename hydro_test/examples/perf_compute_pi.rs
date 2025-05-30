@@ -115,7 +115,7 @@ async fn main() {
                             .fold_outfile(format!("cluster{}.data.folded", idx))
                             .flamegraph_outfile(format!("cluster{}.svg", idx))
                             .frequency(frequency)
-                            .setup_command(DEBIAN_PERF_SETUP_COMMAND)
+                            .setup_command(hydro_deploy::rust_crate::tracing_options::DEBIAN_PERF_SETUP_COMMAND)
                             .build(),
                     )
             }),
