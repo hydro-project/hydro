@@ -1,0 +1,55 @@
+---
+source: dfir_rs/tests/surface_difference_anti_join.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_stream(inp_recv)</code>"/]:::pullClass
+2v1[/"(2v1) <code>tee()</code>"\]:::pushClass
+3v1[/"(3v1) <code>map(|x: (usize, usize)| x.0)</code>"\]:::pushClass
+4v1[\"(4v1) <code>anti_join_multiset()</code>"/]:::pullClass
+5v1[/"(5v1) <code>tee()</code>"\]:::pushClass
+6v1[\"(6v1) <code>anti_join_multiset::&lt;usize, usize&gt;()</code>"/]:::pullClass
+7v1[/"(7v1) <code>for_each(|_| {})</code>"\]:::pushClass
+8v1[/"(8v1) <code>map(|x: (usize, usize)| x.0)</code>"\]:::pushClass
+9v1["(9v1) <code>handoff</code>"]:::otherClass
+10v1["(10v1) <code>handoff</code>"]:::otherClass
+11v1["(11v1) <code>handoff</code>"]:::otherClass
+12v1["(12v1) <code>handoff</code>"]:::otherClass
+1v1-->2v1
+2v1-->9v1
+3v1-->10v1
+2v1-->3v1
+4v1-->5v1
+6v1-->7v1
+5v1-->11v1
+8v1-->12v1
+5v1-->8v1
+9v1-->|pos|4v1
+10v1--x|neg|4v1; linkStyle 10 stroke:red
+11v1-->|pos|6v1
+12v1--x|neg|6v1; linkStyle 12 stroke:red
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    3v1
+    subgraph sg_1v1_var_inp ["var <tt>inp</tt>"]
+        1v1
+        2v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 2"]
+    subgraph sg_2v1_var_diff2 ["var <tt>diff2</tt>"]
+        6v1
+        7v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 1"]
+    8v1
+    subgraph sg_3v1_var_diff ["var <tt>diff</tt>"]
+        4v1
+        5v1
+    end
+end

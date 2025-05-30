@@ -428,3 +428,21 @@ pub fn test_difference_multiset_loop_lifetimes() {
         &*collect_ready::<Vec<_>, _>(&mut result_ll_recv)
     );
 }
+
+#[multiplatform_test]
+pub fn test_anti_join_types() {
+    let (inp_send, inp_recv) = unbounded_channel::<(usize, usize)>();
+    let df = dfir_syntax! {
+        inp = source_stream(inp_recv) -> tee();
+        inp -> [pos]diff;
+        inp -> map(|x: (usize, usize)| x.0) -> [neg]diff;
+        diff = anti_join_multiset() -> tee();
+        // TODO(mingwei): enable this to work without the `<Key = usize, Value = usize>` type arguments
+        // https://github.com/hydro-project/hydro/issues/1857
+        diff2 = anti_join_multiset::<usize, usize>() -> for_each(|_| {});
+        diff -> [pos]diff2;
+        diff -> map(|x: (usize, usize)| x.0) -> [neg]diff2;
+    };
+    let _ = inp_send;
+    assert_graphvis_snapshots!(df);
+}
