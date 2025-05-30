@@ -53,7 +53,7 @@ pub const DIFFERENCE_MULTISET: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        // Conver the type args to be `<K, ()>` where `K` is the input item type, defaulting to `_` if not provided.
+        // Convert the type args to be `<K, ()>` where `K` is the input item type, defaulting to `_` if not provided.
         let wc_with_types = WriteContextArgs {
             op_inst: &OperatorInstance {
                 generics: OpInstGenerics {
