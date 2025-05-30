@@ -38,6 +38,11 @@ code are taking the most time to execute.
 
 <CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "tracing")}</CodeBlock>
 
+The `TracingOptions` builder has several options, such as sampling frequence, output file names, tracing options, and
+optionally a setup command to run before the profiling starts. The `setup_command` can be used to install the profiling,
+in this case we use the provided `DEBIAN_PERF_SETUP_COMMAND` which installs `perf` and sets some kernel paramters to
+enable tracing.
+
 You may need to use `TrybuildHost` to set the following `rustflags` to enable detailed performance profiling:
 <CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags")}</CodeBlock>
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
+use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
 use hydro_lang::ir::deep_clone;
@@ -55,7 +55,10 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    #[expect(clippy::needless_late_init, reason = "Better clarity for code extracted into docs.")]
+    #[expect(
+        clippy::needless_late_init,
+        reason = "Better clarity for code extracted into docs."
+    )]
     let rustflags;
     if host_arg == "gcp" {
         //[rustflags_gcp]//
@@ -94,7 +97,7 @@ async fn main() {
                         .fold_outfile("leader.data.folded")
                         .flamegraph_outfile("leader.svg")
                         .frequency(frequency)
-                        .setup_command(DEBIAN_PERF_SETUP_COMMAND)
+                        .setup_command(hydro_deploy::rust_crate::tracing_options::DEBIAN_PERF_SETUP_COMMAND)
                         .build(),
                 ),
                 //[/tracing]//
