@@ -123,7 +123,7 @@ to see the graph, which should look as follows:
 You may be wondering why the nodes in the graph have different colors (and shapes, for readers who cannot distinguish
 colors easily). The answer has nothing to do with the meaning of the program, only with the way that DFIR compiles
 operators into Rust. Simply put, blue (wide-topped) boxes _pull_ data, yellow (wide-bottomed) boxes _push_ data, and the `handoff` is a special operator that buffers pushed data for subsequent pulling. DFIR always places a handoff
-between a push producer and a pull consumer, for reasons explained in the [Architecture](../architecture/index) chapter.
+between a push producer and a pull consumer, for reasons explained in the [Architecture](../architecture/) chapter.
 
 Returning to the code, if you read the `edges_send` calls carefully, you'll see that the example data
 has vertices (`2`, `4`) that are more than one hop away from `0`, which were

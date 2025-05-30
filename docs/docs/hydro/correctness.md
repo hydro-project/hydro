@@ -7,7 +7,7 @@ Much like Rust's type system helps ensure memory safety, Hydro helps ensure **di
 - Non-determinism due to message delays (which affect arrival order), interleaving across streams (which affect order of handling) or retries (which result in duplicates)
   - See [Live Collections / Eventual Determinism](./live-collections/determinism)
 - Using mismatched serialization and deserialization formats across services
-  - See [Locations and Networking](./locations/index)
+  - See [Locations and Networking](./locations/)
 - Misusing node identifiers across logically independent clusters of machines
   - See [Locations / Clusters](./locations/clusters)
 - Relying on non-determinstic clocks for batching events

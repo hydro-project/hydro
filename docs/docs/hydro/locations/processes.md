@@ -19,7 +19,7 @@ Currently, each Hydro process is deployed as a **separate** operating system pro
 
 :::
 
-Once we have a process, we can create live collections on that process (see [Live Collections](../live-collections/index) for more details). For example, we can create a stream of integers on the leader process:
+Once we have a process, we can create live collections on that process (see [Live Collections](../live-collections/) for more details). For example, we can create a stream of integers on the leader process:
 
 ```rust,no_run
 # use hydro_lang::*;
