@@ -29,3 +29,7 @@ pub mod properties;
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod remove_counter;
+#[cfg(stageleft_runtime)]
+#[cfg(feature = "deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+pub mod reusable_hosts;

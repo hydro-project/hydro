@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
@@ -7,8 +8,9 @@ use hydro_lang::q;
 use hydro_lang::rewrites::decoupler::{self, Decoupler};
 use hydro_lang::Location;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
-    analyze_cluster_results, cleanup_after_analysis, perf_cluster_specs, perf_process_specs, track_cluster_usage_cardinality
+    analyze_cluster_results, cleanup_after_analysis, track_cluster_usage_cardinality
 };
+use hydro_lang::rewrites::reusable_hosts::ReusableHosts;
 use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, print_id};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
@@ -24,6 +26,13 @@ async fn main() {
         String::new()
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+
+    let mut reusable_hosts = ReusableHosts { 
+        hosts: HashMap::new(),
+        host_arg: host_arg,
+        project: project.clone(),
+        network: network.clone(),
+    };
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
@@ -69,24 +78,29 @@ async fn main() {
             insert_counter::insert_counter(leaf, counter_output_duration);
         });
     let mut ir = deep_clone(optimized.ir());
-    let proposer_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "proposer", f + 1);
-    let acceptor_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "acceptor", 2 * f + 1);
-    let client_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "client", num_clients);
-    let client_aggregator_machine = perf_process_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "client aggregator");
-    let replica_machines = perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "replica", f + 1);
 
     let nodes = optimized
-        .with_cluster(&proposers, proposer_machines.clone())
         .with_cluster(
-            &acceptors,acceptor_machines.clone())
+            &proposers,
+            reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
+        )
+        .with_cluster(
+            &acceptors,
+            reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
+        )
         .with_cluster(
             &clients,
-            client_machines.clone()
+            reusable_hosts
+                .get_cluster_hosts(&mut deployment, "client", num_clients),
         )
-        .with_process(&client_aggregator, client_aggregator_machine.clone())
+        .with_process(
+            &client_aggregator,
+            reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
+        )
         .with_cluster(
             &replicas,
-            replica_machines.clone()
+            reusable_hosts
+                .get_cluster_hosts(&mut deployment, "replica", f + 1),
         )
         .deploy(&mut deployment);
     
@@ -101,7 +115,7 @@ async fn main() {
         .await
         .unwrap();
 
-    analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    let (bottleneck, bottleneck_num_nodes) = analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
     cleanup_after_analysis(&mut ir);
 
     print_id::print_id(&mut ir);
@@ -109,11 +123,11 @@ async fn main() {
     // Create a mapping from each CycleSink to its corresponding CycleSource
     let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) =
-        analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &proposers.id());
+        analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &bottleneck);
     let (orig_to_decoupled, decoupled_to_orig, place_on_decoupled) = decouple_analysis::decouple_analysis(
         &mut ir,
         "perf_paxos_cluster",
-        &proposers.id(),
+        &bottleneck,
         send_overhead,
         recv_overhead,
         &cycle_source_to_sink_input,
@@ -132,7 +146,7 @@ async fn main() {
             output_to_decoupled_machine_after: orig_to_decoupled,
             output_to_original_machine_after: decoupled_to_orig,
             place_on_decoupled_machine: place_on_decoupled,
-            orig_location: proposers.id().clone(),
+            orig_location: bottleneck.clone(),
             decoupled_location: decoupled_cluster.clone().unwrap().id().clone(),
         };
         decoupler::decouple(&mut ir, &decoupler);
@@ -148,27 +162,30 @@ async fn main() {
     let nodes = optimized_new_builder
         .with_cluster(
             &proposers,
-            proposer_machines
+            reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
         )
         .with_cluster(
             &acceptors,
-            acceptor_machines
+            reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
         )
         .with_cluster(
             &clients,
-            client_machines
+            reusable_hosts
+                .get_cluster_hosts(&mut deployment, "client", num_clients),
         )
         .with_process(
             &client_aggregator,
-            client_aggregator_machine
+            reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
         )
         .with_cluster(
             &replicas,
-            replica_machines
+            reusable_hosts
+                .get_cluster_hosts(&mut deployment, "replica", f + 1),
         )
         .with_cluster(
             &decoupled_cluster.unwrap(),
-            perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "decoupled", f + 1),
+            reusable_hosts
+                .get_cluster_hosts(&mut deployment, "decoupled", bottleneck_num_nodes),
         )
         .deploy(&mut deployment);
 

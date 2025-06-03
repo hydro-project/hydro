@@ -3,43 +3,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::TrybuildHost;
+use hydro_deploy::Deployment;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+use hydro_lang::rewrites::reusable_hosts::ReusableHosts;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
-
-struct ReusableHosts {
-    hosts: HashMap<String, Arc<dyn Host>>, // Key = display_name
-    next_available_host_index: usize,
-    host_arg: String,
-    project: String,
-    network: Arc<RwLock<GcpNetwork>>,
-}
-
-impl ReusableHosts {
-    // NOTE: Creating hosts with the same display_name in the same deployment will result in undefined behavior.
-    fn get_host(&mut self, deployment: &mut Deployment, display_name: String) -> Arc<dyn Host> {
-        self.hosts.entry(display_name.clone())
-            .or_insert_with(|| {
-                if self.host_arg == "gcp" {
-                    deployment
-                        .GcpComputeEngineHost()
-                        .project(&self.project)
-                        .machine_type("n2-standard-4")
-                        .image("debian-cloud/debian-12")
-                        .region("us-central1-c")
-                        .network(self.network.clone())
-                        .display_name(display_name)
-                        .add()
-                } else {
-                    deployment.Localhost()
-                }
-            })
-            .clone()
-    }
-}
-
 
 #[tokio::main]
 async fn main() {
@@ -52,9 +20,8 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut reusable_hosts = ReusableHosts{ 
+    let mut reusable_hosts = ReusableHosts { 
         hosts: HashMap::new(),
-        next_available_host_index: 0,
         host_arg: host_arg,
         project: project.clone(),
         network: network.clone(),
@@ -111,32 +78,28 @@ async fn main() {
                 &replicas,
             );
 
-            let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
-
             let nodes = builder
                 .with_cluster(
                     &proposers,
-                    (0..f + 1)
-                        .map(|i| TrybuildHost::new(reusable_hosts.get_host(&mut deployment, format!("proposer{}", i))).rustflags(rustflags)),
+                    reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
                 )
                 .with_cluster(
                     &acceptors,
-                    (0..2 * f + 1)
-                        .map(|_| TrybuildHost::new(reusable_hosts.get_host(&mut deployment, format!("acceptor{}", i))).rustflags(rustflags)),
+                    reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
                 )
                 .with_cluster(
                     &clients,
-                    (0..*num_clients)
-                        .map(|_| TrybuildHost::new(reusable_hosts.get_host(&mut deployment, format!("client{}", i))).rustflags(rustflags)),
+                    reusable_hosts
+                        .get_cluster_hosts(&mut deployment, "client", *num_clients),
                 )
                 .with_process(
                     &client_aggregator,
-                    TrybuildHost::new(reusable_hosts.get_host(&mut deployment, "client-aggregator".into())).rustflags(rustflags),
+                    reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
                 )
                 .with_cluster(
                     &replicas,
-                    (0..f + 1)
-                        .map(|_| TrybuildHost::new(reusable_hosts.get_host(&mut deployment, format!("replica{}", i))).rustflags(rustflags)),
+                    reusable_hosts
+                        .get_cluster_hosts(&mut deployment, "replica", f + 1),
                 )
                 .deploy(&mut deployment);
 

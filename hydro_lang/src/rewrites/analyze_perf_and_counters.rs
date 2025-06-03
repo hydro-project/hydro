@@ -1,17 +1,12 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
-use hydro_deploy::{Deployment, Host};
 use tokio::sync::mpsc::UnboundedReceiver;
-use tokio::sync::RwLock;
 
 use super::populate_metadata::inject_id;
 use super::remove_counter::remove_counter;
 use crate::builder::deploy::DeployResult;
 use crate::deploy::deploy_graph::DeployCrateWrapper;
-use crate::deploy::{HydroDeploy, TrybuildHost};
+use crate::deploy::HydroDeploy;
 use crate::ir::HydroLeaf;
 use crate::location::LocationId;
 use crate::rewrites::populate_metadata::{
@@ -20,67 +15,6 @@ use crate::rewrites::populate_metadata::{
 use crate::internal_constants::{
     CPU_USAGE_PREFIX, COUNTER_PREFIX,
 };
-
-type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
-
-pub fn perf_process_specs(
-    host_arg: &str,
-    project: String,
-    network: Arc<RwLock<GcpNetwork>>,
-    deployment: &mut Deployment,
-    process_name: &str,
-) -> TrybuildHost {
-    perf_cluster_specs(host_arg, project, network.clone(), deployment, process_name, 1)
-        .into_iter().next()
-        .unwrap()
-}
-
-pub fn perf_cluster_specs(
-    host_arg: &str,
-    project: String,
-    network: Arc<RwLock<GcpNetwork>>,
-    deployment: &mut Deployment,
-    cluster_name: &str,
-    num_nodes: usize,
-) -> Vec<TrybuildHost> {
-    let create_host: HostCreator = if host_arg == "gcp" {
-        Box::new(move |deployment| -> Arc<dyn Host> {
-            deployment
-                .GcpComputeEngineHost()
-                .project(&project)
-                .machine_type("n2-standard-4")
-                .image("debian-cloud/debian-12")
-                .region("us-central1-c")
-                .network(network.clone())
-                .add()
-        })
-    } else {
-        let localhost = deployment.Localhost();
-        Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
-    };
-
-    let rustflags = if host_arg == "gcp" {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
-    (0..num_nodes)
-        .map(|idx| {
-            TrybuildHost::new(create_host(deployment))
-                .additional_hydro_features(vec!["runtime_measure".to_string()])
-                .rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
-                        .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
-                        .frequency(128)
-                        .setup_command(DEBIAN_PERF_SETUP_COMMAND)
-                        .build(),
-                )
-        })
-        .collect()
-}
 
 pub async fn track_process_usage_cardinality(
     process: &impl DeployCrateWrapper,
@@ -142,7 +76,11 @@ pub async fn analyze_cluster_results(
     ir: &mut [HydroLeaf],
     usage_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     cardinality_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
-) {
+) -> (LocationId, usize) {
+    let mut max_usage_cluster_id = None;
+    let mut max_usage_cluster_size = 0;
+    let mut max_usage_overall = 0f64;
+
     for (id, name, cluster) in nodes.get_all_clusters() {
         println!("Analyzing cluster {:?}: {}", id, name);
         
@@ -162,6 +100,7 @@ pub async fn analyze_cluster_results(
         }
 
         if let Some((usage, idx)) = max_usage {
+            // Modify IR with perf & cardinality numbers
             let node_cardinality = cardinality_out
                 .get_mut(&(id.clone(), name.clone(), idx))
                 .unwrap();
@@ -172,8 +111,18 @@ pub async fn analyze_cluster_results(
                 node_cardinality,
             )
             .await;
+
+            // Update cluster with max usage
+            if max_usage_overall < usage {
+                max_usage_cluster_id = Some(id.clone());
+                max_usage_cluster_size = cluster.members().len();
+                max_usage_overall = usage;
+                println!("The bottleneck is {}", name);
+            }
         }
     }
+
+    (max_usage_cluster_id.unwrap(), max_usage_cluster_size)
 }
 
 pub async fn get_usage(usage_out: &mut UnboundedReceiver<String>) -> f64 {
