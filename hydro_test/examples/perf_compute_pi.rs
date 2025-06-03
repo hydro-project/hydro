@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
@@ -5,9 +6,10 @@ use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
 use hydro_lang::rewrites::analyze_perf_and_counters::{
     analyze_cluster_results, analyze_process_results, cleanup_after_analysis, get_usage,
-    perf_cluster_specs, perf_process_specs, track_cluster_usage_cardinality,
+    track_cluster_usage_cardinality,
     track_process_usage_cardinality,
 };
+use hydro_lang::rewrites::reusable_hosts::ReusableHosts;
 use hydro_lang::rewrites::{
     analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup,
 };
@@ -35,6 +37,13 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
+    let mut reusable_hosts = ReusableHosts { 
+        hosts: HashMap::new(),
+        host_arg: host_arg,
+        project: project.clone(),
+        network: network.clone(),
+    };
+
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
@@ -48,11 +57,11 @@ async fn main() {
         //[trybuildhost]//
         .with_process(
             &leader,
-            perf_process_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "leader"),
+            reusable_hosts.get_process_hosts(&mut deployment, "leader"),
         )
         .with_cluster(
             &cluster,
-            perf_cluster_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "cluster", 8),
+            reusable_hosts.get_cluster_hosts(&mut deployment, "cluster", 8),
         )
         .deploy(&mut deployment);
 
