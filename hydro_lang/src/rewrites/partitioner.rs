@@ -1,15 +1,18 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 
 use crate::ir::*;
 
 /// Fields that could be used for partitioning
+#[derive(Clone, Serialize, Deserialize)]
 pub enum PartitionAttribute {
     All(),
     TupleIndex(usize),
 }
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Partitioner {
     pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
     pub num_partitions: usize,

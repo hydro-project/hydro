@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
+use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
@@ -26,7 +27,7 @@ pub use can_send::CanSend;
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum LocationId {
     Process(usize),
     Cluster(usize),

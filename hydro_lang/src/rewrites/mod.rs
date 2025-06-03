@@ -33,3 +33,6 @@ pub mod remove_counter;
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod reusable_hosts;
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+pub mod serialize;

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use proc_macro2::Span;
+use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
 use syn::visit_mut::VisitMut;
 
@@ -13,6 +14,7 @@ use crate::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use super::partitioner::ClusterSelfIdReplace;
 use super::{link_cycles, populate_metadata, print_id};
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Decoupler {
     pub output_to_decoupled_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the decoupled machine
     pub output_to_original_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the original machine
