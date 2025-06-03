@@ -1,10 +1,11 @@
-use quote::{quote_spanned, ToTokens};
-use syn::parse_quote;
+use quote::{ToTokens, quote_spanned};
+use syn::{parse_quote, parse_quote_spanned};
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, PortIndexValue, WriteContextArgs, RANGE_0, RANGE_1,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    PortIndexValue, RANGE_1, WriteContextArgs,
 };
+use crate::graph::OpInstGenerics;
 
 /// > 2 input streams of the same type T, 1 output stream of type T
 ///
@@ -32,7 +33,7 @@ pub const DIFFERENCE_MULTISET: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: &(0..=2),
-    type_args: RANGE_0,
+    type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: false,
     flo_type: None,
@@ -52,12 +53,32 @@ pub const DIFFERENCE_MULTISET: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
+        // Convert the type args to be `<K, ()>` where `K` is the input item type, defaulting to `_` if not provided.
+        let wc_with_types = WriteContextArgs {
+            op_inst: &OperatorInstance {
+                generics: OpInstGenerics {
+                    type_args: vec![
+                        wc.op_inst
+                            .generics
+                            .type_args
+                            .first()
+                            .cloned()
+                            .unwrap_or_else(|| parse_quote_spanned!(op_span=> _)),
+                        parse_quote_spanned!(op_span=> ()),
+                    ],
+                    ..wc.op_inst.generics.clone()
+                },
+                ..wc.op_inst.clone()
+            },
+            ..wc.clone()
+        };
+
         let OperatorWriteOutput {
             write_prologue,
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-        } = (super::anti_join_multiset::ANTI_JOIN_MULTISET.write_fn)(wc, diagnostics)?;
+        } = (super::anti_join_multiset::ANTI_JOIN_MULTISET.write_fn)(&wc_with_types, diagnostics)?;
 
         let pos = &inputs[1];
         let write_iterator = quote_spanned! {op_span=>

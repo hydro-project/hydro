@@ -82,7 +82,7 @@ flowchart LR
 The concept of stratification is taken directly from stratified negation in the [Datalog](https://en.wikipedia.org/wiki/Datalog) language. DFIR identifies a stratum boundary at any blocking input to an operator, where classical Datalog only stratifies its negation operator.
 
 The DFIR compiler performs stratification via static analysis of the DFIR spec. The analysis is based on the following rules:
-- A Handoff is interposed in front of any blocking input to an operator (as documented in the [operator definitions](../syntax/surface_ops_gen.md)).
+- A Handoff is interposed in front of any blocking input to an operator (as documented in the [operator definitions](../syntax/surface_ops_gen)).
 - The flow is partitioned at the Handoffs into subflows called "strata".
 - The resulting graph of strata and Handoffs is tested to ensure that it's acyclic. (Cycles through blocking operators are forbidden as they not have well-defined behavior—note that the blocking operators in a cycle would deadlock waiting for each other.)
 

@@ -35,12 +35,6 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let rustflags = if host_arg == "gcp" {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
@@ -51,6 +45,7 @@ async fn main() {
         .optimize_with(|ir| insert_counter::insert_counter(ir, counter_output_duration));
     let mut ir = deep_clone(optimized.ir());
     let nodes = optimized
+        //[trybuildhost]//
         .with_process(
             &leader,
             perf_process_specs(&host_arg, project.clone(), network.clone(), &mut deployment, "leader"),

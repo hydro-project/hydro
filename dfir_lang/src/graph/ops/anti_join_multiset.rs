@@ -1,14 +1,17 @@
 use quote::{ToTokens, quote_spanned};
-use syn::parse_quote;
+use syn::{parse_quote, parse_quote_spanned};
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
-    RANGE_1, WriteContextArgs,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_1,
+    WriteContextArgs,
 };
+use crate::graph::{OpInstGenerics, OperatorInstance};
 
 // This implementation is largely redundant to ANTI_JOIN and should be DRY'ed
 /// > 2 input streams the first of type (K, T), the second of type K,
 /// > with output type (K, T)
+///
+/// Up to two type arguments are allowed, the first for the key type K and the second for the value type T.
 ///
 /// For a given tick, computes the anti-join of the items in the input
 /// streams, returning items in the `pos` input that do not have matching keys
@@ -30,7 +33,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: &(0..=2),
-    type_args: RANGE_0,
+    type_args: &(0..=2),
     is_external_input: false,
     // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
     // to prevent reading uncleared data if this subgraph doesn't run.
@@ -53,17 +56,27 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    work_fn,
+                   op_inst:
+                       OperatorInstance {
+                           generics: OpInstGenerics { type_args, .. },
+                           ..
+                       },
                    ..
                },
                diagnostics| {
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
+
+        let type_infer = parse_quote_spanned!(op_span=> _);
+        #[expect(clippy::get_first, reason = "code consistency")]
+        let type_key = type_args.get(0).unwrap_or(&type_infer);
+        let type_val = type_args.get(1).unwrap_or(&type_infer);
 
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
         let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
 
         let write_prologue_pos = quote_spanned! {op_span=>
             let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                ::std::vec::Vec::new()
+                ::std::vec::Vec::<(#type_key, #type_val)>::new()
             ));
         };
         let write_prologue_after_pos = wc
@@ -77,7 +90,7 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
 
         let write_prologue_neg = quote_spanned! {op_span=>
             let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #root::rustc_hash::FxHashSet::default()
+                #root::rustc_hash::FxHashSet::<#type_key>::default()
             ));
         };
         let write_prologue_after_neg = wc

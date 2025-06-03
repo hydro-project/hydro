@@ -49,4 +49,7 @@ pub struct TracingOptions {
     pub setup_command: Option<CowStr>,
 }
 
+/// A command to run on Debian-based systems to set up `perf` for tracing.
+///
+/// Uses `apt` to install `linux-perf` and `binutils`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
 pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";

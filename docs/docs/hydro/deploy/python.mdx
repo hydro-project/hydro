@@ -5,11 +5,13 @@ sidebar_position: 99
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Python Hydro Deploy (inactive)
+# DEPRECATED: Python Hydro Deploy (`hydro_cli`)
 
 :::caution
 
-Hydro Deploy's Python CLI is experimental and not under active development. Users should prefer to use the [Rust version of Hydro Deploy](/docs/hydro/deploy).
+Hydro Deploy's Python CLI is deprecated; users should prefer to use the [Rust version of Hydro Deploy](/docs/hydro/deploy).
+
+Python Hydro Deploy corresponds to the `hydro_cli` crate in the repository.
 
 :::
 
