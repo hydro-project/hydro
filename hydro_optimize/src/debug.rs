@@ -1,8 +1,12 @@
-use hydro_lang::ir::{traverse_dfir, HydroLeaf, HydroNode};
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 
 fn print_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
     let metadata = leaf.metadata();
-    let inputs = leaf.input_metadata().iter().map(|m| m.id).collect::<Vec<Option<usize>>>();
+    let inputs = leaf
+        .input_metadata()
+        .iter()
+        .map(|m| m.id)
+        .collect::<Vec<Option<usize>>>();
     println!(
         "{} Leaf {}, {:?}, Inputs: {:?}",
         next_stmt_id,
@@ -14,7 +18,11 @@ fn print_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
 
 fn print_id_node(node: &mut HydroNode, next_stmt_id: &mut usize) {
     let metadata = node.metadata();
-    let inputs = node.input_metadata().iter().map(|m| m.id).collect::<Vec<Option<usize>>>();
+    let inputs = node
+        .input_metadata()
+        .iter()
+        .map(|m| m.id)
+        .collect::<Vec<Option<usize>>>();
     println!(
         "{} Node {}, {:?}, Inputs: {:?}",
         next_stmt_id,

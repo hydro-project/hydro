@@ -247,24 +247,27 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     .latest();
 
     let client_members = clients.members();
-    unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }
-    .for_each(q!(move |throughputs| {
-        let confidence = Confidence::new(0.99);
+    unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
+        move |throughputs| {
+            let confidence = Confidence::new(0.99);
 
-        if throughputs.sample_count() >= 2 {
-            let num_client_machines = client_members.len();
-            // ci_mean crashes if there are fewer than two samples
-            let mean = throughputs.sample_mean() * num_client_machines as f64;
-            if let Ok(interval) = throughputs.ci_mean(confidence) {
-                if let Some(lower) = interval.left() {
-                    if let Some(upper) = interval.right() {
-                        println!(
-                            "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                            lower * num_client_machines as f64, mean, upper * num_client_machines as f64
-                        );
+            if throughputs.sample_count() >= 2 {
+                let num_client_machines = client_members.len();
+                // ci_mean crashes if there are fewer than two samples
+                let mean = throughputs.sample_mean() * num_client_machines as f64;
+                if let Ok(interval) = throughputs.ci_mean(confidence) {
+                    if let Some(lower) = interval.left() {
+                        if let Some(upper) = interval.right() {
+                            println!(
+                                "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                                lower * num_client_machines as f64,
+                                mean,
+                                upper * num_client_machines as f64
+                            );
+                        }
                     }
                 }
             }
         }
-    }));
+    ));
 }

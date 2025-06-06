@@ -8,6 +8,7 @@ use super::paxos_with_client::PaxosLike;
 pub struct Client;
 pub struct Aggregator;
 
+#[expect(clippy::too_many_arguments, reason = "internal paxos code // TODO")]
 pub fn paxos_bench<'a>(
     num_clients_per_node: usize,
     checkpoint_frequency: usize, // How many sequence numbers to commit before checkpointing

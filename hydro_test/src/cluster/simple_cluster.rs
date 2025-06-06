@@ -277,7 +277,9 @@ mod tests {
         let counter_output_duration = q!(std::time::Duration::from_secs(1));
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|leaves| inject_profiling::insert_counter(leaves, counter_output_duration))
+            .optimize_with(|leaves| {
+                inject_profiling::insert_counter(leaves, counter_output_duration)
+            })
             .into_deploy::<DeployRuntime>();
 
         insta::assert_debug_snapshot!(built.ir());

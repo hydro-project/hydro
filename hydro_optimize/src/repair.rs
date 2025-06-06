@@ -1,6 +1,8 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
+use std::collections::HashMap;
 
-use hydro_lang::{ir::{transform_bottom_up, traverse_dfir, HydroLeaf, HydroNode}, location::LocationId};
+use hydro_lang::ir::{HydroLeaf, HydroNode, transform_bottom_up, traverse_dfir};
+use hydro_lang::location::LocationId;
 use syn::Ident;
 
 fn inject_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
@@ -17,20 +19,17 @@ pub fn inject_id(ir: &mut [HydroLeaf]) {
     traverse_dfir(ir, inject_id_leaf, inject_id_node);
 }
 
-fn link_cycles_leaf(
-    leaf: &mut HydroLeaf,
-    sink_inputs: &mut HashMap<Ident, usize>,
-) {
+fn link_cycles_leaf(leaf: &mut HydroLeaf, sink_inputs: &mut HashMap<Ident, usize>) {
     if let HydroLeaf::CycleSink { ident, input, .. } = leaf {
         sink_inputs.insert(ident.clone(), input.metadata().id.unwrap());
     }
 }
 
-fn link_cycles_node(
-    node: &mut HydroNode,
-    sources: &mut HashMap<Ident, usize>,
-) {
-    if let HydroNode::CycleSource { ident, metadata, .. } = node {
+fn link_cycles_node(node: &mut HydroNode, sources: &mut HashMap<Ident, usize>) {
+    if let HydroNode::CycleSource {
+        ident, metadata, ..
+    } = node
+    {
         sources.insert(ident.clone(), metadata.id.unwrap());
     }
 }
@@ -59,7 +58,7 @@ pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize>
         } else {
             std::panic!(
                 "No source found for CycleSink {}, Input Id {}",
-                sink_ident, 
+                sink_ident,
                 sink_input_id
             );
         }
@@ -68,8 +67,11 @@ pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize>
     source_to_sink_input
 }
 
-
-fn inject_location_leaf(leaf: &mut HydroLeaf, id_to_location: &RefCell<HashMap<usize, LocationId>>, missing_location: &RefCell<bool>) {
+fn inject_location_leaf(
+    leaf: &mut HydroLeaf,
+    id_to_location: &RefCell<HashMap<usize, LocationId>>,
+    missing_location: &RefCell<bool>,
+) {
     let inputs = leaf.input_metadata();
     let input_metadata = inputs.first().unwrap();
     let input_id = input_metadata.id.unwrap();
@@ -80,22 +82,35 @@ fn inject_location_leaf(leaf: &mut HydroLeaf, id_to_location: &RefCell<HashMap<u
 
         if let HydroLeaf::CycleSink { location_kind, .. } = leaf {
             *location_kind = location.clone();
-            println!("Cycle sink with input {} has location {:?}", input_id, location.clone());
+            println!(
+                "Cycle sink with input {} has location {:?}",
+                input_id,
+                location.clone()
+            );
         }
-    }
-    else {
+    } else {
         println!("Missing location for leaf: {:?}", leaf.print_root());
         *missing_location.borrow_mut() = true;
     }
 }
 
-fn inject_location_node(node: &mut HydroNode, id_to_location: &RefCell<HashMap<usize, LocationId>>, missing_location: &RefCell<bool>, cycle_source_to_sink_input: &HashMap<usize, usize>) {
+fn inject_location_node(
+    node: &mut HydroNode,
+    id_to_location: &RefCell<HashMap<usize, LocationId>>,
+    missing_location: &RefCell<bool>,
+    cycle_source_to_sink_input: &HashMap<usize, usize>,
+) {
     if let Some(op_id) = node.metadata().id {
         let inputs = match node {
             HydroNode::Source { location_kind, .. }
-            | HydroNode::Network { to_location: location_kind, .. } => {
+            | HydroNode::Network {
+                to_location: location_kind,
+                ..
+            } => {
                 // Get location sources from the nodes must have it be correct: Source and Network
-                id_to_location.borrow_mut().insert(op_id, location_kind.clone());
+                id_to_location
+                    .borrow_mut()
+                    .insert(op_id, location_kind.clone());
                 return;
             }
             HydroNode::Tee { inner, .. } => {
@@ -104,9 +119,11 @@ fn inject_location_node(node: &mut HydroNode, id_to_location: &RefCell<HashMap<u
             HydroNode::CycleSource { .. } => {
                 vec![*cycle_source_to_sink_input.get(&op_id).unwrap()]
             }
-            _ => {
-                node.input_metadata().iter().map(|input_metadata| input_metadata.id.unwrap()).collect()
-            }
+            _ => node
+                .input_metadata()
+                .iter()
+                .map(|input_metadata| input_metadata.id.unwrap())
+                .collect(),
         };
 
         // Otherwise, get it from (either) input
@@ -119,8 +136,15 @@ fn inject_location_node(node: &mut HydroNode, id_to_location: &RefCell<HashMap<u
 
                 match node {
                     // Update Persist's location as well (we won't see it during traversal)
-                    HydroNode::Fold { input, .. } | HydroNode::FoldKeyed { input, .. } | HydroNode::Reduce { input, .. } | HydroNode::ReduceKeyed { input, ..} => {
-                        if let HydroNode::Persist { metadata: persist_metadata, .. } = input.as_mut() {
+                    HydroNode::Fold { input, .. }
+                    | HydroNode::FoldKeyed { input, .. }
+                    | HydroNode::Reduce { input, .. }
+                    | HydroNode::ReduceKeyed { input, .. } => {
+                        if let HydroNode::Persist {
+                            metadata: persist_metadata,
+                            ..
+                        } = input.as_mut()
+                        {
                             persist_metadata.location_kind.swap_root(location);
                         }
                     }
@@ -147,13 +171,22 @@ pub fn inject_location(ir: &mut [HydroLeaf], cycle_source_to_sink_input: &HashMa
         println!("Attempting to inject location, looping until fixpoint...");
         let missing_location = RefCell::new(false);
 
-        transform_bottom_up(ir, &mut |leaf| {
-            inject_location_leaf(leaf, &id_to_location, &missing_location);
-        }, &mut |node| {
-            inject_location_node(node, &id_to_location, &missing_location, cycle_source_to_sink_input);
-        });
+        transform_bottom_up(
+            ir,
+            &mut |leaf| {
+                inject_location_leaf(leaf, &id_to_location, &missing_location);
+            },
+            &mut |node| {
+                inject_location_node(
+                    node,
+                    &id_to_location,
+                    &missing_location,
+                    cycle_source_to_sink_input,
+                );
+            },
+        );
 
-        if !missing_location.borrow().clone() {
+        if !*missing_location.borrow() {
             println!("Locations injected!");
             break;
         }

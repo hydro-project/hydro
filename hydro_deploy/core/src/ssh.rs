@@ -380,8 +380,6 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         Ok(())
     }
 
-    
-
     async fn launch_binary(
         &self,
         id: String,

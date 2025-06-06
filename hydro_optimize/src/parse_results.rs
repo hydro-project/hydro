@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
+use hydro_lang::builder::deploy::DeployResult;
+use hydro_lang::deploy::HydroDeploy;
+use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::location::LocationId;
 use regex::Regex;
 use tokio::sync::mpsc::UnboundedReceiver;
-
-use hydro_lang::builder::deploy::DeployResult;
-use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-use hydro_lang::deploy::HydroDeploy;
-use hydro_lang::ir::{traverse_dfir, HydroLeaf, HydroNode};
-use hydro_lang::location::LocationId;
-
 
 pub fn parse_cpu_usage(measurement: String) -> f64 {
     let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();
@@ -32,23 +30,29 @@ fn parse_perf(file: String) -> HashMap<(usize, bool), f64> {
 
         if let Some(cap) = operator_regex.captures_iter(line).last() {
             let id = cap[4].parse::<usize>().unwrap();
-            let is_network_recv = cap.get(3).is_some_and(|direction| direction.as_str() == "recv");
+            let is_network_recv = cap
+                .get(3)
+                .is_some_and(|direction| direction.as_str() == "recv");
 
             let dfir_operator_and_samples =
                 samples_per_id.entry((id, is_network_recv)).or_insert(0.0);
             *dfir_operator_and_samples += n_samples;
-        }
-        else {
+        } else {
             unidentified_samples += n_samples;
         }
         total_samples += n_samples;
     }
 
-    println!("Out of {} samples, {} were unidentified, {}%", total_samples, unidentified_samples, unidentified_samples / total_samples * 100.0);
+    println!(
+        "Out of {} samples, {} were unidentified, {}%",
+        total_samples,
+        unidentified_samples,
+        unidentified_samples / total_samples * 100.0
+    );
 
-    samples_per_id.iter_mut().for_each(|(_, samples)| {
-        *samples /= total_samples
-    });
+    samples_per_id
+        .iter_mut()
+        .for_each(|(_, samples)| *samples /= total_samples);
     samples_per_id
 }
 
@@ -170,7 +174,7 @@ pub async fn analyze_cluster_results(
 
     for (id, name, cluster) in nodes.get_all_clusters() {
         println!("Analyzing cluster {:?}: {}", id, name);
-        
+
         // Iterate through nodes' usages and keep the max usage one
         let mut max_usage = None;
         for (idx, _) in cluster.members().iter().enumerate() {
@@ -216,8 +220,6 @@ pub async fn get_usage(usage_out: &mut UnboundedReceiver<String>) -> f64 {
     let measurement = usage_out.recv().await.unwrap();
     parse_cpu_usage(measurement)
 }
-
-
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum NetworkType {
@@ -325,6 +327,3 @@ pub fn analyze_send_recv_overheads(ir: &mut [HydroLeaf], location: &LocationId) 
 
     (max_send_overhead, max_recv_overhead)
 }
-
-
-

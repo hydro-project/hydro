@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
-use hydro_lang::ir::deep_clone;
+use hydro_deploy::gcp::GcpNetwork;
 use hydro_lang::Location;
-use hydro_optimize::{decoupler, deploy::*};
+use hydro_lang::ir::deep_clone;
+use hydro_optimize::decoupler;
+use hydro_optimize::deploy::*;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-
 use tokio::sync::RwLock;
 
 #[tokio::main]
@@ -62,14 +62,15 @@ async fn main() {
         (clients.id().raw_id(), clients.typename(), num_clients),
         (replicas.id().raw_id(), replicas.typename(), f + 1),
     ];
-    let processes = vec![
-        (client_aggregator.id().raw_id(), client_aggregator.typename())
-    ];
+    let processes = vec![(
+        client_aggregator.id().raw_id(),
+        client_aggregator.typename(),
+    )];
 
     // Deploy
-    let mut reusable_hosts = ReusableHosts { 
+    let mut reusable_hosts = ReusableHosts {
         hosts: HashMap::new(),
-        host_arg: host_arg,
+        host_arg,
         project: project.clone(),
         network: network.clone(),
     };
@@ -83,7 +84,8 @@ async fn main() {
             builder,
             &clusters,
             &processes,
-        ).await;
+        )
+        .await;
 
         // Apply decoupling
         let mut decoupled_cluster = None;
@@ -94,7 +96,7 @@ async fn main() {
             decoupler.decoupled_location = new_cluster.id().clone();
             decoupler::decouple(&mut ir, &decoupler);
             decoupled_cluster = Some(new_cluster);
-            
+
             ir
         });
         if let Some(new_cluster) = decoupled_cluster {

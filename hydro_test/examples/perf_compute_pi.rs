@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
-use hydro_optimize::deploy::{deploy_and_analyze, ReusableHosts};
+use hydro_deploy::gcp::GcpNetwork;
 use hydro_lang::Location;
-
+use hydro_optimize::deploy::{ReusableHosts, deploy_and_analyze};
 use tokio::sync::RwLock;
 
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
@@ -28,9 +27,9 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut reusable_hosts = ReusableHosts { 
+    let mut reusable_hosts = ReusableHosts {
         hosts: HashMap::new(),
-        host_arg: host_arg,
+        host_arg,
         project: project.clone(),
         network: network.clone(),
     };
@@ -38,12 +37,8 @@ async fn main() {
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
-    let clusters = vec![
-        (cluster.id().raw_id(), cluster.typename(), 8),
-    ];
-    let processes = vec![
-        (leader.id().raw_id(), leader.typename())
-    ];
+    let clusters = vec![(cluster.id().raw_id(), cluster.typename(), 8)];
+    let processes = vec![(leader.id().raw_id(), leader.typename())];
 
     let _ = deploy_and_analyze(
         &mut reusable_hosts,
@@ -51,5 +46,6 @@ async fn main() {
         builder,
         &clusters,
         &processes,
-    ).await;
+    )
+    .await;
 }

@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
+use hydro_deploy::gcp::GcpNetwork;
 use hydro_lang::Location;
-use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use hydro_optimize::deploy::*;
+use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
 #[tokio::main]
@@ -19,9 +19,9 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut reusable_hosts = ReusableHosts { 
+    let mut reusable_hosts = ReusableHosts {
         hosts: HashMap::new(),
-        host_arg: host_arg,
+        host_arg,
         project: project.clone(),
         network: network.clone(),
     };
@@ -33,13 +33,12 @@ async fn main() {
     let i_am_leader_check_timeout_delay_multiplier = 15;
 
     // Benchmark parameters
-    let num_clients = [1,2];
-    let num_clients_per_node = vec![1,500,1000,2000,3000];
+    let num_clients = [1, 2];
+    let num_clients_per_node = vec![1, 500, 1000, 2000, 3000];
     let run_seconds = 60;
 
     let max_num_clients_per_node = num_clients_per_node.iter().max().unwrap();
     for (i, num_clients) in num_clients.iter().enumerate() {
-        
         // For the 1st client, test a variable number of virtual clients. For the rest, use the max number.
         let virtual_clients = if i == 0 {
             &num_clients_per_node
@@ -48,7 +47,10 @@ async fn main() {
         };
 
         for num_clients_per_node in virtual_clients {
-            println!("Running Paxos with {} clients and {} virtual clients per node for {} seconds", num_clients, num_clients_per_node, run_seconds);
+            println!(
+                "Running Paxos with {} clients and {} virtual clients per node for {} seconds",
+                num_clients, num_clients_per_node, run_seconds
+            );
 
             let builder = hydro_lang::FlowBuilder::new();
             let proposers = builder.cluster();
@@ -83,9 +85,10 @@ async fn main() {
                 (clients.id().raw_id(), clients.typename(), *num_clients),
                 (replicas.id().raw_id(), replicas.typename(), f + 1),
             ];
-            let processes = vec![
-                (client_aggregator.id().raw_id(), client_aggregator.typename())
-            ];
+            let processes = vec![(
+                client_aggregator.id().raw_id(),
+                client_aggregator.typename(),
+            )];
 
             let _ = deploy_and_analyze(
                 &mut reusable_hosts,
@@ -93,7 +96,8 @@ async fn main() {
                 builder,
                 &clusters,
                 &processes,
-            ).await;
+            )
+            .await;
         }
     }
 }

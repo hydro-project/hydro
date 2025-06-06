@@ -133,7 +133,7 @@ impl<'a> FlowBuilder<'a> {
         let processes = self.processes.borrow().clone();
         let clusters = self.clusters.borrow().clone();
         let externals = self.externals.borrow().clone();
-        let next_location_id = self.next_location_id.borrow().clone();
+        let next_location_id = *self.next_location_id.borrow();
         RewriteIrFlowBuilder {
             builder: FlowBuilder {
                 flow_state: Rc::new(RefCell::new(FlowStateInner {

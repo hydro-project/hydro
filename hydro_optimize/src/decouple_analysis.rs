@@ -2,9 +2,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use grb::prelude::*;
-use hydro_lang::{ir::{traverse_dfir, HydroIrMetadata, HydroLeaf, HydroNode}, location::LocationId};
+use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::location::LocationId;
 
-use super::parse_results::{get_network_type, NetworkType};
+use super::parse_results::{NetworkType, get_network_type};
 
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
@@ -21,7 +22,6 @@ use super::parse_results::{get_network_type, NetworkType};
 /// 1. If we are the receiver, then create a var, we pay deserialization
 /// 2. If we are the sender (and not the receiver), don't create a var (because the destination is another machine and can't change), but we still pay serialization
 /// 3. If we are the sender and receiver, then create a var, pay for both
-
 struct ModelMetadata {
     // Const fields
     cluster_to_decouple: LocationId,
@@ -50,11 +50,7 @@ fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Var>, model: &
 }
 
 #[expect(unused_qualifications, reason = "grb_rs macro bug")]
-fn add_equality_constr(
-    ops: &Vec<usize>,
-    op_id_to_var: &mut HashMap<usize, Var>,
-    model: &mut Model,
-) {
+fn add_equality_constr(ops: &[usize], op_id_to_var: &mut HashMap<usize, Var>, model: &mut Model) {
     if let Some(mut prev_op) = ops.first() {
         for op in ops.iter().skip(1) {
             let prev_op_var = var_from_op_id(*prev_op, op_id_to_var, model);
@@ -67,8 +63,12 @@ fn add_equality_constr(
     }
 }
 
-fn relevant_inputs(input_metadatas: Vec<&HydroIrMetadata>, cluster_to_decouple: &LocationId) -> Vec<usize> {
-    input_metadatas.iter()
+fn relevant_inputs(
+    input_metadatas: Vec<&HydroIrMetadata>,
+    cluster_to_decouple: &LocationId,
+) -> Vec<usize> {
+    input_metadatas
+        .iter()
         .filter_map(|input_metadata| {
             if cluster_to_decouple == input_metadata.location_kind.root() {
                 Some(input_metadata.id.unwrap())
@@ -145,10 +145,9 @@ fn add_cpu_usage(
                 if let Some(first_input) = inputs.first() {
                     let input_var = var_from_op_id(*first_input, op_id_to_var, model);
                     if let Some(cpu_usage) = metadata.cpu_usage {
-                        let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+                        let og_usage_temp = std::mem::take(orig_node_cpu_usage);
                         *orig_node_cpu_usage = og_usage_temp + cpu_usage * (1 - input_var);
-                        let decoupled_usage_temp =
-                            std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+                        let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
                         *decoupled_node_cpu_usage = decoupled_usage_temp + cpu_usage * input_var;
                     }
                 }
@@ -161,10 +160,9 @@ fn add_cpu_usage(
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
             let op_var = var_from_op_id(op_id, op_id_to_var, model);
             if let Some(recv_cpu_usage) = metadata.network_recv_cpu_usage {
-                let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+                let og_usage_temp = std::mem::take(orig_node_cpu_usage);
                 *orig_node_cpu_usage = og_usage_temp + recv_cpu_usage * (1 - op_var);
-                let decoupled_usage_temp =
-                    std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+                let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
                 *decoupled_node_cpu_usage = decoupled_usage_temp + recv_cpu_usage * op_var;
             }
         }
@@ -175,7 +173,11 @@ fn add_cpu_usage(
 // Return the variables:
 // orig_to_decoupled_var: 1 if (op1 = 0, op2 = 1), 0 otherwise
 // decoupled_to_orig_var: 1 if (op1 = 1, op2 = 0), 0 otherwise
-#[expect(unused_qualifications, reason = "grb_rs macro bug")]
+#[expect(
+    unused_qualifications,
+    clippy::useless_conversion,
+    reason = "grb_rs macro bug"
+)]
 fn add_decouple_vars(
     model: &mut Model,
     op1: usize,
@@ -185,7 +187,9 @@ fn add_decouple_vars(
     let op1_var = var_from_op_id(op1, op_id_to_var, model);
     let op2_var = var_from_op_id(op2, op_id_to_var, model);
     // 1 if (op1 = 0, op2 = 1), 0 otherwise
-    let orig_to_decoupled_var = add_binvar!(model, name: &format!("{}_{}_orig_to_decoupled", op1, op2), bounds: ..).unwrap();
+    let orig_to_decoupled_var =
+        add_binvar!(model, name: &format!("{}_{}_orig_to_decoupled", op1, op2), bounds: ..)
+            .unwrap();
     // Technically unnecessary since we're using binvar, but future proofing
     model
         .add_constr(
@@ -200,7 +204,9 @@ fn add_decouple_vars(
         )
         .unwrap();
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
-    let decoupled_to_orig_var = add_binvar!(model, name: &format!("{}_{}_decoupled_to_orig", op1, op2), bounds: ..).unwrap();
+    let decoupled_to_orig_var =
+        add_binvar!(model, name: &format!("{}_{}_decoupled_to_orig", op1, op2), bounds: ..)
+            .unwrap();
     model
         .add_constr(
             &format!("{}_{}_decoupled_to_orig_pos", op1, op2),
@@ -216,7 +222,11 @@ fn add_decouple_vars(
     (orig_to_decoupled_var, decoupled_to_orig_var)
 }
 
-fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>, model_metadata: &RefCell<ModelMetadata>) {
+fn add_decoupling_overhead(
+    node: &HydroNode,
+    network_type: &Option<NetworkType>,
+    model_metadata: &RefCell<ModelMetadata>,
+) {
     let ModelMetadata {
         decoupling_send_overhead,
         decoupling_recv_overhead,
@@ -230,7 +240,12 @@ fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>,
 
     let metadata = node.metadata();
     let cardinality = match network_type {
-        Some(NetworkType::Send) | Some(NetworkType::SendRecv) => node.input_metadata().first().unwrap().cardinality.unwrap_or_default(),
+        Some(NetworkType::Send) | Some(NetworkType::SendRecv) => node
+            .input_metadata()
+            .first()
+            .unwrap()
+            .cardinality
+            .unwrap_or_default(),
         _ => metadata.cardinality.unwrap_or_default(),
     };
 
@@ -240,15 +255,18 @@ fn add_decoupling_overhead(node: &HydroNode, network_type: &Option<NetworkType>,
         if let Some(input) = inputs.first() {
             let (orig_to_decoupled_var, decoupled_to_orig_var) =
                 add_decouple_vars(model, *input, op_id, op_id_to_var);
-            let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+            let og_usage_temp = std::mem::take(orig_node_cpu_usage);
             *orig_node_cpu_usage = og_usage_temp
-                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * orig_to_decoupled_var
-                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * decoupled_to_orig_var;
-            let decoupled_usage_temp =
-                std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * orig_to_decoupled_var
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * decoupled_to_orig_var;
+            let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
             *decoupled_node_cpu_usage = decoupled_usage_temp
-                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * orig_to_decoupled_var
-                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * decoupled_to_orig_var;
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * orig_to_decoupled_var
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * decoupled_to_orig_var;
         }
     }
 }
@@ -281,12 +299,12 @@ fn add_tee_decoupling_overhead(
         .or_insert_with(|| {
             let any_orig_to_decoupled_var = add_binvar!(model, name: &format!("tee{}_any_orig_to_decoupled", inner_id), bounds: ..).unwrap();
             let any_decoupled_to_orig_var = add_binvar!(model, name: &format!("tee{}_any_decoupled_to_orig", inner_id), bounds: ..).unwrap();
-            let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
+            let og_usage_temp = std::mem::take(orig_node_cpu_usage);
             *orig_node_cpu_usage = og_usage_temp
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
                 + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
             let decoupled_usage_temp =
-                std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+                std::mem::take(decoupled_node_cpu_usage);
             *decoupled_node_cpu_usage = decoupled_usage_temp
                 + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
@@ -320,7 +338,10 @@ fn decouple_analysis_leaf(
         return;
     }
 
-    let input_ids = relevant_inputs(leaf.input_metadata(), &model_metadata.borrow().cluster_to_decouple);
+    let input_ids = relevant_inputs(
+        leaf.input_metadata(),
+        &model_metadata.borrow().cluster_to_decouple,
+    );
     add_input_constraints(*op_id, input_ids, model_metadata);
     add_tick_constraint(leaf.metadata(), model_metadata);
 }
@@ -337,7 +358,10 @@ fn decouple_analysis_node(
         if network_type.is_none() {
             return;
         }
-        model_metadata.borrow_mut().network_ids.insert(*op_id, network_type.clone().unwrap());
+        model_metadata
+            .borrow_mut()
+            .network_ids
+            .insert(*op_id, network_type.clone().unwrap());
     } else if model_metadata.borrow().cluster_to_decouple != *node.metadata().location_kind.root() {
         // If it's not a network and the operator isn't on the cluster, ignore
         return;
@@ -352,9 +376,10 @@ fn decouple_analysis_node(
         HydroNode::Tee { inner, .. } => {
             vec![inner.0.borrow().metadata().id.unwrap()]
         }
-        _ => {
-            relevant_inputs(node.input_metadata(), &model_metadata.borrow().cluster_to_decouple)
-        }
+        _ => relevant_inputs(
+            node.input_metadata(),
+            &model_metadata.borrow().cluster_to_decouple,
+        ),
     };
     add_input_constraints(*op_id, input_ids, model_metadata);
 
@@ -376,7 +401,11 @@ fn decouple_analysis_node(
     add_tick_constraint(node.metadata(), model_metadata);
 }
 
-#[expect(unused_qualifications, reason = "grb_rs macro bug")]
+#[expect(
+    unused_qualifications,
+    clippy::useless_conversion,
+    reason = "grb_rs macro bug"
+)]
 fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>) {
     let ModelMetadata {
         model,
@@ -388,8 +417,8 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>) {
     // Create vars that store the CPU usage of each node
     let orig_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();
     let decoupled_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();
-    let og_usage_temp = std::mem::replace(orig_node_cpu_usage, Expr::default());
-    let decoupled_usage_temp = std::mem::replace(decoupled_node_cpu_usage, Expr::default());
+    let og_usage_temp = std::mem::take(orig_node_cpu_usage);
+    let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
     model
         .add_constr("orig_node_cpu", c!(orig_node_cpu_var == og_usage_temp))
         .unwrap();
@@ -445,7 +474,12 @@ pub(crate) fn decouple_analysis(
             decouple_analysis_leaf(leaf, next_op_id, &model_metadata);
         },
         |node, next_op_id| {
-            decouple_analysis_node(node, next_op_id, &model_metadata, cycle_source_to_sink_input);
+            decouple_analysis_node(
+                node,
+                next_op_id,
+                &model_metadata,
+                cycle_source_to_sink_input,
+            );
         },
     );
 
@@ -463,11 +497,9 @@ pub(crate) fn decouple_analysis(
     if write {
         model.optimize().unwrap();
         model.write("decouple.sol").unwrap();
-    }
-    else {
+    } else {
         model.read("decouple.sol").unwrap();
     }
-    
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
@@ -497,10 +529,10 @@ pub(crate) fn decouple_analysis(
                         place_on_decoupled.push(*op_id);
                     }
                 }
-            }
-            else {
+            } else {
                 // Figure out if we should insert Network nodes
-                match (input_value.unwrap(), op_value) {
+                let input_unwrapped = input_value.unwrap();
+                match (input_unwrapped, op_value) {
                     (0.0, 1.0) => {
                         orig_to_decoupled.push(*op_id);
                     }
@@ -510,7 +542,7 @@ pub(crate) fn decouple_analysis(
                     _ => {}
                 }
 
-                if input_value.unwrap() == 0.0 {
+                if input_unwrapped == 0.0 {
                     orig_machine.push(*op_id);
                 } else {
                     decoupled_machine.push(*op_id);
@@ -526,8 +558,14 @@ pub(crate) fn decouple_analysis(
     orig_to_decoupled.sort();
     decoupled_to_orig.sort();
     place_on_decoupled.sort();
-    println!("Original outputting to decoupled after: {:?}", orig_to_decoupled);
-    println!("Decoupled outputting to original after: {:?}", decoupled_to_orig);
+    println!(
+        "Original outputting to decoupled after: {:?}",
+        orig_to_decoupled
+    );
+    println!(
+        "Decoupled outputting to original after: {:?}",
+        decoupled_to_orig
+    );
     println!("Placing on decoupled: {:?}", place_on_decoupled);
 
     (orig_to_decoupled, decoupled_to_orig, place_on_decoupled)

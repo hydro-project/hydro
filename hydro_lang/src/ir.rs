@@ -428,8 +428,7 @@ impl HydroLeaf {
 
     pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
         match self {
-            HydroLeaf::ForEach { f, .. } 
-            | HydroLeaf::DestSink { sink: f, .. } => {
+            HydroLeaf::ForEach { f, .. } | HydroLeaf::DestSink { sink: f, .. } => {
                 transform(f);
             }
             HydroLeaf::CycleSink { .. } => {}
@@ -1396,7 +1395,11 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         if left_location_id != right_location_id {
-                            println!("Cross singleton broken: {}, ID: {}", self.print_root(), next_stmt_id);
+                            println!(
+                                "Cross singleton broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
                         }
                         assert_eq!(
                             left_location_id, right_location_id,
@@ -1462,7 +1465,11 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         if left_location_id != right_location_id {
-                            println!("Join / cross product broken: {}, ID: {}", self.print_root(), next_stmt_id);
+                            println!(
+                                "Join / cross product broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
                         }
                         assert_eq!(
                             left_location_id, right_location_id,
@@ -1521,7 +1528,11 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         if pos_location_id != neg_location_id {
-                            println!("Difference / antijoin broken: {}, ID: {}", self.print_root(), next_stmt_id);
+                            println!(
+                                "Difference / antijoin broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
                         }
                         assert_eq!(
                             pos_location_id, neg_location_id,

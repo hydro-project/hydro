@@ -76,7 +76,7 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
     pub fn with_process_id_name(
         mut self,
         process_id: usize,
-        process_name: String, 
+        process_name: String,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> Self {
         self.processes.insert(
@@ -86,16 +86,8 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    pub fn with_process<P>(
-        self,
-        process: &Process<P>,
-        spec: impl IntoProcessSpec<'a, D>,
-    ) -> Self {
-        self.with_process_id_name(
-            process.id,
-            std::any::type_name::<P>().to_string(),
-            spec,
-        )
+    pub fn with_process<P>(self, process: &Process<P>, spec: impl IntoProcessSpec<'a, D>) -> Self {
+        self.with_process_id_name(process.id, std::any::type_name::<P>().to_string(), spec)
     }
 
     pub fn with_remaining_processes<S: IntoProcessSpec<'a, D> + 'a>(
@@ -132,18 +124,19 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    pub fn with_cluster_id_name(mut self, cluster_id: usize, cluster_name: String, spec: impl ClusterSpec<'a, D>) -> Self {
+    pub fn with_cluster_id_name(
+        mut self,
+        cluster_id: usize,
+        cluster_name: String,
+        spec: impl ClusterSpec<'a, D>,
+    ) -> Self {
         self.clusters
             .insert(cluster_id, spec.build(cluster_id, &cluster_name));
         self
     }
 
     pub fn with_cluster<C>(self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
-        self.with_cluster_id_name(
-            cluster.id,
-            std::any::type_name::<C>().to_string(),
-            spec,
-        )
+        self.with_cluster_id_name(cluster.id, std::any::type_name::<C>().to_string(), spec)
     }
 
     pub fn with_remaining_clusters<S: ClusterSpec<'a, D> + 'a>(

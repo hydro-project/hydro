@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use hydro_lang::ir::{traverse_dfir, HydroLeaf, HydroNode};
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 

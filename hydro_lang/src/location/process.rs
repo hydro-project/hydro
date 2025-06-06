@@ -11,7 +11,7 @@ pub struct Process<'a, ProcessTag = ()> {
     pub(crate) _phantom: Invariant<'a, ProcessTag>,
 }
 
-impl <P> Process<'_, P> {
+impl<P> Process<'_, P> {
     pub fn typename(&self) -> String {
         std::any::type_name::<P>().to_string()
     }

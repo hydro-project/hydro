@@ -236,7 +236,16 @@ impl Deployment {
         display_name: Option<String>,
     ) -> Arc<GcpComputeEngineHost> {
         self.add_host(|id| {
-            GcpComputeEngineHost::new(id, project, machine_type, image, region, network, user, display_name)
+            GcpComputeEngineHost::new(
+                id,
+                project,
+                machine_type,
+                image,
+                region,
+                network,
+                user,
+                display_name,
+            )
         })
     }
 

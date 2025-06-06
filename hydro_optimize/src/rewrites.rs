@@ -1,8 +1,12 @@
-use hydro_lang::{builder::RewriteIrFlowBuilder, ir::{deep_clone, HydroLeaf}, location::LocationId, Cluster, FlowBuilder, Location};
+use hydro_lang::builder::RewriteIrFlowBuilder;
+use hydro_lang::ir::{HydroLeaf, deep_clone};
+use hydro_lang::location::LocationId;
+use hydro_lang::{Cluster, FlowBuilder, Location};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 
-use crate::{decoupler::{self, Decoupler}, partitioner::Partitioner};
+use crate::decoupler::{self, Decoupler};
+use crate::partitioner::Partitioner;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub enum Rewrite {
@@ -21,11 +25,15 @@ pub type Rewrites = Vec<RewriteMetadata>;
 
 /// Replays the rewrites in order.
 /// Returns Vec(Cluster, number of nodes) for each created cluster and a new FlowBuilder
-pub fn replay<'a>(rewrites: &mut Rewrites, builder: RewriteIrFlowBuilder<'a>, ir: &[HydroLeaf]) -> (Vec<(Cluster<'a, ()>, usize)>, FlowBuilder<'a>){
+pub fn replay<'a>(
+    rewrites: &mut Rewrites,
+    builder: RewriteIrFlowBuilder<'a>,
+    ir: &[HydroLeaf],
+) -> (Vec<(Cluster<'a, ()>, usize)>, FlowBuilder<'a>) {
     let mut new_clusters = vec![];
 
     let new_builder = builder.build_with(|builder| {
-        let mut ir = deep_clone(&ir);
+        let mut ir = deep_clone(ir);
 
         // Apply decoupling/partitioning in order
         for rewrite_metadata in rewrites.iter_mut() {
@@ -33,7 +41,7 @@ pub fn replay<'a>(rewrites: &mut Rewrites, builder: RewriteIrFlowBuilder<'a>, ir
             match &mut rewrite_metadata.rewrite {
                 Rewrite::Decouple(decoupler) => {
                     decoupler.decoupled_location = new_cluster.id().clone();
-                    decoupler::decouple(&mut ir, &decoupler);
+                    decoupler::decouple(&mut ir, decoupler);
                 }
                 Rewrite::Partition(_partitioner) => {
                     panic!("Partitioning is not yet replayable");
@@ -58,7 +66,7 @@ pub enum ClusterSelfIdReplace {
     Partition {
         num_partitions: usize,
         partitioned_cluster_id: usize,
-    }
+    },
 }
 
 impl VisitMut for ClusterSelfIdReplace {
@@ -68,25 +76,26 @@ impl VisitMut for ClusterSelfIdReplace {
                 let ident = segment.ident.to_string();
 
                 match self {
-                    ClusterSelfIdReplace::Decouple { orig_cluster_id, decoupled_cluster_id } => {
-                        let prefix = format!(
-                            "__hydro_lang_cluster_self_id_{}",
-                            orig_cluster_id
-                        );
+                    ClusterSelfIdReplace::Decouple {
+                        orig_cluster_id,
+                        decoupled_cluster_id,
+                    } => {
+                        let prefix = format!("__hydro_lang_cluster_self_id_{}", orig_cluster_id);
                         if ident.starts_with(&prefix) {
                             segment.ident = syn::Ident::new(
                                 &format!("__hydro_lang_cluster_self_id_{}", decoupled_cluster_id),
-                                segment.ident.span()
+                                segment.ident.span(),
                             );
                             println!("Decoupling: Replaced CLUSTER_SELF_ID");
                             return;
                         }
                     }
-                    ClusterSelfIdReplace::Partition { num_partitions, partitioned_cluster_id } => {
-                        let prefix = format!(
-                            "__hydro_lang_cluster_self_id_{}",
-                            partitioned_cluster_id
-                        );
+                    ClusterSelfIdReplace::Partition {
+                        num_partitions,
+                        partitioned_cluster_id,
+                    } => {
+                        let prefix =
+                            format!("__hydro_lang_cluster_self_id_{}", partitioned_cluster_id);
                         if ident.starts_with(&prefix) {
                             let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
                             *expr = syn::parse_quote!({
@@ -97,7 +106,6 @@ impl VisitMut for ClusterSelfIdReplace {
                         }
                     }
                 }
-                
             }
         }
         visit_mut::visit_expr_mut(self, expr);

@@ -2,19 +2,27 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use hydro_lang::{ir::{transform_bottom_up, traverse_dfir, DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode}, location::LocationId, stream::{deserialize_bincode_with_type, serialize_bincode_with_type}, ClusterId};
+use hydro_lang::ClusterId;
+use hydro_lang::ir::{
+    DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode,
+    transform_bottom_up, traverse_dfir,
+};
+use hydro_lang::location::LocationId;
+use hydro_lang::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
 use syn::visit_mut::VisitMut;
 
-use crate::{debug::print_id, repair::{cycle_source_to_sink_input, inject_id, inject_location}, rewrites::ClusterSelfIdReplace};
+use crate::debug::print_id;
+use crate::repair::{cycle_source_to_sink_input, inject_id, inject_location};
+use crate::rewrites::ClusterSelfIdReplace;
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Decoupler {
-    pub output_to_decoupled_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the decoupled machine
-    pub output_to_original_machine_after: Vec<usize>, // The output of the operator at this index should be sent to the original machine
-    pub place_on_decoupled_machine: Vec<usize>, // This operator should be placed on the decoupled machine. Only for sources
+    pub output_to_decoupled_machine_after: Vec<usize>, /* The output of the operator at this index should be sent to the decoupled machine */
+    pub output_to_original_machine_after: Vec<usize>, /* The output of the operator at this index should be sent to the original machine */
+    pub place_on_decoupled_machine: Vec<usize>, /* This operator should be placed on the decoupled machine. Only for sources */
     pub orig_location: LocationId,
     pub decoupled_location: LocationId,
 }
@@ -23,7 +31,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     let metadata = node.metadata().clone();
     let output_debug_type = metadata.output_type.clone().unwrap();
 
-    let parent_id =  metadata.location_kind.root().raw_id();
+    let parent_id = metadata.location_kind.root().raw_id();
     let node_content = std::mem::replace(node, HydroNode::Placeholder);
 
     // Map from b to (ClusterId, b), where ClusterId is the id of the decoupled (or original) node we're sending to
@@ -56,8 +64,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         from_key: None,
         to_location: new_location.clone(),
         to_key: None,
-        serialize_fn: Some(serialize_bincode_with_type(true, &output_type))
-            .map(|e| e.into()),
+        serialize_fn: Some(serialize_bincode_with_type(true, &output_type)).map(|e| e.into()),
         instantiate_fn: DebugInstantiate::Building,
         deserialize_fn: Some(deserialize_bincode_with_type(
             Some(&quote_type::<()>()),
@@ -92,7 +99,11 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     *node = mapped_node;
 }
 
-fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>) {
+fn add_tee(
+    node: &mut HydroNode,
+    new_location: &LocationId,
+    new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>,
+) {
     let metadata = node.metadata().clone();
     let inner_id = if let HydroNode::Tee { inner, .. } = node {
         inner.0.borrow().metadata().id.unwrap()
@@ -100,12 +111,18 @@ fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut Has
         std::panic!("Decoupler add_tee() called on non-Tee");
     };
 
-    let new_inner = new_inners.entry((inner_id, new_location.clone())).or_insert_with(|| {
-        println!("Adding network before Tee to location {:?} after id: {}", new_location, inner_id);
-        add_network(node, new_location);
-        let node_content = std::mem::replace(node, HydroNode::Placeholder);
-        Rc::new(RefCell::new(node_content))
-    }).clone();
+    let new_inner = new_inners
+        .entry((inner_id, new_location.clone()))
+        .or_insert_with(|| {
+            println!(
+                "Adding network before Tee to location {:?} after id: {}",
+                new_location, inner_id
+            );
+            add_network(node, new_location);
+            let node_content = std::mem::replace(node, HydroNode::Placeholder);
+            Rc::new(RefCell::new(node_content))
+        })
+        .clone();
 
     let teed_node = HydroNode::Tee {
         inner: TeeNode(new_inner),
@@ -114,51 +131,93 @@ fn add_tee(node: &mut HydroNode, new_location: &LocationId, new_inners: &mut Has
     *node = teed_node;
 }
 
-fn decouple_node(node: &mut HydroNode, decoupler: &Decoupler, next_stmt_id: &mut usize, new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>) {
+fn decouple_node(
+    node: &mut HydroNode,
+    decoupler: &Decoupler,
+    next_stmt_id: &mut usize,
+    new_inners: &mut HashMap<(usize, LocationId), Rc<RefCell<HydroNode>>>,
+) {
     // Replace location of sources, if necessary
     if decoupler.place_on_decoupled_machine.contains(next_stmt_id) {
         match node {
-            HydroNode::Source { location_kind, metadata, .. }
-            | HydroNode::Network { to_location: location_kind, metadata, .. } => {
-                println!("Changing source/network destination from {:?} to location {:?}, id: {}", location_kind, decoupler.decoupled_location.clone(), next_stmt_id);
+            HydroNode::Source {
+                location_kind,
+                metadata,
+                ..
+            }
+            | HydroNode::Network {
+                to_location: location_kind,
+                metadata,
+                ..
+            } => {
+                println!(
+                    "Changing source/network destination from {:?} to location {:?}, id: {}",
+                    location_kind,
+                    decoupler.decoupled_location.clone(),
+                    next_stmt_id
+                );
                 *location_kind = decoupler.decoupled_location.clone();
-                metadata.location_kind.swap_root(decoupler.decoupled_location.clone());
+                metadata
+                    .location_kind
+                    .swap_root(decoupler.decoupled_location.clone());
             }
             _ => {
-                std::panic!("Decoupler placing non-source/network node on decoupled machine: {}", node.print_root());
+                std::panic!(
+                    "Decoupler placing non-source/network node on decoupled machine: {}",
+                    node.print_root()
+                );
             }
         }
         return;
     }
 
     // Otherwise, replace where the outputs go
-    let new_location = if decoupler.output_to_decoupled_machine_after.contains(next_stmt_id) {
+    let new_location = if decoupler
+        .output_to_decoupled_machine_after
+        .contains(next_stmt_id)
+    {
         &decoupler.decoupled_location
-    }
-    else if decoupler.output_to_original_machine_after.contains(next_stmt_id) {
+    } else if decoupler
+        .output_to_original_machine_after
+        .contains(next_stmt_id)
+    {
         &decoupler.orig_location
-    }
-    else {
+    } else {
         return;
     };
 
     match node {
         HydroNode::Placeholder | HydroNode::Network { .. } => {
-            std::panic!("Decoupler modifying placeholder node or incorrectly handling network node: {}", next_stmt_id);
+            std::panic!(
+                "Decoupler modifying placeholder node or incorrectly handling network node: {}",
+                next_stmt_id
+            );
         }
         HydroNode::Tee { .. } => {
-            println!("Creating a TEE to location {:?}, id: {}", new_location, next_stmt_id);
+            println!(
+                "Creating a TEE to location {:?}, id: {}",
+                new_location, next_stmt_id
+            );
             add_tee(node, new_location, new_inners);
         }
         _ => {
-            println!("Creating network to location {:?} after node {}, id: {}", new_location, node.print_root(), next_stmt_id);
+            println!(
+                "Creating network to location {:?} after node {}, id: {}",
+                new_location,
+                node.print_root(),
+                next_stmt_id
+            );
             add_network(node, new_location);
         }
     }
 }
 
 fn fix_cluster_self_id_leaf(leaf: &mut HydroLeaf, mut locations: ClusterSelfIdReplace) {
-    if let ClusterSelfIdReplace::Decouple { decoupled_cluster_id, .. } = locations {
+    if let ClusterSelfIdReplace::Decouple {
+        decoupled_cluster_id,
+        ..
+    } = locations
+    {
         if leaf.metadata().location_kind.root().raw_id() == decoupled_cluster_id {
             leaf.visit_debug_expr(|expr| {
                 locations.visit_expr_mut(&mut expr.0);
@@ -168,7 +227,11 @@ fn fix_cluster_self_id_leaf(leaf: &mut HydroLeaf, mut locations: ClusterSelfIdRe
 }
 
 fn fix_cluster_self_id_node(node: &mut HydroNode, mut locations: ClusterSelfIdReplace) {
-    if let ClusterSelfIdReplace::Decouple { decoupled_cluster_id, .. } = locations {
+    if let ClusterSelfIdReplace::Decouple {
+        decoupled_cluster_id,
+        ..
+    } = locations
+    {
         if node.metadata().location_kind.root().raw_id() == decoupled_cluster_id {
             node.visit_debug_expr(|expr| {
                 locations.visit_expr_mut(&mut expr.0);
@@ -211,18 +274,17 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
     print_id(ir);
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use hydro_deploy::Deployment;
     #[cfg(stageleft_runtime)]
-use hydro_lang::ir::HydroLeaf;
-    use hydro_lang::{ir, location::LocationId, Cluster, FlowBuilder, Location};
+    use hydro_lang::ir::HydroLeaf;
+    use hydro_lang::location::LocationId;
+    use hydro_lang::{Cluster, FlowBuilder, Location, ir};
     use stageleft::*;
 
     #[cfg(stageleft_runtime)]
-use crate::decoupler;
+    use crate::decoupler;
 
     // #[cfg(stageleft_runtime)]
     // use crate::deploy::DeployCrateWrapper;
@@ -231,12 +293,13 @@ use crate::decoupler;
     // #[cfg(stageleft_runtime)]
     // use crate::rewrites::{persist_pullup, populate_metadata, decoupler};
     // use crate::{ir, Cluster, FlowBuilder};
-    
+
     fn simple_send_recv<'a>(builder: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
         let send_cluster = builder.cluster::<()>();
         let recv_cluster = builder.cluster::<()>();
 
-        send_cluster.source_iter(q!(0..10))
+        send_cluster
+            .source_iter(q!(0..10))
             .map(q!(|a| a + 1))
             .broadcast_bincode_anonymous(&recv_cluster)
             .for_each(q!(|a| println!("Got it: {}", a)));
@@ -248,17 +311,23 @@ use crate::decoupler;
     async fn decouple_send(with_decoupler: &decoupler::Decoupler) -> Vec<HydroLeaf> {
         use std::collections::HashSet;
 
-        use hydro_lang::{ir::deep_clone, rewrites::persist_pullup::persist_pullup};
+        use hydro_lang::ir::deep_clone;
+        use hydro_lang::rewrites::persist_pullup::persist_pullup;
 
-        use crate::{decoupler::decouple, repair::inject_id};
+        use crate::decoupler::decouple;
+        use crate::repair::inject_id;
 
         let builder = FlowBuilder::new();
         let (send_cluster, recv_cluster) = simple_send_recv(&builder);
 
         let decoupled_cluster = builder.cluster::<()>();
         let decoupler = decoupler::Decoupler {
-            output_to_decoupled_machine_after: with_decoupler.output_to_decoupled_machine_after.clone(),
-            output_to_original_machine_after: with_decoupler.output_to_original_machine_after.clone(),
+            output_to_decoupled_machine_after: with_decoupler
+                .output_to_decoupled_machine_after
+                .clone(),
+            output_to_original_machine_after: with_decoupler
+                .output_to_original_machine_after
+                .clone(),
             place_on_decoupled_machine: with_decoupler.place_on_decoupled_machine.clone(),
             decoupled_location: decoupled_cluster.id().clone(),
             orig_location: send_cluster.id().clone(),
@@ -268,7 +337,7 @@ use crate::decoupler;
             .optimize_with(persist_pullup)
             .optimize_with(inject_id)
             .optimize_with(|ir| decouple(ir, &decoupler));
-        
+
         let ir = deep_clone(built.ir());
 
         // Check outputs
@@ -300,7 +369,7 @@ use crate::decoupler;
             }
             assert_eq!(expected, received);
         }
-        
+
         ir
     }
 

@@ -19,7 +19,7 @@ pub struct Cluster<'a, ClusterTag> {
     pub(crate) _phantom: Invariant<'a, ClusterTag>,
 }
 
-impl <C> Cluster<'_, C> {
+impl<C> Cluster<'_, C> {
     pub fn typename(&self) -> String {
         std::any::type_name::<C>().to_string()
     }

@@ -1,16 +1,13 @@
-use std::{collections::HashMap, time::Duration};
-
-use stageleft::Quoted;
-
-use hydro_lang::ir::{traverse_dfir, HydroNode};
-
-use tokio::sync::mpsc::UnboundedReceiver;
+use std::collections::HashMap;
+use std::time::Duration;
 
 use hydro_lang::builder::deploy::DeployResult;
-use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
 use hydro_lang::deploy::HydroDeploy;
-use hydro_lang::ir::HydroLeaf;
+use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
+use stageleft::Quoted;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration: syn::Expr) {
     match node {
@@ -77,9 +74,7 @@ pub fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Durat
     );
 }
 
-use hydro_lang::internal_constants::{
-    CPU_USAGE_PREFIX, COUNTER_PREFIX,
-};
+use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 
 async fn track_process_usage_cardinality(
     process: &impl DeployCrateWrapper,
