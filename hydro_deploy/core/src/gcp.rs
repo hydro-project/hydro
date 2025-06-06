@@ -185,6 +185,7 @@ pub struct GcpComputeEngineHost {
 }
 
 impl GcpComputeEngineHost {
+    #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
     pub fn new(
         id: usize,
         project: impl Into<String>,
