@@ -1,4 +1,4 @@
-use crate::ir::*;
+use hydro_lang::ir::{traverse_dfir, HydroLeaf, HydroNode};
 
 fn print_id_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize) {
     let metadata = leaf.metadata();

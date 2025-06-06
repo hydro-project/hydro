@@ -2,17 +2,13 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
+use hydro_lang::{ir::{transform_bottom_up, traverse_dfir, DebugInstantiate, DebugType, HydroIrMetadata, HydroLeaf, HydroNode, TeeNode}, location::LocationId, stream::{deserialize_bincode_with_type, serialize_bincode_with_type}, ClusterId};
 use proc_macro2::Span;
 use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
 use syn::visit_mut::VisitMut;
 
-use crate::{ir::*, ClusterId};
-use crate::location::LocationId;
-use crate::stream::{deserialize_bincode_with_type, serialize_bincode_with_type};
-
-use super::partitioner::ClusterSelfIdReplace;
-use super::{link_cycles, populate_metadata, print_id};
+use crate::{debug::print_id, repair::{cycle_source_to_sink_input, inject_id, inject_location}, rewrites::ClusterSelfIdReplace};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Decoupler {
@@ -192,10 +188,10 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
     );
 
     // Fix IDs since we injected nodes
-    populate_metadata::inject_id(ir);
+    inject_id(ir);
     // Fix locations since we changed some
-    let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(ir);
-    populate_metadata::inject_location(ir, &cycle_source_to_sink_input);
+    let cycle_source_to_sink_input = cycle_source_to_sink_input(ir);
+    inject_location(ir, &cycle_source_to_sink_input);
     // Fix CLUSTER_SELF_ID for the decoupled node
     let locations = ClusterSelfIdReplace::Decouple {
         orig_cluster_id: decoupler.orig_location.raw_id(),
@@ -212,7 +208,7 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
     );
 
     println!("Printing IDs after fixing");
-    print_id::print_id(ir);
+    print_id(ir);
 }
 
 
@@ -220,15 +216,21 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
 #[cfg(test)]
 mod tests {
     use hydro_deploy::Deployment;
+    #[cfg(stageleft_runtime)]
+use hydro_lang::ir::HydroLeaf;
+    use hydro_lang::{ir, location::LocationId, Cluster, FlowBuilder, Location};
     use stageleft::*;
 
     #[cfg(stageleft_runtime)]
-    use crate::deploy::DeployCrateWrapper;
-    use crate::ir::{deep_clone, HydroLeaf};
-    use crate::location::{Location, LocationId};
-    #[cfg(stageleft_runtime)]
-    use crate::rewrites::{persist_pullup, populate_metadata, decoupler};
-    use crate::{ir, Cluster, FlowBuilder};
+use crate::decoupler;
+
+    // #[cfg(stageleft_runtime)]
+    // use crate::deploy::DeployCrateWrapper;
+    // use crate::ir::{deep_clone, HydroLeaf};
+    // use crate::location::{Location, LocationId};
+    // #[cfg(stageleft_runtime)]
+    // use crate::rewrites::{persist_pullup, populate_metadata, decoupler};
+    // use crate::{ir, Cluster, FlowBuilder};
     
     fn simple_send_recv<'a>(builder: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
         let send_cluster = builder.cluster::<()>();
@@ -246,6 +248,10 @@ mod tests {
     async fn decouple_send(with_decoupler: &decoupler::Decoupler) -> Vec<HydroLeaf> {
         use std::collections::HashSet;
 
+        use hydro_lang::{ir::deep_clone, rewrites::persist_pullup::persist_pullup};
+
+        use crate::{decoupler::decouple, repair::inject_id};
+
         let builder = FlowBuilder::new();
         let (send_cluster, recv_cluster) = simple_send_recv(&builder);
 
@@ -259,9 +265,9 @@ mod tests {
         };
 
         let built = builder
-            .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(populate_metadata::inject_id)
-            .optimize_with(|ir| decoupler::decouple(ir, &decoupler));
+            .optimize_with(persist_pullup)
+            .optimize_with(inject_id)
+            .optimize_with(|ir| decouple(ir, &decoupler));
         
         let ir = deep_clone(built.ir());
 
@@ -278,6 +284,8 @@ mod tests {
         let recv_members = nodes.get_cluster(&recv_cluster).members();
         let mut stdouts = vec![];
         for member in recv_members {
+            use hydro_lang::deploy::DeployCrateWrapper;
+
             stdouts.push(member.stdout().await);
         }
 

@@ -4,8 +4,9 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::rewrites::decoupler::Decoupler;
-use hydro_lang::rewrites::{decoupler, persist_pullup, print_id};
+use hydro_lang::rewrites::persist_pullup;
+use hydro_optimize::debug;
+use hydro_optimize::decoupler::{self, Decoupler};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -62,7 +63,7 @@ async fn main() {
     let _nodes = builder
         .optimize_with(persist_pullup::persist_pullup)
         .optimize_with(|leaves| decoupler::decouple(leaves, &decoupler))
-        .optimize_with(print_id::print_id)
+        .optimize_with(debug::print_id)
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),

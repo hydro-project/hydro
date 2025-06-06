@@ -55,7 +55,8 @@ pub fn compute_pi<'a>(
 mod tests {
     use hydro_lang::Location;
     use hydro_lang::deploy::DeployRuntime;
-    use hydro_lang::rewrites::{decoupler, persist_pullup};
+    use hydro_lang::rewrites::persist_pullup;
+    use hydro_optimize::decoupler;
     use stageleft::RuntimeData;
 
     struct DecoupledCluster {}

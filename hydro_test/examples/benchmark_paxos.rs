@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
+use hydro_lang::Location;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-use hydro_lang::rewrites::reusable_hosts::ReusableHosts;
+use hydro_optimize::deploy::*;
 use tokio::sync::RwLock;
-use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() {
@@ -78,38 +77,23 @@ async fn main() {
                 &replicas,
             );
 
-            let nodes = builder
-                .with_cluster(
-                    &proposers,
-                    reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
-                )
-                .with_cluster(
-                    &acceptors,
-                    reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
-                )
-                .with_cluster(
-                    &clients,
-                    reusable_hosts
-                        .get_cluster_hosts(&mut deployment, "client", *num_clients),
-                )
-                .with_process(
-                    &client_aggregator,
-                    reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
-                )
-                .with_cluster(
-                    &replicas,
-                    reusable_hosts
-                        .get_cluster_hosts(&mut deployment, "replica", f + 1),
-                )
-                .deploy(&mut deployment);
+            let clusters = vec![
+                (proposers.id().raw_id(), proposers.typename(), f + 1),
+                (acceptors.id().raw_id(), acceptors.typename(), 2 * f + 1),
+                (clients.id().raw_id(), clients.typename(), *num_clients),
+                (replicas.id().raw_id(), replicas.typename(), f + 1),
+            ];
+            let processes = vec![
+                (client_aggregator.id().raw_id(), client_aggregator.typename())
+            ];
 
-            deployment.deploy().await.unwrap();
-            deployment
-                .start_until(sleep(Duration::from_secs(run_seconds)))
-                .await
-                .unwrap();
-
-            drop(nodes);
+            let _ = deploy_and_analyze(
+                &mut reusable_hosts,
+                &mut deployment,
+                builder,
+                &clusters,
+                &processes,
+            ).await;
         }
     }
 }

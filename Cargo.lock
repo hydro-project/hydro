@@ -2384,7 +2384,6 @@ dependencies = [
  "dfir_rs",
  "fs2",
  "futures",
- "grb",
  "hydro_deploy",
  "hydro_deploy_integration",
  "insta",
@@ -2395,7 +2394,6 @@ dependencies = [
  "proc-macro2",
  "procfs",
  "quote",
- "regex",
  "rustc_version 0.4.1",
  "sealed 0.6.0",
  "serde",
@@ -2408,6 +2406,28 @@ dependencies = [
  "tokio-test",
  "toml",
  "trybuild",
+ "trybuild-internals-api",
+]
+
+[[package]]
+name = "hydro_optimize"
+version = "0.13.0"
+dependencies = [
+ "dfir_lang",
+ "dfir_rs",
+ "grb",
+ "hydro_deploy",
+ "hydro_lang",
+ "hydro_std",
+ "insta",
+ "proc-macro-crate",
+ "proc-macro2",
+ "regex",
+ "serde",
+ "stageleft",
+ "stageleft_tool",
+ "syn 2.0.101",
+ "tokio",
  "trybuild-internals-api",
 ]
 
@@ -2438,6 +2458,7 @@ dependencies = [
  "futures",
  "hydro_deploy",
  "hydro_lang",
+ "hydro_optimize",
  "hydro_std",
  "include_mdtests",
  "insta",

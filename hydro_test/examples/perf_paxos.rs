@@ -4,14 +4,8 @@ use std::sync::Arc;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::Deployment;
 use hydro_lang::ir::deep_clone;
-use hydro_lang::q;
-use hydro_lang::rewrites::decoupler::{self, Decoupler};
 use hydro_lang::Location;
-use hydro_lang::rewrites::analyze_perf_and_counters::{
-    analyze_cluster_results, cleanup_after_analysis, track_cluster_usage_cardinality
-};
-use hydro_lang::rewrites::reusable_hosts::ReusableHosts;
-use hydro_lang::rewrites::{analyze_send_recv_overheads, decouple_analysis, insert_counter, link_cycles, persist_pullup, print_id};
+use hydro_optimize::{decoupler, deploy::*};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
 use tokio::sync::RwLock;
@@ -27,14 +21,7 @@ async fn main() {
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let mut reusable_hosts = ReusableHosts { 
-        hosts: HashMap::new(),
-        host_arg: host_arg,
-        project: project.clone(),
-        network: network.clone(),
-    };
-
-    let builder = hydro_lang::FlowBuilder::new();
+    let mut builder = hydro_lang::FlowBuilder::new();
     let f = 1;
     let num_clients = 3;
     let num_clients_per_node = 500; // Change based on experiment between 1, 50, 100.
@@ -69,134 +56,53 @@ async fn main() {
         &replicas,
     );
 
-    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+    let mut clusters = vec![
+        (proposers.id().raw_id(), proposers.typename(), f + 1),
+        (acceptors.id().raw_id(), acceptors.typename(), 2 * f + 1),
+        (clients.id().raw_id(), clients.typename(), num_clients),
+        (replicas.id().raw_id(), replicas.typename(), f + 1),
+    ];
+    let processes = vec![
+        (client_aggregator.id().raw_id(), client_aggregator.typename())
+    ];
 
-    let rewritten_ir_builder = builder.rewritten_ir_builder();
-    let optimized = builder
-        .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(|leaf| {
-            insert_counter::insert_counter(leaf, counter_output_duration);
+    // Deploy
+    let mut reusable_hosts = ReusableHosts { 
+        hosts: HashMap::new(),
+        host_arg: host_arg,
+        project: project.clone(),
+        network: network.clone(),
+    };
+
+    let num_times_to_optimize = 2;
+
+    for _ in 0..num_times_to_optimize {
+        let (rewritten_ir_builder, ir, mut decoupler, bottleneck_num_nodes) = deploy_and_analyze(
+            &mut reusable_hosts,
+            &mut deployment,
+            builder,
+            &clusters,
+            &processes,
+        ).await;
+
+        // Apply decoupling
+        let mut decoupled_cluster = None;
+        builder = rewritten_ir_builder.build_with(|builder| {
+            let mut ir = deep_clone(&ir); // TODO: Not sure if this line is necessary anymore?
+
+            let new_cluster = builder.cluster::<()>();
+            decoupler.decoupled_location = new_cluster.id().clone();
+            decoupler::decouple(&mut ir, &decoupler);
+            decoupled_cluster = Some(new_cluster);
+            
+            ir
         });
-    let mut ir = deep_clone(optimized.ir());
-
-    let nodes = optimized
-        .with_cluster(
-            &proposers,
-            reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
-        )
-        .with_cluster(
-            &acceptors,
-            reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
-        )
-        .with_cluster(
-            &clients,
-            reusable_hosts
-                .get_cluster_hosts(&mut deployment, "client", num_clients),
-        )
-        .with_process(
-            &client_aggregator,
-            reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
-        )
-        .with_cluster(
-            &replicas,
-            reusable_hosts
-                .get_cluster_hosts(&mut deployment, "replica", f + 1),
-        )
-        .deploy(&mut deployment);
-    
-    deployment.deploy().await.unwrap();
-
-    let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
-
-    deployment
-        .start_until(async {
-            std::io::stdin().read_line(&mut String::new()).unwrap();
-        })
-        .await
-        .unwrap();
-
-    let (bottleneck, bottleneck_num_nodes) = analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
-    cleanup_after_analysis(&mut ir);
-
-    print_id::print_id(&mut ir);
-
-    // Create a mapping from each CycleSink to its corresponding CycleSource
-    let cycle_source_to_sink_input = link_cycles::cycle_source_to_sink_input(&mut ir);
-    let (send_overhead, recv_overhead) =
-        analyze_send_recv_overheads::analyze_send_recv_overheads(&mut ir, &bottleneck);
-    let (orig_to_decoupled, decoupled_to_orig, place_on_decoupled) = decouple_analysis::decouple_analysis(
-        &mut ir,
-        "perf_paxos_cluster",
-        &bottleneck,
-        send_overhead,
-        recv_overhead,
-        &cycle_source_to_sink_input,
-        true,
-    );
-
-    drop(nodes);
-
-    let mut decoupled_cluster = None;
-
-    let new_builder = rewritten_ir_builder.build_with(|builder| {
-        let mut ir = deep_clone(&ir);
-
-        decoupled_cluster = Some(builder.cluster::<()>());
-        let decoupler = Decoupler {
-            output_to_decoupled_machine_after: orig_to_decoupled,
-            output_to_original_machine_after: decoupled_to_orig,
-            place_on_decoupled_machine: place_on_decoupled,
-            orig_location: bottleneck.clone(),
-            decoupled_location: decoupled_cluster.clone().unwrap().id().clone(),
-        };
-        decoupler::decouple(&mut ir, &decoupler);
-
-        ir
-    });
-    let optimized_new_builder = new_builder
-        .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(|leaf| {
-            insert_counter::insert_counter(leaf, counter_output_duration);
-        });
-
-    let nodes = optimized_new_builder
-        .with_cluster(
-            &proposers,
-            reusable_hosts.get_cluster_hosts(&mut deployment, "proposer", f + 1),
-        )
-        .with_cluster(
-            &acceptors,
-            reusable_hosts.get_cluster_hosts(&mut deployment, "acceptor", 2 * f + 1),
-        )
-        .with_cluster(
-            &clients,
-            reusable_hosts
-                .get_cluster_hosts(&mut deployment, "client", num_clients),
-        )
-        .with_process(
-            &client_aggregator,
-            reusable_hosts.get_process_hosts(&mut deployment, "client-aggregator"),
-        )
-        .with_cluster(
-            &replicas,
-            reusable_hosts
-                .get_cluster_hosts(&mut deployment, "replica", f + 1),
-        )
-        .with_cluster(
-            &decoupled_cluster.unwrap(),
-            reusable_hosts
-                .get_cluster_hosts(&mut deployment, "decoupled", bottleneck_num_nodes),
-        )
-        .deploy(&mut deployment);
-
-    deployment.deploy().await.unwrap();
-
-    let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
-
-    deployment
-        .start_until(async {
-            std::io::stdin().read_line(&mut String::new()).unwrap();
-        })
-        .await
-        .unwrap();
+        if let Some(new_cluster) = decoupled_cluster {
+            clusters.push((
+                new_cluster.id().raw_id(),
+                new_cluster.typename(), // TODO: Need unique typename to prevent name collisions after multiple rewrites
+                bottleneck_num_nodes,
+            ));
+        }
+    }
 }

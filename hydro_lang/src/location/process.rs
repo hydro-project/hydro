@@ -11,6 +11,12 @@ pub struct Process<'a, ProcessTag = ()> {
     pub(crate) _phantom: Invariant<'a, ProcessTag>,
 }
 
+impl <P> Process<'_, P> {
+    pub fn typename(&self) -> String {
+        std::any::type_name::<P>().to_string()
+    }
+}
+
 impl<P> Debug for Process<'_, P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Process({})", self.id)

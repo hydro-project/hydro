@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 
+use hydro_lang::ir::{traverse_dfir, HydroLeaf, HydroNode};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 
-use crate::ir::*;
+use crate::rewrites::ClusterSelfIdReplace;
 
 /// Fields that could be used for partitioning
 #[derive(Clone, Serialize, Deserialize)]
@@ -17,62 +18,6 @@ pub struct Partitioner {
     pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
     pub num_partitions: usize,
     pub partitioned_cluster_id: usize,
-}
-
-/// Replace CLUSTER_SELF_ID with the ID of the original node the partition is assigned to
-#[derive(Copy, Clone)]
-pub enum ClusterSelfIdReplace {
-    Decouple {
-        orig_cluster_id: usize,
-        decoupled_cluster_id: usize,
-    },
-    Partition {
-        num_partitions: usize,
-        partitioned_cluster_id: usize,
-    }
-}
-
-impl VisitMut for ClusterSelfIdReplace {
-    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
-        if let syn::Expr::Path(path_expr) = expr {
-            for segment in path_expr.path.segments.iter_mut() {
-                let ident = segment.ident.to_string();
-
-                match self {
-                    ClusterSelfIdReplace::Decouple { orig_cluster_id, decoupled_cluster_id } => {
-                        let prefix = format!(
-                            "__hydro_lang_cluster_self_id_{}",
-                            orig_cluster_id
-                        );
-                        if ident.starts_with(&prefix) {
-                            segment.ident = syn::Ident::new(
-                                &format!("__hydro_lang_cluster_self_id_{}", decoupled_cluster_id),
-                                segment.ident.span()
-                            );
-                            println!("Decoupling: Replaced CLUSTER_SELF_ID");
-                            return;
-                        }
-                    }
-                    ClusterSelfIdReplace::Partition { num_partitions, partitioned_cluster_id } => {
-                        let prefix = format!(
-                            "__hydro_lang_cluster_self_id_{}",
-                            partitioned_cluster_id
-                        );
-                        if ident.starts_with(&prefix) {
-                            let expr_content = std::mem::replace(expr, syn::Expr::PLACEHOLDER);
-                            *expr = syn::parse_quote!({
-                                #expr_content / #num_partitions as u32
-                            });
-                            println!("Partitioning: Replaced CLUSTER_SELF_ID");
-                            return;
-                        }
-                    }
-                }
-                
-            }
-        }
-        visit_mut::visit_expr_mut(self, expr);
-    }
 }
 
 /// Don't expose partition members to the cluster

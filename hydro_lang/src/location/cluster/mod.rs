@@ -19,6 +19,12 @@ pub struct Cluster<'a, ClusterTag> {
     pub(crate) _phantom: Invariant<'a, ClusterTag>,
 }
 
+impl <C> Cluster<'_, C> {
+    pub fn typename(&self) -> String {
+        std::any::type_name::<C>().to_string()
+    }
+}
+
 impl<C> Debug for Cluster<'_, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cluster({})", self.id)

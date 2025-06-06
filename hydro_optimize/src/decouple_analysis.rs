@@ -2,11 +2,9 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use grb::prelude::*;
+use hydro_lang::{ir::{traverse_dfir, HydroIrMetadata, HydroLeaf, HydroNode}, location::LocationId};
 
-use crate::ir::*;
-use crate::location::LocationId;
-
-use super::analyze_send_recv_overheads::{get_network_type, NetworkType};
+use super::parse_results::{get_network_type, NetworkType};
 
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
@@ -418,7 +416,7 @@ fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>) {
     model.set_objective(highest_cpu, Minimize).unwrap();
 }
 
-pub fn decouple_analysis(
+pub(crate) fn decouple_analysis(
     ir: &mut [HydroLeaf],
     modelname: &str,
     cluster_to_decouple: &LocationId,
