@@ -61,6 +61,11 @@ impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
 }
 
 impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
+    pub fn into_ir(mut self) -> Vec<HydroLeaf> {
+        self.used = true;
+        std::mem::take(self.ir.get_mut())
+    }
+
     pub fn ir(&self) -> &Vec<HydroLeaf> {
         unsafe {
             // SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
@@ -68,17 +73,21 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         }
     }
 
-    pub fn with_process<P>(
+    pub fn with_process_id_name(
         mut self,
-        process: &Process<P>,
+        process_id: usize,
+        process_name: String,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> Self {
-        let tag_name = std::any::type_name::<P>().to_string();
         self.processes.insert(
-            process.id,
-            spec.into_process_spec().build(process.id, &tag_name),
+            process_id,
+            spec.into_process_spec().build(process_id, &process_name),
         );
         self
+    }
+
+    pub fn with_process<P>(self, process: &Process<P>, spec: impl IntoProcessSpec<'a, D>) -> Self {
+        self.with_process_id_name(process.id, std::any::type_name::<P>().to_string(), spec)
     }
 
     pub fn with_remaining_processes<S: IntoProcessSpec<'a, D> + 'a>(
@@ -115,11 +124,19 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    pub fn with_cluster<C>(mut self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
-        let tag_name = std::any::type_name::<C>().to_string();
+    pub fn with_cluster_id_name(
+        mut self,
+        cluster_id: usize,
+        cluster_name: String,
+        spec: impl ClusterSpec<'a, D>,
+    ) -> Self {
         self.clusters
-            .insert(cluster.id, spec.build(cluster.id, &tag_name));
+            .insert(cluster_id, spec.build(cluster_id, &cluster_name));
         self
+    }
+
+    pub fn with_cluster<C>(self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
+        self.with_cluster_id_name(cluster.id, std::any::type_name::<C>().to_string(), spec)
     }
 
     pub fn with_remaining_clusters<S: ClusterSpec<'a, D> + 'a>(
@@ -318,6 +335,9 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
             cluster_id_name: std::mem::take(&mut self.cluster_id_name)
                 .into_iter()
                 .collect(),
+            process_id_name: std::mem::take(&mut self.process_id_name)
+                .into_iter()
+                .collect(),
         }
     }
 }
@@ -327,6 +347,7 @@ pub struct DeployResult<'a, D: Deploy<'a>> {
     clusters: HashMap<usize, D::Cluster>,
     externals: HashMap<usize, D::ExternalProcess>,
     cluster_id_name: HashMap<usize, String>,
+    process_id_name: HashMap<usize, String>,
 }
 
 impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
@@ -354,6 +375,16 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
                 LocationId::Cluster(id),
                 self.cluster_id_name.get(&id).unwrap().clone(),
                 c,
+            )
+        })
+    }
+
+    pub fn get_all_processes(&self) -> impl Iterator<Item = (LocationId, String, &D::Process)> {
+        self.processes.iter().map(|(&id, p)| {
+            (
+                LocationId::Process(id),
+                self.process_id_name.get(&id).unwrap().clone(),
+                p,
             )
         })
     }

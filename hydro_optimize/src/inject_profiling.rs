@@ -1,8 +1,13 @@
+use std::collections::HashMap;
 use std::time::Duration;
 
+use hydro_lang::builder::deploy::DeployResult;
+use hydro_lang::deploy::HydroDeploy;
+use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::location::LocationId;
 use stageleft::Quoted;
-
-use crate::ir::*;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration: syn::Expr) {
     match node {
@@ -67,4 +72,40 @@ pub fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Durat
             insert_counter_node(node, next_stmt_id, duration.clone());
         },
     );
+}
+
+use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
+
+async fn track_process_usage_cardinality(
+    process: &impl DeployCrateWrapper,
+) -> (UnboundedReceiver<String>, UnboundedReceiver<String>) {
+    (
+        process.stdout_filter(CPU_USAGE_PREFIX).await,
+        process.stdout_filter(COUNTER_PREFIX).await,
+    )
+}
+
+pub(crate) async fn track_cluster_usage_cardinality(
+    nodes: &DeployResult<'_, HydroDeploy>,
+) -> (
+    HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
+    HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
+) {
+    let mut usage_out = HashMap::new();
+    let mut cardinality_out = HashMap::new();
+    for (id, name, cluster) in nodes.get_all_clusters() {
+        for (idx, node) in cluster.members().iter().enumerate() {
+            let (node_usage_out, node_cardinality_out) =
+                track_process_usage_cardinality(node).await;
+            usage_out.insert((id.clone(), name.clone(), idx), node_usage_out);
+            cardinality_out.insert((id.clone(), name.clone(), idx), node_cardinality_out);
+        }
+    }
+    for (id, name, process) in nodes.get_all_processes() {
+        let (process_usage_out, process_cardinality_out) =
+            track_process_usage_cardinality(process).await;
+        usage_out.insert((id.clone(), name.clone(), 0), process_usage_out);
+        cardinality_out.insert((id.clone(), name.clone(), 0), process_cardinality_out);
+    }
+    (usage_out, cardinality_out)
 }
