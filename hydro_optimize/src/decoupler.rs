@@ -286,14 +286,6 @@ mod tests {
     #[cfg(stageleft_runtime)]
     use crate::decoupler;
 
-    // #[cfg(stageleft_runtime)]
-    // use crate::deploy::DeployCrateWrapper;
-    // use crate::ir::{deep_clone, HydroLeaf};
-    // use crate::location::{Location, LocationId};
-    // #[cfg(stageleft_runtime)]
-    // use crate::rewrites::{persist_pullup, populate_metadata, decoupler};
-    // use crate::{ir, Cluster, FlowBuilder};
-
     fn simple_send_recv<'a>(builder: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
         let send_cluster = builder.cluster::<()>();
         let recv_cluster = builder.cluster::<()>();
