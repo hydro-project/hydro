@@ -1,17 +1,25 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use hydro_deploy::Deployment;
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_lang::Location;
-use hydro_lang::ir::deep_clone;
-use hydro_optimize::decoupler;
-use hydro_optimize::deploy::*;
-use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-use tokio::sync::RwLock;
-
+#[cfg(not(feature = "ilp"))]
 #[tokio::main]
 async fn main() {
+    panic!("Run with the `ilp` feature enabled.");
+}
+
+#[cfg(feature = "ilp")]
+#[tokio::main]
+async fn main() {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use hydro_deploy::Deployment;
+    use hydro_deploy::gcp::GcpNetwork;
+    use hydro_lang::Location;
+    use hydro_lang::ir::deep_clone;
+    use hydro_optimize::decoupler;
+    use hydro_optimize::deploy::ReusableHosts;
+    use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+    use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+    use tokio::sync::RwLock;
+
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
     let project = if host_arg == "gcp" {

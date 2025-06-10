@@ -1,13 +1,27 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::Duration;
 
+use hydro_deploy::gcp::GcpNetwork;
+use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
+use hydro_deploy::{Deployment, Host};
+use hydro_lang::FlowBuilder;
+use hydro_lang::builder::RewriteIrFlowBuilder;
 use hydro_lang::builder::deploy::DeployResult;
-use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
+use hydro_lang::deploy::{HydroDeploy, TrybuildHost};
+use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
+use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
-use stageleft::Quoted;
+use hydro_lang::rewrites::persist_pullup::persist_pullup;
+use stageleft::{Quoted, q};
+use tokio::sync::RwLock;
 use tokio::sync::mpsc::UnboundedReceiver;
+
+use crate::decouple_analysis::decouple_analysis;
+use crate::decoupler::Decoupler;
+use crate::parse_results::{analyze_cluster_results, analyze_send_recv_overheads};
+use crate::repair::{cycle_source_to_sink_input, inject_id, remove_counter};
 
 fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration: syn::Expr) {
     match node {
@@ -63,7 +77,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
     }
 }
 
-pub fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Duration>) {
+fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Duration>) {
     let duration = duration.splice_typed();
     traverse_dfir(
         ir,
@@ -74,8 +88,6 @@ pub fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Durat
     );
 }
 
-use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
-
 async fn track_process_usage_cardinality(
     process: &impl DeployCrateWrapper,
 ) -> (UnboundedReceiver<String>, UnboundedReceiver<String>) {
@@ -85,7 +97,7 @@ async fn track_process_usage_cardinality(
     )
 }
 
-pub(crate) async fn track_cluster_usage_cardinality(
+async fn track_cluster_usage_cardinality(
     nodes: &DeployResult<'_, HydroDeploy>,
 ) -> (
     HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
@@ -108,4 +120,88 @@ pub(crate) async fn track_cluster_usage_cardinality(
         cardinality_out.insert((id.clone(), name.clone(), 0), process_cardinality_out);
     }
     (usage_out, cardinality_out)
+}
+
+/// TODO: Return type should be changed to also include Partitioner
+pub async fn deploy_and_analyze<'a>(
+    reusable_hosts: &mut ReusableHosts,
+    deployment: &mut Deployment,
+    builder: FlowBuilder<'a>,
+    clusters: &Vec<(usize, String, usize)>,
+    processes: &Vec<(usize, String)>,
+) -> (RewriteIrFlowBuilder<'a>, Vec<HydroLeaf>, Decoupler, usize) {
+    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+
+    // Rewrite with counter tracking
+    let rewritten_ir_builder = builder.rewritten_ir_builder();
+    let optimized = builder.optimize_with(persist_pullup).optimize_with(|leaf| {
+        insert_counter(leaf, counter_output_duration);
+    });
+    let mut ir = deep_clone(optimized.ir());
+
+    // Insert all clusters & processes
+    let mut deployable = optimized.into_deploy();
+    for (cluster_id, name, num_hosts) in clusters {
+        deployable = deployable.with_cluster_id_name(
+            *cluster_id,
+            name.clone(),
+            reusable_hosts.get_cluster_hosts(deployment, name.clone(), *num_hosts),
+        );
+    }
+    for (process_id, name) in processes {
+        deployable = deployable.with_process_id_name(
+            *process_id,
+            name.clone(),
+            reusable_hosts.get_process_hosts(deployment, name.clone()),
+        );
+    }
+    let nodes = deployable.deploy(deployment);
+    deployment.deploy().await.unwrap();
+
+    let (mut usage_out, mut cardinality_out) = track_cluster_usage_cardinality(&nodes).await;
+
+    // Wait for user to input a newline
+    deployment
+        .start_until(async {
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+        })
+        .await
+        .unwrap();
+
+    let (bottleneck, bottleneck_num_nodes) =
+        analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    // Remove HydroNode::Counter (since we don't want to consider decoupling those)
+    remove_counter(&mut ir);
+    // Inject new next_stmt_id into metadata (old ones are invalid after removing the counter)
+    inject_id(&mut ir);
+
+    // print_id(&mut ir);
+
+    // Create a mapping from each CycleSink to its corresponding CycleSource
+    let cycle_source_to_sink_input = cycle_source_to_sink_input(&mut ir);
+    let (send_overhead, recv_overhead) = analyze_send_recv_overheads(&mut ir, &bottleneck);
+    let (orig_to_decoupled, decoupled_to_orig, place_on_decoupled) = decouple_analysis(
+        &mut ir,
+        "decouple",
+        &bottleneck,
+        send_overhead,
+        recv_overhead,
+        &cycle_source_to_sink_input,
+        true,
+    );
+
+    // TODO: Save decoupling decision to file
+
+    (
+        rewritten_ir_builder,
+        ir,
+        Decoupler {
+            output_to_decoupled_machine_after: orig_to_decoupled,
+            output_to_original_machine_after: decoupled_to_orig,
+            place_on_decoupled_machine: place_on_decoupled,
+            orig_location: bottleneck.clone(),
+            decoupled_location: LocationId::Process(0), // Placeholder, must replace
+        },
+        bottleneck_num_nodes,
+    )
 }

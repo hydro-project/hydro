@@ -106,6 +106,7 @@ pub fn paxos_bench<'a>(
 mod tests {
     use dfir_lang::graph::WriteConfig;
     use hydro_lang::deploy::DeployRuntime;
+    use stageleft::RuntimeData;
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 
@@ -140,7 +141,7 @@ mod tests {
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(built.into_ir());
+            insta::assert_debug_snapshot!(built.ir());
         });
 
         let preview = built.preview_compile();
