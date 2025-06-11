@@ -202,15 +202,17 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        use regex::Regex;
         use std::str::FromStr;
+
+        use regex::Regex;
 
         let re = Regex::new(r"Throughput 99% interval: ([^ ]+) - ([^ ]+) requests/s").unwrap();
         let mut found = 0;
         let mut client_out = client_out;
         while let Some(line) = client_out.recv().await {
             if let Some(caps) = re.captures(&line) {
-                if let (Ok(lower), Ok(_upper)) = (f64::from_str(&caps[1]), f64::from_str(&caps[2])) {
+                if let (Ok(lower), Ok(_upper)) = (f64::from_str(&caps[1]), f64::from_str(&caps[2]))
+                {
                     if lower > 0.0 {
                         println!("Found throughput lower-bound: {}", lower);
                         found += 1;
