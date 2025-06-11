@@ -1,0 +1,26 @@
+---
+source: dfir_rs/tests/surface_python.rs
+expression: hf.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter(0..10)</code>"/]:::pullClass
+2v1[\"(2v1) <code>map(|x| (x,))</code>"/]:::pullClass
+3v1[\"<div style=text-align:center>(3v1)</div> <code>py_udf(<br>    &quot;<br>def fib(n):<br>if n &lt; 2:<br>    return n<br>else:<br>    return fib(n - 2) + fib(n - 1)<br>&quot;,<br>    &quot;fib&quot;,<br>)</code>"/]:::pullClass
+4v1[\"<div style=text-align:center>(4v1)</div> <code>map(|x: PyResult&lt;Py&lt;PyAny&gt;&gt;| Python::with_gil(|py| {<br>    usize::extract(x.unwrap().as_ref(py)).unwrap()<br>}))</code>"/]:::pullClass
+5v1[/"(5v1) <code>assert_eq([0, 1, 1, 2, 3, 5, 8, 13, 21, 34])</code>"\]:::pushClass
+4v1-->5v1
+3v1-->4v1
+2v1-->3v1
+1v1-->2v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+    2v1
+    3v1
+    4v1
+    5v1
+end
