@@ -102,10 +102,40 @@ pub fn paxos_bench<'a>(
 #[cfg(test)]
 mod tests {
     use dfir_lang::graph::WriteConfig;
-    use hydro_lang::deploy::DeployRuntime;
+    use hydro_deploy::Deployment;
+    use hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime, TrybuildHost};
     use stageleft::RuntimeData;
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
+
+    const PAXOS_F: usize = 1;
+
+    #[cfg(stageleft_runtime)]
+    fn create_paxos<'a>(
+        proposers: &hydro_lang::Cluster<'a, crate::cluster::paxos::Proposer>,
+        acceptors: &hydro_lang::Cluster<'a, crate::cluster::paxos::Acceptor>,
+        clients: &hydro_lang::Cluster<'a, super::Client>,
+        replicas: &hydro_lang::Cluster<'a, crate::cluster::kv_replica::Replica>,
+    ) {
+        super::paxos_bench(
+            100,
+            1000,
+            PAXOS_F,
+            PAXOS_F + 1,
+            CorePaxos {
+                proposers: proposers.clone(),
+                acceptors: acceptors.clone(),
+                paxos_config: PaxosConfig {
+                    f: 1,
+                    i_am_leader_send_timeout: 5,
+                    i_am_leader_check_timeout: 10,
+                    i_am_leader_check_timeout_delay_multiplier: 15,
+                },
+            },
+            clients,
+            replicas,
+        );
+    }
 
     #[test]
     fn paxos_ir() {
@@ -115,24 +145,7 @@ mod tests {
         let clients = builder.cluster();
         let replicas = builder.cluster();
 
-        super::paxos_bench(
-            1,
-            1,
-            1,
-            2,
-            CorePaxos {
-                proposers: proposers.clone(),
-                acceptors: acceptors.clone(),
-                paxos_config: PaxosConfig {
-                    f: 1,
-                    i_am_leader_send_timeout: 1,
-                    i_am_leader_check_timeout: 1,
-                    i_am_leader_check_timeout_delay_multiplier: 1,
-                },
-            },
-            &clients,
-            &replicas,
-        );
+        create_paxos(&proposers, &acceptors, &clients, &replicas);
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
@@ -153,5 +166,60 @@ mod tests {
         });
 
         let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
+
+    #[tokio::test]
+    async fn paxos_some_throughput() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let proposers = builder.cluster();
+        let acceptors = builder.cluster();
+        let clients = builder.cluster();
+        let replicas = builder.cluster();
+
+        create_paxos(&proposers, &acceptors, &clients, &replicas);
+        let mut deployment = Deployment::new();
+
+        let nodes = builder
+            .with_cluster(
+                &proposers,
+                (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .with_cluster(
+                &acceptors,
+                (0..2 * PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .with_cluster(&clients, vec![TrybuildHost::new(deployment.Localhost())])
+            .with_cluster(
+                &replicas,
+                (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let client_node = &nodes.get_cluster(&clients).members()[0];
+        let client_out = client_node.stdout_filter("Throughput 99% interval:").await;
+
+        deployment.start().await.unwrap();
+
+        use regex::Regex;
+        use std::str::FromStr;
+
+        let re = Regex::new(r"Throughput 99% interval: ([^ ]+) - ([^ ]+) requests/s").unwrap();
+        let mut found = 0;
+        let mut client_out = client_out;
+        while let Some(line) = client_out.recv().await {
+            if let Some(caps) = re.captures(&line) {
+                if let (Ok(lower), Ok(_upper)) = (f64::from_str(&caps[1]), f64::from_str(&caps[2])) {
+                    if lower > 0.0 {
+                        println!("Found throughput lower-bound: {}", lower);
+                        found += 1;
+                        if found == 2 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }
