@@ -5,6 +5,7 @@ pub mod clear;
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 pub mod demux_enum;
+pub mod monotonic_map;
 pub mod multiset;
 pub mod priority_stack;
 pub mod slot_vec;

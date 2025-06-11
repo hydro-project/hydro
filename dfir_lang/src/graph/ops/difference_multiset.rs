@@ -8,7 +8,7 @@ use super::{
 
 /// > 2 input streams of the same type T, 1 output stream of type T
 ///
-/// Forms the multiset difference of the items in the input
+/// Forms the set difference of the items in the input
 /// streams, returning items in the `pos` input that are not found in the
 /// `neg` input.
 ///
