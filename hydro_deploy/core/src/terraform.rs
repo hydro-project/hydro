@@ -314,7 +314,7 @@ fn destroy_deployment(deployment_folder: TempDir) {
         .success()
     {
         // prevent the folder from being deleted
-        let _ = deployment_folder.into_path();
+        let _ = deployment_folder.keep();
         eprintln!("WARNING: failed to destroy terraform deployment");
     }
 }
