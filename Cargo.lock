@@ -2464,6 +2464,7 @@ dependencies = [
  "insta",
  "palette",
  "rand 0.8.5",
+ "regex",
  "serde",
  "stageleft",
  "stageleft_tool",
