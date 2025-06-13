@@ -151,7 +151,13 @@ mod tests {
         let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
-        create_paxos(&proposers, &acceptors, &clients, &client_aggregator, &replicas);
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
         let built = builder.with_default_optimize::<DeployRuntime>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
@@ -183,7 +189,13 @@ mod tests {
         let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
-        create_paxos(&proposers, &acceptors, &clients, &client_aggregator, &replicas);
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
         let mut deployment = Deployment::new();
 
         let nodes = builder
@@ -222,8 +234,7 @@ mod tests {
         let mut client_out = client_out;
         while let Some(line) = client_out.recv().await {
             if let Some(caps) = re.captures(&line) {
-                if let Ok(lower) = f64::from_str(&caps[1])
-                {
+                if let Ok(lower) = f64::from_str(&caps[1]) {
                     if lower > 0.0 {
                         println!("Found throughput lower-bound: {}", lower);
                         found += 1;
