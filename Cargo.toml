@@ -13,6 +13,7 @@ members = [
     "hydro_deploy/hydro_cli",
     "hydro_deploy/hydro_deploy_integration",
     "hydro_lang",
+    "hydro_optimize",
     "hydro_std",
     "hydro_test_local_macro",
     "hydro_test_local",

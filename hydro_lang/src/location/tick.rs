@@ -10,7 +10,7 @@ use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
     TickCycle, TickCycleMarker,
 };
-use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
+use crate::ir::{HydroNode, HydroSource};
 use crate::{Bounded, Optional, Singleton, Stream};
 
 #[sealed]
@@ -92,10 +92,6 @@ where
     fn next_node_id(&self) -> usize {
         self.l.next_node_id()
     }
-
-    fn new_node_metadata<T>(&self) -> HydroIrMetadata {
-        self.l.new_node_metadata::<T>()
-    }
 }
 
 impl<'a, L> Tick<L>
@@ -162,22 +158,7 @@ where
         S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
         L: NoTick,
     {
-        let next_id = {
-            let on_id = match self.l.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            let mut flow_state = self.flow_state().borrow_mut();
-            let next_id_entry = flow_state.cycle_counts.entry(on_id).or_default();
-
-            let id = *next_id_entry;
-            *next_id_entry += 1;
-            id
-        };
-
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
@@ -195,22 +176,7 @@ where
     where
         S: CycleCollection<'a, ForwardRefMarker, Location = Atomic<L>>,
     {
-        let next_id = {
-            let on_id = match self.l.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            let mut flow_state = self.flow_state().borrow_mut();
-            let next_id_entry = flow_state.cycle_counts.entry(on_id).or_default();
-
-            let id = *next_id_entry;
-            *next_id_entry += 1;
-            id
-        };
-
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
@@ -229,22 +195,7 @@ where
         S: CycleCollection<'a, TickCycleMarker, Location = Self> + DeferTick,
         L: NoTick,
     {
-        let next_id = {
-            let on_id = match self.l.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            let mut flow_state = self.flow_state().borrow_mut();
-            let next_id_entry = flow_state.cycle_counts.entry(on_id).or_default();
-
-            let id = *next_id_entry;
-            *next_id_entry += 1;
-            id
-        };
-
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
@@ -263,22 +214,7 @@ where
         S: CycleCollectionWithInitial<'a, TickCycleMarker, Location = Self> + DeferTick,
         L: NoTick,
     {
-        let next_id = {
-            let on_id = match self.l.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            let mut flow_state = self.flow_state().borrow_mut();
-            let next_id_entry = flow_state.cycle_counts.entry(on_id).or_default();
-
-            let id = *next_id_entry;
-            *next_id_entry += 1;
-            id
-        };
-
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
