@@ -16,3 +16,4 @@ pub mod decouple_analysis;
 #[cfg(feature = "ilp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ilp")))]
 pub mod deploy_and_analyze;
+pub mod partition_analysis;
