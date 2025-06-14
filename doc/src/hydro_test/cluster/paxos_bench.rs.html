@@ -102,56 +102,126 @@
 <a href=#102 id=102 data-nosnippet>102</a><span class="attr">#[cfg(test)]
 <a href=#103 id=103 data-nosnippet>103</a></span><span class="kw">mod </span>tests {
 <a href=#104 id=104 data-nosnippet>104</a>    <span class="kw">use </span>dfir_lang::graph::WriteConfig;
-<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">use </span>hydro_lang::deploy::DeployRuntime;
-<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">use </span>stageleft::RuntimeData;
-<a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>    <span class="kw">use </span><span class="kw">crate</span>::cluster::paxos::{CorePaxos, PaxosConfig};
-<a href=#109 id=109 data-nosnippet>109</a>
-<a href=#110 id=110 data-nosnippet>110</a>    <span class="attr">#[test]
-<a href=#111 id=111 data-nosnippet>111</a>    </span><span class="kw">fn </span>paxos_ir() {
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
-<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>proposers = builder.cluster();
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>acceptors = builder.cluster();
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">let </span>clients = builder.cluster();
-<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>replicas = builder.cluster();
-<a href=#117 id=117 data-nosnippet>117</a>
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">super</span>::paxos_bench(
-<a href=#119 id=119 data-nosnippet>119</a>            <span class="number">1</span>,
-<a href=#120 id=120 data-nosnippet>120</a>            <span class="number">1</span>,
-<a href=#121 id=121 data-nosnippet>121</a>            <span class="number">1</span>,
-<a href=#122 id=122 data-nosnippet>122</a>            <span class="number">2</span>,
-<a href=#123 id=123 data-nosnippet>123</a>            CorePaxos {
-<a href=#124 id=124 data-nosnippet>124</a>                proposers: proposers.clone(),
-<a href=#125 id=125 data-nosnippet>125</a>                acceptors: acceptors.clone(),
-<a href=#126 id=126 data-nosnippet>126</a>                paxos_config: PaxosConfig {
-<a href=#127 id=127 data-nosnippet>127</a>                    f: <span class="number">1</span>,
-<a href=#128 id=128 data-nosnippet>128</a>                    i_am_leader_send_timeout: <span class="number">1</span>,
-<a href=#129 id=129 data-nosnippet>129</a>                    i_am_leader_check_timeout: <span class="number">1</span>,
-<a href=#130 id=130 data-nosnippet>130</a>                    i_am_leader_check_timeout_delay_multiplier: <span class="number">1</span>,
-<a href=#131 id=131 data-nosnippet>131</a>                },
-<a href=#132 id=132 data-nosnippet>132</a>            },
-<a href=#133 id=133 data-nosnippet>133</a>            <span class="kw-2">&amp;</span>clients,
-<a href=#134 id=134 data-nosnippet>134</a>            <span class="kw-2">&amp;</span>replicas,
-<a href=#135 id=135 data-nosnippet>135</a>        );
-<a href=#136 id=136 data-nosnippet>136</a>        <span class="kw">let </span>built = builder.with_default_optimize::&lt;DeployRuntime&gt;();
-<a href=#137 id=137 data-nosnippet>137</a>
-<a href=#138 id=138 data-nosnippet>138</a>        hydro_lang::ir::dbg_dedup_tee(|| {
-<a href=#139 id=139 data-nosnippet>139</a>            <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
-<a href=#140 id=140 data-nosnippet>140</a>        });
-<a href=#141 id=141 data-nosnippet>141</a>
-<a href=#142 id=142 data-nosnippet>142</a>        <span class="kw">let </span>preview = built.preview_compile();
-<a href=#143 id=143 data-nosnippet>143</a>        <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">"proposer_mermaid"</span>}, {
-<a href=#144 id=144 data-nosnippet>144</a>            <span class="macro">insta::assert_snapshot!</span>(
-<a href=#145 id=145 data-nosnippet>145</a>                preview.dfir_for(<span class="kw-2">&amp;</span>proposers).to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
-<a href=#146 id=146 data-nosnippet>146</a>                    no_subgraphs: <span class="bool-val">true</span>,
-<a href=#147 id=147 data-nosnippet>147</a>                    no_pull_push: <span class="bool-val">true</span>,
-<a href=#148 id=148 data-nosnippet>148</a>                    no_handoffs: <span class="bool-val">true</span>,
-<a href=#149 id=149 data-nosnippet>149</a>                    op_text_no_imports: <span class="bool-val">true</span>,
-<a href=#150 id=150 data-nosnippet>150</a>                    ..WriteConfig::default()
-<a href=#151 id=151 data-nosnippet>151</a>                })
-<a href=#152 id=152 data-nosnippet>152</a>            );
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="kw">use </span>hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime, TrybuildHost};
+<a href=#107 id=107 data-nosnippet>107</a>    <span class="kw">use </span>stageleft::RuntimeData;
+<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#109 id=109 data-nosnippet>109</a>    <span class="kw">use </span><span class="kw">crate</span>::cluster::paxos::{CorePaxos, PaxosConfig};
+<a href=#110 id=110 data-nosnippet>110</a>
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">const </span>PAXOS_F: usize = <span class="number">1</span>;
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a>    <span class="attr">#[cfg(stageleft_runtime)]
+<a href=#114 id=114 data-nosnippet>114</a>    </span><span class="kw">fn </span>create_paxos&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#115 id=115 data-nosnippet>115</a>        proposers: <span class="kw-2">&amp;</span>hydro_lang::Cluster&lt;<span class="lifetime">'a</span>, <span class="kw">crate</span>::cluster::paxos::Proposer&gt;,
+<a href=#116 id=116 data-nosnippet>116</a>        acceptors: <span class="kw-2">&amp;</span>hydro_lang::Cluster&lt;<span class="lifetime">'a</span>, <span class="kw">crate</span>::cluster::paxos::Acceptor&gt;,
+<a href=#117 id=117 data-nosnippet>117</a>        clients: <span class="kw-2">&amp;</span>hydro_lang::Cluster&lt;<span class="lifetime">'a</span>, <span class="kw">super</span>::Client&gt;,
+<a href=#118 id=118 data-nosnippet>118</a>        replicas: <span class="kw-2">&amp;</span>hydro_lang::Cluster&lt;<span class="lifetime">'a</span>, <span class="kw">crate</span>::cluster::kv_replica::Replica&gt;,
+<a href=#119 id=119 data-nosnippet>119</a>    ) {
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">super</span>::paxos_bench(
+<a href=#121 id=121 data-nosnippet>121</a>            <span class="number">100</span>,
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="number">1000</span>,
+<a href=#123 id=123 data-nosnippet>123</a>            PAXOS_F,
+<a href=#124 id=124 data-nosnippet>124</a>            PAXOS_F + <span class="number">1</span>,
+<a href=#125 id=125 data-nosnippet>125</a>            CorePaxos {
+<a href=#126 id=126 data-nosnippet>126</a>                proposers: proposers.clone(),
+<a href=#127 id=127 data-nosnippet>127</a>                acceptors: acceptors.clone(),
+<a href=#128 id=128 data-nosnippet>128</a>                paxos_config: PaxosConfig {
+<a href=#129 id=129 data-nosnippet>129</a>                    f: <span class="number">1</span>,
+<a href=#130 id=130 data-nosnippet>130</a>                    i_am_leader_send_timeout: <span class="number">5</span>,
+<a href=#131 id=131 data-nosnippet>131</a>                    i_am_leader_check_timeout: <span class="number">10</span>,
+<a href=#132 id=132 data-nosnippet>132</a>                    i_am_leader_check_timeout_delay_multiplier: <span class="number">15</span>,
+<a href=#133 id=133 data-nosnippet>133</a>                },
+<a href=#134 id=134 data-nosnippet>134</a>            },
+<a href=#135 id=135 data-nosnippet>135</a>            clients,
+<a href=#136 id=136 data-nosnippet>136</a>            replicas,
+<a href=#137 id=137 data-nosnippet>137</a>        );
+<a href=#138 id=138 data-nosnippet>138</a>    }
+<a href=#139 id=139 data-nosnippet>139</a>
+<a href=#140 id=140 data-nosnippet>140</a>    <span class="attr">#[test]
+<a href=#141 id=141 data-nosnippet>141</a>    </span><span class="kw">fn </span>paxos_ir() {
+<a href=#142 id=142 data-nosnippet>142</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
+<a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">let </span>proposers = builder.cluster();
+<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span>acceptors = builder.cluster();
+<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>clients = builder.cluster();
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>replicas = builder.cluster();
+<a href=#147 id=147 data-nosnippet>147</a>
+<a href=#148 id=148 data-nosnippet>148</a>        create_paxos(<span class="kw-2">&amp;</span>proposers, <span class="kw-2">&amp;</span>acceptors, <span class="kw-2">&amp;</span>clients, <span class="kw-2">&amp;</span>replicas);
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>built = builder.with_default_optimize::&lt;DeployRuntime&gt;();
+<a href=#150 id=150 data-nosnippet>150</a>
+<a href=#151 id=151 data-nosnippet>151</a>        hydro_lang::ir::dbg_dedup_tee(|| {
+<a href=#152 id=152 data-nosnippet>152</a>            <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
 <a href=#153 id=153 data-nosnippet>153</a>        });
 <a href=#154 id=154 data-nosnippet>154</a>
-<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let _ </span>= built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>));
-<a href=#156 id=156 data-nosnippet>156</a>    }
-<a href=#157 id=157 data-nosnippet>157</a>}</code></pre></div></section></main></body></html>
+<a href=#155 id=155 data-nosnippet>155</a>        <span class="kw">let </span>preview = built.preview_compile();
+<a href=#156 id=156 data-nosnippet>156</a>        <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="string">"proposer_mermaid"</span>}, {
+<a href=#157 id=157 data-nosnippet>157</a>            <span class="macro">insta::assert_snapshot!</span>(
+<a href=#158 id=158 data-nosnippet>158</a>                preview.dfir_for(<span class="kw-2">&amp;</span>proposers).to_mermaid(<span class="kw-2">&amp;</span>WriteConfig {
+<a href=#159 id=159 data-nosnippet>159</a>                    no_subgraphs: <span class="bool-val">true</span>,
+<a href=#160 id=160 data-nosnippet>160</a>                    no_pull_push: <span class="bool-val">true</span>,
+<a href=#161 id=161 data-nosnippet>161</a>                    no_handoffs: <span class="bool-val">true</span>,
+<a href=#162 id=162 data-nosnippet>162</a>                    op_text_no_imports: <span class="bool-val">true</span>,
+<a href=#163 id=163 data-nosnippet>163</a>                    ..WriteConfig::default()
+<a href=#164 id=164 data-nosnippet>164</a>                })
+<a href=#165 id=165 data-nosnippet>165</a>            );
+<a href=#166 id=166 data-nosnippet>166</a>        });
+<a href=#167 id=167 data-nosnippet>167</a>
+<a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let _ </span>= built.compile(<span class="kw-2">&amp;</span>RuntimeData::new(<span class="string">"FAKE"</span>));
+<a href=#169 id=169 data-nosnippet>169</a>    }
+<a href=#170 id=170 data-nosnippet>170</a>
+<a href=#171 id=171 data-nosnippet>171</a>    <span class="attr">#[tokio::test]
+<a href=#172 id=172 data-nosnippet>172</a>    </span><span class="kw">async fn </span>paxos_some_throughput() {
+<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
+<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span>proposers = builder.cluster();
+<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>acceptors = builder.cluster();
+<a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>clients = builder.cluster();
+<a href=#177 id=177 data-nosnippet>177</a>        <span class="kw">let </span>replicas = builder.cluster();
+<a href=#178 id=178 data-nosnippet>178</a>
+<a href=#179 id=179 data-nosnippet>179</a>        create_paxos(<span class="kw-2">&amp;</span>proposers, <span class="kw-2">&amp;</span>acceptors, <span class="kw-2">&amp;</span>clients, <span class="kw-2">&amp;</span>replicas);
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#181 id=181 data-nosnippet>181</a>
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>nodes = builder
+<a href=#183 id=183 data-nosnippet>183</a>            .with_cluster(
+<a href=#184 id=184 data-nosnippet>184</a>                <span class="kw-2">&amp;</span>proposers,
+<a href=#185 id=185 data-nosnippet>185</a>                (<span class="number">0</span>..PAXOS_F + <span class="number">1</span>).map(|<span class="kw">_</span>| TrybuildHost::new(deployment.Localhost())),
+<a href=#186 id=186 data-nosnippet>186</a>            )
+<a href=#187 id=187 data-nosnippet>187</a>            .with_cluster(
+<a href=#188 id=188 data-nosnippet>188</a>                <span class="kw-2">&amp;</span>acceptors,
+<a href=#189 id=189 data-nosnippet>189</a>                (<span class="number">0</span>..<span class="number">2 </span>* PAXOS_F + <span class="number">1</span>).map(|<span class="kw">_</span>| TrybuildHost::new(deployment.Localhost())),
+<a href=#190 id=190 data-nosnippet>190</a>            )
+<a href=#191 id=191 data-nosnippet>191</a>            .with_cluster(<span class="kw-2">&amp;</span>clients, <span class="macro">vec!</span>[TrybuildHost::new(deployment.Localhost())])
+<a href=#192 id=192 data-nosnippet>192</a>            .with_cluster(
+<a href=#193 id=193 data-nosnippet>193</a>                <span class="kw-2">&amp;</span>replicas,
+<a href=#194 id=194 data-nosnippet>194</a>                (<span class="number">0</span>..PAXOS_F + <span class="number">1</span>).map(|<span class="kw">_</span>| TrybuildHost::new(deployment.Localhost())),
+<a href=#195 id=195 data-nosnippet>195</a>            )
+<a href=#196 id=196 data-nosnippet>196</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#197 id=197 data-nosnippet>197</a>
+<a href=#198 id=198 data-nosnippet>198</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#199 id=199 data-nosnippet>199</a>
+<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>client_node = <span class="kw-2">&amp;</span>nodes.get_cluster(<span class="kw-2">&amp;</span>clients).members()[<span class="number">0</span>];
+<a href=#201 id=201 data-nosnippet>201</a>        <span class="kw">let </span>client_out = client_node.stdout_filter(<span class="string">"Throughput 99% interval:"</span>).<span class="kw">await</span>;
+<a href=#202 id=202 data-nosnippet>202</a>
+<a href=#203 id=203 data-nosnippet>203</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">use </span>std::str::FromStr;
+<a href=#206 id=206 data-nosnippet>206</a>
+<a href=#207 id=207 data-nosnippet>207</a>        <span class="kw">use </span>regex::Regex;
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a>        <span class="kw">let </span>re = Regex::new(<span class="string">r"Throughput 99% interval: ([^ ]+) - ([^ ]+) requests/s"</span>).unwrap();
+<a href=#210 id=210 data-nosnippet>210</a>        <span class="kw">let </span><span class="kw-2">mut </span>found = <span class="number">0</span>;
+<a href=#211 id=211 data-nosnippet>211</a>        <span class="kw">let </span><span class="kw-2">mut </span>client_out = client_out;
+<a href=#212 id=212 data-nosnippet>212</a>        <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = client_out.recv().<span class="kw">await </span>{
+<a href=#213 id=213 data-nosnippet>213</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(caps) = re.captures(<span class="kw-2">&amp;</span>line) {
+<a href=#214 id=214 data-nosnippet>214</a>                <span class="kw">if let </span>(<span class="prelude-val">Ok</span>(lower), <span class="prelude-val">Ok</span>(_upper)) = (f64::from_str(<span class="kw-2">&amp;</span>caps[<span class="number">1</span>]), f64::from_str(<span class="kw-2">&amp;</span>caps[<span class="number">2</span>]))
+<a href=#215 id=215 data-nosnippet>215</a>                {
+<a href=#216 id=216 data-nosnippet>216</a>                    <span class="kw">if </span>lower &gt; <span class="number">0.0 </span>{
+<a href=#217 id=217 data-nosnippet>217</a>                        <span class="macro">println!</span>(<span class="string">"Found throughput lower-bound: {}"</span>, lower);
+<a href=#218 id=218 data-nosnippet>218</a>                        found += <span class="number">1</span>;
+<a href=#219 id=219 data-nosnippet>219</a>                        <span class="kw">if </span>found == <span class="number">2 </span>{
+<a href=#220 id=220 data-nosnippet>220</a>                            <span class="kw">break</span>;
+<a href=#221 id=221 data-nosnippet>221</a>                        }
+<a href=#222 id=222 data-nosnippet>222</a>                    }
+<a href=#223 id=223 data-nosnippet>223</a>                }
+<a href=#224 id=224 data-nosnippet>224</a>            }
+<a href=#225 id=225 data-nosnippet>225</a>        }
+<a href=#226 id=226 data-nosnippet>226</a>    }
+<a href=#227 id=227 data-nosnippet>227</a>}</code></pre></div></section></main></body></html>
