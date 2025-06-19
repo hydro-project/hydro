@@ -1,11 +1,12 @@
-use std::{collections::{HashMap, HashSet}, path};
+use std::{cell::RefCell, collections::HashMap};
 
+use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use syn::visit::Visit;
 
 type TupleIndex = Vec<usize>; // Ex: [0,1] represents a.0.1
 
-#[derive(Debug, Clone, Default)]
-struct Tuple {
+#[derive(Debug, Clone, Default, Eq)]
+pub struct Tuple {
     dependency: Option<TupleIndex>, // Input tuple index this tuple is equal to, if any
     fields: HashMap<usize, Box<Tuple>>, // Fields 1 layer deep
 }
@@ -29,7 +30,7 @@ impl Tuple {
         }
     }
 
-    fn set_dependency(&mut self, index: &TupleIndex, input_tuple_index: TupleIndex) {
+    pub fn set_dependency(&mut self, index: &TupleIndex, input_tuple_index: TupleIndex) {
         if index.is_empty() {
             // If the index is empty, this is the root tuple
             self.dependency = Some(input_tuple_index);
@@ -46,14 +47,20 @@ impl Tuple {
     fn get_dependency(&self, index: &TupleIndex) -> Option<TupleIndex> {
         if index.is_empty() {
             // If the index is empty, this is the root tuple
-            self.dependency
+            self.dependency.clone()
         } else {
             // Otherwise, get the field recursively
             let field_index = index[0];
             let remaining_index = &index[1..];
             self.fields.get(&field_index)
-                .and_then(|child| child.get_dependency(remaining_index))
+                .and_then(|child| child.get_dependency(&remaining_index.to_vec()))
         }
+    }
+}
+
+impl PartialEq for Tuple {
+    fn eq(&self, other: &Self) -> bool {
+        self.dependency == other.dependency && self.fields == other.fields
     }
 }
 
@@ -84,7 +91,7 @@ impl Visit<'_> for TupleUseRhs {
 
     fn visit_expr_field(&mut self, expr: &syn::ExprField) {
         // Find the ident of the rightmost field
-        let index = match expr.member {
+        let index = match &expr.member {
             syn::Member::Named(ident) => {
                 panic!("Partitioning analysis currently supports only tuples, not structs. Found a named field on a struct: {:?}", ident);
             },
@@ -115,15 +122,27 @@ impl Visit<'_> for TupleUseRhs {
 // For example, (a, (b, c)) -> { a: [0], b: [1, 0], c: [1, 1] }
 #[derive(Default)]
 struct TupleDeclareLhs {
-    lhs_tuple: HashMap<syn::Ident, TupleIndex>, // Ident -> TupleIndex
+    lhs_tuple: HashMap<syn::Ident, TupleIndex>,
     tuple_index: TupleIndex, // Internal, used to track the index of the tuple recursively
+}
+
+impl TupleDeclareLhs {
+    fn into_tuples(&self) -> HashMap<syn::Ident, Tuple> {
+        let mut tuples = HashMap::new();
+        for (ident, index) in &self.lhs_tuple {
+            let mut tuple = Tuple::default();
+            tuple.dependency = Some(index.clone());
+            tuples.insert(ident.clone(), tuple);
+        }
+        tuples
+    }
 }
 
 impl Visit<'_> for TupleDeclareLhs {
     fn visit_pat(&mut self, pat: &syn::Pat) {
         match pat {
             syn::Pat::Ident(ident) => {
-                self.lhs_tuple.insert(ident.ident.clone(), self.tuple_index);
+                self.lhs_tuple.insert(ident.ident.clone(), self.tuple_index.clone());
             }
             syn::Pat::Tuple(tuple) => {
                 // Recursively visit elems, in case we have nested tuples
@@ -170,7 +189,7 @@ impl EqualityAnalysis {
                 // Case 2.1: RHS contains the same field as the LHS, continue searching in RHS
                 rhs = field.as_ref();
             }
-            else if let Some(dependency) = rhs.dependency {
+            else if let Some(dependency) = &rhs.dependency {
                 // Case 2.2: RHS contains a broader dependency. Ex: let (a, b) = c, where c depends on d in the input.
                 let remaining_lhs = &lhs[i..];
                 let mut specific_rhs_dependency = dependency.clone();
@@ -191,16 +210,8 @@ impl EqualityAnalysis {
 }
 
 impl Visit<'_> for EqualityAnalysis {
-    fn visit_expr(&mut self, expr: &syn::Expr) {
-        // Filter Expr types that we do not support
-        match expr {
-            syn::Expr::Return(_) => {
-                panic!("Partitioning analysis does not support: {:?}.", expr);
-            }
-            _ => {
-                self.visit_expr(expr);
-            }
-        }
+    fn visit_expr_return(&mut self, _: &syn::ExprReturn) {
+        panic!("Partitioning analysis does not support return.");
     }
     
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
@@ -215,11 +226,11 @@ impl Visit<'_> for EqualityAnalysis {
                 if let Some(init) = local.init.as_ref() {
                     // See if RHS is a direct match for an existing dependency
                     analysis.existing_dependencies = self.dependencies.clone();
-                    analysis.visit_expr(init);
+                    analysis.visit_expr(init.expr.as_ref());
                 }
 
                 // Set dependencies from LHS to RHS
-                for (lhs, tuple_index) in input_analysis.indices.iter() {
+                for (lhs, tuple_index) in input_analysis.lhs_tuple.iter() {
                     let tuple = self.assign_tuple(tuple_index, &analysis.rhs_tuple);
                     if let Some(tuple) = tuple {
                         // Found a match, insert into dependencies
@@ -242,17 +253,14 @@ impl Visit<'_> for EqualityAnalysis {
             if i == block.block.stmts.len() - 1 {
                 // If this is the last statement, it is the output if there is no semicolon
                 if let syn::Stmt::Expr(expr, semicolon) = stmt {
-                    if let Some(_) = semicolon {
-                        // No semicolon, no output
-                        self.output_dependencies.clear();
-                    }
-                    else {
+                    if semicolon.is_none() {
+                        // Output only exists if there is no semicolon
                         let mut analysis = TupleUseRhs::default();
                         analysis.existing_dependencies = self.dependencies.clone();
                         analysis.visit_expr(expr);
 
                         self.output_dependencies = analysis.rhs_tuple;
-                        println!("Output dependency: {:?}", analysis.rhs_tuple);
+                        println!("Output dependency: {:?}", self.output_dependencies);
                     }
                 }
             }
@@ -263,7 +271,7 @@ impl Visit<'_> for EqualityAnalysis {
 #[derive(Default)]
 pub struct AnalyzeClosure {
     found_closure: bool, // Used to avoid executing visit_pat on anything but the function body
-    analysis_results: EqualityAnalysis,
+    pub output_dependencies: Tuple,
 }
 
 impl Visit<'_> for AnalyzeClosure {
@@ -279,12 +287,82 @@ impl Visit<'_> for AnalyzeClosure {
         }
         let mut input_analysis = TupleDeclareLhs::default();
         input_analysis.visit_pat(&closure.inputs[0]);
+        println!("Input idents to tuple indices: {:?}", input_analysis.lhs_tuple);
 
         // Perform dependency analysis on the body
-        self.analysis_results = EqualityAnalysis::default();
-        self.analysis_results.dependencies = input_analysis.lhs_tuple.clone();
-        self.analysis_results.visit_expr(&closure.body);
+        let mut analyzer = EqualityAnalysis::default();
+        analyzer.dependencies = input_analysis.into_tuples();
+        analyzer.visit_expr(&closure.body);
+        self.output_dependencies = analyzer.output_dependencies;
 
-        println!("Closure output dependencies: {:?}", self.analysis_results.output_dependencies);
+        println!("Closure output dependencies: {:?}", self.output_dependencies);
+    }
+}
+
+pub struct PartitioningMetadata {
+    pub output_dependencies: HashMap<usize, Tuple>, // Map from stmt_id to output tuple dependencies
+}
+
+fn partition_analysis_leaf(leaf: &mut HydroLeaf, next_stmt_id: &mut usize, metadata: &RefCell<PartitioningMetadata>) {
+    let mut analyzer = AnalyzeClosure::default();
+    leaf.visit_debug_expr(|debug_expr| {
+        analyzer.visit_expr(&debug_expr.0);
+    });
+    metadata.borrow_mut().output_dependencies.insert(*next_stmt_id, analyzer.output_dependencies.clone());
+}
+
+fn partition_analysis_node(node: &mut HydroNode, next_stmt_id: &mut usize, metadata: &RefCell<PartitioningMetadata>) {
+    let mut analyzer = AnalyzeClosure::default();
+    node.visit_debug_expr(|debug_expr| {
+        analyzer.visit_expr(&debug_expr.0);
+    });
+    metadata.borrow_mut().output_dependencies.insert(*next_stmt_id, analyzer.output_dependencies.clone());
+}
+
+pub fn partition_analysis(ir: &mut [HydroLeaf]) -> PartitioningMetadata {
+    let partitioning_metadata = RefCell::new(PartitioningMetadata {
+        output_dependencies: HashMap::new(),
+    });
+    traverse_dfir(ir, |leaf, next_stmt_id| {
+        partition_analysis_leaf(leaf, next_stmt_id, &partitioning_metadata);
+    }, |node, next_stmt_id| {
+        partition_analysis_node(node, next_stmt_id, &partitioning_metadata);
+    });
+
+    partitioning_metadata.into_inner()
+}
+
+
+#[cfg(test)]
+mod tests {
+    use stageleft::{q, RuntimeData};
+    use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, Location};
+    use crate::partition_analysis::{partition_analysis, Tuple};
+
+    #[test]
+    fn test_tuple_input_assignment() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster.source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                // Do nothing
+                (a, b, (c, (d,)), e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        let built = builder.with_default_optimize::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let metadata = partition_analysis(&mut ir);
+
+        let mut expected_output_dependency = Tuple::default();
+        expected_output_dependency.set_dependency(&vec![0], vec![0]);
+        expected_output_dependency.set_dependency(&vec![1], vec![1]);
+        expected_output_dependency.set_dependency(&vec![2, 0], vec![2, 0]);
+        expected_output_dependency.set_dependency(&vec![2, 1, 0], vec![2, 1, 0]);
+        expected_output_dependency.set_dependency(&vec![3], vec![3]);
+        assert_eq!(metadata.output_dependencies.get(&1), Some(&expected_output_dependency));
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 }
