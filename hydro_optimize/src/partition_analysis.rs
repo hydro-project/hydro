@@ -52,8 +52,17 @@ impl Tuple {
             // Otherwise, get the field recursively
             let field_index = index[0];
             let remaining_index = &index[1..];
-            self.fields.get(&field_index)
-                .and_then(|child| child.get_dependency(&remaining_index.to_vec()))
+            if let Some(child) = self.fields.get(&field_index) {
+                // If the field exists, recurse
+                child.get_dependency(&remaining_index.to_vec())
+            } else if let Some(dependency) = &self.dependency {
+                // If this field has a broader dependency (for example, x has a dependency and the user is asking for x.1), append the index
+                let mut specific_dependency = dependency.clone();
+                specific_dependency.extend(index);
+                Some(specific_dependency)
+            } else {
+                None
+            }
         }
     }
 }
@@ -345,8 +354,33 @@ mod tests {
         let cluster = builder.cluster::<()>();
         cluster.source_iter(q!([(1, 2, (3, (4,)), 5)]))
             .map(q!(|(a, b, (c, (d,)), e)| {
-                // Do nothing
                 (a, b, (c, (d,)), e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        let built = builder.with_default_optimize::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let metadata = partition_analysis(&mut ir);
+
+        let mut expected_output_dependency = Tuple::default();
+        expected_output_dependency.set_dependency(&vec![0], vec![0]);
+        expected_output_dependency.set_dependency(&vec![1], vec![1]);
+        expected_output_dependency.set_dependency(&vec![2, 0], vec![2, 0]);
+        expected_output_dependency.set_dependency(&vec![2, 1, 0], vec![2, 1, 0]);
+        expected_output_dependency.set_dependency(&vec![3], vec![3]);
+        assert_eq!(metadata.output_dependencies.get(&1), Some(&expected_output_dependency));
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
+
+    #[test]
+    fn test_tuple_input_implicit_nesting() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster.source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, cd, e)| {
+                (a, b, (cd.0, (cd.1.0,)), e)
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
