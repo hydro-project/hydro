@@ -16,3 +16,12 @@ pub mod decouple_analysis;
 #[cfg(feature = "ilp")]
 #[cfg_attr(docsrs, doc(cfg(feature = "ilp")))]
 pub mod deploy_and_analyze;
+
+
+#[cfg(test)]
+mod test_init {
+    #[ctor::ctor]
+    fn init() {
+        hydro_lang::deploy::init_test();
+    }
+}

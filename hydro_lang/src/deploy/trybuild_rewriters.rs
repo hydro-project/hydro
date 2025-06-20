@@ -11,6 +11,13 @@ impl VisitMut for ReplaceCrateNameWithStaged {
             if first.ident == self.crate_name {
                 let tail = i.path.segments.iter().skip(1).collect::<Vec<_>>();
 
+                if let Some(first) = tail.first() {
+                    if first.ident == "__staged" {
+                        // If the first segment is already `staged`, we do not need to change it.
+                        return;
+                    }
+                }
+
                 if self.is_test {
                     *i = syn::parse_quote!(crate::__staged #(::#tail)*);
                 } else {

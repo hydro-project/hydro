@@ -44,6 +44,7 @@ trybuild-internals-api = "1.0.99"
 stageleft_tool = "0.8.1"
 
 [dev-dependencies]
+ctor = "0.2"
 dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false }
 dfir_lang = { path = "../dfir_lang", version = "^0.13.0" }
 insta = "1.39"

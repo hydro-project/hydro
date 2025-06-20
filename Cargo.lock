@@ -2416,6 +2416,7 @@ dependencies = [
 name = "hydro_optimize"
 version = "0.13.0"
 dependencies = [
+ "ctor 0.2.9",
  "dfir_lang",
  "dfir_rs",
  "grb",

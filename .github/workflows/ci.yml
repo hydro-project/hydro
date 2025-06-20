@@ -282,7 +282,7 @@ jobs:
 
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
-        run: cargo doc --no-deps --all-features
+        run: cargo doc --no-deps --features "meta,python,dfir_macro,deploy_integration,runtime_support,dfir_context,build,deploy"
 
       - name: Move design docs to output
         shell: bash
