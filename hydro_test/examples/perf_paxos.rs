@@ -1,77 +1,37 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
-use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::{DeployCrateWrapper, TrybuildHost};
-use hydro_lang::ir::deep_clone;
-use hydro_lang::q;
-use hydro_lang::rewrites::analyze_counter::COUNTER_PREFIX;
-use hydro_lang::rewrites::analyze_perf::CPU_USAGE_PREFIX;
-use hydro_lang::rewrites::analyze_perf_and_counters::analyze_results;
-use hydro_lang::rewrites::{insert_counter, persist_pullup};
-use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-use tokio::sync::RwLock;
-
-type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
-
-fn cluster_specs(
-    host_arg: &str,
-    project: Option<String>,
-    network: Option<Arc<RwLock<GcpNetwork>>>,
-    deployment: &mut Deployment,
-    cluster_name: &str,
-    num_nodes: usize,
-) -> Vec<TrybuildHost> {
-    let create_host: HostCreator = if host_arg == "gcp" {
-        Box::new(move |deployment| -> Arc<dyn Host> {
-            deployment
-                .GcpComputeEngineHost()
-                .project(project.as_ref().unwrap())
-                .machine_type("n2-highcpu-2")
-                .image("debian-cloud/debian-11")
-                .region("us-west1-a")
-                .network(network.as_ref().unwrap().clone())
-                .add()
-        })
-    } else {
-        let localhost = deployment.Localhost();
-        Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
-    };
-
-    let rustflags = if host_arg == "gcp" {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
-    (0..num_nodes)
-        .map(|idx| {
-            TrybuildHost::new(create_host(deployment))
-                .additional_hydro_features(vec!["runtime_measure".to_string()])
-                .rustflags(rustflags)
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile(format!("{}{}.perf.data", cluster_name, idx))
-                        .fold_outfile(format!("{}{}.data.folded", cluster_name, idx))
-                        .frequency(128)
-                        .setup_command(DEBIAN_PERF_SETUP_COMMAND)
-                        .build(),
-                )
-        })
-        .collect()
-}
-
+#[cfg(not(feature = "ilp"))]
 #[tokio::main]
 async fn main() {
+    panic!("Run with the `ilp` feature enabled.");
+}
+
+#[cfg(feature = "ilp")]
+#[tokio::main]
+async fn main() {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use hydro_deploy::Deployment;
+    use hydro_deploy::gcp::GcpNetwork;
+    use hydro_lang::Location;
+    use hydro_optimize::decoupler;
+    use hydro_optimize::deploy::ReusableHosts;
+    use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+    use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+    use tokio::sync::RwLock;
+
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
+    let project = if host_arg == "gcp" {
+        std::env::args().nth(2).unwrap()
+    } else {
+        String::new()
+    };
+    let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
-    let builder = hydro_lang::FlowBuilder::new();
+    let mut builder = hydro_lang::FlowBuilder::new();
     let f = 1;
-    let num_clients = 1;
-    let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
+    let num_clients = 3;
+    let num_clients_per_node = 500; // Change based on experiment between 1, 50, 100.
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
@@ -80,6 +40,7 @@ async fn main() {
     let proposers = builder.cluster();
     let acceptors = builder.cluster();
     let clients = builder.cluster();
+    let client_aggregator = builder.process();
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
@@ -98,99 +59,64 @@ async fn main() {
             },
         },
         &clients,
+        &client_aggregator,
         &replicas,
     );
 
-    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+    let clients_name = clients.typename();
+    let client_aggregator_name = client_aggregator.typename();
 
-    let optimized = builder
-        .optimize_with(persist_pullup::persist_pullup)
-        .optimize_with(|leaf| {
-            insert_counter::insert_counter(leaf, counter_output_duration);
-        });
-    let mut ir = deep_clone(optimized.ir());
+    let mut clusters = vec![
+        (proposers.id().raw_id(), proposers.typename(), f + 1),
+        (acceptors.id().raw_id(), acceptors.typename(), 2 * f + 1),
+        (clients.id().raw_id(), clients_name.clone(), num_clients),
+        (replicas.id().raw_id(), replicas.typename(), f + 1),
+    ];
+    let processes = vec![(
+        client_aggregator.id().raw_id(),
+        client_aggregator_name.clone(),
+    )];
 
-    let project = if host_arg == "gcp" {
-        std::env::args().nth(2)
-    } else {
-        None
+    // Deploy
+    let mut reusable_hosts = ReusableHosts {
+        hosts: HashMap::new(),
+        host_arg,
+        project: project.clone(),
+        network: network.clone(),
     };
 
-    let network = project
-        .as_ref()
-        .map(|project| Arc::new(RwLock::new(GcpNetwork::new(project, None))));
+    let num_times_to_optimize = 2;
 
-    let nodes = optimized
-        .with_cluster(
-            &proposers,
-            cluster_specs(
-                &host_arg,
-                project.clone(),
-                network.clone(),
+    for i in 0..num_times_to_optimize {
+        let (rewritten_ir_builder, mut ir, mut decoupler, bottleneck_name, bottleneck_num_nodes) =
+            deploy_and_analyze(
+                &mut reusable_hosts,
                 &mut deployment,
-                "proposer",
-                f + 1,
-            ),
-        )
-        .with_cluster(
-            &acceptors,
-            cluster_specs(
-                &host_arg,
-                project.clone(),
-                network.clone(),
-                &mut deployment,
-                "acceptor",
-                2 * f + 1,
-            ),
-        )
-        .with_cluster(
-            &clients,
-            cluster_specs(
-                &host_arg,
-                project.clone(),
-                network.clone(),
-                &mut deployment,
-                "client",
-                num_clients,
-            ),
-        )
-        .with_cluster(
-            &replicas,
-            cluster_specs(
-                &host_arg,
-                project.clone(),
-                network.clone(),
-                &mut deployment,
-                "replica",
-                f + 1,
-            ),
-        )
-        .deploy(&mut deployment);
+                builder,
+                &clusters,
+                &processes,
+                vec![clients_name.clone(), client_aggregator_name.clone()],
+            )
+            .await;
 
-    deployment.deploy().await.unwrap();
+        // Apply decoupling
+        let mut decoupled_cluster = None;
+        builder = rewritten_ir_builder.build_with(|builder| {
+            let new_cluster = builder.cluster::<()>();
+            decoupler.decoupled_location = new_cluster.id().clone();
+            decoupler::decouple(&mut ir, &decoupler);
+            decoupled_cluster = Some(new_cluster);
 
-    // Get stdout for each process to capture their CPU usage and cardinality later
-    let mut usage_out = HashMap::new();
-    let mut cardinality_out = HashMap::new();
-    for (id, name, cluster) in nodes.get_all_clusters() {
-        for (idx, node) in cluster.members().iter().enumerate() {
-            let out = node.stdout_filter(CPU_USAGE_PREFIX).await;
-            usage_out.insert((id.clone(), name.clone(), idx), out);
-
-            let out = node.stdout_filter(COUNTER_PREFIX).await;
-            cardinality_out.insert((id.clone(), name.clone(), idx), out);
+            ir
+        });
+        if let Some(new_cluster) = decoupled_cluster {
+            clusters.push((
+                new_cluster.id().raw_id(),
+                format!("{}_decouple_{}", bottleneck_name, i),
+                bottleneck_num_nodes,
+            ));
         }
     }
 
-    deployment
-        .start_until(async {
-            std::io::stdin().read_line(&mut String::new()).unwrap();
-        })
-        .await
-        .unwrap();
-
-    analyze_results(nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
-    hydro_lang::ir::dbg_dedup_tee(|| {
-        println!("{:#?}", ir);
-    });
+    let _ = builder.finalize().into_ir();
 }

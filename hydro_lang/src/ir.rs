@@ -367,13 +367,16 @@ impl HydroLeaf {
                     LocationId::ExternalProcess(_) => panic!(),
                 };
 
-                assert_eq!(
-                    input_location_id, *location_id,
-                    "cycle_sink location mismatch"
-                );
-
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        if input_location_id != *location_id {
+                            println!("Cycle broken: {:?}, ID: {}", ident, next_stmt_id);
+                        }
+                        assert_eq!(
+                            input_location_id, *location_id,
+                            "cycle_sink location mismatch"
+                        );
+
                         graph_builders.entry(*location_id).or_default().add_dfir(
                             parse_quote! {
                                 #ident = #input_ident;
@@ -405,11 +408,30 @@ impl HydroLeaf {
         }
     }
 
+    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+        match self {
+            HydroLeaf::ForEach { input, .. }
+            | HydroLeaf::DestSink { input, .. }
+            | HydroLeaf::CycleSink { input, .. } => {
+                vec![input.metadata()]
+            }
+        }
+    }
+
     pub fn print_root(&self) -> String {
         match self {
             HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
             HydroLeaf::DestSink { sink, .. } => format!("DestSink({:?})", sink),
             HydroLeaf::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+        }
+    }
+
+    pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
+        match self {
+            HydroLeaf::ForEach { f, .. } | HydroLeaf::DestSink { sink: f, .. } => {
+                transform(f);
+            }
+            HydroLeaf::CycleSink { .. } => {}
         }
     }
 }
@@ -528,6 +550,8 @@ pub struct HydroIrMetadata {
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
+    pub network_recv_cpu_usage: Option<f64>,
+    pub id: Option<usize>,
 }
 
 // HydroIrMetadata shouldn't be used to hash or compare
@@ -773,12 +797,7 @@ impl HydroNode {
                     }
                     | HydroNode::CycleSource { location_kind, .. }
                     | HydroNode::Source { location_kind, .. } => {
-                        // Unwrap location out of Tick
-                        if let LocationId::Tick(_, tick_loc) = location_kind {
-                            curr_location = Some(*tick_loc.clone());
-                        } else {
-                            curr_location = Some(location_kind.clone());
-                        }
+                        curr_location = Some(location_kind.root().clone());
                     }
                     HydroNode::Tee { inner, .. } => {
                         if let Some(tee_location) = seen_tee_locations.get(&inner.as_ptr()) {
@@ -1331,16 +1350,18 @@ impl HydroNode {
                 let (second_ident, second_location_id) =
                     second.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    first_location_id, second_location_id,
-                    "chain inputs must be in the same location"
-                );
-
                 let chain_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        if first_location_id != second_location_id {
+                            println!("Chain broken: {}, ID: {}", self.print_root(), next_stmt_id);
+                        }
+                        assert_eq!(
+                            first_location_id, second_location_id,
+                            "chain inputs must be in the same location"
+                        );
                         let builder = graph_builders.entry(first_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1368,16 +1389,23 @@ impl HydroNode {
                 let (right_ident, right_location_id) =
                     right.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    left_location_id, right_location_id,
-                    "cross_singleton inputs must be in the same location"
-                );
-
                 let cross_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        if left_location_id != right_location_id {
+                            println!(
+                                "Cross singleton broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
+                        }
+                        assert_eq!(
+                            left_location_id, right_location_id,
+                            "cross_singleton inputs must be in the same location"
+                        );
+
                         let builder = graph_builders.entry(left_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1431,16 +1459,23 @@ impl HydroNode {
                 let (right_ident, right_location_id) =
                     right_inner.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    left_location_id, right_location_id,
-                    "join / cross product inputs must be in the same location"
-                );
-
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        if left_location_id != right_location_id {
+                            println!(
+                                "Join / cross product broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
+                        }
+                        assert_eq!(
+                            left_location_id, right_location_id,
+                            "join / cross product inputs must be in the same location"
+                        );
+
                         let builder = graph_builders.entry(left_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1487,16 +1522,23 @@ impl HydroNode {
                 let (neg_ident, neg_location_id) =
                     neg.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                assert_eq!(
-                    pos_location_id, neg_location_id,
-                    "difference / anti join inputs must be in the same location"
-                );
-
                 let stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        if pos_location_id != neg_location_id {
+                            println!(
+                                "Difference / antijoin broken: {}, ID: {}",
+                                self.print_root(),
+                                next_stmt_id
+                            );
+                        }
+                        assert_eq!(
+                            pos_location_id, neg_location_id,
+                            "difference / anti join inputs must be in the same location"
+                        );
+
                         let builder = graph_builders.entry(pos_location_id).or_default();
                         builder.add_dfir(
                             parse_quote! {
@@ -1974,7 +2016,8 @@ impl HydroNode {
                                     #input_ident -> map(#serialize_pipeline) -> dest_sink(#sink_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                // operator tag separates send and receive, which otherwise have the same next_stmt_id
+                                Some(&format!("send{}", next_stmt_id)),
                             );
                         } else {
                             sender_builder.add_dfir(
@@ -1982,7 +2025,7 @@ impl HydroNode {
                                     #input_ident -> dest_sink(#sink_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&format!("send{}", next_stmt_id)),
                             );
                         }
 
@@ -1990,14 +2033,14 @@ impl HydroNode {
                         if let Some(deserialize_pipeline) = deserialize_pipeline {
                             receiver_builder.add_dfir(parse_quote! {
                                 #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
-                            }, None, Some(&next_stmt_id.to_string()));
+                            }, None, Some(&format!("recv{}", next_stmt_id)));
                         } else {
                             receiver_builder.add_dfir(
                                 parse_quote! {
                                     #receiver_stream_ident = source_stream(#source_expr);
                                 },
                                 None,
-                                Some(&next_stmt_id.to_string()),
+                                Some(&format!("recv{}", next_stmt_id)),
                             );
                         }
                     }
@@ -2174,6 +2217,61 @@ impl HydroNode {
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
+        }
+    }
+
+    pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
+        match self {
+            HydroNode::Placeholder => {
+                panic!()
+            }
+            HydroNode::Source { .. }
+            | HydroNode::CycleSource { .. } // CycleSource and Tee should calculate input metadata in separate special ways
+            | HydroNode::Tee { .. } => {
+                vec![]
+            }
+            HydroNode::Persist { inner, .. }
+            | HydroNode::Unpersist { inner, .. }
+            | HydroNode::Delta { inner, .. } => {
+                vec![inner.metadata()]
+            }
+            HydroNode::Chain { first, second, .. } => {
+                vec![first.metadata(), second.metadata()]
+            }
+            HydroNode::CrossProduct { left, right, .. }
+            | HydroNode::CrossSingleton { left, right, .. }
+            | HydroNode::Join { left, right, .. } => {
+                vec![left.metadata(), right.metadata()]
+            }
+            HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
+                vec![pos.metadata(), neg.metadata()]
+            }
+            HydroNode::Map { input, .. }
+            | HydroNode::FlatMap { input, .. }
+            | HydroNode::Filter { input, .. }
+            | HydroNode::FilterMap { input, .. }
+            | HydroNode::Sort { input, .. }
+            | HydroNode::DeferTick { input, .. }
+            | HydroNode::Enumerate { input, .. }
+            | HydroNode::Inspect { input, .. }
+            | HydroNode::Unique { input, .. }
+            | HydroNode::Network { input, .. }
+            | HydroNode::Counter { input, .. }
+            | HydroNode::ResolveFutures { input, .. }
+            | HydroNode::ResolveFuturesOrdered { input, .. } => {
+                vec![input.metadata()]
+            }
+            HydroNode::Fold { input, .. }
+            | HydroNode::FoldKeyed { input, .. }
+            | HydroNode::Reduce { input, .. }
+            | HydroNode::ReduceKeyed { input, .. } => {
+                // Skip persist before fold/reduce
+                if let HydroNode::Persist { inner, .. } = input.as_ref() {
+                    vec![inner.metadata()]
+                } else {
+                    vec![input.metadata()]
+                }
+            }
         }
     }
 
@@ -2423,11 +2521,11 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"152");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"184");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"128");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"160");
     }
 }

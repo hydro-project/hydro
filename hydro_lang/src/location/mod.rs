@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
+use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
@@ -26,7 +27,7 @@ pub use can_send::CanSend;
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum LocationId {
     Process(usize),
     Cluster(usize),
@@ -50,6 +51,17 @@ impl LocationId {
             LocationId::Cluster(id) => *id,
             LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
             LocationId::ExternalProcess(id) => *id,
+        }
+    }
+
+    pub fn swap_root(&mut self, new_root: LocationId) {
+        match self {
+            LocationId::Tick(_, id) => {
+                id.swap_root(new_root);
+            }
+            _ => {
+                *self = new_root;
+            }
         }
     }
 }
@@ -93,6 +105,8 @@ pub trait Location<'a>: Clone {
             output_type: Some(stageleft::quote_type::<T>().into()),
             cardinality: None,
             cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
         }
     }
 
@@ -240,22 +254,7 @@ pub trait Location<'a>: Clone {
         S: CycleCollection<'a, ForwardRefMarker, Location = Self>,
         Self: NoTick,
     {
-        let next_id = {
-            let on_id = match self.id() {
-                LocationId::Process(id) => id,
-                LocationId::Cluster(id) => id,
-                LocationId::Tick(_, _) => panic!(),
-                LocationId::ExternalProcess(_) => panic!(),
-            };
-
-            let mut flow_state = self.flow_state().borrow_mut();
-            let next_id_entry = flow_state.cycle_counts.entry(on_id).or_default();
-
-            let id = *next_id_entry;
-            *next_id_entry += 1;
-            id
-        };
-
+        let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (

@@ -23,6 +23,8 @@ expression: optimized.ir()
                     ),
                     cardinality: None,
                     cpu_usage: None,
+                    network_recv_cpu_usage: None,
+                    id: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -34,6 +36,8 @@ expression: optimized.ir()
                 ),
                 cardinality: None,
                 cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
             },
         },
         metadata: HydroIrMetadata {
@@ -45,6 +49,8 @@ expression: optimized.ir()
             ),
             cardinality: None,
             cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
         },
     },
 ]

@@ -55,7 +55,8 @@ pub fn compute_pi<'a>(
 mod tests {
     use hydro_lang::Location;
     use hydro_lang::deploy::DeployRuntime;
-    use hydro_lang::rewrites::{decoupler, persist_pullup};
+    use hydro_lang::rewrites::persist_pullup;
+    use hydro_optimize::decoupler;
     use stageleft::RuntimeData;
 
     struct DecoupledCluster {}
@@ -78,11 +79,14 @@ mod tests {
     #[test]
     fn decoupled_compute_pi_ir() {
         let builder = hydro_lang::FlowBuilder::new();
-        let _ = super::compute_pi(&builder, 8192);
+        let (cluster, _) = super::compute_pi(&builder, 8192);
         let decoupled_cluster = builder.cluster::<DecoupledCluster>();
         let decoupler = decoupler::Decoupler {
-            nodes_to_decouple: vec![4],
-            new_location: decoupled_cluster.id().clone(),
+            output_to_decoupled_machine_after: vec![4],
+            output_to_original_machine_after: vec![],
+            place_on_decoupled_machine: vec![],
+            decoupled_location: decoupled_cluster.id().clone(),
+            orig_location: cluster.id().clone(),
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
