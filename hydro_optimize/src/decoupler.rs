@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use stageleft::quote_type;
 use syn::visit_mut::VisitMut;
 
-use crate::debug::print_id;
 use crate::repair::{cycle_source_to_sink_input, inject_id, inject_location};
 use crate::rewrites::ClusterSelfIdReplace;
 
@@ -270,8 +269,8 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
         },
     );
 
-    println!("Printing IDs after fixing");
-    print_id(ir);
+    // println!("Printing IDs after fixing");
+    // print_id(ir);
 }
 
 #[cfg(test)]

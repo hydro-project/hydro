@@ -48,12 +48,16 @@ async fn main() {
     let clusters = vec![(cluster.id().raw_id(), cluster.typename(), 8)];
     let processes = vec![(leader.id().raw_id(), leader.typename())];
 
-    let _ = deploy_and_analyze(
+    let (rewritten_ir_builder, ir, _, _, _) = deploy_and_analyze(
         &mut reusable_hosts,
         &mut deployment,
         builder,
         &clusters,
         &processes,
+        vec![],
     )
     .await;
+
+    // Cleanup
+    let _ = rewritten_ir_builder.build_with(|_| ir).finalize().into_ir();
 }

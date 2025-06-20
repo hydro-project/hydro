@@ -13,7 +13,6 @@ async fn main() {
     use hydro_deploy::Deployment;
     use hydro_deploy::gcp::GcpNetwork;
     use hydro_lang::Location;
-    use hydro_lang::ir::deep_clone;
     use hydro_optimize::decoupler;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
@@ -64,15 +63,18 @@ async fn main() {
         &replicas,
     );
 
+    let clients_name = clients.typename();
+    let client_aggregator_name = client_aggregator.typename();
+
     let mut clusters = vec![
         (proposers.id().raw_id(), proposers.typename(), f + 1),
         (acceptors.id().raw_id(), acceptors.typename(), 2 * f + 1),
-        (clients.id().raw_id(), clients.typename(), num_clients),
+        (clients.id().raw_id(), clients_name.clone(), num_clients),
         (replicas.id().raw_id(), replicas.typename(), f + 1),
     ];
     let processes = vec![(
         client_aggregator.id().raw_id(),
-        client_aggregator.typename(),
+        client_aggregator_name.clone(),
     )];
 
     // Deploy
@@ -85,21 +87,21 @@ async fn main() {
 
     let num_times_to_optimize = 2;
 
-    for _ in 0..num_times_to_optimize {
-        let (rewritten_ir_builder, ir, mut decoupler, bottleneck_num_nodes) = deploy_and_analyze(
-            &mut reusable_hosts,
-            &mut deployment,
-            builder,
-            &clusters,
-            &processes,
-        )
-        .await;
+    for i in 0..num_times_to_optimize {
+        let (rewritten_ir_builder, mut ir, mut decoupler, bottleneck_name, bottleneck_num_nodes) =
+            deploy_and_analyze(
+                &mut reusable_hosts,
+                &mut deployment,
+                builder,
+                &clusters,
+                &processes,
+                vec![clients_name.clone(), client_aggregator_name.clone()],
+            )
+            .await;
 
         // Apply decoupling
         let mut decoupled_cluster = None;
         builder = rewritten_ir_builder.build_with(|builder| {
-            let mut ir = deep_clone(&ir); // TODO: Not sure if this line is necessary anymore?
-
             let new_cluster = builder.cluster::<()>();
             decoupler.decoupled_location = new_cluster.id().clone();
             decoupler::decouple(&mut ir, &decoupler);
@@ -110,9 +112,11 @@ async fn main() {
         if let Some(new_cluster) = decoupled_cluster {
             clusters.push((
                 new_cluster.id().raw_id(),
-                new_cluster.typename(), // TODO: Need unique typename to prevent name collisions after multiple rewrites
+                format!("{}_decouple_{}", bottleneck_name, i),
                 bottleneck_num_nodes,
             ));
         }
     }
+
+    let _ = builder.finalize().into_ir();
 }

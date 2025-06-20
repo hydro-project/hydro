@@ -1,25 +1,22 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::time::Duration;
 
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::rust_crate::tracing_options::{DEBIAN_PERF_SETUP_COMMAND, TracingOptions};
-use hydro_deploy::{Deployment, Host};
+use hydro_deploy::Deployment;
 use hydro_lang::FlowBuilder;
 use hydro_lang::builder::RewriteIrFlowBuilder;
 use hydro_lang::builder::deploy::DeployResult;
+use hydro_lang::deploy::HydroDeploy;
 use hydro_lang::deploy::deploy_graph::DeployCrateWrapper;
-use hydro_lang::deploy::{HydroDeploy, TrybuildHost};
 use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
 use stageleft::{Quoted, q};
-use tokio::sync::RwLock;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::decouple_analysis::decouple_analysis;
 use crate::decoupler::Decoupler;
+use crate::deploy::ReusableHosts;
 use crate::parse_results::{analyze_cluster_results, analyze_send_recv_overheads};
 use crate::repair::{cycle_source_to_sink_input, inject_id, remove_counter};
 
@@ -129,7 +126,14 @@ pub async fn deploy_and_analyze<'a>(
     builder: FlowBuilder<'a>,
     clusters: &Vec<(usize, String, usize)>,
     processes: &Vec<(usize, String)>,
-) -> (RewriteIrFlowBuilder<'a>, Vec<HydroLeaf>, Decoupler, usize) {
+    exclude_from_decoupling: Vec<String>,
+) -> (
+    RewriteIrFlowBuilder<'a>,
+    Vec<HydroLeaf>,
+    Decoupler,
+    String,
+    usize,
+) {
     let counter_output_duration = q!(std::time::Duration::from_secs(1));
 
     // Rewrite with counter tracking
@@ -168,8 +172,14 @@ pub async fn deploy_and_analyze<'a>(
         .await
         .unwrap();
 
-    let (bottleneck, bottleneck_num_nodes) =
-        analyze_cluster_results(&nodes, &mut ir, &mut usage_out, &mut cardinality_out).await;
+    let (bottleneck, bottleneck_name, bottleneck_num_nodes) = analyze_cluster_results(
+        &nodes,
+        &mut ir,
+        &mut usage_out,
+        &mut cardinality_out,
+        exclude_from_decoupling,
+    )
+    .await;
     // Remove HydroNode::Counter (since we don't want to consider decoupling those)
     remove_counter(&mut ir);
     // Inject new next_stmt_id into metadata (old ones are invalid after removing the counter)
@@ -202,6 +212,7 @@ pub async fn deploy_and_analyze<'a>(
             orig_location: bottleneck.clone(),
             decoupled_location: LocationId::Process(0), // Placeholder, must replace
         },
+        bottleneck_name,
         bottleneck_num_nodes,
     )
 }

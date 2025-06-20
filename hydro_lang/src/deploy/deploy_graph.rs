@@ -418,6 +418,7 @@ pub struct TrybuildHost {
     pub display_name: Option<String>,
     pub rustflags: Option<String>,
     pub additional_hydro_features: Vec<String>,
+    pub features: Vec<String>,
     pub tracing: Option<TracingOptions>,
     pub name_hint: Option<String>,
     pub cluster_idx: Option<usize>,
@@ -430,6 +431,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             display_name: None,
             rustflags: None,
             additional_hydro_features: vec![],
+            features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -444,6 +446,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             display_name: None,
             rustflags: None,
             additional_hydro_features: vec![],
+            features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -458,6 +461,7 @@ impl TrybuildHost {
             display_name: None,
             rustflags: None,
             additional_hydro_features: vec![],
+            features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -493,6 +497,13 @@ impl TrybuildHost {
         }
     }
 
+    pub fn features(self, features: Vec<String>) -> Self {
+        Self {
+            features: self.features.into_iter().chain(features).collect(),
+            ..self
+        }
+    }
+
     pub fn tracing(self, tracing: TracingOptions) -> Self {
         if self.tracing.is_some() {
             panic!("{} already set", name_of!(tracing in Self));
@@ -513,6 +524,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             display_name: None,
             rustflags: None,
             additional_hydro_features: vec![],
+            features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -528,6 +540,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             display_name: None,
             rustflags: None,
             additional_hydro_features: vec![],
+            features: vec![],
             tracing: None,
             name_hint: None,
             cluster_idx: None,
@@ -938,7 +951,8 @@ fn create_trybuild_service(
                     "{runtime_feature} is not a valid Hydro runtime feature"
                 );
                 format!("hydro___feature_{runtime_feature}")
-            }),
+            })
+            .chain(trybuild.features),
     );
 
     if let Some(features) = features {

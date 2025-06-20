@@ -167,9 +167,11 @@ pub async fn analyze_cluster_results(
     ir: &mut [HydroLeaf],
     usage_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
     cardinality_out: &mut HashMap<(LocationId, String, usize), UnboundedReceiver<String>>,
-) -> (LocationId, usize) {
+    exclude_from_decoupling: Vec<String>,
+) -> (LocationId, String, usize) {
     let mut max_usage_cluster_id = None;
     let mut max_usage_cluster_size = 0;
+    let mut max_usage_cluster_name = String::new();
     let mut max_usage_overall = 0f64;
 
     for (id, name, cluster) in nodes.get_all_clusters() {
@@ -204,8 +206,9 @@ pub async fn analyze_cluster_results(
             .await;
 
             // Update cluster with max usage
-            if max_usage_overall < usage {
+            if max_usage_overall < usage && !exclude_from_decoupling.contains(&name) {
                 max_usage_cluster_id = Some(id.clone());
+                max_usage_cluster_name = name.clone();
                 max_usage_cluster_size = cluster.members().len();
                 max_usage_overall = usage;
                 println!("The bottleneck is {}", name);
@@ -213,7 +216,11 @@ pub async fn analyze_cluster_results(
         }
     }
 
-    (max_usage_cluster_id.unwrap(), max_usage_cluster_size)
+    (
+        max_usage_cluster_id.unwrap(),
+        max_usage_cluster_name,
+        max_usage_cluster_size,
+    )
 }
 
 pub async fn get_usage(usage_out: &mut UnboundedReceiver<String>) -> f64 {
