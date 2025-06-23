@@ -35,7 +35,7 @@ impl Tuple {
         rhs_index: &TupleIndex,
     ) {
         // Navigate to the index for the RHS
-        for (i, tuple_index) in rhs_index.iter().enumerate() {
+        for tuple_index in rhs_index {
             if let Some(child) = rhs.fields.get(tuple_index) {
                 rhs = child.as_ref();
             } else if let Some(dependency) = &rhs.dependency {
@@ -423,6 +423,40 @@ mod tests {
             .map(q!(|(a, b, (c, (d,)), e)| {
                 let f = (c, (d,));
                 (a, b, f, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_tuple_input_output_implicit_nesting() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, cd, e)| {
+                let f = cd;
+                (a, b, (f.0, (f.1.0,)), e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_tuple_combined() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = (d,);
+                let g = (c, f);
+                let h = (a, b, g, e);
+                h
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
