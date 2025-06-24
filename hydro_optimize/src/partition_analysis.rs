@@ -6,6 +6,7 @@ use syn::visit::Visit;
 
 type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 
+// Invariant: Cannot have both a dependency and fields (fields are more specific)
 #[derive(Debug, Clone, Default, Eq)]
 pub struct StructOrTuple {
     dependency: Option<StructOrTupleIndex>, // Input tuple index this tuple is equal to, if any
@@ -66,6 +67,80 @@ impl StructOrTuple {
         let child = self.create_child(index.clone());
         child.dependency = Some(input_tuple_index);
     }
+
+    fn intersect_children(tuple1: &StructOrTuple, tuple_with_fields: &StructOrTuple) -> StructOrTuple {
+        let mut new_tuple = StructOrTuple::default();
+        for (field, tuple2_child) in &tuple_with_fields.fields {
+            // Construct a child for tuple1 if it has a broader dependency
+            let tuple1_child = tuple1.fields.get(field).and_then(|boxed| {
+                Some((**boxed).clone())
+            }).or_else(|| {
+                if let Some(dependency1) = &tuple1.dependency {
+                    let mut child_dependency = dependency1.clone();
+                    child_dependency.push(field.clone());
+                    Some(StructOrTuple {
+                        dependency: Some(child_dependency),
+                        fields: HashMap::new(),
+                    })
+                }
+                else {
+                    None
+                }
+            });
+            // Recursively check if there's a match in the child
+            if let Some(tuple1_child) = tuple1_child {
+                if let Some(shared_child) = StructOrTuple::intersect(&tuple1_child, &tuple2_child) {
+                    new_tuple.fields.insert(field.clone(), Box::new(shared_child));
+                }
+            }
+        }
+        new_tuple
+    }
+
+    // Create a tuple representing dependencies present in both tuples, keeping the more specific dependency if there is one
+    pub fn intersect(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
+        let new_tuple = if let Some(dependency1) = &tuple1.dependency {
+            if let Some(dependency2) = &tuple2.dependency {
+                // Exact shared dependency, return
+                if dependency1 == dependency2 {
+                    return Some(tuple1.clone());
+                }
+                else {
+                    return None;
+                }
+            }
+            else {
+                // tuple2 has no dependency, check its fields
+                StructOrTuple::intersect_children(tuple1, tuple2)
+            }
+        }
+        else {
+            // tuple1 has no dependency, check its fields
+            StructOrTuple::intersect_children(tuple2, tuple1)
+        };
+
+        if new_tuple.is_empty() {
+            None
+        } else {
+            Some(new_tuple)
+        }
+    }
+
+    pub fn intersect_tuples(tuples: &[StructOrTuple]) -> Option<StructOrTuple> {
+        if tuples.is_empty() {
+            return None;
+        }
+
+        let mut intersection = tuples[0].clone();
+        for tuple in &tuples[1..] {
+            if let Some(shared) = StructOrTuple::intersect(&intersection, tuple) {
+                intersection = shared;
+            } else {
+                return None; // No shared dependencies
+            }
+        }
+        Some(intersection)
+    }
 }
 
 impl PartialEq for StructOrTuple {
@@ -83,16 +158,24 @@ struct StructOrTupleUseRhs {
     reference_field_index: StructOrTupleIndex, /* Used to track the index of the tuple/struct that we're referencing. Ex: a.0.1 -> [0, 1] */
 }
 
+impl StructOrTupleUseRhs {
+    fn add_to_rhs_tuple(&mut self, dependency: &StructOrTuple) {
+        if !dependency.is_empty() {
+            self.rhs_tuple.set_dependencies(
+                &self.field_index,
+                dependency,
+                &self.reference_field_index,
+            );
+        }
+    }
+}
+
 impl Visit<'_> for StructOrTupleUseRhs {
     fn visit_expr_path(&mut self, path: &syn::ExprPath) {
         if let Some(ident) = path.path.get_ident() {
             // Base path matches an Ident that has an existing dependency in one of its fields
-            if let Some(existing_dependency) = self.existing_dependencies.get(ident) {
-                self.rhs_tuple.set_dependencies(
-                    &self.field_index,
-                    existing_dependency,
-                    &self.reference_field_index,
-                );
+            if let Some(existing_dependency) = self.existing_dependencies.get(ident).cloned() {
+                self.add_to_rhs_tuple(&existing_dependency);
             }
         }
     }
@@ -143,6 +226,99 @@ impl Visit<'_> for StructOrTupleUseRhs {
                 "Partitioning analysis does not support structs with rest fields: {:?}",
                 struc
             );
+        }
+    }
+
+    fn visit_expr_method_call(&mut self, call: &syn::ExprMethodCall) {
+        if call.method.to_string() == "clone" {
+            // Allow "clone", since it doesn't change the RHS
+            self.visit_expr(&call.receiver);
+        } else {
+            println!("StructOrTupleUseRhs skipping unsupported RHS method call: {:?}", call);
+        }
+    }
+
+    fn visit_expr_block(&mut self, block: &syn::ExprBlock) {
+        // Analyze the block, copying over our existing dependencies
+        let mut block_analysis = EqualityAnalysis::default();
+        block_analysis.dependencies = self.existing_dependencies.clone();
+        block_analysis.visit_expr_block(block);
+        // If there is an output, and there is a dependency, set it
+        if !block_analysis.output_dependencies.is_empty() {
+            self.add_to_rhs_tuple(&block_analysis.output_dependencies);
+        }
+    }
+
+    fn visit_expr_if(&mut self, expr: &syn::ExprIf) {
+        // Don't consider if else branch doesn't exist, since the return value will just be ()
+        // Note: The if condition is irrelevant so it's not analyzed
+        let mut branch_dependencies = vec![];
+        let mut if_expr = expr;
+
+        // Since we may have multiple else-ifs, keep unwrapping the else branch until we reach a block
+        loop {
+            if let Some(else_branch) = &if_expr.else_branch {
+                let mut then_branch_analysis = EqualityAnalysis::default();
+                then_branch_analysis.dependencies = self.existing_dependencies.clone();
+                then_branch_analysis.visit_block(&if_expr.then_branch);
+                branch_dependencies.push(then_branch_analysis.output_dependencies.clone());
+                
+                match &*else_branch.1 {
+                    syn::Expr::Block(block) => {
+                        let mut else_branch_analysis = EqualityAnalysis::default();
+                        else_branch_analysis.dependencies = self.existing_dependencies.clone();
+                        else_branch_analysis.visit_expr_block(block);
+                        branch_dependencies.push(else_branch_analysis.output_dependencies.clone());
+                        break;
+                    }
+                    syn::Expr::If(nested_if_expr) => {
+                        if_expr = nested_if_expr;
+                    }
+                    _ => panic!("Unexpected else branch expression: {:?}", else_branch.1),
+                }
+            }
+            else {
+                // Do not process the if statement if there is a missing else branch, the return type will be ()
+                return;
+            }
+        }
+
+        // Set the dependency to whatever is shared between the outputs of all branches
+        if let Some(shared) = StructOrTuple::intersect_tuples(&branch_dependencies) {
+            self.add_to_rhs_tuple(&shared);
+        }
+    }
+
+    fn visit_expr_match(&mut self, expr: &syn::ExprMatch) {
+        let mut branch_dependencies = vec![];
+        for arm in &expr.arms {
+            let mut arm_analysis = EqualityAnalysis::default();
+            arm_analysis.dependencies = self.existing_dependencies.clone();
+            arm_analysis.visit_expr(&arm.body);
+
+            if arm_analysis.output_dependencies.is_empty() {
+                return; // One arm is empty, no dependencies
+            }
+            branch_dependencies.push(arm_analysis.output_dependencies.clone());
+        }
+        
+        if let Some(shared) = StructOrTuple::intersect_tuples(&branch_dependencies) {
+            self.add_to_rhs_tuple(&shared);
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &syn::Expr) {
+        match expr {
+            syn::Expr::Path(path) => self.visit_expr_path(path),
+            syn::Expr::Field(field) => self.visit_expr_field(field),
+            syn::Expr::Tuple(tuple) => self.visit_expr_tuple(tuple),
+            syn::Expr::Struct(struc) => self.visit_expr_struct(struc),
+            syn::Expr::MethodCall(call) => self.visit_expr_method_call(call),
+            syn::Expr::Cast(cast) => self.visit_expr(&cast.expr), // Allow casts assuming they don't truncate the RHS
+            syn::Expr::Block(block) => self.visit_expr_block(block),
+            syn::Expr::If(if_expr) => self.visit_expr_if(if_expr),
+            syn::Expr::Match(match_expr) => self.visit_expr_match(match_expr),
+            _ => println!("StructOrTupleUseRhs skipping unsupported RHS expression: {:?}", expr),
         }
     }
 }
@@ -200,10 +376,6 @@ struct EqualityAnalysis {
 }
 
 impl Visit<'_> for EqualityAnalysis {
-    fn visit_expr_return(&mut self, _: &syn::ExprReturn) {
-        panic!("Partitioning analysis does not support return.");
-    }
-
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
         match stmt {
             syn::Stmt::Local(local) => {
@@ -237,11 +409,11 @@ impl Visit<'_> for EqualityAnalysis {
         }
     }
 
-    fn visit_expr_block(&mut self, block: &syn::ExprBlock) {
-        for (i, stmt) in block.block.stmts.iter().enumerate() {
+    fn visit_block(&mut self, block: &syn::Block) {
+        for (i, stmt) in block.stmts.iter().enumerate() {
             self.visit_stmt(stmt);
 
-            if i == block.block.stmts.len() - 1 {
+            if i == block.stmts.len() - 1 {
                 // If this is the last statement, it is the output if there is no semicolon
                 if let syn::Stmt::Expr(expr, semicolon) = stmt {
                     if semicolon.is_none() {
@@ -254,6 +426,20 @@ impl Visit<'_> for EqualityAnalysis {
                         println!("Output dependency: {:?}", self.output_dependencies);
                     }
                 }
+            }
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &syn::Expr) {
+        match expr {
+            syn::Expr::Return(_) => panic!("Partitioning analysis does not support return."),
+            syn::Expr::Block(block) => self.visit_expr_block(block),
+            _ => {
+                // Visit other expressions to analyze dependencies
+                let mut analysis = StructOrTupleUseRhs::default();
+                analysis.existing_dependencies = self.dependencies.clone();
+                analysis.visit_expr(expr);
+                self.output_dependencies = analysis.rhs_tuple;
             }
         }
     }
@@ -494,12 +680,233 @@ mod tests {
         verify_abcde_tuple(builder);
     }
 
+    #[test]
+    fn test_if_shared_intersection() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = (d,);
+                let g = (c, f);
+                (a, b, if f == (4,) {
+                    g
+                } else {
+                    (c, (d,))
+                }, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_if_conflicting_intersection() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = (d,);
+                (a, b, if f == (4,) {
+                    (c, (d, b))
+                } else {
+                    (c, (d, e))
+                }, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d, _x)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_if_implicit_expansion() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, cd, e)| {
+                (a, b, if a == 1 {
+                    cd
+                } else {
+                    (cd.0, (cd.1.0,))
+                }, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_else_if() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = (d,);
+                let g = (c, f);
+                (a, b, if f == (4,) {
+                    g
+                } else if f == (3,) {
+                    (c, f)
+                } else {
+                    (c, (d,))
+                }, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_match() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = (d,);
+                let g = (c, f);
+                let cd = match f {
+                    (4,) => g,
+                    (3,) => (c, f),
+                    _ => (c, (d,)),
+                };
+                (a, b, cd, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_block() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let cd = {
+                    let f = (d,);
+                    let g = (c, f);
+                    g
+                };
+                (a, b, cd, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_nested_block() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let cd = {
+                    let f = (d,);
+                    let g = {
+                        let h = (c, f);
+                        h
+                    };
+                    g
+                };
+                (a, b, cd, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_block_shadowing() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let cd = {
+                    let f = (d,);
+                    let b = {
+                        let a = (c, f);
+                        a
+                    };
+                    b
+                };
+                (a, b, cd, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_shadowing() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let a_temp = a;
+                let b_temp = b;
+                let a = e;
+                let b = d;
+                let d = b_temp;
+                let e = a_temp;
+                (e, d, (c, (b,)), a)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_full_assignment() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|a| {
+                a
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+
+        let built = builder.with_default_optimize::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let metadata = partition_analysis(&mut ir);
+
+        let mut expected_output_dependency = StructOrTuple::default();
+        expected_output_dependency.set_dependency(&vec![], vec![]);
+        assert_eq!(
+            metadata.output_dependencies.get(&1),
+            Some(&expected_output_dependency)
+        );
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
+
+    #[derive(Clone)]
     struct TestStruct {
         a: usize,
         b: String,
         c: Option<usize>,
     }
 
+    #[allow(dead_code)]
     struct TestNestedStruct {
         struct_1: TestStruct,
         struct_2: TestStruct,
@@ -616,11 +1023,7 @@ mod tests {
                 c: Some(3),
             }]))
             .map(q!(|test_struct| {
-                let struct_1 = TestStruct {
-                    a: test_struct.a,
-                    b: test_struct.b.clone(),
-                    c: test_struct.c,
-                };
+                let struct_1 = test_struct.clone();
                 TestNestedStruct {
                     struct_1,
                     struct_2: TestStruct {
@@ -633,6 +1036,33 @@ mod tests {
             .for_each(q!(|_nested_struct| {
                 println!("Done");
             }));
-        verify_struct(builder);
+
+        let built = builder.with_default_optimize::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let metadata = partition_analysis(&mut ir);
+
+        let mut expected_output_dependency = StructOrTuple::default();
+        expected_output_dependency.set_dependency(
+            &vec!["struct_1".to_string()],
+            vec![],
+        );
+        expected_output_dependency.set_dependency(
+            &vec!["struct_2".to_string(), "a".to_string()],
+            vec!["a".to_string()],
+        );
+        expected_output_dependency.set_dependency(
+            &vec!["struct_2".to_string(), "b".to_string()],
+            vec!["b".to_string()],
+        );
+        expected_output_dependency.set_dependency(
+            &vec!["struct_2".to_string(), "c".to_string()],
+            vec!["c".to_string()],
+        );
+        assert_eq!(
+            metadata.output_dependencies.get(&1),
+            Some(&expected_output_dependency)
+        );
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 }
