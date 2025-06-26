@@ -1,10 +1,8 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::{Hash, Hasher}};
 
-use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use syn::visit::Visit;
 
-type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
+pub type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 
 // Invariant: Cannot have both a dependency and fields (fields are more specific)
 #[derive(Debug, Clone, Default, Eq)]
@@ -14,7 +12,14 @@ pub struct StructOrTuple {
 }
 
 impl StructOrTuple {
-    fn is_empty(&self) -> bool {
+    pub fn new_completely_dependent() -> Self {
+        StructOrTuple {
+            dependency: Some(vec![]), // Empty dependency means it is completely dependent on the input tuple
+            fields: HashMap::new(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
         self.dependency.is_none() && self.fields.is_empty()
     }
 
@@ -68,29 +73,50 @@ impl StructOrTuple {
         child.dependency = Some(input_tuple_index);
     }
 
-    fn intersect_children(tuple1: &StructOrTuple, tuple_with_fields: &StructOrTuple) -> StructOrTuple {
+    pub fn get_dependency(
+        &self,
+        index: &StructOrTupleIndex,
+    ) -> Option<&StructOrTuple> {
+        let mut child = self;
+        for i in index {
+            if let Some(grandchild) = child.fields.get(i) {
+                child = grandchild.as_ref();
+            } else {
+                return None; // No such child
+            }
+        }
+        Some(child)
+    }
+
+    fn intersect_children(
+        tuple1: &StructOrTuple,
+        tuple_with_fields: &StructOrTuple,
+    ) -> StructOrTuple {
         let mut new_tuple = StructOrTuple::default();
         for (field, tuple2_child) in &tuple_with_fields.fields {
             // Construct a child for tuple1 if it has a broader dependency
-            let tuple1_child = tuple1.fields.get(field).and_then(|boxed| {
-                Some((**boxed).clone())
-            }).or_else(|| {
-                if let Some(dependency1) = &tuple1.dependency {
-                    let mut child_dependency = dependency1.clone();
-                    child_dependency.push(field.clone());
-                    Some(StructOrTuple {
-                        dependency: Some(child_dependency),
-                        fields: HashMap::new(),
-                    })
-                }
-                else {
-                    None
-                }
-            });
+            let tuple1_child = tuple1
+                .fields
+                .get(field)
+                .and_then(|boxed| Some((**boxed).clone()))
+                .or_else(|| {
+                    if let Some(dependency1) = &tuple1.dependency {
+                        let mut child_dependency = dependency1.clone();
+                        child_dependency.push(field.clone());
+                        Some(StructOrTuple {
+                            dependency: Some(child_dependency),
+                            fields: HashMap::new(),
+                        })
+                    } else {
+                        None
+                    }
+                });
             // Recursively check if there's a match in the child
             if let Some(tuple1_child) = tuple1_child {
                 if let Some(shared_child) = StructOrTuple::intersect(&tuple1_child, &tuple2_child) {
-                    new_tuple.fields.insert(field.clone(), Box::new(shared_child));
+                    new_tuple
+                        .fields
+                        .insert(field.clone(), Box::new(shared_child));
                 }
             }
         }
@@ -104,17 +130,14 @@ impl StructOrTuple {
                 // Exact shared dependency, return
                 if dependency1 == dependency2 {
                     return Some(tuple1.clone());
-                }
-                else {
+                } else {
                     return None;
                 }
-            }
-            else {
+            } else {
                 // tuple2 has no dependency, check its fields
                 StructOrTuple::intersect_children(tuple1, tuple2)
             }
-        }
-        else {
+        } else {
             // tuple1 has no dependency, check its fields
             StructOrTuple::intersect_children(tuple2, tuple1)
         };
@@ -141,11 +164,49 @@ impl StructOrTuple {
         }
         Some(intersection)
     }
+
+    /// Remap dependencies of the parent onto the child
+    /// 
+    /// The parent's dependencies are absolute (dependency on an input to the node);
+    /// the child's dependencies are relative (dependency within the function).
+    pub fn project_parent(parent: &StructOrTuple, child: &StructOrTuple) -> Option<StructOrTuple> {
+        // Child depends on a field of the parent
+        if let Some(dependency) = &child.dependency {
+            // For that field, the parent depends on a field of the input
+            if let Some(dependency_in_parent) = parent.get_dependency(&dependency) {
+                // Track the input field
+                Some(dependency_in_parent.clone())
+            }
+            else {
+                None
+            }
+        }
+        else {
+            // Recurse
+            let mut new_child = StructOrTuple::default();
+            for (field, child_field) in &child.fields {
+                if let Some(field_with_counterpart_in_parent) = StructOrTuple::project_parent(parent, child_field) {
+                    new_child.fields.insert(field.clone(), Box::new(field_with_counterpart_in_parent));
+                }
+            }
+            if new_child.is_empty() {
+                None
+            } else {
+                Some(new_child)
+            }
+        }
+    }
 }
 
 impl PartialEq for StructOrTuple {
     fn eq(&self, other: &Self) -> bool {
         self.dependency == other.dependency && self.fields == other.fields
+    }
+}
+
+impl Hash for StructOrTuple {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        format!("{:#?}", self).hash(state);
     }
 }
 
@@ -234,7 +295,10 @@ impl Visit<'_> for StructOrTupleUseRhs {
             // Allow "clone", since it doesn't change the RHS
             self.visit_expr(&call.receiver);
         } else {
-            println!("StructOrTupleUseRhs skipping unsupported RHS method call: {:?}", call);
+            println!(
+                "StructOrTupleUseRhs skipping unsupported RHS method call: {:?}",
+                call
+            );
         }
     }
 
@@ -262,7 +326,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
                 then_branch_analysis.dependencies = self.existing_dependencies.clone();
                 then_branch_analysis.visit_block(&if_expr.then_branch);
                 branch_dependencies.push(then_branch_analysis.output_dependencies.clone());
-                
+
                 match &*else_branch.1 {
                     syn::Expr::Block(block) => {
                         let mut else_branch_analysis = EqualityAnalysis::default();
@@ -276,8 +340,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
                     }
                     _ => panic!("Unexpected else branch expression: {:?}", else_branch.1),
                 }
-            }
-            else {
+            } else {
                 // Do not process the if statement if there is a missing else branch, the return type will be ()
                 return;
             }
@@ -301,7 +364,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
             }
             branch_dependencies.push(arm_analysis.output_dependencies.clone());
         }
-        
+
         if let Some(shared) = StructOrTuple::intersect_tuples(&branch_dependencies) {
             self.add_to_rhs_tuple(&shared);
         }
@@ -314,11 +377,14 @@ impl Visit<'_> for StructOrTupleUseRhs {
             syn::Expr::Tuple(tuple) => self.visit_expr_tuple(tuple),
             syn::Expr::Struct(struc) => self.visit_expr_struct(struc),
             syn::Expr::MethodCall(call) => self.visit_expr_method_call(call),
-            syn::Expr::Cast(cast) => self.visit_expr(&cast.expr), // Allow casts assuming they don't truncate the RHS
+            syn::Expr::Cast(cast) => self.visit_expr(&cast.expr), /* Allow casts assuming they don't truncate the RHS */
             syn::Expr::Block(block) => self.visit_expr_block(block),
             syn::Expr::If(if_expr) => self.visit_expr_if(if_expr),
             syn::Expr::Match(match_expr) => self.visit_expr_match(match_expr),
-            _ => println!("StructOrTupleUseRhs skipping unsupported RHS expression: {:?}", expr),
+            _ => println!(
+                "StructOrTupleUseRhs skipping unsupported RHS expression: {:?}",
+                expr
+            ),
         }
     }
 }
@@ -360,10 +426,7 @@ impl Visit<'_> for TupleDeclareLhs {
                 }
             }
             _ => {
-                panic!(
-                    "TupleDeclareLhs does not support this LHS pattern: {:?}",
-                    pat
-                );
+                println!("TupleDeclareLhs does not support this LHS pattern: {:?}", pat);
             }
         }
     }
@@ -487,70 +550,66 @@ impl Visit<'_> for AnalyzeClosure {
     }
 }
 
-pub struct PartitioningMetadata {
-    pub output_dependencies: HashMap<usize, StructOrTuple>, /* Map from stmt_id to output tuple dependencies */
-}
-
-fn partition_analysis_leaf(
-    leaf: &mut HydroLeaf,
-    next_stmt_id: &mut usize,
-    metadata: &RefCell<PartitioningMetadata>,
-) {
-    let mut analyzer = AnalyzeClosure::default();
-    leaf.visit_debug_expr(|debug_expr| {
-        analyzer.visit_expr(&debug_expr.0);
-    });
-    metadata
-        .borrow_mut()
-        .output_dependencies
-        .insert(*next_stmt_id, analyzer.output_dependencies.clone());
-}
-
-fn partition_analysis_node(
-    node: &mut HydroNode,
-    next_stmt_id: &mut usize,
-    metadata: &RefCell<PartitioningMetadata>,
-) {
-    let mut analyzer = AnalyzeClosure::default();
-    node.visit_debug_expr(|debug_expr| {
-        analyzer.visit_expr(&debug_expr.0);
-    });
-    metadata
-        .borrow_mut()
-        .output_dependencies
-        .insert(*next_stmt_id, analyzer.output_dependencies.clone());
-}
-
-pub fn partition_analysis(ir: &mut [HydroLeaf]) -> PartitioningMetadata {
-    let partitioning_metadata = RefCell::new(PartitioningMetadata {
-        output_dependencies: HashMap::new(),
-    });
-    traverse_dfir(
-        ir,
-        |leaf, next_stmt_id| {
-            partition_analysis_leaf(leaf, next_stmt_id, &partitioning_metadata);
-        },
-        |node, next_stmt_id| {
-            partition_analysis_node(node, next_stmt_id, &partitioning_metadata);
-        },
-    );
-
-    partitioning_metadata.into_inner()
-}
-
 #[cfg(test)]
 mod tests {
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+
     use hydro_lang::deploy::DeployRuntime;
-    use hydro_lang::ir::deep_clone;
+    use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
     use hydro_lang::{FlowBuilder, Location};
     use stageleft::{RuntimeData, q};
+    use syn::visit::Visit;
 
-    use crate::partition_analysis::{StructOrTuple, partition_analysis};
+    use crate::partition_syn_analysis::{AnalyzeClosure, StructOrTuple};
+
+    fn partition_analysis_leaf(
+        leaf: &mut HydroLeaf,
+        next_stmt_id: &mut usize,
+        metadata: &RefCell<HashMap<usize, StructOrTuple>>,
+    ) {
+        let mut analyzer = AnalyzeClosure::default();
+        leaf.visit_debug_expr(|debug_expr| {
+            analyzer.visit_expr(&debug_expr.0);
+        });
+        metadata
+            .borrow_mut()
+            .insert(*next_stmt_id, analyzer.output_dependencies.clone());
+    }
+
+    fn partition_analysis_node(
+        node: &mut HydroNode,
+        next_stmt_id: &mut usize,
+        metadata: &RefCell<HashMap<usize, StructOrTuple>>,
+    ) {
+        let mut analyzer = AnalyzeClosure::default();
+        node.visit_debug_expr(|debug_expr| {
+            analyzer.visit_expr(&debug_expr.0);
+        });
+        metadata
+            .borrow_mut()
+            .insert(*next_stmt_id, analyzer.output_dependencies.clone());
+    }
+
+    fn partition_analysis(ir: &mut [HydroLeaf]) -> HashMap<usize, StructOrTuple> {
+        let partitioning_metadata = RefCell::new(HashMap::new());
+        traverse_dfir(
+            ir,
+            |leaf, next_stmt_id| {
+                partition_analysis_leaf(leaf, next_stmt_id, &partitioning_metadata);
+            },
+            |node, next_stmt_id| {
+                partition_analysis_node(node, next_stmt_id, &partitioning_metadata);
+            },
+        );
+
+        partitioning_metadata.into_inner()
+    }
 
     fn verify_abcde_tuple(builder: FlowBuilder<'_>) {
         let built = builder.with_default_optimize::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
-        let metadata = partition_analysis(&mut ir);
+        let actual_dependencies = partition_analysis(&mut ir);
 
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(&vec!["0".to_string()], vec!["0".to_string()]);
@@ -565,7 +624,7 @@ mod tests {
         );
         expected_output_dependency.set_dependency(&vec!["3".to_string()], vec!["3".to_string()]);
         assert_eq!(
-            metadata.output_dependencies.get(&1),
+            actual_dependencies.get(&1),
             Some(&expected_output_dependency)
         );
 
@@ -663,17 +722,12 @@ mod tests {
     }
 
     #[test]
-    fn test_tuple_combined() {
+    fn test_tuple_no_block() {
         let builder = FlowBuilder::new();
         let cluster = builder.cluster::<()>();
         cluster
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
-            .map(q!(|(a, b, (c, (d,)), e)| {
-                let f = (d,);
-                let g = (c, f);
-                let h = (a, b, g, e);
-                h
-            }))
+            .map(q!(|(a, b, cd, e)| (a, b, (cd.0, (cd.1.0,)), e)))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
             }));
@@ -689,11 +743,7 @@ mod tests {
             .map(q!(|(a, b, (c, (d,)), e)| {
                 let f = (d,);
                 let g = (c, f);
-                (a, b, if f == (4,) {
-                    g
-                } else {
-                    (c, (d,))
-                }, e)
+                (a, b, if f == (4,) { g } else { (c, (d,)) }, e)
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
@@ -709,11 +759,7 @@ mod tests {
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
             .map(q!(|(a, b, (c, (d,)), e)| {
                 let f = (d,);
-                (a, b, if f == (4,) {
-                    (c, (d, b))
-                } else {
-                    (c, (d, e))
-                }, e)
+                (a, b, if f == (4,) { (c, (d, b)) } else { (c, (d, e)) }, e)
             }))
             .for_each(q!(|(a, b, (c, (d, _x)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
@@ -728,11 +774,7 @@ mod tests {
         cluster
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
             .map(q!(|(a, b, cd, e)| {
-                (a, b, if a == 1 {
-                    cd
-                } else {
-                    (cd.0, (cd.1.0,))
-                }, e)
+                (a, b, if a == 1 { cd } else { (cd.0, (cd.1.0,)) }, e)
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
@@ -749,13 +791,18 @@ mod tests {
             .map(q!(|(a, b, (c, (d,)), e)| {
                 let f = (d,);
                 let g = (c, f);
-                (a, b, if f == (4,) {
-                    g
-                } else if f == (3,) {
-                    (c, f)
-                } else {
-                    (c, (d,))
-                }, e)
+                (
+                    a,
+                    b,
+                    if f == (4,) {
+                        g
+                    } else if f == (3,) {
+                        (c, f)
+                    } else {
+                        (c, (d,))
+                    },
+                    e,
+                )
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
@@ -852,47 +899,24 @@ mod tests {
     }
 
     #[test]
-    fn test_shadowing() {
-        let builder = FlowBuilder::new();
-        let cluster = builder.cluster::<()>();
-        cluster
-            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
-            .map(q!(|(a, b, (c, (d,)), e)| {
-                let a_temp = a;
-                let b_temp = b;
-                let a = e;
-                let b = d;
-                let d = b_temp;
-                let e = a_temp;
-                (e, d, (c, (b,)), a)
-            }))
-            .for_each(q!(|(a, b, (c, (d,)), e)| {
-                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
-            }));
-        verify_abcde_tuple(builder);
-    }
-
-    #[test]
     fn test_full_assignment() {
         let builder = FlowBuilder::new();
         let cluster = builder.cluster::<()>();
         cluster
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
-            .map(q!(|a| {
-                a
-            }))
+            .map(q!(|a| { a }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
             }));
 
         let built = builder.with_default_optimize::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
-        let metadata = partition_analysis(&mut ir);
+        let actual_dependencies = partition_analysis(&mut ir);
 
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(&vec![], vec![]);
         assert_eq!(
-            metadata.output_dependencies.get(&1),
+            actual_dependencies.get(&1),
             Some(&expected_output_dependency)
         );
 
@@ -915,7 +939,7 @@ mod tests {
     fn verify_struct(builder: FlowBuilder<'_>) {
         let built = builder.with_default_optimize::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
-        let metadata = partition_analysis(&mut ir);
+        let actual_dependencies = partition_analysis(&mut ir);
 
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(
@@ -943,7 +967,7 @@ mod tests {
             vec!["c".to_string()],
         );
         assert_eq!(
-            metadata.output_dependencies.get(&1),
+            actual_dependencies.get(&1),
             Some(&expected_output_dependency)
         );
 
@@ -1039,13 +1063,10 @@ mod tests {
 
         let built = builder.with_default_optimize::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
-        let metadata = partition_analysis(&mut ir);
+        let actual_dependencies = partition_analysis(&mut ir);
 
         let mut expected_output_dependency = StructOrTuple::default();
-        expected_output_dependency.set_dependency(
-            &vec!["struct_1".to_string()],
-            vec![],
-        );
+        expected_output_dependency.set_dependency(&vec!["struct_1".to_string()], vec![]);
         expected_output_dependency.set_dependency(
             &vec!["struct_2".to_string(), "a".to_string()],
             vec!["a".to_string()],
@@ -1059,7 +1080,7 @@ mod tests {
             vec!["c".to_string()],
         );
         assert_eq!(
-            metadata.output_dependencies.get(&1),
+            actual_dependencies.get(&1),
             Some(&expected_output_dependency)
         );
 
