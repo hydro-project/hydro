@@ -71,6 +71,8 @@ fn input_dependency_analysis_node(
         return;
     }
 
+    println!("Analyzing node {:?} with next_stmt_id {}", node.print_root(), next_stmt_id);
+
     let parent_ids = match node {
         HydroNode::CycleSource { .. } => {
             // For CycleSource, its input is its CycleSink's input. Note: assume the CycleSink is on the same cluster
@@ -191,7 +193,7 @@ fn input_dependency_analysis_node(
                         if let Some(parent1_a_dependency) = parent1_dependency.get_dependency(&vec!["0".to_string()]) {
                             if let Some(parent2_dependency) = parent_dependencies_on_input.get(&1) {
                                 if let Some(parent2_a_dependency) = parent2_dependency.get_dependency(&vec!["0".to_string()]) {
-                                    if let Some(intersection) = StructOrTuple::intersect(parent1_a_dependency, parent2_a_dependency) {
+                                    if let Some(intersection) = StructOrTuple::intersect(&parent1_a_dependency, &parent2_a_dependency) {
                                         new_dependency.set_dependencies(&vec!["0".to_string()], &intersection, &vec![]);
                                     }
                                 }
@@ -248,6 +250,7 @@ fn input_dependency_analysis_node(
                     if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
                         // Project the parent's dependencies based on how f transforms the output
                         if let Some(projected_dependencies) = StructOrTuple::project_parent(parent_dependency, &syn_analysis_results) {
+                            println!("Node {:?} input {:?} has projected dependencies: {:?}", next_stmt_id, input_id, projected_dependencies);
                             input_dependencies_entry.insert(*input_id, projected_dependencies);
                             continue;
                         }
@@ -334,12 +337,48 @@ fn input_dependency_analysis(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
 
-    use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, rewrites::persist_pullup::persist_pullup, FlowBuilder, Location};
+    use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, location::LocationId, rewrites::persist_pullup::persist_pullup, FlowBuilder, Location};
     use stageleft::{q, RuntimeData};
 
-    use crate::{__staged::repair::{cycle_source_to_sink_input, inject_id}, partition_node_analysis::input_dependency_analysis, repair::inject_location};
+    use crate::{partition_node_analysis::input_dependency_analysis, partition_syn_analysis::StructOrTuple, repair::{cycle_source_to_sink_input, inject_id, inject_location}};
+
+    fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, op_expected_dependencies: StructOrTuple) {
+        let mut cycle_data = HashMap::new();
+        let built = builder.optimize_with(persist_pullup)
+            .optimize_with(inject_id)
+            .optimize_with(|ir| {
+                cycle_data = cycle_source_to_sink_input(ir);
+                inject_location(ir, &cycle_data);
+            })
+            .into_deploy::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let (actual_taint, actual_dependencies) = input_dependency_analysis(&mut ir, cluster_to_partition, &cycle_data);
+
+        // println!("Actual taint: {:?}", actual_taint);
+        // println!("Actual dependencies: {:?}", actual_dependencies);
+
+        let expected_taint = HashMap::from([
+            (3, HashSet::from([])), // Network
+            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, HashSet::from([3])), // The operator being tested
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+
+        let expected_dependencies = HashMap::from([
+            (3, HashMap::new()),
+            (4, HashMap::from([(3, implicit_map_dependencies)])),
+            (5, HashMap::from([(3, op_expected_dependencies)])),
+        ]);
+
+        assert_eq!(actual_taint, expected_taint);
+        assert_eq!(actual_dependencies, expected_dependencies);
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
 
     #[test]
     fn test_input_map() {
@@ -354,17 +393,9 @@ mod tests {
                 println!("b: {}, a+2: {}", b, a2);
             }));
         
-        let mut cycle_data = HashMap::new();
-        let built = builder.optimize_with(persist_pullup).optimize_with(inject_id).optimize_with(|ir| {
-            cycle_data = cycle_source_to_sink_input(ir);
-            inject_location(ir, &cycle_data);
-        }).into_deploy::<DeployRuntime>();
-        let mut ir = deep_clone(built.ir());
-        let (actual_taint, actual_dependencies) = input_dependency_analysis(&mut ir, cluster2.id(), &cycle_data);
+        let mut op_expected_dependency = StructOrTuple::default();
+        op_expected_dependency.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
-        println!("Taint: {:#?}", actual_taint);
-        println!("Dependencies: {:#?}", actual_dependencies);
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
-    } 
+        test_input(builder, cluster2.id(), op_expected_dependency);
+    }
 }

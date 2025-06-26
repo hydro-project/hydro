@@ -1,4 +1,5 @@
-use std::{collections::HashMap, hash::{Hash, Hasher}};
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 use syn::visit::Visit;
 
@@ -14,7 +15,7 @@ pub struct StructOrTuple {
 impl StructOrTuple {
     pub fn new_completely_dependent() -> Self {
         StructOrTuple {
-            dependency: Some(vec![]), // Empty dependency means it is completely dependent on the input tuple
+            dependency: Some(vec![]), /* Empty dependency means it is completely dependent on the input tuple */
             fields: HashMap::new(),
         }
     }
@@ -73,19 +74,23 @@ impl StructOrTuple {
         child.dependency = Some(input_tuple_index);
     }
 
-    pub fn get_dependency(
-        &self,
-        index: &StructOrTupleIndex,
-    ) -> Option<&StructOrTuple> {
+    pub fn get_dependency(&self, index: &StructOrTupleIndex) -> Option<StructOrTuple> {
         let mut child = self;
-        for i in index {
-            if let Some(grandchild) = child.fields.get(i) {
+        for (i, field) in index.iter().enumerate() {
+            if let Some(grandchild) = child.fields.get(field) {
                 child = grandchild.as_ref();
+            } else if let Some(dependency) = &child.dependency {
+                // If the dependency is broader, create a specific child
+                let mut specific_dependency = dependency.clone();
+                specific_dependency.extend_from_slice(&index[i..]);
+                let mut new_child = StructOrTuple::default();
+                new_child.dependency = Some(specific_dependency.clone());
+                return Some(new_child);
             } else {
-                return None; // No such child
+                return None; // No dependency or child
             }
         }
-        Some(child)
+        Some(child.clone())
     }
 
     fn intersect_children(
@@ -166,7 +171,7 @@ impl StructOrTuple {
     }
 
     /// Remap dependencies of the parent onto the child
-    /// 
+    ///
     /// The parent's dependencies are absolute (dependency on an input to the node);
     /// the child's dependencies are relative (dependency within the function).
     pub fn project_parent(parent: &StructOrTuple, child: &StructOrTuple) -> Option<StructOrTuple> {
@@ -176,17 +181,19 @@ impl StructOrTuple {
             if let Some(dependency_in_parent) = parent.get_dependency(&dependency) {
                 // Track the input field
                 Some(dependency_in_parent.clone())
-            }
-            else {
+            } else {
                 None
             }
-        }
-        else {
+        } else {
             // Recurse
             let mut new_child = StructOrTuple::default();
             for (field, child_field) in &child.fields {
-                if let Some(field_with_counterpart_in_parent) = StructOrTuple::project_parent(parent, child_field) {
-                    new_child.fields.insert(field.clone(), Box::new(field_with_counterpart_in_parent));
+                if let Some(field_with_counterpart_in_parent) =
+                    StructOrTuple::project_parent(parent, child_field)
+                {
+                    new_child
+                        .fields
+                        .insert(field.clone(), Box::new(field_with_counterpart_in_parent));
                 }
             }
             if new_child.is_empty() {
@@ -426,7 +433,10 @@ impl Visit<'_> for TupleDeclareLhs {
                 }
             }
             _ => {
-                println!("TupleDeclareLhs does not support this LHS pattern: {:?}", pat);
+                println!(
+                    "TupleDeclareLhs does not support this LHS pattern: {:?}",
+                    pat
+                );
             }
         }
     }
@@ -606,11 +616,20 @@ mod tests {
         partitioning_metadata.into_inner()
     }
 
-    fn verify_abcde_tuple(builder: FlowBuilder<'_>) {
+    fn verify_tuple(builder: FlowBuilder<'_>, expected_output_dependency: &StructOrTuple) {
         let built = builder.with_default_optimize::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
         let actual_dependencies = partition_analysis(&mut ir);
 
+        assert_eq!(
+            actual_dependencies.get(&1),
+            Some(expected_output_dependency)
+        );
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
+
+    fn verify_abcde_tuple(builder: FlowBuilder<'_>) {
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(&vec!["0".to_string()], vec!["0".to_string()]);
         expected_output_dependency.set_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
@@ -623,12 +642,8 @@ mod tests {
             vec!["2".to_string(), "1".to_string(), "0".to_string()],
         );
         expected_output_dependency.set_dependency(&vec!["3".to_string()], vec!["3".to_string()]);
-        assert_eq!(
-            actual_dependencies.get(&1),
-            Some(&expected_output_dependency)
-        );
 
-        let _ = built.compile(&RuntimeData::new("FAKE"));
+        verify_tuple(builder, &expected_output_dependency);
     }
 
     #[test]
@@ -909,18 +924,8 @@ mod tests {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
             }));
 
-        let built = builder.with_default_optimize::<DeployRuntime>();
-        let mut ir = deep_clone(built.ir());
-        let actual_dependencies = partition_analysis(&mut ir);
-
-        let mut expected_output_dependency = StructOrTuple::default();
-        expected_output_dependency.set_dependency(&vec![], vec![]);
-        assert_eq!(
-            actual_dependencies.get(&1),
-            Some(&expected_output_dependency)
-        );
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
+        let expected_output_dependency = StructOrTuple::new_completely_dependent();
+        verify_tuple(builder, &expected_output_dependency);
     }
 
     #[derive(Clone)]
@@ -937,10 +942,6 @@ mod tests {
     }
 
     fn verify_struct(builder: FlowBuilder<'_>) {
-        let built = builder.with_default_optimize::<DeployRuntime>();
-        let mut ir = deep_clone(built.ir());
-        let actual_dependencies = partition_analysis(&mut ir);
-
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(
             &vec!["struct_1".to_string(), "a".to_string()],
@@ -966,12 +967,7 @@ mod tests {
             &vec!["struct_2".to_string(), "c".to_string()],
             vec!["c".to_string()],
         );
-        assert_eq!(
-            actual_dependencies.get(&1),
-            Some(&expected_output_dependency)
-        );
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
+        verify_tuple(builder, &expected_output_dependency);
     }
 
     #[test]
@@ -1061,10 +1057,6 @@ mod tests {
                 println!("Done");
             }));
 
-        let built = builder.with_default_optimize::<DeployRuntime>();
-        let mut ir = deep_clone(built.ir());
-        let actual_dependencies = partition_analysis(&mut ir);
-
         let mut expected_output_dependency = StructOrTuple::default();
         expected_output_dependency.set_dependency(&vec!["struct_1".to_string()], vec![]);
         expected_output_dependency.set_dependency(
@@ -1079,11 +1071,7 @@ mod tests {
             &vec!["struct_2".to_string(), "c".to_string()],
             vec!["c".to_string()],
         );
-        assert_eq!(
-            actual_dependencies.get(&1),
-            Some(&expected_output_dependency)
-        );
 
-        let _ = built.compile(&RuntimeData::new("FAKE"));
+        verify_tuple(builder, &expected_output_dependency);
     }
 }
