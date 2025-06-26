@@ -344,7 +344,7 @@ mod tests {
 
     use crate::{partition_node_analysis::input_dependency_analysis, partition_syn_analysis::StructOrTuple, repair::{cycle_source_to_sink_input, inject_id, inject_location}};
 
-    fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, op_expected_dependencies: StructOrTuple) {
+    fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, expected_taint: HashMap<usize, HashSet<usize>>, expected_dependencies: HashMap<usize, HashMap<usize, StructOrTuple>>) {
         let mut cycle_data = HashMap::new();
         let built = builder.optimize_with(persist_pullup)
             .optimize_with(inject_id)
@@ -358,21 +358,6 @@ mod tests {
 
         // println!("Actual taint: {:?}", actual_taint);
         // println!("Actual dependencies: {:?}", actual_dependencies);
-
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // The operator being tested
-        ]);
-        
-        let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
-
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::from([(3, op_expected_dependencies)])),
-        ]);
 
         assert_eq!(actual_taint, expected_taint);
         assert_eq!(actual_dependencies, expected_dependencies);
@@ -392,10 +377,66 @@ mod tests {
             .for_each(q!(|(b, a2)| {
                 println!("b: {}, a+2: {}", b, a2);
             }));
-        
-        let mut op_expected_dependency = StructOrTuple::default();
-        op_expected_dependency.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
-        test_input(builder, cluster2.id(), op_expected_dependency);
+        let expected_taint = HashMap::from([
+            (3, HashSet::from([])), // Network
+            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, HashSet::from([3])), // The operator being tested
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        let mut op_expected_dependencies = StructOrTuple::default();
+        op_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+
+        let expected_dependencies = HashMap::from([
+            (3, HashMap::new()),
+            (4, HashMap::from([(3, implicit_map_dependencies)])),
+            (5, HashMap::from([(3, op_expected_dependencies)])),
+        ]);
+
+        test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
     }
+
+    #[test]
+    fn test_input_delta() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        unsafe {
+            cluster1
+                .source_iter(q!([(1, 2)]))
+                .broadcast_bincode_anonymous(&cluster2)
+                .tick_batch(&cluster2.tick())
+                .delta()
+                .all_ticks()
+                .for_each(q!(|(a, b)| {
+                    println!("a: {}, b: {}", a, b);
+                }));
+        }
+        
+        let expected_taint = HashMap::from([
+            (3, HashSet::from([])), // Network
+            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, HashSet::from([3])), // The operator being tested
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+
+        let expected_dependencies = HashMap::from([
+            (3, HashMap::new()),
+            (4, HashMap::from([(3, implicit_map_dependencies.clone())])),
+            (5, HashMap::from([(3, implicit_map_dependencies)])),
+        ]);
+
+        test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    // chain
+    // cross_product
+    // join
+    // enumerate
+    // reduce_keyed
+    // reduce
 }
