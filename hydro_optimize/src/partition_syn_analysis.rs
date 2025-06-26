@@ -245,6 +245,9 @@ impl Visit<'_> for StructOrTupleUseRhs {
             if let Some(existing_dependency) = self.existing_dependencies.get(ident).cloned() {
                 self.add_to_rhs_tuple(&existing_dependency);
             }
+            else if ident.to_string() == "None" {
+                println!("Warning: Found keyword 'None', which will be ignored by partitioning analysis.")
+            }
         }
     }
 
@@ -377,6 +380,15 @@ impl Visit<'_> for StructOrTupleUseRhs {
         }
     }
 
+    fn visit_expr_call(&mut self, call: &syn::ExprCall) {
+        // Allow "Some" keyword (for Options)
+        if let syn::Expr::Path(func) = call.func.as_ref() {
+            if func.path.is_ident("Some") {
+                self.visit_expr(&call.args[0]); // Visit the argument of Some
+            }
+        }
+    }
+
     fn visit_expr(&mut self, expr: &syn::Expr) {
         match expr {
             syn::Expr::Path(path) => self.visit_expr_path(path),
@@ -388,6 +400,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
             syn::Expr::Block(block) => self.visit_expr_block(block),
             syn::Expr::If(if_expr) => self.visit_expr_if(if_expr),
             syn::Expr::Match(match_expr) => self.visit_expr_match(match_expr),
+            syn::Expr::Call(call_expr) => self.visit_expr_call(call_expr),
             _ => println!(
                 "StructOrTupleUseRhs skipping unsupported RHS expression: {:?}",
                 expr
@@ -821,6 +834,19 @@ mod tests {
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_if_option() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| Some((a, b, (c, (d,)), e))))
+            .for_each(q!(|x| {
+                println!("x: {:?}", x);
             }));
         verify_abcde_tuple(builder);
     }
