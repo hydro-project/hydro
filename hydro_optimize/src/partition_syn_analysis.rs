@@ -1,22 +1,22 @@
-use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
+use std::collections::{HashMap, BTreeMap};
+use std::hash::Hash;
 
 use syn::visit::Visit;
 
 pub type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 
 // Invariant: Cannot have both a dependency and fields (fields are more specific)
-#[derive(Debug, Clone, Default, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct StructOrTuple {
     dependency: Option<StructOrTupleIndex>, // Input tuple index this tuple is equal to, if any
-    fields: HashMap<String, Box<StructOrTuple>>, // Fields 1 layer deep
+    fields: BTreeMap<String, Box<StructOrTuple>>, // Fields 1 layer deep
 }
 
 impl StructOrTuple {
     pub fn new_completely_dependent() -> Self {
         StructOrTuple {
             dependency: Some(vec![]), /* Empty dependency means it is completely dependent on the input tuple */
-            fields: HashMap::new(),
+            fields: BTreeMap::new(),
         }
     }
 
@@ -110,7 +110,7 @@ impl StructOrTuple {
                         child_dependency.push(field.clone());
                         Some(StructOrTuple {
                             dependency: Some(child_dependency),
-                            fields: HashMap::new(),
+                            fields: BTreeMap::new(),
                         })
                     } else {
                         None
@@ -202,18 +202,6 @@ impl StructOrTuple {
                 Some(new_child)
             }
         }
-    }
-}
-
-impl PartialEq for StructOrTuple {
-    fn eq(&self, other: &Self) -> bool {
-        self.dependency == other.dependency && self.fields == other.fields
-    }
-}
-
-impl Hash for StructOrTuple {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        format!("{:#?}", self).hash(state);
     }
 }
 

@@ -1,16 +1,16 @@
-use std::{collections::{HashMap, HashSet}, hash::{DefaultHasher, Hasher, Hash}};
+use std::{collections::{HashMap, BTreeMap, BTreeSet}, hash::{DefaultHasher, Hasher, Hash}};
 use syn::visit::Visit;
 
 use hydro_lang::{ir::{traverse_dfir, HydroLeaf, HydroNode}, location::LocationId};
 
-use crate::{parse_results::{get_network_type, NetworkType}, partition_syn_analysis::StructOrTuple, rewrites::relevant_inputs, partition_syn_analysis::AnalyzeClosure};
+use crate::{parse_results::{get_network_type, NetworkType}, partition_syn_analysis::{AnalyzeClosure, StructOrTuple, StructOrTupleIndex}, rewrites::relevant_inputs};
 
 // Find all inputs of a node
 struct InputMetadata {
     // Const fields
     cluster_to_partition: LocationId,
     // Variables
-    inputs: HashSet<usize>, // op_ids of cluster inputs.
+    inputs: BTreeSet<usize>, // op_ids of cluster inputs.
 }
 
 fn input_analysis_node(
@@ -26,10 +26,10 @@ fn input_analysis_node(
     }
 }
 
-fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: LocationId) -> HashSet<usize> {
+fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: LocationId) -> BTreeSet<usize> {
     let mut input_metadata = InputMetadata {
         cluster_to_partition,
-        inputs: HashSet::new(),
+        inputs: BTreeSet::new(),
     };
     traverse_dfir(
         ir,
@@ -45,19 +45,44 @@ fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: LocationId) -> Has
 pub struct InputDependencyMetadata {
     // Const fields
     pub cluster_to_partition: LocationId,
-    pub inputs: HashSet<usize>,
+    pub inputs: BTreeSet<usize>,
     // Variables
-    pub input_taint: HashMap<usize, HashSet<usize>>, // op_id -> set of input op_ids that taint this node
-    pub input_dependencies: HashMap<usize, HashMap<usize, StructOrTuple>>, // op_id -> (input op_id -> index of input in output)
+    pub optimistic_phase: bool, // If true, tuple intersection continues even if one side does not exist
+    pub input_taint: BTreeMap<usize, BTreeSet<usize>>, // op_id -> set of input op_ids that taint this node
+    pub input_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>, // op_id -> (input op_id -> index of input in output)
     pub syn_analysis: HashMap<usize, StructOrTuple>, // Cached results for analyzing f for each operator
 }
 
 impl Hash for InputDependencyMetadata {
     // Only consider input_taint and input_dependencies
     fn hash<H: Hasher>(&self, state: &mut H) {
-        format!("{:#?}", self.input_taint).hash(state);
-        format!("{:#?}", self.input_dependencies).hash(state);
+        self.input_taint.hash(state);
+        self.input_dependencies.hash(state);
     }
+}
+
+// Compute the intersection, unless optimistic_phase is true and one tuple is missing, then just take the one that exists
+fn intersect(optimistic_phase: bool, tuple1: Option<&StructOrTuple>, tuple1index: &StructOrTupleIndex, tuple2: Option<&StructOrTuple>, tuple2index: &StructOrTupleIndex) -> Option<StructOrTuple> {
+    if optimistic_phase {
+        match (tuple1, tuple2) {
+            (Some(t1), None) => return t1.get_dependency(tuple1index),
+            (None, Some(t2)) => return t2.get_dependency(tuple2index),
+            _ => {}
+        }
+    }
+
+    // Otherwise, compute the intersection
+    match (tuple1, tuple2) {
+        (Some(t1), Some(t2)) => {
+            if let Some(t1_child) = t1.get_dependency(tuple1index) {
+                if let Some(t2_child) = t2.get_dependency(tuple2index) {
+                    return StructOrTuple::intersect(&t1_child, &t2_child);
+                }
+            }
+        },
+        _ => {}
+    }
+    None
 }
 
 fn input_dependency_analysis_node(
@@ -87,10 +112,10 @@ fn input_dependency_analysis_node(
         ),
     };
 
-    let InputDependencyMetadata { inputs, input_taint, input_dependencies, syn_analysis, .. } = metadata;
+    let InputDependencyMetadata { inputs, optimistic_phase, input_taint, input_dependencies, syn_analysis, .. } = metadata;
 
     // Calculate input taints, find parent input dependencies
-    let mut parent_input_dependencies: HashMap<usize, HashMap<usize, StructOrTuple>> = HashMap::new(); // input_id -> parent position (0,1,etc) -> dependencies
+    let mut parent_input_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>> = BTreeMap::new(); // input_id -> parent position (0,1,etc) -> dependencies
     for (index, parent_id) in parent_ids.iter().enumerate() {
         if inputs.contains(parent_id) {
             // Parent is an input
@@ -108,6 +133,8 @@ fn input_dependency_analysis_node(
             }
         }
     }
+    println!("Parents of node {}: {:?}", next_stmt_id, parent_ids);
+    println!("Parent input dependencies for node {}: {:?}", next_stmt_id, parent_input_dependencies);
 
     // Calculate input dependencies
     let input_taint_entry = input_taint.entry(*next_stmt_id).or_default();
@@ -147,13 +174,9 @@ fn input_dependency_analysis_node(
             // [a,b] chain [c,d] = [a,b,c,d]. Take the intersection of dependencies of the two parents
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(parent1_dependency) = parent_dependencies_on_input.get(&0) {
-                        if let Some(parent2_dependency) = parent_dependencies_on_input.get(&1) {
-                            if let Some(intersection) = StructOrTuple::intersect(parent1_dependency, parent2_dependency) {
-                                input_dependencies_entry.insert(*input_id, intersection);
-                                continue;
-                            }
-                        }
+                    if let Some(intersection) = intersect(*optimistic_phase, parent_dependencies_on_input.get(&0), &vec![], parent_dependencies_on_input.get(&1), &vec![]) {
+                        input_dependencies_entry.insert(*input_id, intersection);
+                        continue;
                     }
                 }
                 // At least one parent has no dependencies or there's no overlap, delete
@@ -189,16 +212,8 @@ fn input_dependency_analysis_node(
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
                     let mut new_dependency = StructOrTuple::default();
                     // Set a to shared dependencies between 0th index of parents
-                    if let Some(parent1_dependency) = parent_dependencies_on_input.get(&0) {
-                        if let Some(parent1_a_dependency) = parent1_dependency.get_dependency(&vec!["0".to_string()]) {
-                            if let Some(parent2_dependency) = parent_dependencies_on_input.get(&1) {
-                                if let Some(parent2_a_dependency) = parent2_dependency.get_dependency(&vec!["0".to_string()]) {
-                                    if let Some(intersection) = StructOrTuple::intersect(&parent1_a_dependency, &parent2_a_dependency) {
-                                        new_dependency.set_dependencies(&vec!["0".to_string()], &intersection, &vec![]);
-                                    }
-                                }
-                            }
-                        }
+                    if let Some(intersection) = intersect(*optimistic_phase, parent_dependencies_on_input.get(&0), &vec!["0".to_string()], parent_dependencies_on_input.get(&1), &vec!["0".to_string()]) {
+                        new_dependency.set_dependencies(&vec!["0".to_string()], &intersection, &vec![]);
                     }
                     // Set b to 1st index of parent 0
                     if let Some(parent1_dependency) = parent_dependencies_on_input.get(&0) {
@@ -291,18 +306,20 @@ fn input_dependency_analysis_node(
             panic!("Unexpected node type {:?} in input dependency analysis.", node);
         }
     }
+    println!("Input dependencies for node {}: {:?}", next_stmt_id, input_dependencies_entry);
 }
 
 fn input_dependency_analysis(
     ir: &mut [HydroLeaf],
     cluster_to_partition: LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-) -> (HashMap<usize, HashSet<usize>>, HashMap<usize, HashMap<usize, StructOrTuple>>) {
+) -> (BTreeMap<usize, BTreeSet<usize>>, BTreeMap<usize, BTreeMap<usize, StructOrTuple>>) {
     let mut metadata = InputDependencyMetadata {
         cluster_to_partition: cluster_to_partition.clone(),
         inputs: input_analysis(ir, cluster_to_partition),
-        input_taint: HashMap::new(),
-        input_dependencies: HashMap::new(),
+        optimistic_phase: true,
+        input_taint: BTreeMap::new(),
+        input_dependencies: BTreeMap::new(),
         syn_analysis: HashMap::new(),
     };
 
@@ -325,7 +342,13 @@ fn input_dependency_analysis(
         let hash = hasher.finish();
         if let Some(prev) = prev_hash {
             if prev == hash {
-                break;
+                if metadata.optimistic_phase {
+                    println!("Optimistic phase reached fixpoint, starting pessimistic phase");
+                    metadata.optimistic_phase = false;
+                }
+                else {
+                    break
+                }
             }
         }
         prev_hash = Some(hash);
@@ -338,14 +361,14 @@ fn input_dependency_analysis(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::{HashMap, BTreeMap, BTreeSet};
 
-    use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, location::LocationId, rewrites::persist_pullup::persist_pullup, FlowBuilder, Location};
+    use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, location::LocationId, rewrites::persist_pullup::persist_pullup, Bounded, FlowBuilder, Location, NoOrder, Stream};
     use stageleft::{q, RuntimeData};
 
     use crate::{partition_node_analysis::input_dependency_analysis, partition_syn_analysis::StructOrTuple, repair::{cycle_source_to_sink_input, inject_id, inject_location}};
 
-    fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, expected_taint: HashMap<usize, HashSet<usize>>, expected_dependencies: HashMap<usize, HashMap<usize, StructOrTuple>>) {
+    fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, expected_taint: BTreeMap<usize, BTreeSet<usize>>, expected_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>) {
         let mut cycle_data = HashMap::new();
         let built = builder.optimize_with(persist_pullup)
             .optimize_with(inject_id)
@@ -357,8 +380,8 @@ mod tests {
         let mut ir = deep_clone(built.ir());
         let (actual_taint, actual_dependencies) = input_dependency_analysis(&mut ir, cluster_to_partition, &cycle_data);
 
-        // println!("Actual taint: {:?}", actual_taint);
-        // println!("Actual dependencies: {:?}", actual_dependencies);
+        println!("Actual taint: {:?}", actual_taint);
+        println!("Actual dependencies: {:?}", actual_dependencies);
 
         assert_eq!(actual_taint, expected_taint);
         assert_eq!(actual_dependencies, expected_dependencies);
@@ -379,10 +402,10 @@ mod tests {
                 println!("b: {}, a+2: {}", b, a2);
             }));
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // The operator being tested
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // The operator being tested
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -390,10 +413,10 @@ mod tests {
         let mut map_expected_dependencies = StructOrTuple::default();
         map_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::from([(3, map_expected_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::from([(3, map_expected_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -413,11 +436,11 @@ mod tests {
                 println!("b.0 - a: {}, b.1.0: {}", b0a, b10);
             }));
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // map 1
-            (6, HashSet::from([3])), // map 2
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // map 1
+            (6, BTreeSet::from([3])), // map 2
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -428,11 +451,11 @@ mod tests {
         let mut map2_expected_dependencies = StructOrTuple::default();
         map2_expected_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string(), "0".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::from([(3, map1_expected_dependencies)])),
-            (6, HashMap::from([(3, map2_expected_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::from([(3, map1_expected_dependencies)])),
+            (6, BTreeMap::from([(3, map2_expected_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -455,19 +478,19 @@ mod tests {
                 }));
         }
         
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // The operator being tested
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // The operator being tested
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
         implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (5, HashMap::from([(3, implicit_map_dependencies)])), // No dependency changes from parent
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (5, BTreeMap::from([(3, implicit_map_dependencies)])), // No dependency changes from parent
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -496,14 +519,14 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // tee on the input
-            (6, HashSet::from([3])), // stream2's map
-            (7, HashSet::from([3])), // tee on the input
-            (8, HashSet::from([3])), // stream1's map
-            (9, HashSet::from([3])), // chain
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // tee on the input
+            (6, BTreeSet::from([3])), // stream2's map
+            (7, BTreeSet::from([3])), // tee on the input
+            (8, BTreeSet::from([3])), // stream1's map
+            (9, BTreeSet::from([3])), // chain
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -516,14 +539,14 @@ mod tests {
         let mut chain_dependencies = StructOrTuple::default();
         chain_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (5, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (6, HashMap::from([(3, stream2_map_dependencies)])),
-            (7, HashMap::from([(3, implicit_map_dependencies)])),
-            (8, HashMap::from([(3, stream1_map_dependencies)])),
-            (9, HashMap::from([(3, chain_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (5, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (6, BTreeMap::from([(3, stream2_map_dependencies)])),
+            (7, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (8, BTreeMap::from([(3, stream1_map_dependencies)])),
+            (9, BTreeMap::from([(3, chain_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -552,14 +575,14 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // tee on the input
-            (6, HashSet::from([3])), // stream2's map
-            (7, HashSet::from([3])), // tee on the input
-            (8, HashSet::from([3])), // stream1's map
-            (9, HashSet::from([3])), // cross_product
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // tee on the input
+            (6, BTreeSet::from([3])), // stream2's map
+            (7, BTreeSet::from([3])), // tee on the input
+            (8, BTreeSet::from([3])), // stream1's map
+            (9, BTreeSet::from([3])), // cross_product
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -574,14 +597,14 @@ mod tests {
         cross_product_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         cross_product_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (5, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (6, HashMap::from([(3, stream2_map_dependencies)])),
-            (7, HashMap::from([(3, implicit_map_dependencies)])),
-            (8, HashMap::from([(3, stream1_map_dependencies)])),
-            (9, HashMap::from([(3, cross_product_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (5, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (6, BTreeMap::from([(3, stream2_map_dependencies)])),
+            (7, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (8, BTreeMap::from([(3, stream1_map_dependencies)])),
+            (9, BTreeMap::from([(3, cross_product_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -610,14 +633,14 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // tee on the input
-            (6, HashSet::from([3])), // stream2's map
-            (7, HashSet::from([3])), // tee on the input
-            (8, HashSet::from([3])), // stream1's map
-            (9, HashSet::from([3])), // join
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // tee on the input
+            (6, BTreeSet::from([3])), // stream2's map
+            (7, BTreeSet::from([3])), // tee on the input
+            (8, BTreeSet::from([3])), // stream1's map
+            (9, BTreeSet::from([3])), // join
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -632,14 +655,14 @@ mod tests {
         join_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "0".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (5, HashMap::from([(3, implicit_map_dependencies.clone())])),
-            (6, HashMap::from([(3, stream2_map_dependencies)])),
-            (7, HashMap::from([(3, implicit_map_dependencies)])),
-            (8, HashMap::from([(3, stream1_map_dependencies)])),
-            (9, HashMap::from([(3, join_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (5, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (6, BTreeMap::from([(3, stream2_map_dependencies)])),
+            (7, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (8, BTreeMap::from([(3, stream1_map_dependencies)])),
+            (9, BTreeMap::from([(3, join_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -661,10 +684,10 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // enumerate
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // enumerate
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -672,10 +695,10 @@ mod tests {
         let mut enumerate_expected_dependencies = StructOrTuple::default();
         enumerate_expected_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::from([(3, enumerate_expected_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::from([(3, enumerate_expected_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -698,10 +721,10 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // reduce_keyed
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // reduce_keyed
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
@@ -709,10 +732,10 @@ mod tests {
         let mut reduce_keyed_expected_dependencies = StructOrTuple::default();
         reduce_keyed_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
 
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::from([(3, reduce_keyed_expected_dependencies)])),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::from([(3, reduce_keyed_expected_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
@@ -738,25 +761,148 @@ mod tests {
                 }));
         }
 
-        let expected_taint = HashMap::from([
-            (3, HashSet::from([])), // Network
-            (4, HashSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
-            (5, HashSet::from([3])), // reduce
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])), // Network
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (5, BTreeSet::from([3])), // reduce
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
         implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
-        let expected_dependencies = HashMap::from([
-            (3, HashMap::new()),
-            (4, HashMap::from([(3, implicit_map_dependencies)])),
-            (5, HashMap::new()),
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::new()),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
     }
 
-    // cycles
-    // nested cycles
+    #[test]
+    fn test_cycle() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input = cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let cluster2_tick = cluster2.tick();
+        let (complete_cycle, cycle) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let prev_tick_input = cycle
+            .clone()
+            .filter(q!(|(a, _b)| *a > 2))
+            .map(q!(|(a, b)| (a, b+2)));
+        unsafe {
+            complete_cycle.complete_next_tick(prev_tick_input.chain(input.tick_batch(&cluster2_tick)));
+        }
+        cycle.all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
+
+        let expected_taint = BTreeMap::from([
+            (0, BTreeSet::from([7])), // CycleSource
+            (1, BTreeSet::from([7])), // Tee(CycleSource)
+            (2, BTreeSet::from([7])), // filter
+            (3, BTreeSet::from([7])), // map
+            (7, BTreeSet::from([])), // Network
+            (8, BTreeSet::from([7])), // Implicit map after network
+            (9, BTreeSet::from([7])), // chain
+            (10, BTreeSet::from([7])), // DeferTick
+            (11, BTreeSet::from([7])), // Tee(CycleSource)
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        let mut cycle_dependencies = StructOrTuple::default();
+        cycle_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
+
+        let expected_dependencies = BTreeMap::from([
+            (0, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (1, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (2, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (3, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (7, BTreeMap::new()),
+            (8, BTreeMap::from([(7, implicit_map_dependencies)])),
+            (9, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (10, BTreeMap::from([(7, cycle_dependencies.clone())])),
+            (11, BTreeMap::from([(7, cycle_dependencies)])),
+        ]);
+
+        test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_nested_cycle() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input = cluster1
+            .source_iter(q!([(1,2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let cluster2_tick = cluster2.tick();
+        let (complete_cycle1, cycle1) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let (complete_cycle2, cycle2) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let chained = unsafe {
+            cycle1.join(input.tick_batch(&cluster2_tick))
+                .map(q!(|(_, (b1,b2))| (b1,b2))) // Both values are influenced by the join with cycle2_out
+                .chain(cycle2)
+        };
+        complete_cycle1.complete_next_tick(chained.clone());
+        let cycle2_out = chained
+            .map(q!(|(_a,b)| (b,b)));
+        complete_cycle2.complete_next_tick(cycle2_out.clone());
+        cycle2_out.all_ticks()
+            .for_each(q!(|(b, _)| {
+                println!("b: {}", b);
+            }));
+
+        let expected_taint = BTreeMap::from([
+            (0, BTreeSet::from([4])), // CycleSource(cycle1), parent = 11
+            (4, BTreeSet::from([])), // Network
+            (5, BTreeSet::from([4])), // implicit map
+            (6, BTreeSet::from([4])), // join (0 and 5)
+            (7, BTreeSet::from([4])), // map (x,(a,b)) to (a,b)
+            (8, BTreeSet::from([4])), // CycleSource(cycle2)
+            (9, BTreeSet::from([4])), // chain
+            (10, BTreeSet::from([4])), // Tee(chain)
+            (11, BTreeSet::from([4])), // DeferTick(cycle1)
+            (12, BTreeSet::from([4])), // Tee(chain)
+            (13, BTreeSet::from([4])), // map (a,b) to (b,b)
+            (14, BTreeSet::from([4])), // Tee(map)
+            (15, BTreeSet::from([4])), // DeferTick(cycle2)
+            (16, BTreeSet::from([4])), // Tee(map)
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        let mut join_dependencies = StructOrTuple::default();
+        join_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
+        let mut other_dependencies = StructOrTuple::default();
+        other_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        other_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string()]);
+
+        let expected_dependencies = BTreeMap::from([
+            (0, BTreeMap::from([(4, other_dependencies.clone())])),
+            (4, BTreeMap::new()),
+            (5, BTreeMap::from([(4, implicit_map_dependencies.clone())])),
+            (6, BTreeMap::from([(4, join_dependencies.clone())])),
+            (7, BTreeMap::from([(4, other_dependencies.clone())])),
+            (8, BTreeMap::from([(4, other_dependencies.clone())])),
+            (9, BTreeMap::from([(4, other_dependencies.clone())])),
+            (10, BTreeMap::from([(4, other_dependencies.clone())])),
+            (11, BTreeMap::from([(4, other_dependencies.clone())])),
+            (12, BTreeMap::from([(4, other_dependencies.clone())])),
+            (13, BTreeMap::from([(4, other_dependencies.clone())])),
+            (14, BTreeMap::from([(4, other_dependencies.clone())])),
+            (15, BTreeMap::from([(4, other_dependencies.clone())])),
+            (16, BTreeMap::from([(4, other_dependencies)])),
+        ]);
+
+        test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
     // source iters
     // multiple inputs
     // networking to other nodes
