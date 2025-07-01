@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, BTreeMap, BTreeSet}, hash::{DefaultHasher, Hasher, Hash}};
+use std::{collections::{HashMap, HashSet, BTreeMap, BTreeSet}, hash::{DefaultHasher, Hasher, Hash}};
 use syn::visit::Visit;
 
 use hydro_lang::{ir::{traverse_dfir, HydroLeaf, HydroNode}, location::LocationId};
@@ -65,22 +65,30 @@ impl Hash for InputDependencyMetadata {
 fn intersect(optimistic_phase: bool, tuple1: Option<&StructOrTuple>, tuple1index: &StructOrTupleIndex, tuple2: Option<&StructOrTuple>, tuple2index: &StructOrTupleIndex) -> Option<StructOrTuple> {
     if optimistic_phase {
         match (tuple1, tuple2) {
-            (Some(t1), None) => return t1.get_dependency(tuple1index),
-            (None, Some(t2)) => return t2.get_dependency(tuple2index),
+            (Some(t1), None) => return t1.get_dependencies(tuple1index),
+            (None, Some(t2)) => return t2.get_dependencies(tuple2index),
             _ => {}
         }
     }
 
     // Otherwise, compute the intersection
-    match (tuple1, tuple2) {
-        (Some(t1), Some(t2)) => {
-            if let Some(t1_child) = t1.get_dependency(tuple1index) {
-                if let Some(t2_child) = t2.get_dependency(tuple2index) {
-                    return StructOrTuple::intersect(&t1_child, &t2_child);
-                }
+    if let (Some(t1), Some(t2)) = (tuple1, tuple2) {
+        if let Some(t1_child) = t1.get_dependencies(tuple1index) {
+            if let Some(t2_child) = t2.get_dependencies(tuple2index) {
+                return StructOrTuple::intersect(&t1_child, &t2_child);
             }
-        },
-        _ => {}
+        }
+    }
+    None
+}
+
+fn union(tuple1: Option<&StructOrTuple>, tuple1index: &StructOrTupleIndex, tuple2: Option<&StructOrTuple>, tuple2index: &StructOrTupleIndex) -> Option<StructOrTuple> {
+    if let (Some(t1), Some(t2)) = (tuple1, tuple2) {
+        if let Some(t1_child) = t1.get_dependencies(tuple1index) {
+            if let Some(t2_child) = t2.get_dependencies(tuple2index) {
+                return StructOrTuple::union(&t1_child, &t2_child);
+            }
+        }
     }
     None
 }
@@ -131,6 +139,15 @@ fn input_dependency_analysis_node(
                     parent_input_dependencies.entry(*input_id).or_default().insert(index, parent_dependencies_on_input.clone());
                 }
             }
+        }
+
+        // Difference & AntiJoin have 2 parents, but the 2nd parent influences neither its taint nor dependencies, so don't consider it
+        match node {
+            HydroNode::Difference { .. }
+            | HydroNode::AntiJoin { .. } => {
+                break;
+            }
+            _ => {}
         }
     }
     println!("Parents of node {}: {:?}", next_stmt_id, parent_ids);
@@ -211,9 +228,9 @@ fn input_dependency_analysis_node(
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
                     let mut new_dependency = StructOrTuple::default();
-                    // Set a to shared dependencies between 0th index of parents
-                    if let Some(intersection) = intersect(*optimistic_phase, parent_dependencies_on_input.get(&0), &vec!["0".to_string()], parent_dependencies_on_input.get(&1), &vec!["0".to_string()]) {
-                        new_dependency.set_dependencies(&vec!["0".to_string()], &intersection, &vec![]);
+                    // Set a to dependencies from either of the parents' 0th index
+                    if let Some(union) = union(parent_dependencies_on_input.get(&0), &vec!["0".to_string()], parent_dependencies_on_input.get(&1), &vec!["0".to_string()]) {
+                        new_dependency.set_dependencies(&vec!["0".to_string()], &union, &vec![]);
                     }
                     // Set b to 1st index of parent 0
                     if let Some(parent1_dependency) = parent_dependencies_on_input.get(&0) {
@@ -356,6 +373,49 @@ fn input_dependency_analysis(
     }
 
     (metadata.input_taint, metadata.input_dependencies)
+}
+
+
+fn partitioning_analysis_node(
+    node: &mut HydroNode,
+    next_stmt_id: &mut usize,
+    dependency_metadata: &InputDependencyMetadata,
+    possible_partitionings: &mut HashMap<usize, HashMap<usize, HashSet<StructOrTupleIndex>>>, // input id -> op tainted by input -> set of possible input indices to partition on for that op
+) {
+    // If this node is tainted by an input
+    if let Some(input_taints) = dependency_metadata.input_taint.get(next_stmt_id) {
+        for input in input_taints {
+            match node {
+                HydroNode::Difference { .. } => {
+                    // if let Some(dependencies) = dependency_metadata.input_dependencies.get(next_stmt_id) {
+                    //     if let Some(input_dependencies) = dependencies.get(input) {
+                    //         let possible_partition_indices = input_dependencies.get_dependencies();
+                    //         possible_partitionings.entry(input).or_default().insert(*next_stmt_id, possible_partition_indices.clone());
+                    //         return;
+                    //     }
+                    // }
+                    // // If no dependencies were found, add an empty HashSet
+                    // possible_partitionings.entry(input).or_default().insert(*next_stmt_id, HashSet::new());
+                }
+                | HydroNode::AntiJoin { .. }
+                | HydroNode::Join { .. } => {
+                    // Involves 2 inputs, excluding Chain
+                }
+                HydroNode::ReduceKeyed { .. }
+                | HydroNode::FoldKeyed { .. } => {
+                    // Can only partition on the key
+                }
+                HydroNode::Reduce { .. }
+                | HydroNode::Fold { .. }
+                | HydroNode::Enumerate { .. }
+                | HydroNode::CrossProduct { .. }
+                | HydroNode::CrossSingleton { .. } => {
+                    // Partitioning is impossible
+                }
+                _ => {}
+            }
+        }
+    }
 }
 
 
@@ -652,6 +712,9 @@ mod tests {
         stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         let mut join_dependencies = StructOrTuple::default();
+        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "0".to_string()]); // Technically redundant
+        join_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         join_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "0".to_string()]);
 
@@ -877,6 +940,8 @@ mod tests {
         let mut implicit_map_dependencies = StructOrTuple::default();
         implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
         let mut join_dependencies = StructOrTuple::default();
+        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
+        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
         join_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
         join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut other_dependencies = StructOrTuple::default();
@@ -1016,5 +1081,45 @@ mod tests {
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
     }
 
-    // networking to other nodes
+    #[test]
+    fn test_difference() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input1= cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let input2 = cluster1
+            .source_iter(q!([(3, 4)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let tick = cluster2.tick();
+        unsafe {
+            input1.tick_batch(&tick)
+                .filter_not_in(input2.tick_batch(&tick))
+        }.all_ticks()
+        .for_each(q!(|(a, b)| {
+            println!("a: {}, b: {}", a, b);
+        }));
+
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::new()), // input1
+            (4, BTreeSet::from([3])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (8, BTreeSet::new()), // input2's map
+            (9, BTreeSet::from([8])), // The implicit map following Network, imposed by broadcast_bincode_anonymous
+            (10, BTreeSet::from([3])), // Difference. Isn't tainted by anti-joined parent
+        ]);
+        
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies.clone())])),
+            (8, BTreeMap::new()),
+            (9, BTreeMap::from([(8, implicit_map_dependencies.clone())])),
+            (10, BTreeMap::from([(3, implicit_map_dependencies)])),
+        ]);
+
+        test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
 }

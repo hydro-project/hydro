@@ -1,4 +1,4 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{HashMap, BTreeMap, BTreeSet};
 use std::hash::Hash;
 
 use syn::visit::Visit;
@@ -8,20 +8,20 @@ pub type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 // Invariant: Cannot have both a dependency and fields (fields are more specific)
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct StructOrTuple {
-    dependency: Option<StructOrTupleIndex>, // Input tuple index this tuple is equal to, if any
+    dependencies: BTreeSet<StructOrTupleIndex>, // Input tuple indices this tuple is equal to, if any
     fields: BTreeMap<String, Box<StructOrTuple>>, // Fields 1 layer deep
 }
 
 impl StructOrTuple {
     pub fn new_completely_dependent() -> Self {
         StructOrTuple {
-            dependency: Some(vec![]), /* Empty dependency means it is completely dependent on the input tuple */
+            dependencies: BTreeSet::from([vec![]]), /* Empty dependency means it is completely dependent on the input tuple */
             fields: BTreeMap::new(),
         }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.dependency.is_none() && self.fields.is_empty()
+        self.dependencies.is_empty() && self.fields.is_empty()
     }
 
     fn create_child(&mut self, index: StructOrTupleIndex) -> &mut StructOrTuple {
@@ -35,6 +35,23 @@ impl StructOrTuple {
         child
     }
 
+    /// Copy dependencies from RHS, extending it with rhs_index
+    /// Note: Does NOT copy RHS fields
+    pub fn add_dependencies(
+        &mut self,
+        rhs: &StructOrTuple,
+        rhs_index: &StructOrTupleIndex,
+    ) {
+        for dependency in &rhs.dependencies {
+            let mut dependency = dependency.clone();
+            dependency.extend_from_slice(rhs_index);
+            self.dependencies.insert(dependency);
+        }
+    }
+
+    /// Overwrite self at index with rhs at rhs_index, creating the necessary indices when necessary
+    /// Note: Results in undefined behavior when used on a "unioned" tuple (where a StructOrTuple with a dependency also has fields).
+    /// A broader dependency may conflict with a specific narrower dependency in its field.
     pub fn set_dependencies(
         &mut self,
         index: &StructOrTupleIndex,
@@ -45,13 +62,10 @@ impl StructOrTuple {
         for tuple_index in rhs_index {
             if let Some(child) = rhs.fields.get(tuple_index) {
                 rhs = child.as_ref();
-            } else if let Some(dependency) = &rhs.dependency {
-                // RHS has a broader dependency, extend it with the remaining index
-                let mut specific_dependency = dependency.clone();
-                specific_dependency.extend_from_slice(rhs_index);
+            } else if !rhs.dependencies.is_empty() {
                 // Create a child if necessary and set the dependency
                 let child = self.create_child(index.clone());
-                child.dependency = Some(specific_dependency);
+                child.add_dependencies(rhs, rhs_index);
                 return;
             } else {
                 // RHS has no dependency, exit
@@ -61,30 +75,30 @@ impl StructOrTuple {
 
         // Create a child if necessary and copy everything from the RHS
         let child = self.create_child(index.clone());
-        child.dependency = rhs.dependency.clone();
+        child.dependencies.extend(rhs.dependencies.clone());
         child.fields = rhs.fields.clone();
     }
 
-    pub fn set_dependency(
+    pub fn add_dependency(
         &mut self,
         index: &StructOrTupleIndex,
         input_tuple_index: StructOrTupleIndex,
     ) {
         let child = self.create_child(index.clone());
-        child.dependency = Some(input_tuple_index);
+        child.dependencies.insert(input_tuple_index.clone());
     }
 
-    pub fn get_dependency(&self, index: &StructOrTupleIndex) -> Option<StructOrTuple> {
-        let mut child = self;
+    /// Note: May return redundant dependencies; no easy fix given we can the same field can depend on multiple things
+    pub fn get_dependencies(&self, index: &StructOrTupleIndex) -> Option<StructOrTuple> {
+        let mut child = self.clone();
         for (i, field) in index.iter().enumerate() {
             if let Some(grandchild) = child.fields.get(field) {
-                child = grandchild.as_ref();
-            } else if let Some(dependency) = &child.dependency {
-                // If the dependency is broader, create a specific child
-                let mut specific_dependency = dependency.clone();
-                specific_dependency.extend_from_slice(&index[i..]);
+                let mut temp_grandchild = *grandchild.clone();
+                temp_grandchild.add_dependencies(&child, &index[i..].to_vec());
+                child = temp_grandchild;
+            } else if !child.dependencies.is_empty() {
                 let mut new_child = StructOrTuple::default();
-                new_child.dependency = Some(specific_dependency.clone());
+                new_child.add_dependencies(&child, &index[i..].to_vec());
                 return Some(new_child);
             } else {
                 return None; // No dependency or child
@@ -93,59 +107,30 @@ impl StructOrTuple {
         Some(child.clone())
     }
 
-    fn intersect_children(
-        tuple1: &StructOrTuple,
-        tuple_with_fields: &StructOrTuple,
-    ) -> StructOrTuple {
+    /// Create a tuple representing dependencies present in both tuples, keeping the more specific dependency if there is one
+    pub fn intersect(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
         let mut new_tuple = StructOrTuple::default();
-        for (field, tuple2_child) in &tuple_with_fields.fields {
+
+        // Doesn't matter whose fields we iterate through, since the intersection must be a subset of both tuples' fields
+        let (tuple_with_fields, other_tuple) = if tuple1.fields.is_empty() {
+            (tuple2, tuple1)
+        } else {
+            (tuple1, tuple2)
+        };
+        for (field, child) in &tuple_with_fields.fields {
             // Construct a child for tuple1 if it has a broader dependency
-            let tuple1_child = tuple1
-                .fields
-                .get(field)
-                .and_then(|boxed| Some((**boxed).clone()))
-                .or_else(|| {
-                    if let Some(dependency1) = &tuple1.dependency {
-                        let mut child_dependency = dependency1.clone();
-                        child_dependency.push(field.clone());
-                        Some(StructOrTuple {
-                            dependency: Some(child_dependency),
-                            fields: BTreeMap::new(),
-                        })
-                    } else {
-                        None
-                    }
-                });
-            // Recursively check if there's a match in the child
-            if let Some(tuple1_child) = tuple1_child {
-                if let Some(shared_child) = StructOrTuple::intersect(&tuple1_child, &tuple2_child) {
+            if let Some(other_child) = other_tuple.get_dependencies(&vec![field.clone()]) {
+                // Recursively check if there's a match in the child
+                if let Some(shared_child) = StructOrTuple::intersect(&other_child, &child) {
                     new_tuple
                         .fields
                         .insert(field.clone(), Box::new(shared_child));
                 }
             }
         }
-        new_tuple
-    }
 
-    // Create a tuple representing dependencies present in both tuples, keeping the more specific dependency if there is one
-    pub fn intersect(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
-        let new_tuple = if let Some(dependency1) = &tuple1.dependency {
-            if let Some(dependency2) = &tuple2.dependency {
-                // Exact shared dependency, return
-                if dependency1 == dependency2 {
-                    return Some(tuple1.clone());
-                } else {
-                    return None;
-                }
-            } else {
-                // tuple2 has no dependency, check its fields
-                StructOrTuple::intersect_children(tuple1, tuple2)
-            }
-        } else {
-            // tuple1 has no dependency, check its fields
-            StructOrTuple::intersect_children(tuple2, tuple1)
-        };
+        // Add root dependencies
+        new_tuple.dependencies.extend(tuple1.dependencies.intersection(&tuple2.dependencies).cloned());
 
         if new_tuple.is_empty() {
             None
@@ -154,6 +139,7 @@ impl StructOrTuple {
         }
     }
 
+    /// Find the intersection between all tuples (calling intersect n-1 times)
     pub fn intersect_tuples(tuples: &[StructOrTuple]) -> Option<StructOrTuple> {
         if tuples.is_empty() {
             return None;
@@ -170,37 +156,68 @@ impl StructOrTuple {
         Some(intersection)
     }
 
+    pub fn union(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
+        if tuple1.is_empty() && tuple2.is_empty() {
+            return None;
+        }
+
+        let mut new_tuple = tuple1.clone();
+        new_tuple.dependencies.extend(tuple2.dependencies.clone());
+
+        // Union tuple1's fields with tuple2
+        for (field, child1) in new_tuple.fields.iter_mut() {
+            if let Some(child2) = tuple2.get_dependencies(&vec![field.clone()]) {
+                // Recursively compute unions. If child2 is empty, then just keep child1
+                if let Some(new_child) = StructOrTuple::union(child1, &child2) {
+                    *child1 = Box::new(new_child);
+                }
+            }
+        }
+
+        // Add any children in tuple2 that doesn't have a field in tuple1
+        for (field, child2) in &tuple2.fields {
+            if !tuple1.fields.contains_key(field) {
+                new_tuple.fields.insert(field.clone(), child2.clone());
+            }
+        }
+
+        if new_tuple.is_empty() {
+            None
+        } else {
+            Some(new_tuple)
+        }
+    }
+
     /// Remap dependencies of the parent onto the child
     ///
     /// The parent's dependencies are absolute (dependency on an input to the node);
     /// the child's dependencies are relative (dependency within the function).
     pub fn project_parent(parent: &StructOrTuple, child: &StructOrTuple) -> Option<StructOrTuple> {
-        // Child depends on a field of the parent
-        if let Some(dependency) = &child.dependency {
+        let mut new_child = StructOrTuple::default();
+
+        // Recurse
+        for (field, child_field) in &child.fields {
+            if let Some(field_with_counterpart_in_parent) =
+                StructOrTuple::project_parent(parent, child_field)
+            {
+                new_child
+                    .fields
+                    .insert(field.clone(), Box::new(field_with_counterpart_in_parent));
+            }
+        }
+
+        // Check if child depends on a field of the parent
+        for dependency in &child.dependencies {
             // For that field, the parent depends on a field of the input
-            if let Some(dependency_in_parent) = parent.get_dependency(&dependency) {
-                // Track the input field
-                Some(dependency_in_parent.clone())
-            } else {
-                None
+            if let Some(dependency_in_parent) = parent.get_dependencies(&dependency) {
+                new_child.dependencies.extend(dependency_in_parent.dependencies.clone());
             }
+        }
+
+        if new_child.is_empty() {
+            None
         } else {
-            // Recurse
-            let mut new_child = StructOrTuple::default();
-            for (field, child_field) in &child.fields {
-                if let Some(field_with_counterpart_in_parent) =
-                    StructOrTuple::project_parent(parent, child_field)
-                {
-                    new_child
-                        .fields
-                        .insert(field.clone(), Box::new(field_with_counterpart_in_parent));
-                }
-            }
-            if new_child.is_empty() {
-                None
-            } else {
-                Some(new_child)
-            }
+            Some(new_child)
         }
     }
 }
@@ -410,7 +427,7 @@ impl TupleDeclareLhs {
         let mut tuples = HashMap::new();
         for (ident, index) in &self.lhs_tuple {
             let mut tuple = StructOrTuple::default();
-            tuple.dependency = Some(index.clone());
+            tuple.dependencies = BTreeSet::from([index.clone()]);
             tuples.insert(ident.clone(), tuple);
         }
         tuples
@@ -632,17 +649,17 @@ mod tests {
 
     fn verify_abcde_tuple(builder: FlowBuilder<'_>) {
         let mut expected_output_dependency = StructOrTuple::default();
-        expected_output_dependency.set_dependency(&vec!["0".to_string()], vec!["0".to_string()]);
-        expected_output_dependency.set_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(&vec!["0".to_string()], vec!["0".to_string()]);
+        expected_output_dependency.add_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
+        expected_output_dependency.add_dependency(
             &vec!["2".to_string(), "0".to_string()],
             vec!["2".to_string(), "0".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["2".to_string(), "1".to_string(), "0".to_string()],
             vec!["2".to_string(), "1".to_string(), "0".to_string()],
         );
-        expected_output_dependency.set_dependency(&vec!["3".to_string()], vec!["3".to_string()]);
+        expected_output_dependency.add_dependency(&vec!["3".to_string()], vec!["3".to_string()]);
 
         verify_tuple(builder, &expected_output_dependency);
     }
@@ -957,27 +974,27 @@ mod tests {
 
     fn verify_struct(builder: FlowBuilder<'_>) {
         let mut expected_output_dependency = StructOrTuple::default();
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_1".to_string(), "a".to_string()],
             vec!["a".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_1".to_string(), "b".to_string()],
             vec!["b".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_1".to_string(), "c".to_string()],
             vec!["c".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "a".to_string()],
             vec!["a".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "b".to_string()],
             vec!["b".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "c".to_string()],
             vec!["c".to_string()],
         );
@@ -1072,16 +1089,16 @@ mod tests {
             }));
 
         let mut expected_output_dependency = StructOrTuple::default();
-        expected_output_dependency.set_dependency(&vec!["struct_1".to_string()], vec![]);
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(&vec!["struct_1".to_string()], vec![]);
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "a".to_string()],
             vec!["a".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "b".to_string()],
             vec!["b".to_string()],
         );
-        expected_output_dependency.set_dependency(
+        expected_output_dependency.add_dependency(
             &vec!["struct_2".to_string(), "c".to_string()],
             vec!["c".to_string()],
         );
