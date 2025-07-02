@@ -1,4 +1,4 @@
-use std::{collections::{HashMap, HashSet, BTreeMap, BTreeSet}, hash::{DefaultHasher, Hasher, Hash}};
+use std::{collections::{HashMap, BTreeMap, BTreeSet}, hash::{DefaultHasher, Hasher, Hash}};
 use syn::visit::Visit;
 
 use hydro_lang::{ir::{traverse_dfir, HydroLeaf, HydroNode}, location::LocationId};
@@ -61,27 +61,6 @@ impl Hash for InputDependencyMetadata {
     }
 }
 
-// Compute the intersection, unless optimistic_phase is true and one tuple is missing, then just take the one that exists
-fn intersect(optimistic_phase: bool, tuple1: Option<&StructOrTuple>, tuple1index: &StructOrTupleIndex, tuple2: Option<&StructOrTuple>, tuple2index: &StructOrTupleIndex) -> Option<StructOrTuple> {
-    if optimistic_phase {
-        match (tuple1, tuple2) {
-            (Some(t1), None) => return t1.get_dependencies(tuple1index),
-            (None, Some(t2)) => return t2.get_dependencies(tuple2index),
-            _ => {}
-        }
-    }
-
-    // Otherwise, compute the intersection
-    if let (Some(t1), Some(t2)) = (tuple1, tuple2) {
-        if let Some(t1_child) = t1.get_dependencies(tuple1index) {
-            if let Some(t2_child) = t2.get_dependencies(tuple2index) {
-                return StructOrTuple::intersect(&t1_child, &t2_child);
-            }
-        }
-    }
-    None
-}
-
 fn union(tuple1: Option<&StructOrTuple>, tuple1index: &StructOrTupleIndex, tuple2: Option<&StructOrTuple>, tuple2index: &StructOrTupleIndex) -> Option<StructOrTuple> {
     if let (Some(t1), Some(t2)) = (tuple1, tuple2) {
         if let Some(t1_child) = t1.get_dependencies(tuple1index) {
@@ -124,17 +103,22 @@ fn input_dependency_analysis_node(
 
     // Calculate input taints, find parent input dependencies
     let mut parent_input_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>> = BTreeMap::new(); // input_id -> parent position (0,1,etc) -> dependencies
+    let mut parent_taints: BTreeMap<usize, BTreeSet<usize>> = BTreeMap::new(); // input_id -> parents (positions) tainted by the input
     for (index, parent_id) in parent_ids.iter().enumerate() {
         if inputs.contains(parent_id) {
             // Parent is an input
             input_taint.entry(*next_stmt_id).or_default().insert(*parent_id);
+            parent_taints.entry(*parent_id).or_default().insert(index);
             parent_input_dependencies.entry(*parent_id).or_default().insert(index, StructOrTuple::new_completely_dependent());
         }
-        else if let Some(parent_taints) = input_taint.get(parent_id).cloned() {
+        else if let Some(existing_parent_taints) = input_taint.get(parent_id).cloned() {
             // Otherwise, extend the parent's
-            input_taint.entry(*next_stmt_id).or_default().extend(parent_taints);
+            for input in &existing_parent_taints {
+                parent_taints.entry(*input).or_default().insert(index);
+            }
+            input_taint.entry(*next_stmt_id).or_default().extend(existing_parent_taints);
             if let Some(parent_dependencies) = input_dependencies.get(parent_id) {
-                // If the parent has dependencies for the input it's taintd by, add them
+                // If the parent has dependencies for the input it's tainted by, add them
                 for (input_id, parent_dependencies_on_input) in parent_dependencies {
                     parent_input_dependencies.entry(*input_id).or_default().insert(index, parent_dependencies_on_input.clone());
                 }
@@ -188,15 +172,21 @@ fn input_dependency_analysis_node(
         // Alters parent in a predicatable way
         HydroNode::Chain { .. } => {
             assert_eq!(parent_ids.len(), 2, "Node {:?} has the wrong number of parents.", node);
-            // [a,b] chain [c,d] = [a,b,c,d]. Take the intersection of dependencies of the two parents
-            for input_id in input_taint_entry.iter() {
-                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
-                    if let Some(intersection) = intersect(*optimistic_phase, parent_dependencies_on_input.get(&0), &vec![], parent_dependencies_on_input.get(&1), &vec![]) {
-                        input_dependencies_entry.insert(*input_id, intersection);
-                        continue;
+            // [a,b] chain [c,d] = [a,b,c,d]. Take the intersection of dependencies of the two parents for each input. If only one parent is tainted, then just take that dependency
+            for (input_id, parent_positions) in parent_taints {
+                if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(&input_id) {
+                    let num_tainted_parents = parent_positions.len();
+                    // For each tainted parent, see if we can find its dependency (flatten to remove None)
+                    let parent_dependency_tuples = parent_positions.into_iter().map(|pos| parent_dependencies_on_input.get(&pos)).flatten().cloned().collect::<Vec<StructOrTuple>>();
+                    if let Some(intersection) = StructOrTuple::intersect_tuples(&parent_dependency_tuples) {
+                        // Only accept the dependency if each tainted parent contributed, or if we're in the optimistic phase
+                        if parent_dependency_tuples.len() == num_tainted_parents || *optimistic_phase {
+                            input_dependencies_entry.insert(input_id, intersection);
+                            continue;
+                        }
                     }
                 }
-                // At least one parent has no dependencies or there's no overlap, delete
+                // At least one parent is tainted but has no dependencies, or there's no overlap, remove
                 input_dependencies_entry.remove(&input_id);
             }
         }
@@ -375,46 +365,118 @@ fn input_dependency_analysis(
     (metadata.input_taint, metadata.input_dependencies)
 }
 
+/// If the tuple with the given id is tainted but has no dependencies from some input, return None
+fn get_inputs_and_dependencies(input_taint: &BTreeMap<usize, BTreeSet<usize>>, input_dependencies: &BTreeMap<usize, BTreeMap<usize, StructOrTuple>>, id: usize, index: &StructOrTupleIndex) -> Option<(Vec<usize>, Vec<StructOrTuple>)>  {
+    let mut ordered_input = vec![];
+    let mut ordered_dependencies = vec![];
+
+    if let Some(taints) = input_taint.get(&id) {
+        for input in taints {
+            if let Some(dependency) = input_dependencies.get(&id).and_then(|map| map.get(input)).and_then(|tuple| tuple.get_dependencies(index)) {
+                ordered_input.push(*input);
+                ordered_dependencies.push(dependency);
+            }
+            else {
+                // Parent is tainted but has no dependencies, cannot partition
+                return None;
+            }
+        }
+    }
+
+    Some((ordered_input, ordered_dependencies))
+}
 
 fn partitioning_analysis_node(
     node: &mut HydroNode,
     next_stmt_id: &mut usize,
     dependency_metadata: &InputDependencyMetadata,
-    possible_partitionings: &mut HashMap<usize, HashMap<usize, HashSet<StructOrTupleIndex>>>, // input id -> op tainted by input -> set of possible input indices to partition on for that op
+    possible_partitionings: &mut HashMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>, // op -> set of partitioning requirements (input -> indices), one for each input taint. Empty set = cannot partition
 ) {
-    // If this node is tainted by an input
-    if let Some(input_taints) = dependency_metadata.input_taint.get(next_stmt_id) {
-        for input in input_taints {
-            match node {
-                HydroNode::Difference { .. } => {
-                    // if let Some(dependencies) = dependency_metadata.input_dependencies.get(next_stmt_id) {
-                    //     if let Some(input_dependencies) = dependencies.get(input) {
-                    //         let possible_partition_indices = input_dependencies.get_dependencies();
-                    //         possible_partitionings.entry(input).or_default().insert(*next_stmt_id, possible_partition_indices.clone());
-                    //         return;
-                    //     }
-                    // }
-                    // // If no dependencies were found, add an empty HashSet
-                    // possible_partitionings.entry(input).or_default().insert(*next_stmt_id, HashSet::new());
+    let InputDependencyMetadata { cluster_to_partition, input_taint, input_dependencies, .. } = dependency_metadata;
+
+    // If this node is tainted by an input (otherwise we don't care)
+    if input_taint.contains_key(next_stmt_id) {
+        let parent_ids = relevant_inputs(
+            node.input_metadata(),
+            &cluster_to_partition,
+        );
+
+        // If there's at least 1 parent that is not tainted by any input, then we can always partition
+        if parent_ids.iter().map(|id| input_taint.get(id)).any(|taint| taint.is_none()) {
+            return;
+        }
+
+        let mut ordered_inputs = vec![];
+        let mut ordered_dependencies = vec![];
+        match node {
+            HydroNode::Difference { .. } => {
+                // Get the dependencies from the entirety of parent 0 and parent 1
+                // Only allow partitioning if both have dependencies (the earlier if statement already checks that that both are tainted)
+                if let Some((parent0_inputs, parent0_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[0], &vec![]) {
+                    if let Some((parent1_inputs, parent1_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[1], &vec![]) {
+                        ordered_inputs.extend(parent0_inputs);
+                        ordered_dependencies.extend(parent0_dependencies);
+                        ordered_inputs.extend(parent1_inputs);
+                        ordered_dependencies.extend(parent1_dependencies);
+                    }
                 }
-                | HydroNode::AntiJoin { .. }
-                | HydroNode::Join { .. } => {
-                    // Involves 2 inputs, excluding Chain
+            }
+            HydroNode::AntiJoin { .. } => {
+                // Get the dependencies from field 0 of parent 0 and the entirety of parent 1
+                // Only allow partitioning if both have dependencies (the earlier if statement already checks that that both are tainted)
+                if let Some((parent0_inputs, parent0_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[0], &vec!["0".to_string()]) {
+                    if let Some((parent1_inputs, parent1_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[1], &vec![]) {
+                        ordered_inputs.extend(parent0_inputs);
+                        ordered_dependencies.extend(parent0_dependencies);
+                        ordered_inputs.extend(parent1_inputs);
+                        ordered_dependencies.extend(parent1_dependencies);
+                    }
                 }
-                HydroNode::ReduceKeyed { .. }
-                | HydroNode::FoldKeyed { .. } => {
-                    // Can only partition on the key
+            }
+            HydroNode::Join { .. } => {
+                // Get the dependencies from field 0 of parent 0 and parent 1
+                // Only allow partitioning if both have dependencies (the earlier if statement already checks that that both are tainted)
+                if let Some((parent0_inputs, parent0_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[0], &vec!["0".to_string()]) {
+                    if let Some((parent1_inputs, parent1_dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, parent_ids[1], &vec!["0".to_string()]) {
+                        ordered_inputs.extend(parent0_inputs);
+                        ordered_dependencies.extend(parent0_dependencies);
+                        ordered_inputs.extend(parent1_inputs);
+                        ordered_dependencies.extend(parent1_dependencies);
+                    }
                 }
-                HydroNode::Reduce { .. }
-                | HydroNode::Fold { .. }
-                | HydroNode::Enumerate { .. }
-                | HydroNode::CrossProduct { .. }
-                | HydroNode::CrossSingleton { .. } => {
-                    // Partitioning is impossible
+            }
+            HydroNode::ReduceKeyed { .. }
+            | HydroNode::FoldKeyed { .. } => {
+                // Can only partition on the key. The key's inherited dependencies are already in input_dependencies for this node
+                if let Some((inputs, dependencies)) = get_inputs_and_dependencies(input_taint, input_dependencies, *next_stmt_id, &vec![]) {
+                    ordered_inputs.extend(inputs);
+                    ordered_dependencies.extend(dependencies);
                 }
-                _ => {}
+            }
+            HydroNode::Reduce { .. }
+            | HydroNode::Fold { .. }
+            | HydroNode::Enumerate { .. }
+            | HydroNode::CrossProduct { .. }
+            | HydroNode::CrossSingleton { .. } => {} // Partitioning is impossible
+            _ => {
+                // Doesn't impede partitioning, return
+                return;
             }
         }
+
+        // If there are no ordered_dependencies, we will insert an empty set which means that partitioning is impossible
+        let intersection = StructOrTuple::intersect_dependencies_with_matching_fields(&ordered_dependencies);
+        // Convert to set of maps
+        let mut possible_partitionings_for_node = BTreeSet::new();
+        for possible_set in intersection {
+            let mut possible_set_mapped_to_input = BTreeMap::new();
+            for (pos, dependency) in possible_set.iter().enumerate() {
+                let input = ordered_inputs.get(pos).unwrap();
+                possible_set_mapped_to_input.insert(*input, dependency.clone());
+            }
+            possible_partitionings_for_node.insert(possible_set_mapped_to_input);
+        }
+        possible_partitionings.insert(*next_stmt_id, possible_partitionings_for_node);
     }
 }
 
@@ -469,9 +531,9 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut map_expected_dependencies = StructOrTuple::default();
-        map_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        map_expected_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -504,12 +566,12 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut map1_expected_dependencies = StructOrTuple::default();
-        map1_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        map1_expected_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "0".to_string()]);
+        map1_expected_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        map1_expected_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string(), "0".to_string()]);
         let mut map2_expected_dependencies = StructOrTuple::default();
-        map2_expected_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string(), "0".to_string()]);
+        map2_expected_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string(), "0".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -545,7 +607,7 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -590,14 +652,14 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut stream1_map_dependencies = StructOrTuple::default();
-        stream1_map_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        stream1_map_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut stream2_map_dependencies = StructOrTuple::default();
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         let mut chain_dependencies = StructOrTuple::default();
-        chain_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        chain_dependencies.add_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -646,16 +708,16 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut stream1_map_dependencies = StructOrTuple::default();
-        stream1_map_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        stream1_map_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut stream2_map_dependencies = StructOrTuple::default();
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         let mut cross_product_dependencies = StructOrTuple::default();
-        cross_product_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        cross_product_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        cross_product_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        cross_product_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        cross_product_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        cross_product_dependencies.add_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -704,19 +766,19 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut stream1_map_dependencies = StructOrTuple::default();
-        stream1_map_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
-        stream1_map_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "0".to_string()]);
+        stream1_map_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        stream1_map_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string(), "0".to_string()]);
         let mut stream2_map_dependencies = StructOrTuple::default();
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        stream2_map_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        stream2_map_dependencies.add_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
         let mut join_dependencies = StructOrTuple::default();
-        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
-        join_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "0".to_string()]); // Technically redundant
-        join_dependencies.set_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        join_dependencies.set_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
-        join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "0".to_string()]);
+        join_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "0".to_string()]); // Technically redundant
+        join_dependencies.add_dependency(&vec!["0".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["0".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "0".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -754,9 +816,9 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut enumerate_expected_dependencies = StructOrTuple::default();
-        enumerate_expected_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
+        enumerate_expected_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -791,9 +853,9 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut reduce_keyed_expected_dependencies = StructOrTuple::default();
-        reduce_keyed_expected_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
+        reduce_keyed_expected_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -831,7 +893,7 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
             (4, BTreeMap::from([(3, implicit_map_dependencies)])),
@@ -876,9 +938,9 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut cycle_dependencies = StructOrTuple::default();
-        cycle_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
+        cycle_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (0, BTreeMap::from([(7, cycle_dependencies.clone())])),
@@ -938,15 +1000,15 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut join_dependencies = StructOrTuple::default();
-        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
-        join_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
-        join_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
-        join_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "0".to_string()]);
+        join_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_dependencies.add_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut other_dependencies = StructOrTuple::default();
-        other_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
-        other_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string()]);
+        other_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        other_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (0, BTreeMap::from([(4, other_dependencies.clone())])),
@@ -997,9 +1059,9 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut map_dependencies = StructOrTuple::default();
-        map_dependencies.set_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        map_dependencies.add_dependency(&vec!["0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (0, BTreeMap::new()),
@@ -1055,13 +1117,13 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
         let mut input_map_dependencies = StructOrTuple::default();
-        input_map_dependencies.set_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string()]);
+        input_map_dependencies.add_dependency(&vec!["1".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut join_input1_dependencies = StructOrTuple::default();
-        join_input1_dependencies.set_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_input1_dependencies.add_dependency(&vec!["1".to_string(), "1".to_string()], vec!["1".to_string(), "1".to_string()]);
         let mut join_input2_dependencies = StructOrTuple::default();
-        join_input2_dependencies.set_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
+        join_input2_dependencies.add_dependency(&vec!["1".to_string(), "0".to_string()], vec!["1".to_string(), "1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),
@@ -1110,7 +1172,7 @@ mod tests {
         ]);
         
         let mut implicit_map_dependencies = StructOrTuple::default();
-        implicit_map_dependencies.set_dependency(&vec![], vec!["1".to_string()]);
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
 
         let expected_dependencies = BTreeMap::from([
             (3, BTreeMap::new()),

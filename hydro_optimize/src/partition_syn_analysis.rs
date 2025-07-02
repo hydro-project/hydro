@@ -156,6 +156,71 @@ impl StructOrTuple {
         Some(intersection)
     }
 
+    /// Find the fields where all tuples have a dependency, regardless of what that dependency is.
+    /// For each such field, create an array of dependency indices from each tuple.
+    /// Return an array of such arrays
+    pub fn intersect_dependencies_with_matching_fields(tuples: &[StructOrTuple]) -> Vec<Vec<StructOrTupleIndex>> {
+        let mut intersections = Vec::new();
+
+        // If all tuples have a dependency, then copy it
+        // If the tuples have dependencies [a], then [b, c], then create the vecs [a,b] and [a,c]
+        if tuples.iter().all(|tuple| !tuple.dependencies.is_empty()) {
+            for tuple in tuples {
+                if intersections.is_empty() {
+                    for dependency in &tuple.dependencies {
+                        intersections.push(vec![dependency.clone()]);
+                    }
+                }
+                else {
+                    let num_intersections = intersections.len();
+                    for (i, dependency) in tuple.dependencies.iter().enumerate() {
+                        if i == 0 {
+                            for intersection in intersections.iter_mut() {
+                                intersection.push(dependency.clone());
+                            }
+                        }
+                        else {
+                            // Copy to a new set of intersections
+                            for j in 0..num_intersections {
+                                let mut new_intersection = intersections[j].clone();
+                                new_intersection.push(dependency.clone());
+                                intersections.push(new_intersection);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Recurse into fields
+        let mut traversed_fields = BTreeSet::new();
+        for tuple in tuples.iter() {
+            for (field, _child) in &tuple.fields {
+                if traversed_fields.contains(field) {
+                    continue;
+                }
+                traversed_fields.insert(field.clone());
+                
+                // We haven't considered this field yet, check if each tuple can create a child with this field
+                let mut new_children = vec![StructOrTuple::default(); tuples.len()];
+                for (i, other_tuple) in tuples.iter().enumerate() {
+                    if let Some(other_child) = other_tuple.fields.get(field) {
+                        new_children[i] = *other_child.clone();
+                    }
+                    // Extend dependencies to child if possible
+                    if !other_tuple.dependencies.is_empty() {
+                        new_children[i].add_dependencies(other_tuple, &vec![field.clone()]);
+                    }
+                }
+
+                // Recurse
+                intersections.append(&mut StructOrTuple::intersect_dependencies_with_matching_fields(&new_children));
+            }
+        }
+
+        intersections
+    }
+
     pub fn union(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
         if tuple1.is_empty() && tuple2.is_empty() {
             return None;
