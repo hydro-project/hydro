@@ -80,6 +80,7 @@ async fn main() {
     let proposers = builder.cluster();
     let acceptors = builder.cluster();
     let clients = builder.cluster();
+    let client_aggregator = builder.process();
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
@@ -98,6 +99,7 @@ async fn main() {
             },
         },
         &clients,
+        &client_aggregator,
         &replicas,
     );
 
@@ -153,6 +155,19 @@ async fn main() {
                 "client",
                 num_clients,
             ),
+        )
+        .with_process(
+            &client_aggregator,
+            cluster_specs(
+                &host_arg,
+                project.clone(),
+                network.clone(),
+                &mut deployment,
+                "client_aggregator",
+                1,
+            )
+            .pop()
+            .unwrap(),
         )
         .with_cluster(
             &replicas,
