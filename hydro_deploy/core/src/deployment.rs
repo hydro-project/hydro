@@ -233,9 +233,19 @@ impl Deployment {
         region: String,
         network: Arc<RwLock<GcpNetwork>>,
         user: Option<String>,
+        display_name: Option<String>,
     ) -> Arc<GcpComputeEngineHost> {
         self.add_host(|id| {
-            GcpComputeEngineHost::new(id, project, machine_type, image, region, network, user)
+            GcpComputeEngineHost::new(
+                id,
+                project,
+                machine_type,
+                image,
+                region,
+                network,
+                user,
+                display_name,
+            )
         })
     }
 

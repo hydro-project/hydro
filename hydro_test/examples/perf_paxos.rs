@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::str;
 use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
@@ -14,7 +15,7 @@ use hydro_lang::rewrites::{insert_counter, persist_pullup};
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 use tokio::sync::RwLock;
 
-type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
+type HostCreator = Box<dyn Fn(&mut Deployment, &str) -> Arc<dyn Host>>;
 
 fn cluster_specs(
     host_arg: &str,
@@ -25,7 +26,7 @@ fn cluster_specs(
     num_nodes: usize,
 ) -> Vec<TrybuildHost> {
     let create_host: HostCreator = if host_arg == "gcp" {
-        Box::new(move |deployment| -> Arc<dyn Host> {
+        Box::new(move |deployment, cluster_name| -> Arc<dyn Host> {
             deployment
                 .GcpComputeEngineHost()
                 .project(project.as_ref().unwrap())
@@ -33,11 +34,12 @@ fn cluster_specs(
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
                 .network(network.as_ref().unwrap().clone())
+                .display_name(cluster_name)
                 .add()
         })
     } else {
         let localhost = deployment.Localhost();
-        Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
+        Box::new(move |_, _| -> Arc<dyn Host> { localhost.clone() })
     };
 
     let rustflags = if host_arg == "gcp" {
@@ -48,7 +50,7 @@ fn cluster_specs(
 
     (0..num_nodes)
         .map(|idx| {
-            TrybuildHost::new(create_host(deployment))
+            TrybuildHost::new(create_host(deployment, &format!("{}{}", cluster_name, idx)))
                 .additional_hydro_features(vec!["runtime_measure".to_string()])
                 .rustflags(rustflags)
                 .tracing(
