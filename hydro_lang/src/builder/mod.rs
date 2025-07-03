@@ -1,6 +1,5 @@
 use std::any::type_name;
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
@@ -36,13 +35,21 @@ pub struct FlowStateInner {
     pub(crate) next_external_out: usize,
 
     /// Counters for generating identifiers for cycles.
-    pub(crate) cycle_counts: HashMap<usize, usize>,
+    pub(crate) cycle_counts: usize,
 
     /// Counters for clock IDs.
     pub(crate) next_clock_id: usize,
 
     /// Counter for unique HydroNode IDs.
     pub(crate) next_node_id: usize,
+}
+
+impl FlowStateInner {
+    pub fn next_cycle_id(&mut self) -> usize {
+        let id = self.cycle_counts;
+        self.cycle_counts += 1;
+        id
+    }
 }
 
 pub type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -94,7 +101,7 @@ impl<'a> FlowBuilder<'a> {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 leaves: Some(vec![]),
                 next_external_out: 0,
-                cycle_counts: HashMap::new(),
+                cycle_counts: 0,
                 next_clock_id: 0,
                 next_node_id: 0,
             })),

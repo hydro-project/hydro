@@ -67,7 +67,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_4,
+            sym: cycle_7,
         },
         location_kind: Tick(
             1,
@@ -88,7 +88,7 @@ expression: built.ir()
                                         first: Chain {
                                             first: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_1,
+                                                    sym: cycle_4,
                                                 },
                                                 location_kind: Cluster(
                                                     0,
@@ -106,7 +106,7 @@ expression: built.ir()
                                             },
                                             second: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_0,
+                                                    sym: cycle_2,
                                                 },
                                                 location_kind: Cluster(
                                                     0,
@@ -135,7 +135,7 @@ expression: built.ir()
                                         },
                                         second: CycleSource {
                                             ident: Ident {
-                                                sym: cycle_2,
+                                                sym: cycle_5,
                                             },
                                             location_kind: Cluster(
                                                 0,
@@ -240,7 +240,7 @@ expression: built.ir()
                         inner: <tee 1>: Chain {
                             first: CycleSource {
                                 ident: Ident {
-                                    sym: cycle_4,
+                                    sym: cycle_7,
                                 },
                                 location_kind: Tick(
                                     1,
@@ -357,7 +357,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_2,
+            sym: cycle_5,
         },
         location_kind: Cluster(
             0,
@@ -429,7 +429,7 @@ expression: built.ir()
                                                 input: Tee {
                                                     inner: <tee 4>: CycleSource {
                                                         ident: Ident {
-                                                            sym: cycle_3,
+                                                            sym: cycle_6,
                                                         },
                                                         location_kind: Tick(
                                                             1,
@@ -613,7 +613,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_6,
+            sym: cycle_9,
         },
         location_kind: Tick(
             1,
@@ -633,7 +633,7 @@ expression: built.ir()
                                 inner: <tee 6>: Chain {
                                     first: CycleSource {
                                         ident: Ident {
-                                            sym: cycle_5,
+                                            sym: cycle_8,
                                         },
                                         location_kind: Tick(
                                             1,
@@ -1115,7 +1115,7 @@ expression: built.ir()
                                                             },
                                                             right: CycleSource {
                                                                 ident: Ident {
-                                                                    sym: cycle_1,
+                                                                    sym: cycle_3,
                                                                 },
                                                                 location_kind: Tick(
                                                                     2,
@@ -1331,7 +1331,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_5,
+            sym: cycle_8,
         },
         location_kind: Tick(
             1,
@@ -1402,7 +1402,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_3,
+            sym: cycle_6,
         },
         location_kind: Tick(
             1,
@@ -1482,7 +1482,7 @@ expression: built.ir()
                                                         },
                                                         neg: CycleSource {
                                                             ident: Ident {
-                                                                sym: cycle_6,
+                                                                sym: cycle_9,
                                                             },
                                                             location_kind: Tick(
                                                                 1,
@@ -1748,7 +1748,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_1,
+            sym: cycle_4,
         },
         location_kind: Cluster(
             0,
@@ -1814,7 +1814,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_1,
+            sym: cycle_10,
         },
         location_kind: Tick(
             7,
@@ -1830,7 +1830,7 @@ expression: built.ir()
                         inner: <tee 14>: Chain {
                             first: CycleSource {
                                 ident: Ident {
-                                    sym: cycle_1,
+                                    sym: cycle_10,
                                 },
                                 location_kind: Tick(
                                     7,
@@ -2278,7 +2278,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_7,
+            sym: cycle_11,
         },
         location_kind: Tick(
             1,
@@ -2609,7 +2609,7 @@ expression: built.ir()
                                                 second: Chain {
                                                     first: CycleSource {
                                                         ident: Ident {
-                                                            sym: cycle_7,
+                                                            sym: cycle_11,
                                                         },
                                                         location_kind: Tick(
                                                             1,
@@ -2805,7 +2805,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_9,
+            sym: cycle_13,
         },
         location_kind: Tick(
             1,
@@ -2826,7 +2826,7 @@ expression: built.ir()
                                     inner: <tee 25>: Chain {
                                         first: CycleSource {
                                             ident: Ident {
-                                                sym: cycle_8,
+                                                sym: cycle_12,
                                             },
                                             location_kind: Tick(
                                                 1,
@@ -3606,7 +3606,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_8,
+            sym: cycle_12,
         },
         location_kind: Tick(
             1,
@@ -3677,7 +3677,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_10,
+            sym: cycle_14,
         },
         location_kind: Tick(
             1,
@@ -3691,7 +3691,7 @@ expression: built.ir()
                     inner: <tee 31>: Chain {
                         first: CycleSource {
                             ident: Ident {
-                                sym: cycle_10,
+                                sym: cycle_14,
                             },
                             location_kind: Tick(
                                 1,
@@ -3769,7 +3769,7 @@ expression: built.ir()
                                 },
                                 neg: CycleSource {
                                     ident: Ident {
-                                        sym: cycle_9,
+                                        sym: cycle_13,
                                     },
                                     location_kind: Tick(
                                         1,
@@ -3870,7 +3870,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_1,
+            sym: cycle_3,
         },
         location_kind: Tick(
             2,
@@ -3939,7 +3939,7 @@ expression: built.ir()
                         input: Delta {
                             inner: CycleSource {
                                 ident: Ident {
-                                    sym: cycle_0,
+                                    sym: cycle_1,
                                 },
                                 location_kind: Cluster(
                                     1,
@@ -4026,7 +4026,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_0,
+            sym: cycle_2,
         },
         location_kind: Cluster(
             0,
@@ -4092,7 +4092,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_0,
+            sym: cycle_15,
         },
         location_kind: Tick(
             8,
@@ -4252,7 +4252,7 @@ expression: built.ir()
                                     },
                                     second: CycleSource {
                                         ident: Ident {
-                                            sym: cycle_0,
+                                            sym: cycle_15,
                                         },
                                         location_kind: Tick(
                                             8,
@@ -4326,7 +4326,7 @@ expression: built.ir()
                                         inner: <tee 35>: Chain {
                                             first: CycleSource {
                                                 ident: Ident {
-                                                    sym: cycle_1,
+                                                    sym: cycle_16,
                                                 },
                                                 location_kind: Tick(
                                                     8,
@@ -4487,7 +4487,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_1,
+            sym: cycle_16,
         },
         location_kind: Tick(
             8,
@@ -4635,7 +4635,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_2,
+            sym: cycle_17,
         },
         location_kind: Tick(
             8,
@@ -4656,7 +4656,7 @@ expression: built.ir()
                                     input: Persist {
                                         inner: CycleSource {
                                             ident: Ident {
-                                                sym: cycle_2,
+                                                sym: cycle_17,
                                             },
                                             location_kind: Tick(
                                                 8,
@@ -4819,7 +4819,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_0,
+            sym: cycle_1,
         },
         location_kind: Cluster(
             1,
@@ -5039,7 +5039,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_2,
+            sym: cycle_18,
         },
         location_kind: Tick(
             10,
@@ -5053,7 +5053,7 @@ expression: built.ir()
                     inner: <tee 39>: Chain {
                         first: CycleSource {
                             ident: Ident {
-                                sym: cycle_2,
+                                sym: cycle_18,
                             },
                             location_kind: Tick(
                                 10,
@@ -5395,7 +5395,7 @@ expression: built.ir()
     },
     CycleSink {
         ident: Ident {
-            sym: cycle_3,
+            sym: cycle_19,
         },
         location_kind: Tick(
             0,
@@ -5411,7 +5411,7 @@ expression: built.ir()
                         first: Tee {
                             inner: <tee 45>: CycleSource {
                                 ident: Ident {
-                                    sym: cycle_3,
+                                    sym: cycle_19,
                                 },
                                 location_kind: Tick(
                                     0,
