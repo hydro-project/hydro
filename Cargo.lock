@@ -2377,36 +2377,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hydro_test_local"
-version = "0.0.0"
-dependencies = [
- "dfir_rs",
- "futures",
- "hydro_lang",
- "hydro_test_local_macro",
- "insta",
- "rand 0.8.5",
- "stageleft",
- "stageleft_tool",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
-name = "hydro_test_local_macro"
-version = "0.0.0"
-dependencies = [
- "dfir_rs",
- "futures",
- "hydro_lang",
- "rand 0.8.5",
- "stageleft",
- "stageleft_tool",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
 name = "hyper"
 version = "0.14.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
