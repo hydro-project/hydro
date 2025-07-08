@@ -20,6 +20,7 @@ serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
 colored = "3.0.0"
 palette = "0.7.6"
+tokio = "1.29.0"
 
 [build-dependencies]
 stageleft_tool = "0.8.1"

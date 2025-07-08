@@ -59,7 +59,7 @@ if [ "$TEST_DFIR" = true ]; then
     FEATURES="$FEATURES --features dfir_rs/python"
 fi
 if [ "$TEST_HYDRO" = true ]; then
-    TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_test_local -p hydro_test_local_macro -p hydro_deploy -p hydro_deploy_integration"
+    TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_deploy -p hydro_deploy_integration"
 fi
 if [ "$TEST_HYDRO_CLI" = true ]; then
     TARGETS="$TARGETS -p hydro_cli"
