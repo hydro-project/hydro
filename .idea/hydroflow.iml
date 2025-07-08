@@ -34,7 +34,6 @@
       <sourceFolder url="file://$MODULE_DIR$/website_playground/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/datastores/gossip_kv/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/datastores/gossip_kv/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/hydroflow_plus_test_local/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/variadics_macro/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
