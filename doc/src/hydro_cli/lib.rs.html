@@ -183,675 +183,677 @@
 <a href=#183 id=183 data-nosnippet>183</a>        region: String,
 <a href=#184 id=184 data-nosnippet>184</a>        network: GcpNetwork,
 <a href=#185 id=185 data-nosnippet>185</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#186 id=186 data-nosnippet>186</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span>arc = <span class="self">self</span>.underlying.blocking_write().add_host(|id| {
-<a href=#188 id=188 data-nosnippet>188</a>            core::GcpComputeEngineHost::new(
-<a href=#189 id=189 data-nosnippet>189</a>                id,
-<a href=#190 id=190 data-nosnippet>190</a>                project,
-<a href=#191 id=191 data-nosnippet>191</a>                machine_type,
-<a href=#192 id=192 data-nosnippet>192</a>                image,
-<a href=#193 id=193 data-nosnippet>193</a>                region,
-<a href=#194 id=194 data-nosnippet>194</a>                network.underlying,
-<a href=#195 id=195 data-nosnippet>195</a>                user,
-<a href=#196 id=196 data-nosnippet>196</a>            )
-<a href=#197 id=197 data-nosnippet>197</a>        });
-<a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#200 id=200 data-nosnippet>200</a>            py,
-<a href=#201 id=201 data-nosnippet>201</a>            PyClassInitializer::from(Host {
-<a href=#202 id=202 data-nosnippet>202</a>                underlying: arc.clone(),
-<a href=#203 id=203 data-nosnippet>203</a>            })
-<a href=#204 id=204 data-nosnippet>204</a>            .add_subclass(GcpComputeEngineHost { underlying: arc }),
-<a href=#205 id=205 data-nosnippet>205</a>        )<span class="question-mark">?
-<a href=#206 id=206 data-nosnippet>206</a>        </span>.into_py(py))
-<a href=#207 id=207 data-nosnippet>207</a>    }
-<a href=#208 id=208 data-nosnippet>208</a>
-<a href=#209 id=209 data-nosnippet>209</a>    <span class="attr">#[expect(non_snake_case, clippy::too_many_arguments, reason = <span class="string">"pymethods"</span>)]
-<a href=#210 id=210 data-nosnippet>210</a>    </span><span class="kw">fn </span>AzureHost(
-<a href=#211 id=211 data-nosnippet>211</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#212 id=212 data-nosnippet>212</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#213 id=213 data-nosnippet>213</a>        project: String,
-<a href=#214 id=214 data-nosnippet>214</a>        os_type: String, <span class="comment">// linux or windows
-<a href=#215 id=215 data-nosnippet>215</a>        </span>machine_size: String,
-<a href=#216 id=216 data-nosnippet>216</a>        region: String,
-<a href=#217 id=217 data-nosnippet>217</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
-<a href=#218 id=218 data-nosnippet>218</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#219 id=219 data-nosnippet>219</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span>arc = <span class="self">self</span>.underlying.blocking_write().add_host(|id| {
-<a href=#221 id=221 data-nosnippet>221</a>            core::AzureHost::new(id, project, os_type, machine_size, image, region, user)
-<a href=#222 id=222 data-nosnippet>222</a>        });
-<a href=#223 id=223 data-nosnippet>223</a>
-<a href=#224 id=224 data-nosnippet>224</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#225 id=225 data-nosnippet>225</a>            py,
-<a href=#226 id=226 data-nosnippet>226</a>            PyClassInitializer::from(Host {
-<a href=#227 id=227 data-nosnippet>227</a>                underlying: arc.clone(),
-<a href=#228 id=228 data-nosnippet>228</a>            })
-<a href=#229 id=229 data-nosnippet>229</a>            .add_subclass(AzureHost { underlying: arc }),
-<a href=#230 id=230 data-nosnippet>230</a>        )<span class="question-mark">?
-<a href=#231 id=231 data-nosnippet>231</a>        </span>.into_py(py))
-<a href=#232 id=232 data-nosnippet>232</a>    }
-<a href=#233 id=233 data-nosnippet>233</a>
-<a href=#234 id=234 data-nosnippet>234</a>    <span class="attr">#[expect(non_snake_case, reason = <span class="string">"pymethods"</span>)]
-<a href=#235 id=235 data-nosnippet>235</a>    </span><span class="kw">fn </span>CustomService(
-<a href=#236 id=236 data-nosnippet>236</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#237 id=237 data-nosnippet>237</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#238 id=238 data-nosnippet>238</a>        on: <span class="kw-2">&amp;</span>Host,
-<a href=#239 id=239 data-nosnippet>239</a>        external_ports: Vec&lt;u16&gt;,
-<a href=#240 id=240 data-nosnippet>240</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#241 id=241 data-nosnippet>241</a>        <span class="kw">let </span>service = <span class="self">self
-<a href=#242 id=242 data-nosnippet>242</a>            </span>.underlying
-<a href=#243 id=243 data-nosnippet>243</a>            .blocking_write()
-<a href=#244 id=244 data-nosnippet>244</a>            .CustomService(on.underlying.clone(), external_ports);
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#247 id=247 data-nosnippet>247</a>            py,
-<a href=#248 id=248 data-nosnippet>248</a>            PyClassInitializer::from(Service {
-<a href=#249 id=249 data-nosnippet>249</a>                underlying: service.clone(),
-<a href=#250 id=250 data-nosnippet>250</a>            })
-<a href=#251 id=251 data-nosnippet>251</a>            .add_subclass(CustomService {
-<a href=#252 id=252 data-nosnippet>252</a>                underlying: service,
-<a href=#253 id=253 data-nosnippet>253</a>            }),
-<a href=#254 id=254 data-nosnippet>254</a>        )<span class="question-mark">?
-<a href=#255 id=255 data-nosnippet>255</a>        </span>.into_py(py))
-<a href=#256 id=256 data-nosnippet>256</a>    }
-<a href=#257 id=257 data-nosnippet>257</a>
-<a href=#258 id=258 data-nosnippet>258</a>    <span class="attr">#[expect(non_snake_case, clippy::too_many_arguments, reason = <span class="string">"pymethods"</span>)]
-<a href=#259 id=259 data-nosnippet>259</a>    </span><span class="kw">fn </span>HydroflowCrate(
-<a href=#260 id=260 data-nosnippet>260</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#261 id=261 data-nosnippet>261</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#262 id=262 data-nosnippet>262</a>        src: String,
-<a href=#263 id=263 data-nosnippet>263</a>        on: <span class="kw-2">&amp;</span>Host,
-<a href=#264 id=264 data-nosnippet>264</a>        bin: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#265 id=265 data-nosnippet>265</a>        example: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#266 id=266 data-nosnippet>266</a>        profile: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#267 id=267 data-nosnippet>267</a>        features: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
-<a href=#268 id=268 data-nosnippet>268</a>        args: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
-<a href=#269 id=269 data-nosnippet>269</a>        display_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#270 id=270 data-nosnippet>270</a>        external_ports: <span class="prelude-ty">Option</span>&lt;Vec&lt;u16&gt;&gt;,
-<a href=#271 id=271 data-nosnippet>271</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#272 id=272 data-nosnippet>272</a>        <span class="kw">let </span>service = <span class="self">self</span>.underlying.blocking_write().add_service(|id| {
-<a href=#273 id=273 data-nosnippet>273</a>            core::rust_crate::RustCrateService::new(
-<a href=#274 id=274 data-nosnippet>274</a>                id,
-<a href=#275 id=275 data-nosnippet>275</a>                src.into(),
-<a href=#276 id=276 data-nosnippet>276</a>                on.underlying.clone(),
-<a href=#277 id=277 data-nosnippet>277</a>                bin,
-<a href=#278 id=278 data-nosnippet>278</a>                example,
-<a href=#279 id=279 data-nosnippet>279</a>                profile,
-<a href=#280 id=280 data-nosnippet>280</a>                <span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support rustflags
-<a href=#281 id=281 data-nosnippet>281</a>                </span><span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support target_dir
-<a href=#282 id=282 data-nosnippet>282</a>                </span><span class="bool-val">false</span>, <span class="comment">// Python API doesn't support no_default_features
-<a href=#283 id=283 data-nosnippet>283</a>                </span><span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support perf
-<a href=#284 id=284 data-nosnippet>284</a>                </span>features,
-<a href=#285 id=285 data-nosnippet>285</a>                args,
-<a href=#286 id=286 data-nosnippet>286</a>                display_id,
-<a href=#287 id=287 data-nosnippet>287</a>                external_ports.unwrap_or_default(),
-<a href=#288 id=288 data-nosnippet>288</a>            )
-<a href=#289 id=289 data-nosnippet>289</a>        });
-<a href=#290 id=290 data-nosnippet>290</a>
-<a href=#291 id=291 data-nosnippet>291</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#292 id=292 data-nosnippet>292</a>            py,
-<a href=#293 id=293 data-nosnippet>293</a>            PyClassInitializer::from(Service {
-<a href=#294 id=294 data-nosnippet>294</a>                underlying: service.clone(),
-<a href=#295 id=295 data-nosnippet>295</a>            })
-<a href=#296 id=296 data-nosnippet>296</a>            .add_subclass(HydroflowCrate {
-<a href=#297 id=297 data-nosnippet>297</a>                underlying: service,
-<a href=#298 id=298 data-nosnippet>298</a>            }),
-<a href=#299 id=299 data-nosnippet>299</a>        )<span class="question-mark">?
-<a href=#300 id=300 data-nosnippet>300</a>        </span>.into_py(py))
-<a href=#301 id=301 data-nosnippet>301</a>    }
-<a href=#302 id=302 data-nosnippet>302</a>
-<a href=#303 id=303 data-nosnippet>303</a>    <span class="kw">fn </span>deploy&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
-<a href=#306 id=306 data-nosnippet>306</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#307 id=307 data-nosnippet>307</a>            underlying.write().<span class="kw">await</span>.deploy().<span class="kw">await</span>.map_err(|e| {
-<a href=#308 id=308 data-nosnippet>308</a>                AnyhowError::new_err(AnyhowWrapper {
-<a href=#309 id=309 data-nosnippet>309</a>                    underlying: Arc::new(RwLock::new(<span class="prelude-val">Some</span>(e))),
-<a href=#310 id=310 data-nosnippet>310</a>                })
-<a href=#311 id=311 data-nosnippet>311</a>            })<span class="question-mark">?</span>;
-<a href=#312 id=312 data-nosnippet>312</a>            <span class="prelude-val">Ok</span>(py_none)
-<a href=#313 id=313 data-nosnippet>313</a>        })
-<a href=#314 id=314 data-nosnippet>314</a>    }
-<a href=#315 id=315 data-nosnippet>315</a>
-<a href=#316 id=316 data-nosnippet>316</a>    <span class="kw">fn </span>start&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#317 id=317 data-nosnippet>317</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#318 id=318 data-nosnippet>318</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
-<a href=#319 id=319 data-nosnippet>319</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#320 id=320 data-nosnippet>320</a>            underlying.write().<span class="kw">await</span>.start().<span class="kw">await</span>.map_err(|e| {
-<a href=#321 id=321 data-nosnippet>321</a>                AnyhowError::new_err(AnyhowWrapper {
-<a href=#322 id=322 data-nosnippet>322</a>                    underlying: Arc::new(RwLock::new(<span class="prelude-val">Some</span>(e))),
-<a href=#323 id=323 data-nosnippet>323</a>                })
-<a href=#324 id=324 data-nosnippet>324</a>            })<span class="question-mark">?</span>;
-<a href=#325 id=325 data-nosnippet>325</a>            <span class="prelude-val">Ok</span>(py_none)
-<a href=#326 id=326 data-nosnippet>326</a>        })
-<a href=#327 id=327 data-nosnippet>327</a>    }
-<a href=#328 id=328 data-nosnippet>328</a>}
-<a href=#329 id=329 data-nosnippet>329</a>
-<a href=#330 id=330 data-nosnippet>330</a><span class="attr">#[pyclass(subclass)]
-<a href=#331 id=331 data-nosnippet>331</a></span><span class="kw">pub struct </span>Host {
-<a href=#332 id=332 data-nosnippet>332</a>    underlying: Arc&lt;<span class="kw">dyn </span>core::Host&gt;,
-<a href=#333 id=333 data-nosnippet>333</a>}
-<a href=#334 id=334 data-nosnippet>334</a>
-<a href=#335 id=335 data-nosnippet>335</a><span class="attr">#[pyclass(extends=Host, subclass)]
-<a href=#336 id=336 data-nosnippet>336</a></span><span class="kw">struct </span>LocalhostHost {
-<a href=#337 id=337 data-nosnippet>337</a>    underlying: Arc&lt;core::LocalhostHost&gt;,
-<a href=#338 id=338 data-nosnippet>338</a>}
-<a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a><span class="attr">#[pymethods]
-<a href=#341 id=341 data-nosnippet>341</a></span><span class="kw">impl </span>LocalhostHost {
-<a href=#342 id=342 data-nosnippet>342</a>    <span class="kw">fn </span>client_only(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">let </span>arc = Arc::new(<span class="self">self</span>.underlying.client_only());
-<a href=#344 id=344 data-nosnippet>344</a>
-<a href=#345 id=345 data-nosnippet>345</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#346 id=346 data-nosnippet>346</a>            py,
-<a href=#347 id=347 data-nosnippet>347</a>            PyClassInitializer::from(Host {
-<a href=#348 id=348 data-nosnippet>348</a>                underlying: arc.clone(),
-<a href=#349 id=349 data-nosnippet>349</a>            })
-<a href=#350 id=350 data-nosnippet>350</a>            .add_subclass(LocalhostHost { underlying: arc }),
-<a href=#351 id=351 data-nosnippet>351</a>        )<span class="question-mark">?
-<a href=#352 id=352 data-nosnippet>352</a>        </span>.into_py(py))
-<a href=#353 id=353 data-nosnippet>353</a>    }
-<a href=#354 id=354 data-nosnippet>354</a>}
-<a href=#355 id=355 data-nosnippet>355</a>
-<a href=#356 id=356 data-nosnippet>356</a><span class="attr">#[pyclass]
-<a href=#357 id=357 data-nosnippet>357</a>#[derive(Clone)]
-<a href=#358 id=358 data-nosnippet>358</a></span><span class="kw">struct </span>GcpNetwork {
-<a href=#359 id=359 data-nosnippet>359</a>    underlying: Arc&lt;RwLock&lt;core::gcp::GcpNetwork&gt;&gt;,
-<a href=#360 id=360 data-nosnippet>360</a>}
-<a href=#361 id=361 data-nosnippet>361</a>
-<a href=#362 id=362 data-nosnippet>362</a><span class="attr">#[pymethods]
-<a href=#363 id=363 data-nosnippet>363</a></span><span class="kw">impl </span>GcpNetwork {
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="attr">#[new]
-<a href=#365 id=365 data-nosnippet>365</a>    </span><span class="kw">fn </span>new(project: String, existing: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="self">Self </span>{
-<a href=#366 id=366 data-nosnippet>366</a>        GcpNetwork {
-<a href=#367 id=367 data-nosnippet>367</a>            underlying: Arc::new(RwLock::new(core::gcp::GcpNetwork::new(project, existing))),
-<a href=#368 id=368 data-nosnippet>368</a>        }
-<a href=#369 id=369 data-nosnippet>369</a>    }
-<a href=#370 id=370 data-nosnippet>370</a>}
-<a href=#371 id=371 data-nosnippet>371</a>
-<a href=#372 id=372 data-nosnippet>372</a><span class="attr">#[pyclass(extends=Host, subclass)]
-<a href=#373 id=373 data-nosnippet>373</a></span><span class="kw">struct </span>GcpComputeEngineHost {
-<a href=#374 id=374 data-nosnippet>374</a>    underlying: Arc&lt;core::GcpComputeEngineHost&gt;,
-<a href=#375 id=375 data-nosnippet>375</a>}
-<a href=#376 id=376 data-nosnippet>376</a>
-<a href=#377 id=377 data-nosnippet>377</a><span class="attr">#[pymethods]
-<a href=#378 id=378 data-nosnippet>378</a></span><span class="kw">impl </span>GcpComputeEngineHost {
-<a href=#379 id=379 data-nosnippet>379</a>    <span class="attr">#[getter]
-<a href=#380 id=380 data-nosnippet>380</a>    </span><span class="kw">fn </span>internal_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#381 id=381 data-nosnippet>381</a>        <span class="self">self</span>.underlying.launched.get().unwrap().internal_ip.clone()
-<a href=#382 id=382 data-nosnippet>382</a>    }
-<a href=#383 id=383 data-nosnippet>383</a>
-<a href=#384 id=384 data-nosnippet>384</a>    <span class="attr">#[getter]
-<a href=#385 id=385 data-nosnippet>385</a>    </span><span class="kw">fn </span>external_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="self">self</span>.underlying.launched.get().unwrap().external_ip.clone()
-<a href=#387 id=387 data-nosnippet>387</a>    }
-<a href=#388 id=388 data-nosnippet>388</a>
-<a href=#389 id=389 data-nosnippet>389</a>    <span class="attr">#[getter]
-<a href=#390 id=390 data-nosnippet>390</a>    </span><span class="kw">fn </span>ssh_key_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#391 id=391 data-nosnippet>391</a>        <span class="self">self</span>.underlying
-<a href=#392 id=392 data-nosnippet>392</a>            .launched
-<a href=#393 id=393 data-nosnippet>393</a>            .get()
-<a href=#394 id=394 data-nosnippet>394</a>            .unwrap()
-<a href=#395 id=395 data-nosnippet>395</a>            .ssh_key_path()
-<a href=#396 id=396 data-nosnippet>396</a>            .to_str()
-<a href=#397 id=397 data-nosnippet>397</a>            .unwrap()
-<a href=#398 id=398 data-nosnippet>398</a>            .to_string()
-<a href=#399 id=399 data-nosnippet>399</a>    }
-<a href=#400 id=400 data-nosnippet>400</a>}
-<a href=#401 id=401 data-nosnippet>401</a>
-<a href=#402 id=402 data-nosnippet>402</a><span class="attr">#[pyclass(extends=Host, subclass)]
-<a href=#403 id=403 data-nosnippet>403</a></span><span class="kw">struct </span>AzureHost {
-<a href=#404 id=404 data-nosnippet>404</a>    underlying: Arc&lt;core::AzureHost&gt;,
-<a href=#405 id=405 data-nosnippet>405</a>}
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a><span class="attr">#[pymethods]
-<a href=#408 id=408 data-nosnippet>408</a></span><span class="kw">impl </span>AzureHost {
-<a href=#409 id=409 data-nosnippet>409</a>    <span class="attr">#[getter]
-<a href=#410 id=410 data-nosnippet>410</a>    </span><span class="kw">fn </span>internal_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#411 id=411 data-nosnippet>411</a>        <span class="self">self</span>.underlying.launched.get().unwrap().internal_ip.clone()
-<a href=#412 id=412 data-nosnippet>412</a>    }
-<a href=#413 id=413 data-nosnippet>413</a>
-<a href=#414 id=414 data-nosnippet>414</a>    <span class="attr">#[getter]
-<a href=#415 id=415 data-nosnippet>415</a>    </span><span class="kw">fn </span>external_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-<a href=#416 id=416 data-nosnippet>416</a>        <span class="self">self</span>.underlying.launched.get().unwrap().external_ip.clone()
-<a href=#417 id=417 data-nosnippet>417</a>    }
-<a href=#418 id=418 data-nosnippet>418</a>
-<a href=#419 id=419 data-nosnippet>419</a>    <span class="attr">#[getter]
-<a href=#420 id=420 data-nosnippet>420</a>    </span><span class="kw">fn </span>ssh_key_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#421 id=421 data-nosnippet>421</a>        <span class="self">self</span>.underlying
-<a href=#422 id=422 data-nosnippet>422</a>            .launched
-<a href=#423 id=423 data-nosnippet>423</a>            .get()
-<a href=#424 id=424 data-nosnippet>424</a>            .unwrap()
-<a href=#425 id=425 data-nosnippet>425</a>            .ssh_key_path()
-<a href=#426 id=426 data-nosnippet>426</a>            .to_str()
-<a href=#427 id=427 data-nosnippet>427</a>            .unwrap()
-<a href=#428 id=428 data-nosnippet>428</a>            .to_string()
-<a href=#429 id=429 data-nosnippet>429</a>    }
-<a href=#430 id=430 data-nosnippet>430</a>}
-<a href=#431 id=431 data-nosnippet>431</a>
-<a href=#432 id=432 data-nosnippet>432</a><span class="attr">#[pyclass(subclass)]
-<a href=#433 id=433 data-nosnippet>433</a></span><span class="kw">pub struct </span>Service {
-<a href=#434 id=434 data-nosnippet>434</a>    underlying: Arc&lt;RwLock&lt;<span class="kw">dyn </span>core::Service&gt;&gt;,
-<a href=#435 id=435 data-nosnippet>435</a>}
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a><span class="attr">#[pymethods]
-<a href=#438 id=438 data-nosnippet>438</a></span><span class="kw">impl </span>Service {
-<a href=#439 id=439 data-nosnippet>439</a>    <span class="kw">fn </span>stop&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#440 id=440 data-nosnippet>440</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#441 id=441 data-nosnippet>441</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
-<a href=#442 id=442 data-nosnippet>442</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#443 id=443 data-nosnippet>443</a>            underlying.write().<span class="kw">await</span>.stop().<span class="kw">await</span>.unwrap();
-<a href=#444 id=444 data-nosnippet>444</a>            <span class="prelude-val">Ok</span>(py_none)
-<a href=#445 id=445 data-nosnippet>445</a>        })
-<a href=#446 id=446 data-nosnippet>446</a>    }
-<a href=#447 id=447 data-nosnippet>447</a>}
-<a href=#448 id=448 data-nosnippet>448</a>
-<a href=#449 id=449 data-nosnippet>449</a><span class="attr">#[pyclass]
-<a href=#450 id=450 data-nosnippet>450</a></span><span class="kw">struct </span>PyReceiver {
-<a href=#451 id=451 data-nosnippet>451</a>    receiver: Arc&lt;Mutex&lt;tokio::sync::mpsc::UnboundedReceiver&lt;String&gt;&gt;&gt;,
-<a href=#452 id=452 data-nosnippet>452</a>}
-<a href=#453 id=453 data-nosnippet>453</a>
-<a href=#454 id=454 data-nosnippet>454</a><span class="attr">#[pymethods]
-<a href=#455 id=455 data-nosnippet>455</a></span><span class="kw">impl </span>PyReceiver {
-<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">fn </span>__aiter__(slf: PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt;) -&gt; PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt; {
-<a href=#457 id=457 data-nosnippet>457</a>        slf
-<a href=#458 id=458 data-nosnippet>458</a>    }
-<a href=#459 id=459 data-nosnippet>459</a>
-<a href=#460 id=460 data-nosnippet>460</a>    <span class="kw">fn </span>__anext__&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#461 id=461 data-nosnippet>461</a>        <span class="kw">let </span>receiver = <span class="self">self</span>.receiver.clone();
-<a href=#462 id=462 data-nosnippet>462</a>        <span class="prelude-val">Some</span>(
-<a href=#463 id=463 data-nosnippet>463</a>            interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#464 id=464 data-nosnippet>464</a>                receiver
-<a href=#465 id=465 data-nosnippet>465</a>                    .lock()
-<a href=#466 id=466 data-nosnippet>466</a>                    .<span class="kw">await
-<a href=#467 id=467 data-nosnippet>467</a>                    </span>.recv()
+<a href=#186 id=186 data-nosnippet>186</a>        display_name: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#187 id=187 data-nosnippet>187</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">let </span>arc = <span class="self">self</span>.underlying.blocking_write().add_host(|id| {
+<a href=#189 id=189 data-nosnippet>189</a>            core::GcpComputeEngineHost::new(
+<a href=#190 id=190 data-nosnippet>190</a>                id,
+<a href=#191 id=191 data-nosnippet>191</a>                project,
+<a href=#192 id=192 data-nosnippet>192</a>                machine_type,
+<a href=#193 id=193 data-nosnippet>193</a>                image,
+<a href=#194 id=194 data-nosnippet>194</a>                region,
+<a href=#195 id=195 data-nosnippet>195</a>                network.underlying,
+<a href=#196 id=196 data-nosnippet>196</a>                user,
+<a href=#197 id=197 data-nosnippet>197</a>                display_name,
+<a href=#198 id=198 data-nosnippet>198</a>            )
+<a href=#199 id=199 data-nosnippet>199</a>        });
+<a href=#200 id=200 data-nosnippet>200</a>
+<a href=#201 id=201 data-nosnippet>201</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#202 id=202 data-nosnippet>202</a>            py,
+<a href=#203 id=203 data-nosnippet>203</a>            PyClassInitializer::from(Host {
+<a href=#204 id=204 data-nosnippet>204</a>                underlying: arc.clone(),
+<a href=#205 id=205 data-nosnippet>205</a>            })
+<a href=#206 id=206 data-nosnippet>206</a>            .add_subclass(GcpComputeEngineHost { underlying: arc }),
+<a href=#207 id=207 data-nosnippet>207</a>        )<span class="question-mark">?
+<a href=#208 id=208 data-nosnippet>208</a>        </span>.into_py(py))
+<a href=#209 id=209 data-nosnippet>209</a>    }
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="attr">#[expect(non_snake_case, clippy::too_many_arguments, reason = <span class="string">"pymethods"</span>)]
+<a href=#212 id=212 data-nosnippet>212</a>    </span><span class="kw">fn </span>AzureHost(
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#214 id=214 data-nosnippet>214</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#215 id=215 data-nosnippet>215</a>        project: String,
+<a href=#216 id=216 data-nosnippet>216</a>        os_type: String, <span class="comment">// linux or windows
+<a href=#217 id=217 data-nosnippet>217</a>        </span>machine_size: String,
+<a href=#218 id=218 data-nosnippet>218</a>        region: String,
+<a href=#219 id=219 data-nosnippet>219</a>        image: <span class="prelude-ty">Option</span>&lt;HashMap&lt;String, String&gt;&gt;,
+<a href=#220 id=220 data-nosnippet>220</a>        user: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#221 id=221 data-nosnippet>221</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span>arc = <span class="self">self</span>.underlying.blocking_write().add_host(|id| {
+<a href=#223 id=223 data-nosnippet>223</a>            core::AzureHost::new(id, project, os_type, machine_size, image, region, user)
+<a href=#224 id=224 data-nosnippet>224</a>        });
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#227 id=227 data-nosnippet>227</a>            py,
+<a href=#228 id=228 data-nosnippet>228</a>            PyClassInitializer::from(Host {
+<a href=#229 id=229 data-nosnippet>229</a>                underlying: arc.clone(),
+<a href=#230 id=230 data-nosnippet>230</a>            })
+<a href=#231 id=231 data-nosnippet>231</a>            .add_subclass(AzureHost { underlying: arc }),
+<a href=#232 id=232 data-nosnippet>232</a>        )<span class="question-mark">?
+<a href=#233 id=233 data-nosnippet>233</a>        </span>.into_py(py))
+<a href=#234 id=234 data-nosnippet>234</a>    }
+<a href=#235 id=235 data-nosnippet>235</a>
+<a href=#236 id=236 data-nosnippet>236</a>    <span class="attr">#[expect(non_snake_case, reason = <span class="string">"pymethods"</span>)]
+<a href=#237 id=237 data-nosnippet>237</a>    </span><span class="kw">fn </span>CustomService(
+<a href=#238 id=238 data-nosnippet>238</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#239 id=239 data-nosnippet>239</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#240 id=240 data-nosnippet>240</a>        on: <span class="kw-2">&amp;</span>Host,
+<a href=#241 id=241 data-nosnippet>241</a>        external_ports: Vec&lt;u16&gt;,
+<a href=#242 id=242 data-nosnippet>242</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#243 id=243 data-nosnippet>243</a>        <span class="kw">let </span>service = <span class="self">self
+<a href=#244 id=244 data-nosnippet>244</a>            </span>.underlying
+<a href=#245 id=245 data-nosnippet>245</a>            .blocking_write()
+<a href=#246 id=246 data-nosnippet>246</a>            .CustomService(on.underlying.clone(), external_ports);
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#249 id=249 data-nosnippet>249</a>            py,
+<a href=#250 id=250 data-nosnippet>250</a>            PyClassInitializer::from(Service {
+<a href=#251 id=251 data-nosnippet>251</a>                underlying: service.clone(),
+<a href=#252 id=252 data-nosnippet>252</a>            })
+<a href=#253 id=253 data-nosnippet>253</a>            .add_subclass(CustomService {
+<a href=#254 id=254 data-nosnippet>254</a>                underlying: service,
+<a href=#255 id=255 data-nosnippet>255</a>            }),
+<a href=#256 id=256 data-nosnippet>256</a>        )<span class="question-mark">?
+<a href=#257 id=257 data-nosnippet>257</a>        </span>.into_py(py))
+<a href=#258 id=258 data-nosnippet>258</a>    }
+<a href=#259 id=259 data-nosnippet>259</a>
+<a href=#260 id=260 data-nosnippet>260</a>    <span class="attr">#[expect(non_snake_case, clippy::too_many_arguments, reason = <span class="string">"pymethods"</span>)]
+<a href=#261 id=261 data-nosnippet>261</a>    </span><span class="kw">fn </span>HydroflowCrate(
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#263 id=263 data-nosnippet>263</a>        py: Python&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#264 id=264 data-nosnippet>264</a>        src: String,
+<a href=#265 id=265 data-nosnippet>265</a>        on: <span class="kw-2">&amp;</span>Host,
+<a href=#266 id=266 data-nosnippet>266</a>        bin: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#267 id=267 data-nosnippet>267</a>        example: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#268 id=268 data-nosnippet>268</a>        profile: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#269 id=269 data-nosnippet>269</a>        features: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+<a href=#270 id=270 data-nosnippet>270</a>        args: <span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+<a href=#271 id=271 data-nosnippet>271</a>        display_id: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#272 id=272 data-nosnippet>272</a>        external_ports: <span class="prelude-ty">Option</span>&lt;Vec&lt;u16&gt;&gt;,
+<a href=#273 id=273 data-nosnippet>273</a>    ) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#274 id=274 data-nosnippet>274</a>        <span class="kw">let </span>service = <span class="self">self</span>.underlying.blocking_write().add_service(|id| {
+<a href=#275 id=275 data-nosnippet>275</a>            core::rust_crate::RustCrateService::new(
+<a href=#276 id=276 data-nosnippet>276</a>                id,
+<a href=#277 id=277 data-nosnippet>277</a>                src.into(),
+<a href=#278 id=278 data-nosnippet>278</a>                on.underlying.clone(),
+<a href=#279 id=279 data-nosnippet>279</a>                bin,
+<a href=#280 id=280 data-nosnippet>280</a>                example,
+<a href=#281 id=281 data-nosnippet>281</a>                profile,
+<a href=#282 id=282 data-nosnippet>282</a>                <span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support rustflags
+<a href=#283 id=283 data-nosnippet>283</a>                </span><span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support target_dir
+<a href=#284 id=284 data-nosnippet>284</a>                </span><span class="bool-val">false</span>, <span class="comment">// Python API doesn't support no_default_features
+<a href=#285 id=285 data-nosnippet>285</a>                </span><span class="prelude-val">None</span>,  <span class="comment">// Python API doesn't support perf
+<a href=#286 id=286 data-nosnippet>286</a>                </span>features,
+<a href=#287 id=287 data-nosnippet>287</a>                args,
+<a href=#288 id=288 data-nosnippet>288</a>                display_id,
+<a href=#289 id=289 data-nosnippet>289</a>                external_ports.unwrap_or_default(),
+<a href=#290 id=290 data-nosnippet>290</a>            )
+<a href=#291 id=291 data-nosnippet>291</a>        });
+<a href=#292 id=292 data-nosnippet>292</a>
+<a href=#293 id=293 data-nosnippet>293</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#294 id=294 data-nosnippet>294</a>            py,
+<a href=#295 id=295 data-nosnippet>295</a>            PyClassInitializer::from(Service {
+<a href=#296 id=296 data-nosnippet>296</a>                underlying: service.clone(),
+<a href=#297 id=297 data-nosnippet>297</a>            })
+<a href=#298 id=298 data-nosnippet>298</a>            .add_subclass(HydroflowCrate {
+<a href=#299 id=299 data-nosnippet>299</a>                underlying: service,
+<a href=#300 id=300 data-nosnippet>300</a>            }),
+<a href=#301 id=301 data-nosnippet>301</a>        )<span class="question-mark">?
+<a href=#302 id=302 data-nosnippet>302</a>        </span>.into_py(py))
+<a href=#303 id=303 data-nosnippet>303</a>    }
+<a href=#304 id=304 data-nosnippet>304</a>
+<a href=#305 id=305 data-nosnippet>305</a>    <span class="kw">fn </span>deploy&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#307 id=307 data-nosnippet>307</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
+<a href=#308 id=308 data-nosnippet>308</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#309 id=309 data-nosnippet>309</a>            underlying.write().<span class="kw">await</span>.deploy().<span class="kw">await</span>.map_err(|e| {
+<a href=#310 id=310 data-nosnippet>310</a>                AnyhowError::new_err(AnyhowWrapper {
+<a href=#311 id=311 data-nosnippet>311</a>                    underlying: Arc::new(RwLock::new(<span class="prelude-val">Some</span>(e))),
+<a href=#312 id=312 data-nosnippet>312</a>                })
+<a href=#313 id=313 data-nosnippet>313</a>            })<span class="question-mark">?</span>;
+<a href=#314 id=314 data-nosnippet>314</a>            <span class="prelude-val">Ok</span>(py_none)
+<a href=#315 id=315 data-nosnippet>315</a>        })
+<a href=#316 id=316 data-nosnippet>316</a>    }
+<a href=#317 id=317 data-nosnippet>317</a>
+<a href=#318 id=318 data-nosnippet>318</a>    <span class="kw">fn </span>start&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#319 id=319 data-nosnippet>319</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#320 id=320 data-nosnippet>320</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
+<a href=#321 id=321 data-nosnippet>321</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#322 id=322 data-nosnippet>322</a>            underlying.write().<span class="kw">await</span>.start().<span class="kw">await</span>.map_err(|e| {
+<a href=#323 id=323 data-nosnippet>323</a>                AnyhowError::new_err(AnyhowWrapper {
+<a href=#324 id=324 data-nosnippet>324</a>                    underlying: Arc::new(RwLock::new(<span class="prelude-val">Some</span>(e))),
+<a href=#325 id=325 data-nosnippet>325</a>                })
+<a href=#326 id=326 data-nosnippet>326</a>            })<span class="question-mark">?</span>;
+<a href=#327 id=327 data-nosnippet>327</a>            <span class="prelude-val">Ok</span>(py_none)
+<a href=#328 id=328 data-nosnippet>328</a>        })
+<a href=#329 id=329 data-nosnippet>329</a>    }
+<a href=#330 id=330 data-nosnippet>330</a>}
+<a href=#331 id=331 data-nosnippet>331</a>
+<a href=#332 id=332 data-nosnippet>332</a><span class="attr">#[pyclass(subclass)]
+<a href=#333 id=333 data-nosnippet>333</a></span><span class="kw">pub struct </span>Host {
+<a href=#334 id=334 data-nosnippet>334</a>    underlying: Arc&lt;<span class="kw">dyn </span>core::Host&gt;,
+<a href=#335 id=335 data-nosnippet>335</a>}
+<a href=#336 id=336 data-nosnippet>336</a>
+<a href=#337 id=337 data-nosnippet>337</a><span class="attr">#[pyclass(extends=Host, subclass)]
+<a href=#338 id=338 data-nosnippet>338</a></span><span class="kw">struct </span>LocalhostHost {
+<a href=#339 id=339 data-nosnippet>339</a>    underlying: Arc&lt;core::LocalhostHost&gt;,
+<a href=#340 id=340 data-nosnippet>340</a>}
+<a href=#341 id=341 data-nosnippet>341</a>
+<a href=#342 id=342 data-nosnippet>342</a><span class="attr">#[pymethods]
+<a href=#343 id=343 data-nosnippet>343</a></span><span class="kw">impl </span>LocalhostHost {
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">fn </span>client_only(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">let </span>arc = Arc::new(<span class="self">self</span>.underlying.client_only());
+<a href=#346 id=346 data-nosnippet>346</a>
+<a href=#347 id=347 data-nosnippet>347</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#348 id=348 data-nosnippet>348</a>            py,
+<a href=#349 id=349 data-nosnippet>349</a>            PyClassInitializer::from(Host {
+<a href=#350 id=350 data-nosnippet>350</a>                underlying: arc.clone(),
+<a href=#351 id=351 data-nosnippet>351</a>            })
+<a href=#352 id=352 data-nosnippet>352</a>            .add_subclass(LocalhostHost { underlying: arc }),
+<a href=#353 id=353 data-nosnippet>353</a>        )<span class="question-mark">?
+<a href=#354 id=354 data-nosnippet>354</a>        </span>.into_py(py))
+<a href=#355 id=355 data-nosnippet>355</a>    }
+<a href=#356 id=356 data-nosnippet>356</a>}
+<a href=#357 id=357 data-nosnippet>357</a>
+<a href=#358 id=358 data-nosnippet>358</a><span class="attr">#[pyclass]
+<a href=#359 id=359 data-nosnippet>359</a>#[derive(Clone)]
+<a href=#360 id=360 data-nosnippet>360</a></span><span class="kw">struct </span>GcpNetwork {
+<a href=#361 id=361 data-nosnippet>361</a>    underlying: Arc&lt;RwLock&lt;core::gcp::GcpNetwork&gt;&gt;,
+<a href=#362 id=362 data-nosnippet>362</a>}
+<a href=#363 id=363 data-nosnippet>363</a>
+<a href=#364 id=364 data-nosnippet>364</a><span class="attr">#[pymethods]
+<a href=#365 id=365 data-nosnippet>365</a></span><span class="kw">impl </span>GcpNetwork {
+<a href=#366 id=366 data-nosnippet>366</a>    <span class="attr">#[new]
+<a href=#367 id=367 data-nosnippet>367</a>    </span><span class="kw">fn </span>new(project: String, existing: <span class="prelude-ty">Option</span>&lt;String&gt;) -&gt; <span class="self">Self </span>{
+<a href=#368 id=368 data-nosnippet>368</a>        GcpNetwork {
+<a href=#369 id=369 data-nosnippet>369</a>            underlying: Arc::new(RwLock::new(core::gcp::GcpNetwork::new(project, existing))),
+<a href=#370 id=370 data-nosnippet>370</a>        }
+<a href=#371 id=371 data-nosnippet>371</a>    }
+<a href=#372 id=372 data-nosnippet>372</a>}
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a><span class="attr">#[pyclass(extends=Host, subclass)]
+<a href=#375 id=375 data-nosnippet>375</a></span><span class="kw">struct </span>GcpComputeEngineHost {
+<a href=#376 id=376 data-nosnippet>376</a>    underlying: Arc&lt;core::GcpComputeEngineHost&gt;,
+<a href=#377 id=377 data-nosnippet>377</a>}
+<a href=#378 id=378 data-nosnippet>378</a>
+<a href=#379 id=379 data-nosnippet>379</a><span class="attr">#[pymethods]
+<a href=#380 id=380 data-nosnippet>380</a></span><span class="kw">impl </span>GcpComputeEngineHost {
+<a href=#381 id=381 data-nosnippet>381</a>    <span class="attr">#[getter]
+<a href=#382 id=382 data-nosnippet>382</a>    </span><span class="kw">fn </span>internal_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#383 id=383 data-nosnippet>383</a>        <span class="self">self</span>.underlying.launched.get().unwrap().internal_ip.clone()
+<a href=#384 id=384 data-nosnippet>384</a>    }
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="attr">#[getter]
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">fn </span>external_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+<a href=#388 id=388 data-nosnippet>388</a>        <span class="self">self</span>.underlying.launched.get().unwrap().external_ip.clone()
+<a href=#389 id=389 data-nosnippet>389</a>    }
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="attr">#[getter]
+<a href=#392 id=392 data-nosnippet>392</a>    </span><span class="kw">fn </span>ssh_key_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#393 id=393 data-nosnippet>393</a>        <span class="self">self</span>.underlying
+<a href=#394 id=394 data-nosnippet>394</a>            .launched
+<a href=#395 id=395 data-nosnippet>395</a>            .get()
+<a href=#396 id=396 data-nosnippet>396</a>            .unwrap()
+<a href=#397 id=397 data-nosnippet>397</a>            .ssh_key_path()
+<a href=#398 id=398 data-nosnippet>398</a>            .to_str()
+<a href=#399 id=399 data-nosnippet>399</a>            .unwrap()
+<a href=#400 id=400 data-nosnippet>400</a>            .to_string()
+<a href=#401 id=401 data-nosnippet>401</a>    }
+<a href=#402 id=402 data-nosnippet>402</a>}
+<a href=#403 id=403 data-nosnippet>403</a>
+<a href=#404 id=404 data-nosnippet>404</a><span class="attr">#[pyclass(extends=Host, subclass)]
+<a href=#405 id=405 data-nosnippet>405</a></span><span class="kw">struct </span>AzureHost {
+<a href=#406 id=406 data-nosnippet>406</a>    underlying: Arc&lt;core::AzureHost&gt;,
+<a href=#407 id=407 data-nosnippet>407</a>}
+<a href=#408 id=408 data-nosnippet>408</a>
+<a href=#409 id=409 data-nosnippet>409</a><span class="attr">#[pymethods]
+<a href=#410 id=410 data-nosnippet>410</a></span><span class="kw">impl </span>AzureHost {
+<a href=#411 id=411 data-nosnippet>411</a>    <span class="attr">#[getter]
+<a href=#412 id=412 data-nosnippet>412</a>    </span><span class="kw">fn </span>internal_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#413 id=413 data-nosnippet>413</a>        <span class="self">self</span>.underlying.launched.get().unwrap().internal_ip.clone()
+<a href=#414 id=414 data-nosnippet>414</a>    }
+<a href=#415 id=415 data-nosnippet>415</a>
+<a href=#416 id=416 data-nosnippet>416</a>    <span class="attr">#[getter]
+<a href=#417 id=417 data-nosnippet>417</a>    </span><span class="kw">fn </span>external_ip(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
+<a href=#418 id=418 data-nosnippet>418</a>        <span class="self">self</span>.underlying.launched.get().unwrap().external_ip.clone()
+<a href=#419 id=419 data-nosnippet>419</a>    }
+<a href=#420 id=420 data-nosnippet>420</a>
+<a href=#421 id=421 data-nosnippet>421</a>    <span class="attr">#[getter]
+<a href=#422 id=422 data-nosnippet>422</a>    </span><span class="kw">fn </span>ssh_key_path(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#423 id=423 data-nosnippet>423</a>        <span class="self">self</span>.underlying
+<a href=#424 id=424 data-nosnippet>424</a>            .launched
+<a href=#425 id=425 data-nosnippet>425</a>            .get()
+<a href=#426 id=426 data-nosnippet>426</a>            .unwrap()
+<a href=#427 id=427 data-nosnippet>427</a>            .ssh_key_path()
+<a href=#428 id=428 data-nosnippet>428</a>            .to_str()
+<a href=#429 id=429 data-nosnippet>429</a>            .unwrap()
+<a href=#430 id=430 data-nosnippet>430</a>            .to_string()
+<a href=#431 id=431 data-nosnippet>431</a>    }
+<a href=#432 id=432 data-nosnippet>432</a>}
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a><span class="attr">#[pyclass(subclass)]
+<a href=#435 id=435 data-nosnippet>435</a></span><span class="kw">pub struct </span>Service {
+<a href=#436 id=436 data-nosnippet>436</a>    underlying: Arc&lt;RwLock&lt;<span class="kw">dyn </span>core::Service&gt;&gt;,
+<a href=#437 id=437 data-nosnippet>437</a>}
+<a href=#438 id=438 data-nosnippet>438</a>
+<a href=#439 id=439 data-nosnippet>439</a><span class="attr">#[pymethods]
+<a href=#440 id=440 data-nosnippet>440</a></span><span class="kw">impl </span>Service {
+<a href=#441 id=441 data-nosnippet>441</a>    <span class="kw">fn </span>stop&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#442 id=442 data-nosnippet>442</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#443 id=443 data-nosnippet>443</a>        <span class="kw">let </span>py_none = py.<span class="prelude-val">None</span>();
+<a href=#444 id=444 data-nosnippet>444</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#445 id=445 data-nosnippet>445</a>            underlying.write().<span class="kw">await</span>.stop().<span class="kw">await</span>.unwrap();
+<a href=#446 id=446 data-nosnippet>446</a>            <span class="prelude-val">Ok</span>(py_none)
+<a href=#447 id=447 data-nosnippet>447</a>        })
+<a href=#448 id=448 data-nosnippet>448</a>    }
+<a href=#449 id=449 data-nosnippet>449</a>}
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a><span class="attr">#[pyclass]
+<a href=#452 id=452 data-nosnippet>452</a></span><span class="kw">struct </span>PyReceiver {
+<a href=#453 id=453 data-nosnippet>453</a>    receiver: Arc&lt;Mutex&lt;tokio::sync::mpsc::UnboundedReceiver&lt;String&gt;&gt;&gt;,
+<a href=#454 id=454 data-nosnippet>454</a>}
+<a href=#455 id=455 data-nosnippet>455</a>
+<a href=#456 id=456 data-nosnippet>456</a><span class="attr">#[pymethods]
+<a href=#457 id=457 data-nosnippet>457</a></span><span class="kw">impl </span>PyReceiver {
+<a href=#458 id=458 data-nosnippet>458</a>    <span class="kw">fn </span>__aiter__(slf: PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt;) -&gt; PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt; {
+<a href=#459 id=459 data-nosnippet>459</a>        slf
+<a href=#460 id=460 data-nosnippet>460</a>    }
+<a href=#461 id=461 data-nosnippet>461</a>
+<a href=#462 id=462 data-nosnippet>462</a>    <span class="kw">fn </span>__anext__&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#463 id=463 data-nosnippet>463</a>        <span class="kw">let </span>receiver = <span class="self">self</span>.receiver.clone();
+<a href=#464 id=464 data-nosnippet>464</a>        <span class="prelude-val">Some</span>(
+<a href=#465 id=465 data-nosnippet>465</a>            interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#466 id=466 data-nosnippet>466</a>                receiver
+<a href=#467 id=467 data-nosnippet>467</a>                    .lock()
 <a href=#468 id=468 data-nosnippet>468</a>                    .<span class="kw">await
-<a href=#469 id=469 data-nosnippet>469</a>                    </span>.ok_or_else(|| PyStopAsyncIteration::new_err(()))
-<a href=#470 id=470 data-nosnippet>470</a>            })
-<a href=#471 id=471 data-nosnippet>471</a>            .unwrap(),
-<a href=#472 id=472 data-nosnippet>472</a>        )
-<a href=#473 id=473 data-nosnippet>473</a>    }
-<a href=#474 id=474 data-nosnippet>474</a>}
-<a href=#475 id=475 data-nosnippet>475</a>
-<a href=#476 id=476 data-nosnippet>476</a><span class="attr">#[pyclass(extends=Service, subclass)]
-<a href=#477 id=477 data-nosnippet>477</a></span><span class="kw">struct </span>CustomService {
-<a href=#478 id=478 data-nosnippet>478</a>    underlying: Arc&lt;RwLock&lt;core::CustomService&gt;&gt;,
-<a href=#479 id=479 data-nosnippet>479</a>}
-<a href=#480 id=480 data-nosnippet>480</a>
-<a href=#481 id=481 data-nosnippet>481</a><span class="attr">#[pymethods]
-<a href=#482 id=482 data-nosnippet>482</a></span><span class="kw">impl </span>CustomService {
-<a href=#483 id=483 data-nosnippet>483</a>    <span class="kw">fn </span>client_port(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#484 id=484 data-nosnippet>484</a>        <span class="kw">let </span>arc = Arc::new(core::custom_service::CustomClientPort::new(Arc::downgrade(
-<a href=#485 id=485 data-nosnippet>485</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.underlying,
-<a href=#486 id=486 data-nosnippet>486</a>        )));
-<a href=#487 id=487 data-nosnippet>487</a>
-<a href=#488 id=488 data-nosnippet>488</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#489 id=489 data-nosnippet>489</a>            py,
-<a href=#490 id=490 data-nosnippet>490</a>            PyClassInitializer::from(HydroflowSink {
-<a href=#491 id=491 data-nosnippet>491</a>                underlying: arc.clone(),
-<a href=#492 id=492 data-nosnippet>492</a>            })
-<a href=#493 id=493 data-nosnippet>493</a>            .add_subclass(CustomClientPort { underlying: arc }),
-<a href=#494 id=494 data-nosnippet>494</a>        )<span class="question-mark">?
-<a href=#495 id=495 data-nosnippet>495</a>        </span>.into_py(py))
-<a href=#496 id=496 data-nosnippet>496</a>    }
-<a href=#497 id=497 data-nosnippet>497</a>}
-<a href=#498 id=498 data-nosnippet>498</a>
-<a href=#499 id=499 data-nosnippet>499</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
-<a href=#500 id=500 data-nosnippet>500</a>#[derive(Clone)]
-<a href=#501 id=501 data-nosnippet>501</a></span><span class="kw">struct </span>CustomClientPort {
-<a href=#502 id=502 data-nosnippet>502</a>    underlying: Arc&lt;core::custom_service::CustomClientPort&gt;,
-<a href=#503 id=503 data-nosnippet>503</a>}
-<a href=#504 id=504 data-nosnippet>504</a>
-<a href=#505 id=505 data-nosnippet>505</a><span class="attr">#[pymethods]
-<a href=#506 id=506 data-nosnippet>506</a></span><span class="kw">impl </span>CustomClientPort {
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
-<a href=#508 id=508 data-nosnippet>508</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
-<a href=#509 id=509 data-nosnippet>509</a>    }
-<a href=#510 id=510 data-nosnippet>510</a>
-<a href=#511 id=511 data-nosnippet>511</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
-<a href=#512 id=512 data-nosnippet>512</a>        TaggedSource {
-<a href=#513 id=513 data-nosnippet>513</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
-<a href=#514 id=514 data-nosnippet>514</a>                source: <span class="self">self</span>.underlying.clone(),
-<a href=#515 id=515 data-nosnippet>515</a>                tag,
-<a href=#516 id=516 data-nosnippet>516</a>            }),
-<a href=#517 id=517 data-nosnippet>517</a>        }
-<a href=#518 id=518 data-nosnippet>518</a>    }
-<a href=#519 id=519 data-nosnippet>519</a>
-<a href=#520 id=520 data-nosnippet>520</a>    <span class="kw">fn </span>server_port&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#522 id=522 data-nosnippet>522</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#523 id=523 data-nosnippet>523</a>            <span class="prelude-val">Ok</span>(ServerPort {
-<a href=#524 id=524 data-nosnippet>524</a>                underlying: underlying.server_port().<span class="kw">await</span>,
-<a href=#525 id=525 data-nosnippet>525</a>            })
-<a href=#526 id=526 data-nosnippet>526</a>        })
-<a href=#527 id=527 data-nosnippet>527</a>    }
-<a href=#528 id=528 data-nosnippet>528</a>}
-<a href=#529 id=529 data-nosnippet>529</a>
-<a href=#530 id=530 data-nosnippet>530</a><span class="attr">#[pyclass(extends=Service, subclass)]
-<a href=#531 id=531 data-nosnippet>531</a></span><span class="kw">struct </span>HydroflowCrate {
-<a href=#532 id=532 data-nosnippet>532</a>    underlying: Arc&lt;RwLock&lt;core::rust_crate::RustCrateService&gt;&gt;,
-<a href=#533 id=533 data-nosnippet>533</a>}
-<a href=#534 id=534 data-nosnippet>534</a>
-<a href=#535 id=535 data-nosnippet>535</a><span class="attr">#[pymethods]
-<a href=#536 id=536 data-nosnippet>536</a></span><span class="kw">impl </span>HydroflowCrate {
-<a href=#537 id=537 data-nosnippet>537</a>    <span class="kw">fn </span>stdout&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#538 id=538 data-nosnippet>538</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#539 id=539 data-nosnippet>539</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#540 id=540 data-nosnippet>540</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
-<a href=#541 id=541 data-nosnippet>541</a>            <span class="prelude-val">Ok</span>(PyReceiver {
-<a href=#542 id=542 data-nosnippet>542</a>                receiver: Arc::new(Mutex::new(underlying.stdout())),
-<a href=#543 id=543 data-nosnippet>543</a>            })
-<a href=#544 id=544 data-nosnippet>544</a>        })
-<a href=#545 id=545 data-nosnippet>545</a>    }
-<a href=#546 id=546 data-nosnippet>546</a>
-<a href=#547 id=547 data-nosnippet>547</a>    <span class="kw">fn </span>stderr&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#548 id=548 data-nosnippet>548</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#549 id=549 data-nosnippet>549</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#550 id=550 data-nosnippet>550</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
-<a href=#551 id=551 data-nosnippet>551</a>            <span class="prelude-val">Ok</span>(PyReceiver {
-<a href=#552 id=552 data-nosnippet>552</a>                receiver: Arc::new(Mutex::new(underlying.stderr())),
-<a href=#553 id=553 data-nosnippet>553</a>            })
-<a href=#554 id=554 data-nosnippet>554</a>        })
-<a href=#555 id=555 data-nosnippet>555</a>    }
-<a href=#556 id=556 data-nosnippet>556</a>
-<a href=#557 id=557 data-nosnippet>557</a>    <span class="kw">fn </span>exit_code&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#559 id=559 data-nosnippet>559</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#560 id=560 data-nosnippet>560</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
-<a href=#561 id=561 data-nosnippet>561</a>            <span class="prelude-val">Ok</span>(underlying.exit_code())
-<a href=#562 id=562 data-nosnippet>562</a>        })
-<a href=#563 id=563 data-nosnippet>563</a>    }
-<a href=#564 id=564 data-nosnippet>564</a>
-<a href=#565 id=565 data-nosnippet>565</a>    <span class="attr">#[getter]
-<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">fn </span>ports(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroflowCratePorts {
-<a href=#567 id=567 data-nosnippet>567</a>        HydroflowCratePorts {
-<a href=#568 id=568 data-nosnippet>568</a>            underlying: <span class="self">self</span>.underlying.clone(),
-<a href=#569 id=569 data-nosnippet>569</a>        }
-<a href=#570 id=570 data-nosnippet>570</a>    }
-<a href=#571 id=571 data-nosnippet>571</a>}
-<a href=#572 id=572 data-nosnippet>572</a>
-<a href=#573 id=573 data-nosnippet>573</a><span class="attr">#[pyclass]
-<a href=#574 id=574 data-nosnippet>574</a>#[derive(Clone)]
-<a href=#575 id=575 data-nosnippet>575</a></span><span class="kw">struct </span>HydroflowCratePorts {
-<a href=#576 id=576 data-nosnippet>576</a>    underlying: Arc&lt;RwLock&lt;core::rust_crate::RustCrateService&gt;&gt;,
-<a href=#577 id=577 data-nosnippet>577</a>}
-<a href=#578 id=578 data-nosnippet>578</a>
-<a href=#579 id=579 data-nosnippet>579</a><span class="attr">#[pymethods]
-<a href=#580 id=580 data-nosnippet>580</a></span><span class="kw">impl </span>HydroflowCratePorts {
-<a href=#581 id=581 data-nosnippet>581</a>    <span class="kw">fn </span>__getattribute__(<span class="kw-2">&amp;</span><span class="self">self</span>, name: String, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#582 id=582 data-nosnippet>582</a>        <span class="kw">let </span>arc = Arc::new(
-<a href=#583 id=583 data-nosnippet>583</a>            <span class="self">self</span>.underlying
-<a href=#584 id=584 data-nosnippet>584</a>                .try_read()
-<a href=#585 id=585 data-nosnippet>585</a>                .unwrap()
-<a href=#586 id=586 data-nosnippet>586</a>                .get_port(name, <span class="kw-2">&amp;</span><span class="self">self</span>.underlying),
-<a href=#587 id=587 data-nosnippet>587</a>        );
-<a href=#588 id=588 data-nosnippet>588</a>
-<a href=#589 id=589 data-nosnippet>589</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#590 id=590 data-nosnippet>590</a>            py,
-<a href=#591 id=591 data-nosnippet>591</a>            PyClassInitializer::from(HydroflowSink {
-<a href=#592 id=592 data-nosnippet>592</a>                underlying: arc.clone(),
-<a href=#593 id=593 data-nosnippet>593</a>            })
-<a href=#594 id=594 data-nosnippet>594</a>            .add_subclass(HydroflowCratePort { underlying: arc }),
-<a href=#595 id=595 data-nosnippet>595</a>        )<span class="question-mark">?
-<a href=#596 id=596 data-nosnippet>596</a>        </span>.into_py(py))
-<a href=#597 id=597 data-nosnippet>597</a>    }
-<a href=#598 id=598 data-nosnippet>598</a>}
-<a href=#599 id=599 data-nosnippet>599</a>
-<a href=#600 id=600 data-nosnippet>600</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
-<a href=#601 id=601 data-nosnippet>601</a>#[derive(Clone)]
-<a href=#602 id=602 data-nosnippet>602</a></span><span class="kw">struct </span>HydroflowCratePort {
-<a href=#603 id=603 data-nosnippet>603</a>    underlying: Arc&lt;core::rust_crate::ports::RustCratePortConfig&gt;,
-<a href=#604 id=604 data-nosnippet>604</a>}
-<a href=#605 id=605 data-nosnippet>605</a>
-<a href=#606 id=606 data-nosnippet>606</a><span class="attr">#[pymethods]
-<a href=#607 id=607 data-nosnippet>607</a></span><span class="kw">impl </span>HydroflowCratePort {
-<a href=#608 id=608 data-nosnippet>608</a>    <span class="kw">fn </span>merge(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#609 id=609 data-nosnippet>609</a>        <span class="kw">let </span>arc = Arc::new(<span class="self">self</span>.underlying.clone().merge());
-<a href=#610 id=610 data-nosnippet>610</a>
-<a href=#611 id=611 data-nosnippet>611</a>        <span class="prelude-val">Ok</span>(Py::new(
-<a href=#612 id=612 data-nosnippet>612</a>            py,
-<a href=#613 id=613 data-nosnippet>613</a>            PyClassInitializer::from(HydroflowSink {
-<a href=#614 id=614 data-nosnippet>614</a>                underlying: arc.clone(),
-<a href=#615 id=615 data-nosnippet>615</a>            })
-<a href=#616 id=616 data-nosnippet>616</a>            .add_subclass(HydroflowCratePort { underlying: arc }),
-<a href=#617 id=617 data-nosnippet>617</a>        )<span class="question-mark">?
-<a href=#618 id=618 data-nosnippet>618</a>        </span>.into_py(py))
-<a href=#619 id=619 data-nosnippet>619</a>    }
-<a href=#620 id=620 data-nosnippet>620</a>
-<a href=#621 id=621 data-nosnippet>621</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
-<a href=#622 id=622 data-nosnippet>622</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
-<a href=#623 id=623 data-nosnippet>623</a>    }
-<a href=#624 id=624 data-nosnippet>624</a>
-<a href=#625 id=625 data-nosnippet>625</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
-<a href=#626 id=626 data-nosnippet>626</a>        TaggedSource {
-<a href=#627 id=627 data-nosnippet>627</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
-<a href=#628 id=628 data-nosnippet>628</a>                source: <span class="self">self</span>.underlying.clone(),
-<a href=#629 id=629 data-nosnippet>629</a>                tag,
-<a href=#630 id=630 data-nosnippet>630</a>            }),
-<a href=#631 id=631 data-nosnippet>631</a>        }
-<a href=#632 id=632 data-nosnippet>632</a>    }
-<a href=#633 id=633 data-nosnippet>633</a>}
-<a href=#634 id=634 data-nosnippet>634</a>
-<a href=#635 id=635 data-nosnippet>635</a><span class="attr">#[pyfunction]
-<a href=#636 id=636 data-nosnippet>636</a></span><span class="kw">fn </span>demux(mapping: Bound&lt;<span class="lifetime">'_</span>, PyDict&gt;) -&gt; HydroflowSink {
-<a href=#637 id=637 data-nosnippet>637</a>    HydroflowSink {
-<a href=#638 id=638 data-nosnippet>638</a>        underlying: Arc::new(core::rust_crate::ports::DemuxSink {
-<a href=#639 id=639 data-nosnippet>639</a>            demux: mapping
-<a href=#640 id=640 data-nosnippet>640</a>                .into_iter()
-<a href=#641 id=641 data-nosnippet>641</a>                .map(|(k, v)| {
-<a href=#642 id=642 data-nosnippet>642</a>                    <span class="kw">let </span>k = k.extract::&lt;u32&gt;().unwrap();
-<a href=#643 id=643 data-nosnippet>643</a>                    <span class="kw">let </span>v = v.extract::&lt;HydroflowSink&gt;().unwrap();
-<a href=#644 id=644 data-nosnippet>644</a>                    (k, v.underlying)
-<a href=#645 id=645 data-nosnippet>645</a>                })
-<a href=#646 id=646 data-nosnippet>646</a>                .collect(),
-<a href=#647 id=647 data-nosnippet>647</a>        }),
-<a href=#648 id=648 data-nosnippet>648</a>    }
-<a href=#649 id=649 data-nosnippet>649</a>}
-<a href=#650 id=650 data-nosnippet>650</a>
-<a href=#651 id=651 data-nosnippet>651</a><span class="attr">#[pyclass(subclass)]
-<a href=#652 id=652 data-nosnippet>652</a>#[derive(Clone)]
-<a href=#653 id=653 data-nosnippet>653</a></span><span class="kw">struct </span>TaggedSource {
-<a href=#654 id=654 data-nosnippet>654</a>    underlying: Arc&lt;core::rust_crate::ports::TaggedSource&gt;,
-<a href=#655 id=655 data-nosnippet>655</a>}
-<a href=#656 id=656 data-nosnippet>656</a>
-<a href=#657 id=657 data-nosnippet>657</a><span class="attr">#[pymethods]
-<a href=#658 id=658 data-nosnippet>658</a></span><span class="kw">impl </span>TaggedSource {
-<a href=#659 id=659 data-nosnippet>659</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
-<a href=#660 id=660 data-nosnippet>660</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
-<a href=#661 id=661 data-nosnippet>661</a>    }
-<a href=#662 id=662 data-nosnippet>662</a>
-<a href=#663 id=663 data-nosnippet>663</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
-<a href=#664 id=664 data-nosnippet>664</a>        TaggedSource {
-<a href=#665 id=665 data-nosnippet>665</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
-<a href=#666 id=666 data-nosnippet>666</a>                source: <span class="self">self</span>.underlying.clone(),
-<a href=#667 id=667 data-nosnippet>667</a>                tag,
-<a href=#668 id=668 data-nosnippet>668</a>            }),
-<a href=#669 id=669 data-nosnippet>669</a>        }
-<a href=#670 id=670 data-nosnippet>670</a>    }
-<a href=#671 id=671 data-nosnippet>671</a>}
-<a href=#672 id=672 data-nosnippet>672</a>
-<a href=#673 id=673 data-nosnippet>673</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
-<a href=#674 id=674 data-nosnippet>674</a>#[derive(Clone)]
-<a href=#675 id=675 data-nosnippet>675</a></span><span class="kw">struct </span>HydroflowNull {
-<a href=#676 id=676 data-nosnippet>676</a>    underlying: Arc&lt;core::rust_crate::ports::NullSourceSink&gt;,
-<a href=#677 id=677 data-nosnippet>677</a>}
-<a href=#678 id=678 data-nosnippet>678</a>
-<a href=#679 id=679 data-nosnippet>679</a><span class="attr">#[pymethods]
-<a href=#680 id=680 data-nosnippet>680</a></span><span class="kw">impl </span>HydroflowNull {
-<a href=#681 id=681 data-nosnippet>681</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
-<a href=#682 id=682 data-nosnippet>682</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
-<a href=#683 id=683 data-nosnippet>683</a>    }
-<a href=#684 id=684 data-nosnippet>684</a>
-<a href=#685 id=685 data-nosnippet>685</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
-<a href=#686 id=686 data-nosnippet>686</a>        TaggedSource {
-<a href=#687 id=687 data-nosnippet>687</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
-<a href=#688 id=688 data-nosnippet>688</a>                source: <span class="self">self</span>.underlying.clone(),
-<a href=#689 id=689 data-nosnippet>689</a>                tag,
-<a href=#690 id=690 data-nosnippet>690</a>            }),
-<a href=#691 id=691 data-nosnippet>691</a>        }
-<a href=#692 id=692 data-nosnippet>692</a>    }
-<a href=#693 id=693 data-nosnippet>693</a>}
-<a href=#694 id=694 data-nosnippet>694</a>
-<a href=#695 id=695 data-nosnippet>695</a><span class="attr">#[pyfunction]
-<a href=#696 id=696 data-nosnippet>696</a></span><span class="kw">fn </span>null(py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
-<a href=#697 id=697 data-nosnippet>697</a>    <span class="kw">let </span>arc = Arc::new(core::rust_crate::ports::NullSourceSink);
-<a href=#698 id=698 data-nosnippet>698</a>
-<a href=#699 id=699 data-nosnippet>699</a>    <span class="prelude-val">Ok</span>(Py::new(
-<a href=#700 id=700 data-nosnippet>700</a>        py,
-<a href=#701 id=701 data-nosnippet>701</a>        PyClassInitializer::from(HydroflowSink {
-<a href=#702 id=702 data-nosnippet>702</a>            underlying: arc.clone(),
-<a href=#703 id=703 data-nosnippet>703</a>        })
-<a href=#704 id=704 data-nosnippet>704</a>        .add_subclass(HydroflowNull { underlying: arc }),
-<a href=#705 id=705 data-nosnippet>705</a>    )<span class="question-mark">?
-<a href=#706 id=706 data-nosnippet>706</a>    </span>.into_py(py))
-<a href=#707 id=707 data-nosnippet>707</a>}
-<a href=#708 id=708 data-nosnippet>708</a>
-<a href=#709 id=709 data-nosnippet>709</a><span class="attr">#[pyclass]
-<a href=#710 id=710 data-nosnippet>710</a></span><span class="kw">struct </span>ServerPort {
-<a href=#711 id=711 data-nosnippet>711</a>    underlying: hydro_deploy_integration::ServerPort,
-<a href=#712 id=712 data-nosnippet>712</a>}
-<a href=#713 id=713 data-nosnippet>713</a>
-<a href=#714 id=714 data-nosnippet>714</a><span class="kw">fn </span>with_tokio_runtime&lt;T&gt;(f: <span class="kw">impl </span>Fn() -&gt; T) -&gt; T {
-<a href=#715 id=715 data-nosnippet>715</a>    <span class="kw">let </span>runtime_read = TOKIO_RUNTIME.read().unwrap();
-<a href=#716 id=716 data-nosnippet>716</a>    <span class="kw">let </span>_guard = runtime_read.as_ref().unwrap().enter();
-<a href=#717 id=717 data-nosnippet>717</a>    f()
-<a href=#718 id=718 data-nosnippet>718</a>}
-<a href=#719 id=719 data-nosnippet>719</a>
-<a href=#720 id=720 data-nosnippet>720</a><span class="attr">#[pymethods]
-<a href=#721 id=721 data-nosnippet>721</a></span><span class="kw">impl </span>ServerPort {
-<a href=#722 id=722 data-nosnippet>722</a>    <span class="kw">fn </span>json(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; Py&lt;PyAny&gt; {
-<a href=#723 id=723 data-nosnippet>723</a>        pythonize(py, <span class="kw-2">&amp;</span><span class="self">self</span>.underlying).unwrap()
-<a href=#724 id=724 data-nosnippet>724</a>    }
-<a href=#725 id=725 data-nosnippet>725</a>
-<a href=#726 id=726 data-nosnippet>726</a>    <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
-<a href=#727 id=727 data-nosnippet>727</a>    </span><span class="kw">fn </span>into_source&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#728 id=728 data-nosnippet>728</a>        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
-<a href=#729 id=729 data-nosnippet>729</a>
-<a href=#730 id=730 data-nosnippet>730</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#731 id=731 data-nosnippet>731</a>            <span class="prelude-val">Ok</span>(PythonStream {
-<a href=#732 id=732 data-nosnippet>732</a>                underlying: Arc::new(RwLock::new(
-<a href=#733 id=733 data-nosnippet>733</a>                    realized.connect::&lt;ConnectedDirect&gt;().<span class="kw">await</span>.into_source(),
-<a href=#734 id=734 data-nosnippet>734</a>                )),
-<a href=#735 id=735 data-nosnippet>735</a>            })
-<a href=#736 id=736 data-nosnippet>736</a>        })
-<a href=#737 id=737 data-nosnippet>737</a>    }
-<a href=#738 id=738 data-nosnippet>738</a>
-<a href=#739 id=739 data-nosnippet>739</a>    <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
-<a href=#740 id=740 data-nosnippet>740</a>    </span><span class="kw">fn </span>into_sink&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#741 id=741 data-nosnippet>741</a>        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
-<a href=#742 id=742 data-nosnippet>742</a>
-<a href=#743 id=743 data-nosnippet>743</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#744 id=744 data-nosnippet>744</a>            <span class="prelude-val">Ok</span>(PythonSink {
-<a href=#745 id=745 data-nosnippet>745</a>                underlying: Arc::new(RwLock::new(
-<a href=#746 id=746 data-nosnippet>746</a>                    realized.connect::&lt;ConnectedDirect&gt;().<span class="kw">await</span>.into_sink(),
-<a href=#747 id=747 data-nosnippet>747</a>                )),
-<a href=#748 id=748 data-nosnippet>748</a>            })
-<a href=#749 id=749 data-nosnippet>749</a>        })
-<a href=#750 id=750 data-nosnippet>750</a>    }
-<a href=#751 id=751 data-nosnippet>751</a>}
-<a href=#752 id=752 data-nosnippet>752</a>
-<a href=#753 id=753 data-nosnippet>753</a><span class="attr">#[pyclass]
-<a href=#754 id=754 data-nosnippet>754</a>#[derive(Clone)]
-<a href=#755 id=755 data-nosnippet>755</a></span><span class="kw">struct </span>PythonSink {
-<a href=#756 id=756 data-nosnippet>756</a>    underlying: Arc&lt;RwLock&lt;DynSink&lt;Bytes&gt;&gt;&gt;,
-<a href=#757 id=757 data-nosnippet>757</a>}
-<a href=#758 id=758 data-nosnippet>758</a>
-<a href=#759 id=759 data-nosnippet>759</a><span class="attr">#[pymethods]
-<a href=#760 id=760 data-nosnippet>760</a></span><span class="kw">impl </span>PythonSink {
-<a href=#761 id=761 data-nosnippet>761</a>    <span class="kw">fn </span>send&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Py&lt;PyBytes&gt;, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#762 id=762 data-nosnippet>762</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#763 id=763 data-nosnippet>763</a>        <span class="kw">let </span>bytes = Bytes::from(data.as_bytes(py).to_vec());
-<a href=#764 id=764 data-nosnippet>764</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#765 id=765 data-nosnippet>765</a>            underlying.write().<span class="kw">await</span>.send(bytes).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#766 id=766 data-nosnippet>766</a>            <span class="prelude-val">Ok</span>(())
-<a href=#767 id=767 data-nosnippet>767</a>        })
-<a href=#768 id=768 data-nosnippet>768</a>    }
-<a href=#769 id=769 data-nosnippet>769</a>}
-<a href=#770 id=770 data-nosnippet>770</a>
-<a href=#771 id=771 data-nosnippet>771</a><span class="attr">#[pyclass]
-<a href=#772 id=772 data-nosnippet>772</a>#[derive(Clone)]
-<a href=#773 id=773 data-nosnippet>773</a></span><span class="kw">struct </span>PythonStream {
-<a href=#774 id=774 data-nosnippet>774</a>    underlying: Arc&lt;RwLock&lt;DynStream&gt;&gt;,
-<a href=#775 id=775 data-nosnippet>775</a>}
-<a href=#776 id=776 data-nosnippet>776</a>
-<a href=#777 id=777 data-nosnippet>777</a><span class="attr">#[pymethods]
-<a href=#778 id=778 data-nosnippet>778</a></span><span class="kw">impl </span>PythonStream {
-<a href=#779 id=779 data-nosnippet>779</a>    <span class="kw">fn </span>__aiter__(slf: PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt;) -&gt; PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt; {
-<a href=#780 id=780 data-nosnippet>780</a>        slf
-<a href=#781 id=781 data-nosnippet>781</a>    }
-<a href=#782 id=782 data-nosnippet>782</a>
-<a href=#783 id=783 data-nosnippet>783</a>    <span class="kw">fn </span>__anext__&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
-<a href=#784 id=784 data-nosnippet>784</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
-<a href=#785 id=785 data-nosnippet>785</a>        <span class="prelude-val">Some</span>(
-<a href=#786 id=786 data-nosnippet>786</a>            interruptible_future_to_py(py, <span class="kw">async move </span>{
-<a href=#787 id=787 data-nosnippet>787</a>                <span class="kw">let </span>read_res = underlying.write().<span class="kw">await</span>.next().<span class="kw">await</span>;
-<a href=#788 id=788 data-nosnippet>788</a>                read_res
-<a href=#789 id=789 data-nosnippet>789</a>                    .and_then(|b| b.ok().map(|b| b.to_vec()))
-<a href=#790 id=790 data-nosnippet>790</a>                    .map(<span class="prelude-val">Ok</span>)
-<a href=#791 id=791 data-nosnippet>791</a>                    .unwrap_or(<span class="prelude-val">Err</span>(PyStopAsyncIteration::new_err(())))
-<a href=#792 id=792 data-nosnippet>792</a>            })
-<a href=#793 id=793 data-nosnippet>793</a>            .unwrap(),
-<a href=#794 id=794 data-nosnippet>794</a>        )
-<a href=#795 id=795 data-nosnippet>795</a>    }
-<a href=#796 id=796 data-nosnippet>796</a>}
-<a href=#797 id=797 data-nosnippet>797</a>
-<a href=#798 id=798 data-nosnippet>798</a><span class="attr">#[pymodule]
-<a href=#799 id=799 data-nosnippet>799</a></span><span class="kw">pub fn </span>_core(py: Python&lt;<span class="lifetime">'_</span>&gt;, module: Bound&lt;<span class="lifetime">'_</span>, PyModule&gt;) -&gt; PyResult&lt;()&gt; {
-<a href=#800 id=800 data-nosnippet>800</a>    <span class="kw">unsafe </span>{
-<a href=#801 id=801 data-nosnippet>801</a>        pyo3::ffi::PyEval_InitThreads();
-<a href=#802 id=802 data-nosnippet>802</a>    }
-<a href=#803 id=803 data-nosnippet>803</a>
-<a href=#804 id=804 data-nosnippet>804</a>    CONVERTERS_MODULE
-<a href=#805 id=805 data-nosnippet>805</a>        .set(
-<a href=#806 id=806 data-nosnippet>806</a>            PyModule::from_code_bound(
-<a href=#807 id=807 data-nosnippet>807</a>                py,
-<a href=#808 id=808 data-nosnippet>808</a>                <span class="string">"
-<a href=#809 id=809 data-nosnippet>809</a>import asyncio
-<a href=#810 id=810 data-nosnippet>810</a>async def coroutine_to_safely_cancellable(c, cancel_token):
-<a href=#811 id=811 data-nosnippet>811</a>    try:
-<a href=#812 id=812 data-nosnippet>812</a>        return await asyncio.shield(c)
-<a href=#813 id=813 data-nosnippet>813</a>    except asyncio.CancelledError:
-<a href=#814 id=814 data-nosnippet>814</a>        cancel_token.safe_cancel()
-<a href=#815 id=815 data-nosnippet>815</a>        await c
-<a href=#816 id=816 data-nosnippet>816</a>        raise asyncio.CancelledError()
-<a href=#817 id=817 data-nosnippet>817</a>"</span>,
-<a href=#818 id=818 data-nosnippet>818</a>                <span class="string">"converters"</span>,
-<a href=#819 id=819 data-nosnippet>819</a>                <span class="string">"converters"</span>,
-<a href=#820 id=820 data-nosnippet>820</a>            )<span class="question-mark">?
-<a href=#821 id=821 data-nosnippet>821</a>            </span>.into(),
-<a href=#822 id=822 data-nosnippet>822</a>        )
-<a href=#823 id=823 data-nosnippet>823</a>        .unwrap();
-<a href=#824 id=824 data-nosnippet>824</a>
-<a href=#825 id=825 data-nosnippet>825</a>    <span class="kw-2">*</span>TOKIO_RUNTIME.write().unwrap() = <span class="prelude-val">Some</span>(tokio::runtime::Runtime::new().unwrap());
-<a href=#826 id=826 data-nosnippet>826</a>    <span class="kw">let </span>atexit = PyModule::import_bound(py, <span class="string">"atexit"</span>)<span class="question-mark">?</span>;
-<a href=#827 id=827 data-nosnippet>827</a>    atexit.call_method1(<span class="string">"register"</span>, (<span class="macro">wrap_pyfunction!</span>(cleanup_runtime, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>,))<span class="question-mark">?</span>;
-<a href=#828 id=828 data-nosnippet>828</a>
-<a href=#829 id=829 data-nosnippet>829</a>    module.add(<span class="string">"AnyhowError"</span>, py.get_type_bound::&lt;AnyhowError&gt;())<span class="question-mark">?</span>;
-<a href=#830 id=830 data-nosnippet>830</a>    module.add_class::&lt;AnyhowWrapper&gt;()<span class="question-mark">?</span>;
-<a href=#831 id=831 data-nosnippet>831</a>
-<a href=#832 id=832 data-nosnippet>832</a>    module.add_class::&lt;HydroflowSink&gt;()<span class="question-mark">?</span>;
-<a href=#833 id=833 data-nosnippet>833</a>    module.add_class::&lt;Deployment&gt;()<span class="question-mark">?</span>;
-<a href=#834 id=834 data-nosnippet>834</a>
-<a href=#835 id=835 data-nosnippet>835</a>    module.add_class::&lt;Host&gt;()<span class="question-mark">?</span>;
-<a href=#836 id=836 data-nosnippet>836</a>    module.add_class::&lt;LocalhostHost&gt;()<span class="question-mark">?</span>;
-<a href=#837 id=837 data-nosnippet>837</a>
-<a href=#838 id=838 data-nosnippet>838</a>    module.add_class::&lt;GcpNetwork&gt;()<span class="question-mark">?</span>;
-<a href=#839 id=839 data-nosnippet>839</a>    module.add_class::&lt;GcpComputeEngineHost&gt;()<span class="question-mark">?</span>;
-<a href=#840 id=840 data-nosnippet>840</a>
-<a href=#841 id=841 data-nosnippet>841</a>    module.add_class::&lt;Service&gt;()<span class="question-mark">?</span>;
-<a href=#842 id=842 data-nosnippet>842</a>    module.add_class::&lt;CustomService&gt;()<span class="question-mark">?</span>;
-<a href=#843 id=843 data-nosnippet>843</a>    module.add_class::&lt;CustomClientPort&gt;()<span class="question-mark">?</span>;
-<a href=#844 id=844 data-nosnippet>844</a>    module.add_class::&lt;HydroflowCrate&gt;()<span class="question-mark">?</span>;
-<a href=#845 id=845 data-nosnippet>845</a>    module.add_class::&lt;HydroflowCratePort&gt;()<span class="question-mark">?</span>;
-<a href=#846 id=846 data-nosnippet>846</a>
-<a href=#847 id=847 data-nosnippet>847</a>    module.add_class::&lt;ServerPort&gt;()<span class="question-mark">?</span>;
-<a href=#848 id=848 data-nosnippet>848</a>    module.add_class::&lt;PythonSink&gt;()<span class="question-mark">?</span>;
-<a href=#849 id=849 data-nosnippet>849</a>    module.add_class::&lt;PythonStream&gt;()<span class="question-mark">?</span>;
-<a href=#850 id=850 data-nosnippet>850</a>
-<a href=#851 id=851 data-nosnippet>851</a>    module.add_function(<span class="macro">wrap_pyfunction!</span>(demux, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-<a href=#852 id=852 data-nosnippet>852</a>    module.add_function(<span class="macro">wrap_pyfunction!</span>(null, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-<a href=#853 id=853 data-nosnippet>853</a>
-<a href=#854 id=854 data-nosnippet>854</a>    module.add_wrapped(<span class="macro">wrap_pymodule!</span>(cli::cli))<span class="question-mark">?</span>;
+<a href=#469 id=469 data-nosnippet>469</a>                    </span>.recv()
+<a href=#470 id=470 data-nosnippet>470</a>                    .<span class="kw">await
+<a href=#471 id=471 data-nosnippet>471</a>                    </span>.ok_or_else(|| PyStopAsyncIteration::new_err(()))
+<a href=#472 id=472 data-nosnippet>472</a>            })
+<a href=#473 id=473 data-nosnippet>473</a>            .unwrap(),
+<a href=#474 id=474 data-nosnippet>474</a>        )
+<a href=#475 id=475 data-nosnippet>475</a>    }
+<a href=#476 id=476 data-nosnippet>476</a>}
+<a href=#477 id=477 data-nosnippet>477</a>
+<a href=#478 id=478 data-nosnippet>478</a><span class="attr">#[pyclass(extends=Service, subclass)]
+<a href=#479 id=479 data-nosnippet>479</a></span><span class="kw">struct </span>CustomService {
+<a href=#480 id=480 data-nosnippet>480</a>    underlying: Arc&lt;RwLock&lt;core::CustomService&gt;&gt;,
+<a href=#481 id=481 data-nosnippet>481</a>}
+<a href=#482 id=482 data-nosnippet>482</a>
+<a href=#483 id=483 data-nosnippet>483</a><span class="attr">#[pymethods]
+<a href=#484 id=484 data-nosnippet>484</a></span><span class="kw">impl </span>CustomService {
+<a href=#485 id=485 data-nosnippet>485</a>    <span class="kw">fn </span>client_port(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#486 id=486 data-nosnippet>486</a>        <span class="kw">let </span>arc = Arc::new(core::custom_service::CustomClientPort::new(Arc::downgrade(
+<a href=#487 id=487 data-nosnippet>487</a>            <span class="kw-2">&amp;</span><span class="self">self</span>.underlying,
+<a href=#488 id=488 data-nosnippet>488</a>        )));
+<a href=#489 id=489 data-nosnippet>489</a>
+<a href=#490 id=490 data-nosnippet>490</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#491 id=491 data-nosnippet>491</a>            py,
+<a href=#492 id=492 data-nosnippet>492</a>            PyClassInitializer::from(HydroflowSink {
+<a href=#493 id=493 data-nosnippet>493</a>                underlying: arc.clone(),
+<a href=#494 id=494 data-nosnippet>494</a>            })
+<a href=#495 id=495 data-nosnippet>495</a>            .add_subclass(CustomClientPort { underlying: arc }),
+<a href=#496 id=496 data-nosnippet>496</a>        )<span class="question-mark">?
+<a href=#497 id=497 data-nosnippet>497</a>        </span>.into_py(py))
+<a href=#498 id=498 data-nosnippet>498</a>    }
+<a href=#499 id=499 data-nosnippet>499</a>}
+<a href=#500 id=500 data-nosnippet>500</a>
+<a href=#501 id=501 data-nosnippet>501</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
+<a href=#502 id=502 data-nosnippet>502</a>#[derive(Clone)]
+<a href=#503 id=503 data-nosnippet>503</a></span><span class="kw">struct </span>CustomClientPort {
+<a href=#504 id=504 data-nosnippet>504</a>    underlying: Arc&lt;core::custom_service::CustomClientPort&gt;,
+<a href=#505 id=505 data-nosnippet>505</a>}
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a><span class="attr">#[pymethods]
+<a href=#508 id=508 data-nosnippet>508</a></span><span class="kw">impl </span>CustomClientPort {
+<a href=#509 id=509 data-nosnippet>509</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
+<a href=#510 id=510 data-nosnippet>510</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
+<a href=#511 id=511 data-nosnippet>511</a>    }
+<a href=#512 id=512 data-nosnippet>512</a>
+<a href=#513 id=513 data-nosnippet>513</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
+<a href=#514 id=514 data-nosnippet>514</a>        TaggedSource {
+<a href=#515 id=515 data-nosnippet>515</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
+<a href=#516 id=516 data-nosnippet>516</a>                source: <span class="self">self</span>.underlying.clone(),
+<a href=#517 id=517 data-nosnippet>517</a>                tag,
+<a href=#518 id=518 data-nosnippet>518</a>            }),
+<a href=#519 id=519 data-nosnippet>519</a>        }
+<a href=#520 id=520 data-nosnippet>520</a>    }
+<a href=#521 id=521 data-nosnippet>521</a>
+<a href=#522 id=522 data-nosnippet>522</a>    <span class="kw">fn </span>server_port&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#523 id=523 data-nosnippet>523</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#524 id=524 data-nosnippet>524</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#525 id=525 data-nosnippet>525</a>            <span class="prelude-val">Ok</span>(ServerPort {
+<a href=#526 id=526 data-nosnippet>526</a>                underlying: underlying.server_port().<span class="kw">await</span>,
+<a href=#527 id=527 data-nosnippet>527</a>            })
+<a href=#528 id=528 data-nosnippet>528</a>        })
+<a href=#529 id=529 data-nosnippet>529</a>    }
+<a href=#530 id=530 data-nosnippet>530</a>}
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a><span class="attr">#[pyclass(extends=Service, subclass)]
+<a href=#533 id=533 data-nosnippet>533</a></span><span class="kw">struct </span>HydroflowCrate {
+<a href=#534 id=534 data-nosnippet>534</a>    underlying: Arc&lt;RwLock&lt;core::rust_crate::RustCrateService&gt;&gt;,
+<a href=#535 id=535 data-nosnippet>535</a>}
+<a href=#536 id=536 data-nosnippet>536</a>
+<a href=#537 id=537 data-nosnippet>537</a><span class="attr">#[pymethods]
+<a href=#538 id=538 data-nosnippet>538</a></span><span class="kw">impl </span>HydroflowCrate {
+<a href=#539 id=539 data-nosnippet>539</a>    <span class="kw">fn </span>stdout&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#540 id=540 data-nosnippet>540</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#541 id=541 data-nosnippet>541</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#542 id=542 data-nosnippet>542</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
+<a href=#543 id=543 data-nosnippet>543</a>            <span class="prelude-val">Ok</span>(PyReceiver {
+<a href=#544 id=544 data-nosnippet>544</a>                receiver: Arc::new(Mutex::new(underlying.stdout())),
+<a href=#545 id=545 data-nosnippet>545</a>            })
+<a href=#546 id=546 data-nosnippet>546</a>        })
+<a href=#547 id=547 data-nosnippet>547</a>    }
+<a href=#548 id=548 data-nosnippet>548</a>
+<a href=#549 id=549 data-nosnippet>549</a>    <span class="kw">fn </span>stderr&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#550 id=550 data-nosnippet>550</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#551 id=551 data-nosnippet>551</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#552 id=552 data-nosnippet>552</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
+<a href=#553 id=553 data-nosnippet>553</a>            <span class="prelude-val">Ok</span>(PyReceiver {
+<a href=#554 id=554 data-nosnippet>554</a>                receiver: Arc::new(Mutex::new(underlying.stderr())),
+<a href=#555 id=555 data-nosnippet>555</a>            })
+<a href=#556 id=556 data-nosnippet>556</a>        })
+<a href=#557 id=557 data-nosnippet>557</a>    }
+<a href=#558 id=558 data-nosnippet>558</a>
+<a href=#559 id=559 data-nosnippet>559</a>    <span class="kw">fn </span>exit_code&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#560 id=560 data-nosnippet>560</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#561 id=561 data-nosnippet>561</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#562 id=562 data-nosnippet>562</a>            <span class="kw">let </span>underlying = underlying.read().<span class="kw">await</span>;
+<a href=#563 id=563 data-nosnippet>563</a>            <span class="prelude-val">Ok</span>(underlying.exit_code())
+<a href=#564 id=564 data-nosnippet>564</a>        })
+<a href=#565 id=565 data-nosnippet>565</a>    }
+<a href=#566 id=566 data-nosnippet>566</a>
+<a href=#567 id=567 data-nosnippet>567</a>    <span class="attr">#[getter]
+<a href=#568 id=568 data-nosnippet>568</a>    </span><span class="kw">fn </span>ports(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HydroflowCratePorts {
+<a href=#569 id=569 data-nosnippet>569</a>        HydroflowCratePorts {
+<a href=#570 id=570 data-nosnippet>570</a>            underlying: <span class="self">self</span>.underlying.clone(),
+<a href=#571 id=571 data-nosnippet>571</a>        }
+<a href=#572 id=572 data-nosnippet>572</a>    }
+<a href=#573 id=573 data-nosnippet>573</a>}
+<a href=#574 id=574 data-nosnippet>574</a>
+<a href=#575 id=575 data-nosnippet>575</a><span class="attr">#[pyclass]
+<a href=#576 id=576 data-nosnippet>576</a>#[derive(Clone)]
+<a href=#577 id=577 data-nosnippet>577</a></span><span class="kw">struct </span>HydroflowCratePorts {
+<a href=#578 id=578 data-nosnippet>578</a>    underlying: Arc&lt;RwLock&lt;core::rust_crate::RustCrateService&gt;&gt;,
+<a href=#579 id=579 data-nosnippet>579</a>}
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a><span class="attr">#[pymethods]
+<a href=#582 id=582 data-nosnippet>582</a></span><span class="kw">impl </span>HydroflowCratePorts {
+<a href=#583 id=583 data-nosnippet>583</a>    <span class="kw">fn </span>__getattribute__(<span class="kw-2">&amp;</span><span class="self">self</span>, name: String, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#584 id=584 data-nosnippet>584</a>        <span class="kw">let </span>arc = Arc::new(
+<a href=#585 id=585 data-nosnippet>585</a>            <span class="self">self</span>.underlying
+<a href=#586 id=586 data-nosnippet>586</a>                .try_read()
+<a href=#587 id=587 data-nosnippet>587</a>                .unwrap()
+<a href=#588 id=588 data-nosnippet>588</a>                .get_port(name, <span class="kw-2">&amp;</span><span class="self">self</span>.underlying),
+<a href=#589 id=589 data-nosnippet>589</a>        );
+<a href=#590 id=590 data-nosnippet>590</a>
+<a href=#591 id=591 data-nosnippet>591</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#592 id=592 data-nosnippet>592</a>            py,
+<a href=#593 id=593 data-nosnippet>593</a>            PyClassInitializer::from(HydroflowSink {
+<a href=#594 id=594 data-nosnippet>594</a>                underlying: arc.clone(),
+<a href=#595 id=595 data-nosnippet>595</a>            })
+<a href=#596 id=596 data-nosnippet>596</a>            .add_subclass(HydroflowCratePort { underlying: arc }),
+<a href=#597 id=597 data-nosnippet>597</a>        )<span class="question-mark">?
+<a href=#598 id=598 data-nosnippet>598</a>        </span>.into_py(py))
+<a href=#599 id=599 data-nosnippet>599</a>    }
+<a href=#600 id=600 data-nosnippet>600</a>}
+<a href=#601 id=601 data-nosnippet>601</a>
+<a href=#602 id=602 data-nosnippet>602</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
+<a href=#603 id=603 data-nosnippet>603</a>#[derive(Clone)]
+<a href=#604 id=604 data-nosnippet>604</a></span><span class="kw">struct </span>HydroflowCratePort {
+<a href=#605 id=605 data-nosnippet>605</a>    underlying: Arc&lt;core::rust_crate::ports::RustCratePortConfig&gt;,
+<a href=#606 id=606 data-nosnippet>606</a>}
+<a href=#607 id=607 data-nosnippet>607</a>
+<a href=#608 id=608 data-nosnippet>608</a><span class="attr">#[pymethods]
+<a href=#609 id=609 data-nosnippet>609</a></span><span class="kw">impl </span>HydroflowCratePort {
+<a href=#610 id=610 data-nosnippet>610</a>    <span class="kw">fn </span>merge(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span>arc = Arc::new(<span class="self">self</span>.underlying.clone().merge());
+<a href=#612 id=612 data-nosnippet>612</a>
+<a href=#613 id=613 data-nosnippet>613</a>        <span class="prelude-val">Ok</span>(Py::new(
+<a href=#614 id=614 data-nosnippet>614</a>            py,
+<a href=#615 id=615 data-nosnippet>615</a>            PyClassInitializer::from(HydroflowSink {
+<a href=#616 id=616 data-nosnippet>616</a>                underlying: arc.clone(),
+<a href=#617 id=617 data-nosnippet>617</a>            })
+<a href=#618 id=618 data-nosnippet>618</a>            .add_subclass(HydroflowCratePort { underlying: arc }),
+<a href=#619 id=619 data-nosnippet>619</a>        )<span class="question-mark">?
+<a href=#620 id=620 data-nosnippet>620</a>        </span>.into_py(py))
+<a href=#621 id=621 data-nosnippet>621</a>    }
+<a href=#622 id=622 data-nosnippet>622</a>
+<a href=#623 id=623 data-nosnippet>623</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
+<a href=#624 id=624 data-nosnippet>624</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
+<a href=#625 id=625 data-nosnippet>625</a>    }
+<a href=#626 id=626 data-nosnippet>626</a>
+<a href=#627 id=627 data-nosnippet>627</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
+<a href=#628 id=628 data-nosnippet>628</a>        TaggedSource {
+<a href=#629 id=629 data-nosnippet>629</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
+<a href=#630 id=630 data-nosnippet>630</a>                source: <span class="self">self</span>.underlying.clone(),
+<a href=#631 id=631 data-nosnippet>631</a>                tag,
+<a href=#632 id=632 data-nosnippet>632</a>            }),
+<a href=#633 id=633 data-nosnippet>633</a>        }
+<a href=#634 id=634 data-nosnippet>634</a>    }
+<a href=#635 id=635 data-nosnippet>635</a>}
+<a href=#636 id=636 data-nosnippet>636</a>
+<a href=#637 id=637 data-nosnippet>637</a><span class="attr">#[pyfunction]
+<a href=#638 id=638 data-nosnippet>638</a></span><span class="kw">fn </span>demux(mapping: Bound&lt;<span class="lifetime">'_</span>, PyDict&gt;) -&gt; HydroflowSink {
+<a href=#639 id=639 data-nosnippet>639</a>    HydroflowSink {
+<a href=#640 id=640 data-nosnippet>640</a>        underlying: Arc::new(core::rust_crate::ports::DemuxSink {
+<a href=#641 id=641 data-nosnippet>641</a>            demux: mapping
+<a href=#642 id=642 data-nosnippet>642</a>                .into_iter()
+<a href=#643 id=643 data-nosnippet>643</a>                .map(|(k, v)| {
+<a href=#644 id=644 data-nosnippet>644</a>                    <span class="kw">let </span>k = k.extract::&lt;u32&gt;().unwrap();
+<a href=#645 id=645 data-nosnippet>645</a>                    <span class="kw">let </span>v = v.extract::&lt;HydroflowSink&gt;().unwrap();
+<a href=#646 id=646 data-nosnippet>646</a>                    (k, v.underlying)
+<a href=#647 id=647 data-nosnippet>647</a>                })
+<a href=#648 id=648 data-nosnippet>648</a>                .collect(),
+<a href=#649 id=649 data-nosnippet>649</a>        }),
+<a href=#650 id=650 data-nosnippet>650</a>    }
+<a href=#651 id=651 data-nosnippet>651</a>}
+<a href=#652 id=652 data-nosnippet>652</a>
+<a href=#653 id=653 data-nosnippet>653</a><span class="attr">#[pyclass(subclass)]
+<a href=#654 id=654 data-nosnippet>654</a>#[derive(Clone)]
+<a href=#655 id=655 data-nosnippet>655</a></span><span class="kw">struct </span>TaggedSource {
+<a href=#656 id=656 data-nosnippet>656</a>    underlying: Arc&lt;core::rust_crate::ports::TaggedSource&gt;,
+<a href=#657 id=657 data-nosnippet>657</a>}
+<a href=#658 id=658 data-nosnippet>658</a>
+<a href=#659 id=659 data-nosnippet>659</a><span class="attr">#[pymethods]
+<a href=#660 id=660 data-nosnippet>660</a></span><span class="kw">impl </span>TaggedSource {
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
+<a href=#662 id=662 data-nosnippet>662</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
+<a href=#663 id=663 data-nosnippet>663</a>    }
+<a href=#664 id=664 data-nosnippet>664</a>
+<a href=#665 id=665 data-nosnippet>665</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
+<a href=#666 id=666 data-nosnippet>666</a>        TaggedSource {
+<a href=#667 id=667 data-nosnippet>667</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
+<a href=#668 id=668 data-nosnippet>668</a>                source: <span class="self">self</span>.underlying.clone(),
+<a href=#669 id=669 data-nosnippet>669</a>                tag,
+<a href=#670 id=670 data-nosnippet>670</a>            }),
+<a href=#671 id=671 data-nosnippet>671</a>        }
+<a href=#672 id=672 data-nosnippet>672</a>    }
+<a href=#673 id=673 data-nosnippet>673</a>}
+<a href=#674 id=674 data-nosnippet>674</a>
+<a href=#675 id=675 data-nosnippet>675</a><span class="attr">#[pyclass(extends=HydroflowSink, subclass)]
+<a href=#676 id=676 data-nosnippet>676</a>#[derive(Clone)]
+<a href=#677 id=677 data-nosnippet>677</a></span><span class="kw">struct </span>HydroflowNull {
+<a href=#678 id=678 data-nosnippet>678</a>    underlying: Arc&lt;core::rust_crate::ports::NullSourceSink&gt;,
+<a href=#679 id=679 data-nosnippet>679</a>}
+<a href=#680 id=680 data-nosnippet>680</a>
+<a href=#681 id=681 data-nosnippet>681</a><span class="attr">#[pymethods]
+<a href=#682 id=682 data-nosnippet>682</a></span><span class="kw">impl </span>HydroflowNull {
+<a href=#683 id=683 data-nosnippet>683</a>    <span class="kw">fn </span>send_to(<span class="kw-2">&amp;</span><span class="self">self</span>, to: <span class="kw-2">&amp;</span>HydroflowSink) {
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="self">self</span>.underlying.send_to(to.underlying.deref());
+<a href=#685 id=685 data-nosnippet>685</a>    }
+<a href=#686 id=686 data-nosnippet>686</a>
+<a href=#687 id=687 data-nosnippet>687</a>    <span class="kw">fn </span>tagged(<span class="kw-2">&amp;</span><span class="self">self</span>, tag: u32) -&gt; TaggedSource {
+<a href=#688 id=688 data-nosnippet>688</a>        TaggedSource {
+<a href=#689 id=689 data-nosnippet>689</a>            underlying: Arc::new(core::rust_crate::ports::TaggedSource {
+<a href=#690 id=690 data-nosnippet>690</a>                source: <span class="self">self</span>.underlying.clone(),
+<a href=#691 id=691 data-nosnippet>691</a>                tag,
+<a href=#692 id=692 data-nosnippet>692</a>            }),
+<a href=#693 id=693 data-nosnippet>693</a>        }
+<a href=#694 id=694 data-nosnippet>694</a>    }
+<a href=#695 id=695 data-nosnippet>695</a>}
+<a href=#696 id=696 data-nosnippet>696</a>
+<a href=#697 id=697 data-nosnippet>697</a><span class="attr">#[pyfunction]
+<a href=#698 id=698 data-nosnippet>698</a></span><span class="kw">fn </span>null(py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; PyResult&lt;Py&lt;PyAny&gt;&gt; {
+<a href=#699 id=699 data-nosnippet>699</a>    <span class="kw">let </span>arc = Arc::new(core::rust_crate::ports::NullSourceSink);
+<a href=#700 id=700 data-nosnippet>700</a>
+<a href=#701 id=701 data-nosnippet>701</a>    <span class="prelude-val">Ok</span>(Py::new(
+<a href=#702 id=702 data-nosnippet>702</a>        py,
+<a href=#703 id=703 data-nosnippet>703</a>        PyClassInitializer::from(HydroflowSink {
+<a href=#704 id=704 data-nosnippet>704</a>            underlying: arc.clone(),
+<a href=#705 id=705 data-nosnippet>705</a>        })
+<a href=#706 id=706 data-nosnippet>706</a>        .add_subclass(HydroflowNull { underlying: arc }),
+<a href=#707 id=707 data-nosnippet>707</a>    )<span class="question-mark">?
+<a href=#708 id=708 data-nosnippet>708</a>    </span>.into_py(py))
+<a href=#709 id=709 data-nosnippet>709</a>}
+<a href=#710 id=710 data-nosnippet>710</a>
+<a href=#711 id=711 data-nosnippet>711</a><span class="attr">#[pyclass]
+<a href=#712 id=712 data-nosnippet>712</a></span><span class="kw">struct </span>ServerPort {
+<a href=#713 id=713 data-nosnippet>713</a>    underlying: hydro_deploy_integration::ServerPort,
+<a href=#714 id=714 data-nosnippet>714</a>}
+<a href=#715 id=715 data-nosnippet>715</a>
+<a href=#716 id=716 data-nosnippet>716</a><span class="kw">fn </span>with_tokio_runtime&lt;T&gt;(f: <span class="kw">impl </span>Fn() -&gt; T) -&gt; T {
+<a href=#717 id=717 data-nosnippet>717</a>    <span class="kw">let </span>runtime_read = TOKIO_RUNTIME.read().unwrap();
+<a href=#718 id=718 data-nosnippet>718</a>    <span class="kw">let </span>_guard = runtime_read.as_ref().unwrap().enter();
+<a href=#719 id=719 data-nosnippet>719</a>    f()
+<a href=#720 id=720 data-nosnippet>720</a>}
+<a href=#721 id=721 data-nosnippet>721</a>
+<a href=#722 id=722 data-nosnippet>722</a><span class="attr">#[pymethods]
+<a href=#723 id=723 data-nosnippet>723</a></span><span class="kw">impl </span>ServerPort {
+<a href=#724 id=724 data-nosnippet>724</a>    <span class="kw">fn </span>json(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'_</span>&gt;) -&gt; Py&lt;PyAny&gt; {
+<a href=#725 id=725 data-nosnippet>725</a>        pythonize(py, <span class="kw-2">&amp;</span><span class="self">self</span>.underlying).unwrap()
+<a href=#726 id=726 data-nosnippet>726</a>    }
+<a href=#727 id=727 data-nosnippet>727</a>
+<a href=#728 id=728 data-nosnippet>728</a>    <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
+<a href=#729 id=729 data-nosnippet>729</a>    </span><span class="kw">fn </span>into_source&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#730 id=730 data-nosnippet>730</a>        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
+<a href=#731 id=731 data-nosnippet>731</a>
+<a href=#732 id=732 data-nosnippet>732</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#733 id=733 data-nosnippet>733</a>            <span class="prelude-val">Ok</span>(PythonStream {
+<a href=#734 id=734 data-nosnippet>734</a>                underlying: Arc::new(RwLock::new(
+<a href=#735 id=735 data-nosnippet>735</a>                    realized.connect::&lt;ConnectedDirect&gt;().<span class="kw">await</span>.into_source(),
+<a href=#736 id=736 data-nosnippet>736</a>                )),
+<a href=#737 id=737 data-nosnippet>737</a>            })
+<a href=#738 id=738 data-nosnippet>738</a>        })
+<a href=#739 id=739 data-nosnippet>739</a>    }
+<a href=#740 id=740 data-nosnippet>740</a>
+<a href=#741 id=741 data-nosnippet>741</a>    <span class="attr">#[expect(clippy::wrong_self_convention, reason = <span class="string">"pymethods"</span>)]
+<a href=#742 id=742 data-nosnippet>742</a>    </span><span class="kw">fn </span>into_sink&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#743 id=743 data-nosnippet>743</a>        <span class="kw">let </span>realized = with_tokio_runtime(|| Connection::AsClient(<span class="self">self</span>.underlying.connect()));
+<a href=#744 id=744 data-nosnippet>744</a>
+<a href=#745 id=745 data-nosnippet>745</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#746 id=746 data-nosnippet>746</a>            <span class="prelude-val">Ok</span>(PythonSink {
+<a href=#747 id=747 data-nosnippet>747</a>                underlying: Arc::new(RwLock::new(
+<a href=#748 id=748 data-nosnippet>748</a>                    realized.connect::&lt;ConnectedDirect&gt;().<span class="kw">await</span>.into_sink(),
+<a href=#749 id=749 data-nosnippet>749</a>                )),
+<a href=#750 id=750 data-nosnippet>750</a>            })
+<a href=#751 id=751 data-nosnippet>751</a>        })
+<a href=#752 id=752 data-nosnippet>752</a>    }
+<a href=#753 id=753 data-nosnippet>753</a>}
+<a href=#754 id=754 data-nosnippet>754</a>
+<a href=#755 id=755 data-nosnippet>755</a><span class="attr">#[pyclass]
+<a href=#756 id=756 data-nosnippet>756</a>#[derive(Clone)]
+<a href=#757 id=757 data-nosnippet>757</a></span><span class="kw">struct </span>PythonSink {
+<a href=#758 id=758 data-nosnippet>758</a>    underlying: Arc&lt;RwLock&lt;DynSink&lt;Bytes&gt;&gt;&gt;,
+<a href=#759 id=759 data-nosnippet>759</a>}
+<a href=#760 id=760 data-nosnippet>760</a>
+<a href=#761 id=761 data-nosnippet>761</a><span class="attr">#[pymethods]
+<a href=#762 id=762 data-nosnippet>762</a></span><span class="kw">impl </span>PythonSink {
+<a href=#763 id=763 data-nosnippet>763</a>    <span class="kw">fn </span>send&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, data: Py&lt;PyBytes&gt;, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; PyResult&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#764 id=764 data-nosnippet>764</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#765 id=765 data-nosnippet>765</a>        <span class="kw">let </span>bytes = Bytes::from(data.as_bytes(py).to_vec());
+<a href=#766 id=766 data-nosnippet>766</a>        interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#767 id=767 data-nosnippet>767</a>            underlying.write().<span class="kw">await</span>.send(bytes).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#768 id=768 data-nosnippet>768</a>            <span class="prelude-val">Ok</span>(())
+<a href=#769 id=769 data-nosnippet>769</a>        })
+<a href=#770 id=770 data-nosnippet>770</a>    }
+<a href=#771 id=771 data-nosnippet>771</a>}
+<a href=#772 id=772 data-nosnippet>772</a>
+<a href=#773 id=773 data-nosnippet>773</a><span class="attr">#[pyclass]
+<a href=#774 id=774 data-nosnippet>774</a>#[derive(Clone)]
+<a href=#775 id=775 data-nosnippet>775</a></span><span class="kw">struct </span>PythonStream {
+<a href=#776 id=776 data-nosnippet>776</a>    underlying: Arc&lt;RwLock&lt;DynStream&gt;&gt;,
+<a href=#777 id=777 data-nosnippet>777</a>}
+<a href=#778 id=778 data-nosnippet>778</a>
+<a href=#779 id=779 data-nosnippet>779</a><span class="attr">#[pymethods]
+<a href=#780 id=780 data-nosnippet>780</a></span><span class="kw">impl </span>PythonStream {
+<a href=#781 id=781 data-nosnippet>781</a>    <span class="kw">fn </span>__aiter__(slf: PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt;) -&gt; PyRef&lt;<span class="lifetime">'_</span>, <span class="self">Self</span>&gt; {
+<a href=#782 id=782 data-nosnippet>782</a>        slf
+<a href=#783 id=783 data-nosnippet>783</a>    }
+<a href=#784 id=784 data-nosnippet>784</a>
+<a href=#785 id=785 data-nosnippet>785</a>    <span class="kw">fn </span>__anext__&lt;<span class="lifetime">'p</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, py: Python&lt;<span class="lifetime">'p</span>&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;Bound&lt;<span class="lifetime">'p</span>, PyAny&gt;&gt; {
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">let </span>underlying = <span class="self">self</span>.underlying.clone();
+<a href=#787 id=787 data-nosnippet>787</a>        <span class="prelude-val">Some</span>(
+<a href=#788 id=788 data-nosnippet>788</a>            interruptible_future_to_py(py, <span class="kw">async move </span>{
+<a href=#789 id=789 data-nosnippet>789</a>                <span class="kw">let </span>read_res = underlying.write().<span class="kw">await</span>.next().<span class="kw">await</span>;
+<a href=#790 id=790 data-nosnippet>790</a>                read_res
+<a href=#791 id=791 data-nosnippet>791</a>                    .and_then(|b| b.ok().map(|b| b.to_vec()))
+<a href=#792 id=792 data-nosnippet>792</a>                    .map(<span class="prelude-val">Ok</span>)
+<a href=#793 id=793 data-nosnippet>793</a>                    .unwrap_or(<span class="prelude-val">Err</span>(PyStopAsyncIteration::new_err(())))
+<a href=#794 id=794 data-nosnippet>794</a>            })
+<a href=#795 id=795 data-nosnippet>795</a>            .unwrap(),
+<a href=#796 id=796 data-nosnippet>796</a>        )
+<a href=#797 id=797 data-nosnippet>797</a>    }
+<a href=#798 id=798 data-nosnippet>798</a>}
+<a href=#799 id=799 data-nosnippet>799</a>
+<a href=#800 id=800 data-nosnippet>800</a><span class="attr">#[pymodule]
+<a href=#801 id=801 data-nosnippet>801</a></span><span class="kw">pub fn </span>_core(py: Python&lt;<span class="lifetime">'_</span>&gt;, module: Bound&lt;<span class="lifetime">'_</span>, PyModule&gt;) -&gt; PyResult&lt;()&gt; {
+<a href=#802 id=802 data-nosnippet>802</a>    <span class="kw">unsafe </span>{
+<a href=#803 id=803 data-nosnippet>803</a>        pyo3::ffi::PyEval_InitThreads();
+<a href=#804 id=804 data-nosnippet>804</a>    }
+<a href=#805 id=805 data-nosnippet>805</a>
+<a href=#806 id=806 data-nosnippet>806</a>    CONVERTERS_MODULE
+<a href=#807 id=807 data-nosnippet>807</a>        .set(
+<a href=#808 id=808 data-nosnippet>808</a>            PyModule::from_code_bound(
+<a href=#809 id=809 data-nosnippet>809</a>                py,
+<a href=#810 id=810 data-nosnippet>810</a>                <span class="string">"
+<a href=#811 id=811 data-nosnippet>811</a>import asyncio
+<a href=#812 id=812 data-nosnippet>812</a>async def coroutine_to_safely_cancellable(c, cancel_token):
+<a href=#813 id=813 data-nosnippet>813</a>    try:
+<a href=#814 id=814 data-nosnippet>814</a>        return await asyncio.shield(c)
+<a href=#815 id=815 data-nosnippet>815</a>    except asyncio.CancelledError:
+<a href=#816 id=816 data-nosnippet>816</a>        cancel_token.safe_cancel()
+<a href=#817 id=817 data-nosnippet>817</a>        await c
+<a href=#818 id=818 data-nosnippet>818</a>        raise asyncio.CancelledError()
+<a href=#819 id=819 data-nosnippet>819</a>"</span>,
+<a href=#820 id=820 data-nosnippet>820</a>                <span class="string">"converters"</span>,
+<a href=#821 id=821 data-nosnippet>821</a>                <span class="string">"converters"</span>,
+<a href=#822 id=822 data-nosnippet>822</a>            )<span class="question-mark">?
+<a href=#823 id=823 data-nosnippet>823</a>            </span>.into(),
+<a href=#824 id=824 data-nosnippet>824</a>        )
+<a href=#825 id=825 data-nosnippet>825</a>        .unwrap();
+<a href=#826 id=826 data-nosnippet>826</a>
+<a href=#827 id=827 data-nosnippet>827</a>    <span class="kw-2">*</span>TOKIO_RUNTIME.write().unwrap() = <span class="prelude-val">Some</span>(tokio::runtime::Runtime::new().unwrap());
+<a href=#828 id=828 data-nosnippet>828</a>    <span class="kw">let </span>atexit = PyModule::import_bound(py, <span class="string">"atexit"</span>)<span class="question-mark">?</span>;
+<a href=#829 id=829 data-nosnippet>829</a>    atexit.call_method1(<span class="string">"register"</span>, (<span class="macro">wrap_pyfunction!</span>(cleanup_runtime, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>,))<span class="question-mark">?</span>;
+<a href=#830 id=830 data-nosnippet>830</a>
+<a href=#831 id=831 data-nosnippet>831</a>    module.add(<span class="string">"AnyhowError"</span>, py.get_type_bound::&lt;AnyhowError&gt;())<span class="question-mark">?</span>;
+<a href=#832 id=832 data-nosnippet>832</a>    module.add_class::&lt;AnyhowWrapper&gt;()<span class="question-mark">?</span>;
+<a href=#833 id=833 data-nosnippet>833</a>
+<a href=#834 id=834 data-nosnippet>834</a>    module.add_class::&lt;HydroflowSink&gt;()<span class="question-mark">?</span>;
+<a href=#835 id=835 data-nosnippet>835</a>    module.add_class::&lt;Deployment&gt;()<span class="question-mark">?</span>;
+<a href=#836 id=836 data-nosnippet>836</a>
+<a href=#837 id=837 data-nosnippet>837</a>    module.add_class::&lt;Host&gt;()<span class="question-mark">?</span>;
+<a href=#838 id=838 data-nosnippet>838</a>    module.add_class::&lt;LocalhostHost&gt;()<span class="question-mark">?</span>;
+<a href=#839 id=839 data-nosnippet>839</a>
+<a href=#840 id=840 data-nosnippet>840</a>    module.add_class::&lt;GcpNetwork&gt;()<span class="question-mark">?</span>;
+<a href=#841 id=841 data-nosnippet>841</a>    module.add_class::&lt;GcpComputeEngineHost&gt;()<span class="question-mark">?</span>;
+<a href=#842 id=842 data-nosnippet>842</a>
+<a href=#843 id=843 data-nosnippet>843</a>    module.add_class::&lt;Service&gt;()<span class="question-mark">?</span>;
+<a href=#844 id=844 data-nosnippet>844</a>    module.add_class::&lt;CustomService&gt;()<span class="question-mark">?</span>;
+<a href=#845 id=845 data-nosnippet>845</a>    module.add_class::&lt;CustomClientPort&gt;()<span class="question-mark">?</span>;
+<a href=#846 id=846 data-nosnippet>846</a>    module.add_class::&lt;HydroflowCrate&gt;()<span class="question-mark">?</span>;
+<a href=#847 id=847 data-nosnippet>847</a>    module.add_class::&lt;HydroflowCratePort&gt;()<span class="question-mark">?</span>;
+<a href=#848 id=848 data-nosnippet>848</a>
+<a href=#849 id=849 data-nosnippet>849</a>    module.add_class::&lt;ServerPort&gt;()<span class="question-mark">?</span>;
+<a href=#850 id=850 data-nosnippet>850</a>    module.add_class::&lt;PythonSink&gt;()<span class="question-mark">?</span>;
+<a href=#851 id=851 data-nosnippet>851</a>    module.add_class::&lt;PythonStream&gt;()<span class="question-mark">?</span>;
+<a href=#852 id=852 data-nosnippet>852</a>
+<a href=#853 id=853 data-nosnippet>853</a>    module.add_function(<span class="macro">wrap_pyfunction!</span>(demux, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+<a href=#854 id=854 data-nosnippet>854</a>    module.add_function(<span class="macro">wrap_pyfunction!</span>(null, <span class="kw-2">&amp;</span>module)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
 <a href=#855 id=855 data-nosnippet>855</a>
-<a href=#856 id=856 data-nosnippet>856</a>    <span class="prelude-val">Ok</span>(())
-<a href=#857 id=857 data-nosnippet>857</a>}</code></pre></div></section></main></body></html>
+<a href=#856 id=856 data-nosnippet>856</a>    module.add_wrapped(<span class="macro">wrap_pymodule!</span>(cli::cli))<span class="question-mark">?</span>;
+<a href=#857 id=857 data-nosnippet>857</a>
+<a href=#858 id=858 data-nosnippet>858</a>    <span class="prelude-val">Ok</span>(())
+<a href=#859 id=859 data-nosnippet>859</a>}</code></pre></div></section></main></body></html>
