@@ -45,13 +45,7 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let mut generated_code = compile_graph_trybuild(graph, extra_stmts);
-
-    ReplaceCrateNameWithStaged {
-        crate_name: crate_name.clone(),
-        is_test,
-    }
-    .visit_file_mut(&mut generated_code);
+    let generated_code = compile_graph_trybuild(graph, extra_stmts, crate_name.clone(), is_test);
 
     let inlined_staged: syn::File = if is_test {
         let gen_staged = stageleft_tool::gen_staged_trybuild(
@@ -128,23 +122,33 @@ pub fn create_graph_trybuild(
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
+    crate_name: String,
+    is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
-    let tokens = partitioned_graph.as_code(
-        &quote! { hydro_lang::runtime_support::dfir_rs },
+    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
+        &quote! { __root_dfir_rs },
         true,
         quote!(),
         &mut diagnostics,
-    );
+    ))
+    .unwrap();
+
+    ReplaceCrateNameWithStaged {
+        crate_name: crate_name.clone(),
+        is_test,
+    }
+    .visit_expr_mut(&mut dfir_expr);
 
     let source_ast: syn::File = syn::parse_quote! {
         #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
         use hydro_lang::*;
+        use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
 
         #[allow(unused)]
         fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
-            #tokens
+            #dfir_expr
         }
 
         #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]

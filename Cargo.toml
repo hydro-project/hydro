@@ -14,8 +14,6 @@ members = [
     "hydro_deploy/hydro_deploy_integration",
     "hydro_lang",
     "hydro_std",
-    "hydro_test_local_macro",
-    "hydro_test_local",
     "hydro_test",
     "include_mdtests",
     "lattices_macro",
