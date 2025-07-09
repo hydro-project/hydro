@@ -713,9 +713,16 @@ impl Node for DeployNode {
         let service = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c) => c,
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, (dir, target_dir, features)) =
+                let (bin_name, config) =
                     create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint);
-                create_trybuild_service(trybuild, &dir, &target_dir, &features, &bin_name)
+                create_trybuild_service(
+                    trybuild,
+                    &config.project_dir,
+                    &config.target_dir,
+                    &config.features,
+                    &bin_name,
+                    &config.cfgs,
+                )
             }
         };
 
@@ -792,9 +799,15 @@ impl Node for DeployCluster {
                 let service = match spec {
                     CrateOrTrybuild::Crate(c) => c,
                     CrateOrTrybuild::Trybuild(trybuild) => {
-                        let (bin_name, (dir, target_dir, features)) =
-                            maybe_trybuild.as_ref().unwrap();
-                        create_trybuild_service(trybuild, dir, target_dir, features, bin_name)
+                        let (bin_name, config) = maybe_trybuild.as_ref().unwrap();
+                        create_trybuild_service(
+                            trybuild,
+                            &config.project_dir,
+                            &config.target_dir,
+                            &config.features,
+                            bin_name,
+                            &config.cfgs,
+                        )
                     }
                 };
 
@@ -904,6 +917,7 @@ fn create_trybuild_service(
     target_dir: &std::path::PathBuf,
     features: &Option<Vec<String>>,
     bin_name: &str,
+    cfgs: &str,
 ) -> RustCrate {
     let mut ret = RustCrate::new(dir, trybuild.host)
         .target_dir(target_dir)
@@ -921,7 +935,9 @@ fn create_trybuild_service(
     }
 
     if let Some(rustflags) = trybuild.rustflags {
-        ret = ret.rustflags(rustflags);
+        ret = ret.rustflags(format!("{cfgs} {rustflags}"));
+    } else {
+        ret = ret.rustflags(cfgs);
     }
 
     if let Some(tracing) = trybuild.tracing {
@@ -940,6 +956,8 @@ fn create_trybuild_service(
                 format!("hydro___feature_{runtime_feature}")
             }),
     );
+
+    ret = ret.config("build.incremental = false");
 
     if let Some(features) = features {
         ret = ret.features(features);
