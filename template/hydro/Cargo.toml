@@ -4,17 +4,13 @@ publish = false
 version = "0.0.0"
 edition = "2024"
 
-[features]
-default = ["stageleft_devel"]
-stageleft_devel = []
-
 [dependencies]
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
 hydro_std = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}" }
-stageleft = "0.8.1"
+stageleft = "0.9.0"
 
 [build-dependencies]
-stageleft_tool = "0.8.1"
+stageleft_tool = "0.9.0"
 
 [dev-dependencies]
 ctor = "0.2"
