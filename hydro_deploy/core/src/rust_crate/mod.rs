@@ -35,6 +35,7 @@ pub struct RustCrate {
     target_dir: Option<PathBuf>,
     no_default_features: bool,
     features: Option<Vec<String>>,
+    config: Option<String>,
     tracing: Option<TracingOptions>,
     args: Vec<String>,
     display_name: Option<String>,
@@ -54,6 +55,7 @@ impl RustCrate {
             target_dir: None,
             no_default_features: false,
             features: None,
+            config: None,
             tracing: None,
             args: vec![],
             display_name: None,
@@ -129,6 +131,15 @@ impl RustCrate {
         self
     }
 
+    pub fn config(mut self, config: impl Into<String>) -> Self {
+        if self.config.is_some() {
+            panic!("{} already set", name_of!(config in Self));
+        }
+
+        self.config = Some(config.into());
+        self
+    }
+
     pub fn tracing(mut self, perf: impl Into<TracingOptions>) -> Self {
         if self.tracing.is_some() {
             panic!("{} already set", name_of!(tracing in Self));
@@ -176,6 +187,7 @@ impl ServiceBuilder for RustCrate {
             self.no_default_features,
             self.tracing,
             self.features,
+            self.config,
             Some(self.args),
             self.display_name,
             vec![],

@@ -1,5 +1,6 @@
 [test-groups]
 serial-integration = { max-threads = 1 }
+hydro-trybuild-group = { max-threads = 1 }
 
 [[profile.default.overrides]]
 filter = 'binary(deadlock_detector)'
@@ -16,3 +17,15 @@ test-group = 'serial-integration'
 [[profile.default.overrides]]
 filter = 'binary(kvs_replicated)'
 test-group = 'serial-integration'
+
+[[profile.default.overrides]]
+filter = 'package(hydro_lang)'
+test-group = 'hydro-trybuild-group'
+
+[[profile.default.overrides]]
+filter = 'package(hydro_std)'
+test-group = 'hydro-trybuild-group'
+
+[[profile.default.overrides]]
+filter = 'package(hydro_test)'
+test-group = 'hydro-trybuild-group'
