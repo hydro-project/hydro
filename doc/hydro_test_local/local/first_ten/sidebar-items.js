@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["first_ten"],"macro":["first_ten_runtime"]};

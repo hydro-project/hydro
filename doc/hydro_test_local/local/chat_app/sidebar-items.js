@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"macro":["chat_app"]};
