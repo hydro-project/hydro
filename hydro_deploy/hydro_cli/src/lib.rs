@@ -265,6 +265,7 @@ impl Deployment {
         example: Option<String>,
         profile: Option<String>,
         features: Option<Vec<String>>,
+        config: Option<String>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Option<Vec<u16>>,
@@ -282,6 +283,7 @@ impl Deployment {
                 false, // Python API doesn't support no_default_features
                 None,  // Python API doesn't support perf
                 features,
+                config,
                 args,
                 display_id,
                 external_ports.unwrap_or_default(),

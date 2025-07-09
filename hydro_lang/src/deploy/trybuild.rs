@@ -11,7 +11,7 @@ use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
-use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
+use super::trybuild_rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
 
@@ -34,11 +34,18 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
+pub struct TrybuildConfig {
+    pub project_dir: PathBuf,
+    pub target_dir: PathBuf,
+    pub features: Option<Vec<String>>,
+    pub cfgs: String,
+}
+
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
-) -> (String, (PathBuf, PathBuf, Option<Vec<String>>)) {
+) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
     let crate_name = &source_manifest.package.name.to_string().replace("-", "_");
@@ -115,7 +122,12 @@ pub fn create_graph_trybuild(
 
     (
         bin_name,
-        (project_dir, target_dir, cur_bin_enabled_features),
+        TrybuildConfig {
+            project_dir,
+            target_dir,
+            features: cur_bin_enabled_features,
+            cfgs: "--cfg stageleft_trybuild".to_string(),
+        },
     )
 }
 
@@ -134,11 +146,12 @@ pub fn compile_graph_trybuild(
     ))
     .unwrap();
 
-    ReplaceCrateNameWithStaged {
-        crate_name: crate_name.clone(),
-        is_test,
+    if is_test {
+        UseTestModeStaged {
+            crate_name: crate_name.clone(),
+        }
+        .visit_expr_mut(&mut dfir_expr);
     }
-    .visit_expr_mut(&mut dfir_expr);
 
     let source_ast: syn::File = syn::parse_quote! {
         #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
@@ -225,19 +238,9 @@ pub fn create_trybuild()
         source_manifest,
     )?;
 
-    manifest.features.remove("stageleft_devel");
-
     if let Some(enabled_features) = &mut features {
         enabled_features
             .retain(|feature| manifest.features.contains_key(feature) || feature == "default");
-
-        manifest
-            .features
-            .get_mut("default")
-            .iter_mut()
-            .for_each(|v| {
-                v.retain(|f| f != "stageleft_devel");
-            });
     }
 
     for runtime_feature in HYDRO_RUNTIME_FEATURES {

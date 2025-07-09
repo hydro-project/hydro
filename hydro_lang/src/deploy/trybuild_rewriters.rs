@@ -1,22 +1,15 @@
+use proc_macro2::Span;
 use syn::visit_mut::VisitMut;
 
-pub struct ReplaceCrateNameWithStaged {
+pub struct UseTestModeStaged {
     pub crate_name: String,
-    pub is_test: bool,
 }
 
-impl VisitMut for ReplaceCrateNameWithStaged {
+impl VisitMut for UseTestModeStaged {
     fn visit_type_path_mut(&mut self, i: &mut syn::TypePath) {
-        if let Some(first) = i.path.segments.first() {
+        if let Some(first) = i.path.segments.first_mut() {
             if first.ident == self.crate_name {
-                let tail = i.path.segments.iter().skip(1).collect::<Vec<_>>();
-
-                if self.is_test {
-                    *i = syn::parse_quote!(crate::__staged #(::#tail)*);
-                } else {
-                    let crate_ident = syn::Ident::new(&self.crate_name, first.ident.span());
-                    *i = syn::parse_quote!(#crate_ident::__staged #(::#tail)*);
-                }
+                first.ident = syn::Ident::new("crate", Span::call_site());
             }
         }
 
@@ -24,8 +17,8 @@ impl VisitMut for ReplaceCrateNameWithStaged {
     }
 
     fn visit_use_path_mut(&mut self, i: &mut syn::UsePath) {
-        if i.ident == "crate" && !self.is_test {
-            i.ident = syn::Ident::new(&self.crate_name, i.ident.span());
+        if i.ident == self.crate_name {
+            i.ident = syn::Ident::new("crate", i.ident.span());
         }
     }
 }

@@ -31,6 +31,8 @@ pub struct BuildParams {
     target_type: HostTargetType,
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
+    /// `--config` flag
+    config: Option<String>,
 }
 impl BuildParams {
     /// Creates a new `BuildParams` and canonicalizes the `src` path.
@@ -45,6 +47,7 @@ impl BuildParams {
         no_default_features: bool,
         target_type: HostTargetType,
         features: Option<Vec<String>>,
+        config: Option<String>,
     ) -> Self {
         // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
         // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
@@ -64,6 +67,7 @@ impl BuildParams {
             no_default_features,
             target_type,
             features,
+            config,
         }
     }
 }
@@ -120,6 +124,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     if let Some(features) = params.features {
                         command.args(["--features", &features.join(",")]);
+                    }
+
+                    if let Some(config) = params.config.as_ref() {
+                        command.args(["--config", config]);
                     }
 
                     command.arg("--message-format=json-diagnostic-rendered-ansi");

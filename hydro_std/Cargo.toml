@@ -16,13 +16,13 @@ all-features = true
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.13.0" }
-stageleft = "0.8.1"
+stageleft.workspace = true
 serde = "1"
 hdrhistogram = "7.5.4"
 stats-ci = "0.1.1"
 
 [build-dependencies]
-stageleft_tool = "0.8.1"
+stageleft_tool.workspace = true
 
 [dev-dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.13.0", features = [
