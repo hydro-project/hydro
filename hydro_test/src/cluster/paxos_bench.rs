@@ -103,8 +103,7 @@ pub fn paxos_bench<'a>(
 mod tests {
     use dfir_lang::graph::WriteConfig;
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime, TrybuildHost};
-    use stageleft::RuntimeData;
+    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 
@@ -146,7 +145,7 @@ mod tests {
         let replicas = builder.cluster();
 
         create_paxos(&proposers, &acceptors, &clients, &replicas);
-        let built = builder.with_default_optimize::<DeployRuntime>();
+        let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
             insta::assert_debug_snapshot!(built.ir());
@@ -164,8 +163,6 @@ mod tests {
                 })
             );
         });
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 
     #[tokio::test]

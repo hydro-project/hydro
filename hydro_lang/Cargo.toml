@@ -25,7 +25,6 @@ deploy = [
 ]
 build = ["dep:dfir_lang"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
-staged_macro = ["dep:dfir_rs"]
 runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
 dfir_context = ["dep:dfir_rs"]
 
