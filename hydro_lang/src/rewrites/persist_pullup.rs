@@ -205,11 +205,12 @@ pub fn persist_pullup(ir: &mut [HydroLeaf]) {
     });
 }
 
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     use stageleft::*;
 
-    use crate::deploy::MultiGraph;
+    use crate::deploy::HydroDeploy;
     use crate::location::Location;
 
     #[test]
@@ -229,7 +230,11 @@ mod tests {
         let optimized = built.optimize_with(super::persist_pullup);
 
         insta::assert_debug_snapshot!(optimized.ir());
-        for (id, graph) in optimized.compile_no_network::<MultiGraph>().all_dfir() {
+        for (id, graph) in optimized
+            .into_deploy::<HydroDeploy>()
+            .preview_compile()
+            .all_dfir()
+        {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });
@@ -264,7 +269,11 @@ mod tests {
 
         insta::assert_debug_snapshot!(optimized.ir());
 
-        for (id, graph) in optimized.compile_no_network::<MultiGraph>().all_dfir() {
+        for (id, graph) in optimized
+            .into_deploy::<HydroDeploy>()
+            .preview_compile()
+            .all_dfir()
+        {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(graph.surface_syntax_string());
             });
