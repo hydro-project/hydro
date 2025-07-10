@@ -42,18 +42,17 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
 
 #[cfg(test)]
 mod tests {
-    use hydro_lang::deploy::DeployRuntime;
-    use stageleft::RuntimeData;
+    use hydro_lang::deploy::HydroDeploy;
 
     #[test]
     fn map_reduce_ir() {
         let builder = hydro_lang::FlowBuilder::new();
         let _ = super::map_reduce(&builder);
-        let built = builder.with_default_optimize::<DeployRuntime>();
+        let built = builder.with_default_optimize::<HydroDeploy>();
 
         insta::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.compile(&RuntimeData::new("FAKE")).all_dfir() {
+        for (id, ir) in built.preview_compile().all_dfir() {
             insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
                 insta::assert_snapshot!(ir.surface_syntax_string());
             });
