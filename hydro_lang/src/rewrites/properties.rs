@@ -62,11 +62,12 @@ pub fn properties_optimize(ir: &mut [HydroLeaf], db: &mut PropertyDatabase) {
     });
 }
 
+#[cfg(stageleft_runtime)]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::FlowBuilder;
-    use crate::deploy::SingleProcessGraph;
+    use crate::deploy::HydroDeploy;
     use crate::location::Location;
 
     #[test]
@@ -107,7 +108,7 @@ mod tests {
 
         let built = flow
             .optimize_with(|ir| properties_optimize(ir, &mut database))
-            .with_default_optimize::<SingleProcessGraph>();
+            .with_default_optimize::<HydroDeploy>();
 
         insta::assert_debug_snapshot!(built.ir());
 
