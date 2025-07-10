@@ -21,7 +21,7 @@ let process1: Process<()> = flow.process::<()>();
 let process2: Process<()> = flow.process::<()>();
 
 assert_ne!(process1, process2);
-# let _ = flow.compile_no_network::<deploy::MultiGraph>();
+# let _ = flow.with_default_optimize::<deploy::HydroDeploy>();
 ```
 
 These locations will not be unified and may be deployed to separate machines. When deploying a Hydro program, additional runtime checks will be performed to ensure that input locations match.
@@ -37,7 +37,7 @@ process1.source_iter(q!([1, 2, 3]))
     .cross_product(process2.source_iter(q!([1, 2, 3])));
 // PANIC: assertion `left == right` failed: locations do not match
 # }, "assertion `left == right` failed: locations do not match");
-# let _ = flow.compile_no_network::<deploy::MultiGraph>();
+# let _ = flow.with_default_optimize::<deploy::HydroDeploy>();
 ```
 
 :::
