@@ -212,6 +212,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                             diagnostics,
                             text_lines,
                             stderr_lines,
+                            src: params.src.clone(),
                         })
                     }
                 })
@@ -229,6 +230,8 @@ pub enum BuildError {
         diagnostics: Vec<Diagnostic>,
         text_lines: Vec<String>,
         stderr_lines: Vec<String>,
+        /// Path the command was run in.
+        src: PathBuf,
     },
     TokioJoinError,
     NoBinaryEmitted,
@@ -242,11 +245,15 @@ impl Display for BuildError {
                 diagnostics,
                 text_lines,
                 stderr_lines,
+                src,
             } => {
                 writeln!(f, "Failed to build crate ({})", exit_status)?;
                 writeln!(f, "Diagnostics ({}):", diagnostics.len())?;
                 for diagnostic in diagnostics {
-                    write!(f, "{}", diagnostic)?;
+                    // Update the path displayed to enable clicking in IDE.
+                    let diag_str = diagnostic.to_string();
+                    let full_path = src.join("src/bin").display().to_string();
+                    write!(f, "{}", diag_str.replace("src/bin", &full_path))?;
                 }
                 writeln!(f, "Text output ({} lines):", text_lines.len())?;
                 for line in text_lines {
