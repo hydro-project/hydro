@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::time::Duration;
 
+use hydro_lang::stream::AtLeastOnce;
 use hydro_lang::*;
 use hydro_std::quorum::{collect_quorum, collect_quorum_with_response};
 use hydro_std::request_response::join_responses;
@@ -247,7 +248,7 @@ pub unsafe fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwne
     let (p1b_fail_complete, p1b_fail) =
         proposers.forward_ref::<Stream<Ballot, _, Unbounded, NoOrder>>();
     let (p_to_proposers_i_am_leader_complete_cycle, p_to_proposers_i_am_leader_forward_ref) =
-        proposers.forward_ref::<Stream<_, _, _, NoOrder>>();
+        proposers.forward_ref::<Stream<_, _, _, NoOrder, AtLeastOnce>>();
     let (p_is_leader_complete_cycle, p_is_leader_forward_ref) =
         proposer_tick.forward_ref::<Optional<(), _, _>>();
     // a_to_proposers_p2b.clone().for_each(q!(|(_, p2b): (u32, P2b)| println!("Proposer received P2b: {:?}", p2b)));
@@ -369,7 +370,7 @@ unsafe fn p_leader_heartbeat<'a>(
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     paxos_config: PaxosConfig,
 ) -> (
-    Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
+    Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder, AtLeastOnce>,
     Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
     let i_am_leader_send_timeout = paxos_config.i_am_leader_send_timeout;

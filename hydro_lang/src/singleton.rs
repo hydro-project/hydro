@@ -13,7 +13,8 @@ use crate::cycle::{
 use crate::ir::{HydroLeaf, HydroNode, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, LocationId, NoTick, Tick, check_matching_location};
-use crate::{Bounded, Optional, Stream, Unbounded};
+use crate::stream::{AtLeastOnce, ExactlyOnce};
+use crate::{Bounded, Optional, Stream, TotalOrder, Unbounded};
 
 pub struct Singleton<Type, Loc, Bound> {
     pub(crate) location: Loc,
@@ -249,7 +250,10 @@ where
         )
     }
 
-    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
+    pub fn flat_map_ordered<U, I, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -265,7 +269,10 @@ where
         )
     }
 
-    pub fn flat_map_unordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
+    pub fn flat_map_unordered<U, I, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -440,12 +447,12 @@ where
     /// At runtime, the singleton will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
-    pub unsafe fn sample_eager(self) -> Stream<T, L, Unbounded> {
+    pub unsafe fn sample_eager(self) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
         let tick = self.location.tick();
 
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.latest_tick(&tick).all_ticks()
+            self.latest_tick(&tick).all_ticks().weakest_retries()
         }
     }
 
@@ -461,7 +468,7 @@ where
     pub unsafe fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-    ) -> Stream<T, L, Unbounded> {
+    ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
             self.location.source_interval(interval)
@@ -473,6 +480,7 @@ where
             self.latest_tick(&tick)
                 .continue_if(samples.tick_batch(&tick).first())
                 .all_ticks()
+                .weakest_retries()
         }
     }
 }
@@ -481,7 +489,7 @@ impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
-    pub fn all_ticks(self) -> Stream<T, L, Unbounded> {
+    pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.outer().clone(),
             HydroNode::Persist {
@@ -491,7 +499,7 @@ where
         )
     }
 
-    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded> {
+    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             Atomic {
                 tick: self.location.clone(),
@@ -535,7 +543,7 @@ where
         )
     }
 
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded> {
+    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.clone(),
             HydroNode::Persist {
@@ -555,7 +563,7 @@ where
         )
     }
 
-    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded> {
+    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(self.location, self.ir_node.into_inner())
     }
 }
