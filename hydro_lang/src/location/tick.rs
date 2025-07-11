@@ -11,7 +11,8 @@ use crate::cycle::{
     TickCycle, TickCycleMarker,
 };
 use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
-use crate::{Bounded, Optional, Singleton, Stream};
+use crate::stream::ExactlyOnce;
+use crate::{Bounded, Optional, Singleton, Stream, TotalOrder};
 
 #[sealed]
 pub trait NoTick {}
@@ -109,7 +110,7 @@ where
     pub fn spin_batch(
         &self,
         batch_size: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
-    ) -> Stream<(), Self, Bounded>
+    ) -> Stream<(), Self, Bounded, TotalOrder, ExactlyOnce>
     where
         L: NoTick + NoAtomic,
     {
