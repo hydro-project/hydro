@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>    min: usize,
 <a href=#106 id=106 data-nosnippet>106</a>    max: usize,
 <a href=#107 id=107 data-nosnippet>107</a>) -&gt; (
-<a href=#108 id=108 data-nosnippet>108</a>    Stream&lt;K, Atomic&lt;L&gt;, Unbounded, Order&gt;,
+<a href=#108 id=108 data-nosnippet>108</a>    Stream&lt;K, Atomic&lt;L&gt;, Unbounded, NoOrder&gt;,
 <a href=#109 id=109 data-nosnippet>109</a>    Stream&lt;(K, E), Atomic&lt;L&gt;, Unbounded, Order&gt;,
 <a href=#110 id=110 data-nosnippet>110</a>) {
 <a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">let </span>tick = responses.atomic_source();

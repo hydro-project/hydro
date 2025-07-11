@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["deserialize_bincode_with_type","serialize_bincode_with_type"],"struct":["NoOrder","Stream","TotalOrder"],"trait":["MinOrder"]};
+window.SIDEBAR_ITEMS = {"enum":["AtLeastOnce","ExactlyOnce","NoOrder","TotalOrder"],"fn":["deserialize_bincode_with_type","serialize_bincode_with_type"],"struct":["Stream"],"trait":["MinOrder","MinRetries"]};

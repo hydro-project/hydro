@@ -7,8 +7,8 @@
 <a href=#7 id=7 data-nosnippet>7</a>
 <a href=#8 id=8 data-nosnippet>8</a><span class="kw">use crate</span>::{FlowBuilder, Process, Stream, Unbounded};
 <a href=#9 id=9 data-nosnippet>9</a>
-<a href=#10 id=10 data-nosnippet>10</a><span class="kw">pub async fn </span>multi_location_test&lt;<span class="lifetime">'a</span>, T, C, O&gt;(
-<a href=#11 id=11 data-nosnippet>11</a>    thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;, <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, ()&gt;) -&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded, O&gt;,
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">pub async fn </span>multi_location_test&lt;<span class="lifetime">'a</span>, T, C, O, R&gt;(
+<a href=#11 id=11 data-nosnippet>11</a>    thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;, <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, ()&gt;) -&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded, O, R&gt;,
 <a href=#12 id=12 data-nosnippet>12</a>    check: <span class="kw">impl </span>FnOnce(Pin&lt;Box&lt;<span class="kw">dyn </span>futures::Stream&lt;Item = T&gt;&gt;&gt;) -&gt; C,
 <a href=#13 id=13 data-nosnippet>13</a>) <span class="kw">where
 <a href=#14 id=14 data-nosnippet>14</a>    </span>T: Serialize + DeserializeOwned + <span class="lifetime">'static</span>,
@@ -34,8 +34,8 @@
 <a href=#34 id=34 data-nosnippet>34</a>    check(external_out).<span class="kw">await</span>;
 <a href=#35 id=35 data-nosnippet>35</a>}
 <a href=#36 id=36 data-nosnippet>36</a>
-<a href=#37 id=37 data-nosnippet>37</a><span class="kw">pub async fn </span>stream_transform_test&lt;<span class="lifetime">'a</span>, T, C, O&gt;(
-<a href=#38 id=38 data-nosnippet>38</a>    thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>&gt;) -&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded, O&gt;,
+<a href=#37 id=37 data-nosnippet>37</a><span class="kw">pub async fn </span>stream_transform_test&lt;<span class="lifetime">'a</span>, T, C, O, R&gt;(
+<a href=#38 id=38 data-nosnippet>38</a>    thunk: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>&gt;) -&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>&gt;, Unbounded, O, R&gt;,
 <a href=#39 id=39 data-nosnippet>39</a>    check: <span class="kw">impl </span>FnOnce(Pin&lt;Box&lt;<span class="kw">dyn </span>futures::Stream&lt;Item = T&gt;&gt;&gt;) -&gt; C,
 <a href=#40 id=40 data-nosnippet>40</a>) <span class="kw">where
 <a href=#41 id=41 data-nosnippet>41</a>    </span>T: Serialize + DeserializeOwned + <span class="lifetime">'static</span>,
