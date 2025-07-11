@@ -5,6 +5,7 @@ use super::{
     DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
+use crate::graph::ops::Persistence;
 
 // This implementation is largely redundant to ANTI_JOIN and should be DRY'ed
 /// > 2 input streams the first of type (K, T), the second of type K,
@@ -32,9 +33,6 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: RANGE_0,
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_tick_hook`
-    // to prevent reading uncleared data if this subgraph doesn't run.
-    // https://github.com/hydro-project/hydro/issues/1298
     has_singleton_output: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { pos, neg })),
@@ -61,19 +59,23 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
         let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
 
-        let write_prologue_pos = quote_spanned! {op_span=>
-            let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
-                ::std::vec::Vec::new()
-            ));
-        };
-        let write_prologue_after_pos = wc
+        let pos_persist = !matches!(persistences[0], Persistence::None | Persistence::Tick);
+
+        let write_prologue_pos = pos_persist.then(|| {
+            quote_spanned! {op_span=>
+                let #pos_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
+                    ::std::vec::Vec::new()
+                ));
+            }
+        });
+        let write_prologue_after_pos = pos_persist.then(|| wc
             .persistence_as_state_lifespan(persistences[0])
             .map(|lifespan| quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
                 #df_ident.set_state_lifespan_hook(
                     #pos_antijoindata_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
                 );
-            }).unwrap_or_default();
+            })).flatten();
 
         let write_prologue_neg = quote_spanned! {op_span=>
             let #neg_antijoindata_ident = #df_ident.add_state(std::cell::RefCell::new(
@@ -91,36 +93,51 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
 
         let input_neg = &inputs[0]; // N before P
         let input_pos = &inputs[1];
-        let write_iterator = quote_spanned! {op_span =>
-            let (mut neg_borrow, mut pos_borrow) = unsafe {
-                // SAFETY: handles from `#df_ident`.
-                (
-                    #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
-                    #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
-                )
-            };
+        let write_iterator = if !pos_persist {
+            quote_spanned! {op_span=>
+                let mut neg_borrow = unsafe {
+                    // SAFETY: handle from `#df_ident`.
+                    #context.state_ref_unchecked(#neg_antijoindata_ident)
+                }.borrow_mut();
 
-            #[allow(clippy::needless_borrow)]
-            let #ident = {
-                #[allow(clippy::clone_on_copy)]
-                #[allow(suspicious_double_ref_op)]
-                if context.is_first_run_this_tick() {
-                    // Start of new tick
-                    #work_fn(|| neg_borrow.extend(#input_neg));
-                    #work_fn(|| pos_borrow.extend(#input_pos));
-                    pos_borrow.iter()
-                } else {
-                    // Called second or later times on the same tick.
-                    let len = pos_borrow.len();
-                    #work_fn(|| pos_borrow.extend(#input_pos));
-                    pos_borrow[len..].iter()
-                }
-                .filter(|x: &&(_,_)| {
-                    #[allow(clippy::unnecessary_mut_passed)]
+                #work_fn(|| neg_borrow.extend(#input_neg));
+
+                let #ident = #input_pos.filter(|x: &(_, _)| {
                     !neg_borrow.contains(&x.0)
-                })
-                .map(|(k, v)| (k.clone(), v.clone()))
-            };
+                });
+            }
+        } else {
+            quote_spanned! {op_span =>
+                let (mut neg_borrow, mut pos_borrow) = unsafe {
+                    // SAFETY: handles from `#df_ident`.
+                    (
+                        #context.state_ref_unchecked(#neg_antijoindata_ident).borrow_mut(),
+                        #context.state_ref_unchecked(#pos_antijoindata_ident).borrow_mut(),
+                    )
+                };
+
+                #[allow(clippy::needless_borrow)]
+                let #ident = {
+                    #[allow(clippy::clone_on_copy)]
+                    #[allow(suspicious_double_ref_op)]
+                    if context.is_first_run_this_tick() {
+                        // Start of new tick
+                        #work_fn(|| neg_borrow.extend(#input_neg));
+                        #work_fn(|| pos_borrow.extend(#input_pos));
+                        pos_borrow.iter()
+                    } else {
+                        // Called second or later times on the same tick.
+                        let len = pos_borrow.len();
+                        #work_fn(|| pos_borrow.extend(#input_pos));
+                        pos_borrow[len..].iter()
+                    }
+                    .filter(|x: &&(_, _)| {
+                        #[allow(clippy::unnecessary_mut_passed)]
+                        !neg_borrow.contains(&x.0)
+                    })
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                };
+            }
         };
 
         Ok(OperatorWriteOutput {
