@@ -61,7 +61,7 @@ pub mod rewrites;
 mod staging_util;
 
 #[cfg(feature = "deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod test_util;
 
 #[cfg(test)]

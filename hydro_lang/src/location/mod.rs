@@ -9,7 +9,8 @@ use stageleft::{QuotedWithContext, q};
 use super::builder::FlowState;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
-use crate::{Singleton, Stream, Unbounded};
+use crate::stream::ExactlyOnce;
+use crate::{Singleton, Stream, TotalOrder, Unbounded};
 
 pub mod external_process;
 pub use external_process::ExternalProcess;
@@ -96,7 +97,7 @@ pub trait Location<'a>: Clone {
         }
     }
 
-    fn spin(&self) -> Stream<(), Self, Unbounded>
+    fn spin(&self) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         Self: Sized + NoTick,
     {
@@ -116,7 +117,7 @@ pub trait Location<'a>: Clone {
     fn source_stream<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
-    ) -> Stream<T, Self, Unbounded>
+    ) -> Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         E: FuturesStream<Item = T> + Unpin,
         Self: Sized + NoTick,
@@ -139,7 +140,7 @@ pub trait Location<'a>: Clone {
     fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
-    ) -> Stream<T, Self, Unbounded>
+    ) -> Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         E: IntoIterator<Item = T>,
         Self: Sized + NoTick,
@@ -203,7 +204,7 @@ pub trait Location<'a>: Clone {
     unsafe fn source_interval(
         &self,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<tokio::time::Instant, Self, Unbounded>
+    ) -> Stream<tokio::time::Instant, Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         Self: Sized + NoTick,
     {
@@ -226,7 +227,7 @@ pub trait Location<'a>: Clone {
         &self,
         delay: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
         interval: impl QuotedWithContext<'a, Duration, Self> + Copy + 'a,
-    ) -> Stream<tokio::time::Instant, Self, Unbounded>
+    ) -> Stream<tokio::time::Instant, Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         Self: Sized + NoTick,
     {
