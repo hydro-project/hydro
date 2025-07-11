@@ -48,7 +48,7 @@ later. On Mac, installing directly from python.org may work if `brew install` do
 
 ### `wasm-bindgen`
 
-[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) is required for running WASM tests.
+[Node.js](https://nodejs.org/) and [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) are required for running WASM tests.
 ```shell
 cargo install wasm-bindgen-cli
 ```
