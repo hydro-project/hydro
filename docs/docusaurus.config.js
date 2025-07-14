@@ -8,8 +8,8 @@ import rehypeKatex from "rehype-katex";
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: "Hydro - Build for Every Scale",
-  tagline: "Build for every scale",
+  title: "Hydro",
+  tagline: "A Rust framework for correct and performant distributed systems",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
@@ -196,7 +196,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Hydro is a project in the <a href="https://sky.cs.berkeley.edu">Sky Computing Lab</a> at UC Berkeley. We are grateful to be supported by <a href="https://shv.com">Sutter Hill Ventures</a>.`,
+        copyright: `Hydro is co-led by open-source developers from Amazon Web Services, the <a href="https://sky.cs.berkeley.edu">Sky Computing Lab</a> at UC Berkeley, and various participating institutions.`,
       },
       prism: {
         theme: themes.github,
