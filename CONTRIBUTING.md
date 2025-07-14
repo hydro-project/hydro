@@ -46,11 +46,14 @@ automatically detected by `cargo`, so no special setup should be needed.
 Some parts of the Hydro repo require a relatively recent version of Python 3, maybe 3.10 or
 later. On Mac, installing directly from python.org may work if `brew install` doesn't.
 
-### `wasm-bindgen`
+## Wasm
 
-[Node.js](https://nodejs.org/) and [`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) are required for running WASM tests.
+[Node.js](https://nodejs.org/),
+[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen?tab=readme-ov-file#install-wasm-bindgen-cli),
+and [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/) are required to run Wasm tests.
 ```shell
 cargo install wasm-bindgen-cli
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
 ## Submitting Changes
