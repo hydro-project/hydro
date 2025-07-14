@@ -59,7 +59,11 @@ pub const ANTI_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let pos_antijoindata_ident = wc.make_ident("antijoindata_pos");
         let neg_antijoindata_ident = wc.make_ident("antijoindata_neg");
 
-        let pos_persist = !matches!(persistences[0], Persistence::None | Persistence::Tick);
+        let pos_persist = match persistences[0] {
+            Persistence::None | Persistence::Tick => false,
+            Persistence::Loop | Persistence::Static => true,
+            Persistence::Mutable => unreachable!(),
+        };
 
         let write_prologue_pos = pos_persist.then(|| {
             quote_spanned! {op_span=>
