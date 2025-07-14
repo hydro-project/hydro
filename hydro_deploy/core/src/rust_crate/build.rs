@@ -186,8 +186,19 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     });
                                 }
                             }
-                            cargo_metadata::Message::CompilerMessage(msg) => {
-                                ProgressTracker::println(msg.message.rendered.as_deref().unwrap());
+                            cargo_metadata::Message::CompilerMessage(mut msg) => {
+                                // Update the path displayed to enable clicking in IDE.
+                                {
+                                    let full_path = format!(
+                                        "(full path) {}",
+                                        params.src.join("src/bin").display()
+                                    );
+                                    if let Some(rendered) = msg.message.rendered.as_mut() {
+                                        *rendered = rendered.replace("src/bin", &full_path);
+                                    }
+                                }
+
+                                ProgressTracker::println(msg.message.to_string());
                                 diagnostics.push(msg.message);
                             }
                             cargo_metadata::Message::TextLine(line) => {
