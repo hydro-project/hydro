@@ -1630,6 +1630,128 @@ where
     }
 }
 
+impl<'a, K, V, L, O, R> Stream<(K, V), Tick<L>, Bounded, O, R>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    /// A special case of [`Stream::fold_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
+    /// as there may be non-deterministic duplicates.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`Stream::reduce_keyed_commutative_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch
+    ///     .fold_keyed_commutative_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn fold_keyed_commutative_idempotent<A, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, Tick<L>>,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+    ) -> Stream<(K, A), Tick<L>, Bounded, NoOrder, ExactlyOnce>
+    where
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) + 'a,
+    {
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::FoldKeyed {
+                init,
+                acc: comb,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, A)>(),
+            },
+        )
+    }
+
+    /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch.keys().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2
+    /// # assert_eq!(stream.next().await.unwrap(), 1);
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// ```
+    pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
+        self.fold_keyed_commutative_idempotent(q!(|| ()), q!(|_, _| {}))
+            .map(q!(|(k, _)| k))
+    }
+
+    /// A special case of [`Stream::reduce_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
+    /// as there may be non-deterministic duplicates.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`Stream::fold_keyed_commutative_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch
+    ///     .reduce_keyed_commutative_idempotent(q!(|acc, x| *acc |= x))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn reduce_keyed_commutative_idempotent<F>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+    ) -> Stream<(K, V), Tick<L>, Bounded, NoOrder, ExactlyOnce>
+    where
+        F: Fn(&mut V, V) + 'a,
+    {
+        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ReduceKeyed {
+                f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
+    }
+}
+
 impl<'a, K, V, L, O> Stream<(K, V), Tick<L>, Bounded, O, ExactlyOnce>
 where
     K: Eq + Hash,
@@ -1684,27 +1806,6 @@ where
         )
     }
 
-    /// Given a stream of pairs `(K, V)`, produces a new stream of unique keys `K`.
-    /// # Example
-    /// ```rust
-    /// # use hydro_lang::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process.source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]));
-    /// let batch = unsafe { numbers.tick_batch(&tick) };
-    /// batch.keys().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 1, 2
-    /// # assert_eq!(stream.next().await.unwrap(), 1);
-    /// # assert_eq!(stream.next().await.unwrap(), 2);
-    /// # }));
-    /// ```
-    pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.fold_keyed_commutative(q!(|| ()), q!(|_, _| {}))
-            .map(q!(|(k, _)| k))
-    }
-
     /// A special case of [`Stream::reduce_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
@@ -1731,6 +1832,105 @@ where
     /// # }));
     /// ```
     pub fn reduce_keyed_commutative<F>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+    ) -> Stream<(K, V), Tick<L>, Bounded, NoOrder, ExactlyOnce>
+    where
+        F: Fn(&mut V, V) + 'a,
+    {
+        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ReduceKeyed {
+                f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, V)>(),
+            },
+        )
+    }
+}
+
+impl<'a, K, V, L, R> Stream<(K, V), Tick<L>, Bounded, TotalOrder, R>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    /// A special case of [`Stream::fold_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **idempotent** as there may be non-deterministic duplicates.
+    ///
+    /// If the input and output value types are the same and do not require initialization then use
+    /// [`Stream::reduce_keyed_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch
+    ///     .fold_keyed_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn fold_keyed_idempotent<A, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, Tick<L>>,
+        comb: impl IntoQuotedMut<'a, F, Tick<L>>,
+    ) -> Stream<(K, A), Tick<L>, Bounded, NoOrder, ExactlyOnce>
+    where
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) + 'a,
+    {
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::FoldKeyed {
+                init,
+                acc: comb,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<(K, A)>(),
+            },
+        )
+    }
+
+    /// A special case of [`Stream::reduce_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are accumulated via the `comb` closure.
+    ///
+    /// The `comb` closure must be **idempotent**, as there may be non-deterministic duplicates.
+    ///
+    /// If you need the accumulated value to have a different type than the input, use [`Stream::fold_keyed_idempotent`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]));
+    /// let batch = unsafe { numbers.tick_batch(&tick) };
+    /// batch
+    ///     .reduce_keyed_idempotent(q!(|acc, x| *acc |= x))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, false), (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # }));
+    /// ```
+    pub fn reduce_keyed_idempotent<F>(
         self,
         comb: impl IntoQuotedMut<'a, F, Tick<L>>,
     ) -> Stream<(K, V), Tick<L>, Bounded, NoOrder, ExactlyOnce>
