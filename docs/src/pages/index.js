@@ -9,6 +9,7 @@ export default function Home() {
     <Layout>
       <Head>
         <title>Hydro - a Rust framework for correct and performant distributed systems</title>
+        <meta property="og:title" content="Hydro - a Rust framework for correct and performant distributed systems" />
       </Head>
       <main>
         <div className={styles["jumbo"]}>
@@ -68,9 +69,9 @@ export default function Home() {
             flexGrow: 1,
             maxWidth: "650px"
           }}>
-            <h1>Zero-Cost Correctness</h1>
+            <h1>Distributed Safety Built-In</h1>
             <p>
-              Hydro is a correctness-first framework, helping you avoid distributed systems bugs at each stage of development. Just like Rust ensures memory safety through the borrow checker, Hydro ensures <i>distributed safety</i> through <b>stream types</b>. These types have <b>zero runtime overhead</b>; you retain full control over the network protocol, compute placement, and serialization format.
+              Hydro helps you avoid distributed systems bugs at each stage of development. Just like Rust ensures memory safety through the borrow checker, Hydro ensures <i>distributed safety</i> through <b>stream types</b>. These types have <b>zero runtime overhead</b>; you retain full control over the network protocol, compute placement, and serialization format.
             </p>
             <p>Hydro automatically flags situations where messages may be out-of-order, or duplicated, and guides you to appropriately handle them. These are surfaced through the Rust type system, visible to your editor, language server, and agents.</p>
             <div className={styles["inDevPanel"]}>
@@ -121,7 +122,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ width: 0 }} className={styles["panelImage"]}>
+          <div style={{ minWidth: "260px", width: 0 }} className={styles["panelImage"]}>
             <img
               src="/img/dfir-profile.png"
               style={{
@@ -141,12 +142,12 @@ export default function Home() {
           }}>
             <h1>Research Backed. Production Ready.</h1>
             <p>
-              Hydro has its roots in foundational distributed systems research at UC Berkeley, such as the CALM theorem. It is now co-led by a team at Amazon Web Services and Berkeley, with contributions from the open-source community.
+              Hydro has its roots in foundational distributed systems research at UC Berkeley, such as the CALM theorem. It is now co-led by a team at Berkeley and AWS, with contributions from the open-source community.
             </p>
             <p>Hydro continues to lead the way with cutting-edge capabilities, such as automatically optimizing distributed protocols, while supporting production use with cloud integrations and observability tooling.</p>
           </div>
 
-          <div style={{ width: 0, marginBottom: 0 }} className={styles["panelImage"]}>
+          <div style={{ minWidth: "260px", width: 0, marginBottom: 0 }} className={styles["panelImage"]}>
             <img
               src="/img/hydro-papers.png"
               style={{

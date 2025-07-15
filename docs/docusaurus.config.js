@@ -196,7 +196,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Hydro is co-led by open-source developers from Amazon Web Services, the <a href="https://sky.cs.berkeley.edu">Sky Computing Lab</a> at UC Berkeley, and various participating institutions.`,
+        copyright: `Hydro is co-led by open-source developers from the <a href="https://sky.cs.berkeley.edu">Sky Computing Lab</a> at UC Berkeley, Amazon Web Services, and various participating institutions.`,
       },
       prism: {
         theme: themes.github,
