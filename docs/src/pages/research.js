@@ -4,6 +4,7 @@ import Layout from '@theme/Layout';
 import Image from '@theme/IdealImage';
 
 import styles from './research.module.css';
+import Head from '@docusaurus/Head';
 
 const papers = [
   {
@@ -176,6 +177,10 @@ export default function Home() {
     <Layout
       description="Recent publications from the Hydro research group">
       <main>
+        <Head>
+          <title>Publications | Hydro</title>
+          <meta property="og:title" content="Publications | Hydro" />
+        </Head>
         <div style={{
           maxWidth: "calc(min(1100px, 100vw - 60px))",
           marginLeft: "auto",
