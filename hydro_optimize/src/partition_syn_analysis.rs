@@ -8,7 +8,7 @@ pub type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 // Invariant: Cannot have both a dependency and fields (fields are more specific)
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct StructOrTuple {
-    dependencies: BTreeSet<StructOrTupleIndex>, // Input tuple indices this tuple is equal to, if any
+    dependencies: BTreeSet<StructOrTupleIndex>, /* Input tuple indices this tuple is equal to, if any */
     fields: BTreeMap<String, Box<StructOrTuple>>, // Fields 1 layer deep
 }
 
@@ -37,11 +37,7 @@ impl StructOrTuple {
 
     /// Copy dependencies from RHS, extending it with rhs_index
     /// Note: Does NOT copy RHS fields
-    pub fn add_dependencies(
-        &mut self,
-        rhs: &StructOrTuple,
-        rhs_index: &StructOrTupleIndex,
-    ) {
+    pub fn add_dependencies(&mut self, rhs: &StructOrTuple, rhs_index: &StructOrTupleIndex) {
         for dependency in &rhs.dependencies {
             let mut dependency = dependency.clone();
             dependency.extend_from_slice(rhs_index);
@@ -121,7 +117,7 @@ impl StructOrTuple {
             // Construct a child for tuple1 if it has a broader dependency
             if let Some(other_child) = other_tuple.get_dependencies(&vec![field.clone()]) {
                 // Recursively check if there's a match in the child
-                if let Some(shared_child) = StructOrTuple::intersect(&other_child, &child) {
+                if let Some(shared_child) = StructOrTuple::intersect(&other_child, child) {
                     new_tuple
                         .fields
                         .insert(field.clone(), Box::new(shared_child));
@@ -130,7 +126,12 @@ impl StructOrTuple {
         }
 
         // Add root dependencies
-        new_tuple.dependencies.extend(tuple1.dependencies.intersection(&tuple2.dependencies).cloned());
+        new_tuple.dependencies.extend(
+            tuple1
+                .dependencies
+                .intersection(&tuple2.dependencies)
+                .cloned(),
+        );
 
         if new_tuple.is_empty() {
             None
@@ -159,7 +160,9 @@ impl StructOrTuple {
     /// Find the fields where all tuples have a dependency, regardless of what that dependency is.
     /// For each such field, record the dependency index of each tuple.
     /// Return an array of such arrays
-    pub fn intersect_dependencies_with_matching_fields(tuples: &[StructOrTuple]) -> Vec<Vec<StructOrTupleIndex>> {
+    pub fn intersect_dependencies_with_matching_fields(
+        tuples: &[StructOrTuple],
+    ) -> Vec<Vec<StructOrTupleIndex>> {
         let mut intersections = Vec::new();
 
         // If all tuples have a dependency, then copy it
@@ -170,16 +173,14 @@ impl StructOrTuple {
                     for dependency in &tuple.dependencies {
                         intersections.push(vec![dependency.clone()]);
                     }
-                }
-                else {
+                } else {
                     let num_intersections = intersections.len();
                     for (i, dependency) in tuple.dependencies.iter().enumerate() {
                         if i == 0 {
                             for intersection in intersections.iter_mut() {
                                 intersection.push(dependency.clone());
                             }
-                        }
-                        else {
+                        } else {
                             // Copy to a new set of intersections
                             for j in 0..num_intersections {
                                 let mut new_intersection = intersections[j].clone();
@@ -195,12 +196,12 @@ impl StructOrTuple {
         // Recurse into fields
         let mut traversed_fields = BTreeSet::new();
         for tuple in tuples.iter() {
-            for (field, _child) in &tuple.fields {
+            for field in tuple.fields.keys() {
                 if traversed_fields.contains(field) {
                     continue;
                 }
                 traversed_fields.insert(field.clone());
-                
+
                 // We haven't considered this field yet, check if each tuple can create a child with this field
                 let mut new_children = vec![StructOrTuple::default(); tuples.len()];
                 for (i, other_tuple) in tuples.iter().enumerate() {
@@ -214,14 +215,19 @@ impl StructOrTuple {
                 }
 
                 // Recurse
-                intersections.append(&mut StructOrTuple::intersect_dependencies_with_matching_fields(&new_children));
+                intersections.append(
+                    &mut StructOrTuple::intersect_dependencies_with_matching_fields(&new_children),
+                );
             }
         }
 
         intersections
     }
 
-    pub fn index_intersection(index1: &StructOrTupleIndex, index2: &StructOrTupleIndex) -> Option<StructOrTupleIndex> {
+    pub fn index_intersection(
+        index1: &StructOrTupleIndex,
+        index2: &StructOrTupleIndex,
+    ) -> Option<StructOrTupleIndex> {
         // Make sure that index2 is at least as long as index1 so we don't get out of bounds later
         if index1.len() > index2.len() {
             return StructOrTuple::index_intersection(index2, index1);
@@ -292,8 +298,10 @@ impl StructOrTuple {
         // Check if child depends on a field of the parent
         for dependency in &child.dependencies {
             // For that field, the parent depends on a field of the input
-            if let Some(dependency_in_parent) = parent.get_dependencies(&dependency) {
-                new_child.dependencies.extend(dependency_in_parent.dependencies.clone());
+            if let Some(dependency_in_parent) = parent.get_dependencies(dependency) {
+                new_child
+                    .dependencies
+                    .extend(dependency_in_parent.dependencies.clone());
             }
         }
 
@@ -332,9 +340,10 @@ impl Visit<'_> for StructOrTupleUseRhs {
             // Base path matches an Ident that has an existing dependency in one of its fields
             if let Some(existing_dependency) = self.existing_dependencies.get(ident).cloned() {
                 self.add_to_rhs_tuple(&existing_dependency);
-            }
-            else if ident.to_string() == "None" {
-                println!("Warning: Found keyword 'None', which will be ignored by partitioning analysis.")
+            } else if *ident == "None" {
+                println!(
+                    "Warning: Found keyword 'None', which will be ignored by partitioning analysis."
+                )
             }
         }
     }
@@ -389,7 +398,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
     }
 
     fn visit_expr_method_call(&mut self, call: &syn::ExprMethodCall) {
-        if call.method.to_string() == "clone" {
+        if call.method == "clone" {
             // Allow "clone", since it doesn't change the RHS
             self.visit_expr(&call.receiver);
         } else {
@@ -402,8 +411,10 @@ impl Visit<'_> for StructOrTupleUseRhs {
 
     fn visit_expr_block(&mut self, block: &syn::ExprBlock) {
         // Analyze the block, copying over our existing dependencies
-        let mut block_analysis = EqualityAnalysis::default();
-        block_analysis.dependencies = self.existing_dependencies.clone();
+        let mut block_analysis = EqualityAnalysis {
+            dependencies: self.existing_dependencies.clone(),
+            ..Default::default()
+        };
         block_analysis.visit_expr_block(block);
         // If there is an output, and there is a dependency, set it
         if !block_analysis.output_dependencies.is_empty() {
@@ -420,15 +431,19 @@ impl Visit<'_> for StructOrTupleUseRhs {
         // Since we may have multiple else-ifs, keep unwrapping the else branch until we reach a block
         loop {
             if let Some(else_branch) = &if_expr.else_branch {
-                let mut then_branch_analysis = EqualityAnalysis::default();
-                then_branch_analysis.dependencies = self.existing_dependencies.clone();
+                let mut then_branch_analysis = EqualityAnalysis {
+                    dependencies: self.existing_dependencies.clone(),
+                    ..Default::default()
+                };
                 then_branch_analysis.visit_block(&if_expr.then_branch);
                 branch_dependencies.push(then_branch_analysis.output_dependencies.clone());
 
                 match &*else_branch.1 {
                     syn::Expr::Block(block) => {
-                        let mut else_branch_analysis = EqualityAnalysis::default();
-                        else_branch_analysis.dependencies = self.existing_dependencies.clone();
+                        let mut else_branch_analysis = EqualityAnalysis {
+                            dependencies: self.existing_dependencies.clone(),
+                            ..Default::default()
+                        };
                         else_branch_analysis.visit_expr_block(block);
                         branch_dependencies.push(else_branch_analysis.output_dependencies.clone());
                         break;
@@ -453,8 +468,10 @@ impl Visit<'_> for StructOrTupleUseRhs {
     fn visit_expr_match(&mut self, expr: &syn::ExprMatch) {
         let mut branch_dependencies = vec![];
         for arm in &expr.arms {
-            let mut arm_analysis = EqualityAnalysis::default();
-            arm_analysis.dependencies = self.existing_dependencies.clone();
+            let mut arm_analysis = EqualityAnalysis {
+                dependencies: self.existing_dependencies.clone(),
+                ..Default::default()
+            };
             arm_analysis.visit_expr(&arm.body);
 
             if arm_analysis.output_dependencies.is_empty() {
@@ -506,12 +523,14 @@ struct TupleDeclareLhs {
 }
 
 impl TupleDeclareLhs {
-    fn into_tuples(&self) -> BTreeMap<syn::Ident, StructOrTuple> {
+    fn into_tuples(self) -> BTreeMap<syn::Ident, StructOrTuple> {
         let mut tuples = BTreeMap::new();
-        for (ident, index) in &self.lhs_tuple {
-            let mut tuple = StructOrTuple::default();
-            tuple.dependencies = BTreeSet::from([index.clone()]);
-            tuples.insert(ident.clone(), tuple);
+        for (ident, index) in self.lhs_tuple {
+            let tuple = StructOrTuple {
+                dependencies: BTreeSet::from([index]),
+                ..Default::default()
+            };
+            tuples.insert(ident, tuple);
         }
         tuples
     }
@@ -551,35 +570,32 @@ struct EqualityAnalysis {
 
 impl Visit<'_> for EqualityAnalysis {
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
-        match stmt {
-            syn::Stmt::Local(local) => {
-                // Analyze LHS
-                let mut input_analysis: TupleDeclareLhs = TupleDeclareLhs::default();
-                input_analysis.visit_pat(&local.pat);
+        if let syn::Stmt::Local(local) = stmt {
+            // Analyze LHS
+            let mut input_analysis: TupleDeclareLhs = TupleDeclareLhs::default();
+            input_analysis.visit_pat(&local.pat);
 
-                // Analyze RHS
-                let mut analysis = StructOrTupleUseRhs::default();
-                if let Some(init) = local.init.as_ref() {
-                    // See if RHS is a direct match for an existing dependency
-                    analysis.existing_dependencies = self.dependencies.clone();
-                    analysis.visit_expr(init.expr.as_ref());
-                }
+            // Analyze RHS
+            let mut analysis = StructOrTupleUseRhs::default();
+            if let Some(init) = local.init.as_ref() {
+                // See if RHS is a direct match for an existing dependency
+                analysis.existing_dependencies = self.dependencies.clone();
+                analysis.visit_expr(init.expr.as_ref());
+            }
 
-                // Set dependencies from LHS to RHS
-                for (lhs, tuple_index) in input_analysis.lhs_tuple.iter() {
-                    let mut tuple = StructOrTuple::default();
-                    tuple.set_dependencies(tuple_index, &analysis.rhs_tuple, tuple_index);
-                    if tuple.is_empty() {
-                        // No RHS dependency found, delete LHS if it exists (it shadows any previous dependency)
-                        self.dependencies.remove(lhs);
-                    } else {
-                        // Found a match, insert into dependencies
-                        println!("Found dependency: {} {:?} = {:?}", lhs, tuple_index, tuple);
-                        self.dependencies.insert(lhs.clone(), tuple);
-                    }
+            // Set dependencies from LHS to RHS
+            for (lhs, tuple_index) in input_analysis.lhs_tuple.iter() {
+                let mut tuple = StructOrTuple::default();
+                tuple.set_dependencies(tuple_index, &analysis.rhs_tuple, tuple_index);
+                if tuple.is_empty() {
+                    // No RHS dependency found, delete LHS if it exists (it shadows any previous dependency)
+                    self.dependencies.remove(lhs);
+                } else {
+                    // Found a match, insert into dependencies
+                    println!("Found dependency: {} {:?} = {:?}", lhs, tuple_index, tuple);
+                    self.dependencies.insert(lhs.clone(), tuple);
                 }
             }
-            _ => {}
         }
     }
 
@@ -592,8 +608,10 @@ impl Visit<'_> for EqualityAnalysis {
                 if let syn::Stmt::Expr(expr, semicolon) = stmt {
                     if semicolon.is_none() {
                         // Output only exists if there is no semicolon
-                        let mut analysis = StructOrTupleUseRhs::default();
-                        analysis.existing_dependencies = self.dependencies.clone();
+                        let mut analysis = StructOrTupleUseRhs {
+                            existing_dependencies: self.dependencies.clone(),
+                            ..Default::default()
+                        };
                         analysis.visit_expr(expr);
 
                         self.output_dependencies = analysis.rhs_tuple;
@@ -610,8 +628,10 @@ impl Visit<'_> for EqualityAnalysis {
             syn::Expr::Block(block) => self.visit_expr_block(block),
             _ => {
                 // Visit other expressions to analyze dependencies
-                let mut analysis = StructOrTupleUseRhs::default();
-                analysis.existing_dependencies = self.dependencies.clone();
+                let mut analysis = StructOrTupleUseRhs {
+                    existing_dependencies: self.dependencies.clone(),
+                    ..Default::default()
+                };
                 analysis.visit_expr(expr);
                 self.output_dependencies = analysis.rhs_tuple;
             }
@@ -649,8 +669,10 @@ impl Visit<'_> for AnalyzeClosure {
         );
 
         // Perform dependency analysis on the body
-        let mut analyzer = EqualityAnalysis::default();
-        analyzer.dependencies = input_analysis.into_tuples();
+        let mut analyzer = EqualityAnalysis {
+            dependencies: input_analysis.into_tuples(),
+            ..Default::default()
+        };
         analyzer.visit_expr(&closure.body);
         self.output_dependencies = analyzer.output_dependencies;
 
@@ -1049,7 +1071,7 @@ mod tests {
         c: Option<usize>,
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code, reason = "Not actually dead, used for testing below")]
     struct TestNestedStruct {
         struct_1: TestStruct,
         struct_2: TestStruct,
