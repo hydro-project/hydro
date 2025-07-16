@@ -31,7 +31,7 @@ cargo smart-release --update-crates-index \
    dfir_rs dfir_lang dfir_macro \
    dfir_datalog dfir_datalog_core \
    hydro_lang hydro_std \
-   hydro_deploy hydro_cli hydro_deploy_integration \
+   hydro_deploy hydro_deploy_integration \
    multiplatform_test
 ```
 
@@ -65,7 +65,6 @@ showing that all the changelogs can be modified. Make sure the version bumps loo
 [INFO ] WOULD auto-bump dependent package 'dfir_macro' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_lang'
 [INFO ] WOULD auto-bump dependent package 'lattices' from 0.4.0 to 0.5.0 for publishing
 [INFO ] WOULD minor-bump provided package 'dfir_rs' from 0.4.0 to 0.5.0 for publishing, for SAFETY due to breaking package 'dfir_datalog'
-[INFO ] WOULD minor-bump provided package 'hydro_cli' from 0.4.0 to 0.5.0 for publishing
 [INFO ] WOULD adjust 2 manifest versions due to breaking change in 'dfir_lang': 'dfir_datalog_core' 0.4.0 ➡ 0.5.0, 'dfir_macro' 0.4.0 ➡ 0.5.0
 [INFO ] WOULD adjust 1 manifest version due to breaking change in 'dfir_datalog_core': 'dfir_datalog' 0.4.0 ➡ 0.5.0
 [INFO ] WOULD adjust 1 manifest version due to breaking change in 'dfir_datalog': 'dfir_rs' 0.4.0 ➡ 0.5.0
@@ -76,7 +75,6 @@ showing that all the changelogs can be modified. Make sure the version bumps loo
 [INFO ] WOULD modify existing changelog for 'dfir_macro'.
 [INFO ] WOULD modify existing changelog for 'lattices'.
 [INFO ] WOULD modify existing changelog for 'dfir_rs'.
-[INFO ] WOULD modify existing changelog for 'hydro_cli'.
 ```
 
 ### Check log for this!

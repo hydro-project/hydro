@@ -5,8 +5,6 @@
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/benches/benches" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/core/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_cli/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_cli_examples/examples" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydro_deploy_integration/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydro_deploy/hydroflow_plus_deploy/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/hydroflow/examples" isTestSource="false" />

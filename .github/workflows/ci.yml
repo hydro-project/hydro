@@ -168,51 +168,6 @@ jobs:
         # Not supported by nextest: https://github.com/nextest-rs/nextest/issues/16
         run: cargo test --no-fail-fast --features python --features hydro_lang/deploy --doc
 
-      - name: Install Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Build CLI (Linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: |
-          cd hydro_deploy/hydro_cli
-          python -m venv .venv
-          source .venv/bin/activate
-          pip install maturin
-          maturin develop
-
-      - name: Build CLI (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        run: |
-          cd hydro_deploy/hydro_cli
-          python -m venv .venv
-          .venv/Scripts/activate
-          pip install maturin
-          maturin develop
-
-      - name: Run Python tests (Linux)
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd hydro_deploy/hydro_cli
-          source .venv/bin/activate
-          cd python_tests
-          pip install -r requirements.txt
-          pytest
-
-      - name: Run Python tests (Windows)
-        if: ${{ matrix.os == 'windows-latest' }}
-        env:
-          RUST_BACKTRACE: 1
-        run: |
-          cd hydro_deploy/hydro_cli
-          .venv/Scripts/activate
-          cd python_tests
-          pip install -r requirements.txt
-          pytest
-
   test-wasm:
     name: Test Suite (WebAssembly)
     if: ${{ needs.pre_job.outputs.should_skip != 'true' || github.event_name != 'pull_request' }}

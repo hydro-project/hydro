@@ -2219,22 +2219,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
-name = "hydro_cli"
-version = "0.13.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap",
- "futures",
- "hydro_deploy",
- "hydro_deploy_integration",
- "pyo3",
- "pyo3-async-runtimes",
- "pythonize",
- "tokio",
-]
-
-[[package]]
 name = "hydro_cli_examples"
 version = "0.0.0"
 dependencies = [
@@ -4150,19 +4134,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyo3-async-runtimes"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fe0b015461c5136532f42908d6bf4b079da1aedfbffa8b0b5d4cbc59c2fdf8"
-dependencies = [
- "futures",
- "once_cell",
- "pin-project-lite",
- "pyo3",
- "tokio",
-]
-
-[[package]]
 name = "pyo3-build-config"
 version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4205,16 +4176,6 @@ dependencies = [
  "pyo3-build-config",
  "quote",
  "syn 2.0.100",
-]
-
-[[package]]
-name = "pythonize"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d0664248812c38cc55a4ed07f88e4df516ce82604b93b1ffdc041aa77a6cb3c"
-dependencies = [
- "pyo3",
- "serde",
 ]
 
 [[package]]
