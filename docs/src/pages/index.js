@@ -1,5 +1,6 @@
 import Link from "@docusaurus/Link";
 import Layout from "@theme/Layout";
+import CodeBlock from '@theme/CodeBlock';
 
 import styles from "./index.module.css";
 import Head from "@docusaurus/Head";
@@ -100,6 +101,37 @@ export default function Home() {
               referrerPolicy="strict-origin-when-cross-origin"
               allowFullScreen
             ></iframe>
+          </div>
+        </div>
+
+        <div className={styles["panel"]}>
+          <div style={{
+            flexGrow: 1,
+            maxWidth: "650px"
+          }}>
+            <h1>A New Kind of Modularity</h1>
+            <p>
+              Hydro is the first production framework with <b>location-oriented programming</b>, where a single function can encapsulate logic spanning several machines. Instead of splitting your app on network boundaries with opaque RPC calls, Hydro encourages you to split your app into <b>logical modules</b> that can be independently tested.
+            </p>
+            <p style={{
+              marginBottom: 0
+            }}>Quorum counting? Two-Phase Commit? Each a single function in Hydro's standard library. Want just the leader-election piece of Paxos? It's already a separate module. Hydro unlocks new opportunities to share distributed code across your organization with confidence.</p>
+          </div>
+
+          <div className={styles["panelImage"]} style={{ fontSize: "16px", flexShrink: 1, flexBasis: "10%", marginBottom: "calc(-1 * var(--ifm-leading))" }}>
+            <CodeBlock
+          language="rust">
+            {`fn reduce_from_cluster(
+  data: Stream<usize, Cluster<Worker>, Unbounded>,
+  leader: &Process<Leader>
+) -> Singleton<usize, Process<Leader>, Unbounded> {
+  data
+    .send_bincode(leader)
+    // Stream<(ClusterId<Worker>, usize), Process<Leader>, ..., NoOrder>
+    .map(q!(|v| v.1)) // drop the ID
+    .fold_commutative(q!(0), q!(|acc, v| *acc += v))
+}`}
+            </CodeBlock>
           </div>
         </div>
 
