@@ -6,8 +6,9 @@ use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
 use hydro_lang::*;
 use serde::{Deserialize, Serialize};
-use stats_ci::mean::Arithmetic;
-use stats_ci::{Confidence, StatisticsOps};
+
+mod rolling_average;
+pub use rolling_average::RollingAverage;
 
 pub struct SerializableHistogramWrapper {
     pub histogram: Rc<RefCell<Histogram<u64>>>,
@@ -35,7 +36,7 @@ impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
 }
 pub struct BenchResult<'a, Client> {
     pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
-    pub throughput: Singleton<Arithmetic<f64>, Cluster<'a, Client>, Unbounded>,
+    pub throughput: Singleton<RollingAverage, Cluster<'a, Client>, Unbounded>,
 }
 
 /// Benchmarks transactional workloads by concurrently submitting workloads
@@ -150,11 +151,11 @@ pub unsafe fn bench_client<'a, Client>(
         .union(c_throughput_reset)
         .all_ticks()
         .fold(
-            q!(|| (0, { stats_ci::mean::Arithmetic::new() })),
+            q!(|| (0, { RollingAverage::new() })),
             q!(|(total, stats), (batch_size, reset)| {
                 if reset {
                     if *total > 0 {
-                        stats.extend(&[*total as f64]).unwrap();
+                        stats.add_sample(*total as f64);
                     }
 
                     *total = 0;
@@ -241,7 +242,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
             }))
             .map(q!(|(_id, throughput)| throughput))
             .reduce_commutative(q!(|combined, new| {
-                *combined = combined.add(new);
+                combined.add(new);
             }))
     }
     .latest();
@@ -249,23 +250,17 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     let client_members = clients.members();
     unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
         move |throughputs| {
-            let confidence = Confidence::new(0.99);
-
             if throughputs.sample_count() >= 2 {
                 let num_client_machines = client_members.len();
-                // ci_mean crashes if there are fewer than two samples
                 let mean = throughputs.sample_mean() * num_client_machines as f64;
-                if let Ok(interval) = throughputs.ci_mean(confidence) {
-                    if let Some(lower) = interval.left() {
-                        if let Some(upper) = interval.right() {
-                            println!(
-                                "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                                lower * num_client_machines as f64,
-                                mean,
-                                upper * num_client_machines as f64
-                            );
-                        }
-                    }
+
+                if let Some((lower, upper)) = throughputs.confidence_interval_99() {
+                    println!(
+                        "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                        lower * num_client_machines as f64,
+                        mean,
+                        upper * num_client_machines as f64
+                    );
                 }
             }
         }
