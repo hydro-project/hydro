@@ -21,9 +21,9 @@ async fn main() {
             deployment
                 .GcpComputeEngineHost()
                 .project(&project)
-                .machine_type("n2-highcpu-2")
+                .machine_type("n2-standard-4")
                 .image("debian-cloud/debian-11")
-                .region("us-west1-a")
+                .region("us-central1-c")
                 .network(network.clone())
                 .add()
         })
@@ -34,7 +34,7 @@ async fn main() {
 
     let builder = hydro_lang::FlowBuilder::new();
     let f = 1;
-    let num_clients = 1;
+    let num_clients = 3;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
     let checkpoint_frequency = 1000; // Num log entries
     let i_am_leader_send_timeout = 5; // Sec
@@ -44,6 +44,7 @@ async fn main() {
     let proposers = builder.cluster();
     let acceptors = builder.cluster();
     let clients = builder.cluster();
+    let client_aggregator = builder.process();
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
@@ -62,6 +63,7 @@ async fn main() {
             },
         },
         &clients,
+        &client_aggregator,
         &replicas,
     );
 
@@ -82,6 +84,10 @@ async fn main() {
             &clients,
             (0..num_clients)
                 .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+        )
+        .with_process(
+            &client_aggregator,
+            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
         )
         .with_cluster(
             &replicas,
