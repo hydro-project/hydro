@@ -6,7 +6,9 @@ use super::kv_replica::{KvPayload, Replica, kv_replica};
 use super::paxos_with_client::PaxosLike;
 
 pub struct Client;
+pub struct Aggregator;
 
+#[expect(clippy::too_many_arguments, reason = "internal paxos code // TODO")]
 pub fn paxos_bench<'a>(
     num_clients_per_node: usize,
     checkpoint_frequency: usize, // How many sequence numbers to commit before checkpointing
@@ -14,6 +16,7 @@ pub fn paxos_bench<'a>(
     num_replicas: usize,
     paxos: impl PaxosLike<'a>,
     clients: &Cluster<'a, Client>,
+    client_aggregator: &Process<'a, Aggregator>,
     replicas: &Cluster<'a, Replica>,
 ) {
     let paxos_processor = |c_to_proposers: Stream<(u32, u32), Cluster<'a, Client>, Unbounded>| {
@@ -96,7 +99,7 @@ pub fn paxos_bench<'a>(
 
     let bench_results = unsafe { bench_client(clients, paxos_processor, num_clients_per_node) };
 
-    print_bench_results(bench_results);
+    print_bench_results(bench_results, client_aggregator, clients);
 }
 
 #[cfg(test)]
@@ -114,6 +117,7 @@ mod tests {
         proposers: &hydro_lang::Cluster<'a, crate::cluster::paxos::Proposer>,
         acceptors: &hydro_lang::Cluster<'a, crate::cluster::paxos::Acceptor>,
         clients: &hydro_lang::Cluster<'a, super::Client>,
+        client_aggregator: &hydro_lang::Process<'a, super::Aggregator>,
         replicas: &hydro_lang::Cluster<'a, crate::cluster::kv_replica::Replica>,
     ) {
         super::paxos_bench(
@@ -132,6 +136,7 @@ mod tests {
                 },
             },
             clients,
+            client_aggregator,
             replicas,
         );
     }
@@ -142,9 +147,16 @@ mod tests {
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
+        let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
-        create_paxos(&proposers, &acceptors, &clients, &replicas);
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
         let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
@@ -171,9 +183,16 @@ mod tests {
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
+        let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
-        create_paxos(&proposers, &acceptors, &clients, &replicas);
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
         let mut deployment = Deployment::new();
 
         let nodes = builder
@@ -186,6 +205,10 @@ mod tests {
                 (0..2 * PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
             )
             .with_cluster(&clients, vec![TrybuildHost::new(deployment.Localhost())])
+            .with_process(
+                &client_aggregator,
+                TrybuildHost::new(deployment.Localhost()),
+            )
             .with_cluster(
                 &replicas,
                 (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
@@ -194,8 +217,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let client_node = &nodes.get_cluster(&clients).members()[0];
-        let client_out = client_node.stdout_filter("Throughput 99% interval:").await;
+        let client_node = &nodes.get_process(&client_aggregator);
+        let client_out = client_node.stdout_filter("Throughput:").await;
 
         deployment.start().await.unwrap();
 
@@ -203,13 +226,12 @@ mod tests {
 
         use regex::Regex;
 
-        let re = Regex::new(r"Throughput 99% interval: ([^ ]+) - ([^ ]+) requests/s").unwrap();
+        let re = Regex::new(r"Throughput: ([^ ]+) - ([^ ]+) - ([^ ]+) requests/s").unwrap();
         let mut found = 0;
         let mut client_out = client_out;
         while let Some(line) = client_out.recv().await {
             if let Some(caps) = re.captures(&line) {
-                if let (Ok(lower), Ok(_upper)) = (f64::from_str(&caps[1]), f64::from_str(&caps[2]))
-                {
+                if let Ok(lower) = f64::from_str(&caps[1]) {
                     if lower > 0.0 {
                         println!("Found throughput lower-bound: {}", lower);
                         found += 1;

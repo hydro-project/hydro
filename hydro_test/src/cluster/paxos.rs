@@ -311,7 +311,7 @@ pub unsafe fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwne
         num_quorum_participants,
     );
     p_is_leader_complete_cycle.complete(p_is_leader.clone());
-    p1b_fail_complete.complete(fail_ballots.end_atomic());
+    p1b_fail_complete.complete(fail_ballots);
 
     (p_ballot, p_is_leader, p_accepted_values, a_max_ballot)
 }
@@ -481,7 +481,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
 ) -> (
     Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
     Stream<(Option<usize>, P), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
-    Stream<Ballot, Atomic<Cluster<'a, Proposer>>, Unbounded, NoOrder>,
+    Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
     let (quorums, fails) = collect_quorum_with_response(
         a_to_proposers_p1b.atomic(proposer_tick),
@@ -521,7 +521,7 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
         p_is_leader,
         // we used an unordered accumulator, so flattened has no order
         p_received_quorum_of_p1bs.flatten_unordered(),
-        fails.map(q!(|(_, ballot)| ballot)),
+        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
     )
 }
 
@@ -670,6 +670,7 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
         a_max_ballot.clone(),
         payloads_to_send
             .clone()
+            .end_atomic()
             .map(q!(move |((slot, ballot), value)| P2a {
                 sender: CLUSTER_SELF_ID,
                 ballot,
@@ -693,10 +694,10 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
 
     (
         p_to_replicas
-            .map(q!(|((slot, _ballot), (value, _))| (slot, value)))
-            .end_atomic(),
+            .end_atomic()
+            .map(q!(|((slot, _ballot), (value, _))| (slot, value))),
         a_log,
-        fails.map(q!(|(_, ballot)| ballot)).end_atomic(),
+        fails.end_atomic().map(q!(|(_, ballot)| ballot)),
     )
 }
 
