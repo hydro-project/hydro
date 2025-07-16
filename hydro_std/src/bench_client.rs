@@ -3,10 +3,36 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use hdrhistogram::Histogram;
+use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
 use hydro_lang::*;
+use serde::{Deserialize, Serialize};
 use stats_ci::mean::Arithmetic;
 use stats_ci::{Confidence, StatisticsOps};
 
+pub struct SerializableHistogramWrapper {
+    pub histogram: Rc<RefCell<Histogram<u64>>>,
+}
+
+impl Serialize for SerializableHistogramWrapper {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut vec = Vec::new();
+        V2Serializer::new()
+            .serialize(&self.histogram.borrow(), &mut vec)
+            .unwrap();
+        serializer.serialize_bytes(&vec)
+    }
+}
+impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
+    fn deserialize<D: serde::Deserializer<'a>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut bytes: &[u8] = Deserialize::deserialize(deserializer)?;
+        let mut histogram = Deserializer::new().deserialize(&mut bytes).unwrap();
+        // Allow auto-resizing to prevent error when combining
+        histogram.auto(true);
+        Ok(SerializableHistogramWrapper {
+            histogram: Rc::new(RefCell::new(histogram)),
+        })
+    }
+}
 pub struct BenchResult<'a, Client> {
     pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
     pub throughput: Singleton<Arithmetic<f64>, Cluster<'a, Client>, Unbounded>,
@@ -147,45 +173,101 @@ pub unsafe fn bench_client<'a, Client>(
 
 /// Prints transaction latency and throughput results to stdout,
 /// with percentiles for latency and a confidence interval for throughput.
-pub fn print_bench_results<Client>(results: BenchResult<Client>) {
-    unsafe {
+pub fn print_bench_results<'a, Client: 'a, Aggregator>(
+    results: BenchResult<'a, Client>,
+    aggregator: &Process<'a, Aggregator>,
+    clients: &Cluster<'a, Client>,
+) {
+    let keyed_latencies = unsafe {
         // SAFETY: intentional non-determinism
         results
             .latency_histogram
             .sample_every(q!(Duration::from_millis(1000)))
     }
-    .for_each(q!(move |latencies| {
-        let latencies = latencies.borrow();
-        println!(
-            "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
-            Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
-            Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
-            Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64 / 1000.0,
-            latencies.len()
-        );
-    }));
+    .map(q!(|latencies| {
+        SerializableHistogramWrapper {
+            histogram: latencies,
+        }
+    }))
+    .send_bincode(aggregator);
 
-    unsafe {
+    let combined_latencies = unsafe {
+        keyed_latencies
+            .map(q!(|(id, histogram)| (
+                id,
+                histogram.histogram.borrow_mut().clone()
+            )))
+            .tick_batch(&aggregator.tick())
+            .assume_ordering()
+            .persist()
+            .reduce_keyed_idempotent(q!(|combined, new| {
+                *combined = new;
+            }))
+            .map(q!(|(_id, histogram)| histogram))
+            .reduce_commutative(q!(|combined, new| {
+                combined.add(new).unwrap();
+            }))
+    }
+    .latest();
+
+    unsafe { combined_latencies.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
+        move |latencies| {
+            println!(
+                "Latency p50: {:.3} | p99 {:.3} ms | p999 {:.3} ms ({:} samples)",
+                Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
+                Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
+                    / 1000.0,
+                latencies.len()
+            );
+        }
+    ));
+
+    let keyed_throughputs = unsafe {
         // SAFETY: intentional non-determinism
         results
             .throughput
             .sample_every(q!(Duration::from_millis(1000)))
     }
-    .for_each(q!(move |throughputs| {
-        let confidence = Confidence::new(0.99);
+    .send_bincode(aggregator);
 
-        if throughputs.sample_count() >= 2 {
-            // ci_mean crashes if there are fewer than two samples
-            if let Ok(interval) = throughputs.ci_mean(confidence) {
-                if let Some(lower) = interval.left() {
-                    if let Some(upper) = interval.right() {
-                        println!(
-                            "Throughput 99% interval: {:.2} - {:.2} requests/s",
-                            lower, upper
-                        );
+    let combined_throughputs = unsafe {
+        keyed_throughputs
+            .tick_batch(&aggregator.tick())
+            .assume_ordering()
+            .persist()
+            .reduce_keyed_idempotent(q!(|combined, new| {
+                *combined = new;
+            }))
+            .map(q!(|(_id, throughput)| throughput))
+            .reduce_commutative(q!(|combined, new| {
+                *combined = combined.add(new);
+            }))
+    }
+    .latest();
+
+    let client_members = clients.members();
+    unsafe { combined_throughputs.sample_every(q!(Duration::from_millis(1000))) }.for_each(q!(
+        move |throughputs| {
+            let confidence = Confidence::new(0.99);
+
+            if throughputs.sample_count() >= 2 {
+                let num_client_machines = client_members.len();
+                // ci_mean crashes if there are fewer than two samples
+                let mean = throughputs.sample_mean() * num_client_machines as f64;
+                if let Ok(interval) = throughputs.ci_mean(confidence) {
+                    if let Some(lower) = interval.left() {
+                        if let Some(upper) = interval.right() {
+                            println!(
+                                "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                                lower * num_client_machines as f64,
+                                mean,
+                                upper * num_client_machines as f64
+                            );
+                        }
                     }
                 }
             }
         }
-    }));
+    ));
 }
