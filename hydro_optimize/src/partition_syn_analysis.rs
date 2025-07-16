@@ -1,4 +1,4 @@
-use std::collections::{HashMap, BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::hash::Hash;
 
 use syn::visit::Visit;
@@ -157,13 +157,13 @@ impl StructOrTuple {
     }
 
     /// Find the fields where all tuples have a dependency, regardless of what that dependency is.
-    /// For each such field, create an array of dependency indices from each tuple.
+    /// For each such field, record the dependency index of each tuple.
     /// Return an array of such arrays
     pub fn intersect_dependencies_with_matching_fields(tuples: &[StructOrTuple]) -> Vec<Vec<StructOrTupleIndex>> {
         let mut intersections = Vec::new();
 
         // If all tuples have a dependency, then copy it
-        // If the tuples have dependencies [a], then [b, c], then create the vecs [a,b] and [a,c]
+        // If tuple1 has dependencies [a], and tuple2 has dependencies [b, c] (meaning b or c), then create the vecs [a,b] and [a,c]
         if tuples.iter().all(|tuple| !tuple.dependencies.is_empty()) {
             for tuple in tuples {
                 if intersections.is_empty() {
@@ -219,6 +219,24 @@ impl StructOrTuple {
         }
 
         intersections
+    }
+
+    pub fn index_intersection(index1: &StructOrTupleIndex, index2: &StructOrTupleIndex) -> Option<StructOrTupleIndex> {
+        // Make sure that index2 is at least as long as index1 so we don't get out of bounds later
+        if index1.len() > index2.len() {
+            return StructOrTuple::index_intersection(index2, index1);
+        }
+
+        // Iterate through fields of both indices in order
+        for (i, field) in index1.iter().enumerate() {
+            // If any fields don't match, return None
+            if index2[i] != *field {
+                return None;
+            }
+        }
+
+        // Since index2 is longer, it must be more specific
+        Some(index2.clone())
     }
 
     pub fn union(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
@@ -290,7 +308,7 @@ impl StructOrTuple {
 // Find whether a tuple's usage (Ex: a.0.1) references an existing var (Ex: a), and if so, calculate the new StructOrTupleIndex
 #[derive(Default)]
 struct StructOrTupleUseRhs {
-    existing_dependencies: HashMap<syn::Ident, StructOrTuple>,
+    existing_dependencies: BTreeMap<syn::Ident, StructOrTuple>,
     rhs_tuple: StructOrTuple,
     field_index: StructOrTupleIndex, /* Used to track where we are in the tuple/struct as we recurse. Ex: ((a, b), c) -> [0, 1] for b */
     reference_field_index: StructOrTupleIndex, /* Used to track the index of the tuple/struct that we're referencing. Ex: a.0.1 -> [0, 1] */
@@ -483,13 +501,13 @@ impl Visit<'_> for StructOrTupleUseRhs {
 // For example, (a, (b, c)) -> { a: [0], b: [1, 0], c: [1, 1] }
 #[derive(Default)]
 struct TupleDeclareLhs {
-    lhs_tuple: HashMap<syn::Ident, StructOrTupleIndex>,
+    lhs_tuple: BTreeMap<syn::Ident, StructOrTupleIndex>,
     tuple_index: StructOrTupleIndex, // Internal, used to track the index of the tuple recursively
 }
 
 impl TupleDeclareLhs {
-    fn into_tuples(&self) -> HashMap<syn::Ident, StructOrTuple> {
-        let mut tuples = HashMap::new();
+    fn into_tuples(&self) -> BTreeMap<syn::Ident, StructOrTuple> {
+        let mut tuples = BTreeMap::new();
         for (ident, index) in &self.lhs_tuple {
             let mut tuple = StructOrTuple::default();
             tuple.dependencies = BTreeSet::from([index.clone()]);
@@ -528,7 +546,7 @@ impl Visit<'_> for TupleDeclareLhs {
 #[derive(Default)]
 struct EqualityAnalysis {
     output_dependencies: StructOrTuple,
-    dependencies: HashMap<syn::Ident, StructOrTuple>,
+    dependencies: BTreeMap<syn::Ident, StructOrTuple>,
 }
 
 impl Visit<'_> for EqualityAnalysis {
@@ -646,7 +664,7 @@ impl Visit<'_> for AnalyzeClosure {
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use hydro_lang::deploy::DeployRuntime;
     use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
@@ -659,7 +677,7 @@ mod tests {
     fn partition_analysis_leaf(
         leaf: &mut HydroLeaf,
         next_stmt_id: &mut usize,
-        metadata: &RefCell<HashMap<usize, StructOrTuple>>,
+        metadata: &RefCell<BTreeMap<usize, StructOrTuple>>,
     ) {
         let mut analyzer = AnalyzeClosure::default();
         leaf.visit_debug_expr(|debug_expr| {
@@ -673,7 +691,7 @@ mod tests {
     fn partition_analysis_node(
         node: &mut HydroNode,
         next_stmt_id: &mut usize,
-        metadata: &RefCell<HashMap<usize, StructOrTuple>>,
+        metadata: &RefCell<BTreeMap<usize, StructOrTuple>>,
     ) {
         let mut analyzer = AnalyzeClosure::default();
         node.visit_debug_expr(|debug_expr| {
@@ -684,8 +702,8 @@ mod tests {
             .insert(*next_stmt_id, analyzer.output_dependencies.clone());
     }
 
-    fn partition_analysis(ir: &mut [HydroLeaf]) -> HashMap<usize, StructOrTuple> {
-        let partitioning_metadata = RefCell::new(HashMap::new());
+    fn partition_analysis(ir: &mut [HydroLeaf]) -> BTreeMap<usize, StructOrTuple> {
+        let partitioning_metadata = RefCell::new(BTreeMap::new());
         traverse_dfir(
             ir,
             |leaf, next_stmt_id| {

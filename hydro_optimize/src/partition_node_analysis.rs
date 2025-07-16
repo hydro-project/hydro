@@ -26,9 +26,9 @@ fn input_analysis_node(
     }
 }
 
-fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: LocationId) -> BTreeSet<usize> {
+fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> BTreeSet<usize> {
     let mut input_metadata = InputMetadata {
-        cluster_to_partition,
+        cluster_to_partition: cluster_to_partition.clone(),
         inputs: BTreeSet::new(),
     };
     traverse_dfir(
@@ -50,7 +50,7 @@ pub struct InputDependencyMetadata {
     pub optimistic_phase: bool, // If true, tuple intersection continues even if one side does not exist
     pub input_taint: BTreeMap<usize, BTreeSet<usize>>, // op_id -> set of input op_ids that taint this node
     pub input_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>, // op_id -> (input op_id -> index of input in output)
-    pub syn_analysis: HashMap<usize, StructOrTuple>, // Cached results for analyzing f for each operator
+    pub syn_analysis: BTreeMap<usize, StructOrTuple>, // Cached results for analyzing f for each operator
 }
 
 impl Hash for InputDependencyMetadata {
@@ -318,17 +318,19 @@ fn input_dependency_analysis_node(
 
 fn input_dependency_analysis(
     ir: &mut [HydroLeaf],
-    cluster_to_partition: LocationId,
+    cluster_to_partition: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-) -> (BTreeMap<usize, BTreeSet<usize>>, BTreeMap<usize, BTreeMap<usize, StructOrTuple>>) {
+) -> InputDependencyMetadata {
     let mut metadata = InputDependencyMetadata {
         cluster_to_partition: cluster_to_partition.clone(),
         inputs: input_analysis(ir, cluster_to_partition),
         optimistic_phase: true,
         input_taint: BTreeMap::new(),
         input_dependencies: BTreeMap::new(),
-        syn_analysis: HashMap::new(),
+        syn_analysis: BTreeMap::new(),
     };
+
+    println!("\nBegin input dependency analysis");
 
     let mut num_iters = 0;
     let mut prev_hash = None;
@@ -362,7 +364,7 @@ fn input_dependency_analysis(
         num_iters += 1;
     }
 
-    (metadata.input_taint, metadata.input_dependencies)
+    metadata
 }
 
 /// If the tuple with the given id is tainted but has no dependencies from some input, return None
@@ -386,11 +388,11 @@ fn get_inputs_and_dependencies(input_taint: &BTreeMap<usize, BTreeSet<usize>>, i
     Some((ordered_input, ordered_dependencies))
 }
 
-fn partitioning_analysis_node(
+fn partitioning_constraint_analysis_node(
     node: &mut HydroNode,
     next_stmt_id: &mut usize,
     dependency_metadata: &InputDependencyMetadata,
-    possible_partitionings: &mut HashMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>, // op -> set of partitioning requirements (input -> indices), one for each input taint. Empty set = cannot partition
+    possible_partitionings: &mut BTreeMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>, // op -> set of partitioning requirements (input -> indices), one for each input taint. Empty set = cannot partition
 ) {
     let InputDependencyMetadata { cluster_to_partition, input_taint, input_dependencies, .. } = dependency_metadata;
 
@@ -480,6 +482,111 @@ fn partitioning_analysis_node(
     }
 }
 
+fn partitioning_analysis(
+    ir: &mut [HydroLeaf],
+    cluster_to_partition: &LocationId,
+    cycle_source_to_sink_input: &HashMap<usize, usize>,
+) -> Option<Vec<BTreeMap<usize, StructOrTupleIndex>>> { // Returns all possible partitionings
+    let dependency_metadata = input_dependency_analysis(ir, cluster_to_partition, &cycle_source_to_sink_input);
+    let mut possible_partitionings = BTreeMap::new();
+
+    println!("\nBegin partitioning constraint analysis");
+
+    traverse_dfir(
+        ir,
+        |_, _| {},
+        |node, next_op_id| {
+            partitioning_constraint_analysis_node(
+                node,
+                next_op_id,
+                &dependency_metadata,
+                &mut possible_partitionings,
+            );
+        },
+    );
+
+    for (op_id, partitioning_options) in &possible_partitionings {
+        println!("Partitioning options for op {}: {:?}", op_id, partitioning_options);
+    }
+
+    println!("\nBegin partitioning analysis");
+
+    // See if there are any ops preventing us from partitioning first
+    let mut partitioning_impossible = false;
+    for (op_id, partitioning_options) in &possible_partitionings {
+        if partitioning_options.is_empty() {
+            println!("No partitioning possible due to op_id {}", op_id);
+            partitioning_impossible = true;
+        }
+    }
+    if partitioning_impossible {
+        return None;
+    }
+
+    // Find all possible global partitionings
+    let mut prev_global_partitionings = vec![]; // vec of map from input_id to StructOrTupleIndex
+    let mut next_global_partitionings = vec![];
+
+    // Set the 1st global partitioning
+    if let Some((op_id, partitioning_options)) = possible_partitionings.pop_first() {
+        for partitioning in partitioning_options {
+            assert!(!partitioning.is_empty(), "Op {} has partitioning constraints yet no specific input fields for those constraints", op_id);
+            prev_global_partitionings.push(partitioning.clone());
+        }
+    }
+    else {
+        // possible_partitionings is empty
+        println!("No restrictions on partitioning");
+        return Some(Vec::new())
+    }
+
+    // Iterate through remaining constraints
+    // Compare each prev_global_partitionings against each constraint, add to next_global_partitionings if the constraint is satisfied
+    // Continue iterating after setting prev_global_partitionings to next_global_partitionings
+    for (_op_id, partitioning_options) in possible_partitionings {
+        for constraint in partitioning_options {
+            for prev_partitioning in &prev_global_partitionings {
+                // For each constraint, check if the prev_partitioning is still possible
+                let mut next_partitioning = BTreeMap::new();
+                let mut constraint_satisfiable = true;
+                for (input, tuple_index) in prev_partitioning {
+                    if let Some(constraint_index) = constraint.get(&input) {
+                        if let Some(index_intersection) = StructOrTuple::index_intersection(tuple_index, constraint_index) {
+                            // Constraint satisfied
+                            next_partitioning.insert(*input, index_intersection);
+                        }
+                        else {
+                            // No intersection, cannot partition
+                            constraint_satisfiable = false;
+                            break;
+                        }
+                    }
+                    else {
+                        // No constraint on this input, keep old constraints
+                        next_partitioning.insert(*input, tuple_index.clone());
+                    }
+                }
+
+                if constraint_satisfiable {
+                    next_global_partitionings.push(next_partitioning);
+                }
+            }
+        }
+
+        // Update prev partitionings before next loop
+        prev_global_partitionings = std::mem::take(&mut next_global_partitionings);
+    }
+
+    // We don't know which partitioning is "better", so just return one
+    println!("Found {} possible global partitionings", prev_global_partitionings.len());
+    for (partitioning_index, partitioning) in prev_global_partitionings.iter().enumerate() {
+        println!("Partitioning {}: {:?}", partitioning_index, partitioning);
+    }
+    if prev_global_partitionings.is_empty() {
+        return None; // No possible partitioning
+    }
+    Some(prev_global_partitionings)
+}
 
 #[cfg(test)]
 mod tests {
@@ -488,7 +595,7 @@ mod tests {
     use hydro_lang::{deploy::DeployRuntime, ir::deep_clone, location::LocationId, rewrites::persist_pullup::persist_pullup, Bounded, FlowBuilder, Location, NoOrder, Stream};
     use stageleft::{q, RuntimeData};
 
-    use crate::{partition_node_analysis::input_dependency_analysis, partition_syn_analysis::StructOrTuple, repair::{cycle_source_to_sink_input, inject_id, inject_location}};
+    use crate::{partition_node_analysis::{partitioning_analysis, input_dependency_analysis, InputDependencyMetadata}, partition_syn_analysis::{StructOrTuple, StructOrTupleIndex}, repair::{cycle_source_to_sink_input, inject_id, inject_location}};
 
     fn test_input(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, expected_taint: BTreeMap<usize, BTreeSet<usize>>, expected_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>) {
         let mut cycle_data = HashMap::new();
@@ -500,13 +607,34 @@ mod tests {
             })
             .into_deploy::<DeployRuntime>();
         let mut ir = deep_clone(built.ir());
-        let (actual_taint, actual_dependencies) = input_dependency_analysis(&mut ir, cluster_to_partition, &cycle_data);
+        let InputDependencyMetadata {
+            input_taint: actual_taint,
+            input_dependencies: actual_dependencies,
+            ..
+        } = input_dependency_analysis(&mut ir, &cluster_to_partition, &cycle_data);
 
         println!("Actual taint: {:?}", actual_taint);
         println!("Actual dependencies: {:?}", actual_dependencies);
 
         assert_eq!(actual_taint, expected_taint);
         assert_eq!(actual_dependencies, expected_dependencies);
+
+        let _ = built.compile(&RuntimeData::new("FAKE"));
+    }
+
+    fn test_input_partitionable(builder: FlowBuilder<'_>, cluster_to_partition: LocationId, expected_partitionings: Option<Vec<BTreeMap<usize, StructOrTupleIndex>>>) {
+        let mut cycle_data = HashMap::new();
+        let built = builder.optimize_with(persist_pullup)
+            .optimize_with(inject_id)
+            .optimize_with(|ir| {
+                cycle_data = cycle_source_to_sink_input(ir);
+                inject_location(ir, &cycle_data);
+            })
+            .into_deploy::<DeployRuntime>();
+        let mut ir = deep_clone(built.ir());
+        let partitioning = partitioning_analysis(&mut ir, &cluster_to_partition, &cycle_data);
+
+        assert_eq!(partitioning, expected_partitionings);
 
         let _ = built.compile(&RuntimeData::new("FAKE"));
     }
@@ -542,6 +670,23 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_map_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2)
+            .map(q!(|(a,b)| (b, a+2)))
+            .for_each(q!(|(b, a2)| {
+                println!("b: {}, a+2: {}", b, a2);
+            }));
+
+        let expected_partitionings = Some(Vec::new());
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -619,6 +764,27 @@ mod tests {
     }
 
     #[test]
+    fn test_delta_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        unsafe {
+            cluster1
+                .source_iter(q!([(1, 2)]))
+                .broadcast_bincode_anonymous(&cluster2)
+                .tick_batch(&cluster2.tick())
+                .delta()
+                .all_ticks()
+                .for_each(q!(|(a, b)| {
+                    println!("a: {}, b: {}", a, b);
+                }));
+        }
+        
+        let expected_partitionings = Some(Vec::new()); // No partitioning constraints
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
+    }
+
+    #[test]
     fn test_chain() {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
@@ -672,6 +838,33 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_chain_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input= cluster1
+            .source_iter(q!([(1, (2, 3))]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let stream1 = input
+            .clone()
+            .map(q!(|(a,b)| (b, a+2)));
+        let stream2 = input
+            .map(q!(|(a,b)| ((b.1, b.1), a+3)));
+        let tick = cluster2.tick();
+        unsafe {
+            stream2.tick_batch(&tick)
+                .chain(stream1.tick_batch(&tick))
+                .all_ticks()
+                .for_each(q!(|((x, b1), y)| {
+                    println!("x: {}, b.1: {}, y: {}", x, b1, y);
+                }));
+        }
+
+        let expected_partitionings = Some(Vec::new()); // No partitioning constraints
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -730,6 +923,33 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_cross_product_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input= cluster1
+            .source_iter(q!([(1, (2, 3))]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let stream1 = input
+            .clone()
+            .map(q!(|(a,b)| (b, a+2)));
+        let stream2 = input
+            .map(q!(|(a,b)| ((b.1, b.1), a+3)));
+        let tick = cluster2.tick();
+        unsafe {
+            stream2.tick_batch(&tick)
+                .cross_product(stream1.tick_batch(&tick))
+                .all_ticks()
+                .for_each(q!(|(((b1, b1_again), a3), (b, a2))| {
+                    println!("((({}, {}), {}), ({:?}, {}))", b1, b1_again, a3, b, a2);
+                }));
+        }
+
+        let expected_partitionings = None;
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -794,6 +1014,37 @@ mod tests {
     }
 
     #[test]
+    fn test_join_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input= cluster1
+            .source_iter(q!([(1, (2, 3))]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let stream1 = input
+            .clone()
+            .map(q!(|(a,b)| (b, a)));
+        let stream2 = input
+            .map(q!(|(a,b)| ((b.1, b.1), a+3)));
+        let tick = cluster2.tick();
+        unsafe {
+            stream2.tick_batch(&tick)
+                .join(stream1.tick_batch(&tick))
+                .all_ticks()
+                .for_each(q!(|((b1, b1_again), (a3, a))| {
+                    println!("(({}, {}), {}, {})", b1, b1_again, a3, a);
+                }));
+        }
+
+        // Can either partition on b.0 or b.1, since the join is only successful when both b.0=b.1 or b.1=b.1
+        let expected_partitionings = Some(vec![
+            BTreeMap::from([(3, vec!["1".to_string(), "1".to_string(), "0".to_string()])]),
+            BTreeMap::from([(3, vec!["1".to_string(), "1".to_string(), "1".to_string()])]),
+        ]);
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
+    }
+
+    #[test]
     fn test_enumerate() {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
@@ -827,6 +1078,26 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_enumerate_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        unsafe {
+            cluster1
+                .source_iter(q!([(1, 2)]))
+                .broadcast_bincode_anonymous(&cluster2)
+                .assume_ordering()
+                .enumerate()
+                .for_each(q!(|(i, (a, b))| {
+                    println!("i: {}, a: {}, b: {}", i, a, b);
+                }));
+        }
+        
+        let expected_partitionings = None;
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -867,6 +1138,29 @@ mod tests {
     }
 
     #[test]
+    fn test_reduce_keyed_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        unsafe {
+            cluster1
+                .source_iter(q!([(1, 2)]))
+                .broadcast_bincode_anonymous(&cluster2)
+                .tick_batch(&cluster2.tick())
+                .reduce_keyed_commutative(q!(|acc, b| *acc += b))
+                .all_ticks()
+                .for_each(q!(|(a, b_sum)| {
+                    println!("a: {}, b_sum: {}", a, b_sum);
+                }));
+        }
+
+        let expected_partitionings = Some(vec![
+            BTreeMap::from([(3, vec!["1".to_string(), "0".to_string()])]),
+        ]);
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
+    }
+
+    #[test]
     fn test_reduce() {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
@@ -901,6 +1195,30 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_reduce_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        unsafe {
+            cluster1
+                .source_iter(q!([(1, 2)]))
+                .broadcast_bincode_anonymous(&cluster2)
+                .tick_batch(&cluster2.tick())
+                .reduce_commutative(q!(|(acc_a, acc_b), (a, b)| {
+                    *acc_a += a;
+                    *acc_b += b;
+                }))
+                .all_ticks()
+                .for_each(q!(|(a_sum, b_sum)| {
+                    println!("a_sum: {}, b_sum: {}", a_sum, b_sum);
+                }));
+        }
+
+        let expected_partitionings = None;
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -955,6 +1273,32 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_cycle_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input = cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let cluster2_tick = cluster2.tick();
+        let (complete_cycle, cycle) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let prev_tick_input = cycle
+            .clone()
+            .filter(q!(|(a, _b)| *a > 2))
+            .map(q!(|(a, b)| (a, b+2)));
+        unsafe {
+            complete_cycle.complete_next_tick(prev_tick_input.chain(input.tick_batch(&cluster2_tick)));
+        }
+        cycle.all_ticks()
+            .for_each(q!(|(a, b)| {
+                println!("a: {}, b: {}", a, b);
+            }));
+            
+        let expected_partitionings = Some(Vec::new());
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -1031,6 +1375,39 @@ mod tests {
     }
 
     #[test]
+    fn test_nested_cycle_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input = cluster1
+            .source_iter(q!([(1,2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let cluster2_tick = cluster2.tick();
+        let (complete_cycle1, cycle1) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let (complete_cycle2, cycle2) = cluster2_tick.cycle::<Stream<(usize, usize), _, Bounded, NoOrder>>();
+        let chained = unsafe {
+            cycle1.join(input.tick_batch(&cluster2_tick))
+                .map(q!(|(_, (b1,b2))| (b1,b2))) // Both values are influenced by the join with cycle2_out
+                .chain(cycle2)
+        };
+        complete_cycle1.complete_next_tick(chained.clone());
+        let cycle2_out = chained
+            .map(q!(|(_a,b)| (b,b)));
+        complete_cycle2.complete_next_tick(cycle2_out.clone());
+        cycle2_out.all_ticks()
+            .for_each(q!(|(b, _)| {
+                println!("b: {}", b);
+            }));
+            
+        // Less confusing with thought experiment: Consider input tuples (1,2) and (1,3)
+        // Partitioning on b fails if cycle1 (somehow) already contains tuple (1,1)
+        let expected_partitionings = Some(vec![
+            BTreeMap::from([(4, vec!["1".to_string(), "0".to_string()])]),
+        ]);
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
+    }
+
+    #[test]
     fn test_source_iter() {
         let builder = FlowBuilder::new();
         let cluster1 = builder.cluster::<()>();
@@ -1067,11 +1444,35 @@ mod tests {
             (0, BTreeMap::new()),
             (4, BTreeMap::new()),
             (5, BTreeMap::from([(4, implicit_map_dependencies)])),
-            (6, BTreeMap::from([(4, map_dependencies)])),
-            (7, BTreeMap::new()),
+            (6, BTreeMap::from([(4, map_dependencies.clone())])),
+            (7, BTreeMap::from([(4, map_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_source_iter_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input= cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let tick = cluster2.tick();
+        let stream1 = input.map(q!(|(a,b)| (b, a+2)));
+        let stream2 = cluster2.source_iter(q!([(3, 4)]));
+        unsafe {
+            stream2.tick_batch(&tick)
+                .chain(stream1.tick_batch(&tick))
+                .all_ticks()
+                .for_each(q!(|_| {
+                    println!("No dependencies");
+                }));
+        }
+
+        let expected_partitionings = Some(Vec::new());
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 
     #[test]
@@ -1092,7 +1493,7 @@ mod tests {
             stream2.clone().chain(stream1.clone())
                 .all_ticks()
                 .for_each(q!(|_| {
-                    println!("No dependencies");
+                    println!("Dependent on both input1.b and input2.b");
                 }));
             stream2.join(stream1)
                 .all_ticks()
@@ -1134,13 +1535,46 @@ mod tests {
             (11, BTreeMap::from([(10, implicit_map_dependencies)])),
             (12, BTreeMap::from([(10, input_map_dependencies.clone())])),
             (13, BTreeMap::from([(10, input_map_dependencies.clone())])),
-            (14, BTreeMap::new()),
+            (14, BTreeMap::from([(3, input_map_dependencies.clone()), (10, input_map_dependencies.clone())])),
             (16, BTreeMap::from([(3, input_map_dependencies.clone())])),
             (17, BTreeMap::from([(10, input_map_dependencies)])),
             (18, BTreeMap::from([(3, join_input2_dependencies), (10, join_input1_dependencies)])),
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_multiple_inputs_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input1= cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let input2 = cluster1
+            .source_iter(q!([(3, 4)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let tick = cluster2.tick();
+        unsafe {
+            let stream1 = input1.map(q!(|(a,b)| (b, a*2))).tick_batch(&tick);
+            let stream2 = input2.map(q!(|(a,b)| (b, -a))).tick_batch(&tick);
+            stream2.clone().chain(stream1.clone())
+                .all_ticks()
+                .for_each(q!(|_| {
+                    println!("Dependent on both input1.b and input2.b");
+                }));
+            stream2.join(stream1)
+                .all_ticks()
+                .for_each(q!(|(_, (a1, a2))| {
+                    println!("a*2 from input 1: {}, -a from input 2: {}", a1, a2);
+                }));
+        }
+
+        let expected_partitioning = Some(vec![
+            BTreeMap::from([(3, vec!["1".to_string(), "1".to_string()]), (10, vec!["1".to_string(), "1".to_string()])]),
+        ]);
+        test_input_partitionable(builder, cluster2.id(), expected_partitioning);
     }
 
     #[test]
@@ -1183,5 +1617,31 @@ mod tests {
         ]);
 
         test_input(builder, cluster2.id(), expected_taint, expected_dependencies);
+    }
+
+    #[test]
+    fn test_difference_partitionable() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        let input1= cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let input2 = cluster1
+            .source_iter(q!([(3, 4)]))
+            .broadcast_bincode_anonymous(&cluster2);
+        let tick = cluster2.tick();
+        unsafe {
+            input1.tick_batch(&tick)
+                .filter_not_in(input2.tick_batch(&tick))
+        }.all_ticks()
+        .for_each(q!(|(a, b)| {
+            println!("a: {}, b: {}", a, b);
+        }));
+
+        let expected_partitionings = Some(vec![
+            BTreeMap::from([(3, vec!["1".to_string()]), (8, vec!["1".to_string()])]),
+        ]);
+        test_input_partitionable(builder, cluster2.id(), expected_partitionings);
     }
 }
