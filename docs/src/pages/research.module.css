@@ -1,42 +1,24 @@
-.heading {
-  font-size: 3.8rem;
-  text-align: center;
+h1 {
+    font-size: 50px;
 }
 
 @media screen and (max-width: 1000px) {
-  .heading {
-    font-size: 3.2rem;
-  }
+    h1 {
+        font-size: 45px;
+    }
 }
 
-.paperContainer {
-  display: flex;
-  align-items: center;
-  flex-direction: row;
+h2 {
+    font-size: 35px;
 }
 
-@media screen and (max-width: 1000px) {
-  .paperContainer .paper-thumb {
-    display: none !important;
-  }
-
-  .paperContainer .paper-desc-extended {
-    display: none;
-  }
+h3 {
+    font-size: 22px;
+    margin-bottom: 5px;
 }
 
-.paperContainer .paper-thumb:hover .cardIcon {
-  background-color: rgba(47, 128, 237, 0.75);
-}
-
-.cardIcon {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100px;
-  height: 100px;
-  background-color: rgba(51, 51, 51, 0.75);
-  transition: background 0.25s;
-  border-radius: 50%;
+h3 + p {
+    font-size: 18px;
+    line-height: 1.4;
+    margin-bottom: 10px;
 }
