@@ -41,11 +41,11 @@ pub fn chat_server<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Server>, Cluster<
         )));
     client_requests
         .broadcast_bincode(&clients)
-        .map(q!(|(id, msg)| (
-            id,
+        .for_each(q!(|(id, msg)| println!(
+            "From {}: {:}",
+            id.raw_id,
             msg.content.color(self::hash_to_color(id.raw_id + 10))
-        )))
-        .for_each(q!(|(id, m)| println!("From {}: {:}", id.raw_id, m)));
+        )));
 
     (server, clients)
 }
