@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["_core"],"struct":["AnyhowError","AnyhowWrapper","Deployment","Host","Service"]};
