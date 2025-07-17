@@ -118,5 +118,5 @@ async fn main() {
         }
     }
 
-    let _ = builder.finalize().into_ir();
+    let _ = builder.finalize();
 }

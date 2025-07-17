@@ -48,22 +48,7 @@ where
     pub(super) _phantom: Invariant<'a, D>,
 }
 
-impl<'a, D: Deploy<'a>> Drop for DeployFlow<'a, D> {
-    fn drop(&mut self) {
-        if !self.used {
-            panic!(
-                "Dropped DeployFlow without instantiating, you may have forgotten to call `compile` or `deploy`."
-            );
-        }
-    }
-}
-
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
-    pub fn into_ir(mut self) -> Vec<HydroLeaf> {
-        self.used = true;
-        std::mem::take(self.ir.get_mut())
-    }
-
     pub fn ir(&self) -> &Vec<HydroLeaf> {
         unsafe {
             // SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it

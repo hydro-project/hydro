@@ -275,17 +275,25 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use hydro_deploy::Deployment;
     #[cfg(stageleft_runtime)]
     use hydro_lang::ir::HydroLeaf;
+    use hydro_lang::ir::deep_clone;
     use hydro_lang::location::LocationId;
-    use hydro_lang::{Cluster, FlowBuilder, Location, ir};
-    use stageleft::*;
+    use hydro_lang::rewrites::persist_pullup::persist_pullup;
+    use hydro_lang::{FlowBuilder, Location, ir};
+    use stageleft::q;
 
     #[cfg(stageleft_runtime)]
     use crate::decoupler;
+    use crate::decoupler::decouple;
+    use crate::repair::inject_id;
 
-    fn simple_send_recv<'a>(builder: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
+    #[cfg(stageleft_runtime)]
+    async fn decouple_send(with_decoupler: &decoupler::Decoupler) -> Vec<HydroLeaf> {
+        let builder = FlowBuilder::new();
         let send_cluster = builder.cluster::<()>();
         let recv_cluster = builder.cluster::<()>();
 
@@ -294,22 +302,6 @@ mod tests {
             .map(q!(|a| a + 1))
             .broadcast_bincode_anonymous(&recv_cluster)
             .for_each(q!(|a| println!("Got it: {}", a)));
-
-        (send_cluster, recv_cluster)
-    }
-
-    #[cfg(stageleft_runtime)]
-    async fn decouple_send(with_decoupler: &decoupler::Decoupler) -> Vec<HydroLeaf> {
-        use std::collections::HashSet;
-
-        use hydro_lang::ir::deep_clone;
-        use hydro_lang::rewrites::persist_pullup::persist_pullup;
-
-        use crate::decoupler::decouple;
-        use crate::repair::inject_id;
-
-        let builder = FlowBuilder::new();
-        let (send_cluster, recv_cluster) = simple_send_recv(&builder);
 
         let decoupled_cluster = builder.cluster::<()>();
         let decoupler = decoupler::Decoupler {

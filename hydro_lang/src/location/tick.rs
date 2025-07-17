@@ -10,7 +10,7 @@ use crate::cycle::{
     CycleCollection, CycleCollectionWithInitial, DeferTick, ForwardRef, ForwardRefMarker,
     TickCycle, TickCycleMarker,
 };
-use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
+use crate::ir::{HydroNode, HydroSource};
 use crate::stream::ExactlyOnce;
 use crate::{Bounded, Optional, Singleton, Stream, TotalOrder};
 

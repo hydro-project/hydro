@@ -109,7 +109,7 @@ async fn main() {
             .await;
 
             // Cleanup
-            let _ = rewritten_ir_builder.build_with(|_| ir).finalize().into_ir();
+            let _ = rewritten_ir_builder.build_with(|_| ir).finalize();
         }
     }
 }

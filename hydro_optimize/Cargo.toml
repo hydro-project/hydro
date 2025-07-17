@@ -30,8 +30,7 @@ proc-macro-crate = "1.0.0"
 proc-macro2 = "1.0.95"
 regex = "1.11.1"
 serde = { version = "1.0.197", features = ["derive"] }
-stageleft = "0.8.1"
-stageleft_tool = "0.8.1"
+stageleft.workspace = true
 syn = { version = "2.0.46", features = [
     "parsing",
     "extra-traits",
@@ -41,7 +40,7 @@ tokio = { version = "1.29.0", features = ["full"] }
 trybuild-internals-api = "1.0.99"
 
 [build-dependencies]
-stageleft_tool = "0.8.1"
+stageleft_tool.workspace = true
 
 [dev-dependencies]
 ctor = "0.2"

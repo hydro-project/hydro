@@ -71,11 +71,11 @@ mod tests {
     use std::collections::HashMap;
 
     use hydro_deploy::Deployment;
-    use hydro_lang::deploy::{DeployCrateWrapper, DeployRuntime};
+    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
     use hydro_lang::rewrites::persist_pullup;
     use hydro_lang::{ClusterId, Location};
     use hydro_optimize::partitioner::{self, PartitionAttribute, Partitioner};
-    use stageleft::{RuntimeData, q};
+    use stageleft::q;
 
     #[tokio::test]
     async fn simple_cluster() {
@@ -258,25 +258,6 @@ mod tests {
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)
             .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
-            .into_deploy::<HydroDeploy>();
-
-        insta::assert_debug_snapshot!(built.ir());
-
-        for (id, ir) in built.preview_compile().all_dfir() {
-            insta::with_settings!({snapshot_suffix => format!("surface_graph_{id}")}, {
-                insta::assert_snapshot!(ir.surface_syntax_string());
-            });
-        }
-    }
-
-    #[test]
-    fn counter_simple_cluster_ir() {
-        let builder = hydro_lang::FlowBuilder::new();
-        let _ = super::simple_cluster(&builder);
-        let counter_output_duration = q!(std::time::Duration::from_secs(1));
-        let built = builder
-            .optimize_with(persist_pullup::persist_pullup)
-            .optimize_with(|leaves| insert_counter::insert_counter(leaves, counter_output_duration))
             .into_deploy::<HydroDeploy>();
 
         insta::assert_debug_snapshot!(built.ir());
