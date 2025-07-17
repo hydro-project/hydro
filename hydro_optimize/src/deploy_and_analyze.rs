@@ -127,6 +127,7 @@ pub async fn deploy_and_analyze<'a>(
     clusters: &Vec<(usize, String, usize)>,
     processes: &Vec<(usize, String)>,
     exclude_from_decoupling: Vec<String>,
+    num_seconds: Option<usize>,
 ) -> (
     RewriteIrFlowBuilder<'a>,
     Vec<HydroLeaf>,
@@ -167,7 +168,13 @@ pub async fn deploy_and_analyze<'a>(
     // Wait for user to input a newline
     deployment
         .start_until(async {
-            std::io::stdin().read_line(&mut String::new()).unwrap();
+            if let Some(seconds) = num_seconds {
+                // Wait for some number of seconds
+                tokio::time::sleep(Duration::from_secs(seconds as u64)).await;
+            } else {
+                // Wait for a new line
+                std::io::stdin().read_line(&mut String::new()).unwrap();
+            }
         })
         .await
         .unwrap();
