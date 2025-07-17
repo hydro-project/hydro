@@ -205,7 +205,7 @@ mod tests {
         let mut deployment = deployment::Deployment::new();
 
         let service = deployment.add_service(
-            RustCrate::new("../hydro_cli_examples", deployment.Localhost())
+            RustCrate::new("../hydro_deploy_examples", deployment.Localhost())
                 .example("panic_program")
                 .profile("dev"),
         );
