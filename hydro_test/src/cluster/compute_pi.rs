@@ -57,7 +57,6 @@ mod tests {
     use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::rewrites::persist_pullup;
     use hydro_optimize::decoupler;
-    use stageleft::RuntimeData;
 
     struct DecoupledCluster {}
 
