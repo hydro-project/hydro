@@ -41,7 +41,7 @@ impl ReusableHosts {
             .clone()
     }
 
-    fn create_trybuild_host(
+    pub fn get_process_hosts(
         &mut self,
         deployment: &mut Deployment,
         display_name: String,
@@ -72,15 +72,7 @@ impl ReusableHosts {
         num_hosts: usize,
     ) -> Vec<TrybuildHost> {
         (0..num_hosts)
-            .map(|i| self.create_trybuild_host(deployment, format!("{}{}", cluster_name, i)))
+            .map(|i| self.get_process_hosts(deployment, format!("{}{}", cluster_name, i)))
             .collect()
-    }
-
-    pub fn get_process_hosts(
-        &mut self,
-        deployment: &mut Deployment,
-        display_name: String,
-    ) -> TrybuildHost {
-        self.create_trybuild_host(deployment, display_name)
     }
 }

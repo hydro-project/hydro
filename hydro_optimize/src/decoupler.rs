@@ -268,9 +268,6 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
             fix_cluster_self_id_node(node, locations);
         },
     );
-
-    // println!("Printing IDs after fixing");
-    // print_id(ir);
 }
 
 #[cfg(test)]

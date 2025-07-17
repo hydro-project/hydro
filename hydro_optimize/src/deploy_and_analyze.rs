@@ -192,8 +192,6 @@ pub async fn deploy_and_analyze<'a>(
     // Inject new next_stmt_id into metadata (old ones are invalid after removing the counter)
     inject_id(&mut ir);
 
-    // print_id(&mut ir);
-
     // Create a mapping from each CycleSink to its corresponding CycleSource
     let cycle_source_to_sink_input = cycle_source_to_sink_input(&mut ir);
     let (send_overhead, recv_overhead) = analyze_send_recv_overheads(&mut ir, &bottleneck);
