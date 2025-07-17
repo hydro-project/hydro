@@ -69,5 +69,5 @@ uninlined_format_args = "allow"
 upper_case_acronyms = "warn"
 
 [workspace.dependencies]
-stageleft = "0.9.1"
-stageleft_tool = "0.9.1"
+stageleft = "0.9.2"
+stageleft_tool = "0.9.2"
