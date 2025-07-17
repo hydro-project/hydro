@@ -5,13 +5,13 @@
 
 .jumbo {
   max-width: calc(min(1000px, 100vw - 60px));
-  min-height: calc(100vh - 360px);
+  min-height: calc(100vh - 700px);
   margin-left: auto;
   margin-right: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  margin-top: 50px;
+  margin-top: 30px;
   box-sizing: border-box;
   line-height: normal;
 }
@@ -26,14 +26,15 @@
 .indexTitle {
   text-align: center;
   font-family: 'Inter', sans-serif;
-  font-size: 90px;
-  font-weight: 800;
-  line-height: 95%;
+  font-size: 40px;
+  font-weight: 600;
+  max-width: 800px;
+  line-height: 125%;
 
-  color: #262626;
+  color: #2c2c2c;
 
   margin-top: 20px;
-  margin-bottom: 10px;
+  margin-bottom: 0px;
 
   margin-left: auto;
   margin-right: auto;
@@ -45,29 +46,8 @@
 
 @media screen and (max-width: 1000px) {
   .indexTitle {
-    font-size: 50px;
+    font-size: 28px;
   }
-}
-
-.blurb {
-  font-size: 25px;
-  font-weight: 300;
-  text-align: center;
-}
-
-@media screen and (max-width: 1000px) {
-  .blurb {
-    font-size: 18px;
-  }
-}
-
-.titleEveryScale {
-  font-weight: 900;
-  background: linear-gradient(86.92deg, #0FDBA2 28.3%, #0096FF 100.05%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-fill-color: transparent;
 }
 
 .heroBanner {
@@ -87,4 +67,80 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.panel h1 {
+  font-size: 50px;
+}
+
+@media screen and (max-width: 1000px) {
+  .panel h1 {
+    font-size: 40px;
+  }
+}
+
+.panel {
+  font-size: 20px;
+  background: linear-gradient(to bottom, #f8f8f8, #ffffff);
+  display: flex;
+  padding: 50px;
+  gap: 30px;
+  padding-top: 100px;
+  padding-bottom: 80px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+@media screen and (max-width: 1000px) {
+  .panel {
+    font-size: 16px;
+    padding: 25px;
+    padding-top: 60px;
+    padding-bottom: 50px;
+  }
+}
+
+[data-theme="dark"] .panel {
+  background: linear-gradient(to bottom, #2b2b2b, #1b1b1b);
+}
+
+.panel p {
+  text-wrap: pretty;
+}
+
+.panelImage {
+  flex-grow: 1;
+  min-width: 450px;
+  max-width: 700px;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+}
+
+@media screen and (max-width: 1000px) {
+  .panelImage {
+    min-width: 0;
+  }
+}
+
+.inDevPanel {
+  background: #e0f5f0;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .inDevPanel {
+  background: none;
+  border: 5px solid #b1efe0;
+}
+
+.comingSoonPanel {
+  background: #f5f3e0;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+[data-theme="dark"] .comingSoonPanel {
+  background: none;
+  border: 5px solid #f2eaa5;
 }

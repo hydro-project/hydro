@@ -63,7 +63,7 @@ expression: built.ir()
         },
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
         input: Network {
             from_key: None,
             to_location: Process(
@@ -71,14 +71,14 @@ expression: built.ir()
             ),
             to_key: None,
             serialize_fn: Some(
-                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
-                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
+                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
             ),
             input: Map {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
+                f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
                 input: Source {
                     source: Iter(
                         { use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 },
@@ -104,7 +104,7 @@ expression: built.ir()
                         1,
                     ),
                     output_type: Some(
-                        hydro_test :: distributed :: first_ten :: SendOverNetwork,
+                        hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
                     cardinality: None,
                     cpu_usage: None,
@@ -117,7 +117,7 @@ expression: built.ir()
                     2,
                 ),
                 output_type: Some(
-                    hydro_test :: distributed :: first_ten :: SendOverNetwork,
+                    hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                 ),
                 cardinality: None,
                 cpu_usage: None,
@@ -130,7 +130,7 @@ expression: built.ir()
                 2,
             ),
             output_type: Some(
-                hydro_test :: distributed :: first_ten :: SendOverNetwork,
+                hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
             ),
             cardinality: None,
             cpu_usage: None,

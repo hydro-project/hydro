@@ -4,7 +4,7 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
         input: Network {
             from_key: None,
             to_location: Process(
@@ -12,14 +12,14 @@ expression: built.ir()
             ),
             to_key: None,
             serialize_fn: Some(
-                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
-                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& b) . unwrap ()) },
+                | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& b) . unwrap ()) },
             ),
             input: Inspect {
-                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < () > :: from_raw (__hydro_lang_cluster_self_id_1) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
+                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < () > :: from_raw (__hydro_lang_cluster_self_id_1) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
                 input: Network {
                     from_key: None,
                     to_location: Cluster(
@@ -27,19 +27,19 @@ expression: built.ir()
                     ),
                     to_key: None,
                     serialize_fn: Some(
-                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                     ),
                     instantiate_fn: <network instantiate>,
                     deserialize_fn: Some(
-                        | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& res . unwrap ()) . unwrap () },
+                        | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& res . unwrap ()) . unwrap () },
                     ),
                     input: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
                         input: Delta {
                             inner: CrossProduct {
                                 left: Persist {
                                     inner: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | & id | id }),
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | & id | id }),
                                         input: Source {
                                             source: Iter(
                                                 unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) },
@@ -52,7 +52,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 output_type: Some(
-                                                    & hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                    & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
                                                 cardinality: None,
                                                 cpu_usage: None,
@@ -65,7 +65,7 @@ expression: built.ir()
                                                 0,
                                             ),
                                             output_type: Some(
-                                                hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                                hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                             ),
                                             cardinality: None,
                                             cpu_usage: None,
@@ -78,7 +78,7 @@ expression: built.ir()
                                             0,
                                         ),
                                         output_type: Some(
-                                            hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
+                                            hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                         ),
                                         cardinality: None,
                                         cpu_usage: None,
@@ -125,7 +125,7 @@ expression: built.ir()
                                         0,
                                     ),
                                     output_type: Some(
-                                        (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                     ),
                                     cardinality: None,
                                     cpu_usage: None,
@@ -138,7 +138,7 @@ expression: built.ir()
                                     0,
                                 ),
                                 output_type: Some(
-                                    (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                 ),
                                 cardinality: None,
                                 cpu_usage: None,
@@ -151,7 +151,7 @@ expression: built.ir()
                                 0,
                             ),
                             output_type: Some(
-                                (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                             ),
                             cardinality: None,
                             cpu_usage: None,
@@ -164,7 +164,7 @@ expression: built.ir()
                             1,
                         ),
                         output_type: Some(
-                            (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
                         cardinality: None,
                         cpu_usage: None,
@@ -177,7 +177,7 @@ expression: built.ir()
                         1,
                     ),
                     output_type: Some(
-                        (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                        (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
                     cardinality: None,
                     cpu_usage: None,
@@ -190,7 +190,7 @@ expression: built.ir()
                     0,
                 ),
                 output_type: Some(
-                    (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                 ),
                 cardinality: None,
                 cpu_usage: None,
@@ -203,7 +203,7 @@ expression: built.ir()
                 0,
             ),
             output_type: Some(
-                (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
+                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
             ),
             cardinality: None,
             cpu_usage: None,

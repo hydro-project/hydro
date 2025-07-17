@@ -61,6 +61,7 @@ impl RustCrateService {
         no_default_features: bool,
         tracing: Option<TracingOptions>,
         features: Option<Vec<String>>,
+        config: Option<String>,
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Vec<u16>,
@@ -77,6 +78,7 @@ impl RustCrateService {
             no_default_features,
             target_type,
             features,
+            config,
         );
 
         Self {

@@ -12,8 +12,8 @@ use crate::ir::{HydroLeaf, HydroNode, HydroSource, TeeNode};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{LocationId, NoTick, check_matching_location};
 use crate::singleton::ZipResult;
-use crate::stream::NoOrder;
-use crate::{Bounded, Location, Singleton, Stream, Tick, Unbounded};
+use crate::stream::{AtLeastOnce, ExactlyOnce, NoOrder};
+use crate::{Bounded, Location, Singleton, Stream, Tick, TotalOrder, Unbounded};
 
 pub struct Optional<Type, Loc, Bound> {
     pub(crate) location: Loc,
@@ -276,7 +276,10 @@ where
         )
     }
 
-    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B>
+    pub fn flat_map_ordered<U, I, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -295,7 +298,7 @@ where
     pub fn flat_map_unordered<U, I, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L>,
-    ) -> Stream<U, L, B, NoOrder>
+    ) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
@@ -311,14 +314,14 @@ where
         )
     }
 
-    pub fn flatten_ordered<U>(self) -> Stream<U, L, B>
+    pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
         T: IntoIterator<Item = U>,
     {
         self.flat_map_ordered(q!(|v| v))
     }
 
-    pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder>
+    pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
         T: IntoIterator<Item = U>,
     {
@@ -512,7 +515,7 @@ where
         value.continue_if(self)
     }
 
-    pub fn into_stream(self) -> Stream<T, L, Bounded> {
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
         if L::is_top_level() {
             panic!("Converting an optional to a stream is not yet supported at the top level");
         }
@@ -575,12 +578,12 @@ where
     /// At runtime, the optional will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
-    pub unsafe fn sample_eager(self) -> Stream<T, L, Unbounded> {
+    pub unsafe fn sample_eager(self) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
         let tick = self.location.tick();
 
         unsafe {
             // SAFETY: source of intentional non-determinism
-            self.latest_tick(&tick).all_ticks()
+            self.latest_tick(&tick).all_ticks().weakest_retries()
         }
     }
 
@@ -596,7 +599,7 @@ where
     pub unsafe fn sample_every(
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-    ) -> Stream<T, L, Unbounded> {
+    ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce> {
         let samples = unsafe {
             // SAFETY: source of intentional non-determinism
             self.location.source_interval(interval)
@@ -608,6 +611,7 @@ where
             self.latest_tick(&tick)
                 .continue_if(samples.tick_batch(&tick).first())
                 .all_ticks()
+                .weakest_retries()
         }
     }
 }
@@ -616,7 +620,7 @@ impl<'a, T, L> Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
 {
-    pub fn all_ticks(self) -> Stream<T, L, Unbounded> {
+    pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.outer().clone(),
             HydroNode::Persist {
@@ -626,7 +630,7 @@ where
         )
     }
 
-    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded> {
+    pub fn all_ticks_atomic(self) -> Stream<T, Atomic<L>, Unbounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             Atomic {
                 tick: self.location.clone(),
@@ -670,7 +674,7 @@ where
         )
     }
 
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded> {
+    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
             self.location.clone(),
             HydroNode::Persist {

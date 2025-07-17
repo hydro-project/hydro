@@ -2296,22 +2296,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
-name = "hydro_cli"
-version = "0.13.0"
-dependencies = [
- "anyhow",
- "bytes",
- "clap",
- "futures",
- "hydro_deploy",
- "hydro_deploy_integration",
- "pyo3",
- "pyo3-async-runtimes",
- "pythonize",
- "tokio",
-]
-
-[[package]]
 name = "hydro_cli_examples"
 version = "0.0.0"
 dependencies = [
@@ -2447,7 +2431,6 @@ dependencies = [
  "serde",
  "stageleft",
  "stageleft_tool",
- "stats-ci",
 ]
 
 [[package]]
@@ -2474,36 +2457,6 @@ dependencies = [
  "stageleft_tool",
  "tokio",
  "tokio-test",
-]
-
-[[package]]
-name = "hydro_test_local"
-version = "0.0.0"
-dependencies = [
- "dfir_rs",
- "futures",
- "hydro_lang",
- "hydro_test_local_macro",
- "insta",
- "rand 0.8.5",
- "stageleft",
- "stageleft_tool",
- "tokio",
- "tokio-stream",
-]
-
-[[package]]
-name = "hydro_test_local_macro"
-version = "0.0.0"
-dependencies = [
- "dfir_rs",
- "futures",
- "hydro_lang",
- "rand 0.8.5",
- "stageleft",
- "stageleft_tool",
- "tokio",
- "tokio-stream",
 ]
 
 [[package]]
@@ -3202,16 +3155,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "matrixmultiply"
-version = "0.3.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a06de3016e9fae57a36fd14dba131fccf49f74b40b7fbdb472f96e361ec71a08"
-dependencies = [
- "autocfg",
- "rawpointer",
-]
-
-[[package]]
 name = "maybe-owned"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3359,23 +3302,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nalgebra"
-version = "0.33.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26aecdf64b707efd1310e3544d709c5c0ac61c13756046aaaba41be5c4f66a3b"
-dependencies = [
- "approx",
- "matrixmultiply",
- "num-complex",
- "num-rational",
- "num-traits",
- "rand 0.8.5",
- "rand_distr",
- "simba",
- "typenum",
-]
-
-[[package]]
 name = "nameof"
 version = "1.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3492,15 +3418,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "num-complex"
-version = "0.4.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "num-conv"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3532,17 +3449,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1429034a0490724d0075ebb2bc9e875d6503c3cf69e235a8941aa757d83ef5bf"
 dependencies = [
  "autocfg",
- "num-integer",
- "num-traits",
-]
-
-[[package]]
-name = "num-rational"
-version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824"
-dependencies = [
- "num-bigint",
  "num-integer",
  "num-traits",
 ]
@@ -4264,19 +4170,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyo3-async-runtimes"
-version = "0.21.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96fe0b015461c5136532f42908d6bf4b079da1aedfbffa8b0b5d4cbc59c2fdf8"
-dependencies = [
- "futures",
- "once_cell",
- "pin-project-lite",
- "pyo3",
- "tokio",
-]
-
-[[package]]
 name = "pyo3-build-config"
 version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4319,16 +4212,6 @@ dependencies = [
  "pyo3-build-config",
  "quote",
  "syn 2.0.101",
-]
-
-[[package]]
-name = "pythonize"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d0664248812c38cc55a4ed07f88e4df516ce82604b93b1ffdc041aa77a6cb3c"
-dependencies = [
- "pyo3",
- "serde",
 ]
 
 [[package]]
@@ -4520,12 +4403,6 @@ checksum = "c6df7ab838ed27997ba19a4664507e6f82b41fe6e20be42929332156e5e85146"
 dependencies = [
  "bitflags 2.9.1",
 ]
-
-[[package]]
-name = "rawpointer"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "60a357793950651c4ed0f3f52338f53b2f809f32d83a07f72909fa13e4c6c1e3"
 
 [[package]]
 name = "rayon"
@@ -4978,15 +4855,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "28d3b2b1366ec20994f1fd18c3c594f05c5dd4bc44d8bb0c1c632c8d6829481f"
 
 [[package]]
-name = "safe_arch"
-version = "0.7.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b02de82ddbe1b636e6170c21be622223aea188ef2e139be0a5b219ec215323"
-dependencies = [
- "bytemuck",
-]
-
-[[package]]
 name = "salsa20"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5283,19 +5151,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "simba"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3a386a501cd104797982c15ae17aafe8b9261315b5d07e3ec803f2ea26be0fa"
-dependencies = [
- "approx",
- "num-complex",
- "num-traits",
- "paste",
- "wide",
-]
-
-[[package]]
 name = "similar"
 version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5414,9 +5269,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stageleft"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c213cb11cae9c29601d1a184586e7b3979674c8819b23f438d58f82cfb2ae375"
+checksum = "be17aaaa20b202cef6707c23dec11276402abb2fbcebf8f3bd332b2a5088b431"
 dependencies = [
  "ctor 0.4.2",
  "proc-macro-crate",
@@ -5428,9 +5283,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de2d48817edd070ee1f12b5c555a076e3b6f84addaba87553834223505efcbf0"
+checksum = "d6c57ca297783868c225bd28d2ea53555556f782fc874289e43490285ae946b9"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -5441,9 +5296,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.8.1"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "73d3e08b648f4465ae66dceb449a9383a4e300fc81dea7d009a680edf133110d"
+checksum = "4690dc96e2effc9cfe4047b5b3d8b185ab0024ceb57dc9d81c0ec8ca988c6127"
 dependencies = [
  "prettyplease",
  "proc-macro-crate",
@@ -5460,32 +5315,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "statrs"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a3fe7c28c6512e766b0874335db33c94ad7b8f9054228ae1c2abd47ce7d335e"
-dependencies = [
- "approx",
- "nalgebra",
- "num-traits",
- "rand 0.8.5",
-]
-
-[[package]]
-name = "stats-ci"
-version = "0.1.2"
-source = "git+https://github.com/hydro-project/stats-ci.git?branch=main#a172fc8bd345e7c05e3562b1d51a2d34eaac8907"
-dependencies = [
- "approx",
- "arrayvec",
- "lazy_static",
- "num-traits",
- "serde",
- "statrs",
- "thiserror 2.0.12",
-]
 
 [[package]]
 name = "str_inflector"
@@ -6613,16 +6442,6 @@ dependencies = [
  "uuid",
  "yoke",
  "yoke-derive",
-]
-
-[[package]]
-name = "wide"
-version = "0.7.32"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41b5576b9a81633f3e8df296ce0063042a73507636cbe956c61133dd7034ab22"
-dependencies = [
- "bytemuck",
- "safe_arch",
 ]
 
 [[package]]

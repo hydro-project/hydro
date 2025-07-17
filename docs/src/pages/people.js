@@ -16,49 +16,47 @@ import rohit from "./people-img/rohit.jpg";
 import hydroTurtle from "../../static/img/hydro-turtle.png";
 
 import styles from "./people.module.css";
+import Head from "@docusaurus/Head";
 
 const PersonCard = (props) => {
   return (
     <Link
       href={props.url}
-      style={{
-        color: "inherit",
-        textDecoration: "inherit",
-        margin: "15px",
-      }}
+      className={styles["personCard"]}
     >
       <div className={styles["personContainer"]}>
         <Image
           className={styles["personImage"]}
           img={props.img}
           style={{
-            width: "250px",
-            height: "250px",
+            width: "100%",
           }}
         />
-        <div style={{ marginLeft: "15px" }}>
+        <div style={{ marginLeft: "15px", marginRight: "15px" }}>
           <p
             style={{
               display: "block",
               fontSize: "1.1em",
+              lineHeight: "1.25em",
               fontWeight: 700,
-              marginTop: "5px",
-              marginBottom: 0,
+              marginTop: "10px",
+              marginBottom: "5px",
             }}
           >
             {props.name}
           </p>
-          <i
+          <p
             style={{
               display: "block",
-              fontSize: "1.1em",
-              fontWeight: 400,
+              fontSize: "0.98em",
+              fontWeight: 500,
               marginTop: 0,
               marginBottom: "5px",
+              lineHeight: "1.25em",
             }}
           >
             {props.role}
-          </i>
+          </p>
         </div>
       </div>
     </Link>
@@ -68,108 +66,94 @@ const PersonCard = (props) => {
 export default function Home() {
   return (
     <Layout description="Members of the Hydro research group">
+      <Head>
+        <title>Hydro Team | Hydro</title>
+        <meta property="og:title" content="Hydro Team | Hydro" />
+      </Head>
       <main>
-        <div
-          style={{
-            maxWidth: "calc(min(1100px, 100vw - 60px))",
-            marginLeft: "auto",
-            marginRight: "auto",
-            marginTop: "30px",
-            marginBottom: "30px",
-          }}
-        >
-          <h1
-            style={{
-              fontSize: "4rem",
-              textAlign: "center",
-            }}
-          >
-            About Us
-          </h1>
-          <div
-            style={{
-              maxWidth: "1000px",
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}
-          >
-            <div className={styles["subtitle"]}>Faculty</div>
+        <div className={styles["container"]}>
+          <h1 className={styles["title"]}>Hydro Team</h1>
+          <p className={styles["blurb"]}>The Hydro framework began as a research project at UC Berkeley led by Joe Hellerstein, continuing a long line of work applying insights from database research to distributed systems. In 2025, several graduates of the Hydro group joined AWS to continue its development in a production environment. The core team, which leads the technical direction for Hydro, consists of researchers and engineers at UC Berkeley and AWS. We also collaborate with leading researchers at UC Berkeley and Princeton University.</p>
+          <div>
+            <div className={styles["subtitle"]}>Core Team</div>
             <div className={styles["personGroup"]}>
               <PersonCard
-                name={"Alvin Cheung"}
-                role={"Faculty"}
-                url={"https://people.eecs.berkeley.edu/~akcheung"}
-                img={akcheung}
-              ></PersonCard>
-              <PersonCard
-                name={"Natacha Crooks"}
-                role={"Faculty"}
-                url={"https://nacrooks.github.io"}
-                img={natacha}
-              ></PersonCard>
-              <PersonCard
                 name={"Joe Hellerstein"}
-                role={"Faculty"}
+                role={"Professor, UC Berkeley"}
                 url={"https://dsf.berkeley.edu/jmh"}
                 img={jmh}
               ></PersonCard>
               <PersonCard
-                name={"Mae Milano"}
-                role={"Faculty"}
-                url={"http://www.languagesforsyste.ms"}
-                img={mae}
-              ></PersonCard>
-            </div>
-
-            <div className={styles["subtitle"]}>
-              Graduate Students & Research Engineers
-            </div>
-            <div className={styles["personGroup"]}>
-              <PersonCard
                 name={"David Chu"}
-                role={"PhD Student"}
+                role={"PhD Student, UC Berkeley"}
                 url={
                   "https://github.com/davidchuyaya/portfolio/blob/master/README.md"
                 }
                 img={david}
               ></PersonCard>
               <PersonCard
-                name={"Chris Douglas"}
-                role={"PhD Student"}
-                url={"https://www.linkedin.com/in/chris-douglas-73333a1"}
-                img={hydroTurtle}
+                name={"Lucky Katahanas"}
+                role={"Engineer, AWS"}
+                url={"https://www.linkedin.com/in/luckykatahanas/"}
+                img={lucky}
               ></PersonCard>
               <PersonCard
                 name={"Shadaj Laddad"}
-                role={"PhD Student"}
+                role={"Scientist, AWS"}
                 url={"https://www.shadaj.me"}
                 img={shadaj}
               ></PersonCard>
               <PersonCard
                 name={"Conor Power"}
-                role={"PhD Student"}
+                role={"Scientist, UC Berkeley"}
                 url={"https://www.linkedin.com/in/conorpower23"}
                 img={conor}
               ></PersonCard>
               <PersonCard
                 name={"Mingwei Samuel"}
-                role={"Chief Research Engineer"}
+                role={"Engineer, AWS"}
                 url={"https://github.com/MingweiSamuel"}
                 img={mingwei}
               ></PersonCard>
+            </div>
+
+            <div className={styles["subtitle"]}>
+              Academic Collaborators
+            </div>
+            <div className={styles["personGroup"]}>
               <PersonCard
-                name={"Lucky Katahanas"}
-                role={"Research Engineer"}
-                url={"https://www.linkedin.com/in/luckykatahanas/"}
-                img={lucky}
+                name={"Alvin Cheung"}
+                role={"Professor, UC Berkeley"}
+                url={"https://people.eecs.berkeley.edu/~akcheung"}
+                img={akcheung}
               ></PersonCard>
+              <PersonCard
+                name={"Natacha Crooks"}
+                role={"Professor, UC Berkeley"}
+                url={"https://nacrooks.github.io"}
+                img={natacha}
+              ></PersonCard>
+              
+              <PersonCard
+                name={"Mae Milano"}
+                role={"Professor, Princeton University"}
+                url={"http://www.languagesforsyste.ms"}
+                img={mae}
+              ></PersonCard>
+              <PersonCard
+                name={"Chris Douglas"}
+                role={"PhD Student, UC Berkeley"}
+                url={"https://www.linkedin.com/in/chris-douglas-73333a1"}
+                img={hydroTurtle}
+              ></PersonCard>
+              
             </div>
 
             <div className={styles["subtitle"]}>Alumni</div>
             <div className={styles["personGroup"]}>
               <PersonCard
                 name={"Tiemo Bang"}
-                role={"Postdoc"}
+                role={"Postdoc, UC Berkeley"}
                 url={
                   "https://scholar.google.com/citations?user=HDK0KRYAAAAJ&hl=en"
                 }

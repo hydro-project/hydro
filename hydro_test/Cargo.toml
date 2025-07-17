@@ -8,23 +8,22 @@ edition = "2024"
 workspace = true
 
 [features]
-default = ["stageleft_devel"]
-stageleft_devel = []
 ilp = ["hydro_optimize/ilp"]
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.13.2" }
 hydro_std = { path = "../hydro_std", version = "^0.13.0" }
 hydro_optimize = { path = "../hydro_optimize", version = "^0.13.0" }
-stageleft = "0.8.1"
+stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
 ctor = "0.2.9"
 colored = "3.0.0"
 palette = "0.7.6"
+tokio = "1.29.0"
 
 [build-dependencies]
-stageleft_tool = "0.8.1"
+stageleft_tool.workspace = true
 
 [dev-dependencies]
 ctor = "0.2"

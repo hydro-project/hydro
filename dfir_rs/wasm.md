@@ -4,6 +4,8 @@
 
 ### Setup
 
+Ensure [Node.js](https://nodejs.org/) is installed.
+
 Install `wasm-bindgen-cli` globally: `cargo install wasm-bindgen-cli`.
 `wasm-bindgen-cli` provides a test runner harness.
 

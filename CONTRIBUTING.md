@@ -46,11 +46,14 @@ automatically detected by `cargo`, so no special setup should be needed.
 Some parts of the Hydro repo require a relatively recent version of Python 3, maybe 3.10 or
 later. On Mac, installing directly from python.org may work if `brew install` doesn't.
 
-### `wasm-bindgen`
+## Wasm
 
-[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen) is required for running WASM tests.
+[Node.js](https://nodejs.org/),
+[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen?tab=readme-ov-file#install-wasm-bindgen-cli),
+and [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/) are required to run Wasm tests.
 ```shell
 cargo install wasm-bindgen-cli
+curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
 ## Submitting Changes
@@ -84,9 +87,10 @@ Pull request title and body are used to generate changelogs. See [Releasing](#re
 ### Pull Requests and `precheck.bash`
 
 CI runs a comprehensive set of tests on PRs before they are merged. This includes format and lint
-checks. To run some checks locally, you can run `./precheck.bash` (or `./precheck.bash --quick` for
-a quicker subset of the checks). Note that this will overwrite any changed snapshot tests instead of
-failing-- you should double-check that the snapshot diff matches what you expect.
+checks. To run some checks locally, you can run `./precheck.bash` with various flags for different
+parts of the code (see `./precheck.bash --help` for info). Note that this will overwrite any
+changed snapshot tests instead of failing-- you should double-check that the snapshot diff matches
+what you expect.
 
 ## Snapshot Testing
 

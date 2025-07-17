@@ -335,9 +335,11 @@ impl Host for GcpComputeEngineHost {
 
         let vm_key = format!("vm-instance-{}", self.id);
         let vm_name = format!(
-            "hydro-vm-instance-{}-{}",
+            "hydro-vm-instance-{}{}",
             nanoid!(8, &TERRAFORM_ALPHABET),
-            self.display_name.clone().unwrap_or_default()
+            self.display_name
+                .clone()
+                .map_or(String::new(), |name| format!("-{}", name))
         );
 
         let mut tags = vec![];

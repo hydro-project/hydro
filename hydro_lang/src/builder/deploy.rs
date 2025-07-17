@@ -14,8 +14,7 @@ use stageleft::QuotedWithContext;
 use super::built::build_inner;
 use super::compiled::CompiledFlow;
 use crate::deploy::{
-    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, LocalDeploy, Node, ProcessSpec,
-    RegisterPort,
+    ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
 use crate::ir::HydroLeaf;
 use crate::location::external_process::{
@@ -26,7 +25,7 @@ use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D>
 where
-    D: LocalDeploy<'a>,
+    D: Deploy<'a>,
 {
     // We need to grab an `&mut` reference to the IR in `preview_compile` even though
     // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
@@ -45,12 +44,11 @@ where
 
     pub(super) clusters: HashMap<usize, D::Cluster>,
     pub(super) cluster_id_name: Vec<(usize, String)>,
-    pub(super) used: bool,
 
     pub(super) _phantom: Invariant<'a, D>,
 }
 
-impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
+impl<'a, D: Deploy<'a>> Drop for DeployFlow<'a, D> {
     fn drop(&mut self) {
         if !self.used {
             panic!(
@@ -60,7 +58,7 @@ impl<'a, D: LocalDeploy<'a>> Drop for DeployFlow<'a, D> {
     }
 }
 
-impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
+impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn into_ir(mut self) -> Vec<HydroLeaf> {
         self.used = true;
         std::mem::take(self.ir.get_mut())
@@ -159,19 +157,13 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
                 // only because the shared traversal logic requires it
                 &mut *self.ir.get()
             }),
-            #[cfg(feature = "staged_macro")]
-            extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
     }
 
     pub fn compile_no_network(mut self) -> CompiledFlow<'a, D::GraphId> {
-        self.used = true;
-
         CompiledFlow {
             dfir: build_inner(self.ir.get_mut()),
-            #[cfg(feature = "staged_macro")]
-            extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
     }
@@ -179,8 +171,6 @@ impl<'a, D: LocalDeploy<'a>> DeployFlow<'a, D> {
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn compile(mut self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
-        self.used = true;
-
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
@@ -194,13 +184,8 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             );
         });
 
-        #[cfg(feature = "staged_macro")]
-        let extra_stmts = self.extra_stmts(env);
-
         CompiledFlow {
             dfir: build_inner(self.ir.get_mut()),
-            #[cfg(feature = "staged_macro")]
-            extra_stmts,
             _phantom: PhantomData,
         }
     }
@@ -245,8 +230,6 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
-        self.used = true;
-
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
         let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
