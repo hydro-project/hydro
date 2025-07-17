@@ -16,9 +16,9 @@ async fn main() {
     use hydro_optimize::decoupler;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
-    use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig, Proposer, Acceptor};
-    use hydro_test::cluster::paxos_bench::{Aggregator, Client};
     use hydro_test::cluster::kv_replica::Replica;
+    use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
+    use hydro_test::cluster::paxos_bench::{Aggregator, Client};
     use tokio::sync::RwLock;
 
     let mut deployment = Deployment::new();
@@ -66,10 +66,26 @@ async fn main() {
     );
 
     let mut clusters = vec![
-        (proposers.id().raw_id(), std::any::type_name::<Proposer>().to_string(), f + 1),
-        (acceptors.id().raw_id(), std::any::type_name::<Acceptor>().to_string(), 2 * f + 1),
-        (clients.id().raw_id(), std::any::type_name::<Client>().to_string(), num_clients),
-        (replicas.id().raw_id(), std::any::type_name::<Replica>().to_string(), f + 1),
+        (
+            proposers.id().raw_id(),
+            std::any::type_name::<Proposer>().to_string(),
+            f + 1,
+        ),
+        (
+            acceptors.id().raw_id(),
+            std::any::type_name::<Acceptor>().to_string(),
+            2 * f + 1,
+        ),
+        (
+            clients.id().raw_id(),
+            std::any::type_name::<Client>().to_string(),
+            num_clients,
+        ),
+        (
+            replicas.id().raw_id(),
+            std::any::type_name::<Replica>().to_string(),
+            f + 1,
+        ),
     ];
     let processes = vec![(
         client_aggregator.id().raw_id(),
@@ -94,7 +110,10 @@ async fn main() {
                 builder,
                 &clusters,
                 &processes,
-                vec![std::any::type_name::<Client>().to_string(), std::any::type_name::<Aggregator>().to_string()],
+                vec![
+                    std::any::type_name::<Client>().to_string(),
+                    std::any::type_name::<Aggregator>().to_string(),
+                ],
                 None,
             )
             .await;
