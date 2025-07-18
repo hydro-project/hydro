@@ -1347,6 +1347,85 @@ where
         Singleton::new(self.location, core)
     }
 
+    /// Applies a function to each element of the stream, maintaining an internal state (accumulator)
+    /// and emitting each intermediate result.
+    ///
+    /// Unlike `fold` which only returns the final accumulated value, `scan` produces a new stream
+    /// containing all intermediate accumulated values. The scan operation can also terminate early
+    /// by returning `None`.
+    ///
+    /// The function takes a mutable reference to the accumulator and the current element, and returns
+    /// an `Option<U>`. If the function returns `Some(value)`, `value` is emitted to the output stream.
+    /// If the function returns `None`, the stream is terminated and no more elements are processed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage - running sum:
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1, 2, 3, 4])).scan(
+    ///     q!(|| 0),
+    ///     q!(|acc, x| {
+    ///         *acc += x;
+    ///         Some(*acc)
+    ///     }),
+    /// )
+    /// # }, |mut stream| async move {
+    /// // Output: 1, 3, 6, 10
+    /// # for w in vec![1, 3, 6, 10] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    ///
+    /// Early termination example:
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1, 2, 3, 4])).scan(
+    ///     q!(|| 1),
+    ///     q!(|state, x| {
+    ///         *state = *state * x;
+    ///         if *state > 6 {
+    ///             None // Terminate the stream
+    ///         } else {
+    ///             Some(-*state)
+    ///         }
+    ///     }),
+    /// )
+    /// # }, |mut stream| async move {
+    /// // Output: -1, -2, -6
+    /// # for w in vec![-1, -2, -6] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn scan<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    where
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Option<U> + 'a,
+    {
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Scan {
+                init,
+                acc: f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<U>(),
+            },
+        )
+    }
+
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
     /// and then applying the `comb` closure to each element in the stream. The [`Optional`] will be empty
     /// until the first element in the input arrives.
