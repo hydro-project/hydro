@@ -175,6 +175,17 @@ mod tests {
                 })
             );
         });
+        insta::with_settings!({snapshot_suffix => "acceptor_mermaid"}, {
+            insta::assert_snapshot!(
+                preview.dfir_for(&acceptors).to_mermaid(&WriteConfig {
+                    no_subgraphs: true,
+                    no_pull_push: true,
+                    no_handoffs: true,
+                    op_text_no_imports: true,
+                    ..WriteConfig::default()
+                })
+            );
+        });
     }
 
     #[tokio::test]

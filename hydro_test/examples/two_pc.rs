@@ -43,11 +43,11 @@ async fn main() {
 
     hydro_test::cluster::two_pc_bench::two_pc_bench(
         num_clients_per_node,
-        coordinator,
-        participants,
+        &coordinator,
+        &participants,
         num_participants,
-        clients,
-        client_aggregator,
+        &clients,
+        &client_aggregator,
     );
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";

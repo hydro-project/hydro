@@ -1,8 +1,10 @@
-use hydro_lang::*;
-use hydro_std::quorum::collect_quorum;
-use serde::{Serialize, de::DeserializeOwned};
 use std::fmt::Debug;
 use std::hash::Hash;
+
+use hydro_lang::*;
+use hydro_std::quorum::collect_quorum;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 pub struct Participant {}
 
@@ -31,8 +33,8 @@ where
         c_votes
             .map(q!(|kv| (kv, Ok::<(), ()>(()))))
             .atomic(&coordinator_tick),
-            num_participants,
-            num_participants,
+        num_participants,
+        num_participants,
     );
 
     // TODO: Coordinator log
