@@ -390,6 +390,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
 
         // For structs of the form struct { a: 1, ..rest }
         if struc.rest.is_some() {
+            // We have no way of representing the "remaining" fields since we don't actually know the fields of the struct
             panic!(
                 "Partitioning analysis does not support structs with rest fields: {:?}",
                 struc
@@ -398,10 +399,11 @@ impl Visit<'_> for StructOrTupleUseRhs {
     }
 
     fn visit_expr_method_call(&mut self, call: &syn::ExprMethodCall) {
-        if call.method == "clone" {
-            // Allow "clone", since it doesn't change the RHS
+        if call.method == "clone" || call.method == "unwrap" {
+            // Allow special methods that don't change the RHS
             self.visit_expr(&call.receiver);
         } else {
+            // Note: Doesn't need to panic, just means that no dependency info retrieved from RHS
             println!(
                 "StructOrTupleUseRhs skipping unsupported RHS method call: {:?}",
                 call
@@ -424,15 +426,28 @@ impl Visit<'_> for StructOrTupleUseRhs {
 
     fn visit_expr_if(&mut self, expr: &syn::ExprIf) {
         // Don't consider if else branch doesn't exist, since the return value will just be ()
-        // Note: The if condition is irrelevant so it's not analyzed
         let mut branch_dependencies = vec![];
         let mut if_expr = expr;
 
         // Since we may have multiple else-ifs, keep unwrapping the else branch until we reach a block
         loop {
             if let Some(else_branch) = &if_expr.else_branch {
+                // Check for if/let in the if condition
+                let if_let_dependencies = if let syn::Expr::Let(cond) = &*if_expr.cond {
+                    let mut cond_analysis = EqualityAnalysis {
+                        dependencies: self.existing_dependencies.clone(),
+                        ..Default::default()
+                    };
+                    cond_analysis.visit_assignment(&cond.pat, Some(cond.expr.clone()));
+                    cond_analysis.dependencies
+                }
+                else {
+                    self.existing_dependencies.clone()
+                };
+
+                // Analyze the then branch
                 let mut then_branch_analysis = EqualityAnalysis {
-                    dependencies: self.existing_dependencies.clone(),
+                    dependencies: if_let_dependencies,
                     ..Default::default()
                 };
                 then_branch_analysis.visit_block(&if_expr.then_branch);
@@ -509,7 +524,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
             _ => println!(
                 "StructOrTupleUseRhs skipping unsupported RHS expression: {:?}",
                 expr
-            ),
+            ), // Note: Doesn't need to panic, just means that no dependency info retrieved from RHS
         }
     }
 }
@@ -552,8 +567,17 @@ impl Visit<'_> for TupleDeclareLhs {
                     self.visit_pat(elem);
                 }
             }
+            syn::Pat::TupleStruct(tuple_struct) => {
+                if tuple_struct.path.is_ident("Some") {
+                    assert_eq!(tuple_struct.elems.len(), 1); // Some should have exactly one element
+                    self.visit_pat(tuple_struct.elems.first().unwrap());
+                }
+                else {
+                    panic!("TupleDeclareLhs does not support tuple structs: {:?}", tuple_struct);
+                }
+            }
             _ => {
-                println!(
+                panic!(
                     "TupleDeclareLhs does not support this LHS pattern: {:?}",
                     pat
                 );
@@ -568,34 +592,40 @@ struct EqualityAnalysis {
     dependencies: BTreeMap<syn::Ident, StructOrTuple>,
 }
 
+impl EqualityAnalysis {
+    pub fn visit_assignment(&mut self, lhs: &syn::Pat, rhs: Option<Box<syn::Expr>>) {
+        // Analyze LHS
+        let mut input_analysis: TupleDeclareLhs = TupleDeclareLhs::default();
+        input_analysis.visit_pat(lhs);
+
+        // Analyze RHS
+        let mut analysis = StructOrTupleUseRhs::default();
+        if let Some(rhs_expr) = rhs {
+            // See if RHS is a direct match for an existing dependency
+            analysis.existing_dependencies = self.dependencies.clone();
+            analysis.visit_expr(rhs_expr.as_ref());
+        }
+
+        // Set dependencies from LHS to RHS
+        for (lhs, tuple_index) in input_analysis.lhs_tuple.iter() {
+            let mut tuple = StructOrTuple::default();
+            tuple.set_dependencies(tuple_index, &analysis.rhs_tuple, tuple_index);
+            if tuple.is_empty() {
+                // No RHS dependency found, delete LHS if it exists (it shadows any previous dependency)
+                self.dependencies.remove(lhs);
+            } else {
+                // Found a match, insert into dependencies
+                println!("Found dependency: {} {:?} = {:?}", lhs, tuple_index, tuple);
+                self.dependencies.insert(lhs.clone(), tuple);
+            }
+        }
+    }
+}
+
 impl Visit<'_> for EqualityAnalysis {
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
         if let syn::Stmt::Local(local) = stmt {
-            // Analyze LHS
-            let mut input_analysis: TupleDeclareLhs = TupleDeclareLhs::default();
-            input_analysis.visit_pat(&local.pat);
-
-            // Analyze RHS
-            let mut analysis = StructOrTupleUseRhs::default();
-            if let Some(init) = local.init.as_ref() {
-                // See if RHS is a direct match for an existing dependency
-                analysis.existing_dependencies = self.dependencies.clone();
-                analysis.visit_expr(init.expr.as_ref());
-            }
-
-            // Set dependencies from LHS to RHS
-            for (lhs, tuple_index) in input_analysis.lhs_tuple.iter() {
-                let mut tuple = StructOrTuple::default();
-                tuple.set_dependencies(tuple_index, &analysis.rhs_tuple, tuple_index);
-                if tuple.is_empty() {
-                    // No RHS dependency found, delete LHS if it exists (it shadows any previous dependency)
-                    self.dependencies.remove(lhs);
-                } else {
-                    // Found a match, insert into dependencies
-                    println!("Found dependency: {} {:?} = {:?}", lhs, tuple_index, tuple);
-                    self.dependencies.insert(lhs.clone(), tuple);
-                }
-            }
+            self.visit_assignment(&local.pat, local.init.as_ref().and_then(|init| Some(init.expr.clone())));
         }
     }
 
@@ -913,6 +943,22 @@ mod tests {
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
             .map(q!(|(a, b, cd, e)| {
                 (a, b, if a == 1 { cd } else { (cd.0, (cd.1.0,)) }, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_if_let() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, cd, e)| {
+                let cd_option = Some(cd);
+                (a, b, if let Some(x) = cd_option { x } else { (cd.0, (cd.1.0,)) }, e)
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
