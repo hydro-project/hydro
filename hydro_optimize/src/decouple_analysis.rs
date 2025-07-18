@@ -6,7 +6,6 @@ use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 
 use super::parse_results::{NetworkType, get_network_type};
-use super::rewrites::relevant_inputs;
 
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
@@ -62,6 +61,22 @@ fn add_equality_constr(ops: &[usize], op_id_to_var: &mut HashMap<usize, Var>, mo
             prev_op = op;
         }
     }
+}
+
+fn relevant_inputs(
+    input_metadatas: Vec<&HydroIrMetadata>,
+    cluster_to_decouple: &LocationId,
+) -> Vec<usize> {
+    input_metadatas
+        .iter()
+        .filter_map(|input_metadata| {
+            if cluster_to_decouple == input_metadata.location_kind.root() {
+                Some(input_metadata.id.unwrap())
+            } else {
+                None
+            }
+        })
+        .collect()
 }
 
 fn add_input_constraints(

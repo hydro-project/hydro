@@ -1,5 +1,5 @@
 use hydro_lang::builder::RewriteIrFlowBuilder;
-use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, deep_clone};
+use hydro_lang::ir::{HydroLeaf, deep_clone};
 use hydro_lang::location::LocationId;
 use hydro_lang::{Cluster, FlowBuilder, Location};
 use serde::{Deserialize, Serialize};
@@ -110,20 +110,4 @@ impl VisitMut for ClusterSelfIdReplace {
         }
         visit_mut::visit_expr_mut(self, expr);
     }
-}
-
-pub fn relevant_inputs(
-    input_metadatas: Vec<&HydroIrMetadata>,
-    relevant_cluster: &LocationId,
-) -> Vec<usize> {
-    input_metadatas
-        .iter()
-        .filter_map(|input_metadata| {
-            if relevant_cluster == input_metadata.location_kind.root() {
-                Some(input_metadata.id.unwrap())
-            } else {
-                None
-            }
-        })
-        .collect()
 }

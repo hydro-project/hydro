@@ -11,7 +11,7 @@ use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
-use super::trybuild_rewriters::ReplaceCrateNameWithStaged;
+use super::trybuild_rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: [&str; 1] = ["runtime_measure"];
 
@@ -34,24 +34,25 @@ fn clean_name_hint(name_hint: &str) -> String {
         .replace(")", "")
 }
 
+pub struct TrybuildConfig {
+    pub project_dir: PathBuf,
+    pub target_dir: PathBuf,
+    pub features: Option<Vec<String>>,
+    pub cfgs: String,
+}
+
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
     name_hint: &Option<String>,
-) -> (String, (PathBuf, PathBuf, Option<Vec<String>>)) {
+) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
     let crate_name = &source_manifest.package.name.to_string().replace("-", "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let mut generated_code = compile_graph_trybuild(graph, extra_stmts);
-
-    ReplaceCrateNameWithStaged {
-        crate_name: crate_name.clone(),
-        is_test,
-    }
-    .visit_file_mut(&mut generated_code);
+    let generated_code = compile_graph_trybuild(graph, extra_stmts, crate_name.clone(), is_test);
 
     let inlined_staged: syn::File = if is_test {
         let gen_staged = stageleft_tool::gen_staged_trybuild(
@@ -121,30 +122,46 @@ pub fn create_graph_trybuild(
 
     (
         bin_name,
-        (project_dir, target_dir, cur_bin_enabled_features),
+        TrybuildConfig {
+            project_dir,
+            target_dir,
+            features: cur_bin_enabled_features,
+            cfgs: "--cfg stageleft_trybuild".to_string(),
+        },
     )
 }
 
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
+    crate_name: String,
+    is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
-    let tokens = partitioned_graph.as_code(
-        &quote! { hydro_lang::runtime_support::dfir_rs },
+    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
+        &quote! { __root_dfir_rs },
         true,
         quote!(),
         &mut diagnostics,
-    );
+    ))
+    .unwrap();
+
+    if is_test {
+        UseTestModeStaged {
+            crate_name: crate_name.clone(),
+        }
+        .visit_expr_mut(&mut dfir_expr);
+    }
 
     let source_ast: syn::File = syn::parse_quote! {
         #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
         use hydro_lang::*;
+        use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
 
         #[allow(unused)]
         fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts<hydro_lang::deploy_runtime::HydroMeta>) -> hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
             #(#extra_stmts)*
-            #tokens
+            #dfir_expr
         }
 
         #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio")]
@@ -221,19 +238,9 @@ pub fn create_trybuild()
         source_manifest,
     )?;
 
-    manifest.features.remove("stageleft_devel");
-
     if let Some(enabled_features) = &mut features {
         enabled_features
             .retain(|feature| manifest.features.contains_key(feature) || feature == "default");
-
-        manifest
-            .features
-            .get_mut("default")
-            .iter_mut()
-            .for_each(|v| {
-                v.retain(|f| f != "stageleft_devel");
-            });
     }
 
     for runtime_feature in HYDRO_RUNTIME_FEATURES {

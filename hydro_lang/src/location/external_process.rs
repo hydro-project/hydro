@@ -8,7 +8,8 @@ use super::{Location, LocationId, NoTick};
 use crate::builder::FlowState;
 use crate::ir::{DebugInstantiate, HydroNode, HydroSource};
 use crate::staging_util::Invariant;
-use crate::{Stream, Unbounded};
+use crate::stream::ExactlyOnce;
+use crate::{Stream, TotalOrder, Unbounded};
 
 pub struct ExternalBytesPort {
     #[cfg_attr(
@@ -99,7 +100,10 @@ impl<'a, P> ExternalProcess<'a, P> {
     pub fn source_external_bytes<L>(
         &self,
         to: &L,
-    ) -> (ExternalBytesPort, Stream<Bytes, L, Unbounded>)
+    ) -> (
+        ExternalBytesPort,
+        Stream<Bytes, L, Unbounded, TotalOrder, ExactlyOnce>,
+    )
     where
         L: Location<'a> + NoTick,
     {
@@ -143,7 +147,10 @@ impl<'a, P> ExternalProcess<'a, P> {
     pub fn source_external_bincode<L, T>(
         &self,
         to: &L,
-    ) -> (ExternalBincodeSink<T>, Stream<T, L, Unbounded>)
+    ) -> (
+        ExternalBincodeSink<T>,
+        Stream<T, L, Unbounded, TotalOrder, ExactlyOnce>,
+    )
     where
         L: Location<'a> + NoTick,
         T: Serialize + DeserializeOwned,

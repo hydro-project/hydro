@@ -77,7 +77,7 @@ jobs:
           dfir_rs dfir_lang dfir_macro
           dfir_datalog dfir_datalog_core
           hydro_lang hydro_optimize hydro_std
-          hydro_deploy hydro_cli hydro_deploy_integration
+          hydro_deploy hydro_deploy_integration
           multiplatform_test
           |& tee release.log
         env:

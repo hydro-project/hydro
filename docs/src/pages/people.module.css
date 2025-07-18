@@ -1,42 +1,121 @@
+.container {
+  max-width: calc(min(1100px, 100vw - 100px));
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 50px;
+}
+
+@media screen and (max-width: 1000px) {
+  .container {
+    max-width: calc(min(1100px, 100vw - 47px));
+  }
+}
+
+.title {
+  font-size: 60px;
+  margin-top: 30px;
+}
+
+.blurb {
+  font-size: 18px;
+  text-wrap: pretty;
+}
+
+@media screen and (max-width: 1000px) {
+  .title {
+    font-size: 50px;
+    margin-top: 20px;
+  }
+
+  .blurb {
+    font-size: 16px;
+  }
+}
+
 .personContainer {
+  display: flex;
+  flex-direction: column;
+
   width: 250px;
+  flex-grow: 1;
   border-radius: 15px;
   box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.25);
   overflow: hidden;
   padding-bottom: 5px;
 }
 
-[data-theme='dark'] .personContainer {
-  box-shadow: 0px 0px 16px rgba(255, 255, 255, 0.15);
+@media screen and (max-width: 1000px) {
+  .personContainer {
+    width: 160px;
+  }
+}
+
+[data-theme="dark"] .personContainer {
+  box-shadow: none;
+  border: 2px solid #ffffff;
+  box-sizing: border-box;
+  color: white;
 }
 
 .personGroup {
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
+  gap: 30px;
+}
+
+@media screen and (max-width: 1000px) {
+  .personGroup {
+    gap: 15px;
+  }
+}
+
+.personCard {
+  display: flex;
+  color: inherit;
+  text-decoration: inherit;
+  min-width: 200px;
+  max-width: 250px;
+  flex-grow: 1;
+  flex-basis: 0;
+}
+
+@media screen and (max-width: 700px) {
+  .personCard {
+    min-width: 160px;
+    max-width: 400px;
+  }
 }
 
 div.personImage {
   background-position: center;
+  flex-grow: 1;
+  height: 0px;
+  min-height: 270px;
+}
+
+@media screen and (max-width: 1000px) {
+  div.personImage {
+    min-height: 200px;
+  }
 }
 
 .personImage img {
   object-fit: cover;
-  height: inherit !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 50px;
-  text-align: center;
-  font-weight: 600;
+  font-size: 45px;
+  font-weight: 700;
   margin-top: 25px;
-  margin-bottom: 0;
+  margin-bottom: 20px;
+  line-height: 1.2;
 }
 
 @media screen and (max-width: 1000px) {
   .subtitle {
-    font-size: 40px;
+    font-size: 35px;
     margin-top: 30px;
   }
 }

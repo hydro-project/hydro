@@ -105,10 +105,41 @@ pub fn paxos_bench<'a>(
 #[cfg(test)]
 mod tests {
     use dfir_lang::graph::WriteConfig;
-    use hydro_lang::deploy::DeployRuntime;
-    use stageleft::RuntimeData;
+    use hydro_deploy::Deployment;
+    use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
 
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
+
+    const PAXOS_F: usize = 1;
+
+    #[cfg(stageleft_runtime)]
+    fn create_paxos<'a>(
+        proposers: &hydro_lang::Cluster<'a, crate::cluster::paxos::Proposer>,
+        acceptors: &hydro_lang::Cluster<'a, crate::cluster::paxos::Acceptor>,
+        clients: &hydro_lang::Cluster<'a, super::Client>,
+        client_aggregator: &hydro_lang::Process<'a, super::Aggregator>,
+        replicas: &hydro_lang::Cluster<'a, crate::cluster::kv_replica::Replica>,
+    ) {
+        super::paxos_bench(
+            100,
+            1000,
+            PAXOS_F,
+            PAXOS_F + 1,
+            CorePaxos {
+                proposers: proposers.clone(),
+                acceptors: acceptors.clone(),
+                paxos_config: PaxosConfig {
+                    f: 1,
+                    i_am_leader_send_timeout: 5,
+                    i_am_leader_check_timeout: 10,
+                    i_am_leader_check_timeout_delay_multiplier: 15,
+                },
+            },
+            clients,
+            client_aggregator,
+            replicas,
+        );
+    }
 
     #[test]
     fn paxos_ir() {
@@ -119,26 +150,14 @@ mod tests {
         let client_aggregator = builder.process();
         let replicas = builder.cluster();
 
-        super::paxos_bench(
-            1,
-            1,
-            1,
-            2,
-            CorePaxos {
-                proposers: proposers.clone(),
-                acceptors: acceptors.clone(),
-                paxos_config: PaxosConfig {
-                    f: 1,
-                    i_am_leader_send_timeout: 1,
-                    i_am_leader_check_timeout: 1,
-                    i_am_leader_check_timeout_delay_multiplier: 1,
-                },
-            },
+        create_paxos(
+            &proposers,
+            &acceptors,
             &clients,
             &client_aggregator,
             &replicas,
         );
-        let built = builder.with_default_optimize::<DeployRuntime>();
+        let built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::ir::dbg_dedup_tee(|| {
             insta::assert_debug_snapshot!(built.ir());
@@ -156,7 +175,83 @@ mod tests {
                 })
             );
         });
+        insta::with_settings!({snapshot_suffix => "acceptor_mermaid"}, {
+            insta::assert_snapshot!(
+                preview.dfir_for(&acceptors).to_mermaid(&WriteConfig {
+                    no_subgraphs: true,
+                    no_pull_push: true,
+                    no_handoffs: true,
+                    op_text_no_imports: true,
+                    ..WriteConfig::default()
+                })
+            );
+        });
+    }
 
-        let _ = built.compile(&RuntimeData::new("FAKE"));
+    #[tokio::test]
+    async fn paxos_some_throughput() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let proposers = builder.cluster();
+        let acceptors = builder.cluster();
+        let clients = builder.cluster();
+        let client_aggregator = builder.process();
+        let replicas = builder.cluster();
+
+        create_paxos(
+            &proposers,
+            &acceptors,
+            &clients,
+            &client_aggregator,
+            &replicas,
+        );
+        let mut deployment = Deployment::new();
+
+        let nodes = builder
+            .with_cluster(
+                &proposers,
+                (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .with_cluster(
+                &acceptors,
+                (0..2 * PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .with_cluster(&clients, vec![TrybuildHost::new(deployment.Localhost())])
+            .with_process(
+                &client_aggregator,
+                TrybuildHost::new(deployment.Localhost()),
+            )
+            .with_cluster(
+                &replicas,
+                (0..PAXOS_F + 1).map(|_| TrybuildHost::new(deployment.Localhost())),
+            )
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let client_node = &nodes.get_process(&client_aggregator);
+        let client_out = client_node.stdout_filter("Throughput:").await;
+
+        deployment.start().await.unwrap();
+
+        use std::str::FromStr;
+
+        use regex::Regex;
+
+        let re = Regex::new(r"Throughput: ([^ ]+) - ([^ ]+) - ([^ ]+) requests/s").unwrap();
+        let mut found = 0;
+        let mut client_out = client_out;
+        while let Some(line) = client_out.recv().await {
+            if let Some(caps) = re.captures(&line) {
+                if let Ok(lower) = f64::from_str(&caps[1]) {
+                    if lower > 0.0 {
+                        println!("Found throughput lower-bound: {}", lower);
+                        found += 1;
+                        if found == 2 {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
     }
 }

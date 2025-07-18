@@ -15,7 +15,7 @@ RUSTFLAGS="--cfg procmacro2_semver_exempt --cfg super_unstable" CC="$PWD/../LLVM
 
 cd ..
 
-RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --all-features
+RUSTDOCFLAGS="--cfg docsrs -Dwarnings" cargo doc --no-deps --features "meta,python,dfir_macro,deploy_integration,runtime_support,dfir_context,build,deploy"
 
 cp -r target/doc docs/static/rustdoc
 

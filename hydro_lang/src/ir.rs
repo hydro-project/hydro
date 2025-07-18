@@ -369,9 +369,6 @@ impl HydroLeaf {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        if input_location_id != *location_id {
-                            println!("Cycle broken: {:?}, ID: {}", ident, next_stmt_id);
-                        }
                         assert_eq!(
                             input_location_id, *location_id,
                             "cycle_sink location mismatch"
@@ -1355,9 +1352,6 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        if first_location_id != second_location_id {
-                            println!("Chain broken: {}, ID: {}", self.print_root(), next_stmt_id);
-                        }
                         assert_eq!(
                             first_location_id, second_location_id,
                             "chain inputs must be in the same location"
@@ -1394,13 +1388,6 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        if left_location_id != right_location_id {
-                            println!(
-                                "Cross singleton broken: {}, ID: {}",
-                                self.print_root(),
-                                next_stmt_id
-                            );
-                        }
                         assert_eq!(
                             left_location_id, right_location_id,
                             "cross_singleton inputs must be in the same location"
@@ -1464,13 +1451,6 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        if left_location_id != right_location_id {
-                            println!(
-                                "Join / cross product broken: {}, ID: {}",
-                                self.print_root(),
-                                next_stmt_id
-                            );
-                        }
                         assert_eq!(
                             left_location_id, right_location_id,
                             "join / cross product inputs must be in the same location"
@@ -1527,13 +1507,6 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        if pos_location_id != neg_location_id {
-                            println!(
-                                "Difference / antijoin broken: {}, ID: {}",
-                                self.print_root(),
-                                next_stmt_id
-                            );
-                        }
                         assert_eq!(
                             pos_location_id, neg_location_id,
                             "difference / anti join inputs must be in the same location"
@@ -2521,11 +2494,11 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"152");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"184");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"128");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"160");
     }
 }

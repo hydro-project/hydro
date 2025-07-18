@@ -20,18 +20,14 @@ all-features = true
 
 [dependencies]
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
-hydro_lang = { path = "../hydro_lang", version = "^0.13.2", features = [
-    "build",
-    "deploy",
-] }
+hydro_lang = { path = "../hydro_lang", version = "^0.13.2", features = ["deploy"] }
 hydro_std = { path = "../hydro_std", version = "^0.13.0" }
 grb = { version = "3.0.1", features = ['gurobi12'], optional = true }
 proc-macro-crate = "1.0.0"
 proc-macro2 = "1.0.95"
 regex = "1.11.1"
 serde = { version = "1.0.197", features = ["derive"] }
-stageleft = "0.8.1"
-stageleft_tool = "0.8.1"
+stageleft.workspace = true
 syn = { version = "2.0.46", features = [
     "parsing",
     "extra-traits",
@@ -41,9 +37,10 @@ tokio = { version = "1.29.0", features = ["full"] }
 trybuild-internals-api = "1.0.99"
 
 [build-dependencies]
-stageleft_tool = "0.8.1"
+stageleft_tool.workspace = true
 
 [dev-dependencies]
+ctor = "0.2"
 dfir_rs = { path = "../dfir_rs", version = "^0.13.0", default-features = false }
 dfir_lang = { path = "../dfir_lang", version = "^0.13.0" }
 insta = "1.39"

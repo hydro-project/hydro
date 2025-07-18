@@ -24,6 +24,7 @@ async fn main() {
     use hydro_lang::Location;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+    use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};
     use tokio::sync::RwLock;
 
     let mut deployment = Deployment::new();
@@ -43,17 +44,29 @@ async fn main() {
     };
 
     let builder = hydro_lang::FlowBuilder::new();
-    let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
+    let (cluster, leader) = compute_pi(&builder, 8192);
 
-    let clusters = vec![(cluster.id().raw_id(), cluster.typename(), 8)];
-    let processes = vec![(leader.id().raw_id(), leader.typename())];
+    let clusters = vec![(
+        cluster.id().raw_id(),
+        std::any::type_name::<Worker>().to_string(),
+        8,
+    )];
+    let processes = vec![(
+        leader.id().raw_id(),
+        std::any::type_name::<Leader>().to_string(),
+    )];
 
-    let _ = deploy_and_analyze(
+    let (rewritten_ir_builder, ir, _, _, _) = deploy_and_analyze(
         &mut reusable_hosts,
         &mut deployment,
         builder,
         &clusters,
         &processes,
+        vec![],
+        None,
     )
     .await;
+
+    // Cleanup
+    let _ = rewritten_ir_builder.build_with(|_| ir).finalize();
 }

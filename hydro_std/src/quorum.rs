@@ -105,7 +105,7 @@ pub fn collect_quorum<'a, L: Location<'a> + NoTick, Order, K: Clone + Eq + Hash,
     min: usize,
     max: usize,
 ) -> (
-    Stream<K, Atomic<L>, Unbounded, Order>,
+    Stream<K, Atomic<L>, Unbounded, NoOrder>,
     Stream<(K, E), Atomic<L>, Unbounded, Order>,
 ) {
     let tick = responses.atomic_source();
