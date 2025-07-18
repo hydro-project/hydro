@@ -440,8 +440,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
                     };
                     cond_analysis.visit_assignment(&cond.pat, Some(cond.expr.clone()));
                     cond_analysis.dependencies
-                }
-                else {
+                } else {
                     self.existing_dependencies.clone()
                 };
 
@@ -579,11 +578,14 @@ impl Visit<'_> for TupleDeclareLhs {
                 if tuple_struct.path.is_ident("Some") {
                     assert_eq!(tuple_struct.elems.len(), 1); // Some should have exactly one element
                     self.visit_pat(tuple_struct.elems.first().unwrap());
-                }
-                else {
-                    panic!("TupleDeclareLhs does not support tuple structs: {:?}", tuple_struct);
+                } else {
+                    panic!(
+                        "TupleDeclareLhs does not support tuple structs: {:?}",
+                        tuple_struct
+                    );
                 }
             }
+            syn::Pat::Wild(_) | syn::Pat::Lit(_) => {} // Ignore wildcards, literals
             _ => {
                 panic!(
                     "TupleDeclareLhs does not support this LHS pattern: {:?}",
@@ -633,7 +635,10 @@ impl EqualityAnalysis {
 impl Visit<'_> for EqualityAnalysis {
     fn visit_stmt(&mut self, stmt: &syn::Stmt) {
         if let syn::Stmt::Local(local) = stmt {
-            self.visit_assignment(&local.pat, local.init.as_ref().and_then(|init| Some(init.expr.clone())));
+            self.visit_assignment(
+                &local.pat,
+                local.init.as_ref().map(|init| init.expr.clone()),
+            );
         }
     }
 
@@ -726,10 +731,10 @@ mod tests {
     use std::cell::RefCell;
     use std::collections::BTreeMap;
 
-    use hydro_lang::deploy::DeployRuntime;
+    use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
     use hydro_lang::{FlowBuilder, Location};
-    use stageleft::{RuntimeData, q};
+    use stageleft::q;
     use syn::visit::Visit;
 
     use crate::partition_syn_analysis::{AnalyzeClosure, StructOrTuple};
@@ -778,7 +783,7 @@ mod tests {
     }
 
     fn verify_tuple(builder: FlowBuilder<'_>, expected_output_dependency: &StructOrTuple) {
-        let built = builder.with_default_optimize::<DeployRuntime>();
+        let built = builder.with_default_optimize::<HydroDeploy>();
         let mut ir = deep_clone(built.ir());
         let actual_dependencies = partition_analysis(&mut ir);
 
@@ -786,8 +791,6 @@ mod tests {
             actual_dependencies.get(&1),
             Some(expected_output_dependency)
         );
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 
     fn verify_abcde_tuple(builder: FlowBuilder<'_>) {
@@ -966,7 +969,16 @@ mod tests {
             .source_iter(q!([(1, 2, (3, (4,)), 5)]))
             .map(q!(|(a, b, cd, e)| {
                 let cd_option = Some(cd);
-                (a, b, if let Some(x) = cd_option { x } else { (cd.0, (cd.1.0,)) }, e)
+                (
+                    a,
+                    b,
+                    if let Some(x) = cd_option {
+                        x
+                    } else {
+                        (cd.0, (cd.1.0,))
+                    },
+                    e,
+                )
             }))
             .for_each(q!(|(a, b, (c, (d,)), e)| {
                 println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);

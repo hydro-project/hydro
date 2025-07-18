@@ -692,12 +692,12 @@ fn partitioning_analysis(
 mod tests {
     use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-    use hydro_lang::deploy::DeployRuntime;
+    use hydro_lang::deploy::HydroDeploy;
     use hydro_lang::ir::deep_clone;
     use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::{Bounded, FlowBuilder, Location, NoOrder, Stream};
-    use stageleft::{RuntimeData, q};
+    use stageleft::q;
 
     use crate::partition_node_analysis::{
         InputDependencyMetadata, input_dependency_analysis, partitioning_analysis,
@@ -719,7 +719,7 @@ mod tests {
                 cycle_data = cycle_source_to_sink_input(ir);
                 inject_location(ir, &cycle_data);
             })
-            .into_deploy::<DeployRuntime>();
+            .into_deploy::<HydroDeploy>();
         let mut ir = deep_clone(built.ir());
         let InputDependencyMetadata {
             input_taint: actual_taint,
@@ -732,8 +732,6 @@ mod tests {
 
         assert_eq!(actual_taint, expected_taint);
         assert_eq!(actual_dependencies, expected_dependencies);
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 
     fn test_input_partitionable(
@@ -749,13 +747,11 @@ mod tests {
                 cycle_data = cycle_source_to_sink_input(ir);
                 inject_location(ir, &cycle_data);
             })
-            .into_deploy::<DeployRuntime>();
+            .into_deploy::<HydroDeploy>();
         let mut ir = deep_clone(built.ir());
         let partitioning = partitioning_analysis(&mut ir, &cluster_to_partition, &cycle_data);
 
         assert_eq!(partitioning, expected_partitionings);
-
-        let _ = built.compile(&RuntimeData::new("FAKE"));
     }
 
     #[test]
