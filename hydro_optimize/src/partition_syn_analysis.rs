@@ -483,8 +483,16 @@ impl Visit<'_> for StructOrTupleUseRhs {
     fn visit_expr_match(&mut self, expr: &syn::ExprMatch) {
         let mut branch_dependencies = vec![];
         for arm in &expr.arms {
-            let mut arm_analysis = EqualityAnalysis {
+            // Analyze assignments
+            let mut assignment_analysis = EqualityAnalysis {
                 dependencies: self.existing_dependencies.clone(),
+                ..Default::default()
+            };
+            assignment_analysis.visit_assignment(&arm.pat, Some(expr.expr.clone()));
+
+            // Analyze arm
+            let mut arm_analysis = EqualityAnalysis {
+                dependencies: assignment_analysis.dependencies,
                 ..Default::default()
             };
             arm_analysis.visit_expr(&arm.body);
@@ -1020,6 +1028,27 @@ mod tests {
                     (4,) => g,
                     (3,) => (c, f),
                     _ => (c, (d,)),
+                };
+                (a, b, cd, e)
+            }))
+            .for_each(q!(|(a, b, (c, (d,)), e)| {
+                println!("a: {}, b: {}, c: {}, d: {}, e: {}", a, b, c, d, e);
+            }));
+        verify_abcde_tuple(builder);
+    }
+
+    #[test]
+    fn test_match_assign() {
+        let builder = FlowBuilder::new();
+        let cluster = builder.cluster::<()>();
+        cluster
+            .source_iter(q!([(1, 2, (3, (4,)), 5)]))
+            .map(q!(|(a, b, (c, (d,)), e)| {
+                let f = Some((d,));
+                let g = (c, (d,));
+                let cd = match f {
+                    Some(x) => (c, x),
+                    None => g,
                 };
                 (a, b, cd, e)
             }))
