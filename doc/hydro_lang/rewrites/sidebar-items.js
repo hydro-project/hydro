@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["analyze_counter","analyze_perf","analyze_perf_and_counters","decoupler","insert_counter","partitioner","persist_pullup","print_id","properties"]};
+window.SIDEBAR_ITEMS = {"mod":["persist_pullup","properties"]};

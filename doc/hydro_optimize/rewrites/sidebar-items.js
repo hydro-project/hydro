@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ClusterSelfIdReplace","Rewrite"],"fn":["replay"],"struct":["RewriteMetadata"],"type":["Rewrites"]};
