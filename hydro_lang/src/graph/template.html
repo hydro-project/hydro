@@ -876,11 +876,121 @@
                     containers: locationContainers.length,
                     nodes: coloredChildNodes.length
                 });
+                
+                // Auto-collapse large containers on initial load
+                const viewportArea = window.innerWidth * window.innerHeight;
+                const maxContainerAreaFraction = 0.25; // 25% of viewport
+                const autoCollapseThreshold = viewportArea * maxContainerAreaFraction;
+                
+                const initialCollapsedState = {};
+                const initialOriginalDimensions = {};
+                
+                locationContainers.forEach(container => {
+                    const containerArea = container.style.width * container.style.height;
+                    const shouldAutoCollapse = containerArea > autoCollapseThreshold;
+                    
+                    console.log(`Container ${container.id}: ${container.style.width}x${container.style.height} = ${containerArea}px² (${(containerArea/viewportArea*100).toFixed(1)}% of viewport)`);
+                    
+                    if (shouldAutoCollapse) {
+                        const locationId = container.id.replace('container_', '');
+                        console.log(`Auto-collapsing container ${container.id} (too large: ${(containerArea/viewportArea*100).toFixed(1)}% of viewport)`);
+                        
+                        initialCollapsedState[locationId] = true;
+                        initialOriginalDimensions[locationId] = {
+                            width: container.style.width,
+                            height: container.style.height
+                        };
+                        
+                        // Modify the container to be collapsed
+                        container.style.width = 200;
+                        container.style.height = 50;
+                        
+                        // Hide child nodes in this container
+                        allElements.forEach(element => {
+                            if (element.parentNode === container.id) {
+                                element.hidden = true;
+                            }
+                        });
+                    }
+                });
+                
+                // Set initial collapsed state
+                if (Object.keys(initialCollapsedState).length > 0) {
+                    console.log('Setting initial collapsed state:', initialCollapsedState);
+                    setCollapsedLocations(initialCollapsedState);
+                    setOriginalNodeDimensions(initialOriginalDimensions);
+                }
+                
                 setNodes(allElements);
                 
                 // Ensure all edges are properly set
                 console.log('Setting', initialEdges.length, 'edges');
                 setEdges(initialEdges);
+                
+                // Apply initial edge routing for auto-collapsed containers
+                if (Object.keys(initialCollapsedState).length > 0) {
+                    // We need to update edges after the collapsed state is set
+                    setTimeout(() => {
+                        setEdges(currentEdges => {
+                            const childNodeIdsByParent = {};
+                            allElements.forEach(n => {
+                                if (n.parentNode) {
+                                    if (!childNodeIdsByParent[n.parentNode]) {
+                                        childNodeIdsByParent[n.parentNode] = new Set();
+                                    }
+                                    childNodeIdsByParent[n.parentNode].add(n.id);
+                                }
+                            });
+
+                            return currentEdges.map(edge => {
+                                let newEdge = { ...edge };
+                                
+                                // Check all initially collapsed locations and handle edge routing
+                                let sourceInCollapsedContainer = null;
+                                let targetInCollapsedContainer = null;
+                                
+                                for (const locationId in initialCollapsedState) {
+                                    if (initialCollapsedState[locationId]) {
+                                        const containerId = `container_${locationId}`;
+                                        const childIds = childNodeIdsByParent[containerId] || new Set();
+
+                                        if (childIds.has(newEdge.source)) {
+                                            sourceInCollapsedContainer = containerId;
+                                        }
+                                        if (childIds.has(newEdge.target)) {
+                                            targetInCollapsedContainer = containerId;
+                                        }
+                                    }
+                                }
+                                
+                                // Apply routing based on what we found
+                                if (sourceInCollapsedContainer && targetInCollapsedContainer) {
+                                    if (sourceInCollapsedContainer === targetInCollapsedContainer) {
+                                        // Both nodes in same collapsed container - hide the edge
+                                        newEdge.hidden = true;
+                                    } else {
+                                        // Nodes in different collapsed containers - route container to container
+                                        newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
+                                        newEdge.source = sourceInCollapsedContainer;
+                                        newEdge.target = targetInCollapsedContainer;
+                                    }
+                                } else if (sourceInCollapsedContainer) {
+                                    // Source in collapsed container, target outside - route from container to target
+                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
+                                    newEdge.source = sourceInCollapsedContainer;
+                                } else if (targetInCollapsedContainer) {
+                                    // Target in collapsed container, source outside - route from source to container
+                                    newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
+                                    newEdge.target = targetInCollapsedContainer;
+                                }
+                                
+                                console.log(`Initial edge routing: ${edge.id}: ${edge.source} -> ${edge.target} became ${newEdge.source} -> ${newEdge.target}, hidden: ${newEdge.hidden}`);
+                                
+                                return newEdge;
+                            });
+                        });
+                    }, 50);
+                }
                 
                 // Fit view after layout is applied
                 setTimeout(() => {
