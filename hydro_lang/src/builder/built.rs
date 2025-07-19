@@ -38,6 +38,18 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
+    pub fn process_id_name(&self) -> &Vec<(usize, String)> {
+        &self.process_id_name
+    }
+
+    pub fn cluster_id_name(&self) -> &Vec<(usize, String)> {
+        &self.cluster_id_name
+    }
+
+    pub fn external_id_name(&self) -> &Vec<(usize, String)> {
+        &self.external_id_name
+    }
+
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
         f(&mut self.ir);
         BuiltFlow {

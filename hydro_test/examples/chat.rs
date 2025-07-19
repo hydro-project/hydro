@@ -1,6 +1,5 @@
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::debug::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,12 +12,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Extract the IR BEFORE the builder is consumed by deployment methods
     let built = builder.finalize();
 
-    // // Generate graph visualization (do this before deployment to avoid ownership issues)
-    // #[cfg(feature = "debugging")]
-    // open_hydro_ir_mermaid_vscode(built.ir(), "chat_graph.mermaid")?;
-
-    // Also generate ReactFlow.js visualization
-    open_hydro_ir_reactflow_browser(built.ir(), Some("chat_graph.html"), None)?;
+    // Generate graph visualizations (do this before deployment to avoid ownership issues)
+    
+    // Mermaid diagram
+    hydro_lang::graph::mermaid::open_browser(&built)?;
+    
+    // ReactFlow.js visualization with type names
+    hydro_lang::graph::reactflow::open_browser(&built)?;
+    
+    // Graphviz/DOT visualization
+    hydro_lang::graph::graphviz::open_browser(&built)?;
 
     // Now use the built flow for deployment with optimization
     let _nodes = built

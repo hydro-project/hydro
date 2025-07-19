@@ -179,3 +179,21 @@ where
         Ok(())
     }
 }
+
+/// Open mermaid visualization in browser for a BuiltFlow
+#[cfg(feature = "build")]
+pub fn open_browser(built_flow: &crate::builder::built::BuiltFlow) -> Result<(), Box<dyn std::error::Error>> {
+    let config = super::render::HydroWriteConfig {
+        show_metadata: false,
+        show_location_groups: true,
+        include_tee_ids: true,
+        process_id_name: built_flow.process_id_name().clone(),
+        cluster_id_name: built_flow.cluster_id_name().clone(),
+        external_id_name: built_flow.external_id_name().clone(),
+    };
+    
+    // Use the existing debug function
+    crate::graph::debug::open_hydro_ir_mermaid(built_flow.ir(), Some(config))?;
+    
+    Ok(())
+}

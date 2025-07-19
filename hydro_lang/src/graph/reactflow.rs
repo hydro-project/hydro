@@ -13,16 +13,30 @@ pub struct HydroReactFlow<W> {
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
     edge_count: usize,
+    // Type name mappings
+    process_names: HashMap<usize, String>,
+    cluster_names: HashMap<usize, String>,
+    external_names: HashMap<usize, String>,
 }
 
 impl<W> HydroReactFlow<W> {
-    pub fn new(write: W) -> Self {
+    pub fn new(write: W, config: &super::render::HydroWriteConfig) -> Self {
+        let process_names: HashMap<usize, String> =
+            config.process_id_name.iter().cloned().collect();
+        let cluster_names: HashMap<usize, String> =
+            config.cluster_id_name.iter().cloned().collect();
+        let external_names: HashMap<usize, String> =
+            config.external_id_name.iter().cloned().collect();
+
         Self {
             write,
             nodes: Vec::new(),
             edges: Vec::new(),
             locations: HashMap::new(),
             edge_count: 0,
+            process_names,
+            cluster_names,
+            external_names,
         }
     }
 
@@ -289,7 +303,31 @@ where
         location_id: usize,
         location_type: &str,
     ) -> Result<(), Self::Err> {
-        let location_label = format!("{} {}", location_type, location_id);
+        let location_label = match location_type {
+            "Process" => {
+                if let Some(name) = self.process_names.get(&location_id) {
+                    name.clone()
+                } else {
+                    format!("Process {}", location_id)
+                }
+            }
+            "Cluster" => {
+                if let Some(name) = self.cluster_names.get(&location_id) {
+                    name.clone()
+                } else {
+                    format!("Cluster {}", location_id)
+                }
+            }
+            "External" => {
+                if let Some(name) = self.external_names.get(&location_id) {
+                    name.clone()
+                } else {
+                    format!("External {}", location_id)
+                }
+            }
+            _ => location_type.to_string(),
+        };
+
         self.locations
             .insert(location_id, (location_label, Vec::new()));
         Ok(())
@@ -331,4 +369,85 @@ where
             serde_json::to_string_pretty(&output).unwrap()
         )
     }
+}
+
+/// Create ReactFlow JSON from Hydro IR with type names
+pub fn hydro_ir_to_reactflow(
+    ir: &[crate::ir::HydroLeaf],
+    process_names: Vec<(usize, String)>,
+    cluster_names: Vec<(usize, String)>,
+    external_names: Vec<(usize, String)>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    let mut output = String::new();
+
+    let config = super::render::HydroWriteConfig {
+        show_metadata: false,
+        show_location_groups: true,
+        include_tee_ids: true,
+        process_id_name: process_names,
+        cluster_id_name: cluster_names,
+        external_id_name: external_names,
+    };
+
+    super::render::write_hydro_ir_reactflow(&mut output, ir, &config)?;
+
+    Ok(output)
+}
+
+/// Open ReactFlow visualization in browser
+pub fn open_reactflow_browser(
+    ir: &[crate::ir::HydroLeaf],
+    process_names: Vec<(usize, String)>,
+    cluster_names: Vec<(usize, String)>,
+    external_names: Vec<(usize, String)>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let graph_json = hydro_ir_to_reactflow(ir, process_names, cluster_names, external_names)?;
+
+    let html_template = super::template::get_template();
+    let html_content = html_template.replace("{{GRAPH_DATA}}", &graph_json);
+
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join("hydro_graph.html");
+    std::fs::write(&temp_file, html_content)?;
+
+    let url = format!("file://{}", temp_file.display());
+
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open").arg(&url).spawn()?;
+
+    #[cfg(target_os = "linux")]
+    std::process::Command::new("xdg-open").arg(&url).spawn()?;
+
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("cmd")
+        .args(&["/c", "start", &url])
+        .spawn()?;
+
+    Ok(())
+}
+
+/// Save ReactFlow JSON to file
+pub fn save_reactflow_json(
+    ir: &[crate::ir::HydroLeaf],
+    process_names: Vec<(usize, String)>,
+    cluster_names: Vec<(usize, String)>,
+    external_names: Vec<(usize, String)>,
+    filename: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let graph_json = hydro_ir_to_reactflow(ir, process_names, cluster_names, external_names)?;
+    std::fs::write(filename, graph_json)?;
+    Ok(())
+}
+
+/// Open ReactFlow visualization in browser for a BuiltFlow
+#[cfg(feature = "build")]
+pub fn open_browser(
+    built_flow: &crate::builder::built::BuiltFlow,
+) -> Result<(), Box<dyn std::error::Error>> {
+    open_reactflow_browser(
+        built_flow.ir(),
+        built_flow.process_id_name().clone(),
+        built_flow.cluster_id_name().clone(),
+        built_flow.external_id_name().clone(),
+    )
 }

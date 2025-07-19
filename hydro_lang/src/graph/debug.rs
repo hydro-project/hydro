@@ -121,7 +121,7 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
 }
 
 /// Helper function to create a complete HTML file with ReactFlow.js visualization and open it in browser.
-fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> Result<()> {
+pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> Result<()> {
     let template = get_template();
     let html_content = template.replace("{{GRAPH_DATA}}", reactflow_json);
 

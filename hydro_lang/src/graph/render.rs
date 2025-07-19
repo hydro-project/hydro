@@ -81,6 +81,9 @@ pub struct HydroWriteConfig {
     pub show_metadata: bool,
     pub show_location_groups: bool,
     pub include_tee_ids: bool,
+    pub process_id_name: Vec<(usize, String)>,
+    pub cluster_id_name: Vec<(usize, String)>,
+    pub external_id_name: Vec<(usize, String)>,
 }
 
 impl Default for HydroWriteConfig {
@@ -89,6 +92,9 @@ impl Default for HydroWriteConfig {
             show_metadata: false,
             show_location_groups: true,
             include_tee_ids: true,
+            process_id_name: vec![],
+            cluster_id_name: vec![],
+            external_id_name: vec![],
         }
     }
 }
@@ -182,7 +188,7 @@ impl HydroLeaf {
         output: impl std::fmt::Write,
         config: &HydroWriteConfig,
     ) -> std::fmt::Result {
-        let mut graph_write = HydroReactFlow::new(output);
+        let mut graph_write = HydroReactFlow::new(output, config);
         self.write_graph(&mut graph_write, config)
     }
 
@@ -688,7 +694,7 @@ pub fn write_hydro_ir_reactflow(
     leaves: &[HydroLeaf],
     config: &HydroWriteConfig,
 ) -> std::fmt::Result {
-    let mut graph_write = HydroReactFlow::new(output);
+    let mut graph_write = HydroReactFlow::new(output, config);
     write_hydro_ir_graph(&mut graph_write, leaves, config)
 }
 
