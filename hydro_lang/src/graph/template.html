@@ -502,6 +502,43 @@
                 return nodes;
             }
         };
+
+        function UnifiedLegend({ palette }) {
+            const nodeTypes = ['Source', 'Transform', 'Join', 'Aggregation', 'Network', 'Sink', 'Tee'];
+            const locations = graphData.locations || [];
+
+            return (
+                <div className="unified-legend">
+                    <div className="legend-section">
+                        <h4>Node Types</h4>
+                        {nodeTypes.map(type => {
+                            const colors = generateNodeColors(type, palette);
+                            return (
+                                <div key={type} className="legend-item">
+                                    <div className="legend-color" style={{ background: colors.gradient, borderColor: colors.border }}></div>
+                                    {type}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {locations.length > 0 && (
+                        <div className="legend-section">
+                            <h4>Locations</h4>
+                            {locations.map(location => {
+                                const backgroundColor = generateLocationColor(location.id, locations.length, palette);
+                                const borderColor = generateLocationBorderColor(location.id, locations.length, palette);
+                                return (
+                                    <div key={location.id} className="legend-item">
+                                        <div className="location-legend-color" style={{ backgroundColor, borderColor }}></div>
+                                        {location.label}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            );
+        }
         
         function HydroGraph() {
             const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
@@ -509,7 +546,15 @@
             const [currentLayout, setCurrentLayout] = React.useState('mrtree');
             const [currentPalette, setCurrentPalette] = React.useState('Set3');
             
-            const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
+            const [collapsedLocations, setCollapsedLocations] = React.useState({});
+            const [originalNodeDimensions, setOriginalNodeDimensions] = React.useState({});
+
+            const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
+            
+            // Add a test to see if ANY clicks work
+            const onPaneClick = useCallback(() => {
+                console.log('=== PANE CLICKED ===');
+            }, []);
             
             const fitView = useCallback(() => {
                 const reactFlowInstance = window.reactFlowInstance;
@@ -517,6 +562,147 @@
                     reactFlowInstance.fitView();
                 }
             }, []);
+
+            const onNodeClick = useCallback((event, node) => {
+                console.log('=== NODE CLICK EVENT ===');
+                console.log('Node clicked:', node.id);
+                console.log('Node type:', node.type);
+                console.log('Node data:', node.data);
+                console.log('Is container?:', node.data?.isContainer);
+                console.log('Event target:', event.target);
+                console.log('Event currentTarget:', event.currentTarget);
+                
+                if (node.data?.isContainer) {
+                    // Extract the actual location ID from the container ID
+                    // Container IDs are in format "container_X" where X is the location ID
+                    const locationId = node.id.replace('container_', '');
+                    console.log('Toggling container for location:', locationId);
+                    console.log('Current collapsed state:', collapsedLocations[locationId]);
+                    
+                    setCollapsedLocations(prev => {
+                        const isCollapsing = !prev[locationId];
+                        console.log('Container', locationId, isCollapsing ? 'collapsing' : 'expanding');
+                        if (isCollapsing) {
+                            setOriginalNodeDimensions(dims => ({
+                                ...dims,
+                                [locationId]: { width: node.style.width, height: node.style.height }
+                            }));
+                        }
+                        return { ...prev, [locationId]: isCollapsing };
+                    });
+                } else {
+                    console.log('Clicked node is not a container, ignoring');
+                }
+            }, [collapsedLocations]); // Add collapsedLocations to dependencies for debugging
+
+            React.useEffect(() => {
+                setNodes(currentNodes => {
+                    const updatedNodes = currentNodes.map(n => {
+                        if (n.data?.isContainer) {
+                            // Extract location ID from container ID
+                            const locationId = n.id.replace('container_', '');
+                            const isCollapsed = collapsedLocations[locationId];
+                            if (typeof isCollapsed !== 'boolean') return n; // No change
+
+                            if (isCollapsed) {
+                                return { ...n, style: { ...n.style, width: 200, height: 50 } };
+                            } else {
+                                const originalDims = originalNodeDimensions[locationId];
+                                if (originalDims) {
+                                    return { ...n, style: { ...n.style, width: originalDims.width, height: originalDims.height } };
+                                }
+                            }
+                        } else if (n.parentNode) {
+                            // Extract location ID from parent container ID
+                            const parentLocationId = n.parentNode.replace('container_', '');
+                            const isParentCollapsed = collapsedLocations[parentLocationId];
+                            if (typeof isParentCollapsed === 'boolean') {
+                                return { ...n, hidden: isParentCollapsed };
+                            }
+                        }
+                        return n;
+                    });
+
+                    // Update edges based on the updated nodes
+                    setEdges(currentEdges => {
+                        const childNodeIdsByParent = {};
+                        updatedNodes.forEach(n => {
+                            if (n.parentNode) {
+                                if (!childNodeIdsByParent[n.parentNode]) {
+                                    childNodeIdsByParent[n.parentNode] = new Set();
+                                }
+                                childNodeIdsByParent[n.parentNode].add(n.id);
+                            }
+                        });
+
+                        return currentEdges.map(edge => {
+                            let newEdge = { ...edge };
+                            
+                            // First, reset any modifications from previous state
+                            if (newEdge.data?.originalSource) {
+                                newEdge.source = newEdge.data.originalSource;
+                                newEdge.data = { ...newEdge.data };
+                                delete newEdge.data.originalSource;
+                            }
+                            if (newEdge.data?.originalTarget) {
+                                newEdge.target = newEdge.data.originalTarget;
+                                newEdge.data = { ...newEdge.data };
+                                delete newEdge.data.originalTarget;
+                            }
+                            newEdge.hidden = false;
+
+                            // Check all collapsed locations and handle edge routing
+                            let sourceInCollapsedContainer = null;
+                            let targetInCollapsedContainer = null;
+                            
+                            // First pass: find which containers (if any) contain the source and target
+                            for (const locationId in collapsedLocations) {
+                                if (Object.prototype.hasOwnProperty.call(collapsedLocations, locationId)) {
+                                    const isCollapsed = collapsedLocations[locationId];
+                                    if (isCollapsed) {
+                                        const containerId = `container_${locationId}`;
+                                        const childIds = childNodeIdsByParent[containerId] || new Set();
+
+                                        if (childIds.has(newEdge.source)) {
+                                            sourceInCollapsedContainer = containerId;
+                                        }
+                                        if (childIds.has(newEdge.target)) {
+                                            targetInCollapsedContainer = containerId;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // Apply routing based on what we found
+                            if (sourceInCollapsedContainer && targetInCollapsedContainer) {
+                                if (sourceInCollapsedContainer === targetInCollapsedContainer) {
+                                    // Both nodes in same collapsed container - hide the edge
+                                    newEdge.hidden = true;
+                                } else {
+                                    // Nodes in different collapsed containers - route container to container
+                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
+                                    newEdge.source = sourceInCollapsedContainer;
+                                    newEdge.target = targetInCollapsedContainer;
+                                }
+                            } else if (sourceInCollapsedContainer) {
+                                // Source in collapsed container, target outside - route from container to target
+                                newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
+                                newEdge.source = sourceInCollapsedContainer;
+                            } else if (targetInCollapsedContainer) {
+                                // Target in collapsed container, source outside - route from source to container
+                                newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
+                                newEdge.target = targetInCollapsedContainer;
+                            }
+                            
+                            console.log(`Edge ${edge.id}: ${edge.source} -> ${edge.target} became ${newEdge.source} -> ${newEdge.target}, hidden: ${newEdge.hidden}`);
+                            
+                            return newEdge;
+                        });
+                    });
+
+                    return updatedNodes;
+                });
+            }, [collapsedLocations, originalNodeDimensions]);
             
             // Apply node colors based on palette
             const applyNodePalette = useCallback((nodes, palette) => {
@@ -586,7 +772,7 @@
                             // Create parent container
                             locationContainers.push({
                                 id: `container_${location.id}`,
-                                type: 'group',
+                                type: 'default', // Changed from 'group' to 'default'
                                 position: { x: containerX, y: containerY },
                                 style: {
                                     width: maxX - minX + 2 * padding,
@@ -594,6 +780,8 @@
                                     backgroundColor: backgroundColor,
                                     border: `2px solid ${borderColor}`,
                                     borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    zIndex: 1,
                                 },
                                 data: { 
                                     label: location.label,
@@ -644,7 +832,7 @@
                         // Create grey container for orphan nodes
                         locationContainers.push({
                             id: 'container_null',
-                            type: 'group',
+                            type: 'default',
                             position: { x: containerX, y: containerY },
                             style: {
                                 width: maxX - minX + 2 * padding,
@@ -699,7 +887,7 @@
                     console.log('Fitting view...');
                     reactFlowInstance.fitView({ padding: 0.1 });
                 }, 200);
-            }, [setNodes, currentLayout, currentPalette, applyNodePalette]);
+            }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette]);
 
             // Apply elk layout with selected algorithm
             const applyLayout = useCallback(async (layoutType = currentLayout) => {
@@ -747,7 +935,7 @@
                             // Create container
                             locationContainers.push({
                                 id: `container_${location.id}`,
-                                type: 'group',
+                                type: 'default',
                                 position: { x: containerX, y: containerY },
                                 style: {
                                     width: maxX - minX + 2 * padding,
@@ -801,7 +989,7 @@
                         // Create grey container for orphan nodes
                         locationContainers.push({
                             id: 'container_null',
-                            type: 'group',
+                            type: 'default',
                             position: { x: containerX, y: containerY },
                             style: {
                                 width: maxX - minX + 2 * padding,
@@ -841,38 +1029,47 @@
                 console.log('Updating to', allElements.length, 'elements');
                 setNodes(allElements);
                 
-                // Ensure all edges are properly maintained
-                console.log('Maintaining', initialEdges.length, 'edges');
-                setEdges(initialEdges);
-                
+                // Fit view after layout is applied
                 setTimeout(() => {
-                    if (window.reactFlowInstance) {
-                        window.reactFlowInstance.fitView({ padding: 0.1 });
+                    const reactFlowInstance = window.reactFlowInstance;
+                    if (reactFlowInstance) {
+                        reactFlowInstance.fitView({ padding: 0.1 });
                     }
                 }, 200);
-            }, [nodes, edges, setNodes, currentLayout, currentPalette, applyNodePalette]);
+            }, [nodes, edges, currentLayout, currentPalette, setNodes, setEdges, applyNodePalette]);
 
-            // Handle layout change
-            const handleLayoutChange = useCallback(async (event) => {
+            const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
                 setCurrentLayout(newLayout);
-                await applyLayout(newLayout);
-            }, [applyLayout]);
+                applyLayout(newLayout);
+            };
 
-            // Handle palette change
-            const handlePaletteChange = useCallback(async (event) => {
+            const onPaletteChange = (event) => {
                 const newPalette = event.target.value;
                 setCurrentPalette(newPalette);
                 
-                // Update node colors immediately
-                const updatedNodes = nodes.map(node => {
+                // Re-color nodes
+                const recoloredNodes = applyNodePalette(nodes, newPalette);
+                
+                // Re-color location containers
+                const finalNodes = recoloredNodes.map(node => {
                     if (node.data?.isContainer) {
-                        // Update container colors for locations
-                        if (node.id.startsWith('container_') && node.id !== 'container_null') {
-                            const locationId = parseInt(node.id.replace('container_', ''));
-                            const backgroundColor = generateLocationColor(locationId, graphData.locations?.length || 1, newPalette);
-                            const borderColor = generateLocationBorderColor(locationId, graphData.locations?.length || 1, newPalette);
-                            
+                        const locationId = node.id.split('_')[1];
+                        if (locationId === 'null') {
+                            return {
+                                ...node,
+                                style: {
+                                    ...node.style,
+                                    backgroundColor: 'rgba(200, 200, 200, 0.2)',
+                                    border: '2px solid #999999',
+                                }
+                            };
+                        }
+                        
+                        const loc = graphData.locations.find(l => l.id.toString() === locationId);
+                        if (loc) {
+                            const backgroundColor = generateLocationColor(loc.id, graphData.locations.length, newPalette);
+                            const borderColor = generateLocationBorderColor(loc.id, graphData.locations.length, newPalette);
                             return {
                                 ...node,
                                 style: {
@@ -882,195 +1079,68 @@
                                 }
                             };
                         }
-                        return node;
                     }
-                    
-                    const nodeType = node.data?.nodeType || 'Transform';
-                    const colors = generateNodeColors(nodeType, newPalette);
-                    
-                    return {
-                        ...node,
-                        style: {
-                            ...node.style,
-                            background: colors.gradient,
-                            border: `1px solid ${colors.border}`,
-                            '--node-color-primary': colors.primary,
-                            '--node-color-secondary': colors.secondary,
-                            '--node-border-color': colors.border,
-                        }
-                    };
+                    return node;
                 });
                 
-                setNodes(updatedNodes);
-            }, [nodes, setNodes]);
-
-            // Handle node clicks to toggle expansion
-            const onNodeClick = useCallback((event, node) => {
-                setNodes((nodes) => 
-                    nodes.map((n) => {
-                        if (n.id === node.id) {
-                            const expanded = !n.data.expanded;
-                            const label = expanded ? n.data.fullLabel : n.data.shortLabel;
-                            return {
-                                ...n,
-                                data: {
-                                    ...n.data,
-                                    label: label,
-                                    expanded: expanded
-                                }
-                            };
-                        }
-                        return n;
-                    })
-                );
-            }, [setNodes]);
-
-            // Toggle all nodes
-            const toggleAllNodes = useCallback(() => {
-                setNodes((nodes) => {
-                    const allExpanded = nodes.every(n => n.data.expanded);
-                    return nodes.map((n) => ({
-                        ...n,
-                        data: {
-                            ...n.data,
-                            label: allExpanded ? n.data.shortLabel : n.data.fullLabel,
-                            expanded: !allExpanded
-                        }
-                    }));
+                setNodes(finalNodes);
+                
+                // Re-color edges
+                const recoloredEdges = edges.map(edge => {
+                    const sourceNode = nodes.find(n => n.id === edge.source);
+                    if (sourceNode) {
+                        const nodeType = sourceNode.data?.nodeType || 'Transform';
+                        const colors = generateNodeColors(nodeType, newPalette);
+                        return {
+                            ...edge,
+                            style: { ...edge.style, stroke: colors.border },
+                            markerEnd: { ...edge.markerEnd, color: colors.border }
+                        };
+                    }
+                    return edge;
                 });
-            }, [setNodes]);
-            
+                setEdges(recoloredEdges);
+            };
+
             return (
                 <div className="reactflow-wrapper">
-                    {/* Layout controls above legend in upper right */}
                     <div className="layout-controls">
-                        <select 
-                            className="layout-select"
-                            value={currentLayout} 
-                            onChange={handleLayoutChange}
-                            title="Layout Algorithm"
-                        >
-                            <option value="force">Force</option>
-                            <option value="stress">Stress</option>
-                            <option value="mrtree">Tree</option>
-                            <option value="radial">Radial</option>
-                            <option value="disco">Disco</option>
-                        </select>
-                        <button className="icon-button" onClick={() => applyLayout()} title="Re-apply Layout">
-                            🔄
-                            <div className="tooltip">Re-apply Layout</div>
-                        </button>
-                        <button className="icon-button" onClick={toggleAllNodes} title="Toggle Details">
-                            📝
-                            <div className="tooltip">Toggle Details</div>
-                        </button>
-                        {/* Color palette controls */}
-                        <select 
-                            className="palette-select"
-                            value={currentPalette} 
-                            onChange={handlePaletteChange}
-                            title="Color Palette"
-                            style={{width: '120px'}}
-                        >
-                            <optgroup label="🎨 Soft & Friendly">
-                                <option value="Set3">Set3 (Default)</option>
-                                <option value="Pastel1">Pastel1</option>
-                                <option value="Pastel2">Pastel2</option>
-                                <option value="Set2">Set2</option>
-                            </optgroup>
-                            <optgroup label="🔥 Bold & Vibrant">
-                                <option value="Set1">Set1</option>
-                                <option value="Dark2">Dark2</option>
-                                <option value="Accent">Accent</option>
-                                <option value="Paired">Paired</option>
-                            </optgroup>
-                            <optgroup label="🌊 Sequential">
-                                <option value="Blues">Blues</option>
-                                <option value="Greens">Greens</option>
-                                <option value="Oranges">Oranges</option>
-                                <option value="Purples">Purples</option>
-                                <option value="Reds">Reds</option>
-                            </optgroup>
-                            <optgroup label="⚖️ Diverging">
-                                <option value="Spectral">Spectral</option>
-                                <option value="RdYlBu">Red-Yellow-Blue</option>
-                                <option value="RdYlGn">Red-Yellow-Green</option>
-                                <option value="PiYG">Pink-Yellow-Green</option>
-                                <option value="BrBG">Brown-Blue-Green</option>
-                            </optgroup>
-                            <optgroup label="🚀 Modern">
-                                <option value="Viridis">Viridis</option>
-                                <option value="Plasma">Plasma</option>
-                                <option value="Warm">Warm Tones</option>
-                                <option value="Cool">Cool Tones</option>
-                                <option value="Earth">Earth Tones</option>
-                            </optgroup>
-                        </select>
-                    </div>
-
-
-                    {/* Unified compact legend in upper right */}
-                    <div className="unified-legend">
-                        <div className="legend-section">
-                            <h4>Node Types</h4>
-                            {Object.keys(colorPalettes).length > 0 && ['Source', 'Transform', 'Join', 'Aggregation', 'Network', 'Sink', 'Tee'].map(nodeType => {
-                                const colors = generateNodeColors(nodeType, currentPalette);
-                                return (
-                                    <div key={nodeType} className="legend-item">
-                                        <div className="legend-color" style={{backgroundColor: colors.primary, borderColor: colors.border}}></div>
-                                        <span>{nodeType}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                        <div className="legend-section">
-                            <h4>Locations</h4>
-                            {graphData.locations && graphData.locations.map((location, index) => (
-                                <div key={location.id} className="legend-item">
-                                    <div 
-                                        className="location-legend-color" 
-                                        style={{
-                                            backgroundColor: generateLocationColor(location.id, graphData.locations.length, currentPalette),
-                                            borderColor: generateLocationBorderColor(location.id, graphData.locations.length, currentPalette),
-                                            border: '1px solid'
-                                        }}
-                                    ></div>
-                                    <span>{location.label}</span>
-                                </div>
+                        <select className="layout-select" value={currentLayout} onChange={onLayoutChange}>
+                            {Object.keys(elkLayouts).map(key => (
+                                <option key={key} value={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</option>
                             ))}
-                            <div className="legend-item">
-                                <div 
-                                    className="location-legend-color" 
-                                    style={{
-                                        backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                                        borderColor: '#999999',
-                                        border: '1px solid'
-                                    }}
-                                ></div>
-                                <span>Internal/Unassigned</span>
-                            </div>
-                        </div>
+                        </select>
+                        <select className="palette-select" value={currentPalette} onChange={onPaletteChange}>
+                            {Object.keys(colorPalettes).map(key => (
+                                <option key={key} value={key}>{key}</option>
+                            ))}
+                        </select>
+                        <button className="icon-button" onClick={() => applyLayout(currentLayout)}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                            </svg>
+                            <span className="tooltip">Refresh Layout</span>
+                        </button>
+                        <button className="icon-button" onClick={fitView}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M2 7.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zM2 4.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 6a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
+                            </svg>
+                            <span className="tooltip">Fit to View</span>
+                        </button>
                     </div>
-
+                    <UnifiedLegend palette={currentPalette} />
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onConnect={onConnect}
-                        onNodeClick={onNodeClick}
                         onInit={onInit}
+                        onNodeClick={onNodeClick}
+                        onPaneClick={onPaneClick}
                         fitView
-                        fitViewOptions={{ padding: 0.1 }}
-                        snapToGrid={false}
-                        snapGrid={[15, 15]}
-                        nodesDraggable={true}
-                        nodesConnectable={true}
-                        elementsSelectable={true}
-                        deleteKeyCode={['Backspace', 'Delete']}
-                        selectionKeyCode="Meta"
-                        multiSelectionKeyCode="Meta"
-                        connectionLineType="bezier"
+                        attributionPosition="bottom-left"
                     >
                         <Controls />
                         <MiniMap />
@@ -1078,6 +1148,10 @@
                     </ReactFlow>
                 </div>
             );
+        }
+
+        function renderReact() {
+    // This function is intentionally left blank. The real rendering happens in the HydroGraph component.
         }
 
         ReactDOM.render(<HydroGraph />, document.getElementById('root'));
