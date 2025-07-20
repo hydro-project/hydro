@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
 
@@ -89,17 +89,17 @@ async fn main() {
 
     // Build and optimize first, then extract IR with proper location assignments
     let built = builder.finalize();
-    let optimized = built.with_default_optimize();
 
-    // Generate and open the ReactFlow visualization AFTER optimization
-    println!("Generated Hydro IR with {} leaves", optimized.ir().len());
-    if let Err(e) = hydro_lang::graph::debug::open_hydro_ir_reactflow_browser(
-        optimized.ir(),
-        Some("compartmentalized_paxos_graph.html"),
-        None,
-    ) {
-        eprintln!("Failed to open ReactFlow visualization: {}", e);
-    }
+    // Mermaid diagram
+    // hydro_lang::graph::mermaid::open_browser(&built)?;
+
+    // ReactFlow.js visualization with type names
+    hydro_lang::graph::reactflow::open_browser(&built)?;
+
+    // Graphviz/DOT visualization
+    // hydro_lang::graph::graphviz::open_browser(&built)?;
+
+    let optimized = built.with_default_optimize();
 
     let _nodes = optimized
         .with_cluster(
@@ -138,4 +138,5 @@ async fn main() {
     deployment.start().await.unwrap();
 
     tokio::signal::ctrl_c().await.unwrap();
+    Ok(())
 }

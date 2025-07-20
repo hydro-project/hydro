@@ -13,15 +13,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let built = builder.finalize();
 
     // Generate graph visualizations (do this before deployment to avoid ownership issues)
-    
+
     // Mermaid diagram
-    hydro_lang::graph::mermaid::open_browser(&built)?;
-    
+    // hydro_lang::graph::mermaid::open_browser(&built)?;
+
     // ReactFlow.js visualization with type names
     hydro_lang::graph::reactflow::open_browser(&built)?;
-    
+
     // Graphviz/DOT visualization
-    hydro_lang::graph::graphviz::open_browser(&built)?;
+    // hydro_lang::graph::graphviz::open_browser(&built)?;
 
     // Now use the built flow for deployment with optimization
     let _nodes = built

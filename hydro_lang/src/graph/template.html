@@ -247,35 +247,40 @@
         const elkLayouts = {
             layered: {
                 'elk.algorithm': 'layered',
-                'elk.layered.spacing.nodeNodeBetweenLayers': 100,
-                'elk.spacing.nodeNode': 80,
+                'elk.layered.spacing.nodeNodeBetweenLayers': 150,
+                'elk.spacing.nodeNode': 120,
+                'elk.spacing.componentComponent': 80,
                 'elk.direction': 'RIGHT',
                 'elk.layered.thoroughness': 7,
-                'elk.hierarchyHandling': 'INCLUDE_CHILDREN'
+                'elk.hierarchyHandling': 'SEPARATE_CHILDREN'
             },
             force: {
                 'elk.algorithm': 'force',
                 'elk.force.repulsivePower': 0.5,
-                'elk.spacing.nodeNode': 100,
-                'elk.hierarchyHandling': 'INCLUDE_CHILDREN'
+                'elk.spacing.nodeNode': 150,
+                'elk.spacing.componentComponent': 100,
+                'elk.hierarchyHandling': 'SEPARATE_CHILDREN'
             },
             stress: {
                 'elk.algorithm': 'stress',
-                'elk.stress.desiredEdgeLength': 100,
-                'elk.spacing.nodeNode': 80,
-                'elk.hierarchyHandling': 'INCLUDE_CHILDREN'
+                'elk.stress.desiredEdgeLength': 150,
+                'elk.spacing.nodeNode': 120,
+                'elk.spacing.componentComponent': 80,
+                'elk.hierarchyHandling': 'SEPARATE_CHILDREN'
             },
             mrtree: {
                 'elk.algorithm': 'mrtree',
                 'elk.mrtree.searchOrder': 'DFS',
-                'elk.spacing.nodeNode': 80,
-                'elk.hierarchyHandling': 'INCLUDE_CHILDREN'
+                'elk.spacing.nodeNode': 120,
+                'elk.spacing.componentComponent': 80,
+                'elk.hierarchyHandling': 'SEPARATE_CHILDREN'
             },
             radial: {
                 'elk.algorithm': 'radial',
-                'elk.radial.radius': 200,
-                'elk.spacing.nodeNode': 80,
-                'elk.hierarchyHandling': 'INCLUDE_CHILDREN'
+                'elk.radial.radius': 250,
+                'elk.spacing.nodeNode': 120,
+                'elk.spacing.componentComponent': 80,
+                'elk.hierarchyHandling': 'SEPARATE_CHILDREN'
             },
             disco: {
                 'elk.algorithm': 'disco',
@@ -559,9 +564,99 @@
             const fitView = useCallback(() => {
                 const reactFlowInstance = window.reactFlowInstance;
                 if (reactFlowInstance) {
-                    reactFlowInstance.fitView();
+                    // Check if most containers are currently collapsed
+                    const currentNodes = reactFlowInstance.getNodes();
+                    const containerNodes = currentNodes.filter(node => node.data?.isContainer);
+                    const collapsedContainers = containerNodes.filter(node => {
+                        const width = parseFloat(node.style?.width?.toString().replace('px', '')) || 400;
+                        return width <= 250; // Collapsed containers are ~200px wide
+                    });
+                    
+                    const mostlyCollapsed = collapsedContainers.length > containerNodes.length / 2;
+                    
+                    if (mostlyCollapsed) {
+                        // Most containers collapsed - use wider zoom range
+                        reactFlowInstance.fitView({ 
+                            padding: 0.2, 
+                            maxZoom: 0.5, 
+                            minZoom: 0.02 
+                        });
+                    } else {
+                        // Mostly expanded - use closer zoom
+                        reactFlowInstance.fitView({ 
+                            padding: 0.1, 
+                            maxZoom: 1.0, 
+                            minZoom: 0.2 
+                        });
+                    }
                 }
             }, []);
+
+            const collapseAllContainers = useCallback(() => {
+                const reactFlowInstance = window.reactFlowInstance;
+                if (!reactFlowInstance) return;
+                
+                console.log('Collapse all containers requested');
+                
+                const currentNodes = reactFlowInstance.getNodes();
+                const containerNodes = currentNodes.filter(node => node.data?.isContainer);
+                const newCollapsedState = {};
+                const newOriginalDimensions = {};
+                
+                // Collapse all containers
+                containerNodes.forEach(container => {
+                    const locationId = container.id.replace('container_', '');
+                    
+                    // Store original dimensions if not already stored
+                    if (!originalNodeDimensions[locationId]) {
+                        const width = parseFloat(container.style?.width?.toString().replace('px', '')) || 400;
+                        const height = parseFloat(container.style?.height?.toString().replace('px', '')) || 300;
+                        newOriginalDimensions[locationId] = { width, height };
+                    } else {
+                        newOriginalDimensions[locationId] = originalNodeDimensions[locationId];
+                    }
+                    
+                    newCollapsedState[locationId] = true;
+                });
+                
+                // Update states
+                setCollapsedLocations(newCollapsedState);
+                setOriginalNodeDimensions(prev => ({ ...prev, ...newOriginalDimensions }));
+                
+                // Update nodes to collapsed state
+                const updatedNodes = currentNodes.map(node => {
+                    if (node.data?.isContainer) {
+                        return {
+                            ...node,
+                            style: {
+                                ...node.style,
+                                width: '200px',
+                                height: '50px'
+                            }
+                        };
+                    } else if (node.parentNode) {
+                        // Hide child nodes
+                        return {
+                            ...node,
+                            hidden: true
+                        };
+                    }
+                    return node;
+                });
+                
+                setNodes(updatedNodes);
+                
+                // Fit view after collapse with appropriate zoom for collapsed view
+                setTimeout(() => {
+                    reactFlowInstance.fitView({ 
+                        padding: 0.2, 
+                        maxZoom: 0.5, 
+                        minZoom: 0.02 
+                    });
+                }, 100);
+                
+                console.log('All containers collapsed');
+            }, [originalNodeDimensions, setCollapsedLocations, setOriginalNodeDimensions, setNodes]);
 
             const onNodeClick = useCallback((event, node) => {
                 console.log('=== NODE CLICK EVENT ===');
@@ -702,6 +797,123 @@
 
                     return updatedNodes;
                 });
+                
+                // Re-layout containers after manual collapse/expand operations
+                setTimeout(async () => {
+                    const reactFlowInstance = window.reactFlowInstance;
+                    if (reactFlowInstance) {
+                        try {
+                            console.log('Re-running layout after manual collapse/expand...');
+                            
+                            // Get current nodes
+                            const currentNodes = reactFlowInstance.getNodes();
+                            const containerNodes = currentNodes.filter(node => node.data?.isContainer);
+                            const childNodes = currentNodes.filter(node => !node.data?.isContainer);
+                            
+                            if (containerNodes.length > 0) {
+                                console.log('Re-layouting', containerNodes.length, 'containers after manual operation');
+                                
+                                // Simple approach: just re-layout containers, keep child relationships intact
+                                const layoutedContainers = await applyElkLayout(containerNodes, edges, currentLayout);
+                                
+                                // Update only container positions, preserve all child relationships
+                                const updatedNodes = currentNodes.map(node => {
+                                    if (node.data?.isContainer) {
+                                        const layoutedContainer = layoutedContainers.find(ln => ln.id === node.id);
+                                        if (layoutedContainer) {
+                                            return { ...node, position: layoutedContainer.position };
+                                        }
+                                    }
+                                    // For child nodes, keep everything as-is to preserve parent/child relationships
+                                    return node;
+                                });
+                                
+                                setNodes(updatedNodes);
+                                console.log('Container positions updated after manual operation, child relationships preserved');
+                                
+                                // Re-apply edge routing after layout change
+                                setTimeout(() => {
+                                    setEdges(currentEdges => {
+                                        const childNodeIdsByParent = {};
+                                        updatedNodes.forEach(n => {
+                                            if (n.parentNode) {
+                                                if (!childNodeIdsByParent[n.parentNode]) {
+                                                    childNodeIdsByParent[n.parentNode] = new Set();
+                                                }
+                                                childNodeIdsByParent[n.parentNode].add(n.id);
+                                            }
+                                        });
+
+                                        return currentEdges.map(edge => {
+                                            let newEdge = { ...edge };
+                                            
+                                            // First, reset any modifications from previous state
+                                            if (newEdge.data?.originalSource) {
+                                                newEdge.source = newEdge.data.originalSource;
+                                                newEdge.data = { ...newEdge.data };
+                                                delete newEdge.data.originalSource;
+                                            }
+                                            if (newEdge.data?.originalTarget) {
+                                                newEdge.target = newEdge.data.originalTarget;
+                                                newEdge.data = { ...newEdge.data };
+                                                delete newEdge.data.originalTarget;
+                                            }
+                                            newEdge.hidden = false;
+
+                                            // Re-apply edge routing based on current collapsed state
+                                            let sourceInCollapsedContainer = null;
+                                            let targetInCollapsedContainer = null;
+                                            
+                                            for (const locationId in collapsedLocations) {
+                                                if (collapsedLocations[locationId]) {
+                                                    const containerId = `container_${locationId}`;
+                                                    const childIds = childNodeIdsByParent[containerId] || new Set();
+
+                                                    if (childIds.has(newEdge.source)) {
+                                                        sourceInCollapsedContainer = containerId;
+                                                    }
+                                                    if (childIds.has(newEdge.target)) {
+                                                        targetInCollapsedContainer = containerId;
+                                                    }
+                                                }
+                                            }
+                                            
+                                            // Apply routing based on current state
+                                            if (sourceInCollapsedContainer && targetInCollapsedContainer) {
+                                                if (sourceInCollapsedContainer === targetInCollapsedContainer) {
+                                                    // Both nodes in same collapsed container - hide the edge
+                                                    newEdge.hidden = true;
+                                                } else {
+                                                    // Nodes in different collapsed containers - route container to container
+                                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
+                                                    newEdge.source = sourceInCollapsedContainer;
+                                                    newEdge.target = targetInCollapsedContainer;
+                                                }
+                                            } else if (sourceInCollapsedContainer) {
+                                                // Source in collapsed container, target outside - route from container to target
+                                                newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
+                                                newEdge.source = sourceInCollapsedContainer;
+                                            } else if (targetInCollapsedContainer) {
+                                                // Target in collapsed container, source outside - route from source to container
+                                                newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
+                                                newEdge.target = targetInCollapsedContainer;
+                                            }
+                                            
+                                            return newEdge;
+                                        });
+                                    });
+                                }, 50);
+                                
+                                // Re-fit view after repositioning
+                                setTimeout(() => {
+                                    reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
+                                }, 100);
+                            }
+                        } catch (error) {
+                            console.error('Error re-layouting after manual operation:', error);
+                        }
+                    }
+                }, 300); // Longer delay for manual operations to ensure state has settled
             }, [collapsedLocations, originalNodeDimensions]);
             
             // Apply node colors based on palette
@@ -730,10 +942,14 @@
             const onInit = useCallback(async (reactFlowInstance) => {
                 window.reactFlowInstance = reactFlowInstance;
                 
+                console.log('=== DEBUGGING CONTAINER ASSIGNMENT ===');
                 console.log('Initializing graph with', initialNodes.length, 'nodes');
+                console.log('Initial nodes sample:', initialNodes.slice(0, 3).map(n => ({ id: n.id, locationId: n.data?.locationId })));
                 
                 // Apply ELK layout to get proper positions
                 const layoutedNodes = await applyElkLayout(initialNodes, initialEdges, currentLayout);
+                console.log('After ELK layout:', layoutedNodes.length, 'nodes');
+                console.log('Layouted nodes sample:', layoutedNodes.slice(0, 3).map(n => ({ id: n.id, locationId: n.data?.locationId, position: n.position })));
                 
                 // Group nodes by location for hierarchical display
                 const locationContainers = [];
@@ -741,17 +957,48 @@
                 
                 if (graphData.locations && graphData.locations.length > 0) {
                     console.log('Creating location containers for', graphData.locations.length, 'locations');
+                    console.log('Available locations:', graphData.locations.map(l => ({ id: l.id, label: l.label, nodeCount: l.nodes?.length || 0 })));
+                    
+                    // Debug: check all unique location IDs in the actual node data
+                    const nodeLocationIds = new Set();
+                    layoutedNodes.forEach(node => {
+                        const nodeLocationId = node.data?.locationId;
+                        if (nodeLocationId !== null && nodeLocationId !== undefined) {
+                            nodeLocationIds.add(nodeLocationId.toString());
+                        }
+                    });
+                    console.log('Location IDs found in node data:', Array.from(nodeLocationIds));
                     
                     graphData.locations.forEach(location => {
+                        console.log(`\n--- Processing Location ${location.id} (${location.label}) ---`);
+                        
                         // Find nodes in this location
                         const locationNodes = layoutedNodes.filter(node => {
                             const nodeLocationId = node.data?.locationId;
-                            return nodeLocationId !== null && 
+                            const matches = nodeLocationId !== null && 
                                    nodeLocationId !== undefined && 
                                    nodeLocationId.toString() === location.id.toString();
+                            return matches;
                         });
                         
-                        console.log(`Location ${location.id} (${location.label}) has ${locationNodes.length} nodes`);
+                        console.log(`Location ${location.id} has ${locationNodes.length} nodes`);
+                        if (locationNodes.length > 0) {
+                            console.log('Sample nodes in this location:', locationNodes.slice(0, 3).map(n => ({ id: n.id, label: n.data?.label })));
+                        } else {
+                            console.log('WARNING: Location has no nodes! This location will be skipped.');
+                            // Debug: check if any nodes claim to belong to this location but didn't match
+                            const potentialMatches = layoutedNodes.filter(node => {
+                                const nodeLocationId = node.data?.locationId;
+                                return nodeLocationId !== null && nodeLocationId !== undefined;
+                            });
+                            console.log('All nodes with location IDs:', potentialMatches.slice(0, 5).map(n => ({ 
+                                id: n.id, 
+                                locationId: n.data?.locationId, 
+                                locationIdType: typeof n.data?.locationId,
+                                targetLocationId: location.id,
+                                targetLocationIdType: typeof location.id
+                            })));
+                        }
                         
                         if (locationNodes.length > 0) {
                             // Calculate bounding box for this location
@@ -805,6 +1052,10 @@
                         }
                     });
                     
+                    console.log(`\n--- CONTAINER CREATION SUMMARY ---`);
+                    console.log('Created', locationContainers.length, 'location containers');
+                    console.log('Assigned', childNodes.length, 'nodes to containers');
+                    
                     // Handle orphan nodes (not in any location) - group them into a grey container
                     const orphanNodes = layoutedNodes.filter(node => {
                         const nodeLocationId = node.data?.locationId;
@@ -815,7 +1066,22 @@
                         );
                     });
                     
+                    console.log('\n--- ORPHAN NODE ANALYSIS ---');
                     console.log('Found', orphanNodes.length, 'orphan nodes');
+                    if (orphanNodes.length > 0) {
+                        console.log('Sample orphan nodes:', orphanNodes.slice(0, 5).map(n => ({ 
+                            id: n.id, 
+                            label: n.data?.label, 
+                            locationId: n.data?.locationId 
+                        })));
+                    }
+                    
+                    // Critical check: ensure we're not losing nodes
+                    const totalNodesAccountedFor = childNodes.length + orphanNodes.length;
+                    console.log(`NODE ACCOUNTING: ${childNodes.length} in containers + ${orphanNodes.length} orphans = ${totalNodesAccountedFor} of ${layoutedNodes.length} total`);
+                    if (totalNodesAccountedFor !== layoutedNodes.length) {
+                        console.error(`ERROR: Missing ${layoutedNodes.length - totalNodesAccountedFor} nodes in container assignment!`);
+                    }
                     
                     if (orphanNodes.length > 0) {
                         // Calculate bounding box for orphan nodes
@@ -867,43 +1133,111 @@
                     childNodes.push(...layoutedNodes);
                 }
                 
+                console.log('\n--- FINAL ELEMENT PREPARATION ---');
+                console.log('Total child nodes before color application:', childNodes.length);
+                console.log('Sample child nodes:', childNodes.slice(0, 3).map(n => ({ 
+                    id: n.id, 
+                    parentNode: n.parentNode, 
+                    position: n.position,
+                    hidden: n.hidden 
+                })));
+                
                 // Apply palette colors to nodes
                 const coloredChildNodes = applyNodePalette(childNodes, currentPalette);
+                console.log('Child nodes after color application:', coloredChildNodes.length);
                 
                 // Combine containers and child nodes
                 const allElements = [...locationContainers, ...coloredChildNodes];
+                console.log('\n--- FINAL ELEMENTS SUMMARY ---');
                 console.log('Setting', allElements.length, 'total elements:', {
                     containers: locationContainers.length,
                     nodes: coloredChildNodes.length
                 });
                 
-                // Auto-collapse large containers on initial load
-                const viewportArea = window.innerWidth * window.innerHeight;
-                const maxContainerAreaFraction = 0.25; // 25% of viewport
-                const autoCollapseThreshold = viewportArea * maxContainerAreaFraction;
+                // Critical validation: make sure we have elements to render
+                if (allElements.length === 0) {
+                    console.error('CRITICAL ERROR: No elements to render! This will cause a blank canvas.');
+                    return;
+                }
+                
+                console.log('Container breakdown:', locationContainers.map(c => ({ 
+                    id: c.id, 
+                    label: c.data.label, 
+                    position: c.position,
+                    width: c.style.width, 
+                    height: c.style.height 
+                })));
+                
+                // Debug viewport bounds before setting elements
+                if (locationContainers.length > 0) {
+                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                    locationContainers.forEach(container => {
+                        const x = container.position.x;
+                        const y = container.position.y;
+                        const width = parseFloat(container.style.width.toString().replace('px', '')) || 400;
+                        const height = parseFloat(container.style.height.toString().replace('px', '')) || 300;
+                        
+                        minX = Math.min(minX, x);
+                        minY = Math.min(minY, y);
+                        maxX = Math.max(maxX, x + width);
+                        maxY = Math.max(maxY, y + height);
+                    });
+                    
+                    console.log('Graph bounds before render:', {
+                        minX, minY, maxX, maxY,
+                        width: maxX - minX,
+                        height: maxY - minY,
+                        center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+                    });
+                }
+                
+                // SIMPLE COLLAPSE STRATEGY: Show expanded if it fits legibly, otherwise collapse all
+                const minLegibleZoom = 0.5; // Minimum zoom for readable text
+                
+                // Calculate what the zoom would be with all containers expanded
+                const graphWidth = locationContainers.length > 0 ? 
+                    Math.max(...locationContainers.map(c => c.position.x + parseFloat(c.style.width.toString().replace('px', '')) || 400)) - 
+                    Math.min(...locationContainers.map(c => c.position.x)) : 400;
+                const graphHeight = locationContainers.length > 0 ?
+                    Math.max(...locationContainers.map(c => c.position.y + parseFloat(c.style.height.toString().replace('px', '')) || 300)) - 
+                    Math.min(...locationContainers.map(c => c.position.y)) : 300;
+                    
+                const wouldBeZoomX = (window.innerWidth * 0.85) / graphWidth;
+                const wouldBeZoomY = (window.innerHeight * 0.85) / graphHeight;
+                const wouldBeZoom = Math.min(wouldBeZoomX, wouldBeZoomY);
+                
+                const canShowFullyExpanded = wouldBeZoom >= minLegibleZoom;
+                
+                console.log('Simple collapse decision:', {
+                    graphDimensions: { width: graphWidth, height: graphHeight },
+                    wouldBeZoom,
+                    minLegibleZoom,
+                    canShowFullyExpanded,
+                    containerCount: locationContainers.length
+                });
                 
                 const initialCollapsedState = {};
                 const initialOriginalDimensions = {};
                 
-                locationContainers.forEach(container => {
-                    const containerArea = container.style.width * container.style.height;
-                    const shouldAutoCollapse = containerArea > autoCollapseThreshold;
-                    
-                    console.log(`Container ${container.id}: ${container.style.width}x${container.style.height} = ${containerArea}px² (${(containerArea/viewportArea*100).toFixed(1)}% of viewport)`);
-                    
-                    if (shouldAutoCollapse) {
+                if (!canShowFullyExpanded) {
+                    // Collapse ALL containers
+                    console.log('Graph too large for legible viewing - collapsing ALL containers');
+                    locationContainers.forEach(container => {
+                        const widthStr = container.style.width.toString();
+                        const heightStr = container.style.height.toString();
+                        const width = parseFloat(widthStr.replace('px', '')) || 400;
+                        const height = parseFloat(heightStr.replace('px', '')) || 300;
+                        
                         const locationId = container.id.replace('container_', '');
-                        console.log(`Auto-collapsing container ${container.id} (too large: ${(containerArea/viewportArea*100).toFixed(1)}% of viewport)`);
+                        
+                        console.log(`COLLAPSING container ${container.id} from ${width}x${height} to 200x50`);
                         
                         initialCollapsedState[locationId] = true;
-                        initialOriginalDimensions[locationId] = {
-                            width: container.style.width,
-                            height: container.style.height
-                        };
+                        initialOriginalDimensions[locationId] = { width, height };
                         
                         // Modify the container to be collapsed
-                        container.style.width = 200;
-                        container.style.height = 50;
+                        container.style.width = '200px';
+                        container.style.height = '50px';
                         
                         // Hide child nodes in this container
                         allElements.forEach(element => {
@@ -911,8 +1245,10 @@
                                 element.hidden = true;
                             }
                         });
-                    }
-                });
+                    });
+                } else {
+                    console.log('Graph fits comfortably - showing all containers expanded');
+                }
                 
                 // Set initial collapsed state
                 if (Object.keys(initialCollapsedState).length > 0) {
@@ -926,6 +1262,49 @@
                 // Ensure all edges are properly set
                 console.log('Setting', initialEdges.length, 'edges');
                 setEdges(initialEdges);
+                
+                // If we auto-collapsed containers, re-run layout to position them correctly
+                if (Object.keys(initialCollapsedState).length > 0) {
+                    console.log('Re-running layout after auto-collapse to fix positioning...');
+                    
+                    // Small delay to let the collapsed state settle, then re-layout
+                    setTimeout(async () => {
+                        try {
+                            // Get current nodes and re-layout only the containers (since child nodes are relative)
+                            const currentNodes = reactFlowInstance.getNodes();
+                            const containerNodes = currentNodes.filter(node => node.data?.isContainer);
+                            const childNodes = currentNodes.filter(node => !node.data?.isContainer);
+                            
+                            if (containerNodes.length > 0) {
+                                console.log('Re-layouting', containerNodes.length, 'containers after auto-collapse');
+                                
+                                // Re-run ELK layout on containers with their new collapsed sizes
+                                const layoutedContainers = await applyElkLayout(containerNodes, initialEdges, currentLayout);
+                                
+                                // Update container positions
+                                const updatedNodes = currentNodes.map(node => {
+                                    if (node.data?.isContainer) {
+                                        const layoutedContainer = layoutedContainers.find(ln => ln.id === node.id);
+                                        if (layoutedContainer) {
+                                            return { ...node, position: layoutedContainer.position };
+                                        }
+                                    }
+                                    return node;
+                                });
+                                
+                                setNodes(updatedNodes);
+                                console.log('Container positions updated after auto-collapse');
+                                
+                                // Re-fit view after repositioning
+                                setTimeout(() => {
+                                    reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
+                                }, 100);
+                            }
+                        } catch (error) {
+                            console.error('Error re-layouting after auto-collapse:', error);
+                        }
+                    }, 200);
+                }
                 
                 // Apply initial edge routing for auto-collapsed containers
                 if (Object.keys(initialCollapsedState).length > 0) {
@@ -992,11 +1371,35 @@
                     }, 50);
                 }
                 
-                // Fit view after layout is applied
-                setTimeout(() => {
-                    console.log('Fitting view...');
-                    reactFlowInstance.fitView({ padding: 0.1 });
-                }, 200);
+                // Simple fit view strategy
+                const ensureFitView = () => {
+                    console.log('Applying simple fit view...');
+                    
+                    // Check if we have collapsed containers (which means large graph)
+                    const hasCollapsedContainers = Object.keys(initialCollapsedState).length > 0;
+                    
+                    if (hasCollapsedContainers) {
+                        // For collapsed view, allow zooming out more to see the whole collapsed graph
+                        console.log('Large graph detected - using wider zoom range for collapsed view');
+                        reactFlowInstance.fitView({ 
+                            padding: 0.2,   // 20% padding for better overview
+                            maxZoom: 0.5,   // Much lower max zoom to ensure we see the whole collapsed graph
+                            minZoom: 0.02,  // Allow aggressive zoom out for very large graphs
+                            duration: 300
+                        });
+                    } else {
+                        // For small graphs shown fully expanded, use tighter zoom
+                        console.log('Small graph - using closer zoom for expanded view');
+                        reactFlowInstance.fitView({ 
+                            padding: 0.1,   // 10% padding for good visual spacing
+                            maxZoom: 1.0,   // Allow closer zoom for expanded small graphs
+                            minZoom: 0.2,   // Don't zoom out too much for small graphs
+                            duration: 300
+                        });
+                    }
+                };
+                
+                ensureFitView();
             }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette]);
 
             // Apply elk layout with selected algorithm
@@ -1139,13 +1542,19 @@
                 console.log('Updating to', allElements.length, 'elements');
                 setNodes(allElements);
                 
-                // Fit view after layout is applied
+                // Enhanced fit view strategy for layout changes
                 setTimeout(() => {
                     const reactFlowInstance = window.reactFlowInstance;
                     if (reactFlowInstance) {
-                        reactFlowInstance.fitView({ padding: 0.1 });
+                        console.log('Fitting view after layout change...');
+                        reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
+                        
+                        // Additional attempt after a longer delay
+                        setTimeout(() => {
+                            reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
+                        }, 300);
                     }
-                }, 200);
+                }, 100);
             }, [nodes, edges, currentLayout, currentPalette, setNodes, setEdges, applyNodePalette]);
 
             const onLayoutChange = (event) => {
@@ -1237,6 +1646,13 @@
                                 <path fill-rule="evenodd" d="M2 7.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zM2 4.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 6a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
                             </svg>
                             <span className="tooltip">Fit to View</span>
+                        </button>
+                        <button className="icon-button" onClick={collapseAllContainers}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V1zm12 6V1a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z"/>
+                                <path d="M2 9a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9zm12 5V9a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z"/>
+                            </svg>
+                            <span className="tooltip">Collapse All Containers</span>
                         </button>
                     </div>
                     <UnifiedLegend palette={currentPalette} />

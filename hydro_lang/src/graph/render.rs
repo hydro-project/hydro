@@ -636,18 +636,291 @@ impl HydroNode {
                 inner.build_graph_structure(structure, seen_tees, config)
             }
 
-            _ => {
-                // For truly unhandled cases, create a basic node
-                structure.add_node(
-                    format!("{:?}", self)
-                        .split(' ')
-                        .next()
-                        .unwrap_or("unknown")
-                        .to_string(),
+            HydroNode::Inspect { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("inspect({:?})", f),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Chain {
+                first,
+                second,
+                metadata,
+            } => {
+                let first_id = first.build_graph_structure(structure, seen_tees, config);
+                let second_id = second.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let chain_id = structure.add_node(
+                    "chain()".to_string(),
                     HydroNodeType::Transform,
-                    None,
-                )
+                    location_id,
+                );
+                structure.add_edge(
+                    first_id,
+                    chain_id,
+                    HydroEdgeType::Stream,
+                    Some("first".to_string()),
+                );
+                structure.add_edge(
+                    second_id,
+                    chain_id,
+                    HydroEdgeType::Stream,
+                    Some("second".to_string()),
+                );
+                chain_id
             }
+
+            HydroNode::CrossProduct {
+                left,
+                right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let cross_id = structure.add_node(
+                    "cross_product()".to_string(),
+                    HydroNodeType::Join,
+                    location_id,
+                );
+                structure.add_edge(
+                    left_id,
+                    cross_id,
+                    HydroEdgeType::Stream,
+                    Some("left".to_string()),
+                );
+                structure.add_edge(
+                    right_id,
+                    cross_id,
+                    HydroEdgeType::Stream,
+                    Some("right".to_string()),
+                );
+                cross_id
+            }
+
+            HydroNode::CrossSingleton {
+                left,
+                right,
+                metadata,
+            } => {
+                let left_id = left.build_graph_structure(structure, seen_tees, config);
+                let right_id = right.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let cross_singleton_id = structure.add_node(
+                    "cross_singleton()".to_string(),
+                    HydroNodeType::Join,
+                    location_id,
+                );
+                structure.add_edge(
+                    left_id,
+                    cross_singleton_id,
+                    HydroEdgeType::Stream,
+                    Some("left".to_string()),
+                );
+                structure.add_edge(
+                    right_id,
+                    cross_singleton_id,
+                    HydroEdgeType::Stream,
+                    Some("right".to_string()),
+                );
+                cross_singleton_id
+            }
+
+            HydroNode::Difference { pos, neg, metadata } => {
+                let pos_id = pos.build_graph_structure(structure, seen_tees, config);
+                let neg_id = neg.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let diff_id = structure.add_node(
+                    "difference()".to_string(),
+                    HydroNodeType::Join,
+                    location_id,
+                );
+                structure.add_edge(
+                    pos_id,
+                    diff_id,
+                    HydroEdgeType::Stream,
+                    Some("pos".to_string()),
+                );
+                structure.add_edge(
+                    neg_id,
+                    diff_id,
+                    HydroEdgeType::Stream,
+                    Some("neg".to_string()),
+                );
+                diff_id
+            }
+
+            HydroNode::AntiJoin { pos, neg, metadata } => {
+                let pos_id = pos.build_graph_structure(structure, seen_tees, config);
+                let neg_id = neg.build_graph_structure(structure, seen_tees, config);
+                let location_id = setup_location(structure, metadata);
+                let anti_join_id =
+                    structure.add_node("anti_join()".to_string(), HydroNodeType::Join, location_id);
+                structure.add_edge(
+                    pos_id,
+                    anti_join_id,
+                    HydroEdgeType::Stream,
+                    Some("pos".to_string()),
+                );
+                structure.add_edge(
+                    neg_id,
+                    anti_join_id,
+                    HydroEdgeType::Stream,
+                    Some("neg".to_string()),
+                );
+                anti_join_id
+            }
+
+            HydroNode::DeferTick { input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: "defer_tick()".to_string(),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Enumerate {
+                is_static,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("enumerate(static={})", is_static),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Unique { input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: "unique()".to_string(),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Sort { input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: "sort()".to_string(),
+                    node_type: HydroNodeType::Aggregation,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::FoldKeyed {
+                init,
+                acc,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("fold_keyed({:?}, {:?})", init, acc),
+                    node_type: HydroNodeType::Aggregation,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Reduce { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("reduce({:?})", f),
+                    node_type: HydroNodeType::Aggregation,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::ReduceKeyed { f, input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("reduce_keyed({:?})", f),
+                    node_type: HydroNodeType::Aggregation,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::ResolveFutures { input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: "resolve_futures()".to_string(),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::ResolveFuturesOrdered { input, metadata } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: "resolve_futures_ordered()".to_string(),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
+
+            HydroNode::Counter {
+                tag,
+                duration,
+                input,
+                metadata,
+            } => build_single_input_transform(
+                structure,
+                seen_tees,
+                config,
+                input,
+                metadata,
+                NodeParams {
+                    label: format!("counter({}, {:?})", tag, duration),
+                    node_type: HydroNodeType::Transform,
+                    edge_type: HydroEdgeType::Stream,
+                },
+            ),
         }
     }
 }
