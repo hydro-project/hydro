@@ -2351,7 +2351,7 @@ dependencies = [
  "async-trait",
  "bytes",
  "futures",
- "pin-project",
+ "pin-project-lite",
  "serde",
  "tempfile",
  "tokio",

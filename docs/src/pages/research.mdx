@@ -1,0 +1,133 @@
+---
+title: Research Publications
+---
+
+import "./research.module.css";
+
+# Research Publications
+
+## 2025
+
+### [Flo: a Semantic Foundation for Progressive Stream Processing](pathname:///papers/flo.pdf) (POPL 2025)
+
+**Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein, Mae Milano**
+
+Existing streaming languages have a variety of semantic models and guarantees that are often incompatible. In this paper, we identify two general yet precise semantic properties: streaming progress and eager execution. We formally define these properties in the context of Flo, a parameterized streaming language that abstracts over dataflow operators and the underlying structure of streams.
+
+To demonstrate the generality of our properties, we show how key ideas from representative streaming and incremental computation systems—Flink, LVars, and DBSP—have semantics that can be modeled in Flo and guarantees that map to our properties.
+
+**Links:** [arXiv](https://arxiv.org/abs/2411.08274)
+
+## 2024
+
+### [Suki: Choreographed Distributed Dataflow in Rust](pathname:///papers/suki.pdf) (CP 2024)
+
+**Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein**
+
+Programming models for distributed dataflow have long focused on analytical workloads that allow the runtime to dynamically place and schedule compute logic. Meanwhile, models that enable fine-grained control over placement, such as actors, make global optimization difficult. In this extended abstract, we present Suki, an embedded Rust DSL that lets developers implement streaming dataflow with explicit placement of computation.
+
+Key to this choreographic programming approach is our use of staged programming, which lets us expose a high-level Rust API while compiling local compute units into individual binaries with zero-overhead.
+
+**Links:** [arXiv](https://arxiv.org/abs/2406.14733)
+
+### [Optimizing Distributed Protocols with Query Rewrites](pathname:///papers/david-sigmod-2024.pdf) (SIGMOD 2024)
+
+**David Chu, Rithvik Panchapakesan, Shadaj Laddad, Lucky Katahanas, Chris Liu, Kaushik Shivakumar, Natacha Crooks, Joseph M. Hellerstein, Heidi Howard**
+
+Distributed protocols such as 2PC and Paxos lie at the core of many systems in the cloud, but standard implementations do not scale. New scalable distributed protocols are developed through careful analysis and rewrites, but this process is ad hoc and error-prone. This paper presents an approach for scaling any distributed protocol by applying rule-driven rewrites, borrowing from query optimization.
+
+Distributed protocol rewrites entail a new burden: reasoning about spatiotemporal correctness. We leverage order-insensitivity and data dependency analysis to systematically identify correct coordination-free scaling opportunities. We apply this analysis to create preconditions and mechanisms for coordination-free decoupling and partitioning, two fundamental vertical and horizontal scaling techniques. Manual rule-driven applications of decoupling and partitioning improve the throughput of 2PC by 5x and Paxos by 3x, and match state-of-the-art throughput in recent work. These results point the way toward automated optimizers for distributed protocols based on correct-by-construction rewrite rules.
+
+**Links:** [Tech Report](https://arxiv.org/abs/2404.01593) / [GitHub](https://github.com/rithvikp/autocomp)
+
+### [SkyPIE: A Fast & Accurate Oracle for Object Placement](pathname:///papers/tiemo-sigmod-2024.pdf) (SIGMOD 2024)
+
+**Tiemo Bang, Chris Douglas, Natacha Crooks and Joseph M. Hellerstein**
+
+Cloud object stores offer vastly different price points for object storage as a function of workload and geography. Poor object placement can thus lead to significant cost overheads. Prior cost-saving techniques attempt to optimize placement policies on the fly, deciding object placements for each object individually. In practice, these techniques do not scale to the size of the modern cloud. In this work, we leverage the static nature and pay-per-use pricing model of cloud environments to explore a different approach. Rather than computing object placements on the fly, we precompute a SkyPIE oracle---a lookup structure representing all possible placement policies and the workloads for which they are optimal.
+
+Internally, SkyPIE represents placement policies as a matrix of cost-hyperplanes, which we effectively precompute through pruning and convex optimization. By leveraging a fast geometric algorithm, online queries then are 1 to 8 orders of magnitude faster but as accurate as Integer-Linear-Programming. This makes exact optimization tractable for real workloads and we show >10x cost savings compared to state-of-the-art heuristic approaches.
+
+**Links:** [GitHub](https://github.com/hydro-project/cloud_oracle_skypie)
+
+### [Bigger, not Badder: Safely Scaling BFT Protocols](pathname:///papers/david-papoc-2024.pdf) (PaPoC 2024)
+
+**David Chu, Chris Liu, Natacha Crooks, Joseph M. Hellerstein, Heidi Howard**
+
+Byzantine Fault Tolerant (BFT) protocols provide powerful guarantees in the presence of arbitrary machine failures, yet they do not scale. The process of creating new, scalable BFT protocols requires expert analysis and is often error-prone. Recent work suggests that localized, rule-driven rewrites can be mechanically applied to scale existing (non-BFT) protocols, including Paxos. We modify these rewrites--- decoupling and partitioning---so they can be safely applied to BFT protocols, and apply these rewrites to the critical path of PBFT, improving its throughput by 5x. We prove the correctness of the modified rewrites on any BFT protocol by formally modeling the arbitrary logic of a Byzantine node. We define the Borgesian simulator, a theoretical node that simulates a Byzantine node through randomness, and show that in any BFT protocol, the messages that a Borgesian simulator can generate before and after optimization is the same. Our initial results point the way towards an automatic optimizer for BFT protocols.
+
+**Links:** [GitHub](https://github.com/rithvikp/autocomp)
+
+### [Wrapping Rings in Lattices: An Algebraic Symbiosis of Incremental View Maintenance and Eventual Consistency](pathname:///papers/conor-papoc-2024.pdf) (PaPoC 2024)
+
+**Conor Power, Saikrishna Achalla, Ryan Cottone, Nathaniel Macasaet, Joseph M. Hellerstein**
+
+We reconcile the use of semi-lattices in CRDTs and the use of groups and rings in incremental view maintenance to construct systems with strong eventual consistency, incremental computation, and database query optimization.
+
+### [Optimizing the cloud? Don't train models. Build oracles!](pathname:///papers/tiemo-cidr-2024.pdf) (CIDR 2024)
+
+**Tiemo Bang, Conor Power, Siavash Ameli, Natacha Crooks, Joseph M. Hellerstein**
+
+We propose cloud oracles as an alternative to machine learning for online optimization of cloud configurations. Our cloud oracle approach guarantees complete accuracy and explainability of decisions for problems that can be formulated as parametric convex optimizations. We give experimental evidence of this technique's efficacy and share a vision of research directions for expanding its applicability.
+
+## 2023
+
+### [Keep CALM and CRDT On](pathname:///papers/keep-calm-and-crdt-on.pdf) (VLDB 2023)
+
+**Shadaj Laddad<sup>\*</sup>, Conor Power<sup>\*</sup>, Mae Milano, Alvin Cheung, Natacha Crooks, Joseph M. Hellerstein**
+
+Conflict-free replicated datatypes (CRDTs) are a promising line of work that enable coordination-free replication and offer certain eventual consistency guarantees in a relatively simple object-oriented API. Yet CRDT guarantees extend only to data updates; observations of CRDT state are unconstrained and unsafe. We propose an agenda that embraces the simplicity of CRDTs, but provides richer, more uniform guarantees.
+
+We extend CRDTs with a query model that reasons about which queries are safe without coordination by applying monotonicity results from the CALM Theorem, and lay out a larger agenda for developing CRDT data stores that let developers safely and efficiently interact with replicated application state.
+
+**Links:** [arXiv](https://arxiv.org/abs/2210.12605)
+
+### [Invited Paper: Initial Steps Toward a Compiler for Distributed Programs](pathname:///papers/joe-applied-2023.pdf) (ApPLIED 2023)
+
+**Joseph M. Hellerstein, Shadaj Laddad, Mae Milano, Conor Power, Mingwei Samuel**
+
+In the Hydro project we are designing a compiler toolkit that can optimize for the concerns of distributed systems, including scale-up and scale-down, availability, and consistency of outcomes across replicas. This invited paper overviews the project, and provides an early walk-through of the kind of optimization that is possible. We illustrate how type transformations as well as local program transformations can combine, step by step, to convert a single- node program into a variety of distributed design points that offer the same semantics with different performance and deployment characteristics.
+
+**Links:** [arXiv](https://arxiv.org/abs/2210.12605)
+
+## 2022
+
+### [Katara: Synthesizing CRDTs with Verified Lifting](pathname:///papers/katara.pdf) (OOPSLA 2022)
+
+**Shadaj Laddad, Conor Power, Mae Milano, Alvin Cheung, Joseph M. Hellerstein**
+
+In this paper, we present Katara, a program synthesis-based system that takes sequential data type implementations and automatically synthesizes verified CRDT designs from them.
+
+Katara is able to automatically synthesize CRDTs for a wide variety of scenarios, from reproducing classic CRDTs to synthesizing novel designs based on specifications in existing literature. Crucially, our synthesized CRDTs are fully, automatically verified, eliminating entire classes of common errors and reducing the process of producing a new CRDT from a painstaking paper proof of correctness to a lightweight specification.
+
+**Links:** [arXiv](https://arxiv.org/abs/2205.12425) / [GitHub](https://github.com/hydro-project/katara)
+
+## 2021
+
+### [Automatic Compartmentalization of Distributed Protocols](pathname:///papers/auto-compartmentalization-src.pdf) (SOSP SRC 2021)
+
+**David Chu (Student Research Competition Winner)**
+
+Consensus protocols are inherently complex and difficult to reason about, and they often become bottlenecks in practice. This has driven the design of scalable protocol variants. Unfortunately, these variants are even more intricate and often error-ridden. The goal of our work is to stop inventing protocols, and instead systematize the scalability ideas from Compartmentalized Paxos so they can be applied automatically to a wide variety of complex protocols, including transactional concurrency control, BFT, etc.
+
+Our vision of Automatic Compartmentalization proposes to increase throughput while preserving correctness and liveness, expanding the impact of compartmentalization to a broad range of programs
+
+### [Hydroflow: A Model and Runtime for Distributed Systems Programming](pathname:///papers/hydroflow-thesis.pdf) (Technical Report)
+
+**Mingwei Samuel, Alvin Cheung, Joseph M. Hellerstein**
+
+In this paper we present our ongoing work on Hydroflow, a new cloud programming model used to create constructively correct distributed systems. The model is a refinement and unification of the existing dataflow and reactive programming models.
+
+Hydroflow is primarily a low-level compilation target for future declarative cloud programming languages, but developers can use it directly to precisely control program execution or fine-tune and debug compiled programs.
+
+**Links:** [GitHub](https://github.com/hydro-project/hydro)
+
+### [New Directions in Cloud Programming](pathname:///papers/new-directions.pdf) (CIDR 2021)
+
+**Alvin Cheung, Natacha Crooks, Joseph M. Hellerstein, Mae Milano**
+
+In this paper we lay out an agenda for a new generation of cloud programming research aimed at bringing research ideas to programmers in an evolutionary fashion. Key to our approach is a separation of distributed programs into a PACT of four facets: Program semantics, Availablity, Consistency and Targets of optimization.
+
+Our agenda raises numerous research challenges across multiple areas including language design, query optimization, transactions, distributed consistency, compilers and program synthesis.
+
+**Links:** [arXiv](https://arxiv.org/abs/2101.01159)
