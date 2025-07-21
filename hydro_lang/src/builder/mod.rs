@@ -94,7 +94,7 @@ impl Drop for FlowBuilder<'_> {
     fn drop(&mut self) {
         if !self.finalized {
             panic!(
-                "Dropped FlowBuilder without finalizing, you may have forgotten to call with_default_optimize, optimize_with, or finalize."
+                "Dropped FlowBuilder without finalizing, you may have forgotten to call `with_default_optimize`, `optimize_with`, or `finalize`."
             );
         }
     }
@@ -109,7 +109,7 @@ impl QuotedContext for FlowBuilder<'_> {
 impl<'a> FlowBuilder<'a> {
     #[expect(
         clippy::new_without_default,
-        reason = "call new explicitly, not default"
+        reason = "call `new` explicitly, not `default`"
     )]
     pub fn new() -> FlowBuilder<'a> {
         FlowBuilder {
