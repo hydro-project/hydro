@@ -730,6 +730,10 @@
             // Generate hyperedges between containers for better layout
             const hyperedges = generateHyperedges(allNodes, allEdges);
             
+            console.log('layoutContainersWithELK: Generated hyperedges:', hyperedges);
+            console.log('layoutContainersWithELK: Input nodes count:', allNodes.length);
+            console.log('layoutContainersWithELK: Input edges count:', allEdges.length);
+            
             // Prepare ELK layout for containers only
             const elkContainers = containerNodes.map(container => {
                 const width = parseFloat(container.style?.width?.toString().replace('px', '')) || 400;
@@ -1178,8 +1182,17 @@
                                 // Use the tracked changed container ID for better layout preservation
                                 const changedContainerId = lastChangedContainer;
                                 
+                                // Reconstruct original internal nodes for hyperedge generation
+                                // Get all child nodes (both hidden and visible) and treat them as the internal nodes
+                                const internalNodes = currentNodes.filter(node => 
+                                    !node.data?.isContainer && node.parentNode
+                                );
+                                
+                                // Use original edges (not the routed container edges) for hyperedge generation
+                                const originalEdges = initialEdges;
+                                
                                 // Use ELK to layout containers while preserving positions of unchanged ones
-                                const layoutedContainers = await layoutContainersWithELK(containerNodes, currentNodes, edges, changedContainerId);
+                                const layoutedContainers = await layoutContainersWithELK(containerNodes, internalNodes, originalEdges, changedContainerId);
                                 
                                 // Update all nodes with the new container positions
                                 const updatedNodes = currentNodes.map(node => {
