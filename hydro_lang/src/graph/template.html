@@ -237,12 +237,12 @@
             return rest;
         });
         const initialEdges = (graphData.edges || []).map(edge => {
-            // Use 'default' edge type for maximum flexibility
+            // Use 'bezier' edge type for flexible routing to all sides of nodes (left, right, top, bottom)
             const processedEdge = {
                 id: edge.id,
                 source: edge.source,
                 target: edge.target,
-                type: 'default',
+                type: 'bezier',
                 zIndex: 1000,
                 markerEnd: {
                     type: 'arrowclosed',
