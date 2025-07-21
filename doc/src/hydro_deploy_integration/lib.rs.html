@@ -12,7 +12,7 @@
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span>bytes::{Bytes, BytesMut};
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span>futures::sink::Buffer;
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span>futures::{Future, Sink, SinkExt, Stream, ready, stream};
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>pin_project::pin_project;
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span>pin_project_lite::pin_project;
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span>serde::{Deserialize, Serialize};
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span>tokio::io;
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span>tokio::net::{TcpListener, TcpStream};
@@ -502,299 +502,304 @@
 <a href=#502 id=502 data-nosnippet>502</a>    sink: <span class="prelude-ty">Option</span>&lt;BufferedDrain&lt;T::Sink, T::Input&gt;&gt;,
 <a href=#503 id=503 data-nosnippet>503</a>}
 <a href=#504 id=504 data-nosnippet>504</a>
-<a href=#505 id=505 data-nosnippet>505</a><span class="attr">#[pin_project]
-<a href=#506 id=506 data-nosnippet>506</a></span><span class="kw">pub struct </span>DemuxDrain&lt;T, S: Sink&lt;T, Error = io::Error&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; {
-<a href=#507 id=507 data-nosnippet>507</a>    marker: PhantomData&lt;T&gt;,
-<a href=#508 id=508 data-nosnippet>508</a>    <span class="attr">#[pin]
-<a href=#509 id=509 data-nosnippet>509</a>    </span>sinks: HashMap&lt;u32, Pin&lt;Box&lt;S&gt;&gt;&gt;,
-<a href=#510 id=510 data-nosnippet>510</a>}
-<a href=#511 id=511 data-nosnippet>511</a>
-<a href=#512 id=512 data-nosnippet>512</a><span class="kw">impl</span>&lt;T, S: Sink&lt;T, Error = io::Error&gt; + Send + Sync&gt; Sink&lt;(u32, T)&gt; <span class="kw">for </span>DemuxDrain&lt;T, S&gt; {
-<a href=#513 id=513 data-nosnippet>513</a>    <span class="kw">type </span>Error = io::Error;
-<a href=#514 id=514 data-nosnippet>514</a>
-<a href=#515 id=515 data-nosnippet>515</a>    <span class="kw">fn </span>poll_ready(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
-<a href=#516 id=516 data-nosnippet>516</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
-<a href=#517 id=517 data-nosnippet>517</a>            <span class="macro">ready!</span>(Sink::poll_ready(sink.as_mut(), _cx))<span class="question-mark">?</span>;
-<a href=#518 id=518 data-nosnippet>518</a>        }
+<a href=#505 id=505 data-nosnippet>505</a><span class="kw">trait </span>DrainableSink&lt;T&gt;: Sink&lt;T, Error = io::Error&gt; + Send + Sync {}
+<a href=#506 id=506 data-nosnippet>506</a>
+<a href=#507 id=507 data-nosnippet>507</a><span class="kw">impl</span>&lt;T, S: Sink&lt;T, Error = io::Error&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; DrainableSink&lt;T&gt; <span class="kw">for </span>S {}
+<a href=#508 id=508 data-nosnippet>508</a>
+<a href=#509 id=509 data-nosnippet>509</a><span class="macro">pin_project!</span> {
+<a href=#510 id=510 data-nosnippet>510</a>    <span class="kw">pub struct </span>DemuxDrain&lt;T, S: DrainableSink&lt;T&gt;&gt; {
+<a href=#511 id=511 data-nosnippet>511</a>        marker: PhantomData&lt;T&gt;,
+<a href=#512 id=512 data-nosnippet>512</a>        <span class="attr">#[pin]
+<a href=#513 id=513 data-nosnippet>513</a>        </span>sinks: HashMap&lt;u32, Pin&lt;Box&lt;S&gt;&gt;&gt;,
+<a href=#514 id=514 data-nosnippet>514</a>    }
+<a href=#515 id=515 data-nosnippet>515</a>}
+<a href=#516 id=516 data-nosnippet>516</a>
+<a href=#517 id=517 data-nosnippet>517</a><span class="kw">impl</span>&lt;T, S: Sink&lt;T, Error = io::Error&gt; + Send + Sync&gt; Sink&lt;(u32, T)&gt; <span class="kw">for </span>DemuxDrain&lt;T, S&gt; {
+<a href=#518 id=518 data-nosnippet>518</a>    <span class="kw">type </span>Error = io::Error;
 <a href=#519 id=519 data-nosnippet>519</a>
-<a href=#520 id=520 data-nosnippet>520</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
-<a href=#521 id=521 data-nosnippet>521</a>    }
-<a href=#522 id=522 data-nosnippet>522</a>
-<a href=#523 id=523 data-nosnippet>523</a>    <span class="kw">fn </span>start_send(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, item: (u32, T)) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
-<a href=#524 id=524 data-nosnippet>524</a>        Sink::start_send(
-<a href=#525 id=525 data-nosnippet>525</a>            <span class="self">self</span>.project()
-<a href=#526 id=526 data-nosnippet>526</a>                .sinks
-<a href=#527 id=527 data-nosnippet>527</a>                .get_mut()
-<a href=#528 id=528 data-nosnippet>528</a>                .get_mut(<span class="kw-2">&amp;</span>item.<span class="number">0</span>)
-<a href=#529 id=529 data-nosnippet>529</a>                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"No sink in this demux for key {}"</span>, item.<span class="number">0</span>))
-<a href=#530 id=530 data-nosnippet>530</a>                .as_mut(),
-<a href=#531 id=531 data-nosnippet>531</a>            item.<span class="number">1</span>,
-<a href=#532 id=532 data-nosnippet>532</a>        )
-<a href=#533 id=533 data-nosnippet>533</a>    }
-<a href=#534 id=534 data-nosnippet>534</a>
-<a href=#535 id=535 data-nosnippet>535</a>    <span class="kw">fn </span>poll_flush(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
-<a href=#536 id=536 data-nosnippet>536</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
-<a href=#537 id=537 data-nosnippet>537</a>            <span class="macro">ready!</span>(Sink::poll_flush(sink.as_mut(), _cx))<span class="question-mark">?</span>;
-<a href=#538 id=538 data-nosnippet>538</a>        }
+<a href=#520 id=520 data-nosnippet>520</a>    <span class="kw">fn </span>poll_ready(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#521 id=521 data-nosnippet>521</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
+<a href=#522 id=522 data-nosnippet>522</a>            <span class="macro">ready!</span>(Sink::poll_ready(sink.as_mut(), _cx))<span class="question-mark">?</span>;
+<a href=#523 id=523 data-nosnippet>523</a>        }
+<a href=#524 id=524 data-nosnippet>524</a>
+<a href=#525 id=525 data-nosnippet>525</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
+<a href=#526 id=526 data-nosnippet>526</a>    }
+<a href=#527 id=527 data-nosnippet>527</a>
+<a href=#528 id=528 data-nosnippet>528</a>    <span class="kw">fn </span>start_send(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, item: (u32, T)) -&gt; <span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt; {
+<a href=#529 id=529 data-nosnippet>529</a>        Sink::start_send(
+<a href=#530 id=530 data-nosnippet>530</a>            <span class="self">self</span>.project()
+<a href=#531 id=531 data-nosnippet>531</a>                .sinks
+<a href=#532 id=532 data-nosnippet>532</a>                .get_mut()
+<a href=#533 id=533 data-nosnippet>533</a>                .get_mut(<span class="kw-2">&amp;</span>item.<span class="number">0</span>)
+<a href=#534 id=534 data-nosnippet>534</a>                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">"No sink in this demux for key {}"</span>, item.<span class="number">0</span>))
+<a href=#535 id=535 data-nosnippet>535</a>                .as_mut(),
+<a href=#536 id=536 data-nosnippet>536</a>            item.<span class="number">1</span>,
+<a href=#537 id=537 data-nosnippet>537</a>        )
+<a href=#538 id=538 data-nosnippet>538</a>    }
 <a href=#539 id=539 data-nosnippet>539</a>
-<a href=#540 id=540 data-nosnippet>540</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
-<a href=#541 id=541 data-nosnippet>541</a>    }
-<a href=#542 id=542 data-nosnippet>542</a>
-<a href=#543 id=543 data-nosnippet>543</a>    <span class="kw">fn </span>poll_close(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
-<a href=#544 id=544 data-nosnippet>544</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
-<a href=#545 id=545 data-nosnippet>545</a>            <span class="macro">ready!</span>(Sink::poll_close(sink.as_mut(), _cx))<span class="question-mark">?</span>;
-<a href=#546 id=546 data-nosnippet>546</a>        }
+<a href=#540 id=540 data-nosnippet>540</a>    <span class="kw">fn </span>poll_flush(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#541 id=541 data-nosnippet>541</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
+<a href=#542 id=542 data-nosnippet>542</a>            <span class="macro">ready!</span>(Sink::poll_flush(sink.as_mut(), _cx))<span class="question-mark">?</span>;
+<a href=#543 id=543 data-nosnippet>543</a>        }
+<a href=#544 id=544 data-nosnippet>544</a>
+<a href=#545 id=545 data-nosnippet>545</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
+<a href=#546 id=546 data-nosnippet>546</a>    }
 <a href=#547 id=547 data-nosnippet>547</a>
-<a href=#548 id=548 data-nosnippet>548</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
-<a href=#549 id=549 data-nosnippet>549</a>    }
-<a href=#550 id=550 data-nosnippet>550</a>}
-<a href=#551 id=551 data-nosnippet>551</a>
-<a href=#552 id=552 data-nosnippet>552</a><span class="attr">#[async_trait]
-<a href=#553 id=553 data-nosnippet>553</a></span><span class="kw">impl</span>&lt;T: Connected + ConnectedSink&gt; Connected <span class="kw">for </span>ConnectedDemux&lt;T&gt;
-<a href=#554 id=554 data-nosnippet>554</a><span class="kw">where
-<a href=#555 id=555 data-nosnippet>555</a>    </span>&lt;T <span class="kw">as </span>ConnectedSink&gt;::Input: <span class="lifetime">'static </span>+ Sync,
-<a href=#556 id=556 data-nosnippet>556</a>{
-<a href=#557 id=557 data-nosnippet>557</a>    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
-<a href=#558 id=558 data-nosnippet>558</a>        <span class="kw">match </span>pipe {
-<a href=#559 id=559 data-nosnippet>559</a>            Connection::AsClient(ClientConnection::Demux(demux)) =&gt; {
-<a href=#560 id=560 data-nosnippet>560</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
-<a href=#561 id=561 data-nosnippet>561</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
-<a href=#562 id=562 data-nosnippet>562</a>                <span class="kw">for </span>(id, pipe) <span class="kw">in </span>demux {
-<a href=#563 id=563 data-nosnippet>563</a>                    connected_demux.insert(
-<a href=#564 id=564 data-nosnippet>564</a>                        id,
-<a href=#565 id=565 data-nosnippet>565</a>                        Box::pin(
-<a href=#566 id=566 data-nosnippet>566</a>                            T::from_defn(Connection::AsClient(pipe))
-<a href=#567 id=567 data-nosnippet>567</a>                                .<span class="kw">await
-<a href=#568 id=568 data-nosnippet>568</a>                                </span>.into_sink()
-<a href=#569 id=569 data-nosnippet>569</a>                                .buffer(<span class="number">1024</span>),
-<a href=#570 id=570 data-nosnippet>570</a>                        ),
-<a href=#571 id=571 data-nosnippet>571</a>                    );
-<a href=#572 id=572 data-nosnippet>572</a>                }
-<a href=#573 id=573 data-nosnippet>573</a>
-<a href=#574 id=574 data-nosnippet>574</a>                <span class="kw">let </span>demuxer = DemuxDrain {
-<a href=#575 id=575 data-nosnippet>575</a>                    marker: PhantomData,
-<a href=#576 id=576 data-nosnippet>576</a>                    sinks: connected_demux,
-<a href=#577 id=577 data-nosnippet>577</a>                };
+<a href=#548 id=548 data-nosnippet>548</a>    <span class="kw">fn </span>poll_close(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Result</span>&lt;(), <span class="self">Self</span>::Error&gt;&gt; {
+<a href=#549 id=549 data-nosnippet>549</a>        <span class="kw">for </span>sink <span class="kw">in </span><span class="self">self</span>.project().sinks.values_mut() {
+<a href=#550 id=550 data-nosnippet>550</a>            <span class="macro">ready!</span>(Sink::poll_close(sink.as_mut(), _cx))<span class="question-mark">?</span>;
+<a href=#551 id=551 data-nosnippet>551</a>        }
+<a href=#552 id=552 data-nosnippet>552</a>
+<a href=#553 id=553 data-nosnippet>553</a>        Poll::Ready(<span class="prelude-val">Ok</span>(()))
+<a href=#554 id=554 data-nosnippet>554</a>    }
+<a href=#555 id=555 data-nosnippet>555</a>}
+<a href=#556 id=556 data-nosnippet>556</a>
+<a href=#557 id=557 data-nosnippet>557</a><span class="attr">#[async_trait]
+<a href=#558 id=558 data-nosnippet>558</a></span><span class="kw">impl</span>&lt;T: Connected + ConnectedSink&gt; Connected <span class="kw">for </span>ConnectedDemux&lt;T&gt;
+<a href=#559 id=559 data-nosnippet>559</a><span class="kw">where
+<a href=#560 id=560 data-nosnippet>560</a>    </span>&lt;T <span class="kw">as </span>ConnectedSink&gt;::Input: <span class="lifetime">'static </span>+ Sync,
+<a href=#561 id=561 data-nosnippet>561</a>{
+<a href=#562 id=562 data-nosnippet>562</a>    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
+<a href=#563 id=563 data-nosnippet>563</a>        <span class="kw">match </span>pipe {
+<a href=#564 id=564 data-nosnippet>564</a>            Connection::AsClient(ClientConnection::Demux(demux)) =&gt; {
+<a href=#565 id=565 data-nosnippet>565</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
+<a href=#566 id=566 data-nosnippet>566</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
+<a href=#567 id=567 data-nosnippet>567</a>                <span class="kw">for </span>(id, pipe) <span class="kw">in </span>demux {
+<a href=#568 id=568 data-nosnippet>568</a>                    connected_demux.insert(
+<a href=#569 id=569 data-nosnippet>569</a>                        id,
+<a href=#570 id=570 data-nosnippet>570</a>                        Box::pin(
+<a href=#571 id=571 data-nosnippet>571</a>                            T::from_defn(Connection::AsClient(pipe))
+<a href=#572 id=572 data-nosnippet>572</a>                                .<span class="kw">await
+<a href=#573 id=573 data-nosnippet>573</a>                                </span>.into_sink()
+<a href=#574 id=574 data-nosnippet>574</a>                                .buffer(<span class="number">1024</span>),
+<a href=#575 id=575 data-nosnippet>575</a>                        ),
+<a href=#576 id=576 data-nosnippet>576</a>                    );
+<a href=#577 id=577 data-nosnippet>577</a>                }
 <a href=#578 id=578 data-nosnippet>578</a>
-<a href=#579 id=579 data-nosnippet>579</a>                ConnectedDemux {
-<a href=#580 id=580 data-nosnippet>580</a>                    keys,
-<a href=#581 id=581 data-nosnippet>581</a>                    sink: <span class="prelude-val">Some</span>(demuxer),
-<a href=#582 id=582 data-nosnippet>582</a>                }
-<a href=#583 id=583 data-nosnippet>583</a>            }
-<a href=#584 id=584 data-nosnippet>584</a>
-<a href=#585 id=585 data-nosnippet>585</a>            Connection::AsServer(BoundServer::Demux(demux)) =&gt; {
-<a href=#586 id=586 data-nosnippet>586</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
-<a href=#587 id=587 data-nosnippet>587</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
-<a href=#588 id=588 data-nosnippet>588</a>                <span class="kw">for </span>(id, bound) <span class="kw">in </span>demux {
-<a href=#589 id=589 data-nosnippet>589</a>                    connected_demux.insert(
-<a href=#590 id=590 data-nosnippet>590</a>                        id,
-<a href=#591 id=591 data-nosnippet>591</a>                        Box::pin(
-<a href=#592 id=592 data-nosnippet>592</a>                            T::from_defn(Connection::AsServer(bound))
-<a href=#593 id=593 data-nosnippet>593</a>                                .<span class="kw">await
-<a href=#594 id=594 data-nosnippet>594</a>                                </span>.into_sink()
-<a href=#595 id=595 data-nosnippet>595</a>                                .buffer(<span class="number">1024</span>),
-<a href=#596 id=596 data-nosnippet>596</a>                        ),
-<a href=#597 id=597 data-nosnippet>597</a>                    );
-<a href=#598 id=598 data-nosnippet>598</a>                }
-<a href=#599 id=599 data-nosnippet>599</a>
-<a href=#600 id=600 data-nosnippet>600</a>                <span class="kw">let </span>demuxer = DemuxDrain {
-<a href=#601 id=601 data-nosnippet>601</a>                    marker: PhantomData,
-<a href=#602 id=602 data-nosnippet>602</a>                    sinks: connected_demux,
-<a href=#603 id=603 data-nosnippet>603</a>                };
+<a href=#579 id=579 data-nosnippet>579</a>                <span class="kw">let </span>demuxer = DemuxDrain {
+<a href=#580 id=580 data-nosnippet>580</a>                    marker: PhantomData,
+<a href=#581 id=581 data-nosnippet>581</a>                    sinks: connected_demux,
+<a href=#582 id=582 data-nosnippet>582</a>                };
+<a href=#583 id=583 data-nosnippet>583</a>
+<a href=#584 id=584 data-nosnippet>584</a>                ConnectedDemux {
+<a href=#585 id=585 data-nosnippet>585</a>                    keys,
+<a href=#586 id=586 data-nosnippet>586</a>                    sink: <span class="prelude-val">Some</span>(demuxer),
+<a href=#587 id=587 data-nosnippet>587</a>                }
+<a href=#588 id=588 data-nosnippet>588</a>            }
+<a href=#589 id=589 data-nosnippet>589</a>
+<a href=#590 id=590 data-nosnippet>590</a>            Connection::AsServer(BoundServer::Demux(demux)) =&gt; {
+<a href=#591 id=591 data-nosnippet>591</a>                <span class="kw">let </span><span class="kw-2">mut </span>connected_demux = HashMap::new();
+<a href=#592 id=592 data-nosnippet>592</a>                <span class="kw">let </span>keys = demux.keys().cloned().collect();
+<a href=#593 id=593 data-nosnippet>593</a>                <span class="kw">for </span>(id, bound) <span class="kw">in </span>demux {
+<a href=#594 id=594 data-nosnippet>594</a>                    connected_demux.insert(
+<a href=#595 id=595 data-nosnippet>595</a>                        id,
+<a href=#596 id=596 data-nosnippet>596</a>                        Box::pin(
+<a href=#597 id=597 data-nosnippet>597</a>                            T::from_defn(Connection::AsServer(bound))
+<a href=#598 id=598 data-nosnippet>598</a>                                .<span class="kw">await
+<a href=#599 id=599 data-nosnippet>599</a>                                </span>.into_sink()
+<a href=#600 id=600 data-nosnippet>600</a>                                .buffer(<span class="number">1024</span>),
+<a href=#601 id=601 data-nosnippet>601</a>                        ),
+<a href=#602 id=602 data-nosnippet>602</a>                    );
+<a href=#603 id=603 data-nosnippet>603</a>                }
 <a href=#604 id=604 data-nosnippet>604</a>
-<a href=#605 id=605 data-nosnippet>605</a>                ConnectedDemux {
-<a href=#606 id=606 data-nosnippet>606</a>                    keys,
-<a href=#607 id=607 data-nosnippet>607</a>                    sink: <span class="prelude-val">Some</span>(demuxer),
-<a href=#608 id=608 data-nosnippet>608</a>                }
-<a href=#609 id=609 data-nosnippet>609</a>            }
-<a href=#610 id=610 data-nosnippet>610</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a non-demux pipe as a demux"</span>),
-<a href=#611 id=611 data-nosnippet>611</a>        }
-<a href=#612 id=612 data-nosnippet>612</a>    }
-<a href=#613 id=613 data-nosnippet>613</a>}
-<a href=#614 id=614 data-nosnippet>614</a>
-<a href=#615 id=615 data-nosnippet>615</a><span class="kw">impl</span>&lt;T: ConnectedSink&gt; ConnectedSink <span class="kw">for </span>ConnectedDemux&lt;T&gt;
-<a href=#616 id=616 data-nosnippet>616</a><span class="kw">where
-<a href=#617 id=617 data-nosnippet>617</a>    </span>&lt;T <span class="kw">as </span>ConnectedSink&gt;::Input: <span class="lifetime">'static </span>+ Sync,
-<a href=#618 id=618 data-nosnippet>618</a>{
-<a href=#619 id=619 data-nosnippet>619</a>    <span class="kw">type </span>Input = (u32, T::Input);
-<a href=#620 id=620 data-nosnippet>620</a>    <span class="kw">type </span>Sink = BufferedDrain&lt;T::Sink, T::Input&gt;;
-<a href=#621 id=621 data-nosnippet>621</a>
-<a href=#622 id=622 data-nosnippet>622</a>    <span class="kw">fn </span>into_sink(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Sink {
-<a href=#623 id=623 data-nosnippet>623</a>        <span class="self">self</span>.sink.take().unwrap()
-<a href=#624 id=624 data-nosnippet>624</a>    }
-<a href=#625 id=625 data-nosnippet>625</a>}
+<a href=#605 id=605 data-nosnippet>605</a>                <span class="kw">let </span>demuxer = DemuxDrain {
+<a href=#606 id=606 data-nosnippet>606</a>                    marker: PhantomData,
+<a href=#607 id=607 data-nosnippet>607</a>                    sinks: connected_demux,
+<a href=#608 id=608 data-nosnippet>608</a>                };
+<a href=#609 id=609 data-nosnippet>609</a>
+<a href=#610 id=610 data-nosnippet>610</a>                ConnectedDemux {
+<a href=#611 id=611 data-nosnippet>611</a>                    keys,
+<a href=#612 id=612 data-nosnippet>612</a>                    sink: <span class="prelude-val">Some</span>(demuxer),
+<a href=#613 id=613 data-nosnippet>613</a>                }
+<a href=#614 id=614 data-nosnippet>614</a>            }
+<a href=#615 id=615 data-nosnippet>615</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a non-demux pipe as a demux"</span>),
+<a href=#616 id=616 data-nosnippet>616</a>        }
+<a href=#617 id=617 data-nosnippet>617</a>    }
+<a href=#618 id=618 data-nosnippet>618</a>}
+<a href=#619 id=619 data-nosnippet>619</a>
+<a href=#620 id=620 data-nosnippet>620</a><span class="kw">impl</span>&lt;T: ConnectedSink&gt; ConnectedSink <span class="kw">for </span>ConnectedDemux&lt;T&gt;
+<a href=#621 id=621 data-nosnippet>621</a><span class="kw">where
+<a href=#622 id=622 data-nosnippet>622</a>    </span>&lt;T <span class="kw">as </span>ConnectedSink&gt;::Input: <span class="lifetime">'static </span>+ Sync,
+<a href=#623 id=623 data-nosnippet>623</a>{
+<a href=#624 id=624 data-nosnippet>624</a>    <span class="kw">type </span>Input = (u32, T::Input);
+<a href=#625 id=625 data-nosnippet>625</a>    <span class="kw">type </span>Sink = BufferedDrain&lt;T::Sink, T::Input&gt;;
 <a href=#626 id=626 data-nosnippet>626</a>
-<a href=#627 id=627 data-nosnippet>627</a><span class="kw">pub struct </span>MergeSource&lt;T: Unpin, S: Stream&lt;Item = T&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; {
-<a href=#628 id=628 data-nosnippet>628</a>    marker: PhantomData&lt;T&gt;,
-<a href=#629 id=629 data-nosnippet>629</a>    sources: Vec&lt;Pin&lt;Box&lt;S&gt;&gt;&gt;,
+<a href=#627 id=627 data-nosnippet>627</a>    <span class="kw">fn </span>into_sink(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Sink {
+<a href=#628 id=628 data-nosnippet>628</a>        <span class="self">self</span>.sink.take().unwrap()
+<a href=#629 id=629 data-nosnippet>629</a>    }
 <a href=#630 id=630 data-nosnippet>630</a>}
 <a href=#631 id=631 data-nosnippet>631</a>
-<a href=#632 id=632 data-nosnippet>632</a><span class="kw">impl</span>&lt;T: Unpin, S: Stream&lt;Item = T&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; Stream <span class="kw">for </span>MergeSource&lt;T, S&gt; {
-<a href=#633 id=633 data-nosnippet>633</a>    <span class="kw">type </span>Item = T;
-<a href=#634 id=634 data-nosnippet>634</a>
-<a href=#635 id=635 data-nosnippet>635</a>    <span class="kw">fn </span>poll_next(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;&gt; {
-<a href=#636 id=636 data-nosnippet>636</a>        <span class="kw">let </span>sources = <span class="kw-2">&amp;mut </span><span class="self">self</span>.get_mut().sources;
-<a href=#637 id=637 data-nosnippet>637</a>        <span class="kw">let </span><span class="kw-2">mut </span>next = <span class="prelude-val">None</span>;
-<a href=#638 id=638 data-nosnippet>638</a>
-<a href=#639 id=639 data-nosnippet>639</a>        <span class="kw">let </span><span class="kw-2">mut </span>i = <span class="number">0</span>;
-<a href=#640 id=640 data-nosnippet>640</a>        <span class="kw">while </span>i &lt; sources.len() {
-<a href=#641 id=641 data-nosnippet>641</a>            <span class="kw">match </span>sources[i].as_mut().poll_next(cx) {
-<a href=#642 id=642 data-nosnippet>642</a>                Poll::Ready(<span class="prelude-val">Some</span>(v)) =&gt; {
-<a href=#643 id=643 data-nosnippet>643</a>                    next = <span class="prelude-val">Some</span>(v);
-<a href=#644 id=644 data-nosnippet>644</a>                    <span class="kw">break</span>;
-<a href=#645 id=645 data-nosnippet>645</a>                }
-<a href=#646 id=646 data-nosnippet>646</a>                Poll::Ready(<span class="prelude-val">None</span>) =&gt; {
-<a href=#647 id=647 data-nosnippet>647</a>                    <span class="comment">// this happens infrequently, so OK to be O(n)
-<a href=#648 id=648 data-nosnippet>648</a>                    </span>sources.remove(i);
-<a href=#649 id=649 data-nosnippet>649</a>                }
-<a href=#650 id=650 data-nosnippet>650</a>                Poll::Pending =&gt; {
-<a href=#651 id=651 data-nosnippet>651</a>                    i += <span class="number">1</span>;
-<a href=#652 id=652 data-nosnippet>652</a>                }
-<a href=#653 id=653 data-nosnippet>653</a>            }
-<a href=#654 id=654 data-nosnippet>654</a>        }
-<a href=#655 id=655 data-nosnippet>655</a>
-<a href=#656 id=656 data-nosnippet>656</a>        <span class="kw">if </span>sources.is_empty() {
-<a href=#657 id=657 data-nosnippet>657</a>            Poll::Ready(<span class="prelude-val">None</span>)
-<a href=#658 id=658 data-nosnippet>658</a>        } <span class="kw">else if </span>next.is_none() {
-<a href=#659 id=659 data-nosnippet>659</a>            Poll::Pending
-<a href=#660 id=660 data-nosnippet>660</a>        } <span class="kw">else </span>{
-<a href=#661 id=661 data-nosnippet>661</a>            Poll::Ready(next)
-<a href=#662 id=662 data-nosnippet>662</a>        }
-<a href=#663 id=663 data-nosnippet>663</a>    }
-<a href=#664 id=664 data-nosnippet>664</a>}
-<a href=#665 id=665 data-nosnippet>665</a>
-<a href=#666 id=666 data-nosnippet>666</a><span class="kw">pub struct </span>TaggedSource&lt;T: Unpin, S: Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;T, io::Error&gt;&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; {
-<a href=#667 id=667 data-nosnippet>667</a>    marker: PhantomData&lt;T&gt;,
-<a href=#668 id=668 data-nosnippet>668</a>    id: u32,
-<a href=#669 id=669 data-nosnippet>669</a>    source: Pin&lt;Box&lt;S&gt;&gt;,
-<a href=#670 id=670 data-nosnippet>670</a>}
-<a href=#671 id=671 data-nosnippet>671</a>
-<a href=#672 id=672 data-nosnippet>672</a><span class="kw">impl</span>&lt;T: Unpin, S: Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;T, io::Error&gt;&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; Stream
-<a href=#673 id=673 data-nosnippet>673</a>    <span class="kw">for </span>TaggedSource&lt;T, S&gt;
-<a href=#674 id=674 data-nosnippet>674</a>{
-<a href=#675 id=675 data-nosnippet>675</a>    <span class="kw">type </span>Item = <span class="prelude-ty">Result</span>&lt;(u32, T), io::Error&gt;;
+<a href=#632 id=632 data-nosnippet>632</a><span class="kw">pub struct </span>MergeSource&lt;T: Unpin, S: Stream&lt;Item = T&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; {
+<a href=#633 id=633 data-nosnippet>633</a>    marker: PhantomData&lt;T&gt;,
+<a href=#634 id=634 data-nosnippet>634</a>    sources: Vec&lt;Pin&lt;Box&lt;S&gt;&gt;&gt;,
+<a href=#635 id=635 data-nosnippet>635</a>}
+<a href=#636 id=636 data-nosnippet>636</a>
+<a href=#637 id=637 data-nosnippet>637</a><span class="kw">impl</span>&lt;T: Unpin, S: Stream&lt;Item = T&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; Stream <span class="kw">for </span>MergeSource&lt;T, S&gt; {
+<a href=#638 id=638 data-nosnippet>638</a>    <span class="kw">type </span>Item = T;
+<a href=#639 id=639 data-nosnippet>639</a>
+<a href=#640 id=640 data-nosnippet>640</a>    <span class="kw">fn </span>poll_next(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;&gt; {
+<a href=#641 id=641 data-nosnippet>641</a>        <span class="kw">let </span>sources = <span class="kw-2">&amp;mut </span><span class="self">self</span>.get_mut().sources;
+<a href=#642 id=642 data-nosnippet>642</a>        <span class="kw">let </span><span class="kw-2">mut </span>next = <span class="prelude-val">None</span>;
+<a href=#643 id=643 data-nosnippet>643</a>
+<a href=#644 id=644 data-nosnippet>644</a>        <span class="kw">let </span><span class="kw-2">mut </span>i = <span class="number">0</span>;
+<a href=#645 id=645 data-nosnippet>645</a>        <span class="kw">while </span>i &lt; sources.len() {
+<a href=#646 id=646 data-nosnippet>646</a>            <span class="kw">match </span>sources[i].as_mut().poll_next(cx) {
+<a href=#647 id=647 data-nosnippet>647</a>                Poll::Ready(<span class="prelude-val">Some</span>(v)) =&gt; {
+<a href=#648 id=648 data-nosnippet>648</a>                    next = <span class="prelude-val">Some</span>(v);
+<a href=#649 id=649 data-nosnippet>649</a>                    <span class="kw">break</span>;
+<a href=#650 id=650 data-nosnippet>650</a>                }
+<a href=#651 id=651 data-nosnippet>651</a>                Poll::Ready(<span class="prelude-val">None</span>) =&gt; {
+<a href=#652 id=652 data-nosnippet>652</a>                    <span class="comment">// this happens infrequently, so OK to be O(n)
+<a href=#653 id=653 data-nosnippet>653</a>                    </span>sources.remove(i);
+<a href=#654 id=654 data-nosnippet>654</a>                }
+<a href=#655 id=655 data-nosnippet>655</a>                Poll::Pending =&gt; {
+<a href=#656 id=656 data-nosnippet>656</a>                    i += <span class="number">1</span>;
+<a href=#657 id=657 data-nosnippet>657</a>                }
+<a href=#658 id=658 data-nosnippet>658</a>            }
+<a href=#659 id=659 data-nosnippet>659</a>        }
+<a href=#660 id=660 data-nosnippet>660</a>
+<a href=#661 id=661 data-nosnippet>661</a>        <span class="kw">if </span>sources.is_empty() {
+<a href=#662 id=662 data-nosnippet>662</a>            Poll::Ready(<span class="prelude-val">None</span>)
+<a href=#663 id=663 data-nosnippet>663</a>        } <span class="kw">else if </span>next.is_none() {
+<a href=#664 id=664 data-nosnippet>664</a>            Poll::Pending
+<a href=#665 id=665 data-nosnippet>665</a>        } <span class="kw">else </span>{
+<a href=#666 id=666 data-nosnippet>666</a>            Poll::Ready(next)
+<a href=#667 id=667 data-nosnippet>667</a>        }
+<a href=#668 id=668 data-nosnippet>668</a>    }
+<a href=#669 id=669 data-nosnippet>669</a>}
+<a href=#670 id=670 data-nosnippet>670</a>
+<a href=#671 id=671 data-nosnippet>671</a><span class="kw">pub struct </span>TaggedSource&lt;T: Unpin, S: Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;T, io::Error&gt;&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; {
+<a href=#672 id=672 data-nosnippet>672</a>    marker: PhantomData&lt;T&gt;,
+<a href=#673 id=673 data-nosnippet>673</a>    id: u32,
+<a href=#674 id=674 data-nosnippet>674</a>    source: Pin&lt;Box&lt;S&gt;&gt;,
+<a href=#675 id=675 data-nosnippet>675</a>}
 <a href=#676 id=676 data-nosnippet>676</a>
-<a href=#677 id=677 data-nosnippet>677</a>    <span class="kw">fn </span>poll_next(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;&gt; {
-<a href=#678 id=678 data-nosnippet>678</a>        <span class="kw">let </span>id = <span class="self">self</span>.as_ref().id;
-<a href=#679 id=679 data-nosnippet>679</a>        <span class="kw">let </span>source = <span class="kw-2">&amp;mut </span><span class="self">self</span>.get_mut().source;
-<a href=#680 id=680 data-nosnippet>680</a>        <span class="kw">match </span>source.as_mut().poll_next(cx) {
-<a href=#681 id=681 data-nosnippet>681</a>            Poll::Ready(<span class="prelude-val">Some</span>(v)) =&gt; Poll::Ready(<span class="prelude-val">Some</span>(v.map(|d| (id, d)))),
-<a href=#682 id=682 data-nosnippet>682</a>            Poll::Ready(<span class="prelude-val">None</span>) =&gt; Poll::Ready(<span class="prelude-val">None</span>),
-<a href=#683 id=683 data-nosnippet>683</a>            Poll::Pending =&gt; Poll::Pending,
-<a href=#684 id=684 data-nosnippet>684</a>        }
-<a href=#685 id=685 data-nosnippet>685</a>    }
-<a href=#686 id=686 data-nosnippet>686</a>}
-<a href=#687 id=687 data-nosnippet>687</a>
-<a href=#688 id=688 data-nosnippet>688</a><span class="kw">type </span>MergedMux&lt;T&gt; = MergeSource&lt;
-<a href=#689 id=689 data-nosnippet>689</a>    <span class="prelude-ty">Result</span>&lt;(u32, &lt;T <span class="kw">as </span>ConnectedSource&gt;::Output), io::Error&gt;,
-<a href=#690 id=690 data-nosnippet>690</a>    TaggedSource&lt;&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output, &lt;T <span class="kw">as </span>ConnectedSource&gt;::Stream&gt;,
-<a href=#691 id=691 data-nosnippet>691</a>&gt;;
+<a href=#677 id=677 data-nosnippet>677</a><span class="kw">impl</span>&lt;T: Unpin, S: Stream&lt;Item = <span class="prelude-ty">Result</span>&lt;T, io::Error&gt;&gt; + Send + Sync + <span class="question-mark">?</span>Sized&gt; Stream
+<a href=#678 id=678 data-nosnippet>678</a>    <span class="kw">for </span>TaggedSource&lt;T, S&gt;
+<a href=#679 id=679 data-nosnippet>679</a>{
+<a href=#680 id=680 data-nosnippet>680</a>    <span class="kw">type </span>Item = <span class="prelude-ty">Result</span>&lt;(u32, T), io::Error&gt;;
+<a href=#681 id=681 data-nosnippet>681</a>
+<a href=#682 id=682 data-nosnippet>682</a>    <span class="kw">fn </span>poll_next(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, cx: <span class="kw-2">&amp;mut </span>Context&lt;<span class="lifetime">'_</span>&gt;) -&gt; Poll&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>::Item&gt;&gt; {
+<a href=#683 id=683 data-nosnippet>683</a>        <span class="kw">let </span>id = <span class="self">self</span>.as_ref().id;
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="kw">let </span>source = <span class="kw-2">&amp;mut </span><span class="self">self</span>.get_mut().source;
+<a href=#685 id=685 data-nosnippet>685</a>        <span class="kw">match </span>source.as_mut().poll_next(cx) {
+<a href=#686 id=686 data-nosnippet>686</a>            Poll::Ready(<span class="prelude-val">Some</span>(v)) =&gt; Poll::Ready(<span class="prelude-val">Some</span>(v.map(|d| (id, d)))),
+<a href=#687 id=687 data-nosnippet>687</a>            Poll::Ready(<span class="prelude-val">None</span>) =&gt; Poll::Ready(<span class="prelude-val">None</span>),
+<a href=#688 id=688 data-nosnippet>688</a>            Poll::Pending =&gt; Poll::Pending,
+<a href=#689 id=689 data-nosnippet>689</a>        }
+<a href=#690 id=690 data-nosnippet>690</a>    }
+<a href=#691 id=691 data-nosnippet>691</a>}
 <a href=#692 id=692 data-nosnippet>692</a>
-<a href=#693 id=693 data-nosnippet>693</a><span class="kw">pub struct </span>ConnectedTagged&lt;T: ConnectedSource&gt;
-<a href=#694 id=694 data-nosnippet>694</a><span class="kw">where
-<a href=#695 id=695 data-nosnippet>695</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
-<a href=#696 id=696 data-nosnippet>696</a>{
-<a href=#697 id=697 data-nosnippet>697</a>    source: MergedMux&lt;T&gt;,
-<a href=#698 id=698 data-nosnippet>698</a>}
-<a href=#699 id=699 data-nosnippet>699</a>
-<a href=#700 id=700 data-nosnippet>700</a><span class="attr">#[async_trait]
-<a href=#701 id=701 data-nosnippet>701</a></span><span class="kw">impl</span>&lt;T: Connected + ConnectedSource&gt; Connected <span class="kw">for </span>ConnectedTagged&lt;T&gt;
-<a href=#702 id=702 data-nosnippet>702</a><span class="kw">where
-<a href=#703 id=703 data-nosnippet>703</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
-<a href=#704 id=704 data-nosnippet>704</a>{
-<a href=#705 id=705 data-nosnippet>705</a>    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
-<a href=#706 id=706 data-nosnippet>706</a>        <span class="kw">let </span>sources = <span class="kw">match </span>pipe {
-<a href=#707 id=707 data-nosnippet>707</a>            Connection::AsClient(ClientConnection::Tagged(pipe, id)) =&gt; {
-<a href=#708 id=708 data-nosnippet>708</a>                <span class="macro">vec!</span>[(
-<a href=#709 id=709 data-nosnippet>709</a>                    Box::pin(
-<a href=#710 id=710 data-nosnippet>710</a>                        T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
-<a href=#711 id=711 data-nosnippet>711</a>                            .<span class="kw">await
-<a href=#712 id=712 data-nosnippet>712</a>                            </span>.into_source(),
-<a href=#713 id=713 data-nosnippet>713</a>                    ),
-<a href=#714 id=714 data-nosnippet>714</a>                    id,
-<a href=#715 id=715 data-nosnippet>715</a>                )]
-<a href=#716 id=716 data-nosnippet>716</a>            }
-<a href=#717 id=717 data-nosnippet>717</a>
-<a href=#718 id=718 data-nosnippet>718</a>            Connection::AsClient(ClientConnection::Merge(m)) =&gt; {
-<a href=#719 id=719 data-nosnippet>719</a>                <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
-<a href=#720 id=720 data-nosnippet>720</a>                <span class="kw">for </span>port <span class="kw">in </span>m {
-<a href=#721 id=721 data-nosnippet>721</a>                    <span class="kw">if let </span>ClientConnection::Tagged(pipe, id) = port {
-<a href=#722 id=722 data-nosnippet>722</a>                        sources.push((
-<a href=#723 id=723 data-nosnippet>723</a>                            Box::pin(
-<a href=#724 id=724 data-nosnippet>724</a>                                T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
-<a href=#725 id=725 data-nosnippet>725</a>                                    .<span class="kw">await
-<a href=#726 id=726 data-nosnippet>726</a>                                    </span>.into_source(),
-<a href=#727 id=727 data-nosnippet>727</a>                            ),
-<a href=#728 id=728 data-nosnippet>728</a>                            id,
-<a href=#729 id=729 data-nosnippet>729</a>                        ));
-<a href=#730 id=730 data-nosnippet>730</a>                    } <span class="kw">else </span>{
-<a href=#731 id=731 data-nosnippet>731</a>                        <span class="macro">panic!</span>(<span class="string">"Merge port must be tagged"</span>);
-<a href=#732 id=732 data-nosnippet>732</a>                    }
-<a href=#733 id=733 data-nosnippet>733</a>                }
-<a href=#734 id=734 data-nosnippet>734</a>
-<a href=#735 id=735 data-nosnippet>735</a>                sources
-<a href=#736 id=736 data-nosnippet>736</a>            }
-<a href=#737 id=737 data-nosnippet>737</a>
-<a href=#738 id=738 data-nosnippet>738</a>            Connection::AsServer(BoundServer::Tagged(pipe, id)) =&gt; {
-<a href=#739 id=739 data-nosnippet>739</a>                <span class="macro">vec!</span>[(
-<a href=#740 id=740 data-nosnippet>740</a>                    Box::pin(
-<a href=#741 id=741 data-nosnippet>741</a>                        T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
-<a href=#742 id=742 data-nosnippet>742</a>                            .<span class="kw">await
-<a href=#743 id=743 data-nosnippet>743</a>                            </span>.into_source(),
-<a href=#744 id=744 data-nosnippet>744</a>                    ),
-<a href=#745 id=745 data-nosnippet>745</a>                    id,
-<a href=#746 id=746 data-nosnippet>746</a>                )]
-<a href=#747 id=747 data-nosnippet>747</a>            }
-<a href=#748 id=748 data-nosnippet>748</a>
-<a href=#749 id=749 data-nosnippet>749</a>            Connection::AsServer(BoundServer::Merge(m)) =&gt; {
-<a href=#750 id=750 data-nosnippet>750</a>                <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
-<a href=#751 id=751 data-nosnippet>751</a>                <span class="kw">for </span>port <span class="kw">in </span>m {
-<a href=#752 id=752 data-nosnippet>752</a>                    <span class="kw">if let </span>BoundServer::Tagged(pipe, id) = port {
-<a href=#753 id=753 data-nosnippet>753</a>                        sources.push((
-<a href=#754 id=754 data-nosnippet>754</a>                            Box::pin(
-<a href=#755 id=755 data-nosnippet>755</a>                                T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
-<a href=#756 id=756 data-nosnippet>756</a>                                    .<span class="kw">await
-<a href=#757 id=757 data-nosnippet>757</a>                                    </span>.into_source(),
-<a href=#758 id=758 data-nosnippet>758</a>                            ),
-<a href=#759 id=759 data-nosnippet>759</a>                            id,
-<a href=#760 id=760 data-nosnippet>760</a>                        ));
-<a href=#761 id=761 data-nosnippet>761</a>                    } <span class="kw">else </span>{
-<a href=#762 id=762 data-nosnippet>762</a>                        <span class="macro">panic!</span>(<span class="string">"Merge port must be tagged"</span>);
-<a href=#763 id=763 data-nosnippet>763</a>                    }
-<a href=#764 id=764 data-nosnippet>764</a>                }
-<a href=#765 id=765 data-nosnippet>765</a>
-<a href=#766 id=766 data-nosnippet>766</a>                sources
-<a href=#767 id=767 data-nosnippet>767</a>            }
-<a href=#768 id=768 data-nosnippet>768</a>
-<a href=#769 id=769 data-nosnippet>769</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a non-tagged pipe as a tagged"</span>),
-<a href=#770 id=770 data-nosnippet>770</a>        };
-<a href=#771 id=771 data-nosnippet>771</a>
-<a href=#772 id=772 data-nosnippet>772</a>        <span class="kw">let </span><span class="kw-2">mut </span>connected_mux = Vec::new();
-<a href=#773 id=773 data-nosnippet>773</a>        <span class="kw">for </span>(pipe, id) <span class="kw">in </span>sources {
-<a href=#774 id=774 data-nosnippet>774</a>            connected_mux.push(Box::pin(TaggedSource {
-<a href=#775 id=775 data-nosnippet>775</a>                marker: PhantomData,
-<a href=#776 id=776 data-nosnippet>776</a>                id,
-<a href=#777 id=777 data-nosnippet>777</a>                source: pipe,
-<a href=#778 id=778 data-nosnippet>778</a>            }));
-<a href=#779 id=779 data-nosnippet>779</a>        }
-<a href=#780 id=780 data-nosnippet>780</a>
-<a href=#781 id=781 data-nosnippet>781</a>        <span class="kw">let </span>muxer = MergeSource {
-<a href=#782 id=782 data-nosnippet>782</a>            marker: PhantomData,
-<a href=#783 id=783 data-nosnippet>783</a>            sources: connected_mux,
-<a href=#784 id=784 data-nosnippet>784</a>        };
+<a href=#693 id=693 data-nosnippet>693</a><span class="kw">type </span>MergedMux&lt;T&gt; = MergeSource&lt;
+<a href=#694 id=694 data-nosnippet>694</a>    <span class="prelude-ty">Result</span>&lt;(u32, &lt;T <span class="kw">as </span>ConnectedSource&gt;::Output), io::Error&gt;,
+<a href=#695 id=695 data-nosnippet>695</a>    TaggedSource&lt;&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output, &lt;T <span class="kw">as </span>ConnectedSource&gt;::Stream&gt;,
+<a href=#696 id=696 data-nosnippet>696</a>&gt;;
+<a href=#697 id=697 data-nosnippet>697</a>
+<a href=#698 id=698 data-nosnippet>698</a><span class="kw">pub struct </span>ConnectedTagged&lt;T: ConnectedSource&gt;
+<a href=#699 id=699 data-nosnippet>699</a><span class="kw">where
+<a href=#700 id=700 data-nosnippet>700</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
+<a href=#701 id=701 data-nosnippet>701</a>{
+<a href=#702 id=702 data-nosnippet>702</a>    source: MergedMux&lt;T&gt;,
+<a href=#703 id=703 data-nosnippet>703</a>}
+<a href=#704 id=704 data-nosnippet>704</a>
+<a href=#705 id=705 data-nosnippet>705</a><span class="attr">#[async_trait]
+<a href=#706 id=706 data-nosnippet>706</a></span><span class="kw">impl</span>&lt;T: Connected + ConnectedSource&gt; Connected <span class="kw">for </span>ConnectedTagged&lt;T&gt;
+<a href=#707 id=707 data-nosnippet>707</a><span class="kw">where
+<a href=#708 id=708 data-nosnippet>708</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
+<a href=#709 id=709 data-nosnippet>709</a>{
+<a href=#710 id=710 data-nosnippet>710</a>    <span class="kw">async fn </span>from_defn(pipe: Connection) -&gt; <span class="self">Self </span>{
+<a href=#711 id=711 data-nosnippet>711</a>        <span class="kw">let </span>sources = <span class="kw">match </span>pipe {
+<a href=#712 id=712 data-nosnippet>712</a>            Connection::AsClient(ClientConnection::Tagged(pipe, id)) =&gt; {
+<a href=#713 id=713 data-nosnippet>713</a>                <span class="macro">vec!</span>[(
+<a href=#714 id=714 data-nosnippet>714</a>                    Box::pin(
+<a href=#715 id=715 data-nosnippet>715</a>                        T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
+<a href=#716 id=716 data-nosnippet>716</a>                            .<span class="kw">await
+<a href=#717 id=717 data-nosnippet>717</a>                            </span>.into_source(),
+<a href=#718 id=718 data-nosnippet>718</a>                    ),
+<a href=#719 id=719 data-nosnippet>719</a>                    id,
+<a href=#720 id=720 data-nosnippet>720</a>                )]
+<a href=#721 id=721 data-nosnippet>721</a>            }
+<a href=#722 id=722 data-nosnippet>722</a>
+<a href=#723 id=723 data-nosnippet>723</a>            Connection::AsClient(ClientConnection::Merge(m)) =&gt; {
+<a href=#724 id=724 data-nosnippet>724</a>                <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
+<a href=#725 id=725 data-nosnippet>725</a>                <span class="kw">for </span>port <span class="kw">in </span>m {
+<a href=#726 id=726 data-nosnippet>726</a>                    <span class="kw">if let </span>ClientConnection::Tagged(pipe, id) = port {
+<a href=#727 id=727 data-nosnippet>727</a>                        sources.push((
+<a href=#728 id=728 data-nosnippet>728</a>                            Box::pin(
+<a href=#729 id=729 data-nosnippet>729</a>                                T::from_defn(Connection::AsClient(<span class="kw-2">*</span>pipe))
+<a href=#730 id=730 data-nosnippet>730</a>                                    .<span class="kw">await
+<a href=#731 id=731 data-nosnippet>731</a>                                    </span>.into_source(),
+<a href=#732 id=732 data-nosnippet>732</a>                            ),
+<a href=#733 id=733 data-nosnippet>733</a>                            id,
+<a href=#734 id=734 data-nosnippet>734</a>                        ));
+<a href=#735 id=735 data-nosnippet>735</a>                    } <span class="kw">else </span>{
+<a href=#736 id=736 data-nosnippet>736</a>                        <span class="macro">panic!</span>(<span class="string">"Merge port must be tagged"</span>);
+<a href=#737 id=737 data-nosnippet>737</a>                    }
+<a href=#738 id=738 data-nosnippet>738</a>                }
+<a href=#739 id=739 data-nosnippet>739</a>
+<a href=#740 id=740 data-nosnippet>740</a>                sources
+<a href=#741 id=741 data-nosnippet>741</a>            }
+<a href=#742 id=742 data-nosnippet>742</a>
+<a href=#743 id=743 data-nosnippet>743</a>            Connection::AsServer(BoundServer::Tagged(pipe, id)) =&gt; {
+<a href=#744 id=744 data-nosnippet>744</a>                <span class="macro">vec!</span>[(
+<a href=#745 id=745 data-nosnippet>745</a>                    Box::pin(
+<a href=#746 id=746 data-nosnippet>746</a>                        T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
+<a href=#747 id=747 data-nosnippet>747</a>                            .<span class="kw">await
+<a href=#748 id=748 data-nosnippet>748</a>                            </span>.into_source(),
+<a href=#749 id=749 data-nosnippet>749</a>                    ),
+<a href=#750 id=750 data-nosnippet>750</a>                    id,
+<a href=#751 id=751 data-nosnippet>751</a>                )]
+<a href=#752 id=752 data-nosnippet>752</a>            }
+<a href=#753 id=753 data-nosnippet>753</a>
+<a href=#754 id=754 data-nosnippet>754</a>            Connection::AsServer(BoundServer::Merge(m)) =&gt; {
+<a href=#755 id=755 data-nosnippet>755</a>                <span class="kw">let </span><span class="kw-2">mut </span>sources = Vec::new();
+<a href=#756 id=756 data-nosnippet>756</a>                <span class="kw">for </span>port <span class="kw">in </span>m {
+<a href=#757 id=757 data-nosnippet>757</a>                    <span class="kw">if let </span>BoundServer::Tagged(pipe, id) = port {
+<a href=#758 id=758 data-nosnippet>758</a>                        sources.push((
+<a href=#759 id=759 data-nosnippet>759</a>                            Box::pin(
+<a href=#760 id=760 data-nosnippet>760</a>                                T::from_defn(Connection::AsServer(<span class="kw-2">*</span>pipe))
+<a href=#761 id=761 data-nosnippet>761</a>                                    .<span class="kw">await
+<a href=#762 id=762 data-nosnippet>762</a>                                    </span>.into_source(),
+<a href=#763 id=763 data-nosnippet>763</a>                            ),
+<a href=#764 id=764 data-nosnippet>764</a>                            id,
+<a href=#765 id=765 data-nosnippet>765</a>                        ));
+<a href=#766 id=766 data-nosnippet>766</a>                    } <span class="kw">else </span>{
+<a href=#767 id=767 data-nosnippet>767</a>                        <span class="macro">panic!</span>(<span class="string">"Merge port must be tagged"</span>);
+<a href=#768 id=768 data-nosnippet>768</a>                    }
+<a href=#769 id=769 data-nosnippet>769</a>                }
+<a href=#770 id=770 data-nosnippet>770</a>
+<a href=#771 id=771 data-nosnippet>771</a>                sources
+<a href=#772 id=772 data-nosnippet>772</a>            }
+<a href=#773 id=773 data-nosnippet>773</a>
+<a href=#774 id=774 data-nosnippet>774</a>            <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">"Cannot connect to a non-tagged pipe as a tagged"</span>),
+<a href=#775 id=775 data-nosnippet>775</a>        };
+<a href=#776 id=776 data-nosnippet>776</a>
+<a href=#777 id=777 data-nosnippet>777</a>        <span class="kw">let </span><span class="kw-2">mut </span>connected_mux = Vec::new();
+<a href=#778 id=778 data-nosnippet>778</a>        <span class="kw">for </span>(pipe, id) <span class="kw">in </span>sources {
+<a href=#779 id=779 data-nosnippet>779</a>            connected_mux.push(Box::pin(TaggedSource {
+<a href=#780 id=780 data-nosnippet>780</a>                marker: PhantomData,
+<a href=#781 id=781 data-nosnippet>781</a>                id,
+<a href=#782 id=782 data-nosnippet>782</a>                source: pipe,
+<a href=#783 id=783 data-nosnippet>783</a>            }));
+<a href=#784 id=784 data-nosnippet>784</a>        }
 <a href=#785 id=785 data-nosnippet>785</a>
-<a href=#786 id=786 data-nosnippet>786</a>        ConnectedTagged { source: muxer }
-<a href=#787 id=787 data-nosnippet>787</a>    }
-<a href=#788 id=788 data-nosnippet>788</a>}
-<a href=#789 id=789 data-nosnippet>789</a>
-<a href=#790 id=790 data-nosnippet>790</a><span class="kw">impl</span>&lt;T: ConnectedSource&gt; ConnectedSource <span class="kw">for </span>ConnectedTagged&lt;T&gt;
-<a href=#791 id=791 data-nosnippet>791</a><span class="kw">where
-<a href=#792 id=792 data-nosnippet>792</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
-<a href=#793 id=793 data-nosnippet>793</a>{
-<a href=#794 id=794 data-nosnippet>794</a>    <span class="kw">type </span>Output = (u32, T::Output);
-<a href=#795 id=795 data-nosnippet>795</a>    <span class="kw">type </span>Stream = MergeSource&lt;<span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Output, io::Error&gt;, TaggedSource&lt;T::Output, T::Stream&gt;&gt;;
-<a href=#796 id=796 data-nosnippet>796</a>
-<a href=#797 id=797 data-nosnippet>797</a>    <span class="kw">fn </span>into_source(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Stream {
-<a href=#798 id=798 data-nosnippet>798</a>        <span class="self">self</span>.source
-<a href=#799 id=799 data-nosnippet>799</a>    }
-<a href=#800 id=800 data-nosnippet>800</a>}</code></pre></div></section></main></body></html>
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">let </span>muxer = MergeSource {
+<a href=#787 id=787 data-nosnippet>787</a>            marker: PhantomData,
+<a href=#788 id=788 data-nosnippet>788</a>            sources: connected_mux,
+<a href=#789 id=789 data-nosnippet>789</a>        };
+<a href=#790 id=790 data-nosnippet>790</a>
+<a href=#791 id=791 data-nosnippet>791</a>        ConnectedTagged { source: muxer }
+<a href=#792 id=792 data-nosnippet>792</a>    }
+<a href=#793 id=793 data-nosnippet>793</a>}
+<a href=#794 id=794 data-nosnippet>794</a>
+<a href=#795 id=795 data-nosnippet>795</a><span class="kw">impl</span>&lt;T: ConnectedSource&gt; ConnectedSource <span class="kw">for </span>ConnectedTagged&lt;T&gt;
+<a href=#796 id=796 data-nosnippet>796</a><span class="kw">where
+<a href=#797 id=797 data-nosnippet>797</a>    </span>&lt;T <span class="kw">as </span>ConnectedSource&gt;::Output: <span class="lifetime">'static </span>+ Sync + Unpin,
+<a href=#798 id=798 data-nosnippet>798</a>{
+<a href=#799 id=799 data-nosnippet>799</a>    <span class="kw">type </span>Output = (u32, T::Output);
+<a href=#800 id=800 data-nosnippet>800</a>    <span class="kw">type </span>Stream = MergeSource&lt;<span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>::Output, io::Error&gt;, TaggedSource&lt;T::Output, T::Stream&gt;&gt;;
+<a href=#801 id=801 data-nosnippet>801</a>
+<a href=#802 id=802 data-nosnippet>802</a>    <span class="kw">fn </span>into_source(<span class="self">self</span>) -&gt; <span class="self">Self</span>::Stream {
+<a href=#803 id=803 data-nosnippet>803</a>        <span class="self">self</span>.source
+<a href=#804 id=804 data-nosnippet>804</a>    }
+<a href=#805 id=805 data-nosnippet>805</a>}</code></pre></div></section></main></body></html>

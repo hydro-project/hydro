@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["q"],"mod":["debug","decoupler","deploy","parse_results","partitioner","repair","rewrites"]};
+window.SIDEBAR_ITEMS = {"mod":["debug","decoupler","deploy","parse_results","partitioner","repair","rewrites"]};
