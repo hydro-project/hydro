@@ -418,11 +418,19 @@
             
             // Process each location as a separate container
             for (const [locationId, locationNodes] of locationGroups) {
-                const elkNodes = locationNodes.map(node => ({
-                    id: node.id,
-                    width: node.style?.width || 200,
-                    height: node.style?.height || 60,
-                }));
+                const elkNodes = locationNodes.map(node => {
+                    const actualNode = nodes.find(n => n.id === node.id);
+                    const nodeWidth = actualNode?.style?.width ? 
+                        parseFloat(actualNode.style.width.toString().replace('px', '')) : 200;
+                    const nodeHeight = actualNode?.style?.height ? 
+                        parseFloat(actualNode.style.height.toString().replace('px', '')) : 60;
+                        
+                    return {
+                        id: node.id,
+                        width: nodeWidth,
+                        height: nodeHeight,
+                    };
+                });
 
                 const elkEdgesInLocation = edges.filter(edge => {
                     const sourceInLocation = locationNodes.some(n => n.id === edge.source);
@@ -434,10 +442,17 @@
                     targets: [edge.target],
                 }));
 
+                // Find the actual container node to get its real dimensions
+                const actualContainer = nodes.find(n => n.id === `container_${locationId}`);
+                const containerWidth = actualContainer?.style?.width ? 
+                    parseFloat(actualContainer.style.width.toString().replace('px', '')) : 400;
+                const containerHeight = actualContainer?.style?.height ? 
+                    parseFloat(actualContainer.style.height.toString().replace('px', '')) : 300;
+
                 elkChildren.push({
                     id: `container_${locationId}`,
-                    width: 400,
-                    height: 300,
+                    width: containerWidth,
+                    height: containerHeight,
                     layoutOptions: {
                         ...elkOptions,
                         'elk.padding': '[top=40,left=20,bottom=20,right=20]',
@@ -448,12 +463,18 @@
                 });
             }
             
-            // Add orphan nodes as top-level nodes
+            // Add orphan nodes as top-level nodes with actual dimensions
             orphanNodes.forEach(node => {
+                const actualNode = nodes.find(n => n.id === node.id);
+                const nodeWidth = actualNode?.style?.width ? 
+                    parseFloat(actualNode.style.width.toString().replace('px', '')) : 200;
+                const nodeHeight = actualNode?.style?.height ? 
+                    parseFloat(actualNode.style.height.toString().replace('px', '')) : 60;
+                    
                 elkChildren.push({
                     id: node.id,
-                    width: node.style?.width || 200,
-                    height: node.style?.height || 60,
+                    width: nodeWidth,
+                    height: nodeHeight,
                 });
             });
 
@@ -774,7 +795,7 @@
                     return updatedNodes;
                 });
                 
-                // Re-layout containers after manual operations
+                // Re-layout containers after manual operations with proper spacing
                 setTimeout(async () => {
                     const reactFlowInstance = window.reactFlowInstance;
                     if (reactFlowInstance) {
@@ -783,14 +804,30 @@
                             const containerNodes = currentNodes.filter(node => node.data?.isContainer);
                             
                             if (containerNodes.length > 0) {
-                                const layoutedContainers = await applyElkLayout(containerNodes, edges, currentLayout);
+                                // Use a simple grid layout for containers to avoid overlaps
+                                const padding = 50;
+                                let x = padding;
+                                let y = padding;
+                                let maxHeightInRow = 0;
+                                const maxRowWidth = window.innerWidth - 200; // Leave some margin
                                 
                                 const updatedNodes = currentNodes.map(node => {
                                     if (node.data?.isContainer) {
-                                        const layoutedContainer = layoutedContainers.find(ln => ln.id === node.id);
-                                        if (layoutedContainer) {
-                                            return { ...node, position: layoutedContainer.position };
+                                        const width = parseFloat(node.style?.width?.toString().replace('px', '')) || 400;
+                                        const height = parseFloat(node.style?.height?.toString().replace('px', '')) || 300;
+                                        
+                                        // Check if we need to wrap to next row
+                                        if (x + width > maxRowWidth && x > padding) {
+                                            x = padding;
+                                            y += maxHeightInRow + padding;
+                                            maxHeightInRow = 0;
                                         }
+                                        
+                                        const newPosition = { x, y };
+                                        x += width + padding;
+                                        maxHeightInRow = Math.max(maxHeightInRow, height);
+                                        
+                                        return { ...node, position: newPosition };
                                     }
                                     return node;
                                 });
