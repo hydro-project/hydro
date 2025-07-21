@@ -1,0 +1,20 @@
+---
+source: dfir_rs/tests/surface_scan.rs
+expression: df.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_stream(items_recv)</code>"/]:::pullClass
+2v1[\"<div style=text-align:center>(2v1)</div> <code>scan::&lt;<br>    'static,<br>&gt;(<br>    || 0,<br>    |acc: &amp;mut u32, x: u32| {<br>        *acc += x;<br>        Some(*acc)<br>    },<br>)</code>"/]:::pullClass
+3v1[/"(3v1) <code>for_each(|v| result_send.send(v).unwrap())</code>"\]:::pushClass
+2v1-->3v1
+1v1-->2v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+    2v1
+    3v1
+end
