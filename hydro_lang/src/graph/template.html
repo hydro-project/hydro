@@ -163,6 +163,28 @@
             transform: scale(1.02);
             box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         }
+        /* Container node specific styles */
+        .react-flow__node.container-node {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            color: #333;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 4px 8px;
+            box-sizing: border-box;
+        }
+        /* Ensure container labels are readable when collapsed */
+        .react-flow__node.container-node .react-flow__node-default {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -320,6 +342,67 @@
         // Simplified color manipulation using CSS color-mix
         const lightenColor = (color, percent) => `color-mix(in srgb, ${color} ${100-percent}%, white)`;
         const darkenColor = (color, percent) => `color-mix(in srgb, ${color} ${100-percent}%, black)`;
+
+        // Helper function to truncate long labels for collapsed containers
+        const leftTruncateRustPath = (label, isCollapsed) => {
+            if (!isCollapsed) return label;
+            if (!label || typeof label !== 'string') return 'Unknown';
+            
+            // For collapsed containers, we have about 180px width (200px - padding)
+            // Assuming average character width of ~8px, we can fit about 22 characters
+            let maxLength = 22;
+            
+            if (label.length <= maxLength) return label;
+            
+            // If it contains "::" separators, left-truncate with ellipses on the left
+            if (label.includes('::')) {
+                const segments = label.split('::');
+                const lastComponent = segments[segments.length - 1];
+                
+                // Always show at least "...::lastComponent"
+                const minTruncated = '...' + '::' + lastComponent;
+                
+                // If the minimum required format is longer than our standard width,
+                // we'll need a wider container - return the minimum format
+                if (minTruncated.length > maxLength) {
+                    return minTruncated;
+                }
+                
+                // Try to include more segments while keeping ellipses on the left
+                let truncated = lastComponent;
+                for (let i = segments.length - 2; i >= 0; i--) {
+                    const withNext = segments[i] + '::' + truncated;
+                    const withEllipsis = '...' + '::' + truncated;
+                    
+                    if (withNext.length <= maxLength) {
+                        // Can fit without ellipses
+                        truncated = withNext;
+                    } else if (withEllipsis.length <= maxLength) {
+                        // Need ellipses but it fits
+                        truncated = withEllipsis;
+                        break;
+                    } else {
+                        // Even with ellipses it doesn't fit, use previous iteration result
+                        truncated = '...' + '::' + truncated;
+                        break;
+                    }
+                }
+                
+                return truncated;
+            } else {
+                // No "::" separators, just truncate from the left with ellipses
+                return '...' + label.slice(-(maxLength - 3));
+            }
+        };
+
+        // Helper function to calculate minimum width needed for a collapsed container
+        const getMinCollapsedWidth = (label) => {
+            if (!label || typeof label !== 'string') label = 'Unknown';
+            const truncated = leftTruncateRustPath(label, true);
+            // Assuming 8px per character + 16px padding
+            const minWidth = Math.max(200, truncated.length * 8 + 16);
+            return minWidth;
+        };
 
         // Simplified location color generation
         const generateLocationColor = (locationId, totalLocations, palette = 'Set3') => {
@@ -561,6 +644,7 @@
                 id: `container_${location.id}`,
                 type: 'default',
                 position: { x: containerX, y: containerY },
+                className: 'container-node',
                 style: {
                     width: maxX - minX + 2 * padding,
                     height: maxY - minY + 2 * padding + 30,
@@ -664,7 +748,9 @@
                     const containerNodes = currentNodes.filter(node => node.data?.isContainer);
                     const collapsedContainers = containerNodes.filter(node => {
                         const width = parseFloat(node.style?.width?.toString().replace('px', '')) || 400;
-                        return width <= 250; // Collapsed containers are ~200px wide
+                        // A container is considered collapsed if it's smaller than the normal expanded size
+                        // Collapsed containers are typically 200-300px wide, expanded are 400px+
+                        return width <= 350; 
                     });
                     
                     const mostlyCollapsed = collapsedContainers.length > containerNodes.length / 2;
@@ -718,7 +804,18 @@
                 
                 const updatedNodes = currentNodes.map(node => {
                     if (node.data?.isContainer) {
-                        return { ...node, style: { ...node.style, width: '200px', height: '50px' } };
+                        // Store original label and set truncated label for collapsed state
+                        const originalLabel = node.data.originalLabel || node.data.label;
+                        const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                        return { 
+                            ...node, 
+                            style: { ...node.style, width: collapsedWidth + 'px', height: '50px' },
+                            data: {
+                                ...node.data,
+                                originalLabel: originalLabel,
+                                label: leftTruncateRustPath(originalLabel, true)
+                            }
+                        };
                     } else if (node.parentNode) {
                         return { ...node, hidden: true };
                     }
@@ -759,12 +856,39 @@
                             const isCollapsed = collapsedLocations[locationId];
                             if (typeof isCollapsed !== 'boolean') return n;
 
+                            // Get the original label for this container
+                            let originalLabel = n.data.label;
+                            
+                            // If this container has a stored original label, use that
+                            if (n.data.originalLabel) {
+                                originalLabel = n.data.originalLabel;
+                            }
+
                             if (isCollapsed) {
-                                return { ...n, style: { ...n.style, width: 200, height: 50 } };
+                                return { 
+                                    ...n, 
+                                    style: { 
+                                        ...n.style, 
+                                        width: getMinCollapsedWidth(originalLabel), 
+                                        height: 50 
+                                    },
+                                    data: { 
+                                        ...n.data, 
+                                        originalLabel: originalLabel, // Store original label
+                                        label: leftTruncateRustPath(originalLabel, true) 
+                                    }
+                                };
                             } else {
                                 const originalDims = originalNodeDimensions[locationId];
                                 if (originalDims) {
-                                    return { ...n, style: { ...n.style, width: originalDims.width, height: originalDims.height } };
+                                    return { 
+                                        ...n, 
+                                        style: { ...n.style, width: originalDims.width, height: originalDims.height },
+                                        data: { 
+                                            ...n.data, 
+                                            label: originalLabel // Restore original label
+                                        }
+                                    };
                                 }
                             }
                         } else if (n.parentNode) {
@@ -952,9 +1076,16 @@
                         initialCollapsedState[locationId] = true;
                         initialOriginalDimensions[locationId] = { width, height };
                         
-                        // Modify container to collapsed state
-                        container.style.width = '200px';
+                        // Store original label and modify container to collapsed state with truncated label
+                        const originalLabel = container.data.label;
+                        const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                        container.style.width = collapsedWidth + 'px';
                         container.style.height = '50px';
+                        container.data = {
+                            ...container.data,
+                            originalLabel: originalLabel,
+                            label: leftTruncateRustPath(originalLabel, true)
+                        };
                         
                         // Hide child nodes
                         allElements.forEach(element => {
