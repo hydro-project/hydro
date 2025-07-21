@@ -628,14 +628,33 @@
 
         // Helper function to create a container for a location
         const createLocationContainer = (location, locationNodes, currentPalette) => {
-            const minX = Math.min(...locationNodes.map(n => n.position.x));
-            const minY = Math.min(...locationNodes.map(n => n.position.y));
-            const maxX = Math.max(...locationNodes.map(n => n.position.x + 200));
-            const maxY = Math.max(...locationNodes.map(n => n.position.y + 60));
+            // Calculate actual bounds based on real node dimensions
+            const bounds = locationNodes.reduce((acc, node) => {
+                // Get actual node dimensions from style or use defaults
+                const nodeWidth = node.style?.width ? 
+                    parseFloat(node.style.width.toString().replace('px', '')) : 200;
+                const nodeHeight = node.style?.height ? 
+                    parseFloat(node.style.height.toString().replace('px', '')) : 60;
+                
+                const nodeRight = node.position.x + nodeWidth;
+                const nodeBottom = node.position.y + nodeHeight;
+                
+                return {
+                    minX: Math.min(acc.minX, node.position.x),
+                    minY: Math.min(acc.minY, node.position.y),
+                    maxX: Math.max(acc.maxX, nodeRight),
+                    maxY: Math.max(acc.maxY, nodeBottom)
+                };
+            }, {
+                minX: locationNodes[0]?.position.x || 0,
+                minY: locationNodes[0]?.position.y || 0,
+                maxX: locationNodes[0]?.position.x || 0,
+                maxY: locationNodes[0]?.position.y || 0
+            });
             
             const padding = 30;
-            const containerX = minX - padding;
-            const containerY = minY - padding - 30;
+            const containerX = bounds.minX - padding;
+            const containerY = bounds.minY - padding - 30; // Extra space for label
             
             const backgroundColor = generateLocationColor(location.id, 1, currentPalette);
             const borderColor = generateLocationBorderColor(location.id, 1, currentPalette);
@@ -646,8 +665,8 @@
                 position: { x: containerX, y: containerY },
                 className: 'container-node',
                 style: {
-                    width: maxX - minX + 2 * padding,
-                    height: maxY - minY + 2 * padding + 30,
+                    width: bounds.maxX - bounds.minX + 2 * padding,
+                    height: bounds.maxY - bounds.minY + 2 * padding + 30, // Extra 30px for label
                     backgroundColor: backgroundColor,
                     border: `2px solid ${borderColor}`,
                     borderRadius: '8px',
@@ -690,15 +709,22 @@
                     height: height,
                 };
                 
-                // If this container hasn't changed, try to preserve its position
+                // If this container hasn't changed, COMPLETELY FIX its position
                 if (changedContainerId && container.id !== changedContainerId) {
                     elkContainer.x = container.position.x;
                     elkContainer.y = container.position.y;
-                    // Add position constraints to encourage ELK to keep this container in place
+                    // Use ELK's position fixing to completely lock this container in place
                     elkContainer.layoutOptions = {
                         'elk.position.x': container.position.x.toString(),
                         'elk.position.y': container.position.y.toString(),
-                        'elk.alignment': 'CENTER'
+                        'elk.nodeSize.constraints': 'FIXED_POS', // This fixes the position completely
+                        'elk.nodeSize.options': 'FIXED_POS'
+                    };
+                } else {
+                    // For the changed container, allow ELK to position it freely
+                    elkContainer.layoutOptions = {
+                        'elk.nodeSize.constraints': '',
+                        'elk.nodeSize.options': ''
                     };
                 }
                 
@@ -710,12 +736,15 @@
                 id: 'container_root',
                 layoutOptions: {
                     'elk.algorithm': 'org.eclipse.elk.force',
-                    'elk.force.repulsivePower': 2.0,
-                    'elk.spacing.nodeNode': 50,
-                    'elk.spacing.componentComponent': 50,
-                    // Encourage keeping existing positions
-                    'elk.force.iterations': changedContainerId ? 50 : 10,
-                    'elk.force.temperature': changedContainerId ? 0.3 : 0.1,
+                    'elk.force.repulsivePower': 3.0, // Stronger repulsion to avoid overlaps
+                    'elk.spacing.nodeNode': 60,
+                    'elk.spacing.componentComponent': 60,
+                    // More iterations for the changed container to find a good position
+                    'elk.force.iterations': changedContainerId ? 100 : 20,
+                    'elk.force.temperature': changedContainerId ? 0.5 : 0.1,
+                    // Respect fixed positions
+                    'elk.force.repulsion': 'LINEAR',
+                    'elk.partitioning.activate': 'false'
                 },
                 children: elkContainers,
                 edges: [] // No edges between containers
@@ -728,13 +757,19 @@
                 return containerNodes.map(container => {
                     const elkContainer = layoutedGraph.children?.find(c => c.id === container.id);
                     if (elkContainer) {
-                        return {
-                            ...container,
-                            position: {
-                                x: elkContainer.x || container.position.x,
-                                y: elkContainer.y || container.position.y
-                            }
-                        };
+                        // Only update position if this was the changed container OR if no specific container was changed
+                        if (!changedContainerId || container.id === changedContainerId) {
+                            return {
+                                ...container,
+                                position: {
+                                    x: elkContainer.x || container.position.x,
+                                    y: elkContainer.y || container.position.y
+                                }
+                            };
+                        } else {
+                            // Keep the original position for unchanged containers
+                            return container;
+                        }
                     }
                     return container;
                 });
@@ -952,11 +987,22 @@
                                     }
                                 };
                             } else {
+                                // When expanding, use stored dimensions if available, otherwise use default size
                                 const originalDims = originalNodeDimensions[locationId];
                                 if (originalDims) {
                                     return { 
                                         ...n, 
                                         style: { ...n.style, width: originalDims.width, height: originalDims.height },
+                                        data: { 
+                                            ...n.data, 
+                                            label: originalLabel // Restore original label
+                                        }
+                                    };
+                                } else {
+                                    // Default expanded size if no stored dimensions
+                                    return { 
+                                        ...n, 
+                                        style: { ...n.style, width: 400, height: 300 },
                                         data: { 
                                             ...n.data, 
                                             label: originalLabel // Restore original label
@@ -1207,10 +1253,56 @@
                         
                         if (locationNodes.length > 0) {
                             const container = createLocationContainer(location, locationNodes, currentPalette);
+                            
+                            // Check if this container is currently collapsed
+                            const locationId = location.id.toString();
+                            const isCollapsed = collapsedLocations[locationId];
+                            
+                            // ALWAYS update the original dimensions with the new layout's correct size
+                            // This ensures that when collapsed containers are later expanded, they use
+                            // the correct dimensions for the current layout, not the old layout
+                            setOriginalNodeDimensions(prev => ({
+                                ...prev,
+                                [locationId]: { 
+                                    width: container.style.width, 
+                                    height: container.style.height 
+                                }
+                            }));
+                            
+                            if (isCollapsed) {
+                                // If collapsed, preserve the collapsed dimensions and label for display
+                                const existingContainer = nodes.find(n => n.id === container.id);
+                                if (existingContainer) {
+                                    container.style.width = existingContainer.style.width;
+                                    container.style.height = existingContainer.style.height;
+                                    container.data = {
+                                        ...container.data,
+                                        originalLabel: existingContainer.data.originalLabel || container.data.label,
+                                        label: existingContainer.data.label
+                                    };
+                                } else {
+                                    // Fallback to standard collapsed sizing
+                                    const originalLabel = container.data.label;
+                                    const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                                    container.style.width = collapsedWidth + 'px';
+                                    container.style.height = '50px';
+                                    container.data = {
+                                        ...container.data,
+                                        originalLabel: originalLabel,
+                                        label: leftTruncateRustPath(originalLabel, true)
+                                    };
+                                }
+                            }
+                            
                             locationContainers.push(container);
                             
                             const children = createChildNodes(locationNodes, container.id, container.position);
-                            childNodes.push(...children);
+                            // Hide children if container is collapsed
+                            const visibleChildren = children.map(child => ({
+                                ...child,
+                                hidden: isCollapsed
+                            }));
+                            childNodes.push(...visibleChildren);
                         }
                     });
                     
@@ -1232,10 +1324,50 @@
                         orphanContainer.style.backgroundColor = 'rgba(200, 200, 200, 0.2)';
                         orphanContainer.style.border = '2px solid #999999';
                         
+                        // ALWAYS update the original dimensions for the orphan container
+                        // This ensures correct sizing when expanded after layout changes
+                        setOriginalNodeDimensions(prev => ({
+                            ...prev,
+                            'null': { 
+                                width: orphanContainer.style.width, 
+                                height: orphanContainer.style.height 
+                            }
+                        }));
+                        
+                        // Check if orphan container is collapsed
+                        const isOrphanCollapsed = collapsedLocations['null'];
+                        if (isOrphanCollapsed) {
+                            const existingOrphanContainer = nodes.find(n => n.id === 'container_null');
+                            if (existingOrphanContainer) {
+                                orphanContainer.style.width = existingOrphanContainer.style.width;
+                                orphanContainer.style.height = existingOrphanContainer.style.height;
+                                orphanContainer.data = {
+                                    ...orphanContainer.data,
+                                    originalLabel: existingOrphanContainer.data.originalLabel || orphanContainer.data.label,
+                                    label: existingOrphanContainer.data.label
+                                };
+                            } else {
+                                const originalLabel = orphanContainer.data.label;
+                                const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                                orphanContainer.style.width = collapsedWidth + 'px';
+                                orphanContainer.style.height = '50px';
+                                orphanContainer.data = {
+                                    ...orphanContainer.data,
+                                    originalLabel: originalLabel,
+                                    label: leftTruncateRustPath(originalLabel, true)
+                                };
+                            }
+                        }
+                        
                         locationContainers.push(orphanContainer);
                         
                         const orphanChildren = createChildNodes(orphanNodes, orphanContainer.id, orphanContainer.position);
-                        childNodes.push(...orphanChildren);
+                        // Hide orphan children if container is collapsed
+                        const visibleOrphanChildren = orphanChildren.map(child => ({
+                            ...child,
+                            hidden: isOrphanCollapsed
+                        }));
+                        childNodes.push(...visibleOrphanChildren);
                     }
                 } else {
                     childNodes.push(...layoutedNodes);
@@ -1246,6 +1378,22 @@
                 const allElements = [...locationContainers, ...coloredChildNodes];
                 setNodes(allElements);
                 
+                // Update edges to respect current collapsed state
+                setTimeout(() => {
+                    setEdges(currentEdges => {
+                        const childNodeIdsByParent = {};
+                        allElements.forEach(n => {
+                            if (n.parentNode) {
+                                if (!childNodeIdsByParent[n.parentNode]) {
+                                    childNodeIdsByParent[n.parentNode] = new Set();
+                                }
+                                childNodeIdsByParent[n.parentNode].add(n.id);
+                            }
+                        });
+                        return routeEdgesForCollapsedContainers(currentEdges, collapsedLocations, childNodeIdsByParent);
+                    });
+                }, 50);
+                
                 // Fit view after layout change
                 setTimeout(() => {
                     const reactFlowInstance = window.reactFlowInstance;
@@ -1253,7 +1401,7 @@
                         reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
                     }
                 }, 100);
-            }, [nodes, edges, currentLayout, currentPalette, setNodes, applyNodePalette]);
+            }, [nodes, edges, currentLayout, currentPalette, collapsedLocations, setNodes, setOriginalNodeDimensions, applyNodePalette]);
 
             const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
