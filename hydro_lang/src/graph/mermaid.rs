@@ -47,16 +47,17 @@ where
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#f0f0f0','clusterBorder':'#888'}}}}}}%%
+            "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#fafafa','clusterBorder':'#e0e0e0'}}}}}}%%
 {b:i$}flowchart TD
-{b:i$}classDef sourceClass fill:#8f8,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef transformClass fill:#88f,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef joinClass fill:#f88,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef aggClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef networkClass fill:#8ff,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef sinkClass fill:#f8f,stroke:#000,text-align:left,white-space:pre
-{b:i$}classDef teeClass fill:#ddd,stroke:#000,text-align:left,white-space:pre
-{b:i$}linkStyle default stroke:#666",
+{b:i$}classDef sourceClass fill:#8dd3c7,stroke:#86c8bd,text-align:left,white-space:pre
+{b:i$}classDef transformClass fill:#ffffb3,stroke:#f5f5a8,text-align:left,white-space:pre
+{b:i$}classDef joinClass fill:#bebada,stroke:#b5b1cf,text-align:left,white-space:pre
+{b:i$}classDef aggClass fill:#fb8072,stroke:#ee796b,text-align:left,white-space:pre
+{b:i$}classDef networkClass fill:#80b1d3,stroke:#79a8c8,text-align:left,white-space:pre
+{b:i$}classDef sinkClass fill:#fdb462,stroke:#f0aa5b,text-align:left,white-space:pre
+{b:i$}classDef teeClass fill:#b3de69,stroke:#aad362,text-align:left,white-space:pre
+{b:i$}style loc_* fill:#fafafa,stroke:#e0e0e0,rx:8,ry:8
+{b:i$}linkStyle default stroke:#666666",
             b = "",
             i = self.indent
         )?;
@@ -82,7 +83,7 @@ where
         };
 
         let (lbracket, rbracket) = match node_type {
-            HydroNodeType::Source => ("((", "))"),
+            HydroNodeType::Source => ("[[", "]]"),
             HydroNodeType::Sink => ("[/", "/]"),
             HydroNodeType::Network => ("[[", "]]"),
             HydroNodeType::Tee => ("(", ")"),
@@ -136,10 +137,10 @@ where
                 "{b:i$}linkStyle {} stroke:{}",
                 self.link_count,
                 match edge_type {
-                    HydroEdgeType::Persistent => "#080",
-                    HydroEdgeType::Network => "#808",
-                    HydroEdgeType::Cycle => "#f80",
-                    HydroEdgeType::Stream => "#666",
+                    HydroEdgeType::Persistent => "#008800",
+                    HydroEdgeType::Network => "#880088",
+                    HydroEdgeType::Cycle => "#ff0000",
+                    HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
                 },
                 b = "",
                 i = self.indent,
@@ -182,7 +183,9 @@ where
 
 /// Open mermaid visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
-pub fn open_browser(built_flow: &crate::builder::built::BuiltFlow) -> Result<(), Box<dyn std::error::Error>> {
+pub fn open_browser(
+    built_flow: &crate::builder::built::BuiltFlow,
+) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
@@ -191,9 +194,9 @@ pub fn open_browser(built_flow: &crate::builder::built::BuiltFlow) -> Result<(),
         cluster_id_name: built_flow.cluster_id_name().clone(),
         external_id_name: built_flow.external_id_name().clone(),
     };
-    
+
     // Use the existing debug function
     crate::graph::debug::open_hydro_ir_mermaid(built_flow.ir(), Some(config))?;
-    
+
     Ok(())
 }
