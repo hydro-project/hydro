@@ -827,6 +827,103 @@
             return wouldBeZoom < minLegibleZoom;
         };
 
+        // Greedy expansion algorithm for small graphs
+        const determineInitialContainerStates = (allContainers, locationNodes) => {
+            const minLegibleZoom = 0.4; // Relaxed threshold to allow more expansion
+            const viewWidth = window.innerWidth * 0.85;
+            const viewHeight = window.innerHeight * 0.85;
+            
+            // Create container info with areas for sorting
+            const containerInfo = allContainers.map(container => {
+                const locationId = container.id.replace('container_', '');
+                const nodes = locationNodes[locationId] || [];
+                
+                // Calculate area based on number of nodes and their layout
+                const nodeCount = nodes.length;
+                const estimatedArea = nodeCount * 200 * 60; // rough node area estimate
+                
+                const expandedWidth = parseFloat(container.style.width.toString().replace('px', '')) || 400;
+                const expandedHeight = parseFloat(container.style.height.toString().replace('px', '')) || 300;
+                
+                return {
+                    container,
+                    locationId,
+                    nodeCount,
+                    estimatedArea,
+                    expandedWidth,
+                    expandedHeight,
+                    collapsedWidth: getMinCollapsedWidth(container.data.label),
+                    collapsedHeight: 50
+                };
+            });
+            
+            // Sort by area (smallest first for greedy expansion)
+            containerInfo.sort((a, b) => a.estimatedArea - b.estimatedArea);
+            
+            const finalStates = {};
+            const expandedContainers = [];
+            
+            // Greedy expansion algorithm
+            for (const info of containerInfo) {
+                // Create a test scenario where this container is expanded
+                const testContainers = allContainers.map(c => {
+                    const cInfo = containerInfo.find(ci => ci.container.id === c.id);
+                    const isExpanded = expandedContainers.includes(cInfo.locationId) || 
+                                     cInfo.locationId === info.locationId;
+                    
+                    return {
+                        ...c,
+                        style: {
+                            ...c.style,
+                            width: isExpanded ? cInfo.expandedWidth : cInfo.collapsedWidth,
+                            height: isExpanded ? cInfo.expandedHeight : cInfo.collapsedHeight
+                        }
+                    };
+                });
+                
+                // Calculate bounds with this expansion
+                const bounds = testContainers.reduce((acc, c) => {
+                    const width = parseFloat(c.style.width.toString().replace('px', '')) || 400;
+                    const height = parseFloat(c.style.height.toString().replace('px', '')) || 300;
+                    const right = c.position.x + width;
+                    const bottom = c.position.y + height;
+                    
+                    return {
+                        minX: Math.min(acc.minX, c.position.x),
+                        minY: Math.min(acc.minY, c.position.y),
+                        maxX: Math.max(acc.maxX, right),
+                        maxY: Math.max(acc.maxY, bottom)
+                    };
+                }, {
+                    minX: testContainers[0]?.position.x || 0,
+                    minY: testContainers[0]?.position.y || 0,
+                    maxX: testContainers[0]?.position.x || 0,
+                    maxY: testContainers[0]?.position.y || 0
+                });
+                
+                const graphWidth = bounds.maxX - bounds.minX;
+                const graphHeight = bounds.maxY - bounds.minY;
+                
+                const wouldBeZoomX = viewWidth / graphWidth;
+                const wouldBeZoomY = viewHeight / graphHeight;
+                const wouldBeZoom = Math.min(wouldBeZoomX, wouldBeZoomY);
+                
+                if (wouldBeZoom >= minLegibleZoom) {
+                    // Safe to expand this container
+                    expandedContainers.push(info.locationId);
+                    finalStates[info.locationId] = false; // false = expanded
+                } else {
+                    // Would make zoom too small, keep collapsed
+                    finalStates[info.locationId] = true; // true = collapsed
+                }
+            }
+            
+            console.log(`Greedy expansion: ${expandedContainers.length}/${containerInfo.length} containers expanded`);
+            console.log('Expanded containers:', expandedContainers);
+            
+            return finalStates;
+        };
+
         function UnifiedLegend({ palette }) {
             const nodeTypes = ['Source', 'Transform', 'Join', 'Aggregation', 'Network', 'Sink', 'Tee'];
             const locations = graphData.locations || [];
@@ -1201,46 +1298,77 @@
                 // Combine containers and child nodes
                 const allElements = [...locationContainers, ...coloredChildNodes];
                 
-                // STEP 1: Always start everything collapsed for simplicity
-                const initialCollapsedState = {};
+                // STEP 1: Use greedy expansion algorithm to determine initial container states
+                const locationNodesByLocationId = {};
+                graphData.locations?.forEach(location => {
+                    const locationNodes = layoutedNodes.filter(node => {
+                        const nodeLocationId = node.data?.locationId;
+                        return nodeLocationId !== null && 
+                               nodeLocationId !== undefined && 
+                               nodeLocationId.toString() === location.id.toString();
+                    });
+                    if (locationNodes.length > 0) {
+                        locationNodesByLocationId[location.id.toString()] = locationNodes;
+                    }
+                });
+                
+                // Add orphan nodes to location mapping
+                const orphanNodes = layoutedNodes.filter(node => {
+                    const nodeLocationId = node.data?.locationId;
+                    if (nodeLocationId === null || nodeLocationId === undefined) return true;
+                    return !graphData.locations.some(loc => 
+                        loc.id.toString() === nodeLocationId.toString()
+                    );
+                });
+                if (orphanNodes.length > 0) {
+                    locationNodesByLocationId['null'] = orphanNodes;
+                }
+                
+                // Determine initial states using greedy expansion
+                const initialCollapsedState = determineInitialContainerStates(locationContainers, locationNodesByLocationId);
                 const initialOriginalDimensions = {};
                 
-                // Collapse ALL containers
+                // Apply the determined states to containers
                 locationContainers.forEach(container => {
                     const width = parseFloat(container.style.width.toString().replace('px', '')) || 400;
                     const height = parseFloat(container.style.height.toString().replace('px', '')) || 300;
                     const locationId = container.id.replace('container_', '');
                     
-                    initialCollapsedState[locationId] = true;
+                    // Store original dimensions
                     initialOriginalDimensions[locationId] = { width, height };
                     
-                    // Store original label and modify container to collapsed state with truncated label
-                    const originalLabel = container.data.label;
-                    const collapsedWidth = getMinCollapsedWidth(originalLabel);
-                    container.style.width = collapsedWidth + 'px';
-                    container.style.height = '50px';
-                    container.data = {
-                        ...container.data,
-                        originalLabel: originalLabel,
-                        label: leftTruncateRustPath(originalLabel, true)
-                    };
+                    const isCollapsed = initialCollapsedState[locationId];
                     
-                    // Hide child nodes
-                    allElements.forEach(element => {
-                        if (element.parentNode === container.id) {
-                            element.hidden = true;
-                        }
-                    });
+                    if (isCollapsed) {
+                        // Store original label and modify container to collapsed state with truncated label
+                        const originalLabel = container.data.label;
+                        const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                        container.style.width = collapsedWidth + 'px';
+                        container.style.height = '50px';
+                        container.data = {
+                            ...container.data,
+                            originalLabel: originalLabel,
+                            label: leftTruncateRustPath(originalLabel, true)
+                        };
+                        
+                        // Hide child nodes for collapsed containers
+                        allElements.forEach(element => {
+                            if (element.parentNode === container.id) {
+                                element.hidden = true;
+                            }
+                        });
+                    }
+                    // If not collapsed, leave container and children as-is (expanded)
                 });
                 
-                // Set initial collapsed state for all containers
+                // Set initial states
                 setCollapsedLocations(initialCollapsedState);
                 setOriginalNodeDimensions(initialOriginalDimensions);
                 
                 setNodes(allElements);
                 setEdges(initialEdges);
                 
-                // Apply initial edge routing for collapsed containers
+                // Apply initial edge routing based on determined container states
                 setTimeout(() => {
                     setEdges(currentEdges => {
                         const childNodeIdsByParent = {};
@@ -1256,8 +1384,18 @@
                     });
                 }, 50);
                 
-                // Fit view with collapsed containers settings
-                reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02, duration: 300 });
+                // Adaptive fit view based on whether containers are mostly expanded or collapsed
+                const expandedCount = Object.values(initialCollapsedState).filter(collapsed => !collapsed).length;
+                const totalCount = Object.keys(initialCollapsedState).length;
+                const mostlyExpanded = expandedCount > totalCount / 2;
+                
+                if (mostlyExpanded) {
+                    // Most containers expanded - use closer zoom for details
+                    reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.2, duration: 300 });
+                } else {
+                    // Most containers collapsed - use wider zoom
+                    reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02, duration: 300 });
+                }
             }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette]);
 
             // Apply elk layout with selected algorithm
