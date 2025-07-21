@@ -515,7 +515,7 @@
         };
 
         // Function to apply ELK layout with hierarchical grouping and hyperedges
-        const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
+        const applyElkLayout = async (nodes, edges, layoutType = 'layered', precomputedHyperedges = []) => {
             const elkOptions = elkLayouts[layoutType] || elkLayouts.layered;
             
             // Group nodes by location first
@@ -596,10 +596,8 @@
                 });
             });
 
-            // Generate hyperedges between containers for layout purposes
-            const hyperedges = generateHyperedges(nodes, edges);
-            
-            console.log('Generated hyperedges:', hyperedges); // Debug log
+            // Use precomputed hyperedges if available, otherwise generate them
+            const hyperedges = precomputedHyperedges.length > 0 ? precomputedHyperedges : generateHyperedges(nodes, edges);
             
             const elkGraph = {
                 id: 'root',
@@ -724,15 +722,11 @@
         };
 
         // STEP 2: Smart container layout using ELK with position preservation and hyperedges
-        const layoutContainersWithELK = async (containerNodes, allNodes, allEdges, changedContainerId = null) => {
+        const layoutContainersWithELK = async (containerNodes, allNodes, allEdges, changedContainerId = null, precomputedHyperedges = []) => {
             if (containerNodes.length === 0) return containerNodes;
             
-            // Generate hyperedges between containers for better layout
-            const hyperedges = generateHyperedges(allNodes, allEdges);
-            
-            console.log('layoutContainersWithELK: Generated hyperedges:', hyperedges);
-            console.log('layoutContainersWithELK: Input nodes count:', allNodes.length);
-            console.log('layoutContainersWithELK: Input edges count:', allEdges.length);
+            // Use precomputed hyperedges if available, otherwise generate them
+            const hyperedges = precomputedHyperedges.length > 0 ? precomputedHyperedges : generateHyperedges(allNodes, allEdges);
             
             // Prepare ELK layout for containers only
             const elkContainers = containerNodes.map(container => {
@@ -922,9 +916,6 @@
                 }
             }
             
-            console.log(`Greedy expansion: ${expandedContainers.length}/${containerInfo.length} containers expanded`);
-            console.log('Expanded containers:', expandedContainers);
-            
             return finalStates;
         };
 
@@ -974,6 +965,7 @@
             const [collapsedLocations, setCollapsedLocations] = React.useState({});
             const [originalNodeDimensions, setOriginalNodeDimensions] = React.useState({});
             const [lastChangedContainer, setLastChangedContainer] = React.useState(null);
+            const [hyperedges, setHyperedges] = React.useState([]);
 
             const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
             
@@ -1192,7 +1184,7 @@
                                 const originalEdges = initialEdges;
                                 
                                 // Use ELK to layout containers while preserving positions of unchanged ones
-                                const layoutedContainers = await layoutContainersWithELK(containerNodes, internalNodes, originalEdges, changedContainerId);
+                                const layoutedContainers = await layoutContainersWithELK(containerNodes, internalNodes, originalEdges, changedContainerId, hyperedges);
                                 
                                 // Update all nodes with the new container positions
                                 const updatedNodes = currentNodes.map(node => {
@@ -1246,8 +1238,12 @@
             const onInit = useCallback(async (reactFlowInstance) => {
                 window.reactFlowInstance = reactFlowInstance;
                 
+                // Compute hyperedges once from the initial graph structure
+                const computedHyperedges = generateHyperedges(initialNodes, initialEdges);
+                setHyperedges(computedHyperedges);
+                
                 // Apply ELK layout to get proper positions
-                const layoutedNodes = await applyElkLayout(initialNodes, initialEdges, currentLayout);
+                const layoutedNodes = await applyElkLayout(initialNodes, initialEdges, currentLayout, computedHyperedges);
                 
                 // Group nodes by location for hierarchical display
                 const locationContainers = [];
@@ -1409,7 +1405,7 @@
                     // Most containers collapsed - use wider zoom
                     reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02, duration: 300 });
                 }
-            }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette]);
+            }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette, setHyperedges]);
 
             // Apply elk layout with selected algorithm
             const applyLayout = useCallback(async (layoutType = currentLayout) => {
@@ -1418,7 +1414,7 @@
                 
                 if (actualNodes.length === 0) return;
                 
-                const layoutedNodes = await applyElkLayout(actualNodes, edges, layoutType);
+                const layoutedNodes = await applyElkLayout(actualNodes, edges, layoutType, hyperedges);
                 
                 // Create new containers and child relationships using helper functions
                 const locationContainers = [];
@@ -1583,7 +1579,7 @@
                         reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
                     }
                 }, 100);
-            }, [nodes, edges, currentLayout, currentPalette, collapsedLocations, setNodes, setOriginalNodeDimensions, applyNodePalette]);
+            }, [nodes, edges, currentLayout, currentPalette, collapsedLocations, setNodes, setOriginalNodeDimensions, applyNodePalette, hyperedges]);
 
             const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
