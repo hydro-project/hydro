@@ -2401,14 +2401,10 @@ name = "hydro_optimize"
 version = "0.13.0"
 dependencies = [
  "ctor 0.2.9",
- "dfir_lang",
- "dfir_rs",
  "grb",
  "hydro_deploy",
  "hydro_lang",
- "hydro_std",
  "insta",
- "proc-macro-crate",
  "proc-macro2",
  "regex",
  "serde",
@@ -2416,7 +2412,6 @@ dependencies = [
  "stageleft_tool",
  "syn 2.0.101",
  "tokio",
- "trybuild-internals-api",
 ]
 
 [[package]]

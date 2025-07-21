@@ -1,7 +1,5 @@
 stageleft::stageleft_no_entry_crate!();
 
-pub use stageleft::q;
-
 pub mod debug;
 pub mod decoupler;
 pub mod deploy;
