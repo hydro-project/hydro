@@ -12,7 +12,7 @@ use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures::sink::Buffer;
 use futures::{Future, Sink, SinkExt, Stream, ready, stream};
-use pin_project::pin_project;
+use pin_project_lite::pin_project;
 use serde::{Deserialize, Serialize};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
@@ -502,11 +502,16 @@ where
     sink: Option<BufferedDrain<T::Sink, T::Input>>,
 }
 
-#[pin_project]
-pub struct DemuxDrain<T, S: Sink<T, Error = io::Error> + Send + Sync + ?Sized> {
-    marker: PhantomData<T>,
-    #[pin]
-    sinks: HashMap<u32, Pin<Box<S>>>,
+trait DrainableSink<T>: Sink<T, Error = io::Error> + Send + Sync {}
+
+impl<T, S: Sink<T, Error = io::Error> + Send + Sync + ?Sized> DrainableSink<T> for S {}
+
+pin_project! {
+    pub struct DemuxDrain<T, S: DrainableSink<T>> {
+        marker: PhantomData<T>,
+        #[pin]
+        sinks: HashMap<u32, Pin<Box<S>>>,
+    }
 }
 
 impl<T, S: Sink<T, Error = io::Error> + Send + Sync> Sink<(u32, T)> for DemuxDrain<T, S> {
