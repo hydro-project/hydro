@@ -167,7 +167,7 @@ fn input_dependency_analysis_node(
     // Calculate input dependencies
     let input_taint_entry = input_taint.entry(*next_stmt_id).or_default();
     let input_dependencies_entry = input_dependencies.entry(*next_stmt_id).or_default();
-    match node {
+    match &node {
         // 1:1 to parent
         HydroNode::CycleSource { .. }
         | HydroNode::Tee { .. }
@@ -192,7 +192,7 @@ fn input_dependency_analysis_node(
                         continue;
                     }
                 }
-                // Parent is taintd by input but has no dependencies, delete
+                // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
             }
         }
@@ -279,18 +279,22 @@ fn input_dependency_analysis_node(
                         continue;
                     }
                 }
-                // Parent is taintd by input but has no dependencies, delete
+                // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
             }
         }
         // Based on f
-        HydroNode::Map { f, .. } => {
+        HydroNode::Map { f, .. }
+        | HydroNode::FilterMap { f, .. } => {
             assert_eq!(parent_ids.len(), 1, "Node {:?} has the wrong number of parents.", node);
             // Analyze if we haven't yet
             let syn_analysis_results = syn_analysis.entry(*next_stmt_id).or_insert_with(|| {
                 let mut analyzer = AnalyzeClosure::default();
                 analyzer.visit_expr(&f.0);
-                analyzer.output_dependencies.clone()
+
+                // Keep topmost none field if this is filter_map
+                let keep_topmost_none_fields = matches!(node, HydroNode::FilterMap { .. });
+                analyzer.output_dependencies.remove_none_fields(keep_topmost_none_fields).unwrap_or_default()
             });
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
@@ -303,12 +307,9 @@ fn input_dependency_analysis_node(
                         }
                     }
                 }
-                // Parent is taintd by input but has no dependencies, delete
+                // Parent is tainted by input but has no dependencies, delete
                 input_dependencies_entry.remove(input_id);
             }
-        }
-        HydroNode::FilterMap { .. } => {
-            panic!("Partitioning analysis does not support FilterMap because it cannot correctly determine dependencies for None.")
         }
         // Only the key is preserved
         HydroNode::ReduceKeyed { .. }
@@ -571,7 +572,7 @@ fn partitioning_constraint_analysis_node(
     }
 }
 
-fn partitioning_analysis(
+pub fn partitioning_analysis(
     ir: &mut [HydroLeaf],
     cluster_to_partition: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
@@ -860,6 +861,99 @@ mod tests {
             (4, BTreeMap::from([(3, implicit_map_dependencies)])),
             (5, BTreeMap::from([(3, map1_expected_dependencies)])),
             (6, BTreeMap::from([(3, map2_expected_dependencies)])),
+        ]);
+
+        test_input(
+            builder,
+            cluster2.id(),
+            expected_taint,
+            expected_dependencies,
+        );
+    }
+
+    #[test]
+    fn test_filter_map() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2)
+            .filter_map(q!(|(a, b)| {
+                if a > 1 {
+                    Some((b, a + 2))
+                } else {
+                    None
+                }
+            }))
+            .for_each(q!(|(b, a2)| {
+                println!("b: {}, a+2: {}", b, a2);
+            }));
+
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])),  // Network
+            (4, BTreeSet::from([3])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (5, BTreeSet::from([3])), // The operator being tested
+        ]);
+
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
+        let mut map_expected_dependencies = StructOrTuple::default();
+        map_expected_dependencies.add_dependency(
+            &vec!["0".to_string()],
+            vec!["1".to_string(), "1".to_string()],
+        );
+
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::from([(3, map_expected_dependencies)])),
+        ]);
+
+        test_input(
+            builder,
+            cluster2.id(),
+            expected_taint,
+            expected_dependencies,
+        );
+    }
+
+    #[test]
+    fn test_filter_map_remove_none() {
+        let builder = FlowBuilder::new();
+        let cluster1 = builder.cluster::<()>();
+        let cluster2 = builder.cluster::<()>();
+        cluster1
+            .source_iter(q!([(1, 2)]))
+            .broadcast_bincode_anonymous(&cluster2)
+            .filter_map(q!(|(a, b)| {
+                if a > 1 {
+                    Some((None, a + 2))
+                } 
+                else if a < 1 {
+                    Some((Some(b), a + 2))
+                }
+                else {
+                    None
+                }
+            }))
+            .for_each(q!(|(none, a2)| {
+                println!("None: {:?}, a+2: {}", none, a2);
+            }));
+
+        let expected_taint = BTreeMap::from([
+            (3, BTreeSet::from([])),  // Network
+            (4, BTreeSet::from([3])), /* The implicit map following Network, imposed by broadcast_bincode_anonymous */
+            (5, BTreeSet::from([3])), // The operator being tested
+        ]);
+
+        let mut implicit_map_dependencies = StructOrTuple::default();
+        implicit_map_dependencies.add_dependency(&vec![], vec!["1".to_string()]);
+
+        let expected_dependencies = BTreeMap::from([
+            (3, BTreeMap::new()),
+            (4, BTreeMap::from([(3, implicit_map_dependencies)])),
+            (5, BTreeMap::new()),
         ]);
 
         test_input(

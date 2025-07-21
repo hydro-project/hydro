@@ -10,13 +10,15 @@ pub type StructOrTupleIndex = Vec<String>; // Ex: ["a", "b"] represents x.a.b
 pub struct StructOrTuple {
     dependencies: BTreeSet<StructOrTupleIndex>, /* Input tuple indices this tuple is equal to, if any */
     fields: BTreeMap<String, Box<StructOrTuple>>, // Fields 1 layer deep
+    could_be_none: bool, // True if this field could also be None (used for FilterMap)
 }
 
 impl StructOrTuple {
     pub fn new_completely_dependent() -> Self {
         StructOrTuple {
-            dependencies: BTreeSet::from([vec![]]), /* Empty dependency means it is completely dependent on the input tuple */
+            dependencies: BTreeSet::from([vec![]]), /* Empty vec means it is completely dependent on the input tuple */
             fields: BTreeMap::new(),
+            could_be_none: false,
         }
     }
 
@@ -62,6 +64,7 @@ impl StructOrTuple {
                 // Create a child if necessary and set the dependency
                 let child = self.create_child(index.clone());
                 child.add_dependencies(rhs, rhs_index);
+                child.could_be_none = rhs.could_be_none;
                 return;
             } else {
                 // RHS has no dependency, exit
@@ -73,6 +76,7 @@ impl StructOrTuple {
         let child = self.create_child(index.clone());
         child.dependencies.extend(rhs.dependencies.clone());
         child.fields = rhs.fields.clone();
+        child.could_be_none = rhs.could_be_none;
     }
 
     pub fn add_dependency(
@@ -103,8 +107,33 @@ impl StructOrTuple {
         Some(child.clone())
     }
 
+    /// Remove any fields that could be None. If a parent could be None, then remove all children.
+    pub fn remove_none_fields(&self, keep_topmost_none: bool) -> Option<StructOrTuple> {
+        if !keep_topmost_none && self.could_be_none {
+            return None;
+        }
+        
+        let mut new_tuple = StructOrTuple::default();
+        new_tuple.dependencies = self.dependencies.clone();
+        for (field, index) in &self.fields {
+            if let Some(child) = index.remove_none_fields(false) {
+                new_tuple.fields.insert(field.clone(), Box::new(child));
+            }
+        }
+        Some(new_tuple)
+    }
+
     /// Create a tuple representing dependencies present in both tuples, keeping the more specific dependency if there is one
     pub fn intersect(tuple1: &StructOrTuple, tuple2: &StructOrTuple) -> Option<StructOrTuple> {
+        // If either tuple1 or tuple2 are empty and None, just return the other tuple
+        for (tuple, other) in [(tuple1, tuple2), (tuple2, tuple1)] {
+            if tuple.is_empty() && tuple.could_be_none {
+                let mut new_tuple = other.clone();
+                new_tuple.could_be_none = true;
+                return Some(new_tuple);
+            }
+        }
+
         let mut new_tuple = StructOrTuple::default();
 
         // Doesn't matter whose fields we iterate through, since the intersection must be a subset of both tuples' fields
@@ -114,7 +143,7 @@ impl StructOrTuple {
             (tuple1, tuple2)
         };
         for (field, child) in &tuple_with_fields.fields {
-            // Construct a child for tuple1 if it has a broader dependency
+            // Potentially construct a child for other_tuple if it has a broader dependency
             if let Some(other_child) = other_tuple.get_dependencies(&vec![field.clone()]) {
                 // Recursively check if there's a match in the child
                 if let Some(shared_child) = StructOrTuple::intersect(&other_child, child) {
@@ -132,6 +161,8 @@ impl StructOrTuple {
                 .intersection(&tuple2.dependencies)
                 .cloned(),
         );
+        // The new_tuple could_be_none if either tuple1 or tuple2 could_be_none
+        new_tuple.could_be_none = tuple1.could_be_none || tuple2.could_be_none;
 
         if new_tuple.is_empty() {
             None
@@ -196,6 +227,7 @@ impl StructOrTuple {
         // Recurse into fields
         let mut traversed_fields = BTreeSet::new();
         for tuple in tuples.iter() {
+            assert!(!tuple.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) to before intersect_dependencies_with_matching_fields");
             for field in tuple.fields.keys() {
                 if traversed_fields.contains(field) {
                     continue;
@@ -249,6 +281,7 @@ impl StructOrTuple {
         if tuple1.is_empty() && tuple2.is_empty() {
             return None;
         }
+        assert!(!tuple1.could_be_none && !tuple2.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) before union");
 
         let mut new_tuple = tuple1.clone();
         new_tuple.dependencies.extend(tuple2.dependencies.clone());
@@ -283,6 +316,7 @@ impl StructOrTuple {
     /// the child's dependencies are relative (dependency within the function).
     pub fn project_parent(parent: &StructOrTuple, child: &StructOrTuple) -> Option<StructOrTuple> {
         let mut new_child = StructOrTuple::default();
+        assert!(!parent.could_be_none && !child.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) before project_parent");
 
         // Recurse
         for (field, child_field) in &child.fields {
@@ -332,6 +366,11 @@ impl StructOrTupleUseRhs {
             );
         }
     }
+
+    fn set_field_could_be_none(&mut self) {
+        let field = self.rhs_tuple.create_child(self.field_index.clone());
+        field.could_be_none = true;
+    }
 }
 
 impl Visit<'_> for StructOrTupleUseRhs {
@@ -341,9 +380,8 @@ impl Visit<'_> for StructOrTupleUseRhs {
             if let Some(existing_dependency) = self.existing_dependencies.get(ident).cloned() {
                 self.add_to_rhs_tuple(&existing_dependency);
             } else if *ident == "None" {
-                println!(
-                    "Warning: Found keyword 'None', which will be ignored by partitioning analysis."
-                )
+                self.set_field_could_be_none();
+                println!("Setting field {:?} to none", self.field_index);
             }
         }
     }
@@ -450,7 +488,8 @@ impl Visit<'_> for StructOrTupleUseRhs {
                     ..Default::default()
                 };
                 then_branch_analysis.visit_block(&if_expr.then_branch);
-                branch_dependencies.push(then_branch_analysis.output_dependencies.clone());
+                println!("Then branch dependencies: {:?}", then_branch_analysis.output_dependencies);
+                branch_dependencies.push(then_branch_analysis.output_dependencies);
 
                 match &*else_branch.1 {
                     syn::Expr::Block(block) => {
@@ -459,7 +498,8 @@ impl Visit<'_> for StructOrTupleUseRhs {
                             ..Default::default()
                         };
                         else_branch_analysis.visit_expr_block(block);
-                        branch_dependencies.push(else_branch_analysis.output_dependencies.clone());
+                        println!("Else branch dependencies: {:?}", else_branch_analysis.output_dependencies);
+                        branch_dependencies.push(else_branch_analysis.output_dependencies);
                         break;
                     }
                     syn::Expr::If(nested_if_expr) => {
