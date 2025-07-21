@@ -418,6 +418,44 @@
 
         const elk = new ELK();
 
+        // Helper function to generate hyperedges between containers
+        const generateHyperedges = (nodes, edges) => {
+            const hyperedges = [];
+            const containerPairs = new Set();
+            
+            // Find all edges that cross container boundaries
+            edges.forEach(edge => {
+                const sourceNode = nodes.find(n => n.id === edge.source);
+                const targetNode = nodes.find(n => n.id === edge.target);
+                
+                if (sourceNode && targetNode) {
+                    const sourceLocationId = sourceNode.data?.locationId;
+                    const targetLocationId = targetNode.data?.locationId;
+                    
+                    // Only create hyperedges between different locations (containers)
+                    if (sourceLocationId !== undefined && targetLocationId !== undefined && 
+                        sourceLocationId !== targetLocationId) {
+                        
+                        const sourceContainerId = `container_${sourceLocationId}`;
+                        const targetContainerId = `container_${targetLocationId}`;
+                        const pairKey = `${sourceContainerId}->${targetContainerId}`;
+                        
+                        // Avoid duplicate hyperedges between the same container pair
+                        if (!containerPairs.has(pairKey)) {
+                            containerPairs.add(pairKey);
+                            hyperedges.push({
+                                id: `hyperedge_${sourceLocationId}_to_${targetLocationId}`,
+                                sources: [sourceContainerId],
+                                targets: [targetContainerId],
+                            });
+                        }
+                    }
+                }
+            });
+            
+            return hyperedges;
+        };
+
         // Shared edge routing logic for collapsed containers
         const routeEdgesForCollapsedContainers = (edges, collapsedLocations, childNodeIdsByParent) => {
             return edges.map(edge => {
@@ -476,7 +514,7 @@
             });
         };
 
-        // Function to apply ELK layout with hierarchical grouping
+        // Function to apply ELK layout with hierarchical grouping and hyperedges
         const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
             const elkOptions = elkLayouts[layoutType] || elkLayouts.layered;
             
@@ -525,12 +563,9 @@
                     targets: [edge.target],
                 }));
 
-                // Find the actual container node to get its real dimensions
-                const actualContainer = nodes.find(n => n.id === `container_${locationId}`);
-                const containerWidth = actualContainer?.style?.width ? 
-                    parseFloat(actualContainer.style.width.toString().replace('px', '')) : 400;
-                const containerHeight = actualContainer?.style?.height ? 
-                    parseFloat(actualContainer.style.height.toString().replace('px', '')) : 300;
+                // Use default container dimensions for ELK layout
+                const containerWidth = 400;
+                const containerHeight = 300;
 
                 elkChildren.push({
                     id: `container_${locationId}`,
@@ -561,17 +596,11 @@
                 });
             });
 
-            // Cross-container edges
-            const crossContainerEdges = edges.filter(edge => {
-                const sourceLocation = nodes.find(n => n.id === edge.source)?.data?.locationId;
-                const targetLocation = nodes.find(n => n.id === edge.target)?.data?.locationId;
-                return sourceLocation !== targetLocation;
-            }).map(edge => ({
-                id: edge.id,
-                sources: [edge.source],
-                targets: [edge.target],
-            }));
-
+            // Generate hyperedges between containers for layout purposes
+            const hyperedges = generateHyperedges(nodes, edges);
+            
+            console.log('Generated hyperedges:', hyperedges); // Debug log
+            
             const elkGraph = {
                 id: 'root',
                 layoutOptions: {
@@ -581,7 +610,7 @@
                     'elk.layered.spacing.nodeNodeBetweenLayers': 150,
                 },
                 children: elkChildren,
-                edges: crossContainerEdges,
+                edges: hyperedges, // Use hyperedges for container layout
             };
 
             try {
@@ -694,9 +723,12 @@
             }));
         };
 
-        // STEP 2: Smart container layout using ELK with position preservation
-        const layoutContainersWithELK = async (containerNodes, changedContainerId = null) => {
+        // STEP 2: Smart container layout using ELK with position preservation and hyperedges
+        const layoutContainersWithELK = async (containerNodes, allNodes, allEdges, changedContainerId = null) => {
             if (containerNodes.length === 0) return containerNodes;
+            
+            // Generate hyperedges between containers for better layout
+            const hyperedges = generateHyperedges(allNodes, allEdges);
             
             // Prepare ELK layout for containers only
             const elkContainers = containerNodes.map(container => {
@@ -731,23 +763,22 @@
                 return elkContainer;
             });
             
-            // Create a simple ELK graph for container layout
+            // Create a simple ELK graph for container layout with hyperedges
             const elkGraph = {
                 id: 'container_root',
                 layoutOptions: {
-                    'elk.algorithm': 'org.eclipse.elk.force',
-                    'elk.force.repulsivePower': 3.0, // Stronger repulsion to avoid overlaps
-                    'elk.spacing.nodeNode': 60,
-                    'elk.spacing.componentComponent': 60,
+                    'elk.algorithm': 'org.eclipse.elk.layered', // Use layered for better hyperedge handling
+                    'elk.direction': 'RIGHT',
+                    'elk.spacing.nodeNode': 100,
+                    'elk.spacing.componentComponent': 100,
+                    'elk.layered.spacing.nodeNodeBetweenLayers': 150,
                     // More iterations for the changed container to find a good position
-                    'elk.force.iterations': changedContainerId ? 100 : 20,
-                    'elk.force.temperature': changedContainerId ? 0.5 : 0.1,
+                    'elk.layered.thoroughness': changedContainerId ? 10 : 5,
                     // Respect fixed positions
-                    'elk.force.repulsion': 'LINEAR',
                     'elk.partitioning.activate': 'false'
                 },
                 children: elkContainers,
-                edges: [] // No edges between containers
+                edges: hyperedges // Use hyperedges for better container layout
             };
             
             try {
@@ -1051,7 +1082,7 @@
                                 const changedContainerId = lastChangedContainer;
                                 
                                 // Use ELK to layout containers while preserving positions of unchanged ones
-                                const layoutedContainers = await layoutContainersWithELK(containerNodes, changedContainerId);
+                                const layoutedContainers = await layoutContainersWithELK(containerNodes, currentNodes, edges, changedContainerId);
                                 
                                 // Update all nodes with the new container positions
                                 const updatedNodes = currentNodes.map(node => {
