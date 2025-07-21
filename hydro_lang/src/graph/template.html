@@ -317,42 +317,15 @@
             return { primary, secondary, tertiary, border, gradient };
         };
         
-        // Helper functions for color manipulation
-        const lightenColor = (color, percent) => {
-            // Simple lightening - convert hex to HSL, increase lightness, convert back
-            const num = parseInt(color.replace("#", ""), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) + amt;
-            const G = (num >> 8 & 0x00FF) + amt;
-            const B = (num & 0x0000FF) + amt;
-            return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-                (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
-        };
-        
-        const darkenColor = (color, percent) => {
-            const num = parseInt(color.replace("#", ""), 16);
-            const amt = Math.round(2.55 * percent);
-            const R = (num >> 16) - amt;
-            const G = (num >> 8 & 0x00FF) - amt;
-            const B = (num & 0x0000FF) - amt;
-            return "#" + (0x1000000 + (R > 255 ? 255 : R < 0 ? 0 : R) * 0x10000 +
-                (G > 255 ? 255 : G < 0 ? 0 : G) * 0x100 +
-                (B > 255 ? 255 : B < 0 ? 0 : B)).toString(16).slice(1);
-        };
+        // Simplified color manipulation using CSS color-mix
+        const lightenColor = (color, percent) => `color-mix(in srgb, ${color} ${100-percent}%, white)`;
+        const darkenColor = (color, percent) => `color-mix(in srgb, ${color} ${100-percent}%, black)`;
 
-        // Generate unique colors for each location ID
+        // Simplified location color generation
         const generateLocationColor = (locationId, totalLocations, palette = 'Set3') => {
             const colors = colorPalettes[palette];
             const color = colors[locationId % colors.length];
-            const num = parseInt(color.replace("#", ""), 16);
-            
-            // Make it lighter for background
-            const R = Math.min(255, (num >> 16) + 60);
-            const G = Math.min(255, (num >> 8 & 0x00FF) + 60);
-            const B = Math.min(255, (num & 0x0000FF) + 60);
-            
-            return "#" + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1) + "40"; // Add transparency
+            return `${color}40`; // Add transparency
         };
 
         const generateLocationBorderColor = (locationId, totalLocations, palette = 'Set3') => {
@@ -362,12 +335,67 @@
 
         const elk = new ELK();
 
+        // Shared edge routing logic for collapsed containers
+        const routeEdgesForCollapsedContainers = (edges, collapsedLocations, childNodeIdsByParent) => {
+            return edges.map(edge => {
+                let newEdge = { ...edge };
+                
+                // Reset any previous modifications
+                if (newEdge.data?.originalSource) {
+                    newEdge.source = newEdge.data.originalSource;
+                    newEdge.data = { ...newEdge.data };
+                    delete newEdge.data.originalSource;
+                }
+                if (newEdge.data?.originalTarget) {
+                    newEdge.target = newEdge.data.originalTarget;
+                    newEdge.data = { ...newEdge.data };
+                    delete newEdge.data.originalTarget;
+                }
+                newEdge.hidden = false;
+
+                // Find collapsed containers containing source/target
+                let sourceInCollapsedContainer = null;
+                let targetInCollapsedContainer = null;
+                
+                for (const locationId in collapsedLocations) {
+                    if (collapsedLocations[locationId]) {
+                        const containerId = `container_${locationId}`;
+                        const childIds = childNodeIdsByParent[containerId] || new Set();
+
+                        if (childIds.has(newEdge.source)) {
+                            sourceInCollapsedContainer = containerId;
+                        }
+                        if (childIds.has(newEdge.target)) {
+                            targetInCollapsedContainer = containerId;
+                        }
+                    }
+                }
+                
+                // Apply routing based on container states
+                if (sourceInCollapsedContainer && targetInCollapsedContainer) {
+                    if (sourceInCollapsedContainer === targetInCollapsedContainer) {
+                        newEdge.hidden = true; // Hide internal edges
+                    } else {
+                        // Route container to container
+                        newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
+                        newEdge.source = sourceInCollapsedContainer;
+                        newEdge.target = targetInCollapsedContainer;
+                    }
+                } else if (sourceInCollapsedContainer) {
+                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
+                    newEdge.source = sourceInCollapsedContainer;
+                } else if (targetInCollapsedContainer) {
+                    newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
+                    newEdge.target = targetInCollapsedContainer;
+                }
+                
+                return newEdge;
+            });
+        };
+
         // Function to apply ELK layout with hierarchical grouping
         const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
             const elkOptions = elkLayouts[layoutType] || elkLayouts.layered;
-            
-            console.log('Applying ELK layout:', layoutType, 'with options:', elkOptions);
-            console.log('Input nodes:', nodes.length, 'edges:', edges.length);
             
             // Group nodes by location first
             const locationGroups = new Map();
@@ -385,16 +413,11 @@
                 }
             });
             
-            console.log('Found', locationGroups.size, 'location groups and', orphanNodes.length, 'orphan nodes');
-            
             // Create hierarchical ELK structure with proper container spacing
             const elkChildren = [];
-            let containerIndex = 0;
             
             // Process each location as a separate container
             for (const [locationId, locationNodes] of locationGroups) {
-                const location = graphData.locations?.find(loc => loc.id.toString() === locationId.toString());
-                
                 const elkNodes = locationNodes.map(node => ({
                     id: node.id,
                     width: node.style?.width || 200,
@@ -410,8 +433,6 @@
                     sources: [edge.source],
                     targets: [edge.target],
                 }));
-                
-                console.log(`Location ${locationId} has ${elkEdgesInLocation.length} internal edges`);
 
                 elkChildren.push({
                     id: `container_${locationId}`,
@@ -425,8 +446,6 @@
                     children: elkNodes,
                     edges: elkEdgesInLocation,
                 });
-                
-                containerIndex++;
             }
             
             // Add orphan nodes as top-level nodes
@@ -462,9 +481,7 @@
             };
 
             try {
-                console.log('Running ELK layout with hierarchical structure...');
                 const layoutedGraph = await elk.layout(elkGraph);
-                console.log('ELK layout complete:', layoutedGraph);
                 
                 // Apply positions from ELK layout
                 const layoutedNodes = nodes.map((node) => {
@@ -489,23 +506,85 @@
                         elkNode = layoutedGraph.children?.find(n => n.id === node.id);
                     }
                     
-                    const newNode = {
+                    return {
                         ...node,
                         position: {
                             x: elkNode ? (elkNode.x || 0) + containerOffset.x : Math.random() * 500,
                             y: elkNode ? (elkNode.y || 0) + containerOffset.y : Math.random() * 500,
                         },
                     };
-                    return newNode;
                 });
 
-                console.log('Layouted nodes:', layoutedNodes.length);
                 return layoutedNodes;
             } catch (error) {
                 console.error('ELK layout failed:', error);
-                // Fallback layout implementation...
-                return nodes;
+                return nodes; // Fallback to original positions
             }
+        };
+
+        // Helper function to create a container for a location
+        const createLocationContainer = (location, locationNodes, currentPalette) => {
+            const minX = Math.min(...locationNodes.map(n => n.position.x));
+            const minY = Math.min(...locationNodes.map(n => n.position.y));
+            const maxX = Math.max(...locationNodes.map(n => n.position.x + 200));
+            const maxY = Math.max(...locationNodes.map(n => n.position.y + 60));
+            
+            const padding = 30;
+            const containerX = minX - padding;
+            const containerY = minY - padding - 30;
+            
+            const backgroundColor = generateLocationColor(location.id, 1, currentPalette);
+            const borderColor = generateLocationBorderColor(location.id, 1, currentPalette);
+            
+            return {
+                id: `container_${location.id}`,
+                type: 'default',
+                position: { x: containerX, y: containerY },
+                style: {
+                    width: maxX - minX + 2 * padding,
+                    height: maxY - minY + 2 * padding + 30,
+                    backgroundColor: backgroundColor,
+                    border: `2px solid ${borderColor}`,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    zIndex: 1,
+                },
+                data: { 
+                    label: location.label,
+                    isContainer: true
+                },
+                draggable: true,
+            };
+        };
+
+        // Helper function to create child nodes for a container
+        const createChildNodes = (locationNodes, containerId, containerPosition) => {
+            return locationNodes.map(node => ({
+                ...node,
+                parentNode: containerId,
+                extent: 'parent',
+                position: {
+                    x: node.position.x - containerPosition.x,
+                    y: node.position.y - containerPosition.y
+                }
+            }));
+        };
+
+        // Helper function to determine if graph should be auto-collapsed
+        const shouldAutoCollapse = (locationContainers) => {
+            if (locationContainers.length === 0) return false;
+            
+            const minLegibleZoom = 0.5;
+            const graphWidth = Math.max(...locationContainers.map(c => c.position.x + parseFloat(c.style.width.toString().replace('px', '')) || 400)) - 
+                             Math.min(...locationContainers.map(c => c.position.x));
+            const graphHeight = Math.max(...locationContainers.map(c => c.position.y + parseFloat(c.style.height.toString().replace('px', '')) || 300)) - 
+                              Math.min(...locationContainers.map(c => c.position.y));
+                              
+            const wouldBeZoomX = (window.innerWidth * 0.85) / graphWidth;
+            const wouldBeZoomY = (window.innerHeight * 0.85) / graphHeight;
+            const wouldBeZoom = Math.min(wouldBeZoomX, wouldBeZoomY);
+            
+            return wouldBeZoom < minLegibleZoom;
         };
 
         function UnifiedLegend({ palette }) {
@@ -556,11 +635,6 @@
 
             const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), []);
             
-            // Add a test to see if ANY clicks work
-            const onPaneClick = useCallback(() => {
-                console.log('=== PANE CLICKED ===');
-            }, []);
-            
             const fitView = useCallback(() => {
                 const reactFlowInstance = window.reactFlowInstance;
                 if (reactFlowInstance) {
@@ -596,8 +670,6 @@
                 const reactFlowInstance = window.reactFlowInstance;
                 if (!reactFlowInstance) return;
                 
-                console.log('Collapse all containers requested');
-                
                 const currentNodes = reactFlowInstance.getNodes();
                 const containerNodes = currentNodes.filter(node => node.data?.isContainer);
                 const newCollapsedState = {};
@@ -619,64 +691,33 @@
                     newCollapsedState[locationId] = true;
                 });
                 
-                // Update states
+                // Update states and nodes
                 setCollapsedLocations(newCollapsedState);
                 setOriginalNodeDimensions(prev => ({ ...prev, ...newOriginalDimensions }));
                 
-                // Update nodes to collapsed state
                 const updatedNodes = currentNodes.map(node => {
                     if (node.data?.isContainer) {
-                        return {
-                            ...node,
-                            style: {
-                                ...node.style,
-                                width: '200px',
-                                height: '50px'
-                            }
-                        };
+                        return { ...node, style: { ...node.style, width: '200px', height: '50px' } };
                     } else if (node.parentNode) {
-                        // Hide child nodes
-                        return {
-                            ...node,
-                            hidden: true
-                        };
+                        return { ...node, hidden: true };
                     }
                     return node;
                 });
                 
                 setNodes(updatedNodes);
                 
-                // Fit view after collapse with appropriate zoom for collapsed view
+                // Fit view after collapse
                 setTimeout(() => {
-                    reactFlowInstance.fitView({ 
-                        padding: 0.2, 
-                        maxZoom: 0.5, 
-                        minZoom: 0.02 
-                    });
+                    reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02 });
                 }, 100);
-                
-                console.log('All containers collapsed');
             }, [originalNodeDimensions, setCollapsedLocations, setOriginalNodeDimensions, setNodes]);
 
             const onNodeClick = useCallback((event, node) => {
-                console.log('=== NODE CLICK EVENT ===');
-                console.log('Node clicked:', node.id);
-                console.log('Node type:', node.type);
-                console.log('Node data:', node.data);
-                console.log('Is container?:', node.data?.isContainer);
-                console.log('Event target:', event.target);
-                console.log('Event currentTarget:', event.currentTarget);
-                
                 if (node.data?.isContainer) {
-                    // Extract the actual location ID from the container ID
-                    // Container IDs are in format "container_X" where X is the location ID
                     const locationId = node.id.replace('container_', '');
-                    console.log('Toggling container for location:', locationId);
-                    console.log('Current collapsed state:', collapsedLocations[locationId]);
                     
                     setCollapsedLocations(prev => {
                         const isCollapsing = !prev[locationId];
-                        console.log('Container', locationId, isCollapsing ? 'collapsing' : 'expanding');
                         if (isCollapsing) {
                             setOriginalNodeDimensions(dims => ({
                                 ...dims,
@@ -685,19 +726,17 @@
                         }
                         return { ...prev, [locationId]: isCollapsing };
                     });
-                } else {
-                    console.log('Clicked node is not a container, ignoring');
                 }
-            }, [collapsedLocations]); // Add collapsedLocations to dependencies for debugging
+            }, [collapsedLocations]);
 
             React.useEffect(() => {
+                // Update node visibility and container sizes based on collapsed state
                 setNodes(currentNodes => {
                     const updatedNodes = currentNodes.map(n => {
                         if (n.data?.isContainer) {
-                            // Extract location ID from container ID
                             const locationId = n.id.replace('container_', '');
                             const isCollapsed = collapsedLocations[locationId];
-                            if (typeof isCollapsed !== 'boolean') return n; // No change
+                            if (typeof isCollapsed !== 'boolean') return n;
 
                             if (isCollapsed) {
                                 return { ...n, style: { ...n.style, width: 200, height: 50 } };
@@ -708,7 +747,6 @@
                                 }
                             }
                         } else if (n.parentNode) {
-                            // Extract location ID from parent container ID
                             const parentLocationId = n.parentNode.replace('container_', '');
                             const isParentCollapsed = collapsedLocations[parentLocationId];
                             if (typeof isParentCollapsed === 'boolean') {
@@ -718,7 +756,7 @@
                         return n;
                     });
 
-                    // Update edges based on the updated nodes
+                    // Update edges using the shared routing function
                     setEdges(currentEdges => {
                         const childNodeIdsByParent = {};
                         updatedNodes.forEach(n => {
@@ -730,93 +768,23 @@
                             }
                         });
 
-                        return currentEdges.map(edge => {
-                            let newEdge = { ...edge };
-                            
-                            // First, reset any modifications from previous state
-                            if (newEdge.data?.originalSource) {
-                                newEdge.source = newEdge.data.originalSource;
-                                newEdge.data = { ...newEdge.data };
-                                delete newEdge.data.originalSource;
-                            }
-                            if (newEdge.data?.originalTarget) {
-                                newEdge.target = newEdge.data.originalTarget;
-                                newEdge.data = { ...newEdge.data };
-                                delete newEdge.data.originalTarget;
-                            }
-                            newEdge.hidden = false;
-
-                            // Check all collapsed locations and handle edge routing
-                            let sourceInCollapsedContainer = null;
-                            let targetInCollapsedContainer = null;
-                            
-                            // First pass: find which containers (if any) contain the source and target
-                            for (const locationId in collapsedLocations) {
-                                if (Object.prototype.hasOwnProperty.call(collapsedLocations, locationId)) {
-                                    const isCollapsed = collapsedLocations[locationId];
-                                    if (isCollapsed) {
-                                        const containerId = `container_${locationId}`;
-                                        const childIds = childNodeIdsByParent[containerId] || new Set();
-
-                                        if (childIds.has(newEdge.source)) {
-                                            sourceInCollapsedContainer = containerId;
-                                        }
-                                        if (childIds.has(newEdge.target)) {
-                                            targetInCollapsedContainer = containerId;
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // Apply routing based on what we found
-                            if (sourceInCollapsedContainer && targetInCollapsedContainer) {
-                                if (sourceInCollapsedContainer === targetInCollapsedContainer) {
-                                    // Both nodes in same collapsed container - hide the edge
-                                    newEdge.hidden = true;
-                                } else {
-                                    // Nodes in different collapsed containers - route container to container
-                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
-                                    newEdge.source = sourceInCollapsedContainer;
-                                    newEdge.target = targetInCollapsedContainer;
-                                }
-                            } else if (sourceInCollapsedContainer) {
-                                // Source in collapsed container, target outside - route from container to target
-                                newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
-                                newEdge.source = sourceInCollapsedContainer;
-                            } else if (targetInCollapsedContainer) {
-                                // Target in collapsed container, source outside - route from source to container
-                                newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
-                                newEdge.target = targetInCollapsedContainer;
-                            }
-                            
-                            console.log(`Edge ${edge.id}: ${edge.source} -> ${edge.target} became ${newEdge.source} -> ${newEdge.target}, hidden: ${newEdge.hidden}`);
-                            
-                            return newEdge;
-                        });
+                        return routeEdgesForCollapsedContainers(currentEdges, collapsedLocations, childNodeIdsByParent);
                     });
 
                     return updatedNodes;
                 });
                 
-                // Re-layout containers after manual collapse/expand operations
+                // Re-layout containers after manual operations
                 setTimeout(async () => {
                     const reactFlowInstance = window.reactFlowInstance;
                     if (reactFlowInstance) {
                         try {
-                            console.log('Re-running layout after manual collapse/expand...');
-                            
-                            // Get current nodes
                             const currentNodes = reactFlowInstance.getNodes();
                             const containerNodes = currentNodes.filter(node => node.data?.isContainer);
-                            const childNodes = currentNodes.filter(node => !node.data?.isContainer);
                             
                             if (containerNodes.length > 0) {
-                                console.log('Re-layouting', containerNodes.length, 'containers after manual operation');
-                                
-                                // Simple approach: just re-layout containers, keep child relationships intact
                                 const layoutedContainers = await applyElkLayout(containerNodes, edges, currentLayout);
                                 
-                                // Update only container positions, preserve all child relationships
                                 const updatedNodes = currentNodes.map(node => {
                                     if (node.data?.isContainer) {
                                         const layoutedContainer = layoutedContainers.find(ln => ln.id === node.id);
@@ -824,85 +792,10 @@
                                             return { ...node, position: layoutedContainer.position };
                                         }
                                     }
-                                    // For child nodes, keep everything as-is to preserve parent/child relationships
                                     return node;
                                 });
                                 
                                 setNodes(updatedNodes);
-                                console.log('Container positions updated after manual operation, child relationships preserved');
-                                
-                                // Re-apply edge routing after layout change
-                                setTimeout(() => {
-                                    setEdges(currentEdges => {
-                                        const childNodeIdsByParent = {};
-                                        updatedNodes.forEach(n => {
-                                            if (n.parentNode) {
-                                                if (!childNodeIdsByParent[n.parentNode]) {
-                                                    childNodeIdsByParent[n.parentNode] = new Set();
-                                                }
-                                                childNodeIdsByParent[n.parentNode].add(n.id);
-                                            }
-                                        });
-
-                                        return currentEdges.map(edge => {
-                                            let newEdge = { ...edge };
-                                            
-                                            // First, reset any modifications from previous state
-                                            if (newEdge.data?.originalSource) {
-                                                newEdge.source = newEdge.data.originalSource;
-                                                newEdge.data = { ...newEdge.data };
-                                                delete newEdge.data.originalSource;
-                                            }
-                                            if (newEdge.data?.originalTarget) {
-                                                newEdge.target = newEdge.data.originalTarget;
-                                                newEdge.data = { ...newEdge.data };
-                                                delete newEdge.data.originalTarget;
-                                            }
-                                            newEdge.hidden = false;
-
-                                            // Re-apply edge routing based on current collapsed state
-                                            let sourceInCollapsedContainer = null;
-                                            let targetInCollapsedContainer = null;
-                                            
-                                            for (const locationId in collapsedLocations) {
-                                                if (collapsedLocations[locationId]) {
-                                                    const containerId = `container_${locationId}`;
-                                                    const childIds = childNodeIdsByParent[containerId] || new Set();
-
-                                                    if (childIds.has(newEdge.source)) {
-                                                        sourceInCollapsedContainer = containerId;
-                                                    }
-                                                    if (childIds.has(newEdge.target)) {
-                                                        targetInCollapsedContainer = containerId;
-                                                    }
-                                                }
-                                            }
-                                            
-                                            // Apply routing based on current state
-                                            if (sourceInCollapsedContainer && targetInCollapsedContainer) {
-                                                if (sourceInCollapsedContainer === targetInCollapsedContainer) {
-                                                    // Both nodes in same collapsed container - hide the edge
-                                                    newEdge.hidden = true;
-                                                } else {
-                                                    // Nodes in different collapsed containers - route container to container
-                                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
-                                                    newEdge.source = sourceInCollapsedContainer;
-                                                    newEdge.target = targetInCollapsedContainer;
-                                                }
-                                            } else if (sourceInCollapsedContainer) {
-                                                // Source in collapsed container, target outside - route from container to target
-                                                newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
-                                                newEdge.source = sourceInCollapsedContainer;
-                                            } else if (targetInCollapsedContainer) {
-                                                // Target in collapsed container, source outside - route from source to container
-                                                newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
-                                                newEdge.target = targetInCollapsedContainer;
-                                            }
-                                            
-                                            return newEdge;
-                                        });
-                                    });
-                                }, 50);
                                 
                                 // Re-fit view after repositioning
                                 setTimeout(() => {
@@ -913,7 +806,7 @@
                             console.error('Error re-layouting after manual operation:', error);
                         }
                     }
-                }, 300); // Longer delay for manual operations to ensure state has settled
+                }, 300);
             }, [collapsedLocations, originalNodeDimensions]);
             
             // Apply node colors based on palette
@@ -942,119 +835,33 @@
             const onInit = useCallback(async (reactFlowInstance) => {
                 window.reactFlowInstance = reactFlowInstance;
                 
-                console.log('=== DEBUGGING CONTAINER ASSIGNMENT ===');
-                console.log('Initializing graph with', initialNodes.length, 'nodes');
-                console.log('Initial nodes sample:', initialNodes.slice(0, 3).map(n => ({ id: n.id, locationId: n.data?.locationId })));
-                
                 // Apply ELK layout to get proper positions
                 const layoutedNodes = await applyElkLayout(initialNodes, initialEdges, currentLayout);
-                console.log('After ELK layout:', layoutedNodes.length, 'nodes');
-                console.log('Layouted nodes sample:', layoutedNodes.slice(0, 3).map(n => ({ id: n.id, locationId: n.data?.locationId, position: n.position })));
                 
                 // Group nodes by location for hierarchical display
                 const locationContainers = [];
                 const childNodes = [];
                 
                 if (graphData.locations && graphData.locations.length > 0) {
-                    console.log('Creating location containers for', graphData.locations.length, 'locations');
-                    console.log('Available locations:', graphData.locations.map(l => ({ id: l.id, label: l.label, nodeCount: l.nodes?.length || 0 })));
-                    
-                    // Debug: check all unique location IDs in the actual node data
-                    const nodeLocationIds = new Set();
-                    layoutedNodes.forEach(node => {
-                        const nodeLocationId = node.data?.locationId;
-                        if (nodeLocationId !== null && nodeLocationId !== undefined) {
-                            nodeLocationIds.add(nodeLocationId.toString());
-                        }
-                    });
-                    console.log('Location IDs found in node data:', Array.from(nodeLocationIds));
-                    
                     graphData.locations.forEach(location => {
-                        console.log(`\n--- Processing Location ${location.id} (${location.label}) ---`);
-                        
                         // Find nodes in this location
                         const locationNodes = layoutedNodes.filter(node => {
                             const nodeLocationId = node.data?.locationId;
-                            const matches = nodeLocationId !== null && 
+                            return nodeLocationId !== null && 
                                    nodeLocationId !== undefined && 
                                    nodeLocationId.toString() === location.id.toString();
-                            return matches;
                         });
                         
-                        console.log(`Location ${location.id} has ${locationNodes.length} nodes`);
                         if (locationNodes.length > 0) {
-                            console.log('Sample nodes in this location:', locationNodes.slice(0, 3).map(n => ({ id: n.id, label: n.data?.label })));
-                        } else {
-                            console.log('WARNING: Location has no nodes! This location will be skipped.');
-                            // Debug: check if any nodes claim to belong to this location but didn't match
-                            const potentialMatches = layoutedNodes.filter(node => {
-                                const nodeLocationId = node.data?.locationId;
-                                return nodeLocationId !== null && nodeLocationId !== undefined;
-                            });
-                            console.log('All nodes with location IDs:', potentialMatches.slice(0, 5).map(n => ({ 
-                                id: n.id, 
-                                locationId: n.data?.locationId, 
-                                locationIdType: typeof n.data?.locationId,
-                                targetLocationId: location.id,
-                                targetLocationIdType: typeof location.id
-                            })));
-                        }
-                        
-                        if (locationNodes.length > 0) {
-                            // Calculate bounding box for this location
-                            const minX = Math.min(...locationNodes.map(n => n.position.x));
-                            const minY = Math.min(...locationNodes.map(n => n.position.y));
-                            const maxX = Math.max(...locationNodes.map(n => n.position.x + 200));
-                            const maxY = Math.max(...locationNodes.map(n => n.position.y + 60));
+                            // Create container using helper function
+                            const container = createLocationContainer(location, locationNodes, currentPalette);
+                            locationContainers.push(container);
                             
-                            // Add padding
-                            const padding = 30;
-                            const containerX = minX - padding;
-                            const containerY = minY - padding - 30;
-                            
-                            // Generate unique colors for this location
-                            const backgroundColor = generateLocationColor(location.id, graphData.locations.length, currentPalette);
-                            const borderColor = generateLocationBorderColor(location.id, graphData.locations.length, currentPalette);
-                            
-                            // Create parent container
-                            locationContainers.push({
-                                id: `container_${location.id}`,
-                                type: 'default', // Changed from 'group' to 'default'
-                                position: { x: containerX, y: containerY },
-                                style: {
-                                    width: maxX - minX + 2 * padding,
-                                    height: maxY - minY + 2 * padding + 30,
-                                    backgroundColor: backgroundColor,
-                                    border: `2px solid ${borderColor}`,
-                                    borderRadius: '8px',
-                                    cursor: 'pointer',
-                                    zIndex: 1,
-                                },
-                                data: { 
-                                    label: location.label,
-                                    isContainer: true
-                                },
-                                draggable: true,
-                            });
-                            
-                            // Make nodes children of the container
-                            locationNodes.forEach(node => {
-                                childNodes.push({
-                                    ...node,
-                                    parentNode: `container_${location.id}`,
-                                    extent: 'parent',
-                                    position: {
-                                        x: node.position.x - containerX,
-                                        y: node.position.y - containerY
-                                    }
-                                });
-                            });
+                            // Create child nodes using helper function
+                            const children = createChildNodes(locationNodes, container.id, container.position);
+                            childNodes.push(...children);
                         }
                     });
-                    
-                    console.log(`\n--- CONTAINER CREATION SUMMARY ---`);
-                    console.log('Created', locationContainers.length, 'location containers');
-                    console.log('Assigned', childNodes.length, 'nodes to containers');
                     
                     // Handle orphan nodes (not in any location) - group them into a grey container
                     const orphanNodes = layoutedNodes.filter(node => {
@@ -1066,250 +873,75 @@
                         );
                     });
                     
-                    console.log('\n--- ORPHAN NODE ANALYSIS ---');
-                    console.log('Found', orphanNodes.length, 'orphan nodes');
                     if (orphanNodes.length > 0) {
-                        console.log('Sample orphan nodes:', orphanNodes.slice(0, 5).map(n => ({ 
-                            id: n.id, 
-                            label: n.data?.label, 
-                            locationId: n.data?.locationId 
-                        })));
-                    }
-                    
-                    // Critical check: ensure we're not losing nodes
-                    const totalNodesAccountedFor = childNodes.length + orphanNodes.length;
-                    console.log(`NODE ACCOUNTING: ${childNodes.length} in containers + ${orphanNodes.length} orphans = ${totalNodesAccountedFor} of ${layoutedNodes.length} total`);
-                    if (totalNodesAccountedFor !== layoutedNodes.length) {
-                        console.error(`ERROR: Missing ${layoutedNodes.length - totalNodesAccountedFor} nodes in container assignment!`);
-                    }
-                    
-                    if (orphanNodes.length > 0) {
-                        // Calculate bounding box for orphan nodes
-                        const minX = Math.min(...orphanNodes.map(n => n.position.x));
-                        const minY = Math.min(...orphanNodes.map(n => n.position.y));
-                        const maxX = Math.max(...orphanNodes.map(n => n.position.x + 200));
-                        const maxY = Math.max(...orphanNodes.map(n => n.position.y + 60));
+                        // Create orphan container using similar logic
+                        const orphanLocation = { id: 'null', label: 'Internal/Unassigned' };
+                        const orphanContainer = createLocationContainer(orphanLocation, orphanNodes, currentPalette);
                         
-                        // Add padding
-                        const padding = 30;
-                        const containerX = minX - padding;
-                        const containerY = minY - padding - 30;
+                        // Override styles for orphan container
+                        orphanContainer.id = 'container_null';
+                        orphanContainer.style.backgroundColor = 'rgba(200, 200, 200, 0.2)';
+                        orphanContainer.style.border = '2px solid #999999';
                         
-                        // Create grey container for orphan nodes
-                        locationContainers.push({
-                            id: 'container_null',
-                            type: 'default',
-                            position: { x: containerX, y: containerY },
-                            style: {
-                                width: maxX - minX + 2 * padding,
-                                height: maxY - minY + 2 * padding + 30,
-                                backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                                border: '2px solid #999999',
-                                borderRadius: '8px',
-                            },
-                            data: { 
-                                label: 'Internal/Unassigned',
-                                isContainer: true
-                            },
-                            draggable: true,
-                        });
+                        locationContainers.push(orphanContainer);
                         
-                        // Make orphan nodes children of the grey container
-                        orphanNodes.forEach(node => {
-                            childNodes.push({
-                                ...node,
-                                parentNode: 'container_null',
-                                extent: 'parent',
-                                position: {
-                                    x: node.position.x - containerX,
-                                    y: node.position.y - containerY
-                                }
-                            });
-                        });
+                        const orphanChildren = createChildNodes(orphanNodes, orphanContainer.id, orphanContainer.position);
+                        childNodes.push(...orphanChildren);
                     }
                 } else {
                     // No locations defined, use all nodes as-is
-                    console.log('No locations defined, using flat layout');
                     childNodes.push(...layoutedNodes);
                 }
                 
-                console.log('\n--- FINAL ELEMENT PREPARATION ---');
-                console.log('Total child nodes before color application:', childNodes.length);
-                console.log('Sample child nodes:', childNodes.slice(0, 3).map(n => ({ 
-                    id: n.id, 
-                    parentNode: n.parentNode, 
-                    position: n.position,
-                    hidden: n.hidden 
-                })));
                 
                 // Apply palette colors to nodes
                 const coloredChildNodes = applyNodePalette(childNodes, currentPalette);
-                console.log('Child nodes after color application:', coloredChildNodes.length);
                 
                 // Combine containers and child nodes
                 const allElements = [...locationContainers, ...coloredChildNodes];
-                console.log('\n--- FINAL ELEMENTS SUMMARY ---');
-                console.log('Setting', allElements.length, 'total elements:', {
-                    containers: locationContainers.length,
-                    nodes: coloredChildNodes.length
-                });
                 
-                // Critical validation: make sure we have elements to render
-                if (allElements.length === 0) {
-                    console.error('CRITICAL ERROR: No elements to render! This will cause a blank canvas.');
-                    return;
-                }
-                
-                console.log('Container breakdown:', locationContainers.map(c => ({ 
-                    id: c.id, 
-                    label: c.data.label, 
-                    position: c.position,
-                    width: c.style.width, 
-                    height: c.style.height 
-                })));
-                
-                // Debug viewport bounds before setting elements
-                if (locationContainers.length > 0) {
-                    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-                    locationContainers.forEach(container => {
-                        const x = container.position.x;
-                        const y = container.position.y;
-                        const width = parseFloat(container.style.width.toString().replace('px', '')) || 400;
-                        const height = parseFloat(container.style.height.toString().replace('px', '')) || 300;
-                        
-                        minX = Math.min(minX, x);
-                        minY = Math.min(minY, y);
-                        maxX = Math.max(maxX, x + width);
-                        maxY = Math.max(maxY, y + height);
-                    });
-                    
-                    console.log('Graph bounds before render:', {
-                        minX, minY, maxX, maxY,
-                        width: maxX - minX,
-                        height: maxY - minY,
-                        center: { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
-                    });
-                }
-                
-                // SIMPLE COLLAPSE STRATEGY: Show expanded if it fits legibly, otherwise collapse all
-                const minLegibleZoom = 0.5; // Minimum zoom for readable text
-                
-                // Calculate what the zoom would be with all containers expanded
-                const graphWidth = locationContainers.length > 0 ? 
-                    Math.max(...locationContainers.map(c => c.position.x + parseFloat(c.style.width.toString().replace('px', '')) || 400)) - 
-                    Math.min(...locationContainers.map(c => c.position.x)) : 400;
-                const graphHeight = locationContainers.length > 0 ?
-                    Math.max(...locationContainers.map(c => c.position.y + parseFloat(c.style.height.toString().replace('px', '')) || 300)) - 
-                    Math.min(...locationContainers.map(c => c.position.y)) : 300;
-                    
-                const wouldBeZoomX = (window.innerWidth * 0.85) / graphWidth;
-                const wouldBeZoomY = (window.innerHeight * 0.85) / graphHeight;
-                const wouldBeZoom = Math.min(wouldBeZoomX, wouldBeZoomY);
-                
-                const canShowFullyExpanded = wouldBeZoom >= minLegibleZoom;
-                
-                console.log('Simple collapse decision:', {
-                    graphDimensions: { width: graphWidth, height: graphHeight },
-                    wouldBeZoom,
-                    minLegibleZoom,
-                    canShowFullyExpanded,
-                    containerCount: locationContainers.length
-                });
-                
+                // Check if we need to auto-collapse containers
+                const needsAutoCollapse = shouldAutoCollapse(locationContainers);
                 const initialCollapsedState = {};
                 const initialOriginalDimensions = {};
                 
-                if (!canShowFullyExpanded) {
-                    // Collapse ALL containers
-                    console.log('Graph too large for legible viewing - collapsing ALL containers');
+                if (needsAutoCollapse) {
+                    // Auto-collapse containers that are too large for comfortable viewing
                     locationContainers.forEach(container => {
-                        const widthStr = container.style.width.toString();
-                        const heightStr = container.style.height.toString();
-                        const width = parseFloat(widthStr.replace('px', '')) || 400;
-                        const height = parseFloat(heightStr.replace('px', '')) || 300;
-                        
+                        const width = parseFloat(container.style.width.toString().replace('px', '')) || 400;
+                        const height = parseFloat(container.style.height.toString().replace('px', '')) || 300;
                         const locationId = container.id.replace('container_', '');
-                        
-                        console.log(`COLLAPSING container ${container.id} from ${width}x${height} to 200x50`);
                         
                         initialCollapsedState[locationId] = true;
                         initialOriginalDimensions[locationId] = { width, height };
                         
-                        // Modify the container to be collapsed
+                        // Modify container to collapsed state
                         container.style.width = '200px';
                         container.style.height = '50px';
                         
-                        // Hide child nodes in this container
+                        // Hide child nodes
                         allElements.forEach(element => {
                             if (element.parentNode === container.id) {
                                 element.hidden = true;
                             }
                         });
                     });
-                } else {
-                    console.log('Graph fits comfortably - showing all containers expanded');
                 }
                 
-                // Set initial collapsed state
+                // Set initial state
                 if (Object.keys(initialCollapsedState).length > 0) {
-                    console.log('Setting initial collapsed state:', initialCollapsedState);
                     setCollapsedLocations(initialCollapsedState);
                     setOriginalNodeDimensions(initialOriginalDimensions);
                 }
                 
                 setNodes(allElements);
-                
-                // Ensure all edges are properly set
-                console.log('Setting', initialEdges.length, 'edges');
                 setEdges(initialEdges);
                 
-                // If we auto-collapsed containers, re-run layout to position them correctly
-                if (Object.keys(initialCollapsedState).length > 0) {
-                    console.log('Re-running layout after auto-collapse to fix positioning...');
-                    
-                    // Small delay to let the collapsed state settle, then re-layout
-                    setTimeout(async () => {
-                        try {
-                            // Get current nodes and re-layout only the containers (since child nodes are relative)
-                            const currentNodes = reactFlowInstance.getNodes();
-                            const containerNodes = currentNodes.filter(node => node.data?.isContainer);
-                            const childNodes = currentNodes.filter(node => !node.data?.isContainer);
-                            
-                            if (containerNodes.length > 0) {
-                                console.log('Re-layouting', containerNodes.length, 'containers after auto-collapse');
-                                
-                                // Re-run ELK layout on containers with their new collapsed sizes
-                                const layoutedContainers = await applyElkLayout(containerNodes, initialEdges, currentLayout);
-                                
-                                // Update container positions
-                                const updatedNodes = currentNodes.map(node => {
-                                    if (node.data?.isContainer) {
-                                        const layoutedContainer = layoutedContainers.find(ln => ln.id === node.id);
-                                        if (layoutedContainer) {
-                                            return { ...node, position: layoutedContainer.position };
-                                        }
-                                    }
-                                    return node;
-                                });
-                                
-                                setNodes(updatedNodes);
-                                console.log('Container positions updated after auto-collapse');
-                                
-                                // Re-fit view after repositioning
-                                setTimeout(() => {
-                                    reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
-                                }, 100);
-                            }
-                        } catch (error) {
-                            console.error('Error re-layouting after auto-collapse:', error);
-                        }
-                    }, 200);
-                }
                 
-                // Apply initial edge routing for auto-collapsed containers
+                // Handle auto-collapsed containers with edge routing
                 if (Object.keys(initialCollapsedState).length > 0) {
-                    // We need to update edges after the collapsed state is set
                     setTimeout(() => {
+                        // Apply initial edge routing for collapsed containers
                         setEdges(currentEdges => {
                             const childNodeIdsByParent = {};
                             allElements.forEach(n => {
@@ -1320,104 +952,30 @@
                                     childNodeIdsByParent[n.parentNode].add(n.id);
                                 }
                             });
-
-                            return currentEdges.map(edge => {
-                                let newEdge = { ...edge };
-                                
-                                // Check all initially collapsed locations and handle edge routing
-                                let sourceInCollapsedContainer = null;
-                                let targetInCollapsedContainer = null;
-                                
-                                for (const locationId in initialCollapsedState) {
-                                    if (initialCollapsedState[locationId]) {
-                                        const containerId = `container_${locationId}`;
-                                        const childIds = childNodeIdsByParent[containerId] || new Set();
-
-                                        if (childIds.has(newEdge.source)) {
-                                            sourceInCollapsedContainer = containerId;
-                                        }
-                                        if (childIds.has(newEdge.target)) {
-                                            targetInCollapsedContainer = containerId;
-                                        }
-                                    }
-                                }
-                                
-                                // Apply routing based on what we found
-                                if (sourceInCollapsedContainer && targetInCollapsedContainer) {
-                                    if (sourceInCollapsedContainer === targetInCollapsedContainer) {
-                                        // Both nodes in same collapsed container - hide the edge
-                                        newEdge.hidden = true;
-                                    } else {
-                                        // Nodes in different collapsed containers - route container to container
-                                        newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
-                                        newEdge.source = sourceInCollapsedContainer;
-                                        newEdge.target = targetInCollapsedContainer;
-                                    }
-                                } else if (sourceInCollapsedContainer) {
-                                    // Source in collapsed container, target outside - route from container to target
-                                    newEdge.data = { ...newEdge.data, originalSource: newEdge.source };
-                                    newEdge.source = sourceInCollapsedContainer;
-                                } else if (targetInCollapsedContainer) {
-                                    // Target in collapsed container, source outside - route from source to container
-                                    newEdge.data = { ...newEdge.data, originalTarget: newEdge.target };
-                                    newEdge.target = targetInCollapsedContainer;
-                                }
-                                
-                                console.log(`Initial edge routing: ${edge.id}: ${edge.source} -> ${edge.target} became ${newEdge.source} -> ${newEdge.target}, hidden: ${newEdge.hidden}`);
-                                
-                                return newEdge;
-                            });
+                            return routeEdgesForCollapsedContainers(currentEdges, initialCollapsedState, childNodeIdsByParent);
                         });
                     }, 50);
                 }
                 
-                // Simple fit view strategy
-                const ensureFitView = () => {
-                    console.log('Applying simple fit view...');
-                    
-                    // Check if we have collapsed containers (which means large graph)
-                    const hasCollapsedContainers = Object.keys(initialCollapsedState).length > 0;
-                    
-                    if (hasCollapsedContainers) {
-                        // For collapsed view, allow zooming out more to see the whole collapsed graph
-                        console.log('Large graph detected - using wider zoom range for collapsed view');
-                        reactFlowInstance.fitView({ 
-                            padding: 0.2,   // 20% padding for better overview
-                            maxZoom: 0.5,   // Much lower max zoom to ensure we see the whole collapsed graph
-                            minZoom: 0.02,  // Allow aggressive zoom out for very large graphs
-                            duration: 300
-                        });
-                    } else {
-                        // For small graphs shown fully expanded, use tighter zoom
-                        console.log('Small graph - using closer zoom for expanded view');
-                        reactFlowInstance.fitView({ 
-                            padding: 0.1,   // 10% padding for good visual spacing
-                            maxZoom: 1.0,   // Allow closer zoom for expanded small graphs
-                            minZoom: 0.2,   // Don't zoom out too much for small graphs
-                            duration: 300
-                        });
-                    }
-                };
+                // Apply appropriate fit view
+                const hasCollapsedContainers = Object.keys(initialCollapsedState).length > 0;
+                const fitViewOptions = hasCollapsedContainers
+                    ? { padding: 0.2, maxZoom: 0.5, minZoom: 0.02, duration: 300 }
+                    : { padding: 0.1, maxZoom: 1.0, minZoom: 0.2, duration: 300 };
                 
-                ensureFitView();
+                reactFlowInstance.fitView(fitViewOptions);
             }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette]);
 
             // Apply elk layout with selected algorithm
             const applyLayout = useCallback(async (layoutType = currentLayout) => {
-                console.log('Applying layout:', layoutType);
-                
                 // Only layout the actual graph nodes, not containers
                 const actualNodes = nodes.filter(node => !node.data?.isContainer);
-                console.log('Laying out', actualNodes.length, 'actual nodes');
                 
-                if (actualNodes.length === 0) {
-                    console.log('No nodes to layout');
-                    return;
-                }
+                if (actualNodes.length === 0) return;
                 
                 const layoutedNodes = await applyElkLayout(actualNodes, edges, layoutType);
                 
-                // Create new containers and child relationships
+                // Create new containers and child relationships using helper functions
                 const locationContainers = [];
                 const childNodes = [];
                 
@@ -1431,55 +989,15 @@
                         });
                         
                         if (locationNodes.length > 0) {
-                            // Calculate bounding box
-                            const minX = Math.min(...locationNodes.map(n => n.position.x));
-                            const minY = Math.min(...locationNodes.map(n => n.position.y));
-                            const maxX = Math.max(...locationNodes.map(n => n.position.x + 200));
-                            const maxY = Math.max(...locationNodes.map(n => n.position.y + 60));
+                            const container = createLocationContainer(location, locationNodes, currentPalette);
+                            locationContainers.push(container);
                             
-                            const padding = 30;
-                            const containerX = minX - padding;
-                            const containerY = minY - padding - 30;
-                            
-                            // Generate unique colors for this location
-                            const backgroundColor = generateLocationColor(location.id, graphData.locations.length, currentPalette);
-                            const borderColor = generateLocationBorderColor(location.id, graphData.locations.length, currentPalette);
-                            
-                            // Create container
-                            locationContainers.push({
-                                id: `container_${location.id}`,
-                                type: 'default',
-                                position: { x: containerX, y: containerY },
-                                style: {
-                                    width: maxX - minX + 2 * padding,
-                                    height: maxY - minY + 2 * padding + 30,
-                                    backgroundColor: backgroundColor,
-                                    border: `2px solid ${borderColor}`,
-                                    borderRadius: '8px',
-                                },
-                                data: { 
-                                    label: location.label,
-                                    isContainer: true
-                                },
-                                draggable: true,
-                            });
-                            
-                            // Add child nodes
-                            locationNodes.forEach(node => {
-                                childNodes.push({
-                                    ...node,
-                                    parentNode: `container_${location.id}`,
-                                    extent: 'parent',
-                                    position: {
-                                        x: node.position.x - containerX,
-                                        y: node.position.y - containerY
-                                    }
-                                });
-                            });
+                            const children = createChildNodes(locationNodes, container.id, container.position);
+                            childNodes.push(...children);
                         }
                     });
                     
-                    // Handle orphan nodes - group them into a grey container
+                    // Handle orphan nodes
                     const orphanNodes = layoutedNodes.filter(node => {
                         const nodeLocationId = node.data?.locationId;
                         if (nodeLocationId === null || nodeLocationId === undefined) return true;
@@ -1489,73 +1007,36 @@
                     });
                     
                     if (orphanNodes.length > 0) {
-                        // Calculate bounding box for orphan nodes
-                        const minX = Math.min(...orphanNodes.map(n => n.position.x));
-                        const minY = Math.min(...orphanNodes.map(n => n.position.y));
-                        const maxX = Math.max(...orphanNodes.map(n => n.position.x + 200));
-                        const maxY = Math.max(...orphanNodes.map(n => n.position.y + 60));
+                        const orphanLocation = { id: 'null', label: 'Internal/Unassigned' };
+                        const orphanContainer = createLocationContainer(orphanLocation, orphanNodes, currentPalette);
                         
-                        const padding = 30;
-                        const containerX = minX - padding;
-                        const containerY = minY - padding - 30;
+                        // Override styles for orphan container
+                        orphanContainer.id = 'container_null';
+                        orphanContainer.style.backgroundColor = 'rgba(200, 200, 200, 0.2)';
+                        orphanContainer.style.border = '2px solid #999999';
                         
-                        // Create grey container for orphan nodes
-                        locationContainers.push({
-                            id: 'container_null',
-                            type: 'default',
-                            position: { x: containerX, y: containerY },
-                            style: {
-                                width: maxX - minX + 2 * padding,
-                                height: maxY - minY + 2 * padding + 30,
-                                backgroundColor: 'rgba(200, 200, 200, 0.2)',
-                                border: '2px solid #999999',
-                                borderRadius: '8px',
-                            },
-                            data: { 
-                                label: 'Internal/Unassigned',
-                                isContainer: true
-                            },
-                            draggable: true,
-                        });
+                        locationContainers.push(orphanContainer);
                         
-                        // Make orphan nodes children of the grey container
-                        orphanNodes.forEach(node => {
-                            childNodes.push({
-                                ...node,
-                                parentNode: 'container_null',
-                                extent: 'parent',
-                                position: {
-                                    x: node.position.x - containerX,
-                                    y: node.position.y - containerY
-                                }
-                            });
-                        });
+                        const orphanChildren = createChildNodes(orphanNodes, orphanContainer.id, orphanContainer.position);
+                        childNodes.push(...orphanChildren);
                     }
                 } else {
                     childNodes.push(...layoutedNodes);
                 }
                 
-                // Apply palette colors to nodes
+                // Apply palette colors and update nodes
                 const coloredChildNodes = applyNodePalette(childNodes, currentPalette);
-                
                 const allElements = [...locationContainers, ...coloredChildNodes];
-                console.log('Updating to', allElements.length, 'elements');
                 setNodes(allElements);
                 
-                // Enhanced fit view strategy for layout changes
+                // Fit view after layout change
                 setTimeout(() => {
                     const reactFlowInstance = window.reactFlowInstance;
                     if (reactFlowInstance) {
-                        console.log('Fitting view after layout change...');
                         reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
-                        
-                        // Additional attempt after a longer delay
-                        setTimeout(() => {
-                            reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
-                        }, 300);
                     }
                 }, 100);
-            }, [nodes, edges, currentLayout, currentPalette, setNodes, setEdges, applyNodePalette]);
+            }, [nodes, edges, currentLayout, currentPalette, setNodes, applyNodePalette]);
 
             const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
@@ -1664,7 +1145,6 @@
                         onConnect={onConnect}
                         onInit={onInit}
                         onNodeClick={onNodeClick}
-                        onPaneClick={onPaneClick}
                         fitView
                         attributionPosition="bottom-left"
                     >
@@ -1674,10 +1154,6 @@
                     </ReactFlow>
                 </div>
             );
-        }
-
-        function renderReact() {
-    // This function is intentionally left blank. The real rendering happens in the HydroGraph component.
         }
 
         ReactDOM.render(<HydroGraph />, document.getElementById('root'));
