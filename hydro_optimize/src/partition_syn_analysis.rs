@@ -85,7 +85,7 @@ impl StructOrTuple {
         input_tuple_index: StructOrTupleIndex,
     ) {
         let child = self.create_child(index.clone());
-        child.dependencies.insert(input_tuple_index.clone());
+        child.dependencies.insert(input_tuple_index);
     }
 
     /// Note: May return redundant dependencies; no easy fix given we can the same field can depend on multiple things
@@ -104,7 +104,7 @@ impl StructOrTuple {
                 return None; // No dependency or child
             }
         }
-        Some(child.clone())
+        Some(child)
     }
 
     /// Remove any fields that could be None. If a parent could be None, then remove all children.
@@ -112,9 +112,11 @@ impl StructOrTuple {
         if !keep_topmost_none && self.could_be_none {
             return None;
         }
-        
-        let mut new_tuple = StructOrTuple::default();
-        new_tuple.dependencies = self.dependencies.clone();
+
+        let mut new_tuple = StructOrTuple {
+            dependencies: self.dependencies.clone(),
+            ..Default::default()
+        };
         for (field, index) in &self.fields {
             if let Some(child) = index.remove_none_fields(false) {
                 new_tuple.fields.insert(field.clone(), Box::new(child));
@@ -227,7 +229,10 @@ impl StructOrTuple {
         // Recurse into fields
         let mut traversed_fields = BTreeSet::new();
         for tuple in tuples.iter() {
-            assert!(!tuple.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) to before intersect_dependencies_with_matching_fields");
+            assert!(
+                !tuple.could_be_none,
+                "Forgot to call remove_none_fields (only used for FilterMap) to before intersect_dependencies_with_matching_fields"
+            );
             for field in tuple.fields.keys() {
                 if traversed_fields.contains(field) {
                     continue;
@@ -281,7 +286,10 @@ impl StructOrTuple {
         if tuple1.is_empty() && tuple2.is_empty() {
             return None;
         }
-        assert!(!tuple1.could_be_none && !tuple2.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) before union");
+        assert!(
+            !tuple1.could_be_none && !tuple2.could_be_none,
+            "Forgot to call remove_none_fields (only used for FilterMap) before union"
+        );
 
         let mut new_tuple = tuple1.clone();
         new_tuple.dependencies.extend(tuple2.dependencies.clone());
@@ -316,7 +324,10 @@ impl StructOrTuple {
     /// the child's dependencies are relative (dependency within the function).
     pub fn project_parent(parent: &StructOrTuple, child: &StructOrTuple) -> Option<StructOrTuple> {
         let mut new_child = StructOrTuple::default();
-        assert!(!parent.could_be_none && !child.could_be_none, "Forgot to call remove_none_fields (only used for FilterMap) before project_parent");
+        assert!(
+            !parent.could_be_none && !child.could_be_none,
+            "Forgot to call remove_none_fields (only used for FilterMap) before project_parent"
+        );
 
         // Recurse
         for (field, child_field) in &child.fields {
@@ -381,7 +392,6 @@ impl Visit<'_> for StructOrTupleUseRhs {
                 self.add_to_rhs_tuple(&existing_dependency);
             } else if *ident == "None" {
                 self.set_field_could_be_none();
-                println!("Setting field {:?} to none", self.field_index);
             }
         }
     }
@@ -488,7 +498,6 @@ impl Visit<'_> for StructOrTupleUseRhs {
                     ..Default::default()
                 };
                 then_branch_analysis.visit_block(&if_expr.then_branch);
-                println!("Then branch dependencies: {:?}", then_branch_analysis.output_dependencies);
                 branch_dependencies.push(then_branch_analysis.output_dependencies);
 
                 match &*else_branch.1 {
@@ -498,7 +507,6 @@ impl Visit<'_> for StructOrTupleUseRhs {
                             ..Default::default()
                         };
                         else_branch_analysis.visit_expr_block(block);
-                        println!("Else branch dependencies: {:?}", else_branch_analysis.output_dependencies);
                         branch_dependencies.push(else_branch_analysis.output_dependencies);
                         break;
                     }
@@ -539,7 +547,7 @@ impl Visit<'_> for StructOrTupleUseRhs {
             if arm_analysis.output_dependencies.is_empty() {
                 return; // One arm is empty, no dependencies
             }
-            branch_dependencies.push(arm_analysis.output_dependencies.clone());
+            branch_dependencies.push(arm_analysis.output_dependencies);
         }
 
         if let Some(shared) = StructOrTuple::intersect_tuples(&branch_dependencies) {
@@ -790,7 +798,7 @@ mod tests {
         });
         metadata
             .borrow_mut()
-            .insert(*next_stmt_id, analyzer.output_dependencies.clone());
+            .insert(*next_stmt_id, analyzer.output_dependencies);
     }
 
     fn partition_analysis_node(
@@ -804,7 +812,7 @@ mod tests {
         });
         metadata
             .borrow_mut()
-            .insert(*next_stmt_id, analyzer.output_dependencies.clone());
+            .insert(*next_stmt_id, analyzer.output_dependencies);
     }
 
     fn partition_analysis(ir: &mut [HydroLeaf]) -> BTreeMap<usize, StructOrTuple> {

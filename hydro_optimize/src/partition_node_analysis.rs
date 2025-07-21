@@ -664,6 +664,12 @@ pub fn partitioning_analysis(
                         next_partitioning.insert(*input, tuple_index.clone());
                     }
                 }
+                // Add any new constraints not found in prev_partitioning
+                for (input, constraint_index) in &constraint {
+                    if !next_partitioning.contains_key(input) {
+                        next_partitioning.insert(*input, constraint_index.clone());
+                    }
+                }
 
                 if constraint_satisfiable {
                     next_global_partitionings.push(next_partitioning);
@@ -879,13 +885,7 @@ mod tests {
         cluster1
             .source_iter(q!([(1, 2)]))
             .broadcast_bincode_anonymous(&cluster2)
-            .filter_map(q!(|(a, b)| {
-                if a > 1 {
-                    Some((b, a + 2))
-                } else {
-                    None
-                }
-            }))
+            .filter_map(q!(|(a, b)| { if a > 1 { Some((b, a + 2)) } else { None } }))
             .for_each(q!(|(b, a2)| {
                 println!("b: {}, a+2: {}", b, a2);
             }));
@@ -929,11 +929,9 @@ mod tests {
             .filter_map(q!(|(a, b)| {
                 if a > 1 {
                     Some((None, a + 2))
-                } 
-                else if a < 1 {
+                } else if a < 1 {
                     Some((Some(b), a + 2))
-                }
-                else {
+                } else {
                     None
                 }
             }))
@@ -1706,8 +1704,8 @@ mod tests {
         let expected_dependencies = BTreeMap::from([
             (0, BTreeMap::from([(4, other_dependencies.clone())])),
             (4, BTreeMap::new()),
-            (5, BTreeMap::from([(4, implicit_map_dependencies.clone())])),
-            (6, BTreeMap::from([(4, join_dependencies.clone())])),
+            (5, BTreeMap::from([(4, implicit_map_dependencies)])),
+            (6, BTreeMap::from([(4, join_dependencies)])),
             (7, BTreeMap::from([(4, other_dependencies.clone())])),
             (8, BTreeMap::from([(4, other_dependencies.clone())])),
             (9, BTreeMap::from([(4, other_dependencies.clone())])),
