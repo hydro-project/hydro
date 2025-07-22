@@ -1076,8 +1076,28 @@
                         }
                         return { ...prev, [locationId]: isCollapsing };
                     });
+                } else if (node.data?.shortLabel && node.data?.fullLabel) {
+                    // Handle regular node click to toggle between short and full label
+                    setNodes(currentNodes => {
+                        return currentNodes.map(n => {
+                            if (n.id === node.id) {
+                                const isCurrentlyExpanded = n.data.expanded || false;
+                                const newLabel = isCurrentlyExpanded ? n.data.shortLabel : n.data.fullLabel;
+                                
+                                return {
+                                    ...n,
+                                    data: {
+                                        ...n.data,
+                                        label: newLabel,
+                                        expanded: !isCurrentlyExpanded
+                                    }
+                                };
+                            }
+                            return n;
+                        });
+                    });
                 }
-            }, [collapsedLocations]);
+            }, [collapsedLocations, setNodes]);
 
             React.useEffect(() => {
                 // Update node visibility and container sizes based on collapsed state
