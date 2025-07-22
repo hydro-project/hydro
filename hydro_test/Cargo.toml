@@ -14,7 +14,6 @@ debugging = ["hydro_lang/debugging"]
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.13.2" }
 hydro_std = { path = "../hydro_std", version = "^0.13.0" }
-hydro_optimize = { path = "../hydro_optimize", version = "^0.13.0" }
 stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
@@ -33,6 +32,7 @@ dfir_lang = { path = "../dfir_lang", version = "^0.13.0" }
 example_test = { path = "../example_test", version = "^0.0.0" }
 futures = "0.3.0"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
+hydro_optimize = { path = "../hydro_optimize", version = "^0.13.0" }
 hydro_lang = { path = "../hydro_lang", version = "^0.13.2", features = [
     "deploy",
 ] }
