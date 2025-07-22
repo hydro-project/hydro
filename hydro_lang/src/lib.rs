@@ -60,6 +60,8 @@ pub mod rewrites;
 
 mod staging_util;
 
+pub mod backtrace;
+
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod test_util;
