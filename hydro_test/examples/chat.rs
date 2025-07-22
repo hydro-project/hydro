@@ -1,7 +1,7 @@
 use clap::Parser;
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
-use hydro_test::graph_util::GraphConfig;
+use hydro_lang::graph_util::GraphConfig;
 
 #[derive(Parser, Debug)]
 struct Args {

@@ -58,6 +58,10 @@ pub mod ir;
 
 pub mod graph;
 
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+pub mod graph_util;
+
 pub mod rewrites;
 
 mod staging_util;

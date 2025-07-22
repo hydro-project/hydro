@@ -2367,6 +2367,7 @@ dependencies = [
  "bincode",
  "bytes",
  "chrono",
+ "clap",
  "ctor 0.2.9",
  "data-encoding",
  "dfir_lang",
