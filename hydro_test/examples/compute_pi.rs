@@ -78,9 +78,7 @@ async fn main() {
 // Graph visualization functionality
 #[cfg(feature = "debugging")]
 mod graph_viz {
-    use hydro_lang::graph::debug::{
-        open_hydro_ir_mermaid_simple_browser, open_hydro_ir_mermaid_vscode,
-    };
+    use hydro_lang::graph::debug::{open_mermaid, save_dot, save_mermaid};
     use hydro_lang::graph::render::{
         HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid,
     };
@@ -104,10 +102,14 @@ mod graph_viz {
             show_metadata: true,
             show_location_groups: true,
             include_tee_ids: true,
+            use_short_labels: false,
+            process_id_name: built_flow.process_id_name().clone(),
+            cluster_id_name: built_flow.cluster_id_name().clone(),
+            external_id_name: built_flow.external_id_name().clone(),
         };
 
         generate_and_save_graphs(hydro_ir_leaves, &config);
-        open_in_vscode(hydro_ir_leaves, &config);
+        open_in_browser(hydro_ir_leaves, &config);
         print_statistics(hydro_ir_leaves, &config);
     }
 
@@ -123,21 +125,21 @@ mod graph_viz {
         println!("  - compute_pi_graph.dot (Graphviz DOT format)");
     }
 
-    fn open_in_vscode(leaves: &Vec<HydroLeaf>, config: &HydroWriteConfig) {
-        println!("\n🚀 Opening in VS Code...");
+    fn open_in_browser(leaves: &Vec<HydroLeaf>, config: &HydroWriteConfig) {
+        println!("\n🚀 Opening in browser...");
 
-        match open_hydro_ir_mermaid_vscode(
+        match save_mermaid(
             leaves,
             Some("compute_pi_interactive.mermaid"),
             Some(config.clone()),
         ) {
-            Ok(_) => println!("✅ Opened Mermaid graph in VS Code (use Ctrl+Shift+V for preview)"),
-            Err(e) => println!("⚠️  Could not open in VS Code: {}", e),
+            Ok(_) => println!("✅ Saved Mermaid graph to file"),
+            Err(e) => println!("⚠️  Could not save Mermaid graph: {}", e),
         }
 
-        match open_hydro_ir_mermaid_simple_browser(leaves, Some(config.clone())) {
-            Ok(_) => println!("✅ Opened graph in VS Code Simple Browser"),
-            Err(e) => println!("⚠️  Could not open in Simple Browser: {}", e),
+        match open_mermaid(leaves, Some(config.clone())) {
+            Ok(_) => println!("✅ Opened graph in browser"),
+            Err(e) => println!("⚠️  Could not open in browser: {}", e),
         }
     }
 

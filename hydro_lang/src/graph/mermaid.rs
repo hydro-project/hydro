@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
+use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
 
 /// Escapes a string for use in a mermaid graph label.
 pub fn escape_mermaid(string: &str) -> String {
@@ -23,28 +23,22 @@ pub fn escape_mermaid(string: &str) -> String {
 
 /// Mermaid graph writer for Hydro IR.
 pub struct HydroMermaid<W> {
-    write: W,
-    indent: usize,
+    base: IndentedGraphWriter<W>,
     link_count: usize,
-    config: super::render::HydroWriteConfig,
 }
 
 impl<W> HydroMermaid<W> {
     pub fn new(write: W) -> Self {
         Self {
-            write,
-            indent: 0,
+            base: IndentedGraphWriter::new(write),
             link_count: 0,
-            config: super::render::HydroWriteConfig::default(),
         }
     }
 
     pub fn new_with_config(write: W, config: &super::render::HydroWriteConfig) -> Self {
         Self {
-            write,
-            indent: 0,
+            base: IndentedGraphWriter::new_with_config(write, config),
             link_count: 0,
-            config: config.clone(),
         }
     }
 }
@@ -53,11 +47,11 @@ impl<W> HydroGraphWrite for HydroMermaid<W>
 where
     W: Write,
 {
-    type Err = std::fmt::Error;
+    type Err = super::render::GraphWriteError;
 
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         writeln!(
-            self.write,
+            self.base.write,
             "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#fafafa','clusterBorder':'#e0e0e0'}},'elk':{{'algorithm':'mrtree','elk.direction':'DOWN','elk.layered.spacing.nodeNodeBetweenLayers':'30'}}}}}}%%
 {b:i$}graph TD
 {b:i$}classDef sourceClass fill:#8dd3c7,stroke:#86c8bd,text-align:left,white-space:pre
@@ -69,7 +63,7 @@ where
 {b:i$}classDef teeClass fill:#b3de69,stroke:#aad362,text-align:left,white-space:pre
 {b:i$}linkStyle default stroke:#666666",
             b = "",
-            i = self.indent
+            i = self.base.indent
         )?;
         Ok(())
     }
@@ -101,7 +95,7 @@ where
         };
 
         // Determine what label to display based on config
-        let display_label = if self.config.use_short_labels {
+        let display_label = if self.base.config.use_short_labels {
             super::render::extract_short_label(node_label)
         } else {
             node_label.to_string()
@@ -113,7 +107,12 @@ where
             class = class_str,
         );
 
-        writeln!(self.write, "{b:i$}{label}", b = "", i = self.indent)?;
+        writeln!(
+            self.base.write,
+            "{b:i$}{label}",
+            b = "",
+            i = self.base.indent
+        )?;
         Ok(())
     }
 
@@ -133,7 +132,7 @@ where
 
         // Write the edge definition on its own line
         writeln!(
-            self.write,
+            self.base.write,
             "{b:i$}n{src}{arrow}{label}n{dst}",
             src = src_id,
             arrow = arrow_style,
@@ -144,13 +143,13 @@ where
             },
             dst = dst_id,
             b = "",
-            i = self.indent,
+            i = self.base.indent,
         )?;
 
         // Add styling for different edge types on a separate line
         if !matches!(edge_type, HydroEdgeType::Stream) {
             writeln!(
-                self.write,
+                self.base.write,
                 "{b:i$}linkStyle {} stroke:{}",
                 self.link_count,
                 match edge_type {
@@ -160,7 +159,7 @@ where
                     HydroEdgeType::Stream => "#666666", /* Should not be used here, but for completeness. */
                 },
                 b = "",
-                i = self.indent,
+                i = self.base.indent,
             )?;
         }
 
@@ -174,23 +173,28 @@ where
         location_type: &str,
     ) -> Result<(), Self::Err> {
         writeln!(
-            self.write,
+            self.base.write,
             "{b:i$}subgraph loc_{id} [\"{location_type} {id}\"]",
             id = location_id,
             b = "",
-            i = self.indent,
+            i = self.base.indent,
         )?;
-        self.indent += 4;
+        self.base.indent += 4;
         Ok(())
     }
 
     fn write_node(&mut self, node_id: usize) -> Result<(), Self::Err> {
-        writeln!(self.write, "{b:i$}n{node_id}", b = "", i = self.indent)
+        writeln!(
+            self.base.write,
+            "{b:i$}n{node_id}",
+            b = "",
+            i = self.base.indent
+        )
     }
 
     fn write_location_end(&mut self) -> Result<(), Self::Err> {
-        self.indent -= 4;
-        writeln!(self.write, "{b:i$}end", b = "", i = self.indent)
+        self.base.indent -= 4;
+        writeln!(self.base.write, "{b:i$}end", b = "", i = self.base.indent)
     }
 
     fn write_epilogue(&mut self) -> Result<(), Self::Err> {

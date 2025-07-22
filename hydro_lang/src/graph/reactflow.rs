@@ -112,7 +112,7 @@ impl<W> HydroGraphWrite for HydroReactFlow<W>
 where
     W: Write,
 {
-    type Err = std::fmt::Error;
+    type Err = super::render::GraphWriteError;
 
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         // Clear any existing data

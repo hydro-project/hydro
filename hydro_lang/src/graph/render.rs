@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
@@ -8,6 +9,44 @@ pub use super::graphviz::{HydroDot, escape_dot};
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
 use crate::ir::{HydroLeaf, HydroNode, HydroSource};
+
+/// Base struct for text-based graph writers that use indentation.
+/// Contains common fields shared by DOT and Mermaid writers.
+pub struct IndentedGraphWriter<W> {
+    pub write: W,
+    pub indent: usize,
+    pub config: HydroWriteConfig,
+}
+
+impl<W> IndentedGraphWriter<W> {
+    /// Create a new writer with default configuration.
+    pub fn new(write: W) -> Self {
+        Self {
+            write,
+            indent: 0,
+            config: HydroWriteConfig::default(),
+        }
+    }
+
+    /// Create a new writer with the given configuration.
+    pub fn new_with_config(write: W, config: &HydroWriteConfig) -> Self {
+        Self {
+            write,
+            indent: 0,
+            config: config.clone(),
+        }
+    }
+}
+
+impl<W: Write> IndentedGraphWriter<W> {
+    /// Write an indented line using the current indentation level.
+    pub fn writeln_indented(&mut self, content: &str) -> Result<(), std::fmt::Error> {
+        writeln!(self.write, "{b:i$}{content}", b = "", i = self.indent)
+    }
+}
+
+/// Common error type used by all graph writers.
+pub type GraphWriteError = std::fmt::Error;
 
 /// Trait for writing textual representations of Hydro IR graphs, i.e. mermaid or dot graphs.
 #[auto_impl(&mut, Box)]
@@ -903,7 +942,6 @@ impl HydroNode {
 }
 
 /// Utility functions for rendering multiple leaves as a single graph.
-
 /// Macro to reduce duplication in render functions.
 macro_rules! render_hydro_ir {
     ($name:ident, $write_fn:ident) => {
