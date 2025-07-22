@@ -54,8 +54,11 @@ impl Debug for DebugExpr {
         let original = self.0.to_token_stream().to_string();
         let simplified = simplify_q_macro(&original);
 
-        // For debugging, if we detect it should be simplified but it's not working,
-        // let's try the fallback
+        // Fallback logic: If the simplification fails (i.e., the original contains
+        // "stageleft :: runtime_support" but the simplified result is identical to the original),
+        // we return a generic "q!(...)" notation for readability. This fallback is intended to
+        // handle cases where the simplification logic cannot extract meaningful closure content.
+        // If this fallback is temporary, consider revisiting the simplification logic to improve it.
         if original.contains("stageleft :: runtime_support") && simplified == original {
             write!(f, "q!(...)")
         } else {
