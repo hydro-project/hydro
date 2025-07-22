@@ -40,7 +40,7 @@ pub fn save_reactflow_json(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
-) -> Result<()> {
+) -> Result<std::path::PathBuf> {
     let content = render_with_config(leaves, config, render_hydro_ir_reactflow);
     save_to_file(content, filename, "hydro_graph.json", "ReactFlow.js JSON")
 }
@@ -51,7 +51,7 @@ pub fn save_mermaid(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
-) -> Result<()> {
+) -> Result<std::path::PathBuf> {
     let content = render_with_config(leaves, config, render_hydro_ir_mermaid);
     save_to_file(content, filename, "hydro_graph.mermaid", "Mermaid diagram")
 }
@@ -62,7 +62,7 @@ pub fn save_dot(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
-) -> Result<()> {
+) -> Result<std::path::PathBuf> {
     let content = render_with_config(leaves, config, render_hydro_ir_dot);
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
@@ -100,13 +100,8 @@ pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> 
     let html_content = template.replace("{{GRAPH_DATA}}", reactflow_json);
 
     // Create file in temporary directory
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join(filename);
-    std::fs::write(&temp_file, html_content)?;
-    println!(
-        "Saved Enhanced ReactFlow.js visualization to {}",
-        temp_file.display()
-    );
+    let temp_file = save_to_file(html_content, None, filename, "HTML/Reactflow JS file").unwrap();
+    println!("Got path {}", temp_file.display());
 
     // Open the HTML file in browser
     let file_url = format!("file://{}", temp_file.display());
@@ -128,7 +123,7 @@ fn save_to_file(
     filename: Option<&str>,
     default_name: &str,
     content_type: &str,
-) -> Result<()> {
+) -> Result<std::path::PathBuf> {
     let file_path = if let Some(filename) = filename {
         std::path::PathBuf::from(filename)
     } else {
@@ -137,7 +132,7 @@ fn save_to_file(
 
     std::fs::write(&file_path, content)?;
     println!("Saved {} to {}", content_type, file_path.display());
-    Ok(())
+    Ok(file_path)
 }
 
 /// Helper function to handle config unwrapping and rendering.

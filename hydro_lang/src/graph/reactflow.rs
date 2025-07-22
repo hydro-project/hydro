@@ -375,7 +375,7 @@ pub fn save_reactflow_json(
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
     filename: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         process_id_name: process_names,
         cluster_id_name: cluster_names,
