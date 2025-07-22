@@ -65,7 +65,7 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graph visualizations based on command line arguments
-    if let Err(e) = args.graph.generate_graph(&built) {
+    if let Err(e) = args.graph.generate_graph(&built, None) {
         eprintln!("Error generating graph: {}", e);
     }
 

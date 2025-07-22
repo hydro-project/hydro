@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let built = builder.finalize();
 
     // Generate graph visualizations based on command line arguments
-    args.graph.generate_graph(&built)?;
+    args.graph.generate_graph(&built, None)?;
 
     // Now use the built flow for deployment with optimization
     let _nodes = built

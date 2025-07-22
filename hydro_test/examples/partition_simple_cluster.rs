@@ -69,7 +69,7 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    let _ = args.graph.generate_graph(&built);
+    let _ = args.graph.generate_graph(&built, None);
 
     let _nodes = built
         .optimize_with(persist_pullup::persist_pullup)

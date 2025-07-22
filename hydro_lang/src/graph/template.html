@@ -201,12 +201,13 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
+        // @ts-nocheck
+        // eslint-disable-next-line
+        const graphData = {{GRAPH_DATA}};
         const { useState, useCallback, useRef, useEffect } = React;
         // ReactFlow v11 components via reactflow
         const ReactFlowLib = window.ReactFlow;
         const { default: ReactFlow, Controls, MiniMap, Background, useNodesState, useEdgesState, addEdge, applyNodeChanges, applyEdgeChanges } = ReactFlowLib;
-        
-        const graphData = {{GRAPH_DATA}};
         
         // ColorBrewer palettes - expanded collection with various aesthetics
         const colorPalettes = {

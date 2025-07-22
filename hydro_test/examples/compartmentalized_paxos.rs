@@ -104,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    let _ = args.graph.generate_graph(&built);
+    let _ = args.graph.generate_graph(&built, None);
 
     let optimized = built.with_default_optimize();
 
