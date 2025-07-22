@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
+use crate::backtrace::get_backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
 use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
 use crate::stream::ExactlyOnce;
@@ -100,9 +101,11 @@ pub trait Location<'a>: Clone {
         next_id
     }
 
+    #[inline(never)]
     fn new_node_metadata<T>(&self) -> HydroIrMetadata {
         HydroIrMetadata {
             location_kind: self.id(),
+            backtrace: get_backtrace(2),
             output_type: Some(stageleft::quote_type::<T>().into()),
             cardinality: None,
             cpu_usage: None,

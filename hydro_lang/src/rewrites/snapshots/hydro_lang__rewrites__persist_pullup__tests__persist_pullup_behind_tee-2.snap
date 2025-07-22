@@ -20,6 +20,11 @@ expression: optimized.ir()
                             location_kind: Process(
                                 0,
                             ),
+                            backtrace: [
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 i32,
                             ),
@@ -36,6 +41,11 @@ expression: optimized.ir()
                                 0,
                             ),
                         ),
+                        backtrace: [
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             i32,
                         ),
@@ -52,6 +62,11 @@ expression: optimized.ir()
                             0,
                         ),
                     ),
+                    backtrace: [
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         i32,
                     ),
@@ -68,6 +83,11 @@ expression: optimized.ir()
                         0,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     i32,
                 ),
@@ -81,6 +101,11 @@ expression: optimized.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 i32,
             ),
@@ -107,6 +132,11 @@ expression: optimized.ir()
                             location_kind: Process(
                                 0,
                             ),
+                            backtrace: [
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 i32,
                             ),
@@ -123,6 +153,11 @@ expression: optimized.ir()
                                 0,
                             ),
                         ),
+                        backtrace: [
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             i32,
                         ),
@@ -139,6 +174,11 @@ expression: optimized.ir()
                             0,
                         ),
                     ),
+                    backtrace: [
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         i32,
                     ),
@@ -155,6 +195,11 @@ expression: optimized.ir()
                         0,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     i32,
                 ),
@@ -168,6 +213,11 @@ expression: optimized.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 i32,
             ),
