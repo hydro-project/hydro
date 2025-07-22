@@ -27,6 +27,251 @@ expression: built.ir()
                     location_kind: ExternalProcess(
                         0,
                     ),
+                    backtrace: [
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                18,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                44,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                            ),
+                            lineno: Some(
+                                124,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                            ),
+                            lineno: Some(
+                                124,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                733,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                            ),
+                            lineno: Some(
+                                167,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                            ),
+                            lineno: Some(
+                                133,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                733,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                432,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                732,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                820,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                            ),
+                            lineno: Some(
+                                40,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                            ),
+                            lineno: Some(
+                                176,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                            ),
+                            lineno: Some(
+                                315,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                            ),
+                            lineno: Some(
+                                279,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                            ),
+                            lineno: Some(
+                                176,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                820,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                720,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                200,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                            ),
+                            lineno: Some(
+                                65,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                188,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                            ),
+                            lineno: Some(
+                                356,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                            ),
+                            lineno: Some(
+                                330,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                74,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                37,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                            filename: Some(
+                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                    ],
                     output_type: Some(
                         std :: string :: String,
                     ),
@@ -40,6 +285,251 @@ expression: built.ir()
                 location_kind: Process(
                     1,
                 ),
+                backtrace: [
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            18,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            44,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                        ),
+                        lineno: Some(
+                            124,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                        ),
+                        lineno: Some(
+                            124,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            733,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                        ),
+                        lineno: Some(
+                            167,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                        ),
+                        lineno: Some(
+                            133,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            733,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            432,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            732,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            820,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                        ),
+                        lineno: Some(
+                            40,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                        ),
+                        lineno: Some(
+                            176,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                        ),
+                        lineno: Some(
+                            315,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                        ),
+                        lineno: Some(
+                            279,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                        ),
+                        lineno: Some(
+                            176,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            820,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            720,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            200,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                        ),
+                        lineno: Some(
+                            65,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            188,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                        ),
+                        lineno: Some(
+                            356,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                        ),
+                        lineno: Some(
+                            330,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            74,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            37,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                        filename: Some(
+                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                ],
                 output_type: Some(
                     std :: string :: String,
                 ),
@@ -53,6 +543,251 @@ expression: built.ir()
             location_kind: Process(
                 1,
             ),
+            backtrace: [
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        19,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        44,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                    ),
+                    lineno: Some(
+                        124,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                    ),
+                    lineno: Some(
+                        124,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        733,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                    ),
+                    lineno: Some(
+                        167,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                    ),
+                    lineno: Some(
+                        133,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        733,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        432,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        732,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        820,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                    ),
+                    lineno: Some(
+                        40,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                    ),
+                    lineno: Some(
+                        176,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                    ),
+                    lineno: Some(
+                        315,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                    ),
+                    lineno: Some(
+                        279,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                    ),
+                    lineno: Some(
+                        176,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        820,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        720,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        200,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                    ),
+                    lineno: Some(
+                        65,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        188,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                    ),
+                    lineno: Some(
+                        356,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                    ),
+                    lineno: Some(
+                        330,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        74,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        37,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                    filename: Some(
+                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+            ],
             output_type: Some(
                 std :: string :: String,
             ),
@@ -90,6 +825,251 @@ expression: built.ir()
                         location_kind: Process(
                             1,
                         ),
+                        backtrace: [
+                            BacktraceElement {
+                                fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                                ),
+                                lineno: Some(
+                                    21,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                                ),
+                                lineno: Some(
+                                    44,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                                ),
+                                lineno: Some(
+                                    124,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                                ),
+                                lineno: Some(
+                                    124,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    733,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                                ),
+                                lineno: Some(
+                                    167,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                                ),
+                                lineno: Some(
+                                    133,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    733,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    432,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    732,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    820,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                                ),
+                                lineno: Some(
+                                    40,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                                ),
+                                lineno: Some(
+                                    176,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                                ),
+                                lineno: Some(
+                                    315,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                                ),
+                                lineno: Some(
+                                    279,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                                ),
+                                lineno: Some(
+                                    176,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    820,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    720,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    200,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                                ),
+                                lineno: Some(
+                                    65,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                                ),
+                                lineno: Some(
+                                    188,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                                ),
+                                lineno: Some(
+                                    356,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                                filename: Some(
+                                    "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                                ),
+                                lineno: Some(
+                                    330,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                                ),
+                                lineno: Some(
+                                    74,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                                ),
+                                lineno: Some(
+                                    37,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                filename: Some(
+                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                        ],
                         output_type: Some(
                             u32,
                         ),
@@ -103,6 +1083,251 @@ expression: built.ir()
                     location_kind: Process(
                         1,
                     ),
+                    backtrace: [
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                22,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                44,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                            ),
+                            lineno: Some(
+                                124,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                            ),
+                            lineno: Some(
+                                124,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                733,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                            ),
+                            lineno: Some(
+                                167,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                            ),
+                            lineno: Some(
+                                133,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                733,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                432,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                732,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                820,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                            ),
+                            lineno: Some(
+                                40,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                            ),
+                            lineno: Some(
+                                176,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                            ),
+                            lineno: Some(
+                                315,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                            ),
+                            lineno: Some(
+                                279,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                            ),
+                            lineno: Some(
+                                176,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                820,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                720,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                200,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                            ),
+                            lineno: Some(
+                                65,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                            ),
+                            lineno: Some(
+                                188,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                            ),
+                            lineno: Some(
+                                356,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                            filename: Some(
+                                "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                            ),
+                            lineno: Some(
+                                330,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                74,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                            ),
+                            lineno: Some(
+                                37,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                            filename: Some(
+                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                    ],
                     output_type: Some(
                         hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                     ),
@@ -116,6 +1341,251 @@ expression: built.ir()
                 location_kind: Process(
                     2,
                 ),
+                backtrace: [
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            22,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            44,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                        ),
+                        lineno: Some(
+                            124,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                        ),
+                        lineno: Some(
+                            124,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            733,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                        ),
+                        lineno: Some(
+                            167,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                        ),
+                        lineno: Some(
+                            133,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            733,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            432,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            732,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            820,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                        ),
+                        lineno: Some(
+                            40,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                        ),
+                        lineno: Some(
+                            176,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                        ),
+                        lineno: Some(
+                            315,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                        ),
+                        lineno: Some(
+                            279,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                        ),
+                        lineno: Some(
+                            176,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            820,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            720,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            200,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                        ),
+                        lineno: Some(
+                            65,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                        ),
+                        lineno: Some(
+                            188,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                        ),
+                        lineno: Some(
+                            356,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                        filename: Some(
+                            "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                        ),
+                        lineno: Some(
+                            330,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            74,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                        ),
+                        lineno: Some(
+                            37,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                        filename: Some(
+                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                ],
                 output_type: Some(
                     hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
                 ),
@@ -129,6 +1599,251 @@ expression: built.ir()
             location_kind: Process(
                 2,
             ),
+            backtrace: [
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::first_ten_distributed::h7eb8ddfa7e8e3b4e",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        22,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hb8945456126a6e5b",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        44,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::hd498e0f67d665d65",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                    ),
+                    lineno: Some(
+                        124,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "<core::pin::Pin<P> as core::future::future::Future>::poll::h7e296b15f66c9272",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/future/future.rs",
+                    ),
+                    lineno: Some(
+                        124,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::{{closure}}::hf0cac01f2882fe38",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        733,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::task::coop::with_budget::hb219317d690c3cb3",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                    ),
+                    lineno: Some(
+                        167,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::task::coop::budget::h343daf4d43b054e1",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/task/coop/mod.rs",
+                    ),
+                    lineno: Some(
+                        133,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::{{closure}}::h5122147fdae5c693",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        733,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::Context::enter::h0937634fbf1ac4c6",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        432,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::{{closure}}::he7b16419fded69a7",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        732,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::{{closure}}::h26b4bcaf5d969aa0",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        820,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::scoped::Scoped<T>::set::h70d4f49d5a6f2021",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/scoped.rs",
+                    ),
+                    lineno: Some(
+                        40,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::set_scheduler::{{closure}}::h26981ad95d20ac9b",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                    ),
+                    lineno: Some(
+                        176,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "std::thread::local::LocalKey<T>::try_with::hcb1d15540b1c86aa",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                    ),
+                    lineno: Some(
+                        315,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "std::thread::local::LocalKey<T>::with::h884ec506133d63b0",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/std/src/thread/local.rs",
+                    ),
+                    lineno: Some(
+                        279,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::set_scheduler::h3fbc2568dbf98b36",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context.rs",
+                    ),
+                    lineno: Some(
+                        176,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::enter::h45c0b7590a94944f",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        820,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CoreGuard::block_on::hc182b535bcdf56da",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        720,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::{{closure}}::h65f6a2ae6ee62609",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        200,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::context::runtime::enter_runtime::h79b8aff9988b6400",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/context/runtime.rs",
+                    ),
+                    lineno: Some(
+                        65,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::scheduler::current_thread::CurrentThread::block_on::hd1bd6c84ad686c6f",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/scheduler/current_thread/mod.rs",
+                    ),
+                    lineno: Some(
+                        188,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::runtime::Runtime::block_on_inner::h8588e5034a4495b8",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                    ),
+                    lineno: Some(
+                        356,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "tokio::runtime::runtime::Runtime::block_on::h60c484be363fb801",
+                    filename: Some(
+                        "/Users/shadajl/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.45.1/src/runtime/runtime.rs",
+                    ),
+                    lineno: Some(
+                        330,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::hb2d070f4bfbcb988",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        74,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::distributed::first_ten::tests::first_ten_distributed::{{closure}}::hd7bc2452476ccb02",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/distributed/first_ten.rs",
+                    ),
+                    lineno: Some(
+                        37,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h84aba6898ae2d32b",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                    filename: Some(
+                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+            ],
             output_type: Some(
                 hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork,
             ),

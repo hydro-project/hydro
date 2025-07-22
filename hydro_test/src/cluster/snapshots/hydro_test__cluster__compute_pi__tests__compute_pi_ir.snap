@@ -46,6 +46,62 @@ expression: built.ir()
                                                             location_kind: Cluster(
                                                                 0,
                                                             ),
+                                                            backtrace: [
+                                                                BacktraceElement {
+                                                                    fn_name: "hydro_lang::location::tick::Tick<L>::spin_batch::hc609f9a2e1caf588",
+                                                                    filename: Some(
+                                                                        "/Users/shadajl/open-source/hydro/hydro_lang/src/location/tick.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        113,
+                                                                    ),
+                                                                },
+                                                                BacktraceElement {
+                                                                    fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                                    filename: Some(
+                                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        15,
+                                                                    ),
+                                                                },
+                                                                BacktraceElement {
+                                                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                                    filename: Some(
+                                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        66,
+                                                                    ),
+                                                                },
+                                                                BacktraceElement {
+                                                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                                    filename: Some(
+                                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        64,
+                                                                    ),
+                                                                },
+                                                                BacktraceElement {
+                                                                    fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                                    filename: Some(
+                                                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        250,
+                                                                    ),
+                                                                },
+                                                                BacktraceElement {
+                                                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                                    filename: Some(
+                                                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                                    ),
+                                                                    lineno: Some(
+                                                                        250,
+                                                                    ),
+                                                                },
+                                                            ],
                                                             output_type: Some(
                                                                 (),
                                                             ),
@@ -59,6 +115,62 @@ expression: built.ir()
                                                         location_kind: Cluster(
                                                             0,
                                                         ),
+                                                        backtrace: [
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_lang::location::tick::Tick<L>::spin_batch::hc609f9a2e1caf588",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_lang/src/location/tick.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    113,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    15,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    66,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    64,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    250,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                                filename: Some(
+                                                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    250,
+                                                                ),
+                                                            },
+                                                        ],
                                                         output_type: Some(
                                                             usize,
                                                         ),
@@ -72,6 +184,62 @@ expression: built.ir()
                                                     location_kind: Cluster(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_lang::location::tick::Tick<L>::spin_batch::hc609f9a2e1caf588",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_lang/src/location/tick.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                113,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                15,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                66,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                64,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                            filename: Some(
+                                                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                            filename: Some(
+                                                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                    ],
                                                     output_type: Some(
                                                         (),
                                                     ),
@@ -88,6 +256,53 @@ expression: built.ir()
                                                         0,
                                                     ),
                                                 ),
+                                                backtrace: [
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            15,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            66,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            64,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                        filename: Some(
+                                                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                        filename: Some(
+                                                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                ],
                                                 output_type: Some(
                                                     (f64 , f64),
                                                 ),
@@ -104,6 +319,53 @@ expression: built.ir()
                                                     0,
                                                 ),
                                             ),
+                                            backtrace: [
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        15,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        66,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        64,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                    filename: Some(
+                                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        250,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                    filename: Some(
+                                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        250,
+                                                    ),
+                                                },
+                                            ],
                                             output_type: Some(
                                                 bool,
                                             ),
@@ -120,6 +382,53 @@ expression: built.ir()
                                                 0,
                                             ),
                                         ),
+                                        backtrace: [
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                ),
+                                                lineno: Some(
+                                                    15,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                ),
+                                                lineno: Some(
+                                                    66,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                                ),
+                                                lineno: Some(
+                                                    64,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                                filename: Some(
+                                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                ),
+                                                lineno: Some(
+                                                    250,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                filename: Some(
+                                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                ),
+                                                lineno: Some(
+                                                    250,
+                                                ),
+                                            },
+                                        ],
                                         output_type: Some(
                                             (u64 , u64),
                                         ),
@@ -133,6 +442,62 @@ expression: built.ir()
                                     location_kind: Process(
                                         1,
                                     ),
+                                    backtrace: [
+                                        BacktraceElement {
+                                            fn_name: "hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous::hcf6f74e1b774c2b5",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs",
+                                            ),
+                                            lineno: Some(
+                                                2505,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                            ),
+                                            lineno: Some(
+                                                32,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                            ),
+                                            lineno: Some(
+                                                66,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                            ),
+                                            lineno: Some(
+                                                64,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                            filename: Some(
+                                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                            ),
+                                            lineno: Some(
+                                                250,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                            filename: Some(
+                                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                            ),
+                                            lineno: Some(
+                                                250,
+                                            ),
+                                        },
+                                    ],
                                     output_type: Some(
                                         (u64 , u64),
                                     ),
@@ -146,6 +511,62 @@ expression: built.ir()
                                 location_kind: Process(
                                     1,
                                 ),
+                                backtrace: [
+                                    BacktraceElement {
+                                        fn_name: "hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous::hcf6f74e1b774c2b5",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs",
+                                        ),
+                                        lineno: Some(
+                                            2505,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                        ),
+                                        lineno: Some(
+                                            32,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                        ),
+                                        lineno: Some(
+                                            66,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                        ),
+                                        lineno: Some(
+                                            64,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                        filename: Some(
+                                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                        ),
+                                        lineno: Some(
+                                            250,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                        filename: Some(
+                                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                        ),
+                                        lineno: Some(
+                                            250,
+                                        ),
+                                    },
+                                ],
                                 output_type: Some(
                                     (u64 , u64),
                                 ),
@@ -159,6 +580,62 @@ expression: built.ir()
                             location_kind: Process(
                                 1,
                             ),
+                            backtrace: [
+                                BacktraceElement {
+                                    fn_name: "hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous::hcf6f74e1b774c2b5",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs",
+                                    ),
+                                    lineno: Some(
+                                        2505,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        32,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        66,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        64,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                    filename: Some(
+                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                    filename: Some(
+                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                            ],
                             output_type: Some(
                                 (u64 , u64),
                             ),
@@ -172,6 +649,62 @@ expression: built.ir()
                         location_kind: Process(
                             1,
                         ),
+                        backtrace: [
+                            BacktraceElement {
+                                fn_name: "hydro_lang::stream::Stream<T,L,B,O>::reduce_commutative::he3bc29e3a67de0cf",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs",
+                                ),
+                                lineno: Some(
+                                    1099,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    32,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    66,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    64,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                filename: Some(
+                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                        ],
                         output_type: Some(
                             (u64 , u64),
                         ),
@@ -194,6 +727,71 @@ expression: built.ir()
                             location_kind: Process(
                                 1,
                             ),
+                            backtrace: [
+                                BacktraceElement {
+                                    fn_name: "hydro_lang::location::Location::source_interval::h7e0278411e4346d2",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_lang/src/location/mod.rs",
+                                    ),
+                                    lineno: Some(
+                                        228,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_lang::optional::Optional<T,L,B>::sample_every::h03ceda9be8caf525",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                                    ),
+                                    lineno: Some(
+                                        605,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        41,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        66,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                    ),
+                                    lineno: Some(
+                                        64,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                    filename: Some(
+                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                    filename: Some(
+                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                            ],
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                             ),
@@ -210,6 +808,71 @@ expression: built.ir()
                                 1,
                             ),
                         ),
+                        backtrace: [
+                            BacktraceElement {
+                                fn_name: "hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if::h7a8d77ff59f4e253",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                                ),
+                                lineno: Some(
+                                    499,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_lang::optional::Optional<T,L,B>::sample_every::h03ceda9be8caf525",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                                ),
+                                lineno: Some(
+                                    611,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    41,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    66,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                                ),
+                                lineno: Some(
+                                    64,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                filename: Some(
+                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                        ],
                         output_type: Some(
                             (),
                         ),
@@ -226,6 +889,71 @@ expression: built.ir()
                             1,
                         ),
                     ),
+                    backtrace: [
+                        BacktraceElement {
+                            fn_name: "hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if::h7a8d77ff59f4e253",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                            ),
+                            lineno: Some(
+                                499,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_lang::optional::Optional<T,L,B>::sample_every::h03ceda9be8caf525",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                            ),
+                            lineno: Some(
+                                611,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                            ),
+                            lineno: Some(
+                                41,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                            ),
+                            lineno: Some(
+                                66,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                            ),
+                            lineno: Some(
+                                64,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                            filename: Some(
+                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                    ],
                     output_type: Some(
                         ((u64 , u64) , ()),
                     ),
@@ -242,6 +970,71 @@ expression: built.ir()
                         1,
                     ),
                 ),
+                backtrace: [
+                    BacktraceElement {
+                        fn_name: "hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if::h7a8d77ff59f4e253",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                        ),
+                        lineno: Some(
+                            499,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_lang::optional::Optional<T,L,B>::sample_every::h03ceda9be8caf525",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_lang/src/optional.rs",
+                        ),
+                        lineno: Some(
+                            611,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                        ),
+                        lineno: Some(
+                            41,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                        ),
+                        lineno: Some(
+                            66,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                        ),
+                        lineno: Some(
+                            64,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                        filename: Some(
+                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                ],
                 output_type: Some(
                     (u64 , u64),
                 ),
@@ -255,6 +1048,53 @@ expression: built.ir()
             location_kind: Process(
                 1,
             ),
+            backtrace: [
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::compute_pi::compute_pi::h5c35ac2e814ed12d",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                    ),
+                    lineno: Some(
+                        39,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::h398afe231952ba89",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                    ),
+                    lineno: Some(
+                        66,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::compute_pi::tests::compute_pi_ir::{{closure}}::hd72a9ff4dea5a525",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/compute_pi.rs",
+                    ),
+                    lineno: Some(
+                        64,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::hfe07a639c4f867b6",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                    filename: Some(
+                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+            ],
             output_type: Some(
                 (u64 , u64),
             ),
