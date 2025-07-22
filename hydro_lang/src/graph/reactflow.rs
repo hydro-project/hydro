@@ -13,6 +13,7 @@ pub struct HydroReactFlow<W> {
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
     edge_count: usize,
+    config: super::render::HydroWriteConfig,
     // Type name mappings
     process_names: HashMap<usize, String>,
     cluster_names: HashMap<usize, String>,
@@ -34,6 +35,7 @@ impl<W> HydroReactFlow<W> {
             edges: Vec::new(),
             locations: HashMap::new(),
             edge_count: 0,
+            config: config.clone(),
             process_names,
             cluster_names,
             external_names,
@@ -104,60 +106,6 @@ impl<W> HydroReactFlow<W> {
             node["position"]["y"] = serde_json::Value::Number(serde_json::Number::from(0));
         }
     }
-
-    /// Extract a short, readable label from the full token stream label
-    fn extract_short_label(&self, full_label: &str) -> String {
-        // Look for common patterns and extract just the operation name
-        if let Some(op_name) = full_label.split('(').next() {
-            match op_name.to_lowercase().as_str() {
-                "map" => "map".to_string(),
-                "filter" => "filter".to_string(),
-                "flat_map" => "flat_map".to_string(),
-                "filter_map" => "filter_map".to_string(),
-                "for_each" => "for_each".to_string(),
-                "fold" => "fold".to_string(),
-                "reduce" => "reduce".to_string(),
-                "join" => "join".to_string(),
-                "persist" => "persist".to_string(),
-                "delta" => "delta".to_string(),
-                "tee" => "tee".to_string(),
-                "source_iter" => "source_iter".to_string(),
-                "dest_sink" => "dest_sink".to_string(),
-                "cycle_sink" => "cycle_sink".to_string(),
-                "external_network" => "network".to_string(),
-                "spin" => "spin".to_string(),
-                "inspect" => "inspect".to_string(),
-                _ if full_label.contains("network") => {
-                    if full_label.contains("deser") {
-                        "network(recv)".to_string()
-                    } else if full_label.contains("ser") {
-                        "network(send)".to_string()
-                    } else {
-                        "network".to_string()
-                    }
-                }
-                _ if full_label.contains("send_bincode") => "send_bincode".to_string(),
-                _ if full_label.contains("broadcast_bincode") => "broadcast_bincode".to_string(),
-                _ if full_label.contains("dest_sink") => "dest_sink".to_string(),
-                _ if full_label.contains("source_stream") => "source_stream".to_string(),
-                _ => {
-                    // For other cases, try to get a reasonable short name
-                    if full_label.len() > 20 {
-                        format!("{}...", &full_label[..17])
-                    } else {
-                        full_label.to_string()
-                    }
-                }
-            }
-        } else {
-            // Fallback for labels that don't follow the pattern
-            if full_label.len() > 20 {
-                format!("{}...", &full_label[..17])
-            } else {
-                full_label.to_string()
-            }
-        }
-    }
 }
 
 impl<W> HydroGraphWrite for HydroReactFlow<W>
@@ -185,8 +133,15 @@ where
     ) -> Result<(), Self::Err> {
         let style = self.node_type_to_style(node_type);
 
-        // Extract short label from full label
-        let short_label = self.extract_short_label(node_label);
+        // Determine what label to display based on config
+        let display_label = if self.config.use_short_labels {
+            super::render::extract_short_label(node_label)
+        } else {
+            node_label.to_string()
+        };
+
+        // Always extract short label for UI toggle functionality
+        let short_label = super::render::extract_short_label(node_label);
 
         // If short and full labels are the same or very similar, enhance the full label
         let enhanced_full_label = if short_label.len() >= node_label.len() - 2 {
@@ -222,7 +177,7 @@ where
             "id": node_id.to_string(),
             "type": "default",
             "data": {
-                "label": short_label,
+                "label": display_label,
                 "shortLabel": short_label,
                 "fullLabel": enhanced_full_label,
                 "expanded": false,
@@ -384,6 +339,7 @@ pub fn hydro_ir_to_reactflow(
         show_metadata: false,
         show_location_groups: true,
         include_tee_ids: true,
+        use_short_labels: true, // Default to short labels
         process_id_name: process_names,
         cluster_id_name: cluster_names,
         external_id_name: external_names,

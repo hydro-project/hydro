@@ -12,11 +12,24 @@ pub fn escape_dot(string: &str, newline: &str) -> String {
 pub struct HydroDot<W> {
     write: W,
     indent: usize,
+    config: super::render::HydroWriteConfig,
 }
 
 impl<W> HydroDot<W> {
     pub fn new(write: W) -> Self {
-        Self { write, indent: 0 }
+        Self {
+            write,
+            indent: 0,
+            config: super::render::HydroWriteConfig::default(),
+        }
+    }
+
+    pub fn new_with_config(write: W, config: &super::render::HydroWriteConfig) -> Self {
+        Self {
+            write,
+            indent: 0,
+            config: config.clone(),
+        }
     }
 }
 
@@ -34,6 +47,26 @@ where
             i = self.indent
         )?;
         self.indent += 4;
+
+        // Use dot layout for better edge routing between subgraphs
+        writeln!(
+            self.write,
+            "{b:i$}layout=dot;",
+            b = "",
+            i = self.indent
+        )?;
+        writeln!(
+            self.write,
+            "{b:i$}compound=true;",
+            b = "",
+            i = self.indent
+        )?;
+        writeln!(
+            self.write,
+            "{b:i$}concentrate=true;",
+            b = "",
+            i = self.indent
+        )?;
 
         const FONTS: &str = "\"Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace\"";
         writeln!(
@@ -61,17 +94,25 @@ where
         _location_id: Option<usize>,
         _location_type: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let escaped_label = escape_dot(node_label, "\\l");
+        // Determine what label to display based on config
+        let display_label = if self.config.use_short_labels {
+            super::render::extract_short_label(node_label)
+        } else {
+            node_label.to_string()
+        };
+
+        let escaped_label = escape_dot(&display_label, "\\l");
         let label = format!("n{}", node_id);
 
         let (shape_str, color_str) = match node_type {
-            HydroNodeType::Source => ("ellipse", "\"#88ff88\""),
-            HydroNodeType::Transform => ("box", "\"#8888ff\""),
-            HydroNodeType::Join => ("diamond", "\"#ff8888\""),
-            HydroNodeType::Aggregation => ("house", "\"#ffff88\""),
-            HydroNodeType::Network => ("doubleoctagon", "\"#88ffff\""),
-            HydroNodeType::Sink => ("invhouse", "\"#ff88ff\""),
-            HydroNodeType::Tee => ("circle", "\"#dddddd\""),
+            // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
+            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""),        // Light teal
+            HydroNodeType::Transform => ("box", "\"#ffffb3\""),         // Light yellow
+            HydroNodeType::Join => ("diamond", "\"#bebada\""),          // Light purple
+            HydroNodeType::Aggregation => ("house", "\"#fb8072\""),     // Light red/salmon
+            HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
+            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),         // Light orange
+            HydroNodeType::Tee => ("circle", "\"#b3de69\""),           // Light green
         };
 
         write!(
@@ -153,6 +194,14 @@ where
             i = self.indent,
         )?;
         self.indent += 4;
+        
+        // Use dot layout for interior nodes within containers
+        writeln!(
+            self.write,
+            "{b:i$}layout=dot;",
+            b = "",
+            i = self.indent
+        )?;
         writeln!(
             self.write,
             "{b:i$}label = \"{location_type} {id}\"",
@@ -163,7 +212,13 @@ where
         writeln!(self.write, "{b:i$}style=filled", b = "", i = self.indent)?;
         writeln!(
             self.write,
-            "{b:i$}fillcolor=\"#f0f0f0\"",
+            "{b:i$}fillcolor=\"#fafafa\"",
+            b = "",
+            i = self.indent
+        )?;
+        writeln!(
+            self.write,
+            "{b:i$}color=\"#e0e0e0\"",
             b = "",
             i = self.indent
         )?;
@@ -187,18 +242,21 @@ where
 
 /// Open DOT/Graphviz visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
-pub fn open_browser(built_flow: &crate::builder::built::BuiltFlow) -> Result<(), Box<dyn std::error::Error>> {
+pub fn open_browser(
+    built_flow: &crate::builder::built::BuiltFlow,
+) -> Result<(), Box<dyn std::error::Error>> {
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
         include_tee_ids: true,
+        use_short_labels: true, // Default to short labels
         process_id_name: built_flow.process_id_name().clone(),
         cluster_id_name: built_flow.cluster_id_name().clone(),
         external_id_name: built_flow.external_id_name().clone(),
     };
-    
+
     // Use the existing debug function
     crate::graph::debug::open_hydro_ir_dot(built_flow.ir(), Some(config))?;
-    
+
     Ok(())
 }

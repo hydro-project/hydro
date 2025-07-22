@@ -81,6 +81,7 @@ pub struct HydroWriteConfig {
     pub show_metadata: bool,
     pub show_location_groups: bool,
     pub include_tee_ids: bool,
+    pub use_short_labels: bool,
     pub process_id_name: Vec<(usize, String)>,
     pub cluster_id_name: Vec<(usize, String)>,
     pub external_id_name: Vec<(usize, String)>,
@@ -92,6 +93,7 @@ impl Default for HydroWriteConfig {
             show_metadata: false,
             show_location_groups: true,
             include_tee_ids: true,
+            use_short_labels: true, // Default to short labels for all renderers
             process_id_name: vec![],
             cluster_id_name: vec![],
             external_id_name: vec![],
@@ -140,6 +142,60 @@ impl HydroGraphStructure {
     }
 }
 
+/// Extract a short, readable label from the full token stream label
+pub fn extract_short_label(full_label: &str) -> String {
+    // Look for common patterns and extract just the operation name
+    if let Some(op_name) = full_label.split('(').next() {
+        match op_name.to_lowercase().as_str() {
+            "map" => "map".to_string(),
+            "filter" => "filter".to_string(),
+            "flat_map" => "flat_map".to_string(),
+            "filter_map" => "filter_map".to_string(),
+            "for_each" => "for_each".to_string(),
+            "fold" => "fold".to_string(),
+            "reduce" => "reduce".to_string(),
+            "join" => "join".to_string(),
+            "persist" => "persist".to_string(),
+            "delta" => "delta".to_string(),
+            "tee" => "tee".to_string(),
+            "source_iter" => "source_iter".to_string(),
+            "dest_sink" => "dest_sink".to_string(),
+            "cycle_sink" => "cycle_sink".to_string(),
+            "external_network" => "network".to_string(),
+            "spin" => "spin".to_string(),
+            "inspect" => "inspect".to_string(),
+            _ if full_label.contains("network") => {
+                if full_label.contains("deser") {
+                    "network(recv)".to_string()
+                } else if full_label.contains("ser") {
+                    "network(send)".to_string()
+                } else {
+                    "network".to_string()
+                }
+            }
+            _ if full_label.contains("send_bincode") => "send_bincode".to_string(),
+            _ if full_label.contains("broadcast_bincode") => "broadcast_bincode".to_string(),
+            _ if full_label.contains("dest_sink") => "dest_sink".to_string(),
+            _ if full_label.contains("source_stream") => "source_stream".to_string(),
+            _ => {
+                // For other cases, try to get a reasonable short name
+                if full_label.len() > 20 {
+                    format!("{}...", &full_label[..17])
+                } else {
+                    full_label.to_string()
+                }
+            }
+        }
+    } else {
+        // Fallback for labels that don't follow the pattern
+        if full_label.len() > 20 {
+            format!("{}...", &full_label[..17])
+        } else {
+            full_label.to_string()
+        }
+    }
+}
+
 impl HydroLeaf {
     /// Generate a mermaid graph representation of this Hydro IR leaf and its subgraph.
     pub fn to_mermaid(&self, config: &HydroWriteConfig) -> String {
@@ -154,7 +210,7 @@ impl HydroLeaf {
         output: impl std::fmt::Write,
         config: &HydroWriteConfig,
     ) -> std::fmt::Result {
-        let mut graph_write = HydroMermaid::new(output);
+        let mut graph_write = HydroMermaid::new_with_config(output, config);
         self.write_graph(&mut graph_write, config)
     }
 
@@ -171,7 +227,7 @@ impl HydroLeaf {
         output: impl std::fmt::Write,
         config: &HydroWriteConfig,
     ) -> std::fmt::Result {
-        let mut graph_write = HydroDot::new(output);
+        let mut graph_write = HydroDot::new_with_config(output, config);
         self.write_graph(&mut graph_write, config)
     }
 
@@ -937,7 +993,7 @@ pub fn write_hydro_ir_mermaid(
     leaves: &[HydroLeaf],
     config: &HydroWriteConfig,
 ) -> std::fmt::Result {
-    let mut graph_write = HydroMermaid::new(output);
+    let mut graph_write = HydroMermaid::new_with_config(output, config);
     write_hydro_ir_graph(&mut graph_write, leaves, config)
 }
 
@@ -952,7 +1008,7 @@ pub fn write_hydro_ir_dot(
     leaves: &[HydroLeaf],
     config: &HydroWriteConfig,
 ) -> std::fmt::Result {
-    let mut graph_write = HydroDot::new(output);
+    let mut graph_write = HydroDot::new_with_config(output, config);
     write_hydro_ir_graph(&mut graph_write, leaves, config)
 }
 

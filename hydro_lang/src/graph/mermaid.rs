@@ -26,6 +26,7 @@ pub struct HydroMermaid<W> {
     write: W,
     indent: usize,
     link_count: usize,
+    config: super::render::HydroWriteConfig,
 }
 
 impl<W> HydroMermaid<W> {
@@ -34,6 +35,16 @@ impl<W> HydroMermaid<W> {
             write,
             indent: 0,
             link_count: 0,
+            config: super::render::HydroWriteConfig::default(),
+        }
+    }
+
+    pub fn new_with_config(write: W, config: &super::render::HydroWriteConfig) -> Self {
+        Self {
+            write,
+            indent: 0,
+            link_count: 0,
+            config: config.clone(),
         }
     }
 }
@@ -47,8 +58,8 @@ where
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#fafafa','clusterBorder':'#e0e0e0'}}}}}}%%
-{b:i$}flowchart TD
+            "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#fafafa','clusterBorder':'#e0e0e0'}},'elk':{{'algorithm':'mrtree','elk.direction':'DOWN','elk.layered.spacing.nodeNodeBetweenLayers':'30'}}}}}}%%
+{b:i$}graph TD
 {b:i$}classDef sourceClass fill:#8dd3c7,stroke:#86c8bd,text-align:left,white-space:pre
 {b:i$}classDef transformClass fill:#ffffb3,stroke:#f5f5a8,text-align:left,white-space:pre
 {b:i$}classDef joinClass fill:#bebada,stroke:#b5b1cf,text-align:left,white-space:pre
@@ -56,7 +67,6 @@ where
 {b:i$}classDef networkClass fill:#80b1d3,stroke:#79a8c8,text-align:left,white-space:pre
 {b:i$}classDef sinkClass fill:#fdb462,stroke:#f0aa5b,text-align:left,white-space:pre
 {b:i$}classDef teeClass fill:#b3de69,stroke:#aad362,text-align:left,white-space:pre
-{b:i$}style loc_* fill:#fafafa,stroke:#e0e0e0,rx:8,ry:8
 {b:i$}linkStyle default stroke:#666666",
             b = "",
             i = self.indent
@@ -90,9 +100,16 @@ where
             _ => ("[", "]"),
         };
 
+        // Determine what label to display based on config
+        let display_label = if self.config.use_short_labels {
+            super::render::extract_short_label(node_label)
+        } else {
+            node_label.to_string()
+        };
+
         let label = format!(
             r#"n{node_id}{lbracket}"{escaped_label}"{rbracket}:::{class}"#,
-            escaped_label = escape_mermaid(node_label),
+            escaped_label = escape_mermaid(&display_label),
             class = class_str,
         );
 
@@ -190,6 +207,7 @@ pub fn open_browser(
         show_metadata: false,
         show_location_groups: true,
         include_tee_ids: true,
+        use_short_labels: true, // Default to short labels
         process_id_name: built_flow.process_id_name().clone(),
         cluster_id_name: built_flow.cluster_id_name().clone(),
         external_id_name: built_flow.external_id_name().clone(),

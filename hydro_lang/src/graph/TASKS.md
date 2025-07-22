@@ -1,0 +1,18 @@
+TASKS
+- Formats
+    - Clean up mermaid and graphviz output
+- Layout
+    - Expand Hydro nodes to full code
+    - Hierarchical graph?
+    - Collapse chains of map/filter in one operator?
+- Labels
+    - Comments for nodes visible on hover or something
+    - Nicer display to toggle type names
+    - "Physical plan": perf metadata from runs.
+- Integration
+    - Cross link with code locations in VS Code.
+    - Cross-link with flame graph?!
+- Live runtime output
+    - Live updates of nodes with perf data
+    - Coloring nodes or node outlines for bottleneck analysis
+- Graphical view of subgraphs from debugging (e.g. simulation)
