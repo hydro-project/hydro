@@ -404,6 +404,8 @@
             return minWidth;
         };
 
+
+
         // Simplified location color generation
         const generateLocationColor = (locationId, totalLocations, palette = 'Set3') => {
             const colors = colorPalettes[palette];
@@ -808,6 +810,7 @@
             }
         };
 
+
         // Helper function to determine if graph should be auto-collapsed
         const shouldAutoCollapse = (locationContainers) => {
             if (locationContainers.length === 0) return false;
@@ -961,6 +964,7 @@
             const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
             const [currentLayout, setCurrentLayout] = React.useState('mrtree');
             const [currentPalette, setCurrentPalette] = React.useState('Set3');
+            const [useShortLabels, setUseShortLabels] = React.useState(true);
             
             const [collapsedLocations, setCollapsedLocations] = React.useState({});
             const [originalNodeDimensions, setOriginalNodeDimensions] = React.useState({});
@@ -1397,6 +1401,43 @@
                 setNodes(allElements);
                 setEdges(initialEdges);
                 
+                // Apply initial label state to ensure consistency with useShortLabels
+                setTimeout(() => {
+                    setNodes(currentNodes => {
+                        return currentNodes.map(node => {
+                            // For container nodes, handle label toggling
+                            if (node.data?.isContainer) {
+                                const originalLabel = node.data.originalLabel || node.data.label;
+                                const newLabel = useShortLabels 
+                                    ? leftTruncateRustPath(originalLabel, true)
+                                    : originalLabel;
+                                
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        label: newLabel,
+                                        originalLabel: originalLabel
+                                    }
+                                };
+                            }
+                            
+                            // For regular nodes, use shortLabel/fullLabel
+                            if (node.data?.shortLabel && node.data?.fullLabel) {
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        label: useShortLabels ? node.data.shortLabel : node.data.fullLabel
+                                    }
+                                };
+                            }
+                            
+                            return node;
+                        });
+                    });
+                }, 10); // Small delay to ensure nodes are set
+                
                 // Apply initial edge routing based on determined container states
                 setTimeout(() => {
                     setEdges(currentEdges => {
@@ -1425,7 +1466,7 @@
                     // Most containers collapsed - use wider zoom
                     reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02, duration: 300 });
                 }
-            }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette, setHyperedges]);
+            }, [setNodes, setEdges, currentLayout, currentPalette, applyNodePalette, setHyperedges, useShortLabels]);
 
             // Apply elk layout with selected algorithm
             const applyLayout = useCallback(async (layoutType = currentLayout) => {
@@ -1573,7 +1614,42 @@
                 
                 // Apply palette colors and update nodes
                 const coloredChildNodes = applyNodePalette(childNodes, currentPalette);
-                const allElements = [...locationContainers, ...coloredChildNodes];
+                
+                // Apply global label state to all nodes
+                const labelAdjustedNodes = coloredChildNodes.map(node => {
+                    if (node.data?.shortLabel && node.data?.fullLabel) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                label: useShortLabels ? node.data.shortLabel : node.data.fullLabel
+                            }
+                        };
+                    }
+                    return node;
+                });
+                
+                // Also apply label state to containers
+                const labelAdjustedContainers = locationContainers.map(container => {
+                    if (container.data?.isContainer) {
+                        const originalLabel = container.data.originalLabel || container.data.label;
+                        const newLabel = useShortLabels 
+                            ? leftTruncateRustPath(originalLabel, true)
+                            : originalLabel;
+                        
+                        return {
+                            ...container,
+                            data: {
+                                ...container.data,
+                                label: newLabel,
+                                originalLabel: originalLabel
+                            }
+                        };
+                    }
+                    return container;
+                });
+                
+                const allElements = [...labelAdjustedContainers, ...labelAdjustedNodes];
                 setNodes(allElements);
                 
                 // Update edges to respect current collapsed state
@@ -1599,7 +1675,50 @@
                         reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.01 });
                     }
                 }, 100);
-            }, [nodes, edges, currentLayout, currentPalette, collapsedLocations, setNodes, setOriginalNodeDimensions, applyNodePalette, hyperedges]);
+            }, [nodes, edges, currentLayout, currentPalette, collapsedLocations, setNodes, setOriginalNodeDimensions, applyNodePalette, hyperedges, useShortLabels]);
+
+            const toggleLabelMode = useCallback(() => {
+                setUseShortLabels(prev => {
+                    const newUseShortLabels = !prev;
+                    
+                    // Update all nodes with appropriate labels
+                    setNodes(currentNodes => {
+                        return currentNodes.map(node => {
+                            // For container nodes, handle label toggling
+                            if (node.data?.isContainer) {
+                                const originalLabel = node.data.originalLabel || node.data.label;
+                                const newLabel = newUseShortLabels 
+                                    ? leftTruncateRustPath(originalLabel, true)
+                                    : originalLabel;
+                                
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        label: newLabel,
+                                        originalLabel: originalLabel
+                                    }
+                                };
+                            }
+                            
+                            // For regular nodes, use shortLabel/fullLabel
+                            if (node.data?.shortLabel && node.data?.fullLabel) {
+                                return {
+                                    ...node,
+                                    data: {
+                                        ...node.data,
+                                        label: newUseShortLabels ? node.data.shortLabel : node.data.fullLabel
+                                    }
+                                };
+                            }
+                            
+                            return node;
+                        });
+                    });
+                    
+                    return newUseShortLabels;
+                });
+            }, [setNodes]);
 
             const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
@@ -1697,6 +1816,18 @@
                                 <path d="M2 9a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9zm12 5V9a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z"/>
                             </svg>
                             <span className="tooltip">Collapse All Containers</span>
+                        </button>
+                        <button className="icon-button" onClick={toggleLabelMode}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                {useShortLabels ? (
+                                    // Icon for "expand to full labels" - arrow expanding outward
+                                    <path d="M1 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 8zM7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10z"/>
+                                ) : (
+                                    // Icon for "collapse to short labels" - arrow contracting inward
+                                    <path d="M1 8a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13A.5.5 0 0 1 1 8zM8 3.5a.5.5 0 0 0-.5-.5H4.207l1.147-1.146a.5.5 0 1 0-.708-.708l-2 2a.5.5 0 0 0 0 .708l2 2a.5.5 0 0 0 .708-.708L4.207 4H7.5a.5.5 0 0 0 .5-.5zM8 12.5a.5.5 0 0 1 .5.5h3.293l-1.147 1.146a.5.5 0 0 1 .708.708l2-2a.5.5 0 0 1 0-.708l-2-2a.5.5 0 1 1-.708.708L11.793 12H8.5a.5.5 0 0 1-.5-.5z"/>
+                                )}
+                            </svg>
+                            <span className="tooltip">{useShortLabels ? 'Show Full Labels' : 'Show Short Labels'}</span>
                         </button>
                     </div>
                     <UnifiedLegend palette={currentPalette} />
