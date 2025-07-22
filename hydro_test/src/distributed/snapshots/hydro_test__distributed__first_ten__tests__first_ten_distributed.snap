@@ -4,7 +4,7 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
+        f: q!(| n | println!("hi: {:?}", n)),
         input: Network {
             from_key: Some(
                 0,
@@ -16,7 +16,7 @@ expression: built.ir()
             serialize_fn: None,
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
-                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
+                | res | { hydro_lang :: runtime_support :: binc...,
             ),
             input: Source {
                 source: ExternalNetwork,
@@ -63,7 +63,7 @@ expression: built.ir()
         },
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
+        f: q!(| n | println!("{}", n.n)),
         input: Network {
             from_key: None,
             to_location: Process(
@@ -71,17 +71,17 @@ expression: built.ir()
             ),
             to_key: None,
             serialize_fn: Some(
-                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                q!(...),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
-                | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > (& res . unwrap ()) . unwrap () },
+                | res | { hydro_lang :: runtime_support :: binc...,
             ),
             input: Map {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
+                f: q!(| n | SendOverNetwork { n }),
                 input: Source {
                     source: Iter(
-                        { use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 },
+                        { use crate :: __staged :: __deps :: * ; use cr...,
                     ),
                     location_kind: Process(
                         1,

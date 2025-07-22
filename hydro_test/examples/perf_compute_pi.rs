@@ -19,20 +19,33 @@ async fn main() {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use clap::Parser;
     use hydro_deploy::Deployment;
     use hydro_deploy::gcp::GcpNetwork;
     use hydro_lang::Location;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
     use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};
+    use hydro_test::graph_util::{Args, GraphConfig};
     use tokio::sync::RwLock;
 
+    #[derive(Parser, Debug)]
+    #[command(author, version, about, long_about = None)]
+    struct PerfArgs {
+        #[command(flatten)]
+        graph: GraphConfig,
+        
+        /// Use GCP for deployment (provide project name)
+        #[arg(long)]
+        gcp: Option<String>,
+    }
+
+    let args = PerfArgs::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
-    let project = if host_arg == "gcp" {
-        std::env::args().nth(2).unwrap()
+    let (host_arg, project) = if let Some(project) = args.gcp {
+        ("gcp".to_string(), project)
     } else {
-        String::new()
+        ("localhost".to_string(), String::new())
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
@@ -66,6 +79,10 @@ async fn main() {
         None,
     )
     .await;
+
+    // Generate graphs if requested
+    let built = rewritten_ir_builder.clone().build_with(|_| ir.clone()).finalize();
+    args.graph.generate_graph(&built);
 
     // Cleanup
     let _ = rewritten_ir_builder.build_with(|_| ir).finalize();

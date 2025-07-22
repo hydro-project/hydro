@@ -1,5 +1,17 @@
 use std::sync::Arc;
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(flatten)]
+    graph: GraphConfig,
+
+    /// Use GCP for deployment (provide project name)
+    #[arg(long)]
+    gcp: Option<String>,
+}
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
@@ -7,18 +19,19 @@ use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };
 use hydro_test::cluster::paxos::PaxosConfig;
+use hydro_test::graph_util::GraphConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let create_host: HostCreator = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+    let create_host: HostCreator = if let Some(project) = &args.gcp {
+        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -90,14 +103,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Build and optimize first, then extract IR with proper location assignments
     let built = builder.finalize();
 
-    // Mermaid diagram
-    // hydro_lang::graph::mermaid::open_browser(&built)?;
-
-    // ReactFlow.js visualization with type names
-    hydro_lang::graph::reactflow::open_browser(&built)?;
-
-    // Graphviz/DOT visualization
-    // hydro_lang::graph::graphviz::open_browser(&built)?;
+    // Generate graphs if requested
+    let _ = args.graph.generate_graph(&built);
 
     let optimized = built.with_default_optimize();
 

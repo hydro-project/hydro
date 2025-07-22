@@ -49,18 +49,8 @@ where
         self.indent += 4;
 
         // Use dot layout for better edge routing between subgraphs
-        writeln!(
-            self.write,
-            "{b:i$}layout=dot;",
-            b = "",
-            i = self.indent
-        )?;
-        writeln!(
-            self.write,
-            "{b:i$}compound=true;",
-            b = "",
-            i = self.indent
-        )?;
+        writeln!(self.write, "{b:i$}layout=dot;", b = "", i = self.indent)?;
+        writeln!(self.write, "{b:i$}compound=true;", b = "", i = self.indent)?;
         writeln!(
             self.write,
             "{b:i$}concentrate=true;",
@@ -106,13 +96,13 @@ where
 
         let (shape_str, color_str) = match node_type {
             // ColorBrewer Set3 palette colors (matching Mermaid and ReactFlow)
-            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""),        // Light teal
-            HydroNodeType::Transform => ("box", "\"#ffffb3\""),         // Light yellow
-            HydroNodeType::Join => ("diamond", "\"#bebada\""),          // Light purple
-            HydroNodeType::Aggregation => ("house", "\"#fb8072\""),     // Light red/salmon
+            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
+            HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
+            HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple
+            HydroNodeType::Aggregation => ("house", "\"#fb8072\""), // Light red/salmon
             HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
-            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),         // Light orange
-            HydroNodeType::Tee => ("circle", "\"#b3de69\""),           // Light green
+            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),  // Light orange
+            HydroNodeType::Tee => ("terminator", "\"#b3de69\""), // Light green
         };
 
         write!(
@@ -194,14 +184,9 @@ where
             i = self.indent,
         )?;
         self.indent += 4;
-        
+
         // Use dot layout for interior nodes within containers
-        writeln!(
-            self.write,
-            "{b:i$}layout=dot;",
-            b = "",
-            i = self.indent
-        )?;
+        writeln!(self.write, "{b:i$}layout=dot;", b = "", i = self.indent)?;
         writeln!(
             self.write,
             "{b:i$}label = \"{location_type} {id}\"",

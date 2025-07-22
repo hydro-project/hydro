@@ -1,20 +1,31 @@
 use std::sync::Arc;
 
+use clap::Parser;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_test::graph_util::GraphConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+#[derive(Parser, Debug)]
+struct Args {
+    /// Use GCP instead of localhost (requires project name)
+    #[clap(long)]
+    gcp: Option<String>,
+
+    #[clap(flatten)]
+    graph: GraphConfig,
+}
+
+// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let (create_host, rustflags): (HostCreator, &'static str) = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
+    let (create_host, rustflags): (HostCreator, &'static str) = if let Some(project) = args.gcp {
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
         (
@@ -41,16 +52,16 @@ async fn main() {
     let builder = hydro_lang::FlowBuilder::new();
     let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
 
-    // Generate graph visualization if debugging features are enabled
-    #[cfg(feature = "debugging")]
-    graph_viz::visualize_hydro_ir();
+    // Extract the IR for graph visualization
+    let built = builder.finalize();
 
-    #[cfg(not(feature = "debugging"))]
-    println!(
-        "💡 Tip: Run with --features debugging for graph visualization!\n   cargo run --example compute_pi --features debugging"
-    );
+    // Generate graph visualizations based on command line arguments
+    if let Err(e) = args.graph.generate_graph(&built) {
+        eprintln!("Error generating graph: {}", e);
+    }
 
-    let _nodes = builder
+    let _nodes = built
+        .with_default_optimize()
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),

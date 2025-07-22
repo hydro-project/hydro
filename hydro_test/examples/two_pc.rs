@@ -4,16 +4,27 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use tokio::sync::RwLock;
+use clap::Parser;
+use hydro_test::graph_util::GraphConfig;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
+#[derive(Parser, Debug)]
+struct Args {
+    /// Use GCP instead of localhost (requires project name)
+    #[clap(long)]
+    gcp: Option<String>,
+    
+    #[clap(flatten)]
+    graph: GraphConfig,
+}
+
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let create_host: HostCreator = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
+    let create_host: HostCreator = if let Some(project) = args.gcp {
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
         Box::new(move |deployment| -> Arc<dyn Host> {
@@ -50,9 +61,20 @@ async fn main() {
         &client_aggregator,
     );
 
+    // Extract the IR for graph visualization
+    let built = builder.finalize();
+
+    // Generate graph visualizations based on command line arguments
+    if let Err(e) = args.graph.generate_graph(&built) {
+        eprintln!("Error generating graph: {}", e);
+    }
+
+    // Optimize the flow before deployment to remove marker nodes
+    let optimized = built.with_default_optimize();
+
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
-    let _nodes = builder
+    let _nodes = optimized
         .with_process(
             &coordinator,
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),

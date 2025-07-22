@@ -1,21 +1,34 @@
 use std::sync::Arc;
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(flatten)]
+    graph: GraphConfig,
+    
+    /// Use GCP for deployment (provide project name)
+    #[arg(long)]
+    gcp: Option<String>,
+}
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+use hydro_test::graph_util::GraphConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let create_host: HostCreator = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+    let create_host: HostCreator = if let Some(project) = &args.gcp {
+        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -69,7 +82,14 @@ async fn main() {
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
-    let _nodes = builder
+    let built = builder.finalize();
+
+    // Generate graphs if requested
+    let _ = args.graph.generate_graph(&built);
+
+    let optimized = built.with_default_optimize();
+
+    let _nodes = optimized
         .with_cluster(
             &proposers,
             (0..f + 1)

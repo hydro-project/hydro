@@ -4,15 +4,15 @@ expression: built.ir()
 ---
 [
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) | { println ! ("pi: {} ({} trials)" , 4.0 * inside as f64 / total as f64 , total) ; } }),
+        f: q!(| (inside, total) | { println!("pi: {} ({} trials)", 4.0 * inside as f64 / total as f64, total) ; }),
         input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , ()) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: optional :: * ; | (d , _signal) | d }),
+            f: q!(| (d, _signal) | d),
             input: CrossSingleton {
                 left: Reduce {
-                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , (u64 , u64) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , (inside_batch , total_batch) | { * inside += inside_batch ; * total += total_batch ; } }),
+                    f: q!(| (inside, total), (inside_batch, total_batch) | { * inside += inside_batch ; * total += total_batch ; }),
                     input: Persist {
                         inner: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
+                            f: q!(| (_, b) | b),
                             input: Network {
                                 from_key: None,
                                 to_location: Process(
@@ -20,23 +20,23 @@ expression: built.ir()
                                 ),
                                 to_key: None,
                                 serialize_fn: Some(
-                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                    q!(...),
                                 ),
                                 instantiate_fn: <network instantiate>,
                                 deserialize_fn: Some(
-                                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < hydro_test :: __staged :: cluster :: compute_pi :: Worker > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < (u64 , u64) > (& b) . unwrap ()) },
+                                    | res | { let (id , b) = res . unwrap () ; (hyd...,
                                 ),
                                 input: Fold {
-                                    init: stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }),
-                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }),
+                                    init: q!(| | (0u64, 0u64)),
+                                    acc: q!(| (inside, total), sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; }),
                                     input: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
+                                        f: q!(| (x, y) | x * x + y * y < 1.0),
                                         input: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }),
+                                            f: q!(| _ | rand::random::< (f64, f64) > ()),
                                             input: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; | _ | () }),
+                                                f: q!(| _ | ()),
                                                 input: FlatMap {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size__free = 8192usize ; batch_size__free } ; move | _ | 0 .. batch_size__free }),
+                                                    f: q!(| _ | 0 .. batch_size__free),
                                                     input: Source {
                                                         source: Spin,
                                                         location_kind: Cluster(
@@ -182,10 +182,10 @@ expression: built.ir()
                     },
                 },
                 right: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: optional :: * ; | _u | () }),
+                    f: q!(| _u | ()),
                     input: Source {
                         source: Stream(
-                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                            { use hydro_lang :: __staged :: __deps :: * ; u...,
                         ),
                         location_kind: Process(
                             1,
