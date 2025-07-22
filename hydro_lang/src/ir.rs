@@ -700,6 +700,13 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+
+    Scan {
+        init: DebugExpr,
+        acc: DebugExpr,
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     FoldKeyed {
         init: DebugExpr,
         acc: DebugExpr,
@@ -902,6 +909,7 @@ impl HydroNode {
             | HydroNode::Unique { input, .. }
             | HydroNode::Network { input, .. }
             | HydroNode::Fold { input, .. }
+            | HydroNode::Scan { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
             | HydroNode::ReduceKeyed { input, .. }
@@ -1069,6 +1077,17 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::Fold {
+                init: init.clone(),
+                acc: acc.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::Scan {
+                init,
+                acc,
+                input,
+                metadata,
+            } => HydroNode::Scan {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
@@ -1850,9 +1869,11 @@ impl HydroNode {
                 (unique_ident, input_location_id)
             }
 
-            HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } => {
+            HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } => {
                 let operator: syn::Ident = if matches!(self, HydroNode::Fold { .. }) {
                     parse_quote!(fold)
+                } else if matches!(self, HydroNode::Scan { .. }) {
+                    parse_quote!(scan)
                 } else {
                     parse_quote!(fold_keyed)
                 };
@@ -1861,6 +1882,9 @@ impl HydroNode {
                     init, acc, input, ..
                 }
                 | HydroNode::FoldKeyed {
+                    init, acc, input, ..
+                }
+                | HydroNode::Scan {
                     init, acc, input, ..
                 }) = self
                 else {
@@ -2099,7 +2123,9 @@ impl HydroNode {
             | HydroNode::ReduceKeyed { f, .. } => {
                 transform(f);
             }
-            HydroNode::Fold { init, acc, .. } | HydroNode::FoldKeyed { init, acc, .. } => {
+            HydroNode::Fold { init, acc, .. }
+            | HydroNode::Scan { init, acc, .. }
+            | HydroNode::FoldKeyed { init, acc, .. } => {
                 transform(init);
                 transform(acc);
             }
@@ -2149,6 +2175,7 @@ impl HydroNode {
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
@@ -2186,6 +2213,7 @@ impl HydroNode {
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
@@ -2239,7 +2267,8 @@ impl HydroNode {
             HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. } => {
+            | HydroNode::ReduceKeyed { input, .. }
+            | HydroNode::Scan { input, .. } => {
                 // Skip persist before fold/reduce
                 if let HydroNode::Persist { inner, .. } = input.as_ref() {
                     vec![inner.metadata()]
@@ -2299,6 +2328,7 @@ impl HydroNode {
             HydroNode::Unique { .. } => "Unique()".to_string(),
             HydroNode::Sort { .. } => "Sort()".to_string(),
             HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
+            HydroNode::Scan { init, acc, .. } => format!("Scan({:?}, {:?})", init, acc),
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
