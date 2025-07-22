@@ -63,6 +63,13 @@ expression: built.ir()
                                                                         location_kind: Cluster(
                                                                             0,
                                                                         ),
+                                                                        backtrace: [
+                                                                            hydro_lang::location::tick::Tick<L>::spin_batch,
+                                                                            hydro_test::cluster::compute_pi::compute_pi,
+                                                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                                            core::ops::function::FnOnce::call_once,
+                                                                        ],
                                                                         output_type: Some(
                                                                             (),
                                                                         ),
@@ -78,6 +85,13 @@ expression: built.ir()
                                                                     location_kind: Cluster(
                                                                         0,
                                                                     ),
+                                                                    backtrace: [
+                                                                        hydro_lang::location::tick::Tick<L>::spin_batch,
+                                                                        hydro_test::cluster::compute_pi::compute_pi,
+                                                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                                        core::ops::function::FnOnce::call_once,
+                                                                    ],
                                                                     output_type: Some(
                                                                         usize,
                                                                     ),
@@ -93,6 +107,13 @@ expression: built.ir()
                                                                 location_kind: Cluster(
                                                                     0,
                                                                 ),
+                                                                backtrace: [
+                                                                    hydro_lang::location::tick::Tick<L>::spin_batch,
+                                                                    hydro_test::cluster::compute_pi::compute_pi,
+                                                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                                    core::ops::function::FnOnce::call_once,
+                                                                ],
                                                                 output_type: Some(
                                                                     (),
                                                                 ),
@@ -111,6 +132,12 @@ expression: built.ir()
                                                                     0,
                                                                 ),
                                                             ),
+                                                            backtrace: [
+                                                                hydro_test::cluster::compute_pi::compute_pi,
+                                                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                                core::ops::function::FnOnce::call_once,
+                                                            ],
                                                             output_type: Some(
                                                                 (f64 , f64),
                                                             ),
@@ -129,6 +156,12 @@ expression: built.ir()
                                                                 0,
                                                             ),
                                                         ),
+                                                        backtrace: [
+                                                            hydro_test::cluster::compute_pi::compute_pi,
+                                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                            core::ops::function::FnOnce::call_once,
+                                                        ],
                                                         output_type: Some(
                                                             bool,
                                                         ),
@@ -144,6 +177,12 @@ expression: built.ir()
                                                     location_kind: Cluster(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        hydro_test::cluster::compute_pi::compute_pi,
+                                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                        core::ops::function::FnOnce::call_once,
+                                                    ],
                                                     output_type: Some(
                                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , bool),
                                                     ),
@@ -159,6 +198,12 @@ expression: built.ir()
                                                 location_kind: Cluster(
                                                     2,
                                                 ),
+                                                backtrace: [
+                                                    hydro_test::cluster::compute_pi::compute_pi,
+                                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                    core::ops::function::FnOnce::call_once,
+                                                ],
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , bool),
                                                 ),
@@ -174,6 +219,12 @@ expression: built.ir()
                                             location_kind: Cluster(
                                                 2,
                                             ),
+                                            backtrace: [
+                                                hydro_test::cluster::compute_pi::compute_pi,
+                                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                                core::ops::function::FnOnce::call_once,
+                                            ],
                                             output_type: Some(
                                                 bool,
                                             ),
@@ -192,6 +243,12 @@ expression: built.ir()
                                                 2,
                                             ),
                                         ),
+                                        backtrace: [
+                                            hydro_test::cluster::compute_pi::compute_pi,
+                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                            core::ops::function::FnOnce::call_once,
+                                        ],
                                         output_type: Some(
                                             (u64 , u64),
                                         ),
@@ -207,6 +264,13 @@ expression: built.ir()
                                     location_kind: Process(
                                         1,
                                     ),
+                                    backtrace: [
+                                        hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous,
+                                        hydro_test::cluster::compute_pi::compute_pi,
+                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                        core::ops::function::FnOnce::call_once,
+                                    ],
                                     output_type: Some(
                                         (u64 , u64),
                                     ),
@@ -222,6 +286,13 @@ expression: built.ir()
                                 location_kind: Process(
                                     1,
                                 ),
+                                backtrace: [
+                                    hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous,
+                                    hydro_test::cluster::compute_pi::compute_pi,
+                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                    core::ops::function::FnOnce::call_once,
+                                ],
                                 output_type: Some(
                                     (u64 , u64),
                                 ),
@@ -237,6 +308,13 @@ expression: built.ir()
                             location_kind: Process(
                                 1,
                             ),
+                            backtrace: [
+                                hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous,
+                                hydro_test::cluster::compute_pi::compute_pi,
+                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 (u64 , u64),
                             ),
@@ -250,6 +328,13 @@ expression: built.ir()
                         location_kind: Process(
                             1,
                         ),
+                        backtrace: [
+                            hydro_lang::stream::Stream<T,L,B,O>::reduce_commutative,
+                            hydro_test::cluster::compute_pi::compute_pi,
+                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             (u64 , u64),
                         ),
@@ -274,6 +359,14 @@ expression: built.ir()
                             location_kind: Process(
                                 1,
                             ),
+                            backtrace: [
+                                hydro_lang::location::Location::source_interval,
+                                hydro_lang::optional::Optional<T,L,B>::sample_every,
+                                hydro_test::cluster::compute_pi::compute_pi,
+                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                             ),
@@ -292,6 +385,14 @@ expression: built.ir()
                                 1,
                             ),
                         ),
+                        backtrace: [
+                            hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if,
+                            hydro_lang::optional::Optional<T,L,B>::sample_every,
+                            hydro_test::cluster::compute_pi::compute_pi,
+                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                            hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             (),
                         ),
@@ -310,6 +411,14 @@ expression: built.ir()
                             1,
                         ),
                     ),
+                    backtrace: [
+                        hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if,
+                        hydro_lang::optional::Optional<T,L,B>::sample_every,
+                        hydro_test::cluster::compute_pi::compute_pi,
+                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                        hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         ((u64 , u64) , ()),
                     ),
@@ -328,6 +437,14 @@ expression: built.ir()
                         1,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::optional::Optional<T,L,hydro_lang::boundedness::Bounded>::continue_if,
+                    hydro_lang::optional::Optional<T,L,B>::sample_every,
+                    hydro_test::cluster::compute_pi::compute_pi,
+                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                    hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     (u64 , u64),
                 ),
@@ -343,6 +460,12 @@ expression: built.ir()
             location_kind: Process(
                 1,
             ),
+            backtrace: [
+                hydro_test::cluster::compute_pi::compute_pi,
+                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir,
+                hydro_test::cluster::compute_pi::tests::decoupled_compute_pi_ir::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 (u64 , u64),
             ),

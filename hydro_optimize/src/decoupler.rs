@@ -49,6 +49,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(node_content),
         metadata: HydroIrMetadata {
             location_kind: metadata.location_kind.root().clone(), // Remove any ticks
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type.clone()))),
             cardinality: None,
             cpu_usage: None,
@@ -73,6 +74,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(mapped_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type))),
             cardinality: None,
             cpu_usage: None,
@@ -88,6 +90,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(network_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(output_debug_type),
             cardinality: None,
             cpu_usage: None,
@@ -276,8 +279,6 @@ mod tests {
 
     use hydro_deploy::Deployment;
     #[cfg(stageleft_runtime)]
-    use hydro_lang::ir::HydroLeaf;
-    use hydro_lang::ir::deep_clone;
     use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::{FlowBuilder, Location, ir};
@@ -289,7 +290,14 @@ mod tests {
     use crate::repair::inject_id;
 
     #[cfg(stageleft_runtime)]
-    async fn decouple_send(with_decoupler: &decoupler::Decoupler) -> Vec<HydroLeaf> {
+    fn decouple_mini_program(
+        with_decoupler: &decoupler::Decoupler,
+    ) -> (
+        hydro_lang::Cluster<'_, ()>,
+        hydro_lang::Cluster<'_, ()>,
+        hydro_lang::Cluster<'_, ()>,
+        hydro_lang::builder::built::BuiltFlow<'_>,
+    ) {
         let builder = FlowBuilder::new();
         let send_cluster = builder.cluster::<()>();
         let recv_cluster = builder.cluster::<()>();
@@ -317,8 +325,13 @@ mod tests {
             .optimize_with(persist_pullup)
             .optimize_with(inject_id)
             .optimize_with(|ir| decouple(ir, &decoupler));
+        (send_cluster, recv_cluster, decoupled_cluster, built)
+    }
 
-        let ir = deep_clone(built.ir());
+    #[cfg(stageleft_runtime)]
+    async fn check_decouple_mini_program(with_decoupler: &decoupler::Decoupler) {
+        let (send_cluster, recv_cluster, decoupled_cluster, built) =
+            decouple_mini_program(with_decoupler);
 
         // Check outputs
         let mut deployment = Deployment::new();
@@ -349,8 +362,23 @@ mod tests {
             }
             assert_eq!(expected, received);
         }
+    }
 
-        ir
+    #[test]
+    fn decouple_after_source_ir() {
+        let decoupler = decoupler::Decoupler {
+            output_to_decoupled_machine_after: vec![0],
+            output_to_original_machine_after: vec![],
+            place_on_decoupled_machine: vec![],
+            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
+            orig_location: LocationId::Cluster(0),
+        };
+
+        let built = decouple_mini_program(&decoupler).3;
+
+        ir::dbg_dedup_tee(|| {
+            insta::assert_debug_snapshot!(built.ir());
+        });
     }
 
     #[tokio::test]
@@ -363,9 +391,23 @@ mod tests {
             orig_location: LocationId::Cluster(0),
         };
 
-        let ir = decouple_send(&decoupler).await;
+        check_decouple_mini_program(&decoupler).await
+    }
+
+    #[test]
+    fn move_source_decouple_map_ir() {
+        let decoupler = decoupler::Decoupler {
+            output_to_decoupled_machine_after: vec![],
+            output_to_original_machine_after: vec![1],
+            place_on_decoupled_machine: vec![0],
+            decoupled_location: LocationId::Cluster(0), // Doesn't matter, will be ignored
+            orig_location: LocationId::Cluster(0),
+        };
+
+        let built = decouple_mini_program(&decoupler).3;
+
         ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(ir);
+            insta::assert_debug_snapshot!(built.ir());
         });
     }
 
@@ -379,9 +421,6 @@ mod tests {
             orig_location: LocationId::Cluster(0),
         };
 
-        let ir = decouple_send(&decoupler).await;
-        ir::dbg_dedup_tee(|| {
-            insta::assert_debug_snapshot!(ir);
-        });
+        check_decouple_mini_program(&decoupler).await
     }
 }

@@ -77,17 +77,24 @@ mod tests {
     use hydro_optimize::partitioner::{self, PartitionAttribute, Partitioner};
     use stageleft::q;
 
+    #[test]
+    fn simple_cluster_ir() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let _ = super::simple_cluster(&builder);
+        let built = builder.finalize();
+
+        insta::assert_debug_snapshot!(built.ir());
+    }
+
     #[tokio::test]
     async fn simple_cluster() {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
         let (node, cluster) = super::simple_cluster(&builder);
-        let built = builder.with_default_optimize();
 
-        insta::assert_debug_snapshot!(built.ir());
-
-        let nodes = built
+        let nodes = builder
+            .with_default_optimize()
             .with_process(&node, deployment.Localhost())
             .with_cluster(&cluster, (0..2).map(|_| deployment.Localhost()))
             .deploy(&mut deployment);
