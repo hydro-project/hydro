@@ -10,88 +10,61 @@ use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_merma
 use super::template::get_template;
 use crate::ir::HydroLeaf;
 
-/// Debugging extensions for Hydro IR.
-impl HydroLeaf {
-    /// Opens this Hydro IR graph as a mermaid diagram in the [mermaid.live](https://mermaid.live) browser editor.
-    pub fn open_mermaid(&self, config: Option<HydroWriteConfig>) -> Result<()> {
-        let config = config.unwrap_or_default();
-        let mermaid_src = self.to_mermaid(&config);
-        open_mermaid_browser(&mermaid_src)
-    }
-
-    /// Opens this Hydro IR graph as a DOT/Graphviz diagram in the browser.
-    pub fn open_dot(&self, config: Option<HydroWriteConfig>) -> Result<()> {
-        let config = config.unwrap_or_default();
-        let dot_src = self.to_dot(&config);
-        open_dot_browser(&dot_src)
-    }
-
-    /// Saves this Hydro IR graph as a ReactFlow.js JSON file and opens it in a browser.
-    /// Creates a complete HTML file with ReactFlow.js visualization.
-    pub fn open_reactflow_browser(
-        &self,
-        filename: Option<&str>,
-        config: Option<HydroWriteConfig>,
-    ) -> Result<()> {
-        let config = config.unwrap_or_default();
-        let reactflow_json = self.to_reactflow(&config);
-        let filename = filename.unwrap_or("hydro_graph.html");
-        save_and_open_reactflow_browser(&reactflow_json, filename)
-    }
-
-    /// Saves this Hydro IR graph as a ReactFlow.js JSON file.
-    pub fn save_reactflow_json(
-        &self,
-        filename: Option<&str>,
-        config: Option<HydroWriteConfig>,
-    ) -> Result<()> {
-        let config = config.unwrap_or_default();
-        let reactflow_json = self.to_reactflow(&config);
-        let filename = filename.unwrap_or("hydro_graph.json");
-        std::fs::write(filename, reactflow_json)?;
-        Ok(())
-    }
-}
-
-/// Opens multiple Hydro IR leaves as a single mermaid diagram.
-pub fn open_hydro_ir_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
-    let config = config.unwrap_or_default();
-    let mermaid_src = render_hydro_ir_mermaid(leaves, &config);
+/// Opens Hydro IR leaves as a single mermaid diagram.
+pub fn open_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
+    let mermaid_src = render_with_config(leaves, config, render_hydro_ir_mermaid);
     open_mermaid_browser(&mermaid_src)
 }
 
-/// Opens multiple Hydro IR leaves as a single DOT diagram.
-pub fn open_hydro_ir_dot(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
-    let config = config.unwrap_or_default();
-    let dot_src = render_hydro_ir_dot(leaves, &config);
+/// Opens Hydro IR leaves as a single DOT diagram.
+pub fn open_dot(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
+    let dot_src = render_with_config(leaves, config, render_hydro_ir_dot);
     open_dot_browser(&dot_src)
 }
 
-/// Opens multiple Hydro IR leaves as a ReactFlow.js visualization in a browser.
+/// Opens Hydro IR leaves as a ReactFlow.js visualization in a browser.
 /// Creates a complete HTML file with ReactFlow.js interactive graph visualization.
-pub fn open_hydro_ir_reactflow_browser(
+pub fn open_reactflow_browser(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<()> {
-    let config = config.unwrap_or_default();
-    let reactflow_json = render_hydro_ir_reactflow(leaves, &config);
+    let reactflow_json = render_with_config(leaves, config, render_hydro_ir_reactflow);
     let filename = filename.unwrap_or("hydro_graph.html");
     save_and_open_reactflow_browser(&reactflow_json, filename)
 }
 
-/// Saves multiple Hydro IR leaves as a ReactFlow.js JSON file.
-pub fn save_hydro_ir_reactflow_json(
+/// Saves Hydro IR leaves as a ReactFlow.js JSON file.
+/// If no filename is provided, saves to temporary directory.
+pub fn save_reactflow_json(
     leaves: &[HydroLeaf],
     filename: Option<&str>,
     config: Option<HydroWriteConfig>,
 ) -> Result<()> {
-    let config = config.unwrap_or_default();
-    let reactflow_json = render_hydro_ir_reactflow(leaves, &config);
-    let filename = filename.unwrap_or("hydro_graph.json");
-    std::fs::write(filename, reactflow_json)?;
-    println!("Saved ReactFlow.js JSON to {}", filename);
-    Ok(())
+    let content = render_with_config(leaves, config, render_hydro_ir_reactflow);
+    save_to_file(content, filename, "hydro_graph.json", "ReactFlow.js JSON")
+}
+
+/// Saves Hydro IR leaves as a Mermaid diagram file.
+/// If no filename is provided, saves to temporary directory.
+pub fn save_mermaid(
+    leaves: &[HydroLeaf],
+    filename: Option<&str>,
+    config: Option<HydroWriteConfig>,
+) -> Result<()> {
+    let content = render_with_config(leaves, config, render_hydro_ir_mermaid);
+    save_to_file(content, filename, "hydro_graph.mermaid", "Mermaid diagram")
+}
+
+/// Saves Hydro IR leaves as a DOT/Graphviz file.
+/// If no filename is provided, saves to temporary directory.
+pub fn save_dot(
+    leaves: &[HydroLeaf],
+    filename: Option<&str>,
+    config: Option<HydroWriteConfig>,
+) -> Result<()> {
+    let content = render_with_config(leaves, config, render_hydro_ir_dot);
+    save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
@@ -121,23 +94,22 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
 }
 
 /// Helper function to create a complete HTML file with ReactFlow.js visualization and open it in browser.
+/// Creates files in temporary directory to avoid cluttering the workspace.
 pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> Result<()> {
     let template = get_template();
     let html_content = template.replace("{{GRAPH_DATA}}", reactflow_json);
 
-    std::fs::write(filename, html_content)?;
-    println!("Saved Enhanced ReactFlow.js visualization to {}", filename);
+    // Create file in temporary directory
+    let temp_dir = std::env::temp_dir();
+    let temp_file = temp_dir.join(filename);
+    std::fs::write(&temp_file, html_content)?;
+    println!(
+        "Saved Enhanced ReactFlow.js visualization to {}",
+        temp_file.display()
+    );
 
-    // Open the HTML file in VS Code editor and in browser
-    use std::process::Command;
-
-    let file_path = std::env::current_dir()?.join(filename);
-    let file_url = format!("file://{}", file_path.display());
-
-    // Open the file in VS Code editor
-    let _ = Command::new("code").arg(&file_path).status();
-
-    // Also open in default browser for immediate viewing
+    // Open the HTML file in browser
+    let file_url = format!("file://{}", temp_file.display());
     webbrowser::open(&file_url)?;
 
     println!("Opened Enhanced ReactFlow.js visualization in browser.");
@@ -147,4 +119,36 @@ pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> 
 /// Helper function to render multiple Hydro IR leaves as ReactFlow.js JSON.
 fn render_hydro_ir_reactflow(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
     super::render::render_hydro_ir_reactflow(leaves, config)
+}
+
+/// Helper function to save content to a file with consistent path handling.
+/// If no filename is provided, saves to temporary directory with the default name.
+fn save_to_file(
+    content: String,
+    filename: Option<&str>,
+    default_name: &str,
+    content_type: &str,
+) -> Result<()> {
+    let file_path = if let Some(filename) = filename {
+        std::path::PathBuf::from(filename)
+    } else {
+        std::env::temp_dir().join(default_name)
+    };
+
+    std::fs::write(&file_path, content)?;
+    println!("Saved {} to {}", content_type, file_path.display());
+    Ok(())
+}
+
+/// Helper function to handle config unwrapping and rendering.
+fn render_with_config<F>(
+    leaves: &[HydroLeaf],
+    config: Option<HydroWriteConfig>,
+    renderer: F,
+) -> String
+where
+    F: Fn(&[HydroLeaf], &HydroWriteConfig) -> String,
+{
+    let config = config.unwrap_or_default();
+    renderer(leaves, &config)
 }

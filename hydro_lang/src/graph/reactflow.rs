@@ -350,39 +350,25 @@ pub fn hydro_ir_to_reactflow(
     Ok(output)
 }
 
-/// Open ReactFlow visualization in browser
+/// Open ReactFlow visualization in browser using the consolidated debug utilities
 pub fn open_reactflow_browser(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
     external_names: Vec<(usize, String)>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let graph_json = hydro_ir_to_reactflow(ir, process_names, cluster_names, external_names)?;
+    let config = super::render::HydroWriteConfig {
+        process_id_name: process_names,
+        cluster_id_name: cluster_names,
+        external_id_name: external_names,
+        ..Default::default()
+    };
 
-    let html_template = super::template::get_template();
-    let html_content = html_template.replace("{{GRAPH_DATA}}", &graph_json);
-
-    let temp_dir = std::env::temp_dir();
-    let temp_file = temp_dir.join("hydro_graph.html");
-    std::fs::write(&temp_file, html_content)?;
-
-    let url = format!("file://{}", temp_file.display());
-
-    #[cfg(target_os = "macos")]
-    std::process::Command::new("open").arg(&url).spawn()?;
-
-    #[cfg(target_os = "linux")]
-    std::process::Command::new("xdg-open").arg(&url).spawn()?;
-
-    #[cfg(target_os = "windows")]
-    std::process::Command::new("cmd")
-        .args(&["/c", "start", &url])
-        .spawn()?;
-
-    Ok(())
+    super::debug::open_reactflow_browser(ir, Some("hydro_graph.html"), Some(config))
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
-/// Save ReactFlow JSON to file
+/// Save ReactFlow JSON to file using the consolidated debug utilities
 pub fn save_reactflow_json(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
@@ -390,9 +376,15 @@ pub fn save_reactflow_json(
     external_names: Vec<(usize, String)>,
     filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let graph_json = hydro_ir_to_reactflow(ir, process_names, cluster_names, external_names)?;
-    std::fs::write(filename, graph_json)?;
-    Ok(())
+    let config = super::render::HydroWriteConfig {
+        process_id_name: process_names,
+        cluster_id_name: cluster_names,
+        external_id_name: external_names,
+        ..Default::default()
+    };
+
+    super::debug::save_reactflow_json(ir, Some(filename), Some(config))
+        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
 /// Open ReactFlow visualization in browser for a BuiltFlow

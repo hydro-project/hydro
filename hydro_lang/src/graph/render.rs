@@ -196,58 +196,34 @@ pub fn extract_short_label(full_label: &str) -> String {
     }
 }
 
+/// Helper function to extract location ID and type from metadata.
+fn extract_location_id(metadata: &crate::ir::HydroIrMetadata) -> (Option<usize>, Option<String>) {
+    use crate::location::LocationId;
+    match &metadata.location_kind {
+        LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
+        LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
+        LocationId::ExternalProcess(id) => (Some(*id), Some("External".to_string())),
+        LocationId::Tick(_, inner) => match inner.as_ref() {
+            LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
+            LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
+            _ => (None, None),
+        },
+    }
+}
+
+/// Helper function to set up location in structure from metadata.
+fn setup_location(
+    structure: &mut HydroGraphStructure,
+    metadata: &crate::ir::HydroIrMetadata,
+) -> Option<usize> {
+    let (location_id, location_type) = extract_location_id(metadata);
+    if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
+        structure.add_location(loc_id, loc_type);
+    }
+    location_id
+}
+
 impl HydroLeaf {
-    /// Generate a mermaid graph representation of this Hydro IR leaf and its subgraph.
-    pub fn to_mermaid(&self, config: &HydroWriteConfig) -> String {
-        let mut output = String::new();
-        self.write_mermaid(&mut output, config).unwrap();
-        output
-    }
-
-    /// Write mermaid representation to the given writer.
-    pub fn write_mermaid(
-        &self,
-        output: impl std::fmt::Write,
-        config: &HydroWriteConfig,
-    ) -> std::fmt::Result {
-        let mut graph_write = HydroMermaid::new_with_config(output, config);
-        self.write_graph(&mut graph_write, config)
-    }
-
-    /// Generate a DOT/Graphviz graph representation of this Hydro IR leaf and its subgraph.
-    pub fn to_dot(&self, config: &HydroWriteConfig) -> String {
-        let mut output = String::new();
-        self.write_dot(&mut output, config).unwrap();
-        output
-    }
-
-    /// Write DOT representation to the given writer.
-    pub fn write_dot(
-        &self,
-        output: impl std::fmt::Write,
-        config: &HydroWriteConfig,
-    ) -> std::fmt::Result {
-        let mut graph_write = HydroDot::new_with_config(output, config);
-        self.write_graph(&mut graph_write, config)
-    }
-
-    /// Generate a ReactFlow.js JSON representation of this Hydro IR leaf and its subgraph.
-    pub fn to_reactflow(&self, config: &HydroWriteConfig) -> String {
-        let mut output = String::new();
-        self.write_reactflow(&mut output, config).unwrap();
-        output
-    }
-
-    /// Write ReactFlow.js JSON representation to the given writer.
-    pub fn write_reactflow(
-        &self,
-        output: impl std::fmt::Write,
-        config: &HydroWriteConfig,
-    ) -> std::fmt::Result {
-        let mut graph_write = HydroReactFlow::new(output, config);
-        self.write_graph(&mut graph_write, config)
-    }
-
     /// Core graph writing logic that works with any GraphWrite implementation.
     pub fn write_graph<W>(
         &self,
@@ -324,31 +300,10 @@ impl HydroLeaf {
         seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
         config: &HydroWriteConfig,
     ) -> usize {
-        use crate::location::LocationId;
-
-        // Helper function to extract location without capturing structure
-        fn extract_location_id(
-            metadata: &crate::ir::HydroIrMetadata,
-        ) -> (Option<usize>, Option<String>) {
-            match &metadata.location_kind {
-                LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
-                LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-                LocationId::ExternalProcess(id) => (Some(*id), Some("External".to_string())),
-                LocationId::Tick(_, inner) => match inner.as_ref() {
-                    LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
-                    LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-                    _ => (None, None),
-                },
-            }
-        }
-
         match self {
             HydroLeaf::ForEach { f, input, metadata } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
-                let (location_id, location_type) = extract_location_id(metadata);
-                if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
-                    structure.add_location(loc_id, loc_type);
-                }
+                let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
                     format!("for_each({:?})", f),
                     HydroNodeType::Sink,
@@ -363,10 +318,7 @@ impl HydroLeaf {
                 metadata,
             } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
-                let (location_id, location_type) = extract_location_id(metadata);
-                if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
-                    structure.add_location(loc_id, loc_type);
-                }
+                let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
                     format!("dest_sink({:?})", sink),
                     HydroNodeType::Sink,
@@ -382,10 +334,7 @@ impl HydroLeaf {
                 ..
             } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
-                let (location_id, location_type) = extract_location_id(metadata);
-                if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
-                    structure.add_location(loc_id, loc_type);
-                }
+                let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
                     format!("cycle_sink({})", ident),
                     HydroNodeType::Sink,
@@ -407,34 +356,6 @@ impl HydroNode {
         config: &HydroWriteConfig,
     ) -> usize {
         use crate::location::LocationId;
-
-        // Helper function to extract location without capturing structure
-        fn extract_location_id(
-            metadata: &crate::ir::HydroIrMetadata,
-        ) -> (Option<usize>, Option<String>) {
-            match &metadata.location_kind {
-                LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
-                LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-                LocationId::ExternalProcess(id) => (Some(*id), Some("External".to_string())),
-                LocationId::Tick(_, inner) => match inner.as_ref() {
-                    LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
-                    LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-                    _ => (None, None),
-                },
-            }
-        }
-
-        // Helper function to handle common location setup
-        fn setup_location(
-            structure: &mut HydroGraphStructure,
-            metadata: &crate::ir::HydroIrMetadata,
-        ) -> Option<usize> {
-            let (location_id, location_type) = extract_location_id(metadata);
-            if let (Some(loc_id), Some(loc_type)) = (location_id, location_type) {
-                structure.add_location(loc_id, loc_type);
-            }
-            location_id
-        }
 
         // Helper struct to group node creation parameters
         struct NodeParams {
@@ -982,50 +903,48 @@ impl HydroNode {
 }
 
 /// Utility functions for rendering multiple leaves as a single graph.
-pub fn render_hydro_ir_mermaid(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
-    let mut output = String::new();
-    write_hydro_ir_mermaid(&mut output, leaves, config).unwrap();
-    output
+
+/// Macro to reduce duplication in render functions.
+macro_rules! render_hydro_ir {
+    ($name:ident, $write_fn:ident) => {
+        pub fn $name(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
+            let mut output = String::new();
+            $write_fn(&mut output, leaves, config).unwrap();
+            output
+        }
+    };
 }
 
-pub fn write_hydro_ir_mermaid(
-    output: impl std::fmt::Write,
-    leaves: &[HydroLeaf],
-    config: &HydroWriteConfig,
-) -> std::fmt::Result {
-    let mut graph_write = HydroMermaid::new_with_config(output, config);
-    write_hydro_ir_graph(&mut graph_write, leaves, config)
+/// Macro to reduce duplication in write functions.
+macro_rules! write_hydro_ir {
+    ($name:ident, $writer_type:ty, $constructor:expr) => {
+        pub fn $name(
+            output: impl std::fmt::Write,
+            leaves: &[HydroLeaf],
+            config: &HydroWriteConfig,
+        ) -> std::fmt::Result {
+            let mut graph_write: $writer_type = $constructor(output, config);
+            write_hydro_ir_graph(&mut graph_write, leaves, config)
+        }
+    };
 }
 
-pub fn render_hydro_ir_dot(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
-    let mut output = String::new();
-    write_hydro_ir_dot(&mut output, leaves, config).unwrap();
-    output
-}
+render_hydro_ir!(render_hydro_ir_mermaid, write_hydro_ir_mermaid);
+write_hydro_ir!(
+    write_hydro_ir_mermaid,
+    HydroMermaid<_>,
+    HydroMermaid::new_with_config
+);
 
-pub fn write_hydro_ir_dot(
-    output: impl std::fmt::Write,
-    leaves: &[HydroLeaf],
-    config: &HydroWriteConfig,
-) -> std::fmt::Result {
-    let mut graph_write = HydroDot::new_with_config(output, config);
-    write_hydro_ir_graph(&mut graph_write, leaves, config)
-}
+render_hydro_ir!(render_hydro_ir_dot, write_hydro_ir_dot);
+write_hydro_ir!(write_hydro_ir_dot, HydroDot<_>, HydroDot::new_with_config);
 
-pub fn render_hydro_ir_reactflow(leaves: &[HydroLeaf], config: &HydroWriteConfig) -> String {
-    let mut output = String::new();
-    write_hydro_ir_reactflow(&mut output, leaves, config).unwrap();
-    output
-}
-
-pub fn write_hydro_ir_reactflow(
-    output: impl std::fmt::Write,
-    leaves: &[HydroLeaf],
-    config: &HydroWriteConfig,
-) -> std::fmt::Result {
-    let mut graph_write = HydroReactFlow::new(output, config);
-    write_hydro_ir_graph(&mut graph_write, leaves, config)
-}
+render_hydro_ir!(render_hydro_ir_reactflow, write_hydro_ir_reactflow);
+write_hydro_ir!(
+    write_hydro_ir_reactflow,
+    HydroReactFlow<_>,
+    HydroReactFlow::new
+);
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,

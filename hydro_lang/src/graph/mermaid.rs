@@ -214,7 +214,7 @@ pub fn open_browser(
     };
 
     // Use the existing debug function
-    crate::graph::debug::open_hydro_ir_mermaid(built_flow.ir(), Some(config))?;
+    crate::graph::debug::open_mermaid(built_flow.ir(), Some(config))?;
 
     Ok(())
 }
