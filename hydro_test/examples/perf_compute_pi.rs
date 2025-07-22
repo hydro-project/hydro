@@ -85,7 +85,7 @@ async fn main() {
         .clone()
         .build_with(|_| ir.clone())
         .finalize();
-    args.graph.generate_graph(&built);
+    built.generate_graph_with_config(&args.graph, None);
 
     // Cleanup
     let _ = rewritten_ir_builder.build_with(|_| ir).finalize();

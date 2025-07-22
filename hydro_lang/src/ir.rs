@@ -106,7 +106,7 @@ fn simplify_q_macro(token_str: &str) -> String {
 
 /// Fallback string-based simplification when AST parsing fails
 fn fallback_string_simplify(token_str: &str) -> String {
-    if token_str.contains("stageleft :: runtime_support") {
+    if token_str.contains("stageleft::runtime_support") {
         "q!(...)".to_string()
     } else if token_str.len() > 50 {
         format!("{}...", &token_str[..47])
@@ -143,7 +143,7 @@ impl VisitMut for QMacroSimplifier {
 
         if let syn::Expr::Call(call) = expr {
             if let syn::Expr::Path(path_expr) = call.func.as_ref() {
-                // Look for calls to stageleft::runtime_support::fn_*
+                // Look for calls to stageleft::runtime_support::fn*
                 if self.is_stageleft_runtime_support_call(&path_expr.path) {
                     // Try to extract the closure from the arguments
                     if let Some(closure) = self.extract_closure_from_args(&call.args) {
@@ -162,9 +162,10 @@ impl VisitMut for QMacroSimplifier {
 
 impl QMacroSimplifier {
     fn is_stageleft_runtime_support_call(&self, path: &syn::Path) -> bool {
-        // Check if this is a call to stageleft::runtime_support::fn_*
+        // Check if this is a call to stageleft::runtime_support::fn*
         if let Some(last_segment) = path.segments.last() {
-            if last_segment.ident.to_string().starts_with("fn_") {
+            let fn_name = last_segment.ident.to_string();
+            if fn_name.starts_with("fn") && (fn_name.contains("_type_hint") || fn_name.contains("_borrow_type_hint")) {
                 // Check if the path contains stageleft and runtime_support
                 let path_str = path
                     .segments

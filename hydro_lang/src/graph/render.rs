@@ -8,7 +8,55 @@ pub use super::graphviz::{HydroDot, escape_dot};
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
-use crate::ir::{HydroLeaf, HydroNode, HydroSource};
+use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
+
+/// Label for a graph node - can be either a static string or contain expressions.
+#[derive(Debug, Clone)]
+pub enum NodeLabel {
+    /// A static string label
+    Static(String),
+    /// A label with an operation name and expression arguments
+    WithExprs {
+        op_name: String,
+        exprs: Vec<DebugExpr>,
+    },
+}
+
+impl NodeLabel {
+    /// Create a static label
+    pub fn static_label(s: String) -> Self {
+        Self::Static(s)
+    }
+
+    /// Create a label for an operation with one expression
+    pub fn with_expr(op_name: String, expr: DebugExpr) -> Self {
+        Self::WithExprs {
+            op_name,
+            exprs: vec![expr],
+        }
+    }
+
+    /// Create a label for an operation with multiple expressions
+    pub fn with_exprs(op_name: String, exprs: Vec<DebugExpr>) -> Self {
+        Self::WithExprs { op_name, exprs }
+    }
+}
+
+impl std::fmt::Display for NodeLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Static(s) => write!(f, "{}", s),
+            Self::WithExprs { op_name, exprs } => {
+                if exprs.is_empty() {
+                    write!(f, "{}()", op_name)
+                } else {
+                    let expr_strs: Vec<_> = exprs.iter().map(|e| e.to_string()).collect();
+                    write!(f, "{}({})", op_name, expr_strs.join(", "))
+                }
+            }
+        }
+    }
+}
 
 /// Base struct for text-based graph writers that use indentation.
 /// Contains common fields shared by DOT and Mermaid writers.
@@ -61,11 +109,27 @@ pub trait HydroGraphWrite {
     fn write_node_definition(
         &mut self,
         node_id: usize,
-        node_label: &str,
+        node_label: &NodeLabel,
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
     ) -> Result<(), Self::Err>;
+
+    /// Helper method to write a node with operation name and expressions.
+    /// Uses DebugExpr::Display which includes q! macro cleanup.
+    fn write_operation_node(
+        &mut self,
+        node_id: usize,
+        op_name: &str,
+        exprs: &[&DebugExpr],
+        node_type: HydroNodeType,
+        location_id: Option<usize>,
+        location_type: Option<&str>,
+    ) -> Result<(), Self::Err> {
+        let expr_refs: Vec<DebugExpr> = exprs.iter().map(|e| (*e).clone()).collect();
+        let label = NodeLabel::with_exprs(op_name.to_string(), expr_refs);
+        self.write_node_definition(node_id, &label, node_type, location_id, location_type)
+    }
 
     /// Write an edge between nodes with optional labeling.
     fn write_edge(
@@ -143,7 +207,7 @@ impl Default for HydroWriteConfig {
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Debug, Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<usize, (String, HydroNodeType, Option<usize>)>, /* node_id -> (label, type, location) */
+    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>)>, /* node_id -> (label, type, location) */
     pub edges: Vec<(usize, usize, HydroEdgeType, Option<String>)>, // (src, dst, edge_type, label)
     pub locations: HashMap<usize, String>,                         // location_id -> location_type
     pub next_node_id: usize,
@@ -156,7 +220,7 @@ impl HydroGraphStructure {
 
     pub fn add_node(
         &mut self,
-        label: String,
+        label: NodeLabel,
         node_type: HydroNodeType,
         location: Option<usize>,
     ) -> usize {
@@ -291,6 +355,9 @@ impl HydroLeaf {
             } else {
                 (None, None)
             };
+
+            // Check if this is a label that came from an expression-containing operation
+            // We can detect this by looking for the pattern "op_name(...)" and checking if we have the original expressions
             graph_write.write_node_definition(
                 node_id,
                 label,
@@ -344,7 +411,7 @@ impl HydroLeaf {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
-                    format!("for_each({})", f),
+                    NodeLabel::with_expr("for_each".to_string(), f.clone()),
                     HydroNodeType::Sink,
                     location_id,
                 );
@@ -359,7 +426,7 @@ impl HydroLeaf {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
-                    format!("dest_sink({})", sink),
+                    NodeLabel::with_expr("dest_sink".to_string(), sink.clone()),
                     HydroNodeType::Sink,
                     location_id,
                 );
@@ -375,7 +442,7 @@ impl HydroLeaf {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
-                    format!("cycle_sink({})", ident),
+                    NodeLabel::static_label(format!("cycle_sink({})", ident)),
                     HydroNodeType::Sink,
                     location_id,
                 );
@@ -398,7 +465,7 @@ impl HydroNode {
 
         // Helper struct to group node creation parameters
         struct NodeParams {
-            label: String,
+            label: NodeLabel,
             node_type: HydroNodeType,
             edge_type: HydroEdgeType,
         }
@@ -426,13 +493,15 @@ impl HydroNode {
             label: String,
         ) -> usize {
             let location_id = setup_location(structure, metadata);
-            structure.add_node(label, HydroNodeType::Source, location_id)
+            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id)
         }
 
         match self {
-            HydroNode::Placeholder => {
-                structure.add_node("PLACEHOLDER".to_string(), HydroNodeType::Transform, None)
-            }
+            HydroNode::Placeholder => structure.add_node(
+                NodeLabel::Static("PLACEHOLDER".to_string()),
+                HydroNodeType::Transform,
+                None,
+            ),
 
             HydroNode::Source {
                 source, metadata, ..
@@ -463,7 +532,11 @@ impl HydroNode {
                 let location_id = setup_location(structure, metadata);
 
                 let tee_id = if config.include_tee_ids {
-                    structure.add_node("tee()".to_string(), HydroNodeType::Tee, location_id)
+                    structure.add_node(
+                        NodeLabel::Static("tee()".to_string()),
+                        HydroNodeType::Tee,
+                        location_id,
+                    )
                 } else {
                     input_id // If not showing tee nodes, just return the input
                 };
@@ -483,7 +556,7 @@ impl HydroNode {
                 inner,
                 metadata,
                 NodeParams {
-                    label: "persist()".to_string(),
+                    label: NodeLabel::Static("persist()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Persistent,
                 },
@@ -496,7 +569,7 @@ impl HydroNode {
                 inner,
                 metadata,
                 NodeParams {
-                    label: "delta()".to_string(),
+                    label: NodeLabel::Static("delta()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -509,7 +582,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("map({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "map".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -522,7 +598,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("filter({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "filter".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -536,8 +615,11 @@ impl HydroNode {
                 let left_id = left.build_graph_structure(structure, seen_tees, config);
                 let right_id = right.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let join_id =
-                    structure.add_node("join()".to_string(), HydroNodeType::Join, location_id);
+                let join_id = structure.add_node(
+                    NodeLabel::Static("join()".to_string()),
+                    HydroNodeType::Join,
+                    location_id,
+                );
                 structure.add_edge(
                     left_id,
                     join_id,
@@ -565,7 +647,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("fold({}, {})", init, acc),
+                    label: NodeLabel::WithExprs {
+                        op_name: "fold".to_string(),
+                        exprs: vec![init.clone(), acc.clone()],
+                    },
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -610,7 +695,11 @@ impl HydroNode {
                 }
                 label.push(')');
 
-                let network_id = structure.add_node(label, HydroNodeType::Network, to_location_id);
+                let network_id = structure.add_node(
+                    NodeLabel::Static(label),
+                    HydroNodeType::Network,
+                    to_location_id,
+                );
                 structure.add_edge(
                     input_id,
                     network_id,
@@ -628,7 +717,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("flat_map({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "flat_map".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -641,7 +733,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("filter_map({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "filter_map".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -659,7 +754,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("inspect({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "inspect".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -674,7 +772,7 @@ impl HydroNode {
                 let second_id = second.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let chain_id = structure.add_node(
-                    "chain()".to_string(),
+                    NodeLabel::Static("chain()".to_string()),
                     HydroNodeType::Transform,
                     location_id,
                 );
@@ -702,7 +800,7 @@ impl HydroNode {
                 let right_id = right.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let cross_id = structure.add_node(
-                    "cross_product()".to_string(),
+                    NodeLabel::Static("cross_product()".to_string()),
                     HydroNodeType::Join,
                     location_id,
                 );
@@ -730,7 +828,7 @@ impl HydroNode {
                 let right_id = right.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let cross_singleton_id = structure.add_node(
-                    "cross_singleton()".to_string(),
+                    NodeLabel::Static("cross_singleton()".to_string()),
                     HydroNodeType::Join,
                     location_id,
                 );
@@ -754,7 +852,7 @@ impl HydroNode {
                 let neg_id = neg.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let diff_id = structure.add_node(
-                    "difference()".to_string(),
+                    NodeLabel::Static("difference()".to_string()),
                     HydroNodeType::Join,
                     location_id,
                 );
@@ -777,8 +875,11 @@ impl HydroNode {
                 let pos_id = pos.build_graph_structure(structure, seen_tees, config);
                 let neg_id = neg.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
-                let anti_join_id =
-                    structure.add_node("anti_join()".to_string(), HydroNodeType::Join, location_id);
+                let anti_join_id = structure.add_node(
+                    NodeLabel::Static("anti_join()".to_string()),
+                    HydroNodeType::Join,
+                    location_id,
+                );
                 structure.add_edge(
                     pos_id,
                     anti_join_id,
@@ -801,7 +902,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: "defer_tick()".to_string(),
+                    label: NodeLabel::Static("defer_tick()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -818,7 +919,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("enumerate(static={})", is_static),
+                    label: NodeLabel::Static(format!("enumerate(static={})", is_static)),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -831,7 +932,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: "unique()".to_string(),
+                    label: NodeLabel::Static("unique()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -844,7 +945,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: "sort()".to_string(),
+                    label: NodeLabel::Static("sort()".to_string()),
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -862,7 +963,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("fold_keyed({}, {})", init, acc),
+                    label: NodeLabel::WithExprs {
+                        op_name: "fold_keyed".to_string(),
+                        exprs: vec![init.clone(), acc.clone()],
+                    },
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -875,7 +979,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("reduce({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "reduce".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -888,7 +995,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("reduce_keyed({})", f),
+                    label: NodeLabel::WithExprs {
+                        op_name: "reduce_keyed".to_string(),
+                        exprs: vec![f.clone()],
+                    },
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -901,7 +1011,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: "resolve_futures()".to_string(),
+                    label: NodeLabel::Static("resolve_futures()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -914,7 +1024,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: "resolve_futures_ordered()".to_string(),
+                    label: NodeLabel::Static("resolve_futures_ordered()".to_string()),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -932,7 +1042,10 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("counter({}, {})", tag, duration),
+                    label: NodeLabel::WithExprs {
+                        op_name: format!("counter({})", tag),
+                        exprs: vec![duration.clone()],
+                    },
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },

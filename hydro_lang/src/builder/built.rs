@@ -310,21 +310,21 @@ impl<'a> BuiltFlow<'a> {
                     !config.no_metadata,
                     !config.no_location_groups,
                     !config.no_tee_ids,
-                    !config.long_labels, // Inverted because flag is for long labels
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
                 crate::graph_util::GraphType::Dot => self.generate_dot(
                     !config.no_metadata,
                     !config.no_location_groups,
                     !config.no_tee_ids,
-                    !config.long_labels, // Inverted because flag is for long labels
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
                 crate::graph_util::GraphType::Reactflow => self.generate_reactflow(
                     !config.no_metadata,
                     !config.no_location_groups,
                     !config.no_tee_ids,
-                    !config.long_labels, // Inverted because flag is for long labels
+                    !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
             }

@@ -68,6 +68,11 @@ pub fn save_dot(
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
+    // Debug: Print the mermaid source being sent to browser
+    println!("=== MERMAID SOURCE BEING SENT TO BROWSER ===");
+    println!("{}", mermaid_src);
+    println!("=== END MERMAID SOURCE ===");
+
     let state = serde_json::json!({
         "code": mermaid_src,
         "mermaid": serde_json::json!({

@@ -85,7 +85,7 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    let _ = args.graph.generate_graph(&built, None);
+    let _ = built.generate_graph_with_config(&args.graph, None);
 
     let optimized = built.with_default_optimize();
 

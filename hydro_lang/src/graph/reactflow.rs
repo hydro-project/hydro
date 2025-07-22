@@ -126,25 +126,39 @@ where
     fn write_node_definition(
         &mut self,
         node_id: usize,
-        node_label: &str,
+        node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
     ) -> Result<(), Self::Err> {
         let style = self.node_type_to_style(node_type);
 
+        // Create the full label string using DebugExpr::Display for expressions
+        let full_label = match node_label {
+            super::render::NodeLabel::Static(s) => s.clone(),
+            super::render::NodeLabel::WithExprs { op_name, exprs } => {
+                if exprs.is_empty() {
+                    format!("{}()", op_name)
+                } else {
+                    // This is where DebugExpr::Display gets called with q! macro cleanup
+                    let expr_strs: Vec<String> = exprs.iter().map(|e| e.to_string()).collect();
+                    format!("{}({})", op_name, expr_strs.join(", "))
+                }
+            }
+        };
+
         // Determine what label to display based on config
         let display_label = if self.config.use_short_labels {
-            super::render::extract_short_label(node_label)
+            super::render::extract_short_label(&full_label)
         } else {
-            node_label.to_string()
+            full_label.clone()
         };
 
         // Always extract short label for UI toggle functionality
-        let short_label = super::render::extract_short_label(node_label);
+        let short_label = super::render::extract_short_label(&full_label);
 
         // If short and full labels are the same or very similar, enhance the full label
-        let enhanced_full_label = if short_label.len() >= node_label.len() - 2 {
+        let enhanced_full_label = if short_label.len() >= full_label.len() - 2 {
             // If they're nearly the same length, add more context to full label
             match short_label.as_str() {
                 "inspect" => "inspect [debug output]".to_string(),
@@ -162,7 +176,7 @@ where
                 "network(send)" => "network(send) [send to network]".to_string(),
                 "dest_sink" => "dest_sink [output destination]".to_string(),
                 _ => {
-                    if node_label.len() < 15 {
+                    if full_label.len() < 15 {
                         format!("{} [{}]", node_label, "hydro operator")
                     } else {
                         node_label.to_string()

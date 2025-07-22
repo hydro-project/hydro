@@ -71,7 +71,7 @@ where
     fn write_node_definition(
         &mut self,
         node_id: usize,
-        node_label: &str,
+        node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
@@ -94,11 +94,25 @@ where
             _ => ("[", "]"),
         };
 
+        // Create the full label string using DebugExpr::Display for expressions
+        let full_label = match node_label {
+            super::render::NodeLabel::Static(s) => s.clone(),
+            super::render::NodeLabel::WithExprs { op_name, exprs } => {
+                if exprs.is_empty() {
+                    format!("{}()", op_name)
+                } else {
+                    // This is where DebugExpr::Display gets called with q! macro cleanup
+                    let expr_strs: Vec<String> = exprs.iter().map(|e| e.to_string()).collect();
+                    format!("{}({})", op_name, expr_strs.join(", "))
+                }
+            }
+        };
+
         // Determine what label to display based on config
         let display_label = if self.base.config.use_short_labels {
-            super::render::extract_short_label(node_label)
+            super::render::extract_short_label(&full_label)
         } else {
-            node_label.to_string()
+            full_label
         };
 
         let label = format!(

@@ -16,10 +16,10 @@ use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::graph_util::GraphConfig;
 use hydro_lang::rewrites::persist_pullup;
 use hydro_optimize::debug;
 use hydro_optimize::decoupler::{self, Decoupler};
-use hydro_lang::graph_util::GraphConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -77,7 +77,7 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    let _ = args.graph.generate_graph(&built, None);
+    let _ = built.generate_graph_with_config(&args.graph, None);
 
     let _nodes = built
         .optimize_with(persist_pullup::persist_pullup)

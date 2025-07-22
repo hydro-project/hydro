@@ -153,5 +153,5 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    args.graph.generate_graph(&built);
+    built.generate_graph_with_config(&args.graph, None);
 }
