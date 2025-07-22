@@ -60,6 +60,13 @@ expression: built.ir()
                                                             location_kind: Process(
                                                                 0,
                                                             ),
+                                                            backtrace: [
+                                                                hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:10),
+                                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                                                core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                                                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                                            ],
                                                             output_type: Some(
                                                                 & str,
                                                             ),
@@ -73,6 +80,13 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
+                                                        backtrace: [
+                                                            hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:10),
+                                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                                            core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                                            core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                                        ],
                                                         output_type: Some(
                                                             std :: string :: String,
                                                         ),
@@ -86,6 +100,14 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        hydro_lang::stream::Stream<T,L,B>::round_robin_bincode::h8f12d5b8b13af8ab(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2640),
+                                                        hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:14),
+                                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                                        core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                                        core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                                    ],
                                                     output_type: Some(
                                                         (usize , std :: string :: String),
                                                     ),
@@ -99,6 +121,14 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    hydro_lang::stream::Stream<T,L,B>::round_robin_bincode::h8f12d5b8b13af8ab(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2640),
+                                                    hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:14),
+                                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                                    core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                                    core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                                ],
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String),
                                                 ),
@@ -112,6 +142,14 @@ expression: built.ir()
                                             location_kind: Cluster(
                                                 1,
                                             ),
+                                            backtrace: [
+                                                hydro_lang::stream::Stream<T,L,B>::round_robin_bincode::h8f12d5b8b13af8ab(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2640),
+                                                hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:14),
+                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                                core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                            ],
                                             output_type: Some(
                                                 std :: string :: String,
                                             ),
@@ -125,6 +163,13 @@ expression: built.ir()
                                         location_kind: Cluster(
                                             1,
                                         ),
+                                        backtrace: [
+                                            hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:14),
+                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                            core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                            core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                        ],
                                         output_type: Some(
                                             (std :: string :: String , ()),
                                         ),
@@ -141,6 +186,13 @@ expression: built.ir()
                                             1,
                                         ),
                                     ),
+                                    backtrace: [
+                                        hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:18),
+                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                        core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                        core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                    ],
                                     output_type: Some(
                                         (std :: string :: String , i32),
                                     ),
@@ -157,6 +209,13 @@ expression: built.ir()
                                         1,
                                     ),
                                 ),
+                                backtrace: [
+                                    hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:18),
+                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                    core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                    core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                ],
                                 output_type: Some(
                                     (std :: string :: String , i32),
                                 ),
@@ -170,6 +229,14 @@ expression: built.ir()
                             location_kind: Process(
                                 0,
                             ),
+                            backtrace: [
+                                hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous::h43c0f64cc99fdc08(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2505),
+                                hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:18),
+                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                                core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                            ],
                             output_type: Some(
                                 (std :: string :: String , i32),
                             ),
@@ -183,6 +250,14 @@ expression: built.ir()
                         location_kind: Process(
                             0,
                         ),
+                        backtrace: [
+                            hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous::h43c0f64cc99fdc08(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2505),
+                            hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:18),
+                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                            core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                            core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                        ],
                         output_type: Some(
                             (std :: string :: String , i32),
                         ),
@@ -199,6 +274,13 @@ expression: built.ir()
                             0,
                         ),
                     ),
+                    backtrace: [
+                        hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:32),
+                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                        core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                        core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                    ],
                     output_type: Some(
                         (std :: string :: String , i32),
                     ),
@@ -215,6 +297,14 @@ expression: built.ir()
                         0,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::stream::Stream<(K,V),hydro_lang::location::tick::Tick<L>,hydro_lang::boundedness::Bounded,O>::reduce_keyed_commutative::hfd2d8a42d57cbf13(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:1895),
+                    hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:32),
+                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                    core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                    core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                ],
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
@@ -228,6 +318,13 @@ expression: built.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_test::cluster::map_reduce::map_reduce::h4b662a831bb97a11(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:30),
+                hydro_test::cluster::map_reduce::tests::map_reduce_ir::hff19784b33347458(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:50),
+                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}}::h3ee20484aff26cf0(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/map_reduce.rs:48),
+                core::ops::function::FnOnce::call_once::he95d9e1662e363d3(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+            ],
             output_type: Some(
                 (std :: string :: String , i32),
             ),

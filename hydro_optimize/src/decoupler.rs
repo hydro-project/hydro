@@ -49,6 +49,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(node_content),
         metadata: HydroIrMetadata {
             location_kind: metadata.location_kind.root().clone(), // Remove any ticks
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type.clone()))),
             cardinality: None,
             cpu_usage: None,
@@ -73,6 +74,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(mapped_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(DebugType(Box::new(mapped_output_type))),
             cardinality: None,
             cpu_usage: None,
@@ -88,6 +90,7 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
         input: Box::new(network_node),
         metadata: HydroIrMetadata {
             location_kind: new_location.clone(),
+            backtrace: metadata.backtrace.clone(),
             output_type: Some(output_debug_type),
             cardinality: None,
             cpu_usage: None,

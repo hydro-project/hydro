@@ -1,0 +1,174 @@
+---
+source: hydro_test/src/cluster/many_to_many.rs
+expression: built.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
+        input: Unpersist {
+            inner: Network {
+                from_key: None,
+                to_location: Cluster(
+                    0,
+                ),
+                to_key: None,
+                serialize_fn: None,
+                instantiate_fn: <network instantiate>,
+                deserialize_fn: Some(
+                    | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                ),
+                input: FlatMap {
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes , std :: iter :: Map < std :: slice :: Iter < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | v | { ids__free . iter () . map (move | id | (id . raw_id , v . clone ())) } }),
+                    input: Map {
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | v | bincode :: serialize (& v) . unwrap () . into () }),
+                        input: Persist {
+                            inner: Source {
+                                source: Iter(
+                                    { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
+                                ),
+                                location_kind: Cluster(
+                                    0,
+                                ),
+                                metadata: HydroIrMetadata {
+                                    location_kind: Cluster(
+                                        0,
+                                    ),
+                                    backtrace: [
+                                        hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                                        hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                                        hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                                        core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                        core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                    ],
+                                    output_type: Some(
+                                        i32,
+                                    ),
+                                    cardinality: None,
+                                    cpu_usage: None,
+                                    network_recv_cpu_usage: None,
+                                    id: None,
+                                },
+                            },
+                            metadata: HydroIrMetadata {
+                                location_kind: Cluster(
+                                    0,
+                                ),
+                                backtrace: [
+                                    hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                                    hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                                    hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                                    core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                    core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                                ],
+                                output_type: Some(
+                                    i32,
+                                ),
+                                cardinality: None,
+                                cpu_usage: None,
+                                network_recv_cpu_usage: None,
+                                id: None,
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Cluster(
+                                0,
+                            ),
+                            backtrace: [
+                                hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode::h35ecdfcaa8fd759b(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2539),
+                                hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                                hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                                hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                                core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                            ],
+                            output_type: Some(
+                                hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes,
+                            ),
+                            cardinality: None,
+                            cpu_usage: None,
+                            network_recv_cpu_usage: None,
+                            id: None,
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_kind: Cluster(
+                            0,
+                        ),
+                        backtrace: [
+                            hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode::h35ecdfcaa8fd759b(/Users/shadajl/open-source/hydro/hydro_lang/src/stream.rs:2539),
+                            hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                            hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                            hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                            core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                            core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                        ],
+                        output_type: Some(
+                            (u32 , hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes),
+                        ),
+                        cardinality: None,
+                        cpu_usage: None,
+                        network_recv_cpu_usage: None,
+                        id: None,
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Cluster(
+                        0,
+                    ),
+                    backtrace: [
+                        hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                        hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                        hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                        core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                        core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                    ],
+                    output_type: Some(
+                        i32,
+                    ),
+                    cardinality: None,
+                    cpu_usage: None,
+                    network_recv_cpu_usage: None,
+                    id: None,
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Cluster(
+                    0,
+                ),
+                backtrace: [
+                    hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                    hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                    hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                    core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                    core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+                ],
+                output_type: Some(
+                    (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+                ),
+                cardinality: None,
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Cluster(
+                0,
+            ),
+            backtrace: [
+                hydro_test::cluster::many_to_many::many_to_many::hf8845b8858e489d4(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:5),
+                hydro_test::cluster::many_to_many::tests::many_to_many_ir::h8cbe646aed59f4ee(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:21),
+                hydro_test::cluster::many_to_many::tests::many_to_many_ir::{{closure}}::hfa0b60b7af35d1a5(/Users/shadajl/open-source/hydro/hydro_test/src/cluster/many_to_many.rs:19),
+                core::ops::function::FnOnce::call_once::he00ba089e8840aaf(/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs:250),
+                core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547(/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs:250),
+            ],
+            output_type: Some(
+                (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
+            ),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        },
+    },
+]

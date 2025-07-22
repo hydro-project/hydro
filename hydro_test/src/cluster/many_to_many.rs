@@ -15,17 +15,24 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
 
+    #[test]
+    fn many_to_many_ir() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let _ = super::many_to_many(&builder);
+        let built = builder.finalize();
+
+        insta::assert_debug_snapshot!(built.ir());
+    }
+
     #[tokio::test]
     async fn many_to_many() {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
         let cluster = super::many_to_many(&builder);
-        let built = builder.with_default_optimize();
 
-        insta::assert_debug_snapshot!(built.ir());
-
-        let nodes = built
+        let nodes = builder
+            .with_default_optimize()
             .with_cluster(&cluster, (0..2).map(|_| deployment.Localhost()))
             .deploy(&mut deployment);
 
