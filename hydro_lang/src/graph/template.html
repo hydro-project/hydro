@@ -27,7 +27,7 @@
         /* Compact unified legend in upper right */
         .unified-legend {
             position: absolute;
-            top: 60px;
+            top: 90px;
             right: 10px;
             z-index: 10;
             background: rgba(255, 255, 255, 0.95);
@@ -41,7 +41,7 @@
         /* Layout controls above legend */
         .layout-controls {
             position: absolute;
-            top: 10px;
+            top: 40px;
             right: 10px;
             z-index: 10;
             background: rgba(255, 255, 255, 0.95);
@@ -149,6 +149,17 @@
             transform: translateX(-50%);
             border: 4px solid transparent;
             border-top-color: #333;
+        }
+        /* Special positioning for rightmost button tooltip to avoid cutoff */
+        .layout-controls .icon-button:last-child .tooltip {
+            left: auto;
+            right: 0;
+            transform: none;
+        }
+        .layout-controls .icon-button:last-child .tooltip::after {
+            left: auto;
+            right: 16px;
+            transform: none;
         }
         .icon-button:hover .tooltip {
             opacity: 1;
@@ -965,6 +976,7 @@
             const [currentLayout, setCurrentLayout] = React.useState('mrtree');
             const [currentPalette, setCurrentPalette] = React.useState('Set3');
             const [useShortLabels, setUseShortLabels] = React.useState(true);
+            const [allContainersCollapsed, setAllContainersCollapsed] = React.useState(false);
             
             const [collapsedLocations, setCollapsedLocations] = React.useState({});
             const [originalNodeDimensions, setOriginalNodeDimensions] = React.useState({});
@@ -1006,7 +1018,7 @@
                 }
             }, []);
 
-            const collapseAllContainers = useCallback(() => {
+            const toggleAllContainers = useCallback(() => {
                 const reactFlowInstance = window.reactFlowInstance;
                 if (!reactFlowInstance) return;
                 
@@ -1015,53 +1027,108 @@
                 const newCollapsedState = {};
                 const newOriginalDimensions = {};
                 
-                // Collapse all containers
-                containerNodes.forEach(container => {
-                    const locationId = container.id.replace('container_', '');
-                    
-                    // Store original dimensions if not already stored
-                    if (!originalNodeDimensions[locationId]) {
-                        const width = parseFloat(container.style?.width?.toString().replace('px', '')) || 400;
-                        const height = parseFloat(container.style?.height?.toString().replace('px', '')) || 300;
-                        newOriginalDimensions[locationId] = { width, height };
-                    } else {
-                        newOriginalDimensions[locationId] = originalNodeDimensions[locationId];
-                    }
-                    
-                    newCollapsedState[locationId] = true;
-                });
+                const shouldCollapse = !allContainersCollapsed;
                 
-                // Update states and nodes
+                if (shouldCollapse) {
+                    // Collapse all containers
+                    containerNodes.forEach(container => {
+                        const locationId = container.id.replace('container_', '');
+                        
+                        // Store original dimensions if not already stored
+                        if (!originalNodeDimensions[locationId]) {
+                            const width = parseFloat(container.style?.width?.toString().replace('px', '')) || 400;
+                            const height = parseFloat(container.style?.height?.toString().replace('px', '')) || 300;
+                            newOriginalDimensions[locationId] = { width, height };
+                        } else {
+                            newOriginalDimensions[locationId] = originalNodeDimensions[locationId];
+                        }
+                        
+                        newCollapsedState[locationId] = true;
+                    });
+                    
+                    const updatedNodes = currentNodes.map(node => {
+                        if (node.data?.isContainer) {
+                            // Store original label and set truncated label for collapsed state
+                            const originalLabel = node.data.originalLabel || node.data.label;
+                            const collapsedWidth = getMinCollapsedWidth(originalLabel);
+                            return { 
+                                ...node, 
+                                style: { ...node.style, width: collapsedWidth + 'px', height: '50px' },
+                                data: {
+                                    ...node.data,
+                                    originalLabel: originalLabel,
+                                    label: leftTruncateRustPath(originalLabel, true)
+                                }
+                            };
+                        } else if (node.parentNode) {
+                            return { ...node, hidden: true };
+                        }
+                        return node;
+                    });
+                    
+                    setNodes(updatedNodes);
+                    
+                    // Fit view after collapse
+                    setTimeout(() => {
+                        reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02 });
+                    }, 100);
+                } else {
+                    // Expand all containers
+                    containerNodes.forEach(container => {
+                        const locationId = container.id.replace('container_', '');
+                        newCollapsedState[locationId] = false;
+                        
+                        // Keep existing original dimensions
+                        if (originalNodeDimensions[locationId]) {
+                            newOriginalDimensions[locationId] = originalNodeDimensions[locationId];
+                        }
+                    });
+                    
+                    const updatedNodes = currentNodes.map(node => {
+                        if (node.data?.isContainer) {
+                            const locationId = node.id.replace('container_', '');
+                            const originalDims = originalNodeDimensions[locationId];
+                            const originalLabel = node.data.originalLabel || node.data.label;
+                            
+                            if (originalDims) {
+                                return { 
+                                    ...node, 
+                                    style: { ...node.style, width: originalDims.width, height: originalDims.height },
+                                    data: { 
+                                        ...node.data, 
+                                        label: originalLabel
+                                    }
+                                };
+                            } else {
+                                // Default expanded size if no stored dimensions
+                                return { 
+                                    ...node, 
+                                    style: { ...node.style, width: 400, height: 300 },
+                                    data: { 
+                                        ...node.data, 
+                                        label: originalLabel
+                                    }
+                                };
+                            }
+                        } else if (node.parentNode) {
+                            return { ...node, hidden: false };
+                        }
+                        return node;
+                    });
+                    
+                    setNodes(updatedNodes);
+                    
+                    // Fit view after expand
+                    setTimeout(() => {
+                        reactFlowInstance.fitView({ padding: 0.1, maxZoom: 1.0, minZoom: 0.2 });
+                    }, 100);
+                }
+                
+                // Update states
                 setCollapsedLocations(newCollapsedState);
                 setOriginalNodeDimensions(prev => ({ ...prev, ...newOriginalDimensions }));
-                
-                const updatedNodes = currentNodes.map(node => {
-                    if (node.data?.isContainer) {
-                        // Store original label and set truncated label for collapsed state
-                        const originalLabel = node.data.originalLabel || node.data.label;
-                        const collapsedWidth = getMinCollapsedWidth(originalLabel);
-                        return { 
-                            ...node, 
-                            style: { ...node.style, width: collapsedWidth + 'px', height: '50px' },
-                            data: {
-                                ...node.data,
-                                originalLabel: originalLabel,
-                                label: leftTruncateRustPath(originalLabel, true)
-                            }
-                        };
-                    } else if (node.parentNode) {
-                        return { ...node, hidden: true };
-                    }
-                    return node;
-                });
-                
-                setNodes(updatedNodes);
-                
-                // Fit view after collapse
-                setTimeout(() => {
-                    reactFlowInstance.fitView({ padding: 0.2, maxZoom: 0.5, minZoom: 0.02 });
-                }, 100);
-            }, [originalNodeDimensions, setCollapsedLocations, setOriginalNodeDimensions, setNodes]);
+                setAllContainersCollapsed(shouldCollapse);
+            }, [allContainersCollapsed, originalNodeDimensions, setCollapsedLocations, setOriginalNodeDimensions, setNodes]);
 
             const onNodeClick = useCallback((event, node) => {
                 if (node.data?.isContainer) {
@@ -1078,7 +1145,16 @@
                                 [locationId]: { width: node.style.width, height: node.style.height }
                             }));
                         }
-                        return { ...prev, [locationId]: isCollapsing };
+                        
+                        const newState = { ...prev, [locationId]: isCollapsing };
+                        
+                        // Update allContainersCollapsed state
+                        setTimeout(() => {
+                            const allCollapsed = Object.values(newState).every(collapsed => collapsed);
+                            setAllContainersCollapsed(allCollapsed);
+                        }, 0);
+                        
+                        return newState;
                     });
                 } else if (node.data?.shortLabel && node.data?.fullLabel) {
                     // Handle regular node click to toggle between short and full label
@@ -1397,6 +1473,10 @@
                 // Set initial states
                 setCollapsedLocations(initialCollapsedState);
                 setOriginalNodeDimensions(initialOriginalDimensions);
+                
+                // Update allContainersCollapsed state based on initial container states
+                const allCollapsed = Object.values(initialCollapsedState).every(collapsed => collapsed);
+                setAllContainersCollapsed(allCollapsed);
                 
                 setNodes(allElements);
                 setEdges(initialEdges);
@@ -1805,17 +1885,16 @@
                             <span className="tooltip">Refresh Layout</span>
                         </button>
                         <button className="icon-button" onClick={fitView}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path fill-rule="evenodd" d="M2 7.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zM2 4.5a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0 6a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/>
-                            </svg>
+                            <span style={{fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                ⛶
+                            </span>
                             <span className="tooltip">Fit to View</span>
                         </button>
-                        <button className="icon-button" onClick={collapseAllContainers}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M2 1a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V1zm12 6V1a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z"/>
-                                <path d="M2 9a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9zm12 5V9a2 2 0 0 0-2-2H3a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2z"/>
-                            </svg>
-                            <span className="tooltip">Collapse All Containers</span>
+                        <button className="icon-button" onClick={toggleAllContainers}>
+                            <span style={{fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                {allContainersCollapsed ? '⊕' : '⊖'}
+                            </span>
+                            <span className="tooltip">{allContainersCollapsed ? 'Expand All Containers' : 'Collapse All Containers'}</span>
                         </button>
                         <button className="icon-button" onClick={toggleLabelMode}>
                             <span style={{fontSize: '14px', fontWeight: 'bold'}}>
