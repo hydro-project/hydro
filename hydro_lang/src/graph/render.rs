@@ -344,7 +344,7 @@ impl HydroLeaf {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
-                    format!("for_each({:?})", f),
+                    format!("for_each({})", f),
                     HydroNodeType::Sink,
                     location_id,
                 );
@@ -359,7 +359,7 @@ impl HydroLeaf {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let location_id = setup_location(structure, metadata);
                 let sink_id = structure.add_node(
-                    format!("dest_sink({:?})", sink),
+                    format!("dest_sink({})", sink),
                     HydroNodeType::Sink,
                     location_id,
                 );
@@ -438,9 +438,9 @@ impl HydroNode {
                 source, metadata, ..
             } => {
                 let label = match source {
-                    HydroSource::Stream(expr) => format!("source_stream({:?})", expr),
+                    HydroSource::Stream(expr) => format!("source_stream({})", expr),
                     HydroSource::ExternalNetwork() => "external_network()".to_string(),
-                    HydroSource::Iter(expr) => format!("source_iter({:?})", expr),
+                    HydroSource::Iter(expr) => format!("source_iter({})", expr),
                     HydroSource::Spin() => "spin()".to_string(),
                 };
                 build_source_node(structure, metadata, label)
@@ -509,7 +509,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("map({:?})", f),
+                    label: format!("map({})", f),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -522,7 +522,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("filter({:?})", f),
+                    label: format!("filter({})", f),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -565,7 +565,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("fold({:?}, {:?})", init, acc),
+                    label: format!("fold({}, {})", init, acc),
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -628,7 +628,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("flat_map({:?})", f),
+                    label: format!("flat_map({})", f),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -641,7 +641,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("filter_map({:?})", f),
+                    label: format!("filter_map({})", f),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -659,7 +659,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("inspect({:?})", f),
+                    label: format!("inspect({})", f),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -862,7 +862,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("fold_keyed({:?}, {:?})", init, acc),
+                    label: format!("fold_keyed({}, {})", init, acc),
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -875,7 +875,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("reduce({:?})", f),
+                    label: format!("reduce({})", f),
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -888,7 +888,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("reduce_keyed({:?})", f),
+                    label: format!("reduce_keyed({})", f),
                     node_type: HydroNodeType::Aggregation,
                     edge_type: HydroEdgeType::Stream,
                 },
@@ -932,7 +932,7 @@ impl HydroNode {
                 input,
                 metadata,
                 NodeParams {
-                    label: format!("counter({}, {:?})", tag, duration),
+                    label: format!("counter({}, {})", tag, duration),
                     node_type: HydroNodeType::Transform,
                     edge_type: HydroEdgeType::Stream,
                 },

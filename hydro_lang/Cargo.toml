@@ -19,7 +19,6 @@ deploy = [
     "dep:hydro_deploy",
     "dep:trybuild-internals-api",
     "dep:toml",
-    "dep:prettyplease",
     "dep:sha2",
     "dep:stageleft_tool",
     "dep:nameof",
@@ -42,7 +41,7 @@ dfir_lang = { path = "../dfir_lang", version = "^0.13.0", optional = true }
 futures = "0.3.0"
 match_box = "0.0.2"
 nameof = { version = "1.0.0", optional = true }
-prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
+prettyplease = { version = "0.2.0", features = ["verbatim"] }
 proc-macro-crate = "1.0.0"
 proc-macro2 = "1.0.95"
 quote = "1.0.35"

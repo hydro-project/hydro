@@ -3,13 +3,14 @@ use std::cell::RefCell;
 #[cfg(feature = "build")]
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
 
 #[cfg(feature = "build")]
 use dfir_lang::graph::FlatGraphBuilder;
+use prettyplease;
 #[cfg(feature = "build")]
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
@@ -18,6 +19,7 @@ use quote::ToTokens;
 use quote::quote;
 #[cfg(feature = "build")]
 use syn::parse_quote;
+use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
@@ -26,7 +28,7 @@ use crate::location::LocationId;
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
-#[derive(Clone, Hash)]
+#[derive(Clone, Debug, Hash)]
 pub struct DebugExpr(pub Box<syn::Expr>);
 
 impl From<syn::Expr> for DebugExpr {
@@ -49,76 +51,181 @@ impl ToTokens for DebugExpr {
     }
 }
 
-impl Debug for DebugExpr {
+impl Display for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let original = self.0.to_token_stream().to_string();
         let simplified = simplify_q_macro(&original);
-
-        // Fallback logic: If the simplification fails (i.e., the original contains
-        // "stageleft :: runtime_support" but the simplified result is identical to the original),
-        // we return a generic "q!(...)" notation for readability. This fallback is intended to
-        // handle cases where the simplification logic cannot extract meaningful closure content.
-        // If this fallback is temporary, consider revisiting the simplification logic to improve it.
-        if original.contains("stageleft :: runtime_support") && simplified == original {
-            write!(f, "q!(...)")
-        } else {
-            write!(f, "{}", simplified)
-        }
+        write!(f, "{}", simplified)
     }
 }
 
 /// Simplify expanded q! macro calls back to q!(...) syntax for better readability
 fn simplify_q_macro(token_str: &str) -> String {
-    // Look for patterns that indicate a q! macro expansion
-    if token_str.contains("stageleft :: runtime_support :: fn") {
-        // Try to extract the original closure content from the expanded macro
-        if let Some(start) = token_str.find("{ use") {
-            if let Some(end) = token_str.rfind("})") {
-                let inner_content = &token_str[start..=end + 1];
+    // Try to parse the token string as a syn::Expr
+    if let Ok(tokens) = token_str.parse::<TokenStream>() {
+        if let Ok(mut expr) = syn::parse2::<syn::Expr>(tokens) {
+            // Use a visitor to simplify q! macro expansions
+            let mut simplifier = QMacroSimplifier::new();
+            simplifier.visit_expr_mut(&mut expr);
 
-                // Look for the actual closure pattern
-                if let Some(closure_start) = inner_content.find("| ") {
-                    if let Some(closure_end) = inner_content.rfind(" }") {
-                        let closure_content = &inner_content[closure_start..=closure_end];
-                        // Clean up the closure content
-                        let simplified = cleanup_closure_content(closure_content);
-                        return format!("q!({})", simplified);
-                    }
-                }
-
-                // Fallback: try to find any closure-like pattern
-                if let Some(pipe_pos) = inner_content.find('|') {
-                    if let Some(end_brace) = inner_content[pipe_pos..].find(" }") {
-                        let closure_part = &inner_content[pipe_pos..pipe_pos + end_brace + 2];
-                        let simplified = cleanup_closure_content(closure_part);
-                        return format!("q!({})", simplified);
-                    }
-                }
+            // If we found and simplified a q! macro, return the simplified version
+            if let Some(simplified) = simplifier.simplified_result.borrow().as_ref() {
+                return simplified.clone();
             }
+
+            // Otherwise, return a cleaned up version of the original
+            let formatted = prettyplease::unparse(&syn::parse_quote! {
+                fn dummy() { #expr }
+            });
+            let cleaned = formatted
+                .trim_start()
+                .trim_start_matches("fn dummy()")
+                .trim_start()
+                .trim_start_matches('{')
+                .trim_start()
+                .trim_end()
+                .trim_end_matches('}')
+                .trim_end()
+                .replace("\n    ", "\n") // Remove extra leading indent
+                .to_string();
+
+            if cleaned.len() > 50 {
+                format!("{}...", &cleaned[..47])
+            } else {
+                cleaned
+            }
+        } else {
+            // Fallback to string processing for unparseable expressions
+            fallback_string_simplify(token_str)
         }
-
-        // If we can't extract the closure, return a simplified q!(...) notation
-        return "q!(...)".to_string();
+    } else {
+        // Fallback to string processing for unparseable token streams
+        fallback_string_simplify(token_str)
     }
+}
 
-    // For non-q! expressions, return as-is but cleaned up
-    if token_str.len() > 50 {
+/// Fallback string-based simplification when AST parsing fails
+fn fallback_string_simplify(token_str: &str) -> String {
+    if token_str.contains("stageleft :: runtime_support") {
+        "q!(...)".to_string()
+    } else if token_str.len() > 50 {
         format!("{}...", &token_str[..47])
     } else {
         token_str.to_string()
     }
 }
 
-/// Clean up closure content to make it more readable
-fn cleanup_closure_content(content: &str) -> String {
-    content
-        .replace(" . ", ".")
-        .replace(" , ", ", ")
-        .replace(" ! ", "!")
-        .replace(" :: ", "::")
-        .replace("  ", " ")
-        .trim()
-        .to_string()
+/// AST visitor that simplifies q! macro expansions
+pub struct QMacroSimplifier {
+    pub simplified_result: RefCell<Option<String>>,
+}
+
+impl QMacroSimplifier {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl Default for QMacroSimplifier {
+    fn default() -> Self {
+        Self {
+            simplified_result: RefCell::new(None),
+        }
+    }
+}
+
+impl VisitMut for QMacroSimplifier {
+    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
+        // Check if we already found a result to avoid further processing
+        if self.simplified_result.borrow().is_some() {
+            return;
+        }
+
+        if let syn::Expr::Call(call) = expr {
+            if let syn::Expr::Path(path_expr) = call.func.as_ref() {
+                // Look for calls to stageleft::runtime_support::fn_*
+                if self.is_stageleft_runtime_support_call(&path_expr.path) {
+                    // Try to extract the closure from the arguments
+                    if let Some(closure) = self.extract_closure_from_args(&call.args) {
+                        *self.simplified_result.borrow_mut() = Some(format!("q!({})", closure));
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Continue visiting child expressions using the default implementation
+        // Use the default visitor to avoid infinite recursion
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
+impl QMacroSimplifier {
+    fn is_stageleft_runtime_support_call(&self, path: &syn::Path) -> bool {
+        // Check if this is a call to stageleft::runtime_support::fn_*
+        if let Some(last_segment) = path.segments.last() {
+            if last_segment.ident.to_string().starts_with("fn_") {
+                // Check if the path contains stageleft and runtime_support
+                let path_str = path
+                    .segments
+                    .iter()
+                    .map(|seg| seg.ident.to_string())
+                    .collect::<Vec<_>>()
+                    .join("::");
+                return path_str.contains("stageleft") && path_str.contains("runtime_support");
+            }
+        }
+        false
+    }
+
+    fn extract_closure_from_args(
+        &self,
+        args: &syn::punctuated::Punctuated<syn::Expr, syn::Token![,]>,
+    ) -> Option<String> {
+        // Look through the arguments for a closure expression
+        for arg in args {
+            if let syn::Expr::Closure(closure) = arg {
+                // Format the closure nicely
+                let closure_str = closure.to_token_stream().to_string();
+                return Some(self.cleanup_closure_content(&closure_str));
+            }
+
+            // Also check for closures nested in other expressions (like blocks)
+            if let Some(closure_str) = self.find_closure_in_expr(arg) {
+                return Some(self.cleanup_closure_content(&closure_str));
+            }
+        }
+        None
+    }
+
+    fn find_closure_in_expr(&self, expr: &syn::Expr) -> Option<String> {
+        match expr {
+            syn::Expr::Block(block) => {
+                // Look for closures in block statements
+                for stmt in &block.block.stmts {
+                    if let syn::Stmt::Expr(syn::Expr::Closure(closure), _) = stmt {
+                        return Some(closure.to_token_stream().to_string());
+                    }
+                }
+            }
+            syn::Expr::Closure(closure) => {
+                return Some(closure.to_token_stream().to_string());
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn cleanup_closure_content(&self, content: &str) -> String {
+        content
+            .replace(" . ", ".")
+            .replace(" , ", ", ")
+            .replace(" ! ", "!")
+            .replace(" :: ", "::")
+            .replace("  ", " ")
+            .trim()
+            .to_string()
+    }
 }
 
 /// Debug displays the type's tokens.
@@ -2566,5 +2673,53 @@ mod test {
     #[test]
     fn hydro_leaf_size() {
         insta::assert_snapshot!(size_of::<HydroLeaf>(), @"160");
+    }
+
+    #[test]
+    fn test_simplify_q_macro_basic() {
+        // Test basic non-q! expression
+        let simple_expr = "x + y";
+        let result = simplify_q_macro(simple_expr);
+        assert_eq!(result, simple_expr);
+    }
+
+    #[test]
+    fn test_simplify_q_macro_fallback() {
+        // Test fallback for unparseable expressions containing stageleft runtime support
+        let stageleft_expr = "stageleft :: runtime_support :: [invalid syntax";
+        let result = simplify_q_macro(stageleft_expr);
+        assert_eq!(result, "q!(...)");
+    }
+
+    #[test]
+    fn test_simplify_q_macro_long_expr() {
+        // Test truncation of long expressions
+        let long_expr = "a".repeat(60);
+        let result = simplify_q_macro(&long_expr);
+        assert!(result.ends_with("..."));
+        assert_eq!(result.len(), 50); // 47 chars + "..."
+    }
+
+    #[test]
+    fn test_simplify_q_macro_actual_stageleft_call() {
+        // Test a simplified version of what a real stageleft call might look like
+        let stageleft_call = r#"
+            stageleft::runtime_support::fn_0_expr(|| { 
+                |x| x + 1
+            })
+        "#;
+        let result = simplify_q_macro(stageleft_call);
+        // This should be processed by our visitor and simplified to q!(...)
+        // since we detect the stageleft::runtime_support::fn_* pattern
+        assert!(result.starts_with("q!("));
+    }
+
+    #[test]
+    fn test_simplify_q_macro_with_type_hints() {
+        // Test with a shorter expression that won't get truncated
+        let expr_with_type_hints = "fn1_type_hint(x)";
+        let result = simplify_q_macro(expr_with_type_hints);
+        // Type hints should be preserved since we're not using DFIR's removal
+        assert!(result.contains("fn1_type_hint"));
     }
 }
