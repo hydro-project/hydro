@@ -19,7 +19,7 @@ async fn main() {
     use hydro_test::cluster::kv_replica::Replica;
     use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
     use hydro_test::cluster::paxos_bench::{Aggregator, Client};
-    use hydro_test::graph_util::{Args, GraphConfig};
+    use hydro_test::graph_util::GraphConfig;
     use tokio::sync::RwLock;
 
     #[derive(Parser, Debug)]
