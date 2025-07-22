@@ -55,6 +55,13 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
+                                                        backtrace: [
+                                                            hydro_test::cluster::simple_cluster::simple_cluster,
+                                                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                            core::ops::function::FnOnce::call_once,
+                                                            core::ops::function::FnOnce::call_once,
+                                                        ],
                                                         output_type: Some(
                                                             & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                         ),
@@ -68,6 +75,13 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        hydro_test::cluster::simple_cluster::simple_cluster,
+                                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                        core::ops::function::FnOnce::call_once,
+                                                        core::ops::function::FnOnce::call_once,
+                                                    ],
                                                     output_type: Some(
                                                         hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                     ),
@@ -81,6 +95,13 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    hydro_test::cluster::simple_cluster::simple_cluster,
+                                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                    core::ops::function::FnOnce::call_once,
+                                                    core::ops::function::FnOnce::call_once,
+                                                ],
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
@@ -102,6 +123,13 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        hydro_test::cluster::simple_cluster::simple_cluster,
+                                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                        core::ops::function::FnOnce::call_once,
+                                                        core::ops::function::FnOnce::call_once,
+                                                    ],
                                                     output_type: Some(
                                                         i32,
                                                     ),
@@ -115,6 +143,13 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    hydro_test::cluster::simple_cluster::simple_cluster,
+                                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                    core::ops::function::FnOnce::call_once,
+                                                    core::ops::function::FnOnce::call_once,
+                                                ],
                                                 output_type: Some(
                                                     i32,
                                                 ),
@@ -128,6 +163,13 @@ expression: built.ir()
                                             location_kind: Process(
                                                 0,
                                             ),
+                                            backtrace: [
+                                                hydro_test::cluster::simple_cluster::simple_cluster,
+                                                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                                core::ops::function::FnOnce::call_once,
+                                                core::ops::function::FnOnce::call_once,
+                                            ],
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                             ),
@@ -141,6 +183,13 @@ expression: built.ir()
                                         location_kind: Process(
                                             0,
                                         ),
+                                        backtrace: [
+                                            hydro_test::cluster::simple_cluster::simple_cluster,
+                                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                            core::ops::function::FnOnce::call_once,
+                                            core::ops::function::FnOnce::call_once,
+                                        ],
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                         ),
@@ -154,6 +203,13 @@ expression: built.ir()
                                     location_kind: Process(
                                         0,
                                     ),
+                                    backtrace: [
+                                        hydro_test::cluster::simple_cluster::simple_cluster,
+                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                        core::ops::function::FnOnce::call_once,
+                                        core::ops::function::FnOnce::call_once,
+                                    ],
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                     ),
@@ -167,6 +223,13 @@ expression: built.ir()
                                 location_kind: Process(
                                     0,
                                 ),
+                                backtrace: [
+                                    hydro_test::cluster::simple_cluster::simple_cluster,
+                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                    core::ops::function::FnOnce::call_once,
+                                    core::ops::function::FnOnce::call_once,
+                                ],
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                 ),
@@ -180,6 +243,13 @@ expression: built.ir()
                             location_kind: Cluster(
                                 1,
                             ),
+                            backtrace: [
+                                hydro_test::cluster::simple_cluster::simple_cluster,
+                                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
@@ -193,6 +263,13 @@ expression: built.ir()
                         location_kind: Cluster(
                             1,
                         ),
+                        backtrace: [
+                            hydro_test::cluster::simple_cluster::simple_cluster,
+                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                            hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
@@ -206,6 +283,13 @@ expression: built.ir()
                     location_kind: Process(
                         0,
                     ),
+                    backtrace: [
+                        hydro_test::cluster::simple_cluster::simple_cluster,
+                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                        hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
@@ -219,6 +303,13 @@ expression: built.ir()
                 location_kind: Process(
                     0,
                 ),
+                backtrace: [
+                    hydro_test::cluster::simple_cluster::simple_cluster,
+                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                    hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                 ),
@@ -232,6 +323,13 @@ expression: built.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_test::cluster::simple_cluster::simple_cluster,
+                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir,
+                hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}},
+                core::ops::function::FnOnce::call_once,
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
             ),

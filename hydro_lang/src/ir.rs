@@ -19,6 +19,7 @@ use quote::quote;
 #[cfg(feature = "build")]
 use syn::parse_quote;
 
+use crate::backtrace::BacktraceElement;
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
@@ -544,6 +545,7 @@ impl Hash for TeeNode {
 #[derive(Debug, Clone)]
 pub struct HydroIrMetadata {
     pub location_kind: LocationId,
+    pub backtrace: Vec<BacktraceElement>,
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
