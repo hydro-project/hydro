@@ -57,21 +57,25 @@ impl GraphConfig {
     pub fn generate_graph(
         &self,
         built: &hydro_lang::builder::built::BuiltFlow,
+        message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let default_handler = |msg: &str| println!("{}", msg);
+        let handler = message_handler.unwrap_or(&default_handler);
+
         if let Some(graph_type) = self.graph {
             let config = self.to_hydro_config(built);
 
             match graph_type {
                 GraphType::Mermaid => {
-                    println!("Opening Mermaid graph in browser...");
+                    handler("Opening Mermaid graph in browser...");
                     hydro_lang::graph::debug::open_mermaid(built.ir(), Some(config))?;
                 }
                 GraphType::Dot => {
-                    println!("Opening Graphviz/DOT graph in browser...");
+                    handler("Opening Graphviz/DOT graph in browser...");
                     hydro_lang::graph::debug::open_dot(built.ir(), Some(config))?;
                 }
                 GraphType::Reactflow => {
-                    println!("Opening ReactFlow graph in browser...");
+                    handler("Opening ReactFlow graph in browser...");
                     hydro_lang::graph::debug::open_reactflow_browser(
                         built.ir(),
                         None,
