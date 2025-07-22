@@ -55,6 +55,53 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
+                                                        backtrace: [
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    54,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    252,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    250,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                                filename: Some(
+                                                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    250,
+                                                                ),
+                                                            },
+                                                            BacktraceElement {
+                                                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                                filename: Some(
+                                                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                                ),
+                                                                lineno: Some(
+                                                                    250,
+                                                                ),
+                                                            },
+                                                        ],
                                                         output_type: Some(
                                                             & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                         ),
@@ -68,6 +115,53 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                54,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                252,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                            filename: Some(
+                                                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                            filename: Some(
+                                                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                    ],
                                                     output_type: Some(
                                                         hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                     ),
@@ -81,6 +175,53 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            54,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            252,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                        filename: Some(
+                                                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                        filename: Some(
+                                                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                ],
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
@@ -102,6 +243,53 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                53,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                252,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                            filename: Some(
+                                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                            filename: Some(
+                                                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                        BacktraceElement {
+                                                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                            filename: Some(
+                                                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                            ),
+                                                            lineno: Some(
+                                                                250,
+                                                            ),
+                                                        },
+                                                    ],
                                                     output_type: Some(
                                                         i32,
                                                     ),
@@ -115,6 +303,53 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            53,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            252,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                        filename: Some(
+                                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                        filename: Some(
+                                                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                    BacktraceElement {
+                                                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                        filename: Some(
+                                                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                        ),
+                                                        lineno: Some(
+                                                            250,
+                                                        ),
+                                                    },
+                                                ],
                                                 output_type: Some(
                                                     i32,
                                                 ),
@@ -128,6 +363,53 @@ expression: built.ir()
                                             location_kind: Process(
                                                 0,
                                             ),
+                                            backtrace: [
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        56,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        252,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                    filename: Some(
+                                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        250,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                    filename: Some(
+                                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        250,
+                                                    ),
+                                                },
+                                                BacktraceElement {
+                                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                    filename: Some(
+                                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                    ),
+                                                    lineno: Some(
+                                                        250,
+                                                    ),
+                                                },
+                                            ],
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                             ),
@@ -141,6 +423,53 @@ expression: built.ir()
                                         location_kind: Process(
                                             0,
                                         ),
+                                        backtrace: [
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                ),
+                                                lineno: Some(
+                                                    56,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                ),
+                                                lineno: Some(
+                                                    252,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                                filename: Some(
+                                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                                ),
+                                                lineno: Some(
+                                                    250,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                                filename: Some(
+                                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                                ),
+                                                lineno: Some(
+                                                    250,
+                                                ),
+                                            },
+                                            BacktraceElement {
+                                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                                filename: Some(
+                                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                                ),
+                                                lineno: Some(
+                                                    250,
+                                                ),
+                                            },
+                                        ],
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                         ),
@@ -154,6 +483,53 @@ expression: built.ir()
                                     location_kind: Process(
                                         0,
                                     ),
+                                    backtrace: [
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                            ),
+                                            lineno: Some(
+                                                56,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                            ),
+                                            lineno: Some(
+                                                252,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                            filename: Some(
+                                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                            ),
+                                            lineno: Some(
+                                                250,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                            filename: Some(
+                                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                            ),
+                                            lineno: Some(
+                                                250,
+                                            ),
+                                        },
+                                        BacktraceElement {
+                                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                            filename: Some(
+                                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                            ),
+                                            lineno: Some(
+                                                250,
+                                            ),
+                                        },
+                                    ],
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                     ),
@@ -167,6 +543,53 @@ expression: built.ir()
                                 location_kind: Process(
                                     0,
                                 ),
+                                backtrace: [
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                        ),
+                                        lineno: Some(
+                                            56,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                        ),
+                                        lineno: Some(
+                                            252,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                        filename: Some(
+                                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                        ),
+                                        lineno: Some(
+                                            250,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                        filename: Some(
+                                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                        ),
+                                        lineno: Some(
+                                            250,
+                                        ),
+                                    },
+                                    BacktraceElement {
+                                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                        filename: Some(
+                                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                        ),
+                                        lineno: Some(
+                                            250,
+                                        ),
+                                    },
+                                ],
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                 ),
@@ -180,6 +603,53 @@ expression: built.ir()
                             location_kind: Cluster(
                                 1,
                             ),
+                            backtrace: [
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                    ),
+                                    lineno: Some(
+                                        56,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                    ),
+                                    lineno: Some(
+                                        252,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                    filename: Some(
+                                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                    filename: Some(
+                                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                                BacktraceElement {
+                                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                    filename: Some(
+                                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                    ),
+                                    lineno: Some(
+                                        250,
+                                    ),
+                                },
+                            ],
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
@@ -193,6 +663,53 @@ expression: built.ir()
                         location_kind: Cluster(
                             1,
                         ),
+                        backtrace: [
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                ),
+                                lineno: Some(
+                                    56,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                ),
+                                lineno: Some(
+                                    252,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                                filename: Some(
+                                    "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                                filename: Some(
+                                    "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                            BacktraceElement {
+                                fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                                filename: Some(
+                                    "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                                ),
+                                lineno: Some(
+                                    250,
+                                ),
+                            },
+                        ],
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
@@ -206,6 +723,53 @@ expression: built.ir()
                     location_kind: Process(
                         0,
                     ),
+                    backtrace: [
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                            ),
+                            lineno: Some(
+                                56,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                            ),
+                            lineno: Some(
+                                252,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                            filename: Some(
+                                "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                            filename: Some(
+                                "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                        BacktraceElement {
+                            fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                            filename: Some(
+                                "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                            ),
+                            lineno: Some(
+                                250,
+                            ),
+                        },
+                    ],
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
@@ -219,6 +783,53 @@ expression: built.ir()
                 location_kind: Process(
                     0,
                 ),
+                backtrace: [
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                        ),
+                        lineno: Some(
+                            56,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                        ),
+                        lineno: Some(
+                            252,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                        filename: Some(
+                            "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                        filename: Some(
+                            "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                    BacktraceElement {
+                        fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                        filename: Some(
+                            "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                        ),
+                        lineno: Some(
+                            250,
+                        ),
+                    },
+                ],
                 output_type: Some(
                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                 ),
@@ -232,6 +843,53 @@ expression: built.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::simple_cluster::simple_cluster::h3658738c88b4c314",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                    ),
+                    lineno: Some(
+                        56,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::h9cdd38f42939bbd1",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                    ),
+                    lineno: Some(
+                        252,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "hydro_test::cluster::simple_cluster::tests::partitioned_simple_cluster_ir::{{closure}}::hd71397cc502fe4d7",
+                    filename: Some(
+                        "/Users/shadajl/open-source/hydro/hydro_test/src/cluster/simple_cluster.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::hc37b2171e7326786",
+                    filename: Some(
+                        "/Users/shadajl/.rustup/toolchains/nightly-2025-04-27-aarch64-apple-darwin/lib/rustlib/src/rust/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+                BacktraceElement {
+                    fn_name: "core::ops::function::FnOnce::call_once::h3c3ba0e66c5e7547",
+                    filename: Some(
+                        "/rustc/10fa3c449f6b1613b352a6cbf78d3d91fd9a1d81/library/core/src/ops/function.rs",
+                    ),
+                    lineno: Some(
+                        250,
+                    ),
+                },
+            ],
             output_type: Some(
                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
             ),
