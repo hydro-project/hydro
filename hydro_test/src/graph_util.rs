@@ -8,8 +8,8 @@ pub enum GraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
-    /// ReactFlow.js interactive graphs.
-    ReactFlow,
+    /// Reactflow.js interactive graphs.
+    Reactflow,
 }
 
 /// Configuration for graph generation in examples.
@@ -38,7 +38,10 @@ pub struct GraphConfig {
 
 impl GraphConfig {
     /// Convert to HydroWriteConfig with the built flow's names
-    pub fn to_hydro_config(&self, built: &hydro_lang::builder::built::BuiltFlow) -> HydroWriteConfig {
+    pub fn to_hydro_config(
+        &self,
+        built: &hydro_lang::builder::built::BuiltFlow,
+    ) -> HydroWriteConfig {
         HydroWriteConfig {
             show_metadata: !self.no_metadata,
             show_location_groups: !self.no_location_groups,
@@ -51,10 +54,13 @@ impl GraphConfig {
     }
 
     /// Generate graph based on the configuration
-    pub fn generate_graph(&self, built: &hydro_lang::builder::built::BuiltFlow) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn generate_graph(
+        &self,
+        built: &hydro_lang::builder::built::BuiltFlow,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(graph_type) = self.graph {
             let config = self.to_hydro_config(built);
-            
+
             match graph_type {
                 GraphType::Mermaid => {
                     println!("Opening Mermaid graph in browser...");
@@ -64,9 +70,13 @@ impl GraphConfig {
                     println!("Opening Graphviz/DOT graph in browser...");
                     hydro_lang::graph::debug::open_hydro_ir_dot(built.ir(), Some(config))?;
                 }
-                GraphType::ReactFlow => {
+                GraphType::Reactflow => {
                     println!("Opening ReactFlow graph in browser...");
-                    hydro_lang::graph::debug::open_hydro_ir_reactflow_browser(built.ir(), None, Some(config))?;
+                    hydro_lang::graph::debug::open_hydro_ir_reactflow_browser(
+                        built.ir(),
+                        None,
+                        Some(config),
+                    )?;
                 }
             }
         }
@@ -74,29 +84,35 @@ impl GraphConfig {
     }
 
     /// Generate all graph types and save to files with a given prefix
-    pub fn generate_all_files(&self, built: &hydro_lang::builder::built::BuiltFlow, prefix: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn generate_all_files(
+        &self,
+        built: &hydro_lang::builder::built::BuiltFlow,
+        prefix: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let config = self.to_hydro_config(built);
-        
+
         let label_suffix = if self.long_labels { "_long" } else { "_short" };
-        
+
         // Generate Mermaid
-        let mermaid_content = hydro_lang::graph::render::render_hydro_ir_mermaid(built.ir(), &config);
+        let mermaid_content =
+            hydro_lang::graph::render::render_hydro_ir_mermaid(built.ir(), &config);
         let mermaid_file = format!("{}{}_labels.mmd", prefix, label_suffix);
         std::fs::write(&mermaid_file, mermaid_content)?;
         println!("Generated: {}", mermaid_file);
-        
+
         // Generate Graphviz
         let dot_content = hydro_lang::graph::render::render_hydro_ir_dot(built.ir(), &config);
         let dot_file = format!("{}{}_labels.dot", prefix, label_suffix);
         std::fs::write(&dot_file, dot_content)?;
         println!("Generated: {}", dot_file);
-        
+
         // Generate ReactFlow
-        let reactflow_content = hydro_lang::graph::render::render_hydro_ir_reactflow(built.ir(), &config);
+        let reactflow_content =
+            hydro_lang::graph::render::render_hydro_ir_reactflow(built.ir(), &config);
         let reactflow_file = format!("{}{}_labels.json", prefix, label_suffix);
         std::fs::write(&reactflow_file, reactflow_content)?;
         println!("Generated: {}", reactflow_file);
-        
+
         Ok(())
     }
 }
