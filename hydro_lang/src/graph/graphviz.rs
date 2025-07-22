@@ -43,8 +43,18 @@ where
         self.base.indent += 4;
 
         // Use dot layout for better edge routing between subgraphs
-        writeln!(self.base.write, "{b:i$}layout=dot;", b = "", i = self.base.indent)?;
-        writeln!(self.base.write, "{b:i$}compound=true;", b = "", i = self.base.indent)?;
+        writeln!(
+            self.base.write,
+            "{b:i$}layout=dot;",
+            b = "",
+            i = self.base.indent
+        )?;
+        writeln!(
+            self.base.write,
+            "{b:i$}compound=true;",
+            b = "",
+            i = self.base.indent
+        )?;
         writeln!(
             self.base.write,
             "{b:i$}concentrate=true;",
@@ -110,7 +120,10 @@ where
             b = "",
             i = self.base.indent,
         )?;
-        write!(self.base.write, ", shape={shape_str}, fillcolor={color_str}")?;
+        write!(
+            self.base.write,
+            ", shape={shape_str}, fillcolor={color_str}"
+        )?;
         writeln!(self.base.write, "]")?;
         Ok(())
     }
@@ -180,7 +193,12 @@ where
         self.base.indent += 4;
 
         // Use dot layout for interior nodes within containers
-        writeln!(self.base.write, "{b:i$}layout=dot;", b = "", i = self.base.indent)?;
+        writeln!(
+            self.base.write,
+            "{b:i$}layout=dot;",
+            b = "",
+            i = self.base.indent
+        )?;
         writeln!(
             self.base.write,
             "{b:i$}label = \"{location_type} {id}\"",
@@ -188,7 +206,12 @@ where
             b = "",
             i = self.base.indent
         )?;
-        writeln!(self.base.write, "{b:i$}style=filled", b = "", i = self.base.indent)?;
+        writeln!(
+            self.base.write,
+            "{b:i$}style=filled",
+            b = "",
+            i = self.base.indent
+        )?;
         writeln!(
             self.base.write,
             "{b:i$}fillcolor=\"#fafafa\"",
@@ -205,7 +228,12 @@ where
     }
 
     fn write_node(&mut self, node_id: usize) -> Result<(), Self::Err> {
-        writeln!(self.base.write, "{b:i$}n{node_id}", b = "", i = self.base.indent)
+        writeln!(
+            self.base.write,
+            "{b:i$}n{node_id}",
+            b = "",
+            i = self.base.indent
+        )
     }
 
     fn write_location_end(&mut self) -> Result<(), Self::Err> {

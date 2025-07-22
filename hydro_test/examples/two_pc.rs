@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use clap::Parser;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use tokio::sync::RwLock;
-use clap::Parser;
 use hydro_test::graph_util::GraphConfig;
+use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -14,7 +14,7 @@ struct Args {
     /// Use GCP instead of localhost (requires project name)
     #[clap(long)]
     gcp: Option<String>,
-    
+
     #[clap(flatten)]
     graph: GraphConfig,
 }

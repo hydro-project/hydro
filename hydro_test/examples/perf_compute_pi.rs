@@ -34,7 +34,7 @@ async fn main() {
     struct PerfArgs {
         #[command(flatten)]
         graph: GraphConfig,
-        
+
         /// Use GCP for deployment (provide project name)
         #[arg(long)]
         gcp: Option<String>,
@@ -81,7 +81,10 @@ async fn main() {
     .await;
 
     // Generate graphs if requested
-    let built = rewritten_ir_builder.clone().build_with(|_| ir.clone()).finalize();
+    let built = rewritten_ir_builder
+        .clone()
+        .build_with(|_| ir.clone())
+        .finalize();
     args.graph.generate_graph(&built);
 
     // Cleanup

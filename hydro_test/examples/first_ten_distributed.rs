@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use clap::Parser;
 use futures::SinkExt;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use tokio::sync::RwLock;
-use clap::Parser;
 use hydro_test::graph_util::GraphConfig;
+use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -15,7 +15,7 @@ struct Args {
     /// Use GCP instead of localhost (requires project name)
     #[clap(long)]
     gcp: Option<String>,
-    
+
     #[clap(flatten)]
     graph: GraphConfig,
 }
@@ -56,7 +56,7 @@ async fn main() {
     let p2 = builder.process();
     let external_port =
         hydro_test::distributed::first_ten::first_ten_distributed(&external, &p1, &p2);
-    
+
     // Extract the IR for graph visualization
     let built = builder.finalize();
 

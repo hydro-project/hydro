@@ -28,7 +28,7 @@ async fn main() {
     struct PerfPaxosArgs {
         #[command(flatten)]
         graph: GraphConfig,
-        
+
         /// Use GCP for deployment (provide project name)
         #[arg(long)]
         gcp: Option<String>,

@@ -7,7 +7,7 @@ use clap::Parser;
 struct Args {
     #[command(flatten)]
     graph: GraphConfig,
-    
+
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
     gcp: Option<String>,

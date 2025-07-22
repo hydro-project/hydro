@@ -53,8 +53,8 @@ impl Debug for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let original = self.0.to_token_stream().to_string();
         let simplified = simplify_q_macro(&original);
-        
-        // For debugging, if we detect it should be simplified but it's not working, 
+
+        // For debugging, if we detect it should be simplified but it's not working,
         // let's try the fallback
         if original.contains("stageleft :: runtime_support") && simplified == original {
             write!(f, "q!(...)")
@@ -71,8 +71,8 @@ fn simplify_q_macro(token_str: &str) -> String {
         // Try to extract the original closure content from the expanded macro
         if let Some(start) = token_str.find("{ use") {
             if let Some(end) = token_str.rfind("})") {
-                let inner_content = &token_str[start..=end+1];
-                
+                let inner_content = &token_str[start..=end + 1];
+
                 // Look for the actual closure pattern
                 if let Some(closure_start) = inner_content.find("| ") {
                     if let Some(closure_end) = inner_content.rfind(" }") {
@@ -82,7 +82,7 @@ fn simplify_q_macro(token_str: &str) -> String {
                         return format!("q!({})", simplified);
                     }
                 }
-                
+
                 // Fallback: try to find any closure-like pattern
                 if let Some(pipe_pos) = inner_content.find('|') {
                     if let Some(end_brace) = inner_content[pipe_pos..].find(" }") {
@@ -93,11 +93,11 @@ fn simplify_q_macro(token_str: &str) -> String {
                 }
             }
         }
-        
+
         // If we can't extract the closure, return a simplified q!(...) notation
         return "q!(...)".to_string();
     }
-    
+
     // For non-q! expressions, return as-is but cleaned up
     if token_str.len() > 50 {
         format!("{}...", &token_str[..47])

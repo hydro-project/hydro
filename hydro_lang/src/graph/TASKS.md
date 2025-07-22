@@ -10,6 +10,7 @@ TASKS
     - Nicer display to toggle type names
     - "Physical plan": perf metadata from runs.
 - Integration
+    - Share graph generation across DFIR and Hydro
     - Cross link with code locations in VS Code.
     - Cross-link with flame graph?!
 - Live runtime output

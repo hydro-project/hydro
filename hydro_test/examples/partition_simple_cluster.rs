@@ -8,7 +8,7 @@ use clap::Parser;
 struct Args {
     #[command(flatten)]
     graph: GraphConfig,
-    
+
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
     gcp: Option<String>,
@@ -67,7 +67,7 @@ async fn main() {
 
     // Extract the IR BEFORE optimization
     let built = builder.finalize();
-    
+
     // Generate graphs if requested
     let _ = args.graph.generate_graph(&built);
 
