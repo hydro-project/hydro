@@ -9,7 +9,6 @@ use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
 use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};
 use tokio::sync::RwLock;
 
-
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 ///
 /// ```bash

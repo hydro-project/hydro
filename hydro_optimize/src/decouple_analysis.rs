@@ -2,7 +2,10 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use good_lp::solvers::microlp::MicroLpSolution;
-use good_lp::{constraint, microlp, variable, variables, Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable};
+use good_lp::{
+    Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable, constraint, microlp,
+    variable, variables,
+};
 use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 
@@ -45,13 +48,22 @@ struct ModelMetadata {
 const DECOUPLING_PENALTY: f64 = 0.0001;
 
 // Lazily creates the var
-fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Variable>, variables: &mut ProblemVariables) -> Variable {
-    *op_id_to_var.entry(op_id).or_insert_with(|| {
-        variables.add(variable().binary())
-    })
+fn var_from_op_id(
+    op_id: usize,
+    op_id_to_var: &mut HashMap<usize, Variable>,
+    variables: &mut ProblemVariables,
+) -> Variable {
+    *op_id_to_var
+        .entry(op_id)
+        .or_insert_with(|| variables.add(variable().binary()))
 }
 
-fn add_equality_constr(ops: &[usize], op_id_to_var: &mut HashMap<usize, Variable>, variables: &mut ProblemVariables, constraints: &mut Vec<Constraint>) {
+fn add_equality_constr(
+    ops: &[usize],
+    op_id_to_var: &mut HashMap<usize, Variable>,
+    variables: &mut ProblemVariables,
+    constraints: &mut Vec<Constraint>,
+) {
     if let Some(mut prev_op) = ops.first() {
         for op in ops.iter().skip(1) {
             let prev_op_var = var_from_op_id(*prev_op, op_id_to_var, variables);
@@ -171,15 +183,11 @@ fn add_decouple_vars(
     let orig_to_decoupled_var = variables.add(variable().binary());
     // Technically unnecessary since we're using binvar, but future proofing
     constraints.push(constraint!(orig_to_decoupled_var >= 0));
-    constraints.push(
-        constraint!(orig_to_decoupled_var >= op2_var - op1_var),
-    );
+    constraints.push(constraint!(orig_to_decoupled_var >= op2_var - op1_var));
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
     let decoupled_to_orig_var = variables.add(variable().binary());
     constraints.push(constraint!(decoupled_to_orig_var >= 0));
-    constraints.push(
-        constraint!(decoupled_to_orig_var >= op1_var - op2_var),
-    );
+    constraints.push(constraint!(decoupled_to_orig_var >= op1_var - op2_var));
     (orig_to_decoupled_var, decoupled_to_orig_var)
 }
 
@@ -256,33 +264,35 @@ fn add_tee_decoupling_overhead(
     println!("Tee {} has inner {}", op_id, inner_id);
 
     // 1 if any of the Tees are decoupled from the inner, 0 otherwise, and vice versa
-    let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = tee_inner_to_decoupled_vars
+    let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = *tee_inner_to_decoupled_vars
         .entry(inner_id)
         .or_insert_with(|| {
             let any_orig_to_decoupled_var = variables.add(variable().binary());
             let any_decoupled_to_orig_var = variables.add(variable().binary());
             let og_usage_temp = std::mem::take(orig_node_cpu_usage);
             *orig_node_cpu_usage = og_usage_temp
-                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
-                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
-            let decoupled_usage_temp =
-                std::mem::take(decoupled_node_cpu_usage);
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * any_orig_to_decoupled_var
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * any_decoupled_to_orig_var;
+            let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
             *decoupled_node_cpu_usage = decoupled_usage_temp
-                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
-                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
+                + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * any_orig_to_decoupled_var
+                + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY)
+                    * any_decoupled_to_orig_var;
             (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
-        })
-        .clone();
+        });
 
     let (orig_to_decoupled_var, decoupled_to_orig_var) =
         add_decouple_vars(variables, constraints, inner_id, op_id, op_id_to_var);
     // If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
-    constraints.push(
-        constraint!(any_orig_to_decoupled_var >= orig_to_decoupled_var),
-    );
-    constraints.push(
-        constraint!(any_decoupled_to_orig_var >= decoupled_to_orig_var),
-    );
+    constraints.push(constraint!(
+        any_orig_to_decoupled_var >= orig_to_decoupled_var
+    ));
+    constraints.push(constraint!(
+        any_decoupled_to_orig_var >= decoupled_to_orig_var
+    ));
 }
 
 fn decouple_analysis_leaf(
