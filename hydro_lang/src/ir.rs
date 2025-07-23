@@ -62,7 +62,7 @@ impl Display for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let original = self.0.as_ref().clone();
         let simplified = simplify_q_macro(original);
-        
+
         // For now, just use quote formatting without trying to parse as a statement
         // This avoids the syn::parse_quote! issues entirely
         write!(f, "q!({})", quote::quote!(#simplified))

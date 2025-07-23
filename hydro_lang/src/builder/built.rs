@@ -70,7 +70,8 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
-        self.graph_api().mermaid_to_string(show_metadata, show_location_groups, use_short_labels)
+        self.graph_api()
+            .mermaid_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     #[cfg(feature = "viz")]
@@ -80,7 +81,8 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
-        self.graph_api().dot_to_string(show_metadata, show_location_groups, use_short_labels)
+        self.graph_api()
+            .dot_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     #[cfg(feature = "viz")]
@@ -90,7 +92,8 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
-        self.graph_api().reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+        self.graph_api()
+            .reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     // File generation methods
@@ -102,7 +105,12 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().mermaid_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+        self.graph_api().mermaid_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
     }
 
     #[cfg(feature = "viz")]
@@ -113,7 +121,12 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().dot_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+        self.graph_api().dot_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
     }
 
     #[cfg(feature = "viz")]
@@ -124,7 +137,12 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+        self.graph_api().reactflow_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
     }
 
     // Browser generation methods
@@ -136,7 +154,12 @@ impl<'a> BuiltFlow<'a> {
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().mermaid_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
+        self.graph_api().mermaid_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
     }
 
     #[cfg(feature = "viz")]
@@ -147,7 +170,12 @@ impl<'a> BuiltFlow<'a> {
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().dot_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
+        self.graph_api().dot_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
     }
 
     #[cfg(feature = "viz")]
@@ -158,7 +186,12 @@ impl<'a> BuiltFlow<'a> {
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
+        self.graph_api().reactflow_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
     }
 
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
@@ -277,8 +310,6 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy::<D>().deploy(env)
     }
 
-
-
     #[cfg(feature = "viz")]
     pub fn generate_all_files(
         &self,
@@ -287,7 +318,12 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().generate_all_files(prefix, show_metadata, show_location_groups, use_short_labels)
+        self.graph_api().generate_all_files(
+            prefix,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
     }
 
     #[cfg(feature = "build")]
@@ -296,7 +332,8 @@ impl<'a> BuiltFlow<'a> {
         config: &crate::graph_util::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().generate_graph_with_config(config, message_handler)
+        self.graph_api()
+            .generate_graph_with_config(config, message_handler)
     }
 
     #[cfg(feature = "build")]
@@ -305,6 +342,7 @@ impl<'a> BuiltFlow<'a> {
         config: &crate::graph_util::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().generate_all_files_with_config(config, prefix)
+        self.graph_api()
+            .generate_all_files_with_config(config, prefix)
     }
 }
