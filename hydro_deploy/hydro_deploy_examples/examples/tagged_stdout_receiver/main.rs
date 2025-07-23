@@ -7,7 +7,6 @@ async fn main() {
     let echo_recv = ports
         .port("echo")
         .connect::<ConnectedTagged<ConnectedDirect>>()
-        .await
         .into_source();
 
     let df = dfir_syntax! {
