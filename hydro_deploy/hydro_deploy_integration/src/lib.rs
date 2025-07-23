@@ -356,7 +356,7 @@ fn accept(bound: AcceptedServer) -> ConnectedDirect {
 
             #[cfg(not(unix))]
             {
-                drop(listener);
+                drop(stream);
                 panic!("Unix sockets are not supported on this platform")
             }
         }
