@@ -223,26 +223,22 @@ async fn main() {
         .port("from_peer")
         // connect to the port with a single recipient
         .connect::<ConnectedTagged<ConnectedDirect>>()
-        .await
         .into_source();
 
     let mut output_send = ports
         .port("to_peer")
         .connect::<ConnectedDemux<ConnectedDirect>>()
-        .await
         .into_sink();
 
     let operations_send = ports
         .port("increment_requests")
         // connect to the port with a single recipient
         .connect::<ConnectedDirect>()
-        .await
         .into_source();
 
     let mut query_responses = ports
         .port("query_responses")
         .connect::<ConnectedDirect>()
-        .await
         .into_sink();
 
     let (chan_tx, mut chan_rx) = tokio::sync::mpsc::unbounded_channel();
