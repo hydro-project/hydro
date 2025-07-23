@@ -7,7 +7,7 @@ use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-use crate::graph::render::HydroWriteConfig;
+use crate::graph::api::GraphApi;
 use crate::ir::{HydroLeaf, emit};
 use crate::location::{Cluster, ExternalProcess, Process};
 use crate::staging_util::Invariant;
@@ -49,6 +49,116 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn external_id_name(&self) -> &Vec<(usize, String)> {
         &self.external_id_name
+    }
+
+    /// Get a GraphApi instance for this built flow
+    #[cfg(feature = "viz")]
+    pub fn graph_api(&self) -> GraphApi<'_> {
+        GraphApi::new(
+            &self.ir,
+            &self.process_id_name,
+            &self.cluster_id_name,
+            &self.external_id_name,
+        )
+    }
+
+    // String generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api().mermaid_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api().dot_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api().reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    // File generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().mermaid_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().dot_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().reactflow_to_file(filename, show_metadata, show_location_groups, use_short_labels)
+    }
+
+    // Browser generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().mermaid_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().dot_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().reactflow_to_browser(show_metadata, show_location_groups, use_short_labels, message_handler)
     }
 
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
@@ -167,78 +277,9 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy::<D>().deploy(env)
     }
 
-    /// Convert configuration options to HydroWriteConfig
-    pub fn to_hydro_config(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> HydroWriteConfig {
-        HydroWriteConfig {
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-            process_id_name: self.process_id_name.clone(),
-            cluster_id_name: self.cluster_id_name.clone(),
-            external_id_name: self.external_id_name.clone(),
-        }
-    }
 
-    /// Generate mermaid graph and open in browser
-    pub fn generate_mermaid(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let default_handler = |msg: &str| println!("{}", msg);
-        let handler = message_handler.unwrap_or(&default_handler);
 
-        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-
-        handler("Opening Mermaid graph in browser...");
-        crate::graph::debug::open_mermaid(&self.ir, Some(config))?;
-        Ok(())
-    }
-
-    /// Generate DOT graph and open in browser
-    pub fn generate_dot(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let default_handler = |msg: &str| println!("{}", msg);
-        let handler = message_handler.unwrap_or(&default_handler);
-
-        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-
-        handler("Opening Graphviz/DOT graph in browser...");
-        crate::graph::debug::open_dot(&self.ir, Some(config))?;
-        Ok(())
-    }
-
-    /// Generate ReactFlow graph and open in browser
-    pub fn generate_reactflow(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let default_handler = |msg: &str| println!("{}", msg);
-        let handler = message_handler.unwrap_or(&default_handler);
-
-        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-
-        handler("Opening ReactFlow graph in browser...");
-        crate::graph::debug::open_reactflow_browser(&self.ir, None, Some(config))?;
-        Ok(())
-    }
-
-    /// Generate all graph types and save to files with a given prefix
+    #[cfg(feature = "viz")]
     pub fn generate_all_files(
         &self,
         prefix: &str,
@@ -246,76 +287,24 @@ impl<'a> BuiltFlow<'a> {
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-
-        let label_suffix = if use_short_labels { "_short" } else { "_long" };
-
-        // Generate Mermaid
-        let mermaid_content = crate::graph::render::render_hydro_ir_mermaid(&self.ir, &config);
-        let mermaid_file = format!("{}{}_labels.mmd", prefix, label_suffix);
-        std::fs::write(&mermaid_file, mermaid_content)?;
-        println!("Generated: {}", mermaid_file);
-
-        // Generate Graphviz
-        let dot_content = crate::graph::render::render_hydro_ir_dot(&self.ir, &config);
-        let dot_file = format!("{}{}_labels.dot", prefix, label_suffix);
-        std::fs::write(&dot_file, dot_content)?;
-        println!("Generated: {}", dot_file);
-
-        // Generate ReactFlow
-        let reactflow_content = crate::graph::render::render_hydro_ir_reactflow(&self.ir, &config);
-        let reactflow_file = format!("{}{}_labels.json", prefix, label_suffix);
-        std::fs::write(&reactflow_file, reactflow_content)?;
-        println!("Generated: {}", reactflow_file);
-
-        Ok(())
+        self.graph_api().generate_all_files(prefix, show_metadata, show_location_groups, use_short_labels)
     }
 
-    /// Generate graph based on GraphConfig, delegating to the appropriate method
     #[cfg(feature = "build")]
     pub fn generate_graph_with_config(
         &self,
         config: &crate::graph_util::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if let Some(graph_type) = config.graph {
-            match graph_type {
-                crate::graph_util::GraphType::Mermaid => self.generate_mermaid(
-                    !config.no_metadata,
-                    !config.no_location_groups,
-                    !config.long_labels, // use_short_labels is the inverse of long_labels
-                    message_handler,
-                ),
-                crate::graph_util::GraphType::Dot => self.generate_dot(
-                    !config.no_metadata,
-                    !config.no_location_groups,
-                    !config.long_labels, // use_short_labels is the inverse of long_labels
-                    message_handler,
-                ),
-                crate::graph_util::GraphType::Reactflow => self.generate_reactflow(
-                    !config.no_metadata,
-                    !config.no_location_groups,
-                    !config.long_labels, // use_short_labels is the inverse of long_labels
-                    message_handler,
-                ),
-            }
-        } else {
-            Ok(())
-        }
+        self.graph_api().generate_graph_with_config(config, message_handler)
     }
 
-    /// Generate all graph files based on GraphConfig
     #[cfg(feature = "build")]
     pub fn generate_all_files_with_config(
         &self,
         config: &crate::graph_util::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.generate_all_files(
-            prefix,
-            !config.no_metadata,
-            !config.no_location_groups,
-            !config.long_labels, // Inverted because flag is for long labels
-        )
+        self.graph_api().generate_all_files_with_config(config, prefix)
     }
 }

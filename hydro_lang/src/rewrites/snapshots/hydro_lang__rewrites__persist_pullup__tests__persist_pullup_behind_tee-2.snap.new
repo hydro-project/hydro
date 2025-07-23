@@ -1,0 +1,231 @@
+---
+source: hydro_lang/src/rewrites/persist_pullup.rs
+assertion_line: 270
+expression: optimized.ir()
+---
+[
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Persist {
+            inner: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | v | v + 1 }),
+                input: Tee {
+                    inner: <tee>: Source {
+                        source: Iter(
+                            { use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; 0 .. 10 },
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                        metadata: HydroIrMetadata {
+                            location_kind: Process(
+                                0,
+                            ),
+                            backtrace: [
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
+                            output_type: Some(
+                                i32,
+                            ),
+                            cardinality: None,
+                            cpu_usage: None,
+                            network_recv_cpu_usage: None,
+                            id: None,
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_kind: Tick(
+                            0,
+                            Process(
+                                0,
+                            ),
+                        ),
+                        backtrace: [
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
+                        output_type: Some(
+                            i32,
+                        ),
+                        cardinality: None,
+                        cpu_usage: None,
+                        network_recv_cpu_usage: None,
+                        id: None,
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        0,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    backtrace: [
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
+                    output_type: Some(
+                        i32,
+                    ),
+                    cardinality: None,
+                    cpu_usage: None,
+                    network_recv_cpu_usage: None,
+                    id: None,
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Tick(
+                    0,
+                    Process(
+                        0,
+                    ),
+                ),
+                backtrace: [
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
+                output_type: Some(
+                    i32,
+                ),
+                cardinality: None,
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            backtrace: [
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
+            output_type: Some(
+                i32,
+            ),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        },
+    },
+    ForEach {
+        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | n | println ! ("{}" , n) }),
+        input: Persist {
+            inner: Map {
+                f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; | v | v + 1 }),
+                input: Tee {
+                    inner: <tee>: Source {
+                        source: Iter(
+                            { use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: persist_pullup :: tests :: * ; 0 .. 10 },
+                        ),
+                        location_kind: Process(
+                            0,
+                        ),
+                        metadata: HydroIrMetadata {
+                            location_kind: Process(
+                                0,
+                            ),
+                            backtrace: [
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
+                            output_type: Some(
+                                i32,
+                            ),
+                            cardinality: None,
+                            cpu_usage: None,
+                            network_recv_cpu_usage: None,
+                            id: None,
+                        },
+                    },
+                    metadata: HydroIrMetadata {
+                        location_kind: Tick(
+                            0,
+                            Process(
+                                0,
+                            ),
+                        ),
+                        backtrace: [
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
+                        output_type: Some(
+                            i32,
+                        ),
+                        cardinality: None,
+                        cpu_usage: None,
+                        network_recv_cpu_usage: None,
+                        id: None,
+                    },
+                },
+                metadata: HydroIrMetadata {
+                    location_kind: Tick(
+                        0,
+                        Process(
+                            0,
+                        ),
+                    ),
+                    backtrace: [
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
+                    output_type: Some(
+                        i32,
+                    ),
+                    cardinality: None,
+                    cpu_usage: None,
+                    network_recv_cpu_usage: None,
+                    id: None,
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_kind: Tick(
+                    0,
+                    Process(
+                        0,
+                    ),
+                ),
+                backtrace: [
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
+                output_type: Some(
+                    i32,
+                ),
+                cardinality: None,
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
+        },
+        metadata: HydroIrMetadata {
+            location_kind: Process(
+                0,
+            ),
+            backtrace: [
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
+                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
+            output_type: Some(
+                i32,
+            ),
+            cardinality: None,
+            cpu_usage: None,
+            network_recv_cpu_usage: None,
+            id: None,
+        },
+    },
+]

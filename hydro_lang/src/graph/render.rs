@@ -845,12 +845,9 @@ impl HydroNode {
             }
 
             // Handle remaining node types
-            HydroNode::Unpersist { .. } => {
+            HydroNode::Unpersist { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through
-                panic!(
-                    "Unpersist should not be rendered in graph structure: {:?}",
-                    self
-                );
+                inner.build_graph_structure(structure, seen_tees, config)
             }
 
             HydroNode::Chain {
