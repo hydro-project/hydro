@@ -44,12 +44,14 @@ mod tests {
         let mut input_send = nodes.connect_sink_bincode(input_send).await;
         let mut out_recv = nodes.connect_source_bincode(out_recv).await;
 
+        // send before starting so everything shows up in single tick
         input_send.send(1).await.unwrap();
         input_send.send(1).await.unwrap();
         input_send.send(1).await.unwrap();
 
-        deployment.start().await.unwrap(); // we start after sending so that everything appears in one tick
+        deployment.start().await.unwrap();
 
-        assert_eq!(out_recv.next().await.unwrap(), 3);
+        assert_eq!(out_recv.next().await.unwrap(), 0); // first tick (no data yet)
+        assert_eq!(out_recv.next().await.unwrap(), 3); // second tick
     }
 }
