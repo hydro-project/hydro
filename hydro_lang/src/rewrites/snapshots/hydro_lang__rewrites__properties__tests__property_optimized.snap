@@ -1199,6 +1199,11 @@ expression: built.ir()
                         location_kind: Process(
                             0,
                         ),
+                        backtrace: [
+                            hydro_lang::rewrites::properties::tests::test_property_optimized,
+                            hydro_lang::rewrites::properties::tests::test_property_optimized::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             std :: string :: String,
                         ),
@@ -1212,6 +1217,11 @@ expression: built.ir()
                     location_kind: Process(
                         0,
                     ),
+                    backtrace: [
+                        hydro_lang::rewrites::properties::tests::test_property_optimized,
+                        hydro_lang::rewrites::properties::tests::test_property_optimized::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         (std :: string :: String , ()),
                     ),
@@ -1228,6 +1238,11 @@ expression: built.ir()
                         0,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::rewrites::properties::tests::test_property_optimized,
+                    hydro_lang::rewrites::properties::tests::test_property_optimized::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
@@ -1241,6 +1256,11 @@ expression: built.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_lang::rewrites::properties::tests::test_property_optimized,
+                hydro_lang::rewrites::properties::tests::test_property_optimized::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 (std :: string :: String , i32),
             ),

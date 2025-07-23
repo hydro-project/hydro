@@ -2364,6 +2364,7 @@ name = "hydro_lang"
 version = "0.13.2"
 dependencies = [
  "auto_impl",
+ "backtrace",
  "bincode",
  "bytes",
  "chrono",

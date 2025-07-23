@@ -33,6 +33,17 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
 
+    #[test]
+    fn first_ten_distributed_ir() {
+        let builder = hydro_lang::FlowBuilder::new();
+        let external = builder.external_process();
+        let p1 = builder.process();
+        let p2 = builder.process();
+        super::first_ten_distributed(&external, &p1, &p2);
+
+        insta::assert_debug_snapshot!(builder.finalize().ir());
+    }
+
     #[tokio::test]
     async fn first_ten_distributed() {
         let mut deployment = Deployment::new();
@@ -43,11 +54,8 @@ mod tests {
         let p2 = builder.process();
         let external_port = super::first_ten_distributed(&external, &p1, &p2);
 
-        let built = builder.with_default_optimize();
-
-        insta::assert_debug_snapshot!(built.ir());
-
-        let nodes = built
+        let nodes = builder
+            .with_default_optimize()
             .with_process(&p1, deployment.Localhost())
             .with_process(&p2, deployment.Localhost())
             .with_external(&external, deployment.Localhost())

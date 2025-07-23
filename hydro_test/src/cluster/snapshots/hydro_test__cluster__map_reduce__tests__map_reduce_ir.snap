@@ -4087,6 +4087,12 @@ expression: built.ir()
                                                             location_kind: Process(
                                                                 0,
                                                             ),
+                                                            backtrace: [
+                                                                hydro_test::cluster::map_reduce::map_reduce,
+                                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                                                core::ops::function::FnOnce::call_once,
+                                                            ],
                                                             output_type: Some(
                                                                 & str,
                                                             ),
@@ -4100,6 +4106,12 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
+                                                        backtrace: [
+                                                            hydro_test::cluster::map_reduce::map_reduce,
+                                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                                            core::ops::function::FnOnce::call_once,
+                                                        ],
                                                         output_type: Some(
                                                             std :: string :: String,
                                                         ),
@@ -4113,6 +4125,13 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
+                                                    backtrace: [
+                                                        hydro_lang::stream::Stream<T,L,B>::round_robin_bincode,
+                                                        hydro_test::cluster::map_reduce::map_reduce,
+                                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                                        core::ops::function::FnOnce::call_once,
+                                                    ],
                                                     output_type: Some(
                                                         (usize , std :: string :: String),
                                                     ),
@@ -4126,6 +4145,13 @@ expression: built.ir()
                                                 location_kind: Process(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    hydro_lang::stream::Stream<T,L,B>::round_robin_bincode,
+                                                    hydro_test::cluster::map_reduce::map_reduce,
+                                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                                    core::ops::function::FnOnce::call_once,
+                                                ],
                                                 output_type: Some(
                                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , std :: string :: String),
                                                 ),
@@ -4139,6 +4165,13 @@ expression: built.ir()
                                             location_kind: Cluster(
                                                 1,
                                             ),
+                                            backtrace: [
+                                                hydro_lang::stream::Stream<T,L,B>::round_robin_bincode,
+                                                hydro_test::cluster::map_reduce::map_reduce,
+                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                                core::ops::function::FnOnce::call_once,
+                                            ],
                                             output_type: Some(
                                                 std :: string :: String,
                                             ),
@@ -4152,6 +4185,12 @@ expression: built.ir()
                                         location_kind: Cluster(
                                             1,
                                         ),
+                                        backtrace: [
+                                            hydro_test::cluster::map_reduce::map_reduce,
+                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                            core::ops::function::FnOnce::call_once,
+                                        ],
                                         output_type: Some(
                                             (std :: string :: String , ()),
                                         ),
@@ -4168,6 +4207,12 @@ expression: built.ir()
                                             1,
                                         ),
                                     ),
+                                    backtrace: [
+                                        hydro_test::cluster::map_reduce::map_reduce,
+                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                        core::ops::function::FnOnce::call_once,
+                                    ],
                                     output_type: Some(
                                         (std :: string :: String , i32),
                                     ),
@@ -4184,6 +4229,12 @@ expression: built.ir()
                                         1,
                                     ),
                                 ),
+                                backtrace: [
+                                    hydro_test::cluster::map_reduce::map_reduce,
+                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                    core::ops::function::FnOnce::call_once,
+                                ],
                                 output_type: Some(
                                     (std :: string :: String , i32),
                                 ),
@@ -4197,6 +4248,13 @@ expression: built.ir()
                             location_kind: Process(
                                 0,
                             ),
+                            backtrace: [
+                                hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous,
+                                hydro_test::cluster::map_reduce::map_reduce,
+                                hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 (std :: string :: String , i32),
                             ),
@@ -4210,6 +4268,13 @@ expression: built.ir()
                         location_kind: Process(
                             0,
                         ),
+                        backtrace: [
+                            hydro_lang::stream::Stream<T,L,B,O,R>::send_bincode_anonymous,
+                            hydro_test::cluster::map_reduce::map_reduce,
+                            hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                            hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             (std :: string :: String , i32),
                         ),
@@ -4226,6 +4291,12 @@ expression: built.ir()
                             0,
                         ),
                     ),
+                    backtrace: [
+                        hydro_test::cluster::map_reduce::map_reduce,
+                        hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                        hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         (std :: string :: String , i32),
                     ),
@@ -4242,6 +4313,13 @@ expression: built.ir()
                         0,
                     ),
                 ),
+                backtrace: [
+                    hydro_lang::stream::Stream<(K,V),hydro_lang::location::tick::Tick<L>,hydro_lang::boundedness::Bounded,O>::reduce_keyed_commutative,
+                    hydro_test::cluster::map_reduce::map_reduce,
+                    hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                    hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     (std :: string :: String , i32),
                 ),
@@ -4255,6 +4333,12 @@ expression: built.ir()
             location_kind: Process(
                 0,
             ),
+            backtrace: [
+                hydro_test::cluster::map_reduce::map_reduce,
+                hydro_test::cluster::map_reduce::tests::map_reduce_ir,
+                hydro_test::cluster::map_reduce::tests::map_reduce_ir::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 (std :: string :: String , i32),
             ),

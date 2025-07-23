@@ -766,8 +766,14 @@ impl HydroNode {
                 acc,
                 input,
                 metadata,
+            }
+            | HydroNode::Scan {
+                init,
+                acc,
+                input,
+                metadata,
             } => {
-                let node_type = HydroNodeType::Aggregation; // Both are aggregation operations
+                let node_type = HydroNodeType::Aggregation; // All are aggregation operations
 
                 build_dual_expr_transform(
                     TransformParams {
