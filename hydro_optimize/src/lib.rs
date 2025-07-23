@@ -1,5 +1,3 @@
-stageleft::stageleft_no_entry_crate!();
-
 pub mod debug;
 pub mod decoupler;
 pub mod deploy;
