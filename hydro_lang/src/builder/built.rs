@@ -172,13 +172,11 @@ impl<'a> BuiltFlow<'a> {
         &self,
         show_metadata: bool,
         show_location_groups: bool,
-        include_tee_ids: bool,
         use_short_labels: bool,
     ) -> HydroWriteConfig {
         HydroWriteConfig {
             show_metadata,
             show_location_groups,
-            include_tee_ids,
             use_short_labels,
             process_id_name: self.process_id_name.clone(),
             cluster_id_name: self.cluster_id_name.clone(),
@@ -191,19 +189,13 @@ impl<'a> BuiltFlow<'a> {
         &self,
         show_metadata: bool,
         show_location_groups: bool,
-        include_tee_ids: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let default_handler = |msg: &str| println!("{}", msg);
         let handler = message_handler.unwrap_or(&default_handler);
 
-        let config = self.to_hydro_config(
-            show_metadata,
-            show_location_groups,
-            include_tee_ids,
-            use_short_labels,
-        );
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
 
         handler("Opening Mermaid graph in browser...");
         crate::graph::debug::open_mermaid(&self.ir, Some(config))?;
@@ -215,19 +207,13 @@ impl<'a> BuiltFlow<'a> {
         &self,
         show_metadata: bool,
         show_location_groups: bool,
-        include_tee_ids: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let default_handler = |msg: &str| println!("{}", msg);
         let handler = message_handler.unwrap_or(&default_handler);
 
-        let config = self.to_hydro_config(
-            show_metadata,
-            show_location_groups,
-            include_tee_ids,
-            use_short_labels,
-        );
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
 
         handler("Opening Graphviz/DOT graph in browser...");
         crate::graph::debug::open_dot(&self.ir, Some(config))?;
@@ -239,19 +225,13 @@ impl<'a> BuiltFlow<'a> {
         &self,
         show_metadata: bool,
         show_location_groups: bool,
-        include_tee_ids: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let default_handler = |msg: &str| println!("{}", msg);
         let handler = message_handler.unwrap_or(&default_handler);
 
-        let config = self.to_hydro_config(
-            show_metadata,
-            show_location_groups,
-            include_tee_ids,
-            use_short_labels,
-        );
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
 
         handler("Opening ReactFlow graph in browser...");
         crate::graph::debug::open_reactflow_browser(&self.ir, None, Some(config))?;
@@ -264,15 +244,9 @@ impl<'a> BuiltFlow<'a> {
         prefix: &str,
         show_metadata: bool,
         show_location_groups: bool,
-        include_tee_ids: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let config = self.to_hydro_config(
-            show_metadata,
-            show_location_groups,
-            include_tee_ids,
-            use_short_labels,
-        );
+        let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
 
         let label_suffix = if use_short_labels { "_short" } else { "_long" };
 
@@ -309,21 +283,18 @@ impl<'a> BuiltFlow<'a> {
                 crate::graph_util::GraphType::Mermaid => self.generate_mermaid(
                     !config.no_metadata,
                     !config.no_location_groups,
-                    !config.no_tee_ids,
                     !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
                 crate::graph_util::GraphType::Dot => self.generate_dot(
                     !config.no_metadata,
                     !config.no_location_groups,
-                    !config.no_tee_ids,
                     !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
                 crate::graph_util::GraphType::Reactflow => self.generate_reactflow(
                     !config.no_metadata,
                     !config.no_location_groups,
-                    !config.no_tee_ids,
                     !config.long_labels, // use_short_labels is the inverse of long_labels
                     message_handler,
                 ),
@@ -344,7 +315,6 @@ impl<'a> BuiltFlow<'a> {
             prefix,
             !config.no_metadata,
             !config.no_location_groups,
-            !config.no_tee_ids,
             !config.long_labels, // Inverted because flag is for long labels
         )
     }

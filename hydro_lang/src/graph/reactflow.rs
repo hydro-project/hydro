@@ -352,7 +352,6 @@ pub fn hydro_ir_to_reactflow(
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
-        include_tee_ids: true,
         use_short_labels: true, // Default to short labels
         process_id_name: process_names,
         cluster_id_name: cluster_names,

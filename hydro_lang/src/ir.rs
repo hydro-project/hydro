@@ -165,7 +165,9 @@ impl QMacroSimplifier {
         // Check if this is a call to stageleft::runtime_support::fn*
         if let Some(last_segment) = path.segments.last() {
             let fn_name = last_segment.ident.to_string();
-            if fn_name.starts_with("fn") && (fn_name.contains("_type_hint") || fn_name.contains("_borrow_type_hint")) {
+            if fn_name.starts_with("fn")
+                && (fn_name.contains("_type_hint") || fn_name.contains("_borrow_type_hint"))
+            {
                 // Check if the path contains stageleft and runtime_support
                 let path_str = path
                     .segments

@@ -224,7 +224,6 @@ pub fn open_browser(
     let config = super::render::HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
-        include_tee_ids: true,
         use_short_labels: true, // Default to short labels
         process_id_name: built_flow.process_id_name().clone(),
         cluster_id_name: built_flow.cluster_id_name().clone(),
