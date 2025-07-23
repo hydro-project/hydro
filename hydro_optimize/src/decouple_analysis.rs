@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use grb::prelude::*;
+use good_lp::solvers::microlp::MicroLpSolution;
+use good_lp::{constraint, microlp, variable, variables, Constraint, Expression, ProblemVariables, Solution, SolverModel, Variable};
 use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 
@@ -28,13 +29,14 @@ struct ModelMetadata {
     decoupling_send_overhead: f64, /* CPU usage per cardinality to send, assuming all messages serialize/deserialize similarly */
     decoupling_recv_overhead: f64,
     // Model variables to construct final cost function
-    model: Model,
-    orig_node_cpu_usage: Expr,
-    decoupled_node_cpu_usage: Expr,
-    op_id_to_var: HashMap<usize, Var>,
+    variables: ProblemVariables,
+    constraints: Vec<Constraint>,
+    orig_node_cpu_usage: Expression,
+    decoupled_node_cpu_usage: Expression,
+    op_id_to_var: HashMap<usize, Variable>,
     op_id_to_inputs: HashMap<usize, Vec<usize>>,
     prev_op_input_with_tick: HashMap<usize, usize>, // tick_id: last op_id with that tick_id
-    tee_inner_to_decoupled_vars: HashMap<usize, (Var, Var)>, /* inner_id: (orig_to_decoupled, decoupled_to_orig) */
+    tee_inner_to_decoupled_vars: HashMap<usize, (Variable, Variable)>, /* inner_id: (orig_to_decoupled, decoupled_to_orig) */
     network_ids: HashMap<usize, NetworkType>,
 }
 
@@ -42,22 +44,18 @@ struct ModelMetadata {
 const DECOUPLING_PENALTY: f64 = 0.0001;
 
 // Lazily creates the var
-fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Var>, model: &mut Model) -> Var {
+fn var_from_op_id(op_id: usize, op_id_to_var: &mut HashMap<usize, Variable>, variables: &mut ProblemVariables) -> Variable {
     *op_id_to_var.entry(op_id).or_insert_with(|| {
-        let name = op_id.to_string();
-        add_binvar!(model, name: &name, bounds: ..).unwrap()
+        variables.add(variable().binary())
     })
 }
 
-#[expect(unused_qualifications, reason = "grb_rs macro bug")]
-fn add_equality_constr(ops: &[usize], op_id_to_var: &mut HashMap<usize, Var>, model: &mut Model) {
+fn add_equality_constr(ops: &[usize], op_id_to_var: &mut HashMap<usize, Variable>, variables: &mut ProblemVariables, constraints: &mut Vec<Constraint>) {
     if let Some(mut prev_op) = ops.first() {
         for op in ops.iter().skip(1) {
-            let prev_op_var = var_from_op_id(*prev_op, op_id_to_var, model);
-            let op_var = var_from_op_id(*op, op_id_to_var, model);
-            model
-                .add_constr(&format!("eq_{}_{}", prev_op, op), c!(prev_op_var == op_var))
-                .unwrap();
+            let prev_op_var = var_from_op_id(*prev_op, op_id_to_var, variables);
+            let op_var = var_from_op_id(*op, op_id_to_var, variables);
+            constraints.push(constraint!(prev_op_var == op_var));
             prev_op = op;
         }
     }
@@ -85,21 +83,23 @@ fn add_input_constraints(
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     let ModelMetadata {
-        model,
+        variables,
+        constraints,
         op_id_to_var,
         op_id_to_inputs,
         ..
     } = &mut *model_metadata.borrow_mut();
 
     // Add input constraints. All inputs of an op must output to the same machine (be assigned the same var)
-    add_equality_constr(&input_ids, op_id_to_var, model);
+    add_equality_constr(&input_ids, op_id_to_var, variables, constraints);
     op_id_to_inputs.insert(op_id, input_ids);
 }
 
 // Store the tick that an op is constrained to
 fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<ModelMetadata>) {
     let ModelMetadata {
-        model,
+        variables,
+        constraints,
         op_id_to_var,
         op_id_to_inputs,
         prev_op_input_with_tick,
@@ -112,7 +112,7 @@ fn add_tick_constraint(metadata: &HydroIrMetadata, model_metadata: &RefCell<Mode
         if let Some(prev_input) = prev_op_input_with_tick.get(&tick_id) {
             inputs.push(*prev_input);
         }
-        add_equality_constr(&inputs, op_id_to_var, model);
+        add_equality_constr(&inputs, op_id_to_var, variables, constraints);
 
         // Set this op's last input as the last op's input that had this tick
         if let Some(last_input) = inputs.last() {
@@ -127,7 +127,7 @@ fn add_cpu_usage(
     model_metadata: &RefCell<ModelMetadata>,
 ) {
     let ModelMetadata {
-        model,
+        variables,
         orig_node_cpu_usage,
         decoupled_node_cpu_usage,
         op_id_to_inputs,
@@ -143,7 +143,7 @@ fn add_cpu_usage(
             if let Some(inputs) = op_id_to_inputs.get(&op_id) {
                 // All inputs must be assigned the same var (by constraints above), so it suffices to check one
                 if let Some(first_input) = inputs.first() {
-                    let input_var = var_from_op_id(*first_input, op_id_to_var, model);
+                    let input_var = var_from_op_id(*first_input, op_id_to_var, variables);
                     if let Some(cpu_usage) = metadata.cpu_usage {
                         let og_usage_temp = std::mem::take(orig_node_cpu_usage);
                         *orig_node_cpu_usage = og_usage_temp + cpu_usage * (1 - input_var);
@@ -158,7 +158,7 @@ fn add_cpu_usage(
     // Special case for network receives: their cpu usage (deserialization) is paid by the receiver, aka the machine they send to.
     match network_type {
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
-            let op_var = var_from_op_id(op_id, op_id_to_var, model);
+            let op_var = var_from_op_id(op_id, op_id_to_var, variables);
             if let Some(recv_cpu_usage) = metadata.network_recv_cpu_usage {
                 let og_usage_temp = std::mem::take(orig_node_cpu_usage);
                 *orig_node_cpu_usage = og_usage_temp + recv_cpu_usage * (1 - op_var);
@@ -173,52 +173,28 @@ fn add_cpu_usage(
 // Return the variables:
 // orig_to_decoupled_var: 1 if (op1 = 0, op2 = 1), 0 otherwise
 // decoupled_to_orig_var: 1 if (op1 = 1, op2 = 0), 0 otherwise
-#[expect(
-    unused_qualifications,
-    clippy::useless_conversion,
-    reason = "grb_rs macro bug"
-)]
 fn add_decouple_vars(
-    model: &mut Model,
+    variables: &mut ProblemVariables,
+    constraints: &mut Vec<Constraint>,
     op1: usize,
     op2: usize,
-    op_id_to_var: &mut HashMap<usize, Var>,
-) -> (Var, Var) {
-    let op1_var = var_from_op_id(op1, op_id_to_var, model);
-    let op2_var = var_from_op_id(op2, op_id_to_var, model);
+    op_id_to_var: &mut HashMap<usize, Variable>,
+) -> (Variable, Variable) {
+    let op1_var = var_from_op_id(op1, op_id_to_var, variables);
+    let op2_var = var_from_op_id(op2, op_id_to_var, variables);
     // 1 if (op1 = 0, op2 = 1), 0 otherwise
-    let orig_to_decoupled_var =
-        add_binvar!(model, name: &format!("{}_{}_orig_to_decoupled", op1, op2), bounds: ..)
-            .unwrap();
+    let orig_to_decoupled_var = variables.add(variable().binary());
     // Technically unnecessary since we're using binvar, but future proofing
-    model
-        .add_constr(
-            &format!("{}_{}_orig_to_decoupled_pos", op1, op2),
-            c!(orig_to_decoupled_var >= 0),
-        )
-        .unwrap();
-    model
-        .add_constr(
-            &format!("{}_{}_orig_to_decoupled_constr", op1, op2),
-            c!(orig_to_decoupled_var >= op2_var - op1_var),
-        )
-        .unwrap();
+    constraints.push(constraint!(orig_to_decoupled_var >= 0));
+    constraints.push(
+        constraint!(orig_to_decoupled_var >= op2_var - op1_var),
+    );
     // 1 if (op1 = 1, op2 = 0), 0 otherwise
-    let decoupled_to_orig_var =
-        add_binvar!(model, name: &format!("{}_{}_decoupled_to_orig", op1, op2), bounds: ..)
-            .unwrap();
-    model
-        .add_constr(
-            &format!("{}_{}_decoupled_to_orig_pos", op1, op2),
-            c!(decoupled_to_orig_var >= 0),
-        )
-        .unwrap();
-    model
-        .add_constr(
-            &format!("{}_{}_decoupled_to_orig_constr", op1, op2),
-            c!(decoupled_to_orig_var >= op1_var - op2_var),
-        )
-        .unwrap();
+    let decoupled_to_orig_var = variables.add(variable().binary());
+    constraints.push(constraint!(decoupled_to_orig_var >= 0));
+    constraints.push(
+        constraint!(decoupled_to_orig_var >= op1_var - op2_var),
+    );
     (orig_to_decoupled_var, decoupled_to_orig_var)
 }
 
@@ -230,7 +206,8 @@ fn add_decoupling_overhead(
     let ModelMetadata {
         decoupling_send_overhead,
         decoupling_recv_overhead,
-        model,
+        variables,
+        constraints,
         orig_node_cpu_usage,
         decoupled_node_cpu_usage,
         op_id_to_inputs,
@@ -254,7 +231,7 @@ fn add_decoupling_overhead(
         // All inputs must be assigned the same var (by constraints above), so it suffices to check one
         if let Some(input) = inputs.first() {
             let (orig_to_decoupled_var, decoupled_to_orig_var) =
-                add_decouple_vars(model, *input, op_id, op_id_to_var);
+                add_decouple_vars(variables, constraints, *input, op_id, op_id_to_var);
             let og_usage_temp = std::mem::take(orig_node_cpu_usage);
             *orig_node_cpu_usage = og_usage_temp
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY)
@@ -271,7 +248,6 @@ fn add_decoupling_overhead(
     }
 }
 
-#[expect(unused_qualifications, reason = "grb_rs macro bug")]
 fn add_tee_decoupling_overhead(
     inner_id: usize,
     metadata: &HydroIrMetadata,
@@ -280,7 +256,8 @@ fn add_tee_decoupling_overhead(
     let ModelMetadata {
         decoupling_send_overhead,
         decoupling_recv_overhead,
-        model,
+        variables,
+        constraints,
         orig_node_cpu_usage,
         decoupled_node_cpu_usage,
         op_id_to_var,
@@ -297,8 +274,8 @@ fn add_tee_decoupling_overhead(
     let (any_orig_to_decoupled_var, any_decoupled_to_orig_var) = tee_inner_to_decoupled_vars
         .entry(inner_id)
         .or_insert_with(|| {
-            let any_orig_to_decoupled_var = add_binvar!(model, name: &format!("tee{}_any_orig_to_decoupled", inner_id), bounds: ..).unwrap();
-            let any_decoupled_to_orig_var = add_binvar!(model, name: &format!("tee{}_any_decoupled_to_orig", inner_id), bounds: ..).unwrap();
+            let any_orig_to_decoupled_var = variables.add(variable().binary());
+            let any_decoupled_to_orig_var = variables.add(variable().binary());
             let og_usage_temp = std::mem::take(orig_node_cpu_usage);
             *orig_node_cpu_usage = og_usage_temp
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
@@ -309,23 +286,18 @@ fn add_tee_decoupling_overhead(
                 + (*decoupling_recv_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_orig_to_decoupled_var
                 + (*decoupling_send_overhead * cardinality as f64 + DECOUPLING_PENALTY) * any_decoupled_to_orig_var;
             (any_orig_to_decoupled_var, any_decoupled_to_orig_var)
-        });
+        })
+        .clone();
 
     let (orig_to_decoupled_var, decoupled_to_orig_var) =
-        add_decouple_vars(model, inner_id, op_id, op_id_to_var);
+        add_decouple_vars(variables, constraints, inner_id, op_id, op_id_to_var);
     // If any Tee has orig_to_decoupled, then set any_orig_to_decoupled to 1, vice versa
-    model
-        .add_constr(
-            &format!("tee{}_inner{}_any_orig_to_decoupled", op_id, inner_id),
-            c!(*any_orig_to_decoupled_var >= orig_to_decoupled_var),
-        )
-        .unwrap();
-    model
-        .add_constr(
-            &format!("tee{}_inner{}_any_decoupled_to_orig", op_id, inner_id),
-            c!(*any_decoupled_to_orig_var >= decoupled_to_orig_var),
-        )
-        .unwrap();
+    constraints.push(
+        constraint!(any_orig_to_decoupled_var >= orig_to_decoupled_var),
+    );
+    constraints.push(
+        constraint!(any_decoupled_to_orig_var >= decoupled_to_orig_var),
+    );
 }
 
 fn decouple_analysis_leaf(
@@ -401,66 +373,49 @@ fn decouple_analysis_node(
     add_tick_constraint(node.metadata(), model_metadata);
 }
 
-#[expect(
-    unused_qualifications,
-    clippy::useless_conversion,
-    reason = "grb_rs macro bug"
-)]
-fn construct_objective_fn(model_metadata: &RefCell<ModelMetadata>) {
+fn solve(model_metadata: &RefCell<ModelMetadata>) -> MicroLpSolution {
     let ModelMetadata {
-        model,
+        variables,
+        constraints,
         orig_node_cpu_usage,
         decoupled_node_cpu_usage,
         ..
     } = &mut *model_metadata.borrow_mut();
 
-    // Create vars that store the CPU usage of each node
-    let orig_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();
-    let decoupled_node_cpu_var = add_ctsvar!(model, bounds: ..).unwrap();
-    let og_usage_temp = std::mem::take(orig_node_cpu_usage);
-    let decoupled_usage_temp = std::mem::take(decoupled_node_cpu_usage);
-    model
-        .add_constr("orig_node_cpu", c!(orig_node_cpu_var == og_usage_temp))
-        .unwrap();
-    model
-        .add_constr(
-            "decoupled_node_cpu",
-            c!(decoupled_node_cpu_var == decoupled_usage_temp),
-        )
-        .unwrap();
+    // Need values to be taken instead of &mut
+    let mut vars = std::mem::take(variables);
+    let mut constrs = std::mem::take(constraints);
+    let orig_usage = std::mem::take(orig_node_cpu_usage);
+    let decoupled_usage = std::mem::take(decoupled_node_cpu_usage);
 
     // Which node has the highest CPU usage?
-    let highest_cpu = add_ctsvar!(model, bounds: ..).unwrap();
-    model
-        .add_constr("higher_than_orig_cpu", c!(highest_cpu >= orig_node_cpu_var))
-        .unwrap();
-    model
-        .add_constr(
-            "higher_than_decoupled_cpu",
-            c!(highest_cpu >= decoupled_node_cpu_var),
-        )
-        .unwrap();
+    let highest_cpu = vars.add_variable();
+    constrs.push(constraint!(highest_cpu >= orig_usage));
+    constrs.push(constraint!(highest_cpu >= decoupled_usage));
 
     // Minimize the CPU usage of that node
-    model.set_objective(highest_cpu, Minimize).unwrap();
+    vars.minimise(highest_cpu)
+        .using(microlp)
+        .with_all(constrs)
+        .solve()
+        .unwrap()
 }
 
 pub(crate) fn decouple_analysis(
     ir: &mut [HydroLeaf],
-    modelname: &str,
     cluster_to_decouple: &LocationId,
     send_overhead: f64,
     recv_overhead: f64,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-    write: bool,
 ) -> (Vec<usize>, Vec<usize>, Vec<usize>) {
     let model_metadata = RefCell::new(ModelMetadata {
         cluster_to_decouple: cluster_to_decouple.clone(),
         decoupling_send_overhead: send_overhead,
         decoupling_recv_overhead: recv_overhead,
-        model: Model::new(modelname).unwrap(),
-        orig_node_cpu_usage: Expr::default(),
-        decoupled_node_cpu_usage: Expr::default(),
+        variables: variables! {},
+        constraints: vec![],
+        orig_node_cpu_usage: Expression::default(),
+        decoupled_node_cpu_usage: Expression::default(),
         op_id_to_var: HashMap::new(),
         op_id_to_inputs: HashMap::new(),
         prev_op_input_with_tick: HashMap::new(),
@@ -483,23 +438,13 @@ pub(crate) fn decouple_analysis(
         },
     );
 
-    construct_objective_fn(&model_metadata);
+    let solution = solve(&model_metadata);
     let ModelMetadata {
-        model,
         op_id_to_var,
         op_id_to_inputs,
         network_ids,
         ..
     } = &mut *model_metadata.borrow_mut();
-    // model.write("decouple.lp").unwrap();
-
-    // If write, then optimize and output the solution. If read, the read it back from the file
-    if write {
-        model.optimize().unwrap();
-        model.write("decouple.sol").unwrap();
-    } else {
-        model.read("decouple.sol").unwrap();
-    }
 
     let mut orig_machine = vec![];
     let mut decoupled_machine = vec![];
@@ -509,11 +454,11 @@ pub(crate) fn decouple_analysis(
 
     for (op_id, inputs) in op_id_to_inputs {
         if let Some(op_var) = op_id_to_var.get(op_id) {
-            let op_value = model.get_obj_attr(attr::X, op_var).unwrap();
+            let op_value = solution.value(*op_var);
             let mut input_value = None;
             if let Some(input) = inputs.first() {
                 if let Some(input_var) = op_id_to_var.get(input) {
-                    input_value = Some(model.get_obj_attr(attr::X, input_var).unwrap());
+                    input_value = Some(solution.value(*input_var));
                 }
             };
 

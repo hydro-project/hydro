@@ -53,7 +53,6 @@ impl ReusableHosts {
         };
         TrybuildHost::new(self.lazy_create_host(deployment, display_name.clone()))
             .additional_hydro_features(vec!["runtime_measure".to_string()])
-            .features(vec!["ilp".to_string()])
             .rustflags(rustflags)
             .tracing(
                 TracingOptions::builder()
