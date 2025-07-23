@@ -2410,7 +2410,6 @@ dependencies = [
  "regex",
  "serde",
  "stageleft",
- "stageleft_tool",
  "syn 2.0.101",
  "tokio",
 ]
