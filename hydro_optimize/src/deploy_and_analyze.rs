@@ -11,7 +11,6 @@ use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
-use stageleft::{Quoted, q};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::decouple_analysis::decouple_analysis;
@@ -75,8 +74,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
     }
 }
 
-fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Duration>) {
-    let duration = duration.splice_typed();
+fn insert_counter(ir: &mut [HydroLeaf], duration: syn::Expr) {
     traverse_dfir(
         ir,
         |_, _| {},
@@ -136,7 +134,7 @@ pub async fn deploy_and_analyze<'a>(
     String,
     usize,
 ) {
-    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+    let counter_output_duration = syn::parse_quote!(std::time::Duration::from_secs(1));
 
     // Rewrite with counter tracking
     let rewritten_ir_builder = builder.rewritten_ir_builder();
