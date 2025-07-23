@@ -203,7 +203,7 @@ fn input_dependency_analysis_node(
             for (input_id, parent_positions) in parent_taints {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(&input_id) {
                     let num_tainted_parents = parent_positions.len();
-                    // For each tainted parent, see if we can find its dependency (flatten to remove None)
+                    // For each tainted parent, see if we can find its dependency (filter_map to remove None)
                     let parent_dependency_tuples = parent_positions.into_iter().filter_map(|pos| parent_dependencies_on_input.get(&pos)).cloned().collect::<Vec<StructOrTuple>>();
                     if let Some(intersection) = StructOrTuple::intersect_tuples(&parent_dependency_tuples) {
                         // Only accept the dependency if each tainted parent contributed, or if we're in the optimistic phase
@@ -241,7 +241,7 @@ fn input_dependency_analysis_node(
         }
         HydroNode::Join { .. } => {
             assert_eq!(parent_ids.len(), 2, "Node {:?} has the wrong number of parents.", node);
-            // [(a,b)] join [(a,c)] = [(a,(b,c)]
+            // [(a,b)] join [(a,c)] = [(a,(b,c))]
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
                     let mut new_dependency = StructOrTuple::default();
