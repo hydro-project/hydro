@@ -1,3 +1,8 @@
+#![cfg_attr(
+    not(feature = "ilp"),
+    allow(unused, reason = "requires Gurobi to instrument")
+)]
+
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -14,6 +19,7 @@ use hydro_lang::rewrites::persist_pullup::persist_pullup;
 use stageleft::{Quoted, q};
 use tokio::sync::mpsc::UnboundedReceiver;
 
+#[cfg(feature = "ilp")]
 use crate::decouple_analysis::decouple_analysis;
 use crate::decoupler::Decoupler;
 use crate::deploy::ReusableHosts;
@@ -43,6 +49,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
         | HydroNode::Filter { metadata, .. }
         | HydroNode::FilterMap { metadata, .. }
         | HydroNode::Unique { metadata, .. }
+        | HydroNode::Scan { metadata, .. }
         | HydroNode::Fold { metadata, .. } // Output 1 value per tick
         | HydroNode::Reduce { metadata, .. } // Output 1 value per tick
         | HydroNode::FoldKeyed { metadata, .. }
@@ -119,6 +126,7 @@ async fn track_cluster_usage_cardinality(
     (usage_out, cardinality_out)
 }
 
+#[cfg(feature = "ilp")]
 /// TODO: Return type should be changed to also include Partitioner
 pub async fn deploy_and_analyze<'a>(
     reusable_hosts: &mut ReusableHosts,

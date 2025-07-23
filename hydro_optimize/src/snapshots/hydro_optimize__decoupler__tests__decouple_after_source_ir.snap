@@ -1,6 +1,6 @@
 ---
 source: hydro_optimize/src/decoupler.rs
-expression: ir
+expression: built.ir()
 ---
 [
     ForEach {
@@ -52,6 +52,12 @@ expression: ir
                                                 location_kind: Cluster(
                                                     0,
                                                 ),
+                                                backtrace: [
+                                                    hydro_optimize::decoupler::tests::decouple_mini_program,
+                                                    hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                                    hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                                    core::ops::function::FnOnce::call_once,
+                                                ],
                                                 output_type: Some(
                                                     i32,
                                                 ),
@@ -67,6 +73,12 @@ expression: ir
                                             location_kind: Cluster(
                                                 0,
                                             ),
+                                            backtrace: [
+                                                hydro_optimize::decoupler::tests::decouple_mini_program,
+                                                hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                                hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                                core::ops::function::FnOnce::call_once,
+                                            ],
                                             output_type: Some(
                                                 (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                             ),
@@ -82,6 +94,12 @@ expression: ir
                                         location_kind: Cluster(
                                             2,
                                         ),
+                                        backtrace: [
+                                            hydro_optimize::decoupler::tests::decouple_mini_program,
+                                            hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                            hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                            core::ops::function::FnOnce::call_once,
+                                        ],
                                         output_type: Some(
                                             (hydro_optimize :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                         ),
@@ -97,6 +115,12 @@ expression: ir
                                     location_kind: Cluster(
                                         2,
                                     ),
+                                    backtrace: [
+                                        hydro_optimize::decoupler::tests::decouple_mini_program,
+                                        hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                        hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                        core::ops::function::FnOnce::call_once,
+                                    ],
                                     output_type: Some(
                                         i32,
                                     ),
@@ -112,6 +136,12 @@ expression: ir
                                 location_kind: Cluster(
                                     2,
                                 ),
+                                backtrace: [
+                                    hydro_optimize::decoupler::tests::decouple_mini_program,
+                                    hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                    hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                    core::ops::function::FnOnce::call_once,
+                                ],
                                 output_type: Some(
                                     i32,
                                 ),
@@ -127,6 +157,14 @@ expression: ir
                             location_kind: Cluster(
                                 2,
                             ),
+                            backtrace: [
+                                hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode,
+                                hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode_anonymous,
+                                hydro_optimize::decoupler::tests::decouple_mini_program,
+                                hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                                hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                                core::ops::function::FnOnce::call_once,
+                            ],
                             output_type: Some(
                                 hydro_optimize :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes,
                             ),
@@ -142,6 +180,14 @@ expression: ir
                         location_kind: Cluster(
                             2,
                         ),
+                        backtrace: [
+                            hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode,
+                            hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode_anonymous,
+                            hydro_optimize::decoupler::tests::decouple_mini_program,
+                            hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                            hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                            core::ops::function::FnOnce::call_once,
+                        ],
                         output_type: Some(
                             (u32 , hydro_optimize :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes),
                         ),
@@ -157,6 +203,13 @@ expression: ir
                     location_kind: Cluster(
                         1,
                     ),
+                    backtrace: [
+                        hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode_anonymous,
+                        hydro_optimize::decoupler::tests::decouple_mini_program,
+                        hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                        hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                        core::ops::function::FnOnce::call_once,
+                    ],
                     output_type: Some(
                         i32,
                     ),
@@ -172,6 +225,13 @@ expression: ir
                 location_kind: Cluster(
                     1,
                 ),
+                backtrace: [
+                    hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode_anonymous,
+                    hydro_optimize::decoupler::tests::decouple_mini_program,
+                    hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                    hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                    core::ops::function::FnOnce::call_once,
+                ],
                 output_type: Some(
                     i32,
                 ),
@@ -187,6 +247,12 @@ expression: ir
             location_kind: Cluster(
                 1,
             ),
+            backtrace: [
+                hydro_optimize::decoupler::tests::decouple_mini_program,
+                hydro_optimize::decoupler::tests::decouple_after_source_ir,
+                hydro_optimize::decoupler::tests::decouple_after_source_ir::{{closure}},
+                core::ops::function::FnOnce::call_once,
+            ],
             output_type: Some(
                 i32,
             ),
