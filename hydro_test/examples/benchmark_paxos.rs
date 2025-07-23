@@ -46,7 +46,7 @@ async fn main() {
         let virtual_clients = if i == 0 {
             &num_clients_per_node
         } else {
-            &vec![max_num_clients_per_node.clone()]
+            &vec![*max_num_clients_per_node]
         };
 
         for num_clients_per_node in virtual_clients {
