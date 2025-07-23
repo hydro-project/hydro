@@ -332,6 +332,7 @@ fn input_dependency_analysis_node(
         // No dependencies on the parent (or no parent)
         HydroNode::Reduce { .. }
         | HydroNode::Fold { .. }
+        | HydroNode::Scan { .. }
         | HydroNode::FlatMap { .. }
         | HydroNode::Source { .. } => {
             input_dependencies_entry.clear();

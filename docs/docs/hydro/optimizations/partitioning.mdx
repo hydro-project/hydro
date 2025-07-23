@@ -67,6 +67,7 @@ If an operator is entirely independent of any input, i.e. it can be independentl
 | [Unique](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Unique) | ✅ | Equi-joins on the entire tuple, will work with any partitioning scheme. |
 | [Sort](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Sort) | ✅ | Only affects ordering, which we assume does not matter. |
 | [Fold](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Fold) | ❌ | Computing the output requires processing all elements of the stream. |
+| [Scan](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Scan) | ❌ | Computing the output requires processing all elements of the stream. |
 | [FoldKeyed](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.FoldKeyed) | ⚠️ | Must partition on the fold key. |
 | [Reduce](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Reduce) | ❌ | Computing the output requires processing all elements of the stream. |
 | [ReduceKeyed](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.ReduceKeyed) | ⚠️ | Must partition on the reduce key. |
