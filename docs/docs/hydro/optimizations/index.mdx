@@ -1,4 +1,11 @@
 # Optimizations
+:::caution
+
+Optimizations are an experimental feature.
+The implementation is still evolving and may be incorrect.
+
+:::
+
 During compilation, Hydro programs can be automatically optimized with opt-in, provably safe rewrites.
 These optimizations increase throughput by scaling up, by introducing **decoupling** (pipeline parallelism) and **partitioning** (data parallelism) to different components of the Hydro program.
 Decoupling splits components into sub-components while partitioning splits data across replicas; both serve to allow bottlenecked nodes to split load across additional machines.

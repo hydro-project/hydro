@@ -73,10 +73,53 @@ If an operator is entirely independent of any input, i.e. it can be independentl
 | [Network](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Network) | ❌ | N/A |
 | [Counter](https://hydro.run/rustdoc/hydro_lang/ir/enum.HydroNode#variant.Counter) | ❌ | Should not be in a Hydro program during analysis. |
 
+:::note
+
 The implementation of the analysis above can be found in the `partitioning_constraint_analysis_node` function in `partitioning_node_analysis.rs`.
 
+:::
 
-## Partitioning on a specific key
+
+### Implementation Details
+
+During operator analysis, the following data structure is constructed:
+```rust
+# use std::collections::{BTreeMap, BTreeSet};
+# use hydro_optimize::partition_syn_analysis::StructOrTupleIndex;
+possible_partitionings: &mut BTreeMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>
+```
+
+This represents the partitioning constraints placed on each operator.
+`possible_partitionings` is a mapping from operator ID to a set of partitioning constraints on each input that taints the operator.
+
+:::info
+
+An parent **taints** an operator if the parent's values (or some transformation of those values) appear in the operator's stream.
+For example, both parents of `Chain` taint its output, but only the first parent of `AntiJoin` taints its output.
+
+:::
+
+Each element of the set of partitioning constraints is a map, mapping from input ID to the index of the input that must be used to partition.
+
+:::info
+
+The **index** of a struct or tuple is the position of the field in the struct or tuple.
+For example, in the tuple `(a, b)`, the index of `a` is `0`; in the struct `{ x: 1, y: 2 }`, the index of `x` is `x`.
+
+:::
+
+Within each map, all inputs with matching values on the specific indices must be partitioned such that they are assigned to the same machine.
+Partitioning is only possible if for all operators, at least one such map in the set has its constraints met.
+
+:::note
+
+The code that determines whether such a partitioning exists, given these constraints, can be found in the `partitioning_analysis` function in `partitioning_node_analysis.rs`.
+
+:::
+
+
+
+### Partitioning on a specific key
 Many of the operators above require partitioning *on a specific key*.
 But what does it mean to partition on a key?
 
@@ -95,6 +138,12 @@ We first consider the task of input dependency analysis assuming, as in Dedalus,
 Then, a 1:1 equality can be drawn between each operator's keys and its inputs, and the constraints on partitioning can be transferred directly.
 This is not the case with the introduction of the `Map` and `FilterMap` operators, which introduce UDFs (User-Defined Functions) that can manipulate data in arbitrary ways.
 We will discuss the implications of UDFs and their analysis below in [UDF Analysis](#udf-analysis).
+
+:::note
+
+The implementation of the analysis below can be found in the `input_dependency_analysis_node` function in `partitioning_node_analysis.rs`.
+
+:::
 
 Drawing an equality between an operator's keys and its inputs' keys raises an interesting question: what happens if an operator has multiple inputs?
 
@@ -180,18 +229,107 @@ Partitioning is only possible if it is possible over all inputs that `Chain` dep
 ### Resolving Intersections
 We now consider the other operators that have multiple parents.
 
-The output of `Difference` and `AntiJoin` is a subset of their first parent, so they inherit inputdependencies directly from that parent.
+The output of `Difference` and `AntiJoin` is a subset of their first parent, so they inherit input dependencies directly from that parent.
 This is independent of [Operator Analysis](#operator-analysis) above, where a constraint will be added based on how the parents join.
 
 The output of `CrossProduct` and `CrossSingleton` contains elements of both parents combined into tuples.
 The lineage of each tuple element can be directly traced to each parent and its dependencies inherit directly.
 
-THe output of `Join` contains only keys present in both parents.
-
+The output of `Join` contains keys present in both parents and their respective values.
+As such, the outputted key of `Join` must simultaneously satisfy the dependencies of both parents; its dependency is the union of its parents' dependencies.
 
 
 
 ### Resolving Cycles
+Cycles complicate analysis, as the input dependencies of operators depend on that of their parents, which simultaneously has dependencies on their children.
+At some point in analysis, we will need to derive an operator's dependencies without knowledge of its parents' dependencies.
+
+We know, however, that there are no self-contained cycles without any external inputs; all cycles must stem from a source.
+Therefore, we can start analysis from where the source enters the cycle.
+We split analysis into an inflationary (optimistic) and a deflationary (pessimistic) phase.
+In the inflationary phase, in a `Chain` operator, if only one parent's dependencies are known, then we assume that the other parent has the same dependencies.
+Once fixpoint is reached, we enter the deflationary phase, where we delete any dependencies that are no longer valid once both parents' dependencies are known.
+
+
+
+### Implementation Details
+The following data structure is maintained during input dependency analysis:
+
+```rust
+# use std::collections::{BTreeMap, BTreeSet};
+# use hydro_lang::location::LocationId;
+# use hydro_optimize::partition_syn_analysis::StructOrTuple;
+pub struct InputDependencyMetadata {
+    // Const fields
+    pub cluster_to_partition: LocationId,
+    pub inputs: BTreeSet<usize>,
+    // Variables
+    pub optimistic_phase: bool,
+    pub input_taint: BTreeMap<usize, BTreeSet<usize>>,
+    pub input_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>,
+    pub syn_analysis: BTreeMap<usize, StructOrTuple>,
+}
+```
+
+- `optimistic_phase` is `true` during the inflationary phase and `false` during the deflationary phase.
+- `input_taint` is a mapping from operator ID to the set of inputs that taint it.
+- `input_dependencies` is a mapping from operator ID to the inputs that taint it, and for each field in the operator's output, which input fields it depends on.
+For a given operator, if it is tainted by an input in `input_taint` but has no dependencies on it in `input_dependencies`, then none of its fields have a 1:1 equality to that input.
+If the operator can only be conditionally partitioned (as seen in [Operator Analysis](#operator-analysis)), then it will incapable of satisfying that condition.
+- `syn_analysis` is a cached mapping from each `Map` or `FilterMap` operator ID to its UDF's dependency analysis results, derived from [UDF Analysis](#udf-analysis) below.
+These results map the dependencies of the UDF's output fields to the UDF's parameters, which can then be used to derive its dependencies on the program input.
 
 
 ## UDF Analysis
+As alluded to earlier, the introduction of the `Map` and `FilterMap` operators allow arbitrary manipulation of data.
+This means that a deep symbolic analysis of each UDF is necessary in order to determine which parameters, if any, have a 1:1 equality to the output fields of each UDF.
+
+:::note
+
+This analysis can be found in `partition_syn_analysis.rs`.
+
+:::
+
+
+A critical data structure in UDF analysis is `StructOrTuple`, which represents a named variable's dependencies on the parameters of the UDF.
+
+```rust
+# use std::collections::{BTreeMap, BTreeSet};
+pub type StructOrTupleIndex = Vec<String>;
+pub struct StructOrTuple {
+    dependencies: BTreeSet<StructOrTupleIndex>,
+    fields: BTreeMap<String, Box<StructOrTuple>>,
+    could_be_none: bool,
+}
+```
+- `dependencies` contains any UDF parameter indices that this struct or tuple has a 1:1 equivalence to. If the set is empty, then there are no dependencies; if the set contains the empty vector, then this struct or tuple is equivalent to the entire UDF parameter.
+- `fields` is a mapping from field names to their corresponding dependencies. Since tuples and structs may have multiple layers, this maps to a deeper `StructOrTuple`.
+- `could_be_none` is a boolean that is true if the struct or tuple could be `None`, for example if we have `let x = if y { Some(z) } else { None }`. This is useful in `FilterMap`, where `None` values are removed, giving `x` a 1:1 equivalence to `z`; otherwise, `x` would have no dependencies.
+
+As an example, for the following trivial function, `x` would be represented with a `StructOrTuple` with no dependencies and two fields, `0` and `1`. The field `0` would map to a `StructOrTuple` with dependencies on `1` (the index of `b` in the parameter), and the field `1` would map to a `StructOrTuple` with dependencies on `0` (the index of `a` in the parameter).
+```rust
+|(a, b)| {
+    let x = (b, a);
+}
+```
+
+
+UDF analysis begins with `AnalyzeClosure`, which finds the UDF block in the given operator.
+It records all named parameters with `TupleDeclareLhs`, and analyzes the block with `EqualityAnalysis`.
+
+- `TupleDeclareLhs` recursively unwraps tuples and structs, recording a mapping from each named variable to its index in the input.
+    - For example, given the parameters `(a, (b, c))`, it will map `a` to `[0]`, `b` to `[1, 0]`, and `c` to `[1, 1]`.
+    - These indices are stored as `StructOrTupleIndex`, which is a vector of strings.
+- `EqualityAnalysis` iterates through all statements in a given block (code surrounded by `{}`).
+    - For declarations or assignments (code of the format `LHS = RHS` or `let LHS = RHS`), it extracts the newly named or shadowed variables on the LHS with `TupleDeclareLhs`, and analyzes the RHS with `StructOrTupleUseRhs`.
+    - It maintains a running list of mappings from named variables to their dependencies, overwriting older values as they are shadowed or replaced.
+    - The return value of the block is the last expression that is not followed by a semicolon.
+- `StructOrTupleUseRhs` recursively analyzes the RHS of an assignment, which may contain code blocks and invoke `EqualityAnalysis` recursively.
+    - It constructs a `StructOrTuple` representing the dependencies on the UDF parameters on the RHS, which is mapped to the named variable on the LHS by `EqualityAnalysis`.
+
+
+:::warning
+
+UDF analysis is conservative and does not support many Rust features.
+
+:::
