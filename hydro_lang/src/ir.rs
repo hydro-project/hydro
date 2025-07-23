@@ -106,7 +106,8 @@ fn simplify_q_macro(token_str: &str) -> String {
 
 /// Fallback string-based simplification when AST parsing fails
 fn fallback_string_simplify(token_str: &str) -> String {
-    if token_str.contains("stageleft::runtime_support") {
+    // Check for stageleft runtime support with or without spaces around ::
+    if token_str.contains("stageleft") && token_str.contains("runtime_support") {
         "q!(...)".to_string()
     } else if token_str.len() > 50 {
         format!("{}...", &token_str[..47])
@@ -165,9 +166,7 @@ impl QMacroSimplifier {
         // Check if this is a call to stageleft::runtime_support::fn*
         if let Some(last_segment) = path.segments.last() {
             let fn_name = last_segment.ident.to_string();
-            if fn_name.starts_with("fn")
-                && (fn_name.contains("_type_hint") || fn_name.contains("_borrow_type_hint"))
-            {
+            if fn_name.starts_with("fn") && fn_name.contains("_expr") {
                 // Check if the path contains stageleft and runtime_support
                 let path_str = path
                     .segments
@@ -187,15 +186,14 @@ impl QMacroSimplifier {
     ) -> Option<String> {
         // Look through the arguments for a closure expression
         for arg in args {
-            if let syn::Expr::Closure(closure) = arg {
-                // Format the closure nicely
-                let closure_str = closure.to_token_stream().to_string();
-                return Some(self.cleanup_closure_content(&closure_str));
+            if let syn::Expr::Closure(_) = arg {
+                // Format the closure nicely using prettyplease
+                return Some(self.cleanup_closure_content(arg));
             }
 
             // Also check for closures nested in other expressions (like blocks)
-            if let Some(closure_str) = self.find_closure_in_expr(arg) {
-                return Some(self.cleanup_closure_content(&closure_str));
+            if let Some(closure_expr) = self.find_closure_in_expr(arg) {
+                return Some(closure_expr);
             }
         }
         None
@@ -206,27 +204,36 @@ impl QMacroSimplifier {
             syn::Expr::Block(block) => {
                 // Look for closures in block statements
                 for stmt in &block.block.stmts {
-                    if let syn::Stmt::Expr(syn::Expr::Closure(closure), _) = stmt {
-                        return Some(closure.to_token_stream().to_string());
+                    if let syn::Stmt::Expr(closure_expr @ syn::Expr::Closure(_), _) = stmt {
+                        return Some(self.cleanup_closure_content(closure_expr));
                     }
                 }
             }
-            syn::Expr::Closure(closure) => {
-                return Some(closure.to_token_stream().to_string());
+            syn::Expr::Closure(_) => {
+                return Some(self.cleanup_closure_content(expr));
             }
             _ => {}
         }
         None
     }
 
-    fn cleanup_closure_content(&self, content: &str) -> String {
-        content
-            .replace(" . ", ".")
-            .replace(" , ", ", ")
-            .replace(" ! ", "!")
-            .replace(" :: ", "::")
-            .replace("  ", " ")
-            .trim()
+    fn cleanup_closure_content(&self, closure: &syn::Expr) -> String {
+        // Use prettyplease to format the closure expression properly
+        let formatted = prettyplease::unparse(&syn::parse_quote! {
+            fn dummy() { #closure }
+        });
+        
+        // Extract just the closure content, similar to how simplify_q_macro does it
+        formatted
+            .trim_start()
+            .trim_start_matches("fn dummy()")
+            .trim_start()
+            .trim_start_matches('{')
+            .trim_start()
+            .trim_end()
+            .trim_end_matches('}')
+            .trim_end()
+            .replace("\n    ", "\n") // Remove extra leading indent
             .to_string()
     }
 }
