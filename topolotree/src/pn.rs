@@ -34,25 +34,21 @@ async fn main() {
     let increment_requests = ports
         .port("increment_requests")
         .connect::<ConnectedDirect>()
-        .await
         .into_source();
 
     let query_responses = ports
         .port("query_responses")
         .connect::<ConnectedDirect>()
-        .await
         .into_sink();
 
     let to_peer = ports
         .port("to_peer")
         .connect::<ConnectedDemux<ConnectedDirect>>()
-        .await
         .into_sink();
 
     let from_peer = ports
         .port("from_peer")
         .connect::<ConnectedTagged<ConnectedDirect>>()
-        .await
         .into_source();
 
     let f1 = async move {
