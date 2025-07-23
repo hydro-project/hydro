@@ -87,7 +87,7 @@ During operator analysis, the following data structure is constructed:
 ```rust
 # use std::collections::{BTreeMap, BTreeSet};
 # use hydro_optimize::partition_syn_analysis::StructOrTupleIndex;
-possible_partitionings: &mut BTreeMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>
+let possible_partitionings: &mut BTreeMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>;
 ```
 
 This represents the partitioning constraints placed on each operator.
@@ -159,13 +159,13 @@ If each parent of `Chain` has different dependencies on the same input, what are
 Imagine `Chain` then joins with another stream, as in the following program.
 ```rust
 # use hydro_lang::*;
-fn chain_parents_same_input<L>(
-    flow: FlowBuilder<'_>,
-    input1: Stream<(usize, usize), Process<L>, Unbounded>,
-    input2: Stream<(usize, usize), Process<L>, Unbounded>,
+fn chain_parents_same_input<'a, L>(
+    flow: FlowBuilder<'a>,
+    input1: Stream<(usize, usize), Process<'a, L>, Unbounded>,
+    input2: Stream<(usize, usize), Process<'a, L>, Unbounded>,
 ) {
-    let cluster = flow.cluster::<L>();
-    let tick = cluster.tick();
+    let process = flow.process::<L>();
+    let tick = process.tick();
 
     let parent1 = input1.clone();
     let parent2 = input1.map(q!(|(a, b)| (a, b+2)));
@@ -198,13 +198,13 @@ The two tuples of `input1` both need to join with the single tuple of `input2`, 
 Imagine `Chain` then joins with another stream, as in the following program.
 ```rust
 # use hydro_lang::*;
-fn chain_parents_different_inputs<L>(
-    flow: FlowBuilder<'_>,
-    input1: Stream<(usize, usize), Process<L>, Unbounded>,
-    input2: Stream<(usize, usize), Process<L>, Unbounded>,
+fn chain_parents_different_inputs<'a, L>(
+    flow: FlowBuilder<'a>,
+    input1: Stream<(usize, usize), Process<'a, L>, Unbounded>,
+    input2: Stream<(usize, usize), Process<'a, L>, Unbounded>,
 ) {
-    let cluster = flow.cluster::<L>();
-    let tick = cluster.tick();
+    let process = flow.process::<L>();
+    let tick = process.tick();
 
     let parent1 = input1.map(q!(|(a, b)| (a, b+2)));
     let parent2 = input2.clone().map(q!(|(a, b)| (a, b+2)));
@@ -309,9 +309,9 @@ pub struct StructOrTuple {
 
 As an example, for the following trivial function, `x` would be represented with a `StructOrTuple` with no dependencies and two fields, `0` and `1`. The field `0` would map to a `StructOrTuple` with dependencies on `1` (the index of `b` in the parameter), and the field `1` would map to a `StructOrTuple` with dependencies on `0` (the index of `a` in the parameter).
 ```rust
-|(a, b)| {
+let _ = |(a, b): (usize, usize)| {
     let x = (b, a);
-}
+};
 ```
 
 
