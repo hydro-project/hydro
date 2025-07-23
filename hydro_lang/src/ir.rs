@@ -222,7 +222,7 @@ impl QMacroSimplifier {
         let formatted = prettyplease::unparse(&syn::parse_quote! {
             fn dummy() { #closure }
         });
-        
+
         // Extract just the closure content, similar to how simplify_q_macro does it
         formatted
             .trim_start()
@@ -2731,5 +2731,19 @@ mod test {
         let result = simplify_q_macro(expr_with_type_hints);
         // Type hints should be preserved since we're not using DFIR's removal
         assert!(result.contains("fn1_type_hint"));
+    }
+
+    #[test]
+    fn test_closure_no_pipe_at_start() {
+        // Test a closure that does not start with a pipe
+        let closure_expr = "{ let foo = x; |b| b + foo }";
+        let debug_expr: DebugExpr = syn::parse_str::<syn::Expr>(closure_expr).unwrap().into();
+        let result = debug_expr.to_string();
+        let closure_expr = closure_expr
+            .split_whitespace()
+            .collect::<Vec<&str>>()
+            .join(" ");
+        let result = result.split_whitespace().collect::<Vec<&str>>().join(" ");
+        assert_eq!(result, closure_expr);
     }
 }

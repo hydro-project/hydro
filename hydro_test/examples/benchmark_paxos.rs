@@ -14,12 +14,12 @@ async fn main() {
     use hydro_deploy::Deployment;
     use hydro_deploy::gcp::GcpNetwork;
     use hydro_lang::Location;
+    use hydro_lang::graph_util::GraphConfig;
     use hydro_optimize::deploy::ReusableHosts;
     use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
     use hydro_test::cluster::kv_replica::Replica;
     use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
     use hydro_test::cluster::paxos_bench::{Aggregator, Client};
-    use hydro_lang::graph_util::GraphConfig;
     use tokio::sync::RwLock;
 
     #[derive(Parser, Debug)]
