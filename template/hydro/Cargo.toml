@@ -18,7 +18,7 @@ hydro_deploy = { git = "{{ hydro_git | default: 'https://github.com/hydro-projec
 hydro_lang = { git = "{{ hydro_git | default: 'https://github.com/hydro-project/hydro.git' }}", branch = "{{ hydro_branch | default: 'main' }}", features = [
     "deploy",
 ] }
-tokio = { version = "1.29.0", features = ["full"] }
+tokio = 1.29.0"
 tokio-stream = { version = "0.1.3", default-features = false }
 futures = "0.3.0"
 
