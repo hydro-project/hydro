@@ -41,20 +41,12 @@ pub fn deploy_o2o(
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!({
-                env.port(p1_port)
-                    .connect_local_blocking::<ConnectedDirect>()
-                    .into_sink()
-            })
-            .splice_untyped_ctx(&())
+            q!({ env.port(p1_port).connect::<ConnectedDirect>().into_sink() })
+                .splice_untyped_ctx(&())
         },
         {
-            q!({
-                env.port(p2_port)
-                    .connect_local_blocking::<ConnectedDirect>()
-                    .into_source()
-            })
-            .splice_untyped_ctx(&())
+            q!({ env.port(p2_port).connect::<ConnectedDirect>().into_source() })
+                .splice_untyped_ctx(&())
         },
     )
 }
@@ -68,18 +60,14 @@ pub fn deploy_o2m(
         {
             q!({
                 env.port(p1_port)
-                    .connect_local_blocking::<ConnectedDemux<ConnectedDirect>>()
+                    .connect::<ConnectedDemux<ConnectedDirect>>()
                     .into_sink()
             })
             .splice_untyped_ctx(&())
         },
         {
-            q!({
-                env.port(c2_port)
-                    .connect_local_blocking::<ConnectedDirect>()
-                    .into_source()
-            })
-            .splice_untyped_ctx(&())
+            q!({ env.port(c2_port).connect::<ConnectedDirect>().into_source() })
+                .splice_untyped_ctx(&())
         },
     )
 }
@@ -91,17 +79,13 @@ pub fn deploy_m2o(
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!({
-                env.port(c1_port)
-                    .connect_local_blocking::<ConnectedDirect>()
-                    .into_sink()
-            })
-            .splice_untyped_ctx(&())
+            q!({ env.port(c1_port).connect::<ConnectedDirect>().into_sink() })
+                .splice_untyped_ctx(&())
         },
         {
             q!({
                 env.port(p2_port)
-                    .connect_local_blocking::<ConnectedTagged<ConnectedDirect>>()
+                    .connect::<ConnectedTagged<ConnectedDirect>>()
                     .into_source()
             })
             .splice_untyped_ctx(&())
@@ -118,7 +102,7 @@ pub fn deploy_m2m(
         {
             q!({
                 env.port(c1_port)
-                    .connect_local_blocking::<ConnectedDemux<ConnectedDirect>>()
+                    .connect::<ConnectedDemux<ConnectedDirect>>()
                     .into_sink()
             })
             .splice_untyped_ctx(&())
@@ -126,7 +110,7 @@ pub fn deploy_m2m(
         {
             q!({
                 env.port(c2_port)
-                    .connect_local_blocking::<ConnectedTagged<ConnectedDirect>>()
+                    .connect::<ConnectedTagged<ConnectedDirect>>()
                     .into_source()
             })
             .splice_untyped_ctx(&())
@@ -139,12 +123,7 @@ pub fn deploy_e2o(
     _e1_port: &str,
     p2_port: &str,
 ) -> syn::Expr {
-    q!({
-        env.port(p2_port)
-            .connect_local_blocking::<ConnectedDirect>()
-            .into_source()
-    })
-    .splice_untyped_ctx(&())
+    q!({ env.port(p2_port).connect::<ConnectedDirect>().into_source() }).splice_untyped_ctx(&())
 }
 
 pub fn deploy_o2e(
@@ -152,10 +131,5 @@ pub fn deploy_o2e(
     p1_port: &str,
     _e2_port: &str,
 ) -> syn::Expr {
-    q!({
-        env.port(p1_port)
-            .connect_local_blocking::<ConnectedDirect>()
-            .into_sink()
-    })
-    .splice_untyped_ctx(&())
+    q!({ env.port(p1_port).connect::<ConnectedDirect>().into_sink() }).splice_untyped_ctx(&())
 }
