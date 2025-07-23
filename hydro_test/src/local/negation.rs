@@ -10,7 +10,10 @@ pub fn test_difference<'a>(
 
     let mut source = unsafe {
         // SAFETY: intentionally using ticks
-        process.source_iter(q!(0..5)).tick_batch(&tick)
+        process
+            .source_iter(q!(0..5))
+            .tick_batch(&tick)
+            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
     };
     if persist1 {
         source = source.persist();
@@ -18,7 +21,10 @@ pub fn test_difference<'a>(
 
     let mut source2 = unsafe {
         // SAFETY: intentionally using ticks
-        process.source_iter(q!(3..6)).tick_batch(&tick)
+        process
+            .source_iter(q!(3..6))
+            .tick_batch(&tick)
+            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
     };
     if persist2 {
         source2 = source2.persist();
@@ -44,6 +50,7 @@ pub fn test_anti_join<'a>(
             .source_iter(q!(0..5))
             .map(q!(|v| (v, v)))
             .tick_batch(&tick)
+            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
     };
     if persist1 {
         source = source.persist();
@@ -51,7 +58,10 @@ pub fn test_anti_join<'a>(
 
     let mut source2 = unsafe {
         // SAFETY: intentionally using ticks
-        process.source_iter(q!(3..6)).tick_batch(&tick)
+        process
+            .source_iter(q!(3..6))
+            .tick_batch(&tick)
+            .continue_if(tick_trigger.clone().tick_batch(&tick).first())
     };
     if persist2 {
         source2 = source2.persist();
