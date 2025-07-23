@@ -46,7 +46,6 @@ impl<T> DeployPorts<T> {
 type UnixStream = std::convert::Infallible;
 
 #[cfg(not(unix))]
-#[expect(dead_code, reason = "conditional compilation placeholder")]
 type UnixListener = std::convert::Infallible;
 
 /// Describes how to connect to a service which is listening on some port.
