@@ -4,6 +4,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use futures::StreamExt;
+use futures::stream::FuturesUnordered;
 pub use hydro_deploy_integration::*;
 use serde::de::DeserializeOwned;
 
@@ -76,14 +78,25 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
         panic!("expected start");
     };
 
-    let mut all_connected = HashMap::new();
-    for (name, defn) in connection_defns {
-        all_connected.insert(name, Connection::AsClient(defn.connect()));
-    }
+    let (client_conns, server_conns) = futures::join!(
+        connection_defns
+            .into_iter()
+            .map(|(name, defn)| async move { (name, Connection::AsClient(defn.connect().await)) })
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>(),
+        binds
+            .into_iter()
+            .map(
+                |(name, defn)| async move { (name, Connection::AsServer(accept_bound(defn).await)) }
+            )
+            .collect::<FuturesUnordered<_>>()
+            .collect::<Vec<_>>()
+    );
 
-    for (name, defn) in binds {
-        all_connected.insert(name, Connection::AsServer(defn));
-    }
+    let all_connected = client_conns
+        .into_iter()
+        .chain(server_conns.into_iter())
+        .collect();
 
     DeployPorts {
         ports: RefCell::new(all_connected),
