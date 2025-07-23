@@ -19,13 +19,11 @@ async fn main() {
     let mut start_node = ports
         .port("increment_start_node")
         .connect::<ConnectedDirect>()
-        .await
         .into_sink();
 
     let mut end_node = ports
         .port("end_node_query")
         .connect::<ConnectedDirect>()
-        .await
         .into_source();
 
     let num_clients: u64 = std::env::args().nth(1).unwrap().parse().unwrap();
