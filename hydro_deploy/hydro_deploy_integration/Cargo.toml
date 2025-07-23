@@ -21,10 +21,6 @@ serde = { version = "1.0.197", features = [ "derive" ] }
 tempfile = "3.0.0"
 
 # [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.29.0", features = [ "full" ] }
+tokio = { version = "1.29.0", features = [ "rt", "net", "time" ] }
 tokio-util = { version = "0.7.5", features = [ "net", "codec" ] }
 tokio-stream = { version = "0.1.3", default-features = false, features = [ "net" ] }
-
-# [target.'cfg(target_arch = "wasm32")'.dependencies]
-# tokio = { version = "1.29.0", features = [ "rt" , "sync", "macros", "io-util", "time" ] }
-# tokio-util = { version = "0.7.5", features = [ "codec" ] }
