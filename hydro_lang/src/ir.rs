@@ -10,7 +10,6 @@ use std::rc::Rc;
 
 #[cfg(feature = "build")]
 use dfir_lang::graph::FlatGraphBuilder;
-use prettyplease;
 #[cfg(feature = "build")]
 use proc_macro2::Span;
 use proc_macro2::TokenStream;
@@ -63,11 +62,10 @@ impl Display for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let original = self.0.as_ref().clone();
         let simplified = simplify_q_macro(original);
-        let formatted = prettyplease::unparse(&syn::parse_quote! {
-            q!(#simplified)
-        });
-
-        write!(f, "{}", formatted)
+        
+        // For now, just use quote formatting without trying to parse as a statement
+        // This avoids the syn::parse_quote! issues entirely
+        write!(f, "q!({})", quote::quote!(#simplified))
     }
 }
 
