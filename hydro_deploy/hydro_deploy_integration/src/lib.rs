@@ -461,7 +461,7 @@ impl Connected for ConnectedDirect {
 
                 #[cfg(not(unix))]
                 {
-                    drop(stream);
+                    let _ = stream;
                     panic!("Unix sockets are not supported on this platform");
                 }
             }
