@@ -105,8 +105,8 @@ impl CustomClientPort {
             .load_instantiated(&|p| p)
             .await
             .instantiate()
-            .connect::<ConnectedDirect>()
             .await
+            .connect::<ConnectedDirect>()
     }
 }
 

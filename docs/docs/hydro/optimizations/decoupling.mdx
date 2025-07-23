@@ -1,0 +1,40 @@
+---
+sidebar_position: 1
+---
+
+# Decoupling
+
+Decoupling splits the logic on a single location in Hydro across multiple locations by inserting `Network` operators, converting dataflow between streams into message passing.
+
+Analysis is necessary before decoupling in order to determine:
+1. The set of operators that can be decoupled, and
+2. Each potential decoupling's impact on throughput and latency.
+
+## Correctness
+Decoupling within an atomic region (see [Ticks and Atomicity](../ticks-atomicity/)) would split operations meant to execute within a single unit of logical time across machines with incomparable logical time.
+Without additional coordination between machines, this would violate safety.
+We avoid these complications by only considering operators that are not within any atomic region.
+By definition, these operators can tolerate any delays in processing, so the additional delay introduced by message passing does not affect behavior.
+
+
+## Cost
+Decoupling a single machine `A` into two machines `A` and `B` changes the CPU load on each machine as follows:
+
+- The CPU load on `A` is reduced by the CPU load of the decoupled operators.
+- The CPU load on `B` is the sum of the CPU load of the decoupled operators.
+- For each operator on `A` that now sends a message to `B`, the CPU load on `A` is increased by the cost of serializing each output of the operator.
+- For each operator on `A` that now sends a message to `B`, the CPU load on `B` is increased by the cost of deserializing each output of the operator.
+
+The serialization and deserialization cost can be estimated after profiling, by multiplying the cardinality of the operator's output with the average cost of serialization and deserialization for each message.
+
+
+## ILP
+We model the decision of "which operators to decouple" as an Integer Linear Program (ILP).
+Our objective is to minimize the CPU load on both the original and new machines, so neither of them are likely to remain the bottleneck.
+For each decouple-able operator (according to [Correctness](#correctness)), we add a variable to the ILP that is `1` if the operator should be placed on the decoupled machine and `0` otherwise.
+We adjust the CPU loads accordingly and add a serialization/deserialization penalty if the parent or child of the operator is located on a different machine.
+
+
+## Rewriting the Program
+Once the ILP is solved, Hydro implements the decoupling decisions by inserting `Network` operators between the decoupled operators and their parents and children.
+Special care is taken to ensure that any references to `CLUSTER_SELF_ID` on the decoupled machine continues to refer to the ID of the original machine, as it would have before decoupling.

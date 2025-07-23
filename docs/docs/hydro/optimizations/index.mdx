@@ -1,0 +1,47 @@
+# Optimizations
+:::caution
+
+Optimizations are an experimental feature.
+The implementation is still evolving and may be incorrect.
+
+:::
+
+During compilation, Hydro programs can be automatically optimized with opt-in, provably safe rewrites.
+These optimizations increase throughput by scaling up, by introducing **decoupling** (pipeline parallelism) and **partitioning** (data parallelism) to different components of the Hydro program.
+Decoupling splits components into sub-components while partitioning splits data across replicas; both serve to allow bottlenecked nodes to split load across additional machines.
+
+Naïvely decoupling and partitioning may split atomic regions or shared data across machines, requiring coordination in order to maintain consistency.
+Minimizing communication overhead is the key to performant decoupling and partitioning; this is achieved through careful analysis (see [Decoupling](./decoupling.mdx) and [Partitioning](./partitioning.mdx) for more details).
+
+:::info
+
+Decoupling and partitioning are traditional optimizations first used to scale distributed protocols in the VLDB '21 paper [Scaling Replicated State Machines with Compartmentalization](https://www.vldb.org/pvldb/vol14/p2203-whittaker.pdf).
+These techniques were then formalized into rule-driven rewrites in the SIGMOD '24 paper [Optimizing Distributed Protocols with Query Rewrites](https://hydro.run/papers/david-sigmod-2024.pdf) and extended to BFT protocols in the PaPoC '24 paper [Bigger, not Badder: Safely Scaling BFT Protocols](https://hydro.run/papers/david-papoc-2024.pdf).
+
+:::
+
+
+## Correctness
+These new machines together "represent" the original machine and are indistinguishable from the original to any observer, guaranteeing the **safety** of the rewrites.
+Rewrites are safe if the optimized program always behaves in a way that the original Hydro program could have.
+
+Fault tolerance, however, is a different matter.
+Because each machine now executes independently, they also *fail* independently, whereas the original machine would have failed as a whole.
+Therefore, these optimizations should only be correctly applied to protocols that permit the possibility of partial failures, or more formally, **general omission** (the potential loss of messages between any machine).
+This includes core distributed protocols like Paxos and Raft and any BFT protocol.
+
+
+## Profiling
+Our optimizations work by reducing the load on bottlenecked machines, but bottlenecks in distributed systems vary based on the workload and execution environment.
+Therefore, the first step in optimization is **profiling**, using a benchmark representative of the expected workload.
+Once a benchmark is created, Hydro will automatically execute the program with the benchmark, analyze the results for optimization opportunities, and apply those optimizations.
+
+An example benchmark for 2PC can be found in `two_pc_bench.rs`.
+The 2PC client generates payloads for a fixed number of simulated users in a closed loop, creating the next payload when 2PC successfully commits the previous one.
+The throughput, latency, and CPU usage of 2PC can then be automatically measured and used to determine the bottleneck.
+
+:::tip
+
+In order to opt into decoupling and partitioning, Hydro programs must be deployed with the `deploy_and_analyze` function and run with the `--features ilp` flag.
+
+:::
