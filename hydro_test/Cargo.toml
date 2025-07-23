@@ -7,9 +7,6 @@ edition = "2024"
 [lints]
 workspace = true
 
-[features]
-ilp = ["hydro_optimize/ilp"]
-
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.13.2" }
 hydro_std = { path = "../hydro_std", version = "^0.13.0" }
