@@ -19,8 +19,8 @@ use quote::ToTokens;
 use quote::quote;
 #[cfg(feature = "build")]
 use syn::parse_quote;
-use syn::visit_mut::VisitMut;
 use syn::visit::{self, Visit};
+use syn::visit_mut::VisitMut;
 
 use crate::backtrace::BacktraceElement;
 #[cfg(feature = "build")]
@@ -30,7 +30,7 @@ use crate::location::LocationId;
 /// Debug displays the type's tokens.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Hash)]
 pub struct DebugExpr(pub Box<syn::Expr>);
 
 impl From<syn::Expr> for DebugExpr {
@@ -53,6 +53,12 @@ impl ToTokens for DebugExpr {
     }
 }
 
+impl Debug for DebugExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
+    }
+}
+
 impl Display for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let original = self.0.as_ref().clone();
@@ -60,23 +66,7 @@ impl Display for DebugExpr {
         let formatted = prettyplease::unparse(&syn::parse_quote! {
             q!(#simplified)
         });
-        // let cleaned = formatted
-        //         .trim_start()
-        //         .trim_start_matches("fn dummy()")
-        //         .trim_start()
-        //         .trim_start_matches('{')
-        //         .trim_start()
-        //         .trim_end()
-        //         .trim_end_matches('}')
-        //         .trim_end()
-        //         .replace("\n    ", "\n") // Remove extra leading indent
-        //         .to_string();
 
-        // if cleaned.len() > 50 {
-        //     format!("{}...", &cleaned[..47])
-        // } else {
-        //     cleaned
-        // }
         write!(f, "{}", formatted)
     }
 }
@@ -237,7 +227,7 @@ impl<'ast> Visit<'ast> for ClosureFinder {
 
                 // If no inner block with closure found, continue with normal visitation
                 visit::visit_expr(self, expr);
-                
+
                 // If we found a closure, just return the closure itself, not the whole block
                 // unless we're in the special case where we want the containing block
                 if self.found_closure.is_some() {
