@@ -147,5 +147,5 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graphs if requested
-    built.generate_graph_with_config(&args.graph, None);
+    _ = built.generate_graph_with_config(&args.graph, None);
 }

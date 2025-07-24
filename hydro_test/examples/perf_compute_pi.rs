@@ -74,13 +74,7 @@ async fn main() {
     )
     .await;
 
-    // Generate graphs if requested
-    let built = rewritten_ir_builder
-        .clone()
-        .build_with(|_| ir.clone())
-        .finalize();
-    built.generate_graph_with_config(&args.graph, None);
-
-    // Cleanup
-    let _ = rewritten_ir_builder.build_with(|_| ir).finalize();
+    // Cleanup and generate graphs if requested
+    let built = rewritten_ir_builder.build_with(|_| ir).finalize();
+    _ = built.generate_graph_with_config(&args.graph, None);
 }
