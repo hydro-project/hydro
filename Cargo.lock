@@ -913,7 +913,7 @@ dependencies = [
  "serde",
  "serde_json",
  "toml",
- "winnow 0.7.10",
+ "winnow",
  "yaml-rust2",
 ]
 
@@ -4022,12 +4022,11 @@ dependencies = [
 
 [[package]]
 name = "proc-macro-crate"
-version = "1.3.1"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
+checksum = "edce586971a4dfaa28950c6f18ed55e0406c1ab88bbce2c6f6293a7aaba73d35"
 dependencies = [
- "once_cell",
- "toml_edit 0.19.15",
+ "toml_edit",
 ]
 
 [[package]]
@@ -5263,9 +5262,9 @@ checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
 
 [[package]]
 name = "stageleft"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84670c82d52b9426e04920f83470dc4a9cf59c917a170d111ea036dea9a9dbb4"
+checksum = "4e8521cbd5fa61b3426143e3752527680919c996ea725d6f88d813935749c6a1"
 dependencies = [
  "ctor 0.4.2",
  "proc-macro-crate",
@@ -5277,9 +5276,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "27107ee80ed856cf27a88f85f48eb1def209834201b8112800adbecfbd6a8ca0"
+checksum = "24752edd8758138bfc29cd8fc2f8fa7268ba0592b21a1a5a5744f9acd0ae76c5"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -5290,9 +5289,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1bffe1e8c0cdb4c7e3a57faae1ff1f3df44d030145645cc4dec4ff56a0b4785b"
+checksum = "05b2b48455feff86f6cbc9a368a978671d03cdc5cc3a1b7d00a479d53bae2ad4"
 dependencies = [
  "prettyplease",
  "proc-macro-crate",
@@ -5301,7 +5300,7 @@ dependencies = [
  "sha2",
  "syn 2.0.101",
  "syn-inline-mod",
- "toml_edit 0.22.26",
+ "toml_edit",
 ]
 
 [[package]]
@@ -5757,7 +5756,7 @@ dependencies = [
  "serde",
  "serde_spanned",
  "toml_datetime",
- "toml_edit 0.22.26",
+ "toml_edit",
 ]
 
 [[package]]
@@ -5771,17 +5770,6 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.19.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
-dependencies = [
- "indexmap",
- "toml_datetime",
- "winnow 0.5.40",
-]
-
-[[package]]
-name = "toml_edit"
 version = "0.22.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "310068873db2c5b3e7659d2cc35d21855dbafa50d1ce336397c666e3cb08137e"
@@ -5791,7 +5779,7 @@ dependencies = [
  "serde_spanned",
  "toml_datetime",
  "toml_write",
- "winnow 0.7.10",
+ "winnow",
 ]
 
 [[package]]
@@ -6805,15 +6793,6 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
-
-[[package]]
-name = "winnow"
-version = "0.5.40"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
-dependencies = [
- "memchr",
-]
 
 [[package]]
 name = "winnow"
