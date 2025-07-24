@@ -6,7 +6,7 @@ use hydro_deploy::{Deployment, Host};
 use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::rewrites::persist_pullup;
-use hydro_optimize::partitioner::{self, PartitionAttribute, Partitioner};
+use hydro_optimize::partitioner::{self, Partitioner};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -47,7 +47,7 @@ async fn main() {
 
     let num_original_nodes = 2;
     let partitioner = Partitioner {
-        nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
+        nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
         num_partitions: 3,
         partitioned_cluster_id: cluster.id().raw_id(),
     };

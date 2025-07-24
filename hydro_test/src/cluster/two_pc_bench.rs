@@ -51,7 +51,8 @@ mod tests {
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     #[cfg(stageleft_runtime)]
     use hydro_lang::{Cluster, Process};
-    use hydro_optimize::partition_node_analysis::partitioning_analysis;
+    use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
+    use hydro_optimize::partitioner::{partition, Partitioner};
     use hydro_optimize::repair::{cycle_source_to_sink_input, inject_id, inject_location};
 
     #[cfg(stageleft_runtime)]
@@ -175,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn two_pc_partitionable() {
+    fn two_pc_partition() {
         let builder = hydro_lang::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
@@ -198,21 +199,32 @@ mod tests {
         let coordinator_partitioning =
             partitioning_analysis(&mut ir, &coordinator.id(), &cycle_data);
 
-        // 8 and 26 are the op_ids of the input nodes to the coordinator. They will change if the coordinator's logic changes
+        // 8 and 26 are the op_ids of the input nodes from the participants to the coordinator. They will change if the coordinator's logic changes
         // 1 is the partitioning index of those inputs. Specifically, given the client sends (sender_id, payload) to the coordinator, we can partition on the entire payload
-        let expected_coordinator_partitioning = Some(vec![BTreeMap::from([
+        let expected_coordinator_partitioning = vec![BTreeMap::from([
             (8, vec!["1".to_string()]),
             (26, vec!["1".to_string()]),
-        ])]);
-
-        assert_eq!(coordinator_partitioning, expected_coordinator_partitioning);
+        ])];
+        let expected_coordinator_input_parents = BTreeMap::from([(3, 2), (8, 7), (26, 25)]);
+        assert_eq!(coordinator_partitioning, Some((expected_coordinator_partitioning, expected_coordinator_input_parents)));
 
         let participant_partitioning =
             partitioning_analysis(&mut ir, &participants.id(), &cycle_data);
 
         // Participants can partition on ANYTHING, since they only execute maps
-        let expected_participant_partitionings = Some(vec![]);
+        let expected_participant_partitionings = vec![];
+        let expected_participant_input_parents = BTreeMap::from([(7, 6), (25, 24)]);
+        assert_eq!(participant_partitioning, Some((expected_participant_partitionings, expected_participant_input_parents)));
 
-        assert_eq!(participant_partitioning, expected_participant_partitionings);
+        // Apply partitioning to participants
+        let nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
+        let partitioner = Partitioner {
+            nodes_to_partition,
+            num_partitions: 3,
+            partitioned_cluster_id: participants.id().raw_id(),
+        };
+        partition(&mut ir, &partitioner);
+
+        insta::assert_debug_snapshot!(&ir);
     }
 }

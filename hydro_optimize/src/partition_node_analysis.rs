@@ -15,6 +15,7 @@ struct InputMetadata {
     cluster_to_partition: LocationId,
     // Variables
     inputs: BTreeSet<usize>, // op_ids of cluster inputs.
+    input_parents: BTreeMap<usize, usize>, // input op_id -> parent of the input (potentially on a different location)
 }
 
 fn input_analysis_node(
@@ -25,15 +26,17 @@ fn input_analysis_node(
     match get_network_type(node, &metadata.cluster_to_partition) {
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
             metadata.inputs.insert(*next_stmt_id);
+            metadata.input_parents.insert(*next_stmt_id, node.input_metadata().first().unwrap().id.unwrap());
         }
         _ => {}
     }
 }
 
-fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> BTreeSet<usize> {
+fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> (BTreeSet<usize>, BTreeMap<usize, usize>) {
     let mut input_metadata = InputMetadata {
         cluster_to_partition: cluster_to_partition.clone(),
         inputs: BTreeSet::new(),
+        input_parents: BTreeMap::new(),
     };
     traverse_dfir(
         ir,
@@ -43,13 +46,14 @@ fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> BT
         },
     );
 
-    input_metadata.inputs
+    (input_metadata.inputs, input_metadata.input_parents)
 }
 
 pub struct InputDependencyMetadata {
     // Const fields
     pub cluster_to_partition: LocationId,
     pub inputs: BTreeSet<usize>,
+    pub input_parents: BTreeMap<usize, usize>,
     // Variables
     pub optimistic_phase: bool, /* If true, tuple intersection continues even if one side does not exist */
     pub input_taint: BTreeMap<usize, BTreeSet<usize>>, /* op_id -> set of input op_ids that taint this node */
@@ -353,9 +357,11 @@ fn input_dependency_analysis(
     cluster_to_partition: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) -> InputDependencyMetadata {
+    let (inputs, input_parents) = input_analysis(ir, cluster_to_partition);
     let mut metadata = InputDependencyMetadata {
         cluster_to_partition: cluster_to_partition.clone(),
-        inputs: input_analysis(ir, cluster_to_partition),
+        inputs,
+        input_parents,
         optimistic_phase: true,
         input_taint: BTreeMap::new(),
         input_dependencies: BTreeMap::new(),
@@ -573,12 +579,12 @@ fn partitioning_constraint_analysis_node(
     }
 }
 
+/// Returns (all possible partitionings, inputs -> inputs' parents)
 pub fn partitioning_analysis(
     ir: &mut [HydroLeaf],
     cluster_to_partition: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
-) -> Option<Vec<BTreeMap<usize, StructOrTupleIndex>>> {
-    // Returns all possible partitionings
+) -> Option<(Vec<BTreeMap<usize, StructOrTupleIndex>>, BTreeMap<usize, usize>)> {
     let dependency_metadata =
         input_dependency_analysis(ir, cluster_to_partition, cycle_source_to_sink_input);
     let mut possible_partitionings = BTreeMap::new();
@@ -636,7 +642,7 @@ pub fn partitioning_analysis(
     } else {
         // possible_partitionings is empty
         println!("No restrictions on partitioning");
-        return Some(Vec::new());
+        return Some((Vec::new(), dependency_metadata.input_parents));
     }
 
     // Iterate through remaining constraints
@@ -693,7 +699,28 @@ pub fn partitioning_analysis(
     if prev_global_partitionings.is_empty() {
         return None; // No possible partitioning
     }
-    Some(prev_global_partitionings)
+    Some((prev_global_partitionings, dependency_metadata.input_parents))
+}
+
+/// Given the set of possible partitionings, select an arbitrary one to use, and find all the parents of Network nodes that need to be modified
+pub fn nodes_to_partition(analysis_results: Option<(Vec<BTreeMap<usize, StructOrTupleIndex>>, BTreeMap<usize, usize>)>) -> Option<HashMap<usize, StructOrTupleIndex>> {
+    if let Some((possible_partitionings, input_parents)) = analysis_results {
+        let default_partitioning = BTreeMap::new();
+        let partitioning = possible_partitionings.first().unwrap_or(&default_partitioning);
+        let mut nodes_to_partition = HashMap::new();
+
+        for (input, parent) in input_parents {
+            if let Some(partition_index) = partitioning.get(&input) {
+                nodes_to_partition.insert(parent, partition_index.clone());
+            } else {
+                // No restriction, partition on the entire thing
+                nodes_to_partition.insert(parent, vec![]);
+            }
+        }
+
+        return Some(nodes_to_partition);
+    }
+    return None
 }
 
 #[cfg(test)]

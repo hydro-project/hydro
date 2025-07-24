@@ -4,18 +4,11 @@ use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use serde::{Deserialize, Serialize};
 use syn::visit_mut::{self, VisitMut};
 
-use crate::rewrites::ClusterSelfIdReplace;
-
-/// Fields that could be used for partitioning
-#[derive(Clone, Serialize, Deserialize)]
-pub enum PartitionAttribute {
-    All(),
-    TupleIndex(usize),
-}
+use crate::{partition_syn_analysis::StructOrTupleIndex, rewrites::ClusterSelfIdReplace};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Partitioner {
-    pub nodes_to_partition: HashMap<usize, PartitionAttribute>, /* ID of node right before a Network -> what to partition on */
+    pub nodes_to_partition: HashMap<usize, StructOrTupleIndex>, /* ID of node right before a Network -> what to partition on */
     pub num_partitions: usize,
     pub partitioned_cluster_id: usize,
 }
@@ -84,6 +77,26 @@ fn replace_membership_info(node: &mut HydroNode, partitioner: &Partitioner) {
     });
 }
 
+fn quoted_struct_or_tuple_index(mut tuple: syn::Expr, indices: &StructOrTupleIndex) -> syn::Expr {
+    for index in indices {
+        let member = if let Ok(num_index) = index.parse::<usize>() {
+            syn::Member::Unnamed(syn::Index::from(num_index))
+        } else {
+            syn::Member::Named(syn::Ident::new(&index, proc_macro2::Span::call_site()))
+        };
+
+        let dot_token = <syn::Token![.]>::default();
+
+        tuple = syn::Expr::Field(syn::ExprField {
+            attrs: vec![],
+            base: Box::new(tuple),
+            dot_token,
+            member,
+        });
+    }
+    tuple
+}
+
 fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_stmt_id: usize) {
     let Partitioner {
         nodes_to_partition,
@@ -91,35 +104,33 @@ fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_
         ..
     } = partitioner;
 
-    if let Some(partition_attr) = nodes_to_partition.get(&next_stmt_id) {
+    if let Some(indices) = nodes_to_partition.get(&next_stmt_id) {
         println!("Partitioning node {} {}", next_stmt_id, node.print_root());
 
         let node_content = std::mem::replace(node, HydroNode::Placeholder);
         let metadata = node_content.metadata().clone();
 
-        let f: syn::Expr = match partition_attr {
-            PartitionAttribute::All() => {
-                syn::parse_quote!(|(orig_dest, item)| {
-                    let orig_dest_id = orig_dest.raw_id;
-                    let new_dest_id = (orig_dest_id * #num_partitions as u32) + (item as usize % #num_partitions) as u32;
-                    (
-                        ClusterId::<()>::from_raw(new_dest_id),
-                        item
-                    )
-                })
+        let struct_or_tuple = syn::parse_quote!{ struct_or_tuple };
+        let struct_or_tuple_with_fields = quoted_struct_or_tuple_index(
+            struct_or_tuple,
+            indices,
+        );
+        let f: syn::Expr = syn::parse_quote!(
+            |(orig_dest, struct_or_tuple)| {
+                use std::any::{Any, TypeId};
+                use std::hash::{Hash, Hasher, DefaultHasher};
+
+                // Hash the field we'll partition on
+                let mut s = DefaultHasher::new();
+                #struct_or_tuple_with_fields.hash(&mut s);
+                let partition_val = s.finish() as u32;
+
+                (
+                    (orig_dest * #num_partitions as u32) + (partition_val % #num_partitions as u32) as u32,
+                    struct_or_tuple
+                )
             }
-            PartitionAttribute::TupleIndex(tuple_index) => {
-                let tuple_index_ident = syn::Index::from(*tuple_index);
-                syn::parse_quote!(|(orig_dest, tuple)| {
-                    let orig_dest_id = orig_dest.raw_id;
-                    let new_dest_id = (orig_dest_id * #num_partitions as u32) + (tuple.#tuple_index_ident as usize % #num_partitions) as u32;
-                    (
-                        ClusterId::<()>::from_raw(new_dest_id),
-                        tuple
-                    )
-                })
-            }
-        };
+        );
 
         let mapped_node = HydroNode::Map {
             f: f.into(),
@@ -142,7 +153,7 @@ fn replace_receiver_network(node: &mut HydroNode, partitioner: &Partitioner) {
         input, metadata, ..
     } = node
     {
-        if input.metadata().location_kind.raw_id() == *partitioned_cluster_id {
+        if input.metadata().location_kind.root().raw_id() == *partitioned_cluster_id {
             println!("Rewriting network on receiver to remap location ids");
 
             let metadata = metadata.clone();
