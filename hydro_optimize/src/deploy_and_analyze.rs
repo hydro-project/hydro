@@ -1,8 +1,3 @@
-#![cfg_attr(
-    not(feature = "ilp"),
-    allow(unused, reason = "requires Gurobi to instrument")
-)]
-
 use std::collections::HashMap;
 use std::time::Duration;
 
@@ -16,10 +11,8 @@ use hydro_lang::internal_constants::{COUNTER_PREFIX, CPU_USAGE_PREFIX};
 use hydro_lang::ir::{HydroLeaf, HydroNode, deep_clone, traverse_dfir};
 use hydro_lang::location::LocationId;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
-use stageleft::{Quoted, q};
 use tokio::sync::mpsc::UnboundedReceiver;
 
-#[cfg(feature = "ilp")]
 use crate::decouple_analysis::decouple_analysis;
 use crate::decoupler::Decoupler;
 use crate::deploy::ReusableHosts;
@@ -81,8 +74,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
     }
 }
 
-fn insert_counter(ir: &mut [HydroLeaf], duration: impl Quoted<'static, Duration>) {
-    let duration = duration.splice_typed();
+fn insert_counter(ir: &mut [HydroLeaf], duration: syn::Expr) {
     traverse_dfir(
         ir,
         |_, _| {},
@@ -126,7 +118,6 @@ async fn track_cluster_usage_cardinality(
     (usage_out, cardinality_out)
 }
 
-#[cfg(feature = "ilp")]
 /// TODO: Return type should be changed to also include Partitioner
 pub async fn deploy_and_analyze<'a>(
     reusable_hosts: &mut ReusableHosts,
@@ -143,7 +134,7 @@ pub async fn deploy_and_analyze<'a>(
     String,
     usize,
 ) {
-    let counter_output_duration = q!(std::time::Duration::from_secs(1));
+    let counter_output_duration = syn::parse_quote!(std::time::Duration::from_secs(1));
 
     // Rewrite with counter tracking
     let rewritten_ir_builder = builder.rewritten_ir_builder();
@@ -205,12 +196,10 @@ pub async fn deploy_and_analyze<'a>(
     let (send_overhead, recv_overhead) = analyze_send_recv_overheads(&mut ir, &bottleneck);
     let (orig_to_decoupled, decoupled_to_orig, place_on_decoupled) = decouple_analysis(
         &mut ir,
-        "decouple",
         &bottleneck,
         send_overhead,
         recv_overhead,
         &cycle_source_to_sink_input,
-        true,
     );
 
     // TODO: Save decoupling decision to file
