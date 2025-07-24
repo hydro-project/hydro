@@ -33,6 +33,7 @@ pub struct RustCrate {
     profile: Option<String>,
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
+    build_env: Vec<(String, String)>,
     no_default_features: bool,
     features: Option<Vec<String>>,
     config: Option<String>,
@@ -53,6 +54,7 @@ impl RustCrate {
             profile: None,
             rustflags: None,
             target_dir: None,
+            build_env: vec![],
             no_default_features: false,
             features: None,
             config: None,
@@ -110,6 +112,11 @@ impl RustCrate {
         }
 
         self.target_dir = Some(target_dir.into());
+        self
+    }
+
+    pub fn build_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.build_env.push((key.into(), value.into()));
         self
     }
 
@@ -184,6 +191,7 @@ impl ServiceBuilder for RustCrate {
             self.profile,
             self.rustflags,
             self.target_dir,
+            self.build_env,
             self.no_default_features,
             self.tracing,
             self.features,

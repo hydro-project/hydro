@@ -38,7 +38,6 @@ pub struct TrybuildConfig {
     pub project_dir: PathBuf,
     pub target_dir: PathBuf,
     pub features: Option<Vec<String>>,
-    pub cfgs: String,
 }
 
 pub fn create_graph_trybuild(
@@ -126,7 +125,6 @@ pub fn create_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
-            cfgs: "--cfg stageleft_trybuild".to_string(),
         },
     )
 }
