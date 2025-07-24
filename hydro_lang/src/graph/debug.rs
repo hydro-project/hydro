@@ -7,7 +7,6 @@ use std::fmt::Write;
 use std::io::Result;
 
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
-use super::template::get_template;
 use crate::ir::HydroLeaf;
 
 /// Opens Hydro IR leaves as a single mermaid diagram.
@@ -100,19 +99,37 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
 
 /// Helper function to create a complete HTML file with ReactFlow.js visualization and open it in browser.
 /// Creates files in temporary directory to avoid cluttering the workspace.
-pub fn save_and_open_reactflow_browser(reactflow_json: &str, filename: &str) -> Result<()> {
-    let template = get_template();
-    let html_content = template.replace("{{GRAPH_DATA}}", reactflow_json);
-
-    // Create file in temporary directory
-    let temp_file = save_to_file(html_content, None, filename, "HTML/Reactflow JS file").unwrap();
-    println!("Got path {}", temp_file.display());
-
-    // Open the HTML file in browser
-    let file_url = format!("file://{}", temp_file.display());
-    webbrowser::open(&file_url)?;
-
-    println!("Opened Enhanced ReactFlow.js visualization in browser.");
+pub fn save_and_open_reactflow_browser(reactflow_json: &str, _filename: &str) -> Result<()> {
+    // Use the new docs-based approach instead of creating temp HTML files
+    #[cfg(feature = "viz")]
+    {
+        use data_encoding::BASE64URL_NOPAD;
+        
+        // Encode the JSON data for URL
+        let encoded_data = BASE64URL_NOPAD.encode(reactflow_json.as_bytes());
+        
+        // Try localhost first (for development), then fall back to docs site
+        let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
+        let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
+        
+        // Try to open localhost first
+        match webbrowser::open(&localhost_url) {
+            Ok(_) => {
+                println!("Opened ReactFlow.js visualization in docs (localhost): {}", localhost_url);
+            }
+            Err(_) => {
+                // If localhost fails, try the main docs site
+                webbrowser::open(&docs_url)?;
+                println!("Opened ReactFlow.js visualization in docs: {}", docs_url);
+            }
+        }
+    }
+    
+    #[cfg(not(feature = "viz"))]
+    {
+        println!("viz feature not enabled, cannot open browser");
+    }
+    
     Ok(())
 }
 

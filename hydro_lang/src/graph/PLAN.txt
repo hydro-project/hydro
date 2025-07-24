@@ -1,0 +1,28 @@
+Analysis & Refined Plan
+Your plan is excellent! Here are some refinements I'd suggest:
+
+Current State:
+ReactFlow visualization works by creating an HTML file with embedded JSON and opening it in a browser
+The HTML template includes ReactFlow.js, ELK layout engine, and sophisticated UI controls
+The system currently uses super::debug::open_reactflow_browser() which creates a temp HTML file
+Refined Plan:
+Move visualization to docs with enhanced features ✅
+
+Create /docs/src/pages/visualizer.js for the ReactFlow component
+Leverage existing docs infrastructure (React, styling, etc.)
+Add drag-and-drop for JSON files
+Support URL-encoded JSON like mermaid.live
+URL encoding strategy (Enhanced from your plan)
+
+Use Base64URL encoding like the current mermaid implementation
+Format: /visualizer#data=<base64-encoded-json>
+This is more robust than query params for large JSON
+Backwards compatibility (Addition to your plan)
+
+Keep the current template-based system as a fallback
+Add a new method that redirects to the docs page
+This ensures existing code continues to work
+Progressive enhancement (Addition to your plan)
+
+Add a "Open in Docs Visualizer" button to the current HTML template
+This provides a migration path for users

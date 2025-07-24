@@ -363,7 +363,8 @@ pub fn hydro_ir_to_reactflow(
     Ok(output)
 }
 
-/// Open ReactFlow visualization in browser using the consolidated debug utilities
+/// Open ReactFlow visualization in browser using the docs visualizer with URL-encoded data
+#[cfg(feature = "viz")]
 pub fn open_reactflow_browser(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
@@ -377,7 +378,7 @@ pub fn open_reactflow_browser(
         ..Default::default()
     };
 
-    super::debug::open_reactflow_browser(ir, Some("hydro_graph.html"), Some(config))
+    open_reactflow_docs_browser(ir, config)
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
@@ -411,4 +412,57 @@ pub fn open_browser(
         built_flow.cluster_id_name().clone(),
         built_flow.external_id_name().clone(),
     )
+}
+
+/// Open ReactFlow visualization in the docs browser with URL-encoded data
+#[cfg(feature = "viz")]
+fn open_reactflow_docs_browser(
+    ir: &[crate::ir::HydroLeaf],
+    config: super::render::HydroWriteConfig,
+) -> Result<(), std::io::Error> {
+    // Generate ReactFlow JSON
+    let reactflow_json = super::render::render_hydro_ir_reactflow(ir, &config);
+    
+    // Base64 encode the JSON for URL parameter
+    let encoded_data = data_encoding::BASE64URL.encode(reactflow_json.as_bytes());
+    
+    // Create the docs visualizer URL
+    let docs_url = format!(
+        "https://hydro-project.github.io/hydro/visualizer#data={}",
+        encoded_data
+    );
+    
+    // For local development, use localhost instead
+    let local_url = format!(
+        "http://localhost:3000/visualizer#data={}",
+        encoded_data
+    );
+    
+    // Try to open the local URL first (for development), fallback to docs URL
+    println!("Opening Hydro ReactFlow visualization in browser...");
+    
+    // First try localhost for development
+    match webbrowser::open(&local_url) {
+        Ok(_) => {
+            println!("Opened local visualizer: {}", local_url);
+            return Ok(());
+        }
+        Err(_) => {
+            // Local server not available, try docs URL
+            println!("Local server not available, opening docs visualizer...");
+        }
+    }
+    
+    // Fallback to docs URL
+    match webbrowser::open(&docs_url) {
+        Ok(_) => {
+            println!("Opened docs visualizer: {}", docs_url);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Failed to open browser: {}", e);
+            eprintln!("You can manually open this URL: {}", docs_url);
+            Err(e)
+        }
+    }
 }
