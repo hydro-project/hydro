@@ -3,7 +3,7 @@ use std::cell::RefCell;
 #[cfg(feature = "build")]
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -18,6 +18,8 @@ use quote::ToTokens;
 use quote::quote;
 #[cfg(feature = "build")]
 use syn::parse_quote;
+use syn::visit::{self, Visit};
+use syn::visit_mut::VisitMut;
 
 use crate::backtrace::BacktraceElement;
 #[cfg(feature = "build")]
@@ -53,6 +55,167 @@ impl ToTokens for DebugExpr {
 impl Debug for DebugExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.to_token_stream())
+    }
+}
+
+impl Display for DebugExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let original = self.0.as_ref().clone();
+        let simplified = simplify_q_macro(original);
+
+        // For now, just use quote formatting without trying to parse as a statement
+        // This avoids the syn::parse_quote! issues entirely
+        write!(f, "q!({})", quote::quote!(#simplified))
+    }
+}
+
+/// Simplify expanded q! macro calls back to q!(...) syntax for better readability
+fn simplify_q_macro(mut expr: syn::Expr) -> syn::Expr {
+    // Try to parse the token string as a syn::Expr
+    // Use a visitor to simplify q! macro expansions
+    let mut simplifier = QMacroSimplifier::new();
+    simplifier.visit_expr_mut(&mut expr);
+
+    // If we found and simplified a q! macro, return the simplified version
+    if let Some(simplified) = simplifier.simplified_result {
+        simplified
+    } else {
+        expr
+    }
+}
+
+/// AST visitor that simplifies q! macro expansions
+#[derive(Default)]
+pub struct QMacroSimplifier {
+    pub simplified_result: Option<syn::Expr>,
+}
+
+impl QMacroSimplifier {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl VisitMut for QMacroSimplifier {
+    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
+        // Check if we already found a result to avoid further processing
+        if self.simplified_result.is_some() {
+            return;
+        }
+
+        if let syn::Expr::Call(call) = expr {
+            if let syn::Expr::Path(path_expr) = call.func.as_ref() {
+                // Look for calls to stageleft::runtime_support::fn*
+                if self.is_stageleft_runtime_support_call(&path_expr.path) {
+                    // Try to extract the closure from the arguments
+                    if let Some(closure) = self.extract_closure_from_args(&call.args) {
+                        self.simplified_result = Some(closure);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Continue visiting child expressions using the default implementation
+        // Use the default visitor to avoid infinite recursion
+        syn::visit_mut::visit_expr_mut(self, expr);
+    }
+}
+
+impl QMacroSimplifier {
+    fn is_stageleft_runtime_support_call(&self, path: &syn::Path) -> bool {
+        // Check if this is a call to stageleft::runtime_support::fn*
+        if let Some(last_segment) = path.segments.last() {
+            let fn_name = last_segment.ident.to_string();
+            // if fn_name.starts_with("fn") && fn_name.contains("_expr") {
+            fn_name.contains("_type_hint")
+                && path.segments.len() > 2
+                && path.segments[0].ident == "stageleft"
+                && path.segments[1].ident == "runtime_support"
+        } else {
+            false
+        }
+    }
+
+    fn extract_closure_from_args(
+        &self,
+        args: &syn::punctuated::Punctuated<syn::Expr, syn::Token![,]>,
+    ) -> Option<syn::Expr> {
+        // Look through the arguments for a closure expression
+        for arg in args {
+            if let syn::Expr::Closure(_) = arg {
+                // Format the closure nicely using prettyplease
+                return Some(arg.clone());
+            }
+            // Also check for closures nested in other expressions (like blocks)
+            if let Some(closure_expr) = self.find_closure_in_expr(arg) {
+                return Some(closure_expr);
+            }
+        }
+        None
+    }
+
+    fn find_closure_in_expr(&self, expr: &syn::Expr) -> Option<syn::Expr> {
+        let mut visitor = ClosureFinder {
+            found_closure: None,
+            prefer_inner_blocks: true,
+        };
+        visitor.visit_expr(expr);
+        visitor.found_closure
+    }
+}
+
+/// Visitor that finds closures in expressions with special block handling
+struct ClosureFinder {
+    found_closure: Option<syn::Expr>,
+    prefer_inner_blocks: bool,
+}
+
+impl<'ast> Visit<'ast> for ClosureFinder {
+    fn visit_expr(&mut self, expr: &'ast syn::Expr) {
+        // If we already found a closure, don't continue searching
+        if self.found_closure.is_some() {
+            return;
+        }
+
+        match expr {
+            syn::Expr::Closure(_) => {
+                self.found_closure = Some(expr.clone());
+            }
+            syn::Expr::Block(block) if self.prefer_inner_blocks => {
+                // Special handling for blocks - look for inner blocks that contain closures
+                for stmt in &block.block.stmts {
+                    if let syn::Stmt::Expr(stmt_expr, _) = stmt {
+                        if let syn::Expr::Block(_) = stmt_expr {
+                            // Check if this nested block contains a closure
+                            let mut inner_visitor = ClosureFinder {
+                                found_closure: None,
+                                prefer_inner_blocks: false, // Avoid infinite recursion
+                            };
+                            inner_visitor.visit_expr(stmt_expr);
+                            if inner_visitor.found_closure.is_some() {
+                                // Found a closure in an inner block, return that block
+                                self.found_closure = Some(stmt_expr.clone());
+                                return;
+                            }
+                        }
+                    }
+                }
+
+                // If no inner block with closure found, continue with normal visitation
+                visit::visit_expr(self, expr);
+
+                // If we found a closure, just return the closure itself, not the whole block
+                // unless we're in the special case where we want the containing block
+                if self.found_closure.is_some() {
+                    // The closure was found during visitation, no need to wrap in block
+                }
+            }
+            _ => {
+                // Use default visitor behavior for all other expressions
+                visit::visit_expr(self, expr);
+            }
+        }
     }
 }
 
@@ -2522,6 +2685,8 @@ where
 mod test {
     use std::mem::size_of;
 
+    use stageleft::{QuotedWithContext, q};
+
     use super::*;
 
     #[test]
@@ -2532,5 +2697,35 @@ mod test {
     #[test]
     fn hydro_leaf_size() {
         insta::assert_snapshot!(size_of::<HydroLeaf>(), @"184");
+    }
+
+    #[test]
+    fn test_simplify_q_macro_basic() {
+        // Test basic non-q! expression
+        let simple_expr: syn::Expr = syn::parse_str("x + y").unwrap();
+        let result = simplify_q_macro(simple_expr.clone());
+        assert_eq!(result, simple_expr);
+    }
+
+    #[test]
+    fn test_simplify_q_macro_actual_stageleft_call() {
+        // Test a simplified version of what a real stageleft call might look like
+        let stageleft_call = q!(|x: usize| x + 1).splice_fn1_ctx(&());
+        let result = simplify_q_macro(stageleft_call);
+        // This should be processed by our visitor and simplified to q!(...)
+        // since we detect the stageleft::runtime_support::fn_* pattern
+        insta::assert_snapshot!(result.to_token_stream().to_string());
+    }
+
+    #[test]
+    fn test_closure_no_pipe_at_start() {
+        // Test a closure that does not start with a pipe
+        let stageleft_call = q!({
+            let foo = 123;
+            move |b: usize| b + foo
+        })
+        .splice_fn1_ctx(&());
+        let result = simplify_q_macro(stageleft_call);
+        insta::assert_snapshot!(result.to_token_stream().to_string());
     }
 }

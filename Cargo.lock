@@ -2293,11 +2293,14 @@ dependencies = [
 name = "hydro_lang"
 version = "0.13.2"
 dependencies = [
+ "auto_impl",
  "backtrace",
  "bincode",
  "bytes",
  "chrono",
+ "clap",
  "ctor 0.2.9",
+ "data-encoding",
  "dfir_lang",
  "dfir_rs",
  "fs2",
@@ -2305,6 +2308,7 @@ dependencies = [
  "hydro_deploy",
  "hydro_deploy_integration",
  "insta",
+ "itertools 0.13.0",
  "match_box",
  "nameof",
  "prettyplease",
@@ -2315,6 +2319,7 @@ dependencies = [
  "rustc_version 0.4.1",
  "sealed 0.6.0",
  "serde",
+ "serde_json",
  "sha2",
  "stageleft",
  "stageleft_tool",
@@ -2325,6 +2330,7 @@ dependencies = [
  "toml",
  "trybuild",
  "trybuild-internals-api",
+ "webbrowser",
 ]
 
 [[package]]
@@ -2362,6 +2368,7 @@ dependencies = [
 name = "hydro_test"
 version = "0.0.0"
 dependencies = [
+ "clap",
  "colored 3.0.0",
  "ctor 0.2.9",
  "dfir_lang",
