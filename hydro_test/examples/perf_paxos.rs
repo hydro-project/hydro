@@ -1,10 +1,3 @@
-#[cfg(not(feature = "ilp"))]
-#[tokio::main]
-async fn main() {
-    panic!("Run with the `ilp` feature enabled.");
-}
-
-#[cfg(feature = "ilp")]
 #[tokio::main]
 async fn main() {
     use std::collections::HashMap;
@@ -35,6 +28,7 @@ async fn main() {
     }
 
     let args = PerfPaxosArgs::parse();
+
     let mut deployment = Deployment::new();
     let (host_arg, project) = if let Some(project) = args.gcp {
         ("gcp".to_string(), project)

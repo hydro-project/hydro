@@ -1,9 +1,3 @@
-#[cfg(not(feature = "ilp"))]
-#[tokio::main]
-async fn main() {
-    panic!("Run with the `ilp` feature enabled.");
-}
-
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 ///
 /// ```bash
@@ -13,7 +7,6 @@ async fn main() {
 /// Once the program is running, you can **press enter** to stop the program and see the results.
 /// (Pressing Ctrl+C will stop the program **without cleaning up cloud resources** nor generating the
 /// flamegraphs).
-#[cfg(feature = "ilp")]
 #[tokio::main]
 async fn main() {
     use std::collections::HashMap;
@@ -41,6 +34,7 @@ async fn main() {
     }
 
     let args = PerfArgs::parse();
+
     let mut deployment = Deployment::new();
     let (host_arg, project) = if let Some(project) = args.gcp {
         ("gcp".to_string(), project)

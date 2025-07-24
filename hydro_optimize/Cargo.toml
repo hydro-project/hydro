@@ -11,17 +11,13 @@ license = { workspace = true }
 [lints]
 workspace = true
 
-[features]
-default = []
-ilp = ["dep:grb"]
-
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
+good_lp = { version = "1.14.0", features = ["microlp"], default-features = false }
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.13.0" }
 hydro_lang = { path = "../hydro_lang", version = "^0.13.2", features = ["deploy"] }
-grb = { version = "3.0.1", features = ['gurobi12'], optional = true }
 proc-macro2 = "1.0.95"
 regex = "1.11.1"
 serde = { version = "1.0.197", features = ["derive"] }
