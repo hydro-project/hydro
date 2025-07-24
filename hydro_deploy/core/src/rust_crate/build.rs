@@ -26,6 +26,8 @@ pub struct BuildParams {
     profile: Option<String>,
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
+    // Environment variables available during build
+    build_env: Vec<(String, String)>,
     no_default_features: bool,
     /// `--target <linux>` if cross-compiling for linux ([`HostTargetType::Linux`]).
     target_type: HostTargetType,
@@ -44,6 +46,7 @@ impl BuildParams {
         profile: Option<String>,
         rustflags: Option<String>,
         target_dir: Option<PathBuf>,
+        build_env: Vec<(String, String)>,
         no_default_features: bool,
         target_type: HostTargetType,
         features: Option<Vec<String>>,
@@ -64,6 +67,7 @@ impl BuildParams {
             profile,
             rustflags,
             target_dir,
+            build_env,
             no_default_features,
             target_type,
             features,
@@ -138,6 +142,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     if let Some(target_dir) = params.target_dir.as_ref() {
                         command.env("CARGO_TARGET_DIR", target_dir);
+                    }
+
+                    for (k, v) in params.build_env {
+                        command.env(k, v);
                     }
 
                     let mut spawned = command
