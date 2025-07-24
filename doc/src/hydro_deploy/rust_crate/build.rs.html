@@ -136,12 +136,12 @@
 <a href=#136 id=136 data-nosnippet>136</a>
 <a href=#137 id=137 data-nosnippet>137</a>                    command.arg(<span class="string">"--message-format=json-diagnostic-rendered-ansi"</span>);
 <a href=#138 id=138 data-nosnippet>138</a>
-<a href=#139 id=139 data-nosnippet>139</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(rustflags) = params.rustflags.as_ref() {
-<a href=#140 id=140 data-nosnippet>140</a>                        command.env(<span class="string">"RUSTFLAGS"</span>, rustflags);
+<a href=#139 id=139 data-nosnippet>139</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(target_dir) = params.target_dir.as_ref() {
+<a href=#140 id=140 data-nosnippet>140</a>                        command.args([<span class="string">"--target-dir"</span>, target_dir.to_str().unwrap()]);
 <a href=#141 id=141 data-nosnippet>141</a>                    }
 <a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(target_dir) = params.target_dir.as_ref() {
-<a href=#144 id=144 data-nosnippet>144</a>                        command.env(<span class="string">"CARGO_TARGET_DIR"</span>, target_dir);
+<a href=#143 id=143 data-nosnippet>143</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(rustflags) = params.rustflags.as_ref() {
+<a href=#144 id=144 data-nosnippet>144</a>                        command.env(<span class="string">"RUSTFLAGS"</span>, rustflags);
 <a href=#145 id=145 data-nosnippet>145</a>                    }
 <a href=#146 id=146 data-nosnippet>146</a>
 <a href=#147 id=147 data-nosnippet>147</a>                    <span class="kw">for </span>(k, v) <span class="kw">in </span>params.build_env {
