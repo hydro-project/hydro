@@ -1,25 +1,18 @@
-#[cfg(not(feature = "ilp"))]
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use hydro_deploy::Deployment;
+use hydro_deploy::gcp::GcpNetwork;
+use hydro_lang::Location;
+use hydro_optimize::deploy::ReusableHosts;
+use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+use hydro_test::cluster::kv_replica::Replica;
+use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
+use hydro_test::cluster::paxos_bench::{Aggregator, Client};
+use tokio::sync::RwLock;
+
 #[tokio::main]
 async fn main() {
-    panic!("Run with the `ilp` feature enabled.");
-}
-
-#[cfg(feature = "ilp")]
-#[tokio::main]
-async fn main() {
-    use std::collections::HashMap;
-    use std::sync::Arc;
-
-    use hydro_deploy::Deployment;
-    use hydro_deploy::gcp::GcpNetwork;
-    use hydro_lang::Location;
-    use hydro_optimize::deploy::ReusableHosts;
-    use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
-    use hydro_test::cluster::kv_replica::Replica;
-    use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
-    use hydro_test::cluster::paxos_bench::{Aggregator, Client};
-    use tokio::sync::RwLock;
-
     let mut deployment = Deployment::new();
     let host_arg = std::env::args().nth(1).unwrap_or_default();
     let project = if host_arg == "gcp" {
@@ -53,7 +46,7 @@ async fn main() {
         let virtual_clients = if i == 0 {
             &num_clients_per_node
         } else {
-            &vec![max_num_clients_per_node.clone()]
+            &vec![*max_num_clients_per_node]
         };
 
         for num_clients_per_node in virtual_clients {

@@ -278,18 +278,15 @@ mod tests {
     use std::collections::HashSet;
 
     use hydro_deploy::Deployment;
-    #[cfg(stageleft_runtime)]
     use hydro_lang::location::LocationId;
     use hydro_lang::rewrites::persist_pullup::persist_pullup;
     use hydro_lang::{FlowBuilder, Location, ir};
     use stageleft::q;
 
-    #[cfg(stageleft_runtime)]
     use crate::decoupler;
     use crate::decoupler::decouple;
     use crate::repair::inject_id;
 
-    #[cfg(stageleft_runtime)]
     fn decouple_mini_program(
         with_decoupler: &decoupler::Decoupler,
     ) -> (
@@ -328,7 +325,6 @@ mod tests {
         (send_cluster, recv_cluster, decoupled_cluster, built)
     }
 
-    #[cfg(stageleft_runtime)]
     async fn check_decouple_mini_program(with_decoupler: &decoupler::Decoupler) {
         let (send_cluster, recv_cluster, decoupled_cluster, built) =
             decouple_mini_program(with_decoupler);
