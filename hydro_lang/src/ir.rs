@@ -144,7 +144,6 @@ impl QMacroSimplifier {
         // Look through the arguments for a closure expression
         for arg in args {
             if let syn::Expr::Closure(_) = arg {
-                // Format the closure nicely using prettyplease
                 return Some(arg.clone());
             }
             // Also check for closures nested in other expressions (like blocks)
