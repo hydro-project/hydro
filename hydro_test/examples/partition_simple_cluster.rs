@@ -1,25 +1,38 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(flatten)]
+    graph: GraphConfig,
+
+    /// Use GCP for deployment (provide project name)
+    #[arg(long)]
+    gcp: Option<String>,
+}
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::graph_util::GraphConfig;
 use hydro_lang::rewrites::persist_pullup;
 use hydro_optimize::partitioner::{self, Partitioner};
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let (create_host, rustflags): (HostCreator, &'static str) = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+    let (create_host, rustflags): (HostCreator, &'static str) = if let Some(project) = &args.gcp {
+        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let project = project.clone();
 
         (
             Box::new(move |deployment| -> Arc<dyn Host> {
@@ -52,7 +65,13 @@ async fn main() {
         partitioned_cluster_id: cluster.id().raw_id(),
     };
 
-    let _nodes = builder
+    // Extract the IR BEFORE optimization
+    let built = builder.finalize();
+
+    // Generate graphs if requested
+    let _ = built.generate_graph_with_config(&args.graph, None);
+
+    let _nodes = built
         .optimize_with(persist_pullup::persist_pullup)
         .optimize_with(|leaves| partitioner::partition(leaves, &partitioner))
         .with_process(

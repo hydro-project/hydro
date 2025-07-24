@@ -56,6 +56,13 @@ pub use builder::FlowBuilder;
 
 pub mod ir;
 
+#[cfg(feature = "viz")]
+pub mod graph;
+
+#[cfg(feature = "viz")]
+#[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
+pub mod graph_util;
+
 pub mod rewrites;
 
 mod staging_util;

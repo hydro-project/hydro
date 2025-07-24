@@ -1,25 +1,39 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use hydro_deploy::Deployment;
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_lang::Location;
-use hydro_optimize::decoupler;
-use hydro_optimize::deploy::ReusableHosts;
-use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
-use hydro_test::cluster::kv_replica::Replica;
-use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
-use hydro_test::cluster::paxos_bench::{Aggregator, Client};
-use tokio::sync::RwLock;
-
 #[tokio::main]
 async fn main() {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use clap::Parser;
+    use hydro_deploy::Deployment;
+    use hydro_deploy::gcp::GcpNetwork;
+    use hydro_lang::Location;
+    use hydro_lang::graph_util::GraphConfig;
+    use hydro_optimize::decoupler;
+    use hydro_optimize::deploy::ReusableHosts;
+    use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+    use hydro_test::cluster::kv_replica::Replica;
+    use hydro_test::cluster::paxos::{Acceptor, CorePaxos, PaxosConfig, Proposer};
+    use hydro_test::cluster::paxos_bench::{Aggregator, Client};
+    use tokio::sync::RwLock;
+
+    #[derive(Parser, Debug)]
+    #[command(author, version, about, long_about = None)]
+    struct PerfPaxosArgs {
+        #[command(flatten)]
+        graph: GraphConfig,
+
+        /// Use GCP for deployment (provide project name)
+        #[arg(long)]
+        gcp: Option<String>,
+    }
+
+    let args = PerfPaxosArgs::parse();
+
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
-    let project = if host_arg == "gcp" {
-        std::env::args().nth(2).unwrap()
+    let (host_arg, project) = if let Some(project) = args.gcp {
+        ("gcp".to_string(), project)
     } else {
-        String::new()
+        ("localhost".to_string(), String::new())
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
@@ -130,5 +144,8 @@ async fn main() {
         }
     }
 
-    let _ = builder.finalize();
+    let built = builder.finalize();
+
+    // Generate graphs if requested
+    _ = built.generate_graph_with_config(&args.graph, None);
 }

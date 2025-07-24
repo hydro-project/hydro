@@ -1,8 +1,21 @@
 use std::sync::Arc;
 
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    #[command(flatten)]
+    graph: GraphConfig,
+
+    /// Use GCP for deployment (provide project name)
+    #[arg(long)]
+    gcp: Option<String>,
+}
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::graph_util::GraphConfig;
 use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };
@@ -12,13 +25,13 @@ use tokio::sync::RwLock;
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let create_host: HostCreator = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+    let create_host: HostCreator = if let Some(project) = &args.gcp {
+        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -87,7 +100,15 @@ async fn main() {
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
-    let _nodes = builder
+    // Build and optimize first, then extract IR with proper location assignments
+    let built = builder.finalize();
+
+    // Generate graphs if requested
+    let _ = built.generate_graph_with_config(&args.graph, None);
+
+    let optimized = built.with_default_optimize();
+
+    let _nodes = optimized
         .with_cluster(
             &proposers,
             (0..f + 1)
@@ -124,4 +145,5 @@ async fn main() {
     deployment.start().await.unwrap();
 
     tokio::signal::ctrl_c().await.unwrap();
+    Ok(())
 }
