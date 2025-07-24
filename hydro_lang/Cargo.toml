@@ -13,7 +13,6 @@ workspace = true
 
 [features]
 default = []
-debugging = []
 viz = [
     "build",
     "dep:auto_impl",
