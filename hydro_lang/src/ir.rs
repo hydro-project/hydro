@@ -108,7 +108,6 @@ impl VisitMut for QMacroSimplifier {
                 // Look for calls to stageleft::runtime_support::fn*
                 if self.is_stageleft_runtime_support_call(&path_expr.path) {
                     // Try to extract the closure from the arguments
-                    dbg!("Found stageleft::runtime_support::fn* call");
                     if let Some(closure) = self.extract_closure_from_args(&call.args) {
                         self.simplified_result = Some(closure);
                         return;
@@ -164,26 +163,6 @@ impl QMacroSimplifier {
         visitor.visit_expr(expr);
         visitor.found_closure
     }
-
-    //     fn cleanup_closure_content(&self, closure: &syn::Expr) -> syn::Expr {
-    //         // Use prettyplease to format the closure expression properly
-    //         let formatted = prettyplease::unparse(&syn::parse_quote! {
-    //             fn dummy() { #closure }
-    //         });
-
-    //         // Extract just the closure content, similar to how simplify_q_macro does it
-    //         formatted
-    //             .trim_start()
-    //             .trim_start_matches("fn dummy()")
-    //             .trim_start()
-    //             .trim_start_matches('{')
-    //             .trim_start()
-    //             .trim_end()
-    //             .trim_end_matches('}')
-    //             .trim_end()
-    //             .replace("\n    ", "\n") // Remove extra leading indent
-    //             .to_string()
-    //     }
 }
 
 /// Visitor that finds closures in expressions with special block handling
