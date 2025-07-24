@@ -7,6 +7,8 @@ use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+#[cfg(feature = "viz")]
+use crate::graph::api::GraphApi;
 use crate::ir::{HydroLeaf, emit};
 use crate::location::{Cluster, ExternalProcess, Process};
 use crate::staging_util::Invariant;
@@ -36,6 +38,161 @@ pub(crate) fn build_inner(ir: &mut Vec<HydroLeaf>) -> BTreeMap<usize, DfirGraph>
 impl<'a> BuiltFlow<'a> {
     pub fn ir(&self) -> &Vec<HydroLeaf> {
         &self.ir
+    }
+
+    pub fn process_id_name(&self) -> &Vec<(usize, String)> {
+        &self.process_id_name
+    }
+
+    pub fn cluster_id_name(&self) -> &Vec<(usize, String)> {
+        &self.cluster_id_name
+    }
+
+    pub fn external_id_name(&self) -> &Vec<(usize, String)> {
+        &self.external_id_name
+    }
+
+    /// Get a GraphApi instance for this built flow
+    #[cfg(feature = "viz")]
+    pub fn graph_api(&self) -> GraphApi<'_> {
+        GraphApi::new(
+            &self.ir,
+            &self.process_id_name,
+            &self.cluster_id_name,
+            &self.external_id_name,
+        )
+    }
+
+    // String generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api()
+            .mermaid_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api()
+            .dot_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_string(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> String {
+        self.graph_api()
+            .reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+    }
+
+    // File generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().mermaid_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().dot_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_to_file(
+        &self,
+        filename: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().reactflow_to_file(
+            filename,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
+    }
+
+    // Browser generation methods
+    #[cfg(feature = "viz")]
+    pub fn mermaid_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().mermaid_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn dot_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().dot_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn reactflow_to_browser(
+        &self,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().reactflow_to_browser(
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+            message_handler,
+        )
     }
 
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroLeaf])) -> Self {
@@ -152,5 +309,41 @@ impl<'a> BuiltFlow<'a> {
         env: &mut D::InstantiateEnv,
     ) -> DeployResult<'a, D> {
         self.into_deploy::<D>().deploy(env)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn generate_all_files(
+        &self,
+        prefix: &str,
+        show_metadata: bool,
+        show_location_groups: bool,
+        use_short_labels: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api().generate_all_files(
+            prefix,
+            show_metadata,
+            show_location_groups,
+            use_short_labels,
+        )
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn generate_graph_with_config(
+        &self,
+        config: &crate::graph_util::GraphConfig,
+        message_handler: Option<&dyn Fn(&str)>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api()
+            .generate_graph_with_config(config, message_handler)
+    }
+
+    #[cfg(feature = "viz")]
+    pub fn generate_all_files_with_config(
+        &self,
+        config: &crate::graph_util::GraphConfig,
+        prefix: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        self.graph_api()
+            .generate_all_files_with_config(config, prefix)
     }
 }

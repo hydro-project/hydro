@@ -1,14 +1,3 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
-use hydro_deploy::Deployment;
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_lang::Location;
-use hydro_optimize::deploy::ReusableHosts;
-use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
-use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};
-use tokio::sync::RwLock;
-
 /// Run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
 ///
 /// ```bash
@@ -20,12 +9,37 @@ use tokio::sync::RwLock;
 /// flamegraphs).
 #[tokio::main]
 async fn main() {
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    use clap::Parser;
+    use hydro_deploy::Deployment;
+    use hydro_deploy::gcp::GcpNetwork;
+    use hydro_lang::Location;
+    use hydro_lang::graph_util::GraphConfig;
+    use hydro_optimize::deploy::ReusableHosts;
+    use hydro_optimize::deploy_and_analyze::deploy_and_analyze;
+    use hydro_test::cluster::compute_pi::{Leader, Worker, compute_pi};
+    use tokio::sync::RwLock;
+
+    #[derive(Parser, Debug)]
+    #[command(author, version, about, long_about = None)]
+    struct PerfArgs {
+        #[command(flatten)]
+        graph: GraphConfig,
+
+        /// Use GCP for deployment (provide project name)
+        #[arg(long)]
+        gcp: Option<String>,
+    }
+
+    let args = PerfArgs::parse();
+
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
-    let project = if host_arg == "gcp" {
-        std::env::args().nth(2).unwrap()
+    let (host_arg, project) = if let Some(project) = args.gcp {
+        ("gcp".to_string(), project)
     } else {
-        String::new()
+        ("localhost".to_string(), String::new())
     };
     let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
@@ -60,6 +74,7 @@ async fn main() {
     )
     .await;
 
-    // Cleanup
-    let _ = rewritten_ir_builder.build_with(|_| ir).finalize();
+    // Cleanup and generate graphs if requested
+    let built = rewritten_ir_builder.build_with(|_| ir).finalize();
+    _ = built.generate_graph_with_config(&args.graph, None);
 }

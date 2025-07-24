@@ -1,20 +1,31 @@
 use std::sync::Arc;
 
+use clap::Parser;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::graph_util::GraphConfig;
 use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
-// run with no args for localhost, with `gcp <GCP PROJECT>` for GCP
+#[derive(Parser, Debug)]
+struct Args {
+    /// Use GCP instead of localhost (requires project name)
+    #[clap(long)]
+    gcp: Option<String>,
+
+    #[clap(flatten)]
+    graph: GraphConfig,
+}
+
+// run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP
 #[tokio::main]
 async fn main() {
+    let args = Args::parse();
     let mut deployment = Deployment::new();
-    let host_arg = std::env::args().nth(1).unwrap_or_default();
 
-    let (create_host, rustflags): (HostCreator, &'static str) = if host_arg == *"gcp" {
-        let project = std::env::args().nth(2).unwrap();
+    let (create_host, rustflags): (HostCreator, &'static str) = if let Some(project) = args.gcp {
         let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
 
         (
@@ -40,7 +51,19 @@ async fn main() {
 
     let builder = hydro_lang::FlowBuilder::new();
     let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&builder);
-    let _nodes = builder
+
+    // Extract the IR for graph visualization
+    let built = builder.finalize();
+
+    // Generate graph visualizations based on command line arguments
+    if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
+        eprintln!("Error generating graph: {}", e);
+    }
+
+    // Optimize the flow before deployment to remove marker nodes
+    let optimized = built.with_default_optimize();
+
+    let _nodes = optimized
         .with_process(
             &leader,
             TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
