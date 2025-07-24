@@ -164,6 +164,18 @@
         .icon-button:hover .tooltip {
             opacity: 1;
         }
+        
+        /* Special styling for the docs button */
+        .docs-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white !important;
+            border: none;
+            font-weight: 600;
+        }
+        .docs-button:hover {
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+            transform: translateY(-1px);
+        }
         .react-flow__node {
             cursor: pointer;
             border-radius: 8px;
@@ -1801,6 +1813,46 @@
                 });
             }, [setNodes]);
 
+            // Function to open the current graph in the docs-based visualizer
+            const openInDocs = useCallback(() => {
+                try {
+                    // Get current graph data
+                    const currentGraphData = {
+                        nodes: nodes,
+                        edges: edges,
+                        locations: graphData.locations || []
+                    };
+                    
+                    // Base64URL encode the data (manual implementation)
+                    const jsonString = JSON.stringify(currentGraphData);
+                    const base64 = btoa(unescape(encodeURIComponent(jsonString)))
+                        .replace(/\+/g, '-')
+                        .replace(/\//g, '_')
+                        .replace(/=/g, '');
+                    
+                    // Try localhost first (for development), then docs site
+                    const localhost_url = `http://localhost:3000/visualizer#data=${base64}`;
+                    const docs_url = `https://hydro.run/docs/visualizer#data=${base64}`;
+                    
+                    // Try to open localhost first by creating a temporary link
+                    const tempLink = document.createElement('a');
+                    tempLink.href = localhost_url;
+                    tempLink.target = '_blank';
+                    tempLink.style.display = 'none';
+                    document.body.appendChild(tempLink);
+                    tempLink.click();
+                    document.body.removeChild(tempLink);
+                    
+                    // Also show the user the URLs in console for fallback
+                    console.log('Opening in docs visualizer...');
+                    console.log('Local dev URL:', localhost_url);
+                    console.log('Production URL:', docs_url);
+                } catch (error) {
+                    console.error('Failed to open in docs visualizer:', error);
+                    alert('Failed to open in docs visualizer. See console for details.');
+                }
+            }, [nodes, edges]);
+
             const onLayoutChange = (event) => {
                 const newLayout = event.target.value;
                 setCurrentLayout(newLayout);
@@ -1902,6 +1954,12 @@
                                 {useShortLabels ? '↔' : '→←'}
                             </span>
                             <span className="tooltip">{useShortLabels ? 'Show Full Labels' : 'Show Short Labels'}</span>
+                        </button>
+                        <button className="icon-button docs-button" onClick={openInDocs}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H2zM6 9.5V12a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-1.5v4.5H6z"/>
+                            </svg>
+                            <span className="tooltip">Open in Docs Visualizer</span>
                         </button>
                     </div>
                     <UnifiedLegend palette={currentPalette} />
