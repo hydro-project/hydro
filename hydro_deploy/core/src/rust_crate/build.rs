@@ -136,12 +136,12 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     command.arg("--message-format=json-diagnostic-rendered-ansi");
 
-                    if let Some(rustflags) = params.rustflags.as_ref() {
-                        command.env("RUSTFLAGS", rustflags);
+                    if let Some(target_dir) = params.target_dir.as_ref() {
+                        command.args(["--target-dir", target_dir.to_str().unwrap()]);
                     }
 
-                    if let Some(target_dir) = params.target_dir.as_ref() {
-                        command.env("CARGO_TARGET_DIR", target_dir);
+                    if let Some(rustflags) = params.rustflags.as_ref() {
+                        command.env("RUSTFLAGS", rustflags);
                     }
 
                     for (k, v) in params.build_env {

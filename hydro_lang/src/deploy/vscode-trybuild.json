@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.cargo.extraEnv": {
+        "STAGELEFT_TRYBUILD_BUILD_STAGED": "1"
+    }
+}

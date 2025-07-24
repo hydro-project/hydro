@@ -307,6 +307,13 @@ pub fn create_trybuild()
                 &path!(dot_cargo_folder / "config.toml"),
             )?;
         }
+
+        let vscode_folder = path!(project.dir / ".vscode");
+        fs::create_dir_all(&vscode_folder)?;
+        write_atomic(
+            include_bytes!("./vscode-trybuild.json"),
+            &path!(vscode_folder / "settings.json"),
+        )?;
     }
 
     Ok((
