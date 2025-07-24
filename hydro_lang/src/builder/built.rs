@@ -7,6 +7,7 @@ use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
+#[cfg(feature = "viz")]
 use crate::graph::api::GraphApi;
 use crate::ir::{HydroLeaf, emit};
 use crate::location::{Cluster, ExternalProcess, Process};
@@ -326,7 +327,7 @@ impl<'a> BuiltFlow<'a> {
         )
     }
 
-    #[cfg(feature = "build")]
+    #[cfg(feature = "viz")]
     pub fn generate_graph_with_config(
         &self,
         config: &crate::graph_util::GraphConfig,
@@ -336,7 +337,7 @@ impl<'a> BuiltFlow<'a> {
             .generate_graph_with_config(config, message_handler)
     }
 
-    #[cfg(feature = "build")]
+    #[cfg(feature = "viz")]
     pub fn generate_all_files_with_config(
         &self,
         config: &crate::graph_util::GraphConfig,

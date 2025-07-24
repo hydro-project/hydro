@@ -1,8 +1,8 @@
-#[cfg(feature = "build")]
+#[cfg(feature = "viz")]
 use clap::{Parser, ValueEnum};
 
 /// Enum for choosing between mermaid, dot, and reactflow graph writing.
-#[cfg(feature = "build")]
+#[cfg(feature = "viz")]
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum GraphType {
     /// Mermaid graphs.
@@ -13,7 +13,7 @@ pub enum GraphType {
     Reactflow,
 }
 
-#[cfg(feature = "build")]
+#[cfg(feature = "viz")]
 impl std::fmt::Display for GraphType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
@@ -21,7 +21,7 @@ impl std::fmt::Display for GraphType {
 }
 
 /// Configuration for graph generation in examples.
-#[cfg(feature = "build")]
+#[cfg(feature = "viz")]
 #[derive(Parser, Debug, Default)]
 pub struct GraphConfig {
     /// Graph format to generate and display

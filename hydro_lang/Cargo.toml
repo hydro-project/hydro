@@ -15,7 +15,9 @@ workspace = true
 default = []
 debugging = []
 viz = [
+    "build",
     "dep:auto_impl",
+    "dep:clap",
     "dep:itertools",
     "dep:webbrowser", 
     "dep:data-encoding",
@@ -30,7 +32,7 @@ deploy = [
     "dep:stageleft_tool",
     "dep:nameof",
 ]
-build = ["viz", "dep:dfir_lang", "dep:backtrace", "dep:clap"]
+build = ["dep:dfir_lang", "dep:backtrace"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
 runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
 dfir_context = ["dep:dfir_rs"]
