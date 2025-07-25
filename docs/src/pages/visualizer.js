@@ -406,7 +406,7 @@ function ReactFlowVisualization({ graphData }) {
           originalNodeIds: Array.from(nodeIds)
         });
       } else {
-        // If expanded, include all child nodes
+        // If expanded, include all child nodes (no label nodes in ELK)
         const childElkNodes = Array.from(nodeIds).map(nodeId => {
           const node = nodeMap.get(nodeId);
           return {
@@ -591,7 +591,7 @@ function ReactFlowVisualization({ graphData }) {
 
     const validContainerIds = new Set(containerNodes.map(n => n.id));
 
-    // Third pass: Create all child and orphan nodes
+    // Third pass: Create all child and orphan nodes, including ELK-positioned labels
     nodes.forEach(originalNode => {
       const locationId = originalNode.data?.locationId;
       const isChild = locationId !== undefined && locationId !== null;
@@ -636,28 +636,33 @@ function ReactFlowVisualization({ graphData }) {
       }
     });
 
-    // Add label nodes for expanded containers
+    // Process labels for expanded containers - position at center-top using ELK container dimensions
     const labelNodes = [];
     containerNodes.forEach(containerNode => {
       if (!containerNode.data.isCollapsed) {
-        // Calculate center position relative to container width
-        const containerWidth = containerNode.style.width || 200;
         const labelText = containerNode.data.label || '';
-        // More accurate width calculation: each char ~7px + padding (8px each side)
-        const labelWidth = labelText.length * 7 + 16;
+        const containerWidth = containerNode.style.width;
+        
+        // Calculate label width for centering
+        const avgCharWidth = 6.5; // 11px bold font
+        const horizontalPadding = 8; // 4px left + 4px right
+        const borderWidth = 2; // 1px left + 1px right  
+        const labelWidth = (labelText.length * avgCharWidth) + horizontalPadding + borderWidth;
+        
+        // Center horizontally within container, position at top
         const centerX = (containerWidth - labelWidth) / 2;
         
         labelNodes.push({
           id: `label-${containerNode.id}`,
-          type: 'label', // Use custom label node type
+          type: 'label',
           position: { 
-            x: Math.max(5, centerX), // Center horizontally, with small minimum margin
-            y: -30 // Position above container
+            x: Math.max(10, centerX), // Center horizontally with minimum margin
+            y: 10 // Position near top of container
           },
           data: { 
             label: containerNode.data.label 
           },
-          parentNode: containerNode.id, // Make it a child of the container
+          parentNode: containerNode.id,
           extent: 'parent',
           draggable: false,
           selectable: false,
