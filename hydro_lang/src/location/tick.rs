@@ -137,10 +137,7 @@ where
     pub fn optional_first_tick<T: Clone>(
         &self,
         e: impl QuotedWithContext<'a, T, Tick<L>>,
-    ) -> Optional<T, Self, Bounded>
-    where
-        L: NoTick + NoAtomic,
-    {
+    ) -> Optional<T, Self, Bounded> {
         let e_arr = q!([e]);
         let e = e_arr.splice_untyped_ctx(self);
 

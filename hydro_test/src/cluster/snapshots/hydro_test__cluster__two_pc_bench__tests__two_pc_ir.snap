@@ -1056,16 +1056,30 @@ expression: built.ir()
                                                     },
                                                     right: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: singleton :: * ; | _u | () }),
-                                                        input: Source {
-                                                            source: Stream(
-                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                            ),
-                                                            location_kind: Cluster(
-                                                                2,
-                                                            ),
-                                                            metadata: HydroIrMetadata {
+                                                        input: Reduce {
+                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | _ , _ | { } }),
+                                                            input: Source {
+                                                                source: Stream(
+                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                ),
                                                                 location_kind: Cluster(
                                                                     2,
+                                                                ),
+                                                                metadata: HydroIrMetadata {
+                                                                    location_kind: Cluster(
+                                                                        2,
+                                                                    ),
+                                                                    output_type: Some(
+                                                                        hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                    ),
+                                                                },
+                                                            },
+                                                            metadata: HydroIrMetadata {
+                                                                location_kind: Tick(
+                                                                    2,
+                                                                    Cluster(
+                                                                        2,
+                                                                    ),
                                                                 ),
                                                                 output_type: Some(
                                                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -1185,16 +1199,30 @@ expression: built.ir()
                 },
                 right: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: optional :: * ; | _u | () }),
-                    input: Source {
-                        source: Stream(
-                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                        ),
-                        location_kind: Process(
-                            3,
-                        ),
-                        metadata: HydroIrMetadata {
+                    input: Reduce {
+                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | _ , _ | { } }),
+                        input: Source {
+                            source: Stream(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                            ),
                             location_kind: Process(
                                 3,
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_kind: Process(
+                                    3,
+                                ),
+                                output_type: Some(
+                                    hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                ),
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                4,
+                                Process(
+                                    3,
+                                ),
                             ),
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -1323,16 +1351,30 @@ expression: built.ir()
                                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | | 0usize }),
                                                                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | count , _ | * count += 1 }),
                                                                                     input: Tee {
-                                                                                        inner: <tee 12>: Source {
-                                                                                            source: Stream(
-                                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                                                            ),
-                                                                                            location_kind: Cluster(
-                                                                                                2,
-                                                                                            ),
-                                                                                            metadata: HydroIrMetadata {
+                                                                                        inner: <tee 12>: Reduce {
+                                                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | _ , _ | { } }),
+                                                                                            input: Source {
+                                                                                                source: Stream(
+                                                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                                                ),
                                                                                                 location_kind: Cluster(
                                                                                                     2,
+                                                                                                ),
+                                                                                                metadata: HydroIrMetadata {
+                                                                                                    location_kind: Cluster(
+                                                                                                        2,
+                                                                                                    ),
+                                                                                                    output_type: Some(
+                                                                                                        hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                    ),
+                                                                                                },
+                                                                                            },
+                                                                                            metadata: HydroIrMetadata {
+                                                                                                location_kind: Tick(
+                                                                                                    0,
+                                                                                                    Cluster(
+                                                                                                        2,
+                                                                                                    ),
                                                                                                 ),
                                                                                                 output_type: Some(
                                                                                                     hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -1508,16 +1550,30 @@ expression: built.ir()
                                             },
                                             right: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: singleton :: * ; | _u | () }),
-                                                input: Source {
-                                                    source: Stream(
-                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                    ),
-                                                    location_kind: Cluster(
-                                                        2,
-                                                    ),
-                                                    metadata: HydroIrMetadata {
+                                                input: Reduce {
+                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | _ , _ | { } }),
+                                                    input: Source {
+                                                        source: Stream(
+                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                        ),
                                                         location_kind: Cluster(
                                                             2,
+                                                        ),
+                                                        metadata: HydroIrMetadata {
+                                                            location_kind: Cluster(
+                                                                2,
+                                                            ),
+                                                            output_type: Some(
+                                                                hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                            ),
+                                                        },
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_kind: Tick(
+                                                            5,
+                                                            Cluster(
+                                                                2,
+                                                            ),
                                                         ),
                                                         output_type: Some(
                                                             hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -1619,16 +1675,30 @@ expression: built.ir()
                 },
                 right: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: optional :: * ; | _u | () }),
-                    input: Source {
-                        source: Stream(
-                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                        ),
-                        location_kind: Process(
-                            3,
-                        ),
-                        metadata: HydroIrMetadata {
+                    input: Reduce {
+                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | _ , _ | { } }),
+                        input: Source {
+                            source: Stream(
+                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                            ),
                             location_kind: Process(
                                 3,
+                            ),
+                            metadata: HydroIrMetadata {
+                                location_kind: Process(
+                                    3,
+                                ),
+                                output_type: Some(
+                                    hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                ),
+                            },
+                        },
+                        metadata: HydroIrMetadata {
+                            location_kind: Tick(
+                                7,
+                                Process(
+                                    3,
+                                ),
                             ),
                             output_type: Some(
                                 hydro_test :: __staged :: __deps :: tokio :: time :: Instant,

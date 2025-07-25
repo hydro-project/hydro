@@ -1269,7 +1269,7 @@ where
     /// # }));
     /// ```
     pub fn first(self) -> Optional<T, L, B> {
-        Optional::new(self.location, self.ir_node.into_inner())
+        self.reduce(q!(|_, _| {}))
     }
 
     /// Computes the last element in the stream as an [`Optional`], which
@@ -2841,5 +2841,38 @@ mod tests {
         for i in 0..10 {
             assert_eq!(external_out.next().await.unwrap().n, i);
         }
+    }
+
+    #[tokio::test]
+    async fn first_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external_process::<()>();
+
+        let node_tick = node.tick();
+        let count = node_tick
+            .singleton(q!([1, 2, 3]))
+            .into_stream()
+            .flatten_ordered()
+            .first()
+            .into_stream()
+            .count()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect_source_bincode(count).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }
