@@ -1,4 +1,6 @@
+#[cfg(feature = "build")]
 use std::cell::RefCell;
+#[cfg(feature = "build")]
 use std::fmt::Debug;
 
 #[derive(Clone)]
