@@ -1,3 +1,4 @@
+#[cfg(feature = "build")]
 use std::cell::RefCell;
 use std::fmt::Debug;
 
