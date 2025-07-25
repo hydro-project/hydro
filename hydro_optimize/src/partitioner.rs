@@ -116,17 +116,14 @@ fn replace_sender_network(node: &mut HydroNode, partitioner: &Partitioner, next_
             indices,
         );
         let f: syn::Expr = syn::parse_quote!(
-            |(orig_dest, struct_or_tuple)| {
-                use std::any::{Any, TypeId};
-                use std::hash::{Hash, Hasher, DefaultHasher};
-
+            |(orig_dest, struct_or_tuple): (ClusterId<_>, _)| {
                 // Hash the field we'll partition on
-                let mut s = DefaultHasher::new();
-                #struct_or_tuple_with_fields.hash(&mut s);
-                let partition_val = s.finish() as u32;
+                let mut s = ::std::hash::DefaultHasher::new();
+                ::std::hash::Hash::hash(&#struct_or_tuple_with_fields, &mut s);
+                let partition_val = ::std::hash::Hasher::finish(&s) as u32;
 
                 (
-                    (orig_dest * #num_partitions as u32) + (partition_val % #num_partitions as u32) as u32,
+                    ClusterId::<()>::from_raw((orig_dest.raw_id * #num_partitions as u32) + (partition_val % #num_partitions as u32) as u32),
                     struct_or_tuple
                 )
             }
