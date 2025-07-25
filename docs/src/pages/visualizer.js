@@ -636,8 +636,40 @@ function ReactFlowVisualization({ graphData }) {
       }
     });
 
+    // Add label nodes for expanded containers
+    const labelNodes = [];
+    containerNodes.forEach(containerNode => {
+      if (!containerNode.data.isCollapsed) {
+        // Calculate center position relative to container width
+        const containerWidth = containerNode.style.width || 200;
+        const labelText = containerNode.data.label || '';
+        // More accurate width calculation: each char ~7px + padding (8px each side)
+        const labelWidth = labelText.length * 7 + 16;
+        const centerX = (containerWidth - labelWidth) / 2;
+        
+        labelNodes.push({
+          id: `label-${containerNode.id}`,
+          type: 'label', // Use custom label node type
+          position: { 
+            x: Math.max(5, centerX), // Center horizontally, with small minimum margin
+            y: -30 // Position above container
+          },
+          data: { 
+            label: containerNode.data.label 
+          },
+          parentNode: containerNode.id, // Make it a child of the container
+          extent: 'parent',
+          draggable: false,
+          selectable: false,
+          connectable: false,
+          focusable: false,
+          deletable: false
+        });
+      }
+    });
+
     // Combine containers and other nodes, ensuring containers come first.
-    const finalNodesResult = [...containerNodes, ...childAndOrphanNodes];
+    const finalNodesResult = [...containerNodes, ...childAndOrphanNodes, ...labelNodes];
     
     // Use the edges that were already processed during ELK layout
     // Convert them back to the ReactFlow format
@@ -820,6 +852,31 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
     }
   }, [onContainerToggle]);
 
+  // Custom label node component - no connection handles
+  const LabelNode = ({ data }) => {
+    return (
+      <div style={{
+        background: 'rgba(255, 255, 255, 0.95)',
+        border: '1px solid #ddd',
+        borderRadius: '4px',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        color: '#333',
+        padding: '4px 8px',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        whiteSpace: 'nowrap',
+        pointerEvents: 'none', // Ensure labels don't interfere with clicks
+        userSelect: 'none' // Prevent text selection
+      }}>
+        {data.label}
+      </div>
+    );
+  };
+
+  const nodeTypes = {
+    label: LabelNode,
+  };
+
   return (
     <div className={styles.reactflowWrapper}>
       <ReactFlow
@@ -829,6 +886,7 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
         nodesDraggable={true}
