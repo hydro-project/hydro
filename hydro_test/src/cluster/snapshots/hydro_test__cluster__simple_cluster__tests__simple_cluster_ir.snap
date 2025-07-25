@@ -53,57 +53,27 @@ expression: built.ir()
                                                         location_kind: Process(
                                                             0,
                                                         ),
-                                                        backtrace: [
-                                                            hydro_test::cluster::simple_cluster::simple_cluster,
-                                                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                            core::ops::function::FnOnce::call_once,
-                                                        ],
                                                         output_type: Some(
                                                             & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                         ),
-                                                        cardinality: None,
-                                                        cpu_usage: None,
-                                                        network_recv_cpu_usage: None,
-                                                        id: None,
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Process(
                                                         0,
                                                     ),
-                                                    backtrace: [
-                                                        hydro_test::cluster::simple_cluster::simple_cluster,
-                                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                        core::ops::function::FnOnce::call_once,
-                                                    ],
                                                     output_type: Some(
                                                         & hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                     ),
-                                                    cardinality: None,
-                                                    cpu_usage: None,
-                                                    network_recv_cpu_usage: None,
-                                                    id: None,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Process(
                                                     0,
                                                 ),
-                                                backtrace: [
-                                                    hydro_test::cluster::simple_cluster::simple_cluster,
-                                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                    core::ops::function::FnOnce::call_once,
-                                                ],
                                                 output_type: Some(
                                                     hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () >,
                                                 ),
-                                                cardinality: None,
-                                                cpu_usage: None,
-                                                network_recv_cpu_usage: None,
-                                                id: None,
                                             },
                                         },
                                         right: Persist {
@@ -118,209 +88,99 @@ expression: built.ir()
                                                     location_kind: Process(
                                                         0,
                                                     ),
-                                                    backtrace: [
-                                                        hydro_test::cluster::simple_cluster::simple_cluster,
-                                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                        core::ops::function::FnOnce::call_once,
-                                                    ],
                                                     output_type: Some(
                                                         i32,
                                                     ),
-                                                    cardinality: None,
-                                                    cpu_usage: None,
-                                                    network_recv_cpu_usage: None,
-                                                    id: None,
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_kind: Process(
                                                     0,
                                                 ),
-                                                backtrace: [
-                                                    hydro_test::cluster::simple_cluster::simple_cluster,
-                                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                    core::ops::function::FnOnce::call_once,
-                                                ],
                                                 output_type: Some(
                                                     i32,
                                                 ),
-                                                cardinality: None,
-                                                cpu_usage: None,
-                                                network_recv_cpu_usage: None,
-                                                id: None,
                                             },
                                         },
                                         metadata: HydroIrMetadata {
                                             location_kind: Process(
                                                 0,
                                             ),
-                                            backtrace: [
-                                                hydro_test::cluster::simple_cluster::simple_cluster,
-                                                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                                core::ops::function::FnOnce::call_once,
-                                            ],
                                             output_type: Some(
                                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                             ),
-                                            cardinality: None,
-                                            cpu_usage: None,
-                                            network_recv_cpu_usage: None,
-                                            id: None,
                                         },
                                     },
                                     metadata: HydroIrMetadata {
                                         location_kind: Process(
                                             0,
                                         ),
-                                        backtrace: [
-                                            hydro_test::cluster::simple_cluster::simple_cluster,
-                                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                            core::ops::function::FnOnce::call_once,
-                                        ],
                                         output_type: Some(
                                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                                         ),
-                                        cardinality: None,
-                                        cpu_usage: None,
-                                        network_recv_cpu_usage: None,
-                                        id: None,
                                     },
                                 },
                                 metadata: HydroIrMetadata {
                                     location_kind: Cluster(
                                         1,
                                     ),
-                                    backtrace: [
-                                        hydro_test::cluster::simple_cluster::simple_cluster,
-                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                        core::ops::function::FnOnce::call_once,
-                                    ],
                                     output_type: Some(
                                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                     ),
-                                    cardinality: None,
-                                    cpu_usage: None,
-                                    network_recv_cpu_usage: None,
-                                    id: None,
                                 },
                             },
                             metadata: HydroIrMetadata {
                                 location_kind: Cluster(
                                     1,
                                 ),
-                                backtrace: [
-                                    hydro_test::cluster::simple_cluster::simple_cluster,
-                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                    core::ops::function::FnOnce::call_once,
-                                ],
                                 output_type: Some(
                                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                                 ),
-                                cardinality: None,
-                                cpu_usage: None,
-                                network_recv_cpu_usage: None,
-                                id: None,
                             },
                         },
                         metadata: HydroIrMetadata {
                             location_kind: Cluster(
                                 1,
                             ),
-                            backtrace: [
-                                hydro_test::cluster::simple_cluster::simple_cluster,
-                                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                                core::ops::function::FnOnce::call_once,
-                            ],
                             output_type: Some(
                                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                             ),
-                            cardinality: None,
-                            cpu_usage: None,
-                            network_recv_cpu_usage: None,
-                            id: None,
                         },
                     },
                     metadata: HydroIrMetadata {
                         location_kind: Cluster(
                             1,
                         ),
-                        backtrace: [
-                            hydro_test::cluster::simple_cluster::simple_cluster,
-                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                            hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                            core::ops::function::FnOnce::call_once,
-                        ],
                         output_type: Some(
                             (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
-                        cardinality: None,
-                        cpu_usage: None,
-                        network_recv_cpu_usage: None,
-                        id: None,
                     },
                 },
                 metadata: HydroIrMetadata {
                     location_kind: Process(
                         0,
                     ),
-                    backtrace: [
-                        hydro_test::cluster::simple_cluster::simple_cluster,
-                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                        hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                        core::ops::function::FnOnce::call_once,
-                    ],
                     output_type: Some(
                         (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                     ),
-                    cardinality: None,
-                    cpu_usage: None,
-                    network_recv_cpu_usage: None,
-                    id: None,
                 },
             },
             metadata: HydroIrMetadata {
                 location_kind: Process(
                     0,
                 ),
-                backtrace: [
-                    hydro_test::cluster::simple_cluster::simple_cluster,
-                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                    hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                    core::ops::function::FnOnce::call_once,
-                ],
                 output_type: Some(
                     (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
                 ),
-                cardinality: None,
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
             },
         },
         metadata: HydroIrMetadata {
             location_kind: Process(
                 0,
             ),
-            backtrace: [
-                hydro_test::cluster::simple_cluster::simple_cluster,
-                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir,
-                hydro_test::cluster::simple_cluster::tests::simple_cluster_ir::{{closure}},
-                core::ops::function::FnOnce::call_once,
-            ],
             output_type: Some(
                 (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)),
             ),
-            cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
         },
     },
 ]
