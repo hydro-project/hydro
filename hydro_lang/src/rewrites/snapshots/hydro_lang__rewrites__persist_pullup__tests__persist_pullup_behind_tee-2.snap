@@ -20,18 +20,9 @@ expression: optimized.ir()
                             location_kind: Process(
                                 0,
                             ),
-                            backtrace: [
-                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                                core::ops::function::FnOnce::call_once,
-                            ],
                             output_type: Some(
                                 i32,
                             ),
-                            cardinality: None,
-                            cpu_usage: None,
-                            network_recv_cpu_usage: None,
-                            id: None,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -41,18 +32,9 @@ expression: optimized.ir()
                                 0,
                             ),
                         ),
-                        backtrace: [
-                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                            core::ops::function::FnOnce::call_once,
-                        ],
                         output_type: Some(
                             i32,
                         ),
-                        cardinality: None,
-                        cpu_usage: None,
-                        network_recv_cpu_usage: None,
-                        id: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -62,18 +44,9 @@ expression: optimized.ir()
                             0,
                         ),
                     ),
-                    backtrace: [
-                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                        core::ops::function::FnOnce::call_once,
-                    ],
                     output_type: Some(
                         i32,
                     ),
-                    cardinality: None,
-                    cpu_usage: None,
-                    network_recv_cpu_usage: None,
-                    id: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -83,36 +56,18 @@ expression: optimized.ir()
                         0,
                     ),
                 ),
-                backtrace: [
-                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                    core::ops::function::FnOnce::call_once,
-                ],
                 output_type: Some(
                     i32,
                 ),
-                cardinality: None,
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
             },
         },
         metadata: HydroIrMetadata {
             location_kind: Process(
                 0,
             ),
-            backtrace: [
-                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                core::ops::function::FnOnce::call_once,
-            ],
             output_type: Some(
                 i32,
             ),
-            cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
         },
     },
     ForEach {
@@ -132,18 +87,9 @@ expression: optimized.ir()
                             location_kind: Process(
                                 0,
                             ),
-                            backtrace: [
-                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                                core::ops::function::FnOnce::call_once,
-                            ],
                             output_type: Some(
                                 i32,
                             ),
-                            cardinality: None,
-                            cpu_usage: None,
-                            network_recv_cpu_usage: None,
-                            id: None,
                         },
                     },
                     metadata: HydroIrMetadata {
@@ -153,18 +99,9 @@ expression: optimized.ir()
                                 0,
                             ),
                         ),
-                        backtrace: [
-                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                            hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                            core::ops::function::FnOnce::call_once,
-                        ],
                         output_type: Some(
                             i32,
                         ),
-                        cardinality: None,
-                        cpu_usage: None,
-                        network_recv_cpu_usage: None,
-                        id: None,
                     },
                 },
                 metadata: HydroIrMetadata {
@@ -174,18 +111,9 @@ expression: optimized.ir()
                             0,
                         ),
                     ),
-                    backtrace: [
-                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                        hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                        core::ops::function::FnOnce::call_once,
-                    ],
                     output_type: Some(
                         i32,
                     ),
-                    cardinality: None,
-                    cpu_usage: None,
-                    network_recv_cpu_usage: None,
-                    id: None,
                 },
             },
             metadata: HydroIrMetadata {
@@ -195,36 +123,18 @@ expression: optimized.ir()
                         0,
                     ),
                 ),
-                backtrace: [
-                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                    hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                    core::ops::function::FnOnce::call_once,
-                ],
                 output_type: Some(
                     i32,
                 ),
-                cardinality: None,
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
             },
         },
         metadata: HydroIrMetadata {
             location_kind: Process(
                 0,
             ),
-            backtrace: [
-                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee,
-                hydro_lang::rewrites::persist_pullup::tests::persist_pullup_behind_tee::{{closure}},
-                core::ops::function::FnOnce::call_once,
-            ],
             output_type: Some(
                 i32,
             ),
-            cardinality: None,
-            cpu_usage: None,
-            network_recv_cpu_usage: None,
-            id: None,
         },
     },
 ]
