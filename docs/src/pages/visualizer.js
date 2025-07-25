@@ -207,13 +207,9 @@ const generateLocationBorderColor = (locationId, totalLocations, palette = 'Set3
 };
 
 // This function is now unused in the hierarchical approach but kept for potential simple layouts.
-const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
-  // This function is now unused in the hierarchical approach but kept for potential simple layouts.
-  if (!ELK) return nodes;
-  
-  console.log(`🔍 APPLYING SIMPLE ELK LAYOUT (${layoutType}) to ${nodes.length} nodes`);
-  
-  const graph = {
+  const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
+    // This function is now unused in the hierarchical approach but kept for potential simple layouts.
+    if (!ELK) return nodes;  const graph = {
     id: 'root',
     layoutOptions: elkLayouts[layoutType] || elkLayouts.layered,
     children: nodes.map(node => ({
@@ -258,7 +254,6 @@ function ReactFlowVisualization({ graphData }) {
   // Load external libraries when component mounts
   useEffect(() => {
     loadExternalLibraries().then(() => {
-      console.log('ReactFlow and ELK loaded successfully');
       setReactFlowReady(true);
     }).catch((error) => {
       console.error('Failed to load external libraries:', error);
@@ -270,8 +265,6 @@ function ReactFlowVisualization({ graphData }) {
     if (!reactFlowReady || !graphData || !ELK) return;
 
     const processData = async () => {
-      console.log('Processing graph data for hierarchical layout:', graphData);
-      
       // Centralized location processing
       const locations = new Map();
       if (graphData.locations) {
@@ -287,13 +280,11 @@ function ReactFlowVisualization({ graphData }) {
       
       (graphData.nodes || []).forEach(node => {
         if (node.data?.locationId !== undefined && node.data?.location && !locations.has(node.data.locationId)) {
-          console.log(`Node ${node.id} defines a new location: ${node.data.location}`);
           locations.set(node.data.locationId, { id: node.data.locationId, label: node.data.location });
         }
       });
       
       setLocationData(new Map(locations)); // Update state for the legend
-      console.log('Final locations map:', locations);
 
       // Convert nodes with enhanced styling
       let processedNodes = (graphData.nodes || []).map(node => {
@@ -329,7 +320,6 @@ function ReactFlowVisualization({ graphData }) {
       }));
 
       // Apply ELK layout with hierarchical grouping
-      console.log('Applying ELK layout with hierarchical grouping...');
       const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locations, colorPalette, collapsedContainers);
       
       // layoutResult now contains both regular nodes and container nodes
@@ -344,25 +334,14 @@ function ReactFlowVisualization({ graphData }) {
   const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}) => {
     if (!ELK) return { nodes, edges };
 
-    console.log('🚀 NEW APPROACH: Single hierarchical layout pass with ELK');
-    console.log('📦 Collapsed containers:', collapsedContainers);
-
-    console.log('--- DEBUG: Nodes received by applyHierarchicalLayout ---');
-    nodes.forEach(n => {
-      console.log(JSON.stringify({ id: n.id, data: n.data }, null, 2));
-    });
-    console.log('--- END DEBUG ---');
-
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const locationGroups = new Map();
     const orphanNodeIds = new Set(nodes.map(n => n.id));
 
     // 1. Group nodes by location, using the passed-in 'locations' map.
     // This is more robust than iterating over location.nodes.
-    console.log('--- DEBUG: Grouping nodes by location ---');
     nodes.forEach(node => {
       const locationId = node.data?.locationId;
-      console.log(`Node ${node.id}: checking for locationId. Found: ${locationId}`);
       if (locationId !== undefined && locationId !== null) {
         if (!locationGroups.has(locationId)) {
           const location = locations.get(locationId);
@@ -380,14 +359,8 @@ function ReactFlowVisualization({ graphData }) {
         }
       }
     });
-    console.log('--- END DEBUG ---');
 
-    console.log(`📊 GROUPED: ${locationGroups.size} location groups, ${orphanNodeIds.size} orphan nodes`);
-    locationGroups.forEach((group, key) => {
-      console.log(`- Group ${key}: ${group.nodeIds.size} nodes`);
-    });
-
-    // 2. Build the ELK graph structure with hierarchy
+    // Build the set of all node IDs that will exist in the ELK graph
     const elkChildren = [];
     
     // Add container nodes to ELK graph
@@ -444,23 +417,17 @@ function ReactFlowVisualization({ graphData }) {
       }
     });
     
-    console.log('📋 Existing node IDs in ELK graph:', Array.from(existingNodeIds));
-
     // Filter and reroute edges to only reference existing nodes
     const validElkEdges = [];
-    console.log('🔗 Processing edges for collapsed containers...');
     edges.forEach(edge => {
       let sourceId = edge.source;
       let targetId = edge.target;
-      
-      console.log(`Processing edge: ${edge.source} -> ${edge.target}`);
       
       // Check if source node is in a collapsed container
       const sourceNode = nodeMap.get(edge.source);
       if (sourceNode?.data?.locationId !== undefined) {
         const sourceContainerId = `container_${sourceNode.data.locationId}`;
         if (collapsedContainers[sourceContainerId]) {
-          console.log(`  Source ${edge.source} is in collapsed container ${sourceContainerId}`);
           sourceId = sourceContainerId;
         }
       }
@@ -470,7 +437,6 @@ function ReactFlowVisualization({ graphData }) {
       if (targetNode?.data?.locationId !== undefined) {
         const targetContainerId = `container_${targetNode.data.locationId}`;
         if (collapsedContainers[targetContainerId]) {
-          console.log(`  Target ${edge.target} is in collapsed container ${targetContainerId}`);
           targetId = targetContainerId;
         }
       }
@@ -482,10 +448,7 @@ function ReactFlowVisualization({ graphData }) {
           sources: [sourceId],
           targets: [targetId]
         };
-        console.log(`  ✅ Adding valid edge: ${sourceId} -> ${targetId}`);
         validElkEdges.push(newEdge);
-      } else {
-        console.log(`  ❌ Skipping edge - Source exists: ${existingNodeIds.has(sourceId)}, Target exists: ${existingNodeIds.has(targetId)}, Same: ${sourceId === targetId}`);
       }
     });
 
@@ -499,11 +462,8 @@ function ReactFlowVisualization({ graphData }) {
       edges: validElkEdges
     };
 
-    console.log('ELK graph input:', JSON.stringify(elkGraph, null, 2));
-
     // 3. Apply ELK layout
     const layoutedGraph = await ELK.layout(elkGraph);
-    console.log('ELK layout result:', layoutedGraph);
 
     // 4. Process the layout result to create React Flow nodes
     const finalNodes = [];
@@ -600,7 +560,6 @@ function ReactFlowVisualization({ graphData }) {
 
       // Skip processing nodes that are in collapsed containers entirely
       if (isChild && isContainerCollapsed) {
-        console.log(`Skipping node ${originalNode.id} because container ${containerId} is collapsed`);
         return;
       }
 
@@ -727,8 +686,6 @@ function ReactFlowVisualization({ graphData }) {
       };
     });
     
-    console.log('Final nodes for React Flow:', finalNodesResult);
-    console.log('Final edges for React Flow:', finalEdgesResult);
     return { nodes: finalNodesResult, edges: finalEdgesResult };
   };
 
@@ -857,6 +814,23 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
     }
   }, [onContainerToggle]);
 
+  // Alternative click handler to catch any element clicks
+  const onElementClick = useCallback((event, element) => {
+    if (element.type === 'group' || element.data?.isContainer) {
+      onContainerToggle(element.id);
+    }
+  }, [onContainerToggle]);
+
+  // Handle selection change - containers get selected when clicked
+  const onSelectionChange = useCallback(({ nodes: selectedNodes }) => {
+    if (selectedNodes.length === 1) {
+      const selectedNode = selectedNodes[0];
+      if (selectedNode.type === 'group' || selectedNode.data?.isContainer) {
+        onContainerToggle(selectedNode.id);
+      }
+    }
+  }, [onContainerToggle]);
+
   // Custom label node component - no connection handles
   const LabelNode = ({ data }) => {
     return (
@@ -891,6 +865,8 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
+        onElementClick={onElementClick}
+        onSelectionChange={onSelectionChange}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
@@ -920,8 +896,6 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
 
 function FileDropZone({ onFileLoad, hasData }) {
   const [isDragOver, setIsDragOver] = useState(false);
-
-  console.log('FileDropZone rendering, hasData:', hasData);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -973,11 +947,8 @@ function FileDropZone({ onFileLoad, hasData }) {
   }, [onFileLoad]);
 
   if (hasData) {
-    console.log('FileDropZone: hasData is true, returning null');
     return null;
   }
-
-  console.log('FileDropZone: rendering drop zone');
 
   return (
     <div 
@@ -1014,8 +985,6 @@ export default function Visualizer() {
   const [graphData, setGraphData] = useState(null);
   const [error, setError] = useState(null);
 
-  console.log('Visualizer component rendering, graphData:', !!graphData);
-
   // Check for URL-encoded data on component mount
   useEffect(() => {
     // Parse URL hash for data parameter (like mermaid.live)
@@ -1037,7 +1006,6 @@ export default function Visualizer() {
   }, [location.hash]);
 
   const handleFileLoad = useCallback((data) => {
-    console.log('File loaded, data:', data);
     setGraphData(data);
     setError(null);
   }, []);
@@ -1049,24 +1017,12 @@ export default function Visualizer() {
     window.history.replaceState(null, null, window.location.pathname);
   }, []);
 
-  console.log('About to render Layout with container');
-
   return (
     <Layout
       title="Graph Visualizer"
       description="Interactive ReactFlow visualization for Hydro graphs"
     >
-      <div 
-        className={styles.container} 
-        style={{ 
-          backgroundColor: '#f0f0f0', 
-          minHeight: '500px',
-          border: '2px solid red',
-          padding: '20px'
-        }}
-      >
-        <h1 style={{ color: 'black', margin: '20px 0' }}>Debug: Visualizer Container</h1>
-        {console.log('Rendering container content, error:', error, 'graphData:', !!graphData)}
+      <div className={styles.container}>
         {error && (
           <div className={styles.error}>
             <strong>Error:</strong> {error}
@@ -1085,11 +1041,7 @@ export default function Visualizer() {
             <ReactFlowVisualization graphData={graphData} />
           </div>
         ) : (
-          <div style={{ border: '2px solid blue', padding: '10px', minHeight: '200px' }}>
-            <h2 style={{ color: 'black' }}>Debug: Should show FileDropZone</h2>
-            {console.log('Rendering FileDropZone')}
-            <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />
-          </div>
+          <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />
         )}
       </div>
     </Layout>
