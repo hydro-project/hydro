@@ -795,6 +795,9 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
   const [currentNodes, setNodes, onNodesChange] = useNodesState(nodes);
   const [currentEdges, setEdges, onEdgesChange] = useEdgesState(edges);
 
+  // Using a timeout to distinguish click from drag
+  const clickTimeoutRef = useRef(null);
+
   // Update nodes and edges when props change
   useEffect(() => {
     setNodes(nodes);
@@ -808,26 +811,25 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
     setEdges((eds) => addEdge(connection, eds));
   }, [setEdges, addEdge]);
 
+  const onNodeDragStart = useCallback(() => {
+    // If a drag starts, it's not a click, so clear the timeout.
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+  }, []);
+
   const onNodeClick = useCallback((event, node) => {
+    // On any click, first clear any previous timeout. This handles rapid clicks.
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    // If the node is a container, set a timeout to toggle it.
+    // This will be cancelled by onNodeDragStart if a drag begins.
     if (node.type === 'group' || node.data?.isContainer) {
-      onContainerToggle(node.id);
-    }
-  }, [onContainerToggle]);
-
-  // Alternative click handler to catch any element clicks
-  const onElementClick = useCallback((event, element) => {
-    if (element.type === 'group' || element.data?.isContainer) {
-      onContainerToggle(element.id);
-    }
-  }, [onContainerToggle]);
-
-  // Handle selection change - containers get selected when clicked
-  const onSelectionChange = useCallback(({ nodes: selectedNodes }) => {
-    if (selectedNodes.length === 1) {
-      const selectedNode = selectedNodes[0];
-      if (selectedNode.type === 'group' || selectedNode.data?.isContainer) {
-        onContainerToggle(selectedNode.id);
-      }
+      clickTimeoutRef.current = setTimeout(() => {
+        onContainerToggle(node.id);
+      }, 200); // A small delay to allow drag to start
     }
   }, [onContainerToggle]);
 
@@ -865,8 +867,7 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onNodeClick={onNodeClick}
-        onElementClick={onElementClick}
-        onSelectionChange={onSelectionChange}
+        onNodeDragStart={onNodeDragStart}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
