@@ -9,8 +9,7 @@ use good_lp::{
 use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 
-use super::parse_results::{NetworkType, get_network_type};
-use super::rewrites::relevant_inputs;
+use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
 
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
@@ -319,7 +318,10 @@ fn decouple_analysis_node(
     model_metadata: &RefCell<ModelMetadata>,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) {
-    let network_type = get_network_type(node, &model_metadata.borrow().cluster_to_decouple);
+    let network_type = get_network_type(
+        node,
+        model_metadata.borrow().cluster_to_decouple.root().raw_id(),
+    );
     if let HydroNode::Network { .. } = node {
         // If this is a network and we're not involved, ignore
         if network_type.is_none() {

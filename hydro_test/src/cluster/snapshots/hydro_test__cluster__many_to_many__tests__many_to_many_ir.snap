@@ -12,32 +12,23 @@ expression: built.ir()
                     0,
                 ),
                 to_key: None,
-                serialize_fn: None,
+                serialize_fn: Some(
+                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                ),
                 instantiate_fn: <network instantiate>,
                 deserialize_fn: Some(
                     | res | { let (id , b) = res . unwrap () ; (hydro_lang :: ClusterId :: < () > :: from_raw (id) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
                 ),
                 input: FlatMap {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes , std :: iter :: Map < std :: slice :: Iter < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | v | { ids__free . iter () . map (move | id | (id . raw_id , v . clone ())) } }),
-                    input: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | v | bincode :: serialize (& v) . unwrap () . into () }),
-                        input: Persist {
-                            inner: Source {
-                                source: Iter(
-                                    { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
-                                ),
-                                location_kind: Cluster(
-                                    0,
-                                ),
-                                metadata: HydroIrMetadata {
-                                    location_kind: Cluster(
-                                        0,
-                                    ),
-                                    output_type: Some(
-                                        i32,
-                                    ),
-                                },
-                            },
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: iter :: Map < std :: slice :: Iter < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_0) } ; | v | { ids__free . iter () . map (move | id | (* id , v . clone ())) } }),
+                    input: Persist {
+                        inner: Source {
+                            source: Iter(
+                                { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
+                            ),
+                            location_kind: Cluster(
+                                0,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_kind: Cluster(
                                     0,
@@ -52,7 +43,7 @@ expression: built.ir()
                                 0,
                             ),
                             output_type: Some(
-                                hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes,
+                                i32,
                             ),
                         },
                     },
@@ -61,7 +52,7 @@ expression: built.ir()
                             0,
                         ),
                         output_type: Some(
-                            (u32 , hydro_test :: __staged :: __deps :: hydro_lang :: __staged :: __deps :: bytes :: Bytes),
+                            (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32),
                         ),
                     },
                 },
