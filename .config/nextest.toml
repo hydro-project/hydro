@@ -27,5 +27,9 @@ filter = 'package(hydro_std)'
 test-group = 'hydro-trybuild-group'
 
 [[profile.default.overrides]]
+filter = 'package(hydro_optimize)'
+test-group = 'hydro-trybuild-group'
+
+[[profile.default.overrides]]
 filter = 'package(hydro_test)'
 test-group = 'hydro-trybuild-group'

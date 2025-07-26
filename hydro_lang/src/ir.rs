@@ -21,7 +21,8 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
-use crate::backtrace::BacktraceElement;
+#[cfg(stageleft_runtime)]
+use crate::backtrace::Backtrace;
 #[cfg(feature = "build")]
 use crate::deploy::{Deploy, RegisterPort};
 use crate::location::LocationId;
@@ -704,10 +705,10 @@ impl Hash for TeeNode {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HydroIrMetadata {
     pub location_kind: LocationId,
-    pub backtrace: Vec<BacktraceElement>,
+    pub backtrace: Backtrace,
     pub output_type: Option<DebugType>,
     pub cardinality: Option<usize>,
     pub cpu_usage: Option<f64>,
@@ -727,6 +728,15 @@ impl PartialEq for HydroIrMetadata {
 }
 
 impl Eq for HydroIrMetadata {}
+
+impl Debug for HydroIrMetadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HydroIrMetadata")
+            .field("location_kind", &self.location_kind)
+            .field("output_type", &self.output_type)
+            .finish()
+    }
+}
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
@@ -2690,12 +2700,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"208");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"248");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"184");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
     }
 
     #[test]

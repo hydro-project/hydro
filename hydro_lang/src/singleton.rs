@@ -74,7 +74,11 @@ where
                     location_kind: location_id,
                     metadata: location.new_node_metadata::<T>(),
                 }),
-                second: initial.ir_node.into_inner().into(),
+                second: initial
+                    .continue_if(location.optional_first_tick(q!(())))
+                    .ir_node
+                    .into_inner()
+                    .into(),
                 metadata: location.new_node_metadata::<T>(),
             },
         )
@@ -620,5 +624,56 @@ where
 
     fn make(location: Tick<L>, ir_node: HydroNode) -> Self::Out {
         Optional::new(location, ir_node)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use futures::{SinkExt, StreamExt};
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+
+    use crate::{FlowBuilder, Location};
+
+    #[tokio::test]
+    async fn tick_cycle_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external_process::<()>();
+
+        let (input_send, input) = external.source_external_bincode(&node);
+
+        let node_tick = node.tick();
+        let (complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(q!(0)));
+        let counts = singleton
+            .clone()
+            .into_stream()
+            .count()
+            .continue_if(unsafe { input.tick_batch(&node_tick).first() })
+            .all_ticks()
+            .send_bincode_external(&external);
+        complete_cycle.complete_next_tick(singleton);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut tick_trigger = nodes.connect_sink_bincode(input_send).await;
+        let mut external_out = nodes.connect_source_bincode(counts).await;
+
+        deployment.start().await.unwrap();
+
+        tick_trigger.send(()).await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
+
+        tick_trigger.send(()).await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }
