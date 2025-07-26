@@ -2614,7 +2614,8 @@ where
         O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
     {
         let ids = other.members();
-        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (id.clone(), v.clone())) })).send_bincode(other)
+        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+            .send_bincode(other)
     }
 
     pub fn broadcast_bincode_anonymous<C2, Tag>(

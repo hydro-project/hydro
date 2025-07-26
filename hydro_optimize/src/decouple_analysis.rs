@@ -318,7 +318,10 @@ fn decouple_analysis_node(
     model_metadata: &RefCell<ModelMetadata>,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) {
-    let network_type = get_network_type(node, model_metadata.borrow().cluster_to_decouple.root().raw_id());
+    let network_type = get_network_type(
+        node,
+        model_metadata.borrow().cluster_to_decouple.root().raw_id(),
+    );
     if let HydroNode::Network { .. } = node {
         // If this is a network and we're not involved, ignore
         if network_type.is_none() {

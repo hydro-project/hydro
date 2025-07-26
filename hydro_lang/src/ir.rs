@@ -534,8 +534,11 @@ impl HydroLeaf {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         assert_eq!(
-                            input_location_id, *location_id,
-                            "cycle_sink location mismatch, ident: {:?}, input id: {:?}", ident, input.metadata().id
+                            input_location_id,
+                            *location_id,
+                            "cycle_sink location mismatch, ident: {:?}, input id: {:?}",
+                            ident,
+                            input.metadata().id
                         );
 
                         graph_builders.entry(*location_id).or_default().add_dfir(

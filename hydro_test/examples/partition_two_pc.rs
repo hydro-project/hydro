@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
+use hydro_lang::Location;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::rewrites::persist_pullup::persist_pullup;
-use hydro_lang::Location;
 use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
-use hydro_optimize::partitioner::{partition, Partitioner};
+use hydro_optimize::partitioner::{Partitioner, partition};
 use hydro_optimize::repair::{cycle_source_to_sink_input, inject_id, inject_location};
 use tokio::sync::RwLock;
 
@@ -59,15 +59,18 @@ async fn main() {
     );
 
     let mut cycle_data = HashMap::new();
-    let deployable = builder.optimize_with(persist_pullup)
+    let deployable = builder
+        .optimize_with(persist_pullup)
         .optimize_with(inject_id)
         .optimize_with(|ir| {
             cycle_data = cycle_source_to_sink_input(ir);
             inject_location(ir, &cycle_data);
 
             // Partition coordinator
-            let coordinator_partitioning = partitioning_analysis(ir, &coordinator.id(), &cycle_data);
-            let coordinator_nodes_to_partition = nodes_to_partition(coordinator_partitioning).unwrap();
+            let coordinator_partitioning =
+                partitioning_analysis(ir, &coordinator.id(), &cycle_data);
+            let coordinator_nodes_to_partition =
+                nodes_to_partition(coordinator_partitioning).unwrap();
             let coordinator_partitioner = Partitioner {
                 nodes_to_partition: coordinator_nodes_to_partition,
                 num_partitions,
@@ -78,8 +81,10 @@ async fn main() {
 
             // Partition participants
             cycle_data = cycle_source_to_sink_input(ir); // Recompute since IDs have changed
-            let participant_partitioning = partitioning_analysis(ir, &participants.id(), &cycle_data);
-            let participant_nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
+            let participant_partitioning =
+                partitioning_analysis(ir, &participants.id(), &cycle_data);
+            let participant_nodes_to_partition =
+                nodes_to_partition(participant_partitioning).unwrap();
             let participant_partitioner = Partitioner {
                 nodes_to_partition: participant_nodes_to_partition,
                 num_partitions,

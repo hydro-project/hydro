@@ -48,7 +48,7 @@ mod tests {
     #[cfg(stageleft_runtime)]
     use hydro_lang::{Cluster, Process};
     use hydro_optimize::partition_node_analysis::{nodes_to_partition, partitioning_analysis};
-    use hydro_optimize::partitioner::{partition, Partitioner};
+    use hydro_optimize::partitioner::{Partitioner, partition};
     use hydro_optimize::repair::{cycle_source_to_sink_input, inject_id, inject_location};
 
     #[cfg(stageleft_runtime)]
@@ -203,7 +203,13 @@ mod tests {
             (22, vec!["1".to_string()]),
         ])];
         let expected_coordinator_input_parents = BTreeMap::from([(2, 1), (5, 4), (22, 21)]);
-        assert_eq!(coordinator_partitioning, Some((expected_coordinator_partitioning, expected_coordinator_input_parents)));
+        assert_eq!(
+            coordinator_partitioning,
+            Some((
+                expected_coordinator_partitioning,
+                expected_coordinator_input_parents
+            ))
+        );
         let coordinator_nodes_to_partition = nodes_to_partition(coordinator_partitioning).unwrap();
         let coordinator_partitioner = Partitioner {
             nodes_to_partition: coordinator_nodes_to_partition,
@@ -213,7 +219,6 @@ mod tests {
         };
         partition(&mut ir, &coordinator_partitioner);
 
-
         // Participants
         cycle_data = cycle_source_to_sink_input(&mut ir); // Recompute since IDs have changed
         let participant_partitioning =
@@ -221,7 +226,13 @@ mod tests {
         // Participants can partition on ANYTHING, since they only execute maps
         let expected_participant_partitionings = vec![];
         let expected_participant_input_parents = BTreeMap::from([(5, 4), (24, 23)]);
-        assert_eq!(participant_partitioning, Some((expected_participant_partitionings, expected_participant_input_parents)));
+        assert_eq!(
+            participant_partitioning,
+            Some((
+                expected_participant_partitionings,
+                expected_participant_input_parents
+            ))
+        );
         let participant_nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
         let participant_partitioner = Partitioner {
             nodes_to_partition: participant_nodes_to_partition,

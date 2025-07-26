@@ -146,8 +146,8 @@ fn inject_location_node(
 
                 match node {
                     // Update Persist's location as well (we won't see it during traversal)
-                    HydroNode::CrossProduct { left, right, ..}
-                    | HydroNode::Join { left, right, ..} => {
+                    HydroNode::CrossProduct { left, right, .. }
+                    | HydroNode::Join { left, right, .. } => {
                         inject_location_input_persist(left, location.clone());
                         inject_location_input_persist(right, location);
                     }

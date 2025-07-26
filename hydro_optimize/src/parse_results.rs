@@ -8,7 +8,7 @@ use hydro_lang::location::LocationId;
 use regex::Regex;
 use tokio::sync::mpsc::UnboundedReceiver;
 
-use crate::rewrites::{get_network_type, NetworkType};
+use crate::rewrites::{NetworkType, get_network_type};
 
 pub fn parse_cpu_usage(measurement: String) -> f64 {
     let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();
