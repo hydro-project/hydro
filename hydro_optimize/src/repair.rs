@@ -94,6 +94,16 @@ fn inject_location_leaf(
     }
 }
 
+fn inject_location_input_persist(input: &mut Box<HydroNode>, new_location: LocationId) {
+    if let HydroNode::Persist {
+        metadata: persist_metadata,
+        ..
+    } = input.as_mut()
+    {
+        persist_metadata.location_kind.swap_root(new_location);
+    }
+}
+
 fn inject_location_node(
     node: &mut HydroNode,
     id_to_location: &RefCell<HashMap<usize, LocationId>>,
@@ -136,17 +146,22 @@ fn inject_location_node(
 
                 match node {
                     // Update Persist's location as well (we won't see it during traversal)
+                    HydroNode::CrossProduct { left, right, ..}
+                    | HydroNode::Join { left, right, ..} => {
+                        inject_location_input_persist(left, location.clone());
+                        inject_location_input_persist(right, location);
+                    }
+                    HydroNode::Difference { pos, neg, .. }
+                    | HydroNode::AntiJoin { pos, neg, .. } => {
+                        inject_location_input_persist(pos, location.clone());
+                        inject_location_input_persist(neg, location);
+                    }
                     HydroNode::Fold { input, .. }
                     | HydroNode::FoldKeyed { input, .. }
                     | HydroNode::Reduce { input, .. }
-                    | HydroNode::ReduceKeyed { input, .. } => {
-                        if let HydroNode::Persist {
-                            metadata: persist_metadata,
-                            ..
-                        } = input.as_mut()
-                        {
-                            persist_metadata.location_kind.swap_root(location);
-                        }
+                    | HydroNode::ReduceKeyed { input, .. }
+                    | HydroNode::Scan { input, .. } => {
+                        inject_location_input_persist(input, location);
                     }
                     // CycleSource also stores the location outside of its metadata, so update it as well
                     HydroNode::CycleSource { location_kind, .. } => {

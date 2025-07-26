@@ -260,7 +260,8 @@ mod tests {
         let partitioner = Partitioner {
             nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
             num_partitions: 3,
-            partitioned_cluster_id: cluster.id().raw_id(),
+            location_id: cluster.id().raw_id(),
+            new_cluster_id: None,
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)

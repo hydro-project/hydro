@@ -1,5 +1,5 @@
 use hydro_lang::builder::RewriteIrFlowBuilder;
-use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, deep_clone};
+use hydro_lang::ir::{deep_clone, HydroIrMetadata, HydroLeaf, HydroNode};
 use hydro_lang::location::LocationId;
 use hydro_lang::{Cluster, FlowBuilder, Location};
 use serde::{Deserialize, Serialize};
@@ -66,6 +66,7 @@ pub enum ClusterSelfIdReplace {
     Partition {
         num_partitions: usize,
         partitioned_cluster_id: usize,
+        op_id: usize,
     },
 }
 
@@ -93,6 +94,7 @@ impl VisitMut for ClusterSelfIdReplace {
                     ClusterSelfIdReplace::Partition {
                         num_partitions,
                         partitioned_cluster_id,
+                        op_id,
                     } => {
                         let prefix =
                             format!("__hydro_lang_cluster_self_id_{}", partitioned_cluster_id);
@@ -101,7 +103,7 @@ impl VisitMut for ClusterSelfIdReplace {
                             *expr = syn::parse_quote!({
                                 #expr_content / #num_partitions as u32
                             });
-                            println!("Partitioning: Replaced CLUSTER_SELF_ID");
+                            println!("Partitioning: Replaced CLUSTER_SELF_ID for node {}", op_id);
                             return;
                         }
                     }
@@ -126,4 +128,39 @@ pub fn relevant_inputs(
             }
         })
         .collect()
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub enum NetworkType {
+    Recv,
+    Send,
+    SendRecv,
+}
+
+pub fn get_network_type(node: &HydroNode, location: usize) -> Option<NetworkType> {
+    let mut is_to_us = false;
+    let mut is_from_us = false;
+
+    if let HydroNode::Network {
+        input, to_location, ..
+    } = node
+    {
+        if input.metadata().location_kind.root().raw_id() == location {
+            is_from_us = true;
+        }
+        if to_location.root().raw_id() == location {
+            is_to_us = true;
+        }
+
+        return if is_from_us && is_to_us {
+            Some(NetworkType::SendRecv)
+        } else if is_from_us {
+            Some(NetworkType::Send)
+        } else if is_to_us {
+            Some(NetworkType::Recv)
+        } else {
+            None
+        };
+    }
+    None
 }

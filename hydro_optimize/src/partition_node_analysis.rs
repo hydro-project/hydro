@@ -5,14 +5,14 @@ use hydro_lang::ir::{HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 use syn::visit::Visit;
 
-use crate::parse_results::{NetworkType, get_network_type};
 use crate::partition_syn_analysis::{AnalyzeClosure, StructOrTuple, StructOrTupleIndex};
-use crate::rewrites::relevant_inputs;
+use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
+
 
 // Find all inputs of a node
 struct InputMetadata {
     // Const fields
-    cluster_to_partition: LocationId,
+    location: LocationId,
     // Variables
     inputs: BTreeSet<usize>, // op_ids of cluster inputs.
     input_parents: BTreeMap<usize, usize>, // input op_id -> parent of the input (potentially on a different location)
@@ -23,7 +23,7 @@ fn input_analysis_node(
     next_stmt_id: &mut usize,
     metadata: &mut InputMetadata,
 ) {
-    match get_network_type(node, &metadata.cluster_to_partition) {
+    match get_network_type(node, metadata.location.root().raw_id()) {
         Some(NetworkType::Recv) | Some(NetworkType::SendRecv) => {
             metadata.inputs.insert(*next_stmt_id);
             metadata.input_parents.insert(*next_stmt_id, node.input_metadata().first().unwrap().id.unwrap());
@@ -32,9 +32,9 @@ fn input_analysis_node(
     }
 }
 
-fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> (BTreeSet<usize>, BTreeMap<usize, usize>) {
+fn input_analysis(ir: &mut [HydroLeaf], location: &LocationId) -> (BTreeSet<usize>, BTreeMap<usize, usize>) {
     let mut input_metadata = InputMetadata {
-        cluster_to_partition: cluster_to_partition.clone(),
+        location: location.clone(),
         inputs: BTreeSet::new(),
         input_parents: BTreeMap::new(),
     };
@@ -51,7 +51,7 @@ fn input_analysis(ir: &mut [HydroLeaf], cluster_to_partition: &LocationId) -> (B
 
 pub struct InputDependencyMetadata {
     // Const fields
-    pub cluster_to_partition: LocationId,
+    pub location: LocationId,
     pub inputs: BTreeSet<usize>,
     pub input_parents: BTreeMap<usize, usize>,
     // Variables
@@ -92,7 +92,7 @@ fn input_dependency_analysis_node(
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) {
     // Filter unrelated nodes
-    if metadata.cluster_to_partition != *node.metadata().location_kind.root() {
+    if metadata.location != *node.metadata().location_kind.root() {
         return;
     }
 
@@ -106,7 +106,7 @@ fn input_dependency_analysis_node(
         HydroNode::Tee { inner, .. } => {
             vec![inner.0.borrow().metadata().id.unwrap()]
         }
-        _ => relevant_inputs(node.input_metadata(), &metadata.cluster_to_partition),
+        _ => relevant_inputs(node.input_metadata(), &metadata.location),
     };
 
     let InputDependencyMetadata {
@@ -354,12 +354,12 @@ fn input_dependency_analysis_node(
 
 fn input_dependency_analysis(
     ir: &mut [HydroLeaf],
-    cluster_to_partition: &LocationId,
+    location: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) -> InputDependencyMetadata {
-    let (inputs, input_parents) = input_analysis(ir, cluster_to_partition);
+    let (inputs, input_parents) = input_analysis(ir, location);
     let mut metadata = InputDependencyMetadata {
-        cluster_to_partition: cluster_to_partition.clone(),
+        location: location.clone(),
         inputs,
         input_parents,
         optimistic_phase: true,
@@ -445,7 +445,7 @@ fn partitioning_constraint_analysis_node(
     possible_partitionings: &mut BTreeMap<usize, BTreeSet<BTreeMap<usize, StructOrTupleIndex>>>, /* op -> set of partitioning requirements (input -> indices), one for each input taint. Empty set = cannot partition */
 ) {
     let InputDependencyMetadata {
-        cluster_to_partition,
+        location,
         input_taint,
         input_dependencies,
         ..
@@ -453,7 +453,7 @@ fn partitioning_constraint_analysis_node(
 
     // If this node is tainted by an input (otherwise we don't care)
     if input_taint.contains_key(next_stmt_id) {
-        let parent_ids = relevant_inputs(node.input_metadata(), cluster_to_partition);
+        let parent_ids = relevant_inputs(node.input_metadata(), location);
 
         // If there's at least 1 parent that is not tainted by any input, then we can always partition
         if parent_ids
@@ -582,11 +582,11 @@ fn partitioning_constraint_analysis_node(
 /// Returns (all possible partitionings, inputs -> inputs' parents)
 pub fn partitioning_analysis(
     ir: &mut [HydroLeaf],
-    cluster_to_partition: &LocationId,
+    location: &LocationId,
     cycle_source_to_sink_input: &HashMap<usize, usize>,
 ) -> Option<(Vec<BTreeMap<usize, StructOrTupleIndex>>, BTreeMap<usize, usize>)> {
     let dependency_metadata =
-        input_dependency_analysis(ir, cluster_to_partition, cycle_source_to_sink_input);
+        input_dependency_analysis(ir, location, cycle_source_to_sink_input);
     let mut possible_partitionings = BTreeMap::new();
 
     println!("\nBegin partitioning constraint analysis");
@@ -742,7 +742,7 @@ mod tests {
 
     fn test_input(
         builder: FlowBuilder<'_>,
-        cluster_to_partition: LocationId,
+        location: LocationId,
         expected_taint: BTreeMap<usize, BTreeSet<usize>>,
         expected_dependencies: BTreeMap<usize, BTreeMap<usize, StructOrTuple>>,
     ) {
@@ -760,7 +760,7 @@ mod tests {
             input_taint: actual_taint,
             input_dependencies: actual_dependencies,
             ..
-        } = input_dependency_analysis(&mut ir, &cluster_to_partition, &cycle_data);
+        } = input_dependency_analysis(&mut ir, &location, &cycle_data);
 
         println!("Actual taint: {:?}", actual_taint);
         println!("Actual dependencies: {:?}", actual_dependencies);
@@ -771,7 +771,7 @@ mod tests {
 
     fn test_input_partitionable(
         builder: FlowBuilder<'_>,
-        cluster_to_partition: LocationId,
+        location: LocationId,
         expected_partitionings: Option<Vec<BTreeMap<usize, StructOrTupleIndex>>>,
     ) {
         let mut cycle_data = HashMap::new();
@@ -784,9 +784,14 @@ mod tests {
             })
             .into_deploy::<HydroDeploy>();
         let mut ir = deep_clone(built.ir());
-        let partitioning = partitioning_analysis(&mut ir, &cluster_to_partition, &cycle_data);
+        let partitioning = partitioning_analysis(&mut ir, &location, &cycle_data);
 
-        assert_eq!(partitioning, expected_partitionings);
+        if expected_partitionings.is_none() {
+            assert!(partitioning.is_none());
+            return;
+        }
+
+        assert_eq!(partitioning.unwrap().0, expected_partitionings.unwrap());
     }
 
     #[test]

@@ -62,7 +62,8 @@ async fn main() {
     let partitioner = Partitioner {
         nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
         num_partitions: 3,
-        partitioned_cluster_id: cluster.id().raw_id(),
+        location_id: cluster.id().raw_id(),
+        new_cluster_id: None,
     };
 
     // Extract the IR BEFORE optimization

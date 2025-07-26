@@ -44,6 +44,7 @@ async fn main() {
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
 
     let coordinator = builder.process();
+    let partitioned_coordinator = builder.cluster::<()>();
     let participants = builder.cluster();
     let clients = builder.cluster();
     let client_aggregator = builder.process();
@@ -64,24 +65,38 @@ async fn main() {
             cycle_data = cycle_source_to_sink_input(ir);
             inject_location(ir, &cycle_data);
 
-            // Partition
-            let participant_partitioning = partitioning_analysis(ir, &participants.id(), &cycle_data);
-            let nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
-            let partitioner = Partitioner {
-                nodes_to_partition,
+            // Partition coordinator
+            let coordinator_partitioning = partitioning_analysis(ir, &coordinator.id(), &cycle_data);
+            let coordinator_nodes_to_partition = nodes_to_partition(coordinator_partitioning).unwrap();
+            let coordinator_partitioner = Partitioner {
+                nodes_to_partition: coordinator_nodes_to_partition,
                 num_partitions,
-                partitioned_cluster_id: participants.id().raw_id(),
+                location_id: coordinator.id().raw_id(),
+                new_cluster_id: Some(partitioned_coordinator.id().raw_id()),
             };
-            partition(ir, &partitioner);
+            partition(ir, &coordinator_partitioner);
+
+            // Partition participants
+            cycle_data = cycle_source_to_sink_input(ir); // Recompute since IDs have changed
+            let participant_partitioning = partitioning_analysis(ir, &participants.id(), &cycle_data);
+            let participant_nodes_to_partition = nodes_to_partition(participant_partitioning).unwrap();
+            let participant_partitioner = Partitioner {
+                nodes_to_partition: participant_nodes_to_partition,
+                num_partitions,
+                location_id: participants.id().raw_id(),
+                new_cluster_id: None,
+            };
+            partition(ir, &participant_partitioner);
         })
         .into_deploy();
 
     let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
 
     let _nodes = deployable
-        .with_process(
-            &coordinator,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+        .with_cluster(
+            &partitioned_coordinator,
+            (0..num_partitions)
+                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
         )
         .with_cluster(
             &participants,
