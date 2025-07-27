@@ -22,3 +22,4 @@ export * from './colorUtils.js';
 export * from './layoutConfigs.js';
 export * from './layoutAlgorithms.js';
 export * from './externalLibraries.js';
+export * from './hyperedgeUtils.js';

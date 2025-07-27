@@ -8,6 +8,7 @@
 import { elkLayouts } from './layoutConfigs.js';
 import { generateLocationColor, generateLocationBorderColor } from './colorUtils.js';
 import { ELK } from './externalLibraries.js';
+import { generateHyperedges, routeEdgesForCollapsedContainers, createChildNodeMapping } from './hyperedgeUtils.js';
 
 // This function is now unused in the hierarchical approach but kept for potential simple layouts.
 export const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
@@ -47,7 +48,7 @@ export const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
 };
 
 // NEW HIERARCHICAL LAYOUT APPROACH
-export const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef) => {
+export const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef, precomputedHyperedges = []) => {
   if (!ELK) {
     console.log(`🚨 HIERARCHICAL LAYOUT ABORT: ELK not available`);
     return { nodes, edges };
@@ -171,6 +172,9 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     }
   });
 
+  // Use precomputed hyperedges if available, otherwise generate them
+  const hyperedges = precomputedHyperedges.length > 0 ? precomputedHyperedges : generateHyperedges(nodes, edges);
+
   const elkGraph = {
     id: 'root',
     layoutOptions: {
@@ -178,7 +182,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
     },
     children: elkChildren,
-    edges: validElkEdges
+    edges: validElkEdges // Only use regular edges for ELK layout
   };
 
   // 3. Apply ELK layout
@@ -403,6 +407,24 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       animated: isNetworkEdge, // Animate network edges
     };
   });
+
+  // Process hyperedges for ReactFlow format (container-to-container edges)
+  // Only include hyperedges if there are actually collapsed containers
+  const hasCollapsedContainers = Object.values(collapsedContainers).some(Boolean);
+  const hyperedgeResults = hasCollapsedContainers ? hyperedges.map(hyperedge => ({
+    id: hyperedge.id,
+    source: hyperedge.sources[0],
+    target: hyperedge.targets[0],
+    type: 'bezier',
+    style: { 
+      strokeWidth: 3, // Thicker for hyperedges
+      stroke: '#880088', // Purple for container-to-container connections
+      strokeDasharray: '8,4', // Distinctive dashed pattern
+    },
+    markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#880088' },
+    animated: true, // Always animate hyperedges
+    data: { isHyperedge: true } // Mark as hyperedge for easy identification
+  })) : [];
   
   // Combine containers and other nodes, ensuring containers come first.
   const finalNodesResult = [...containerNodes, ...childAndOrphanNodes, ...labelNodes];
@@ -413,5 +435,13 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     console.error(`  Locations: ${locations.size} locations`);
   }
   
-  return { nodes: finalNodesResult, edges: finalEdgesResult };
+  // Only include precomputed hyperedges when NO containers are collapsed
+  // When containers are collapsed, edge routing will create the appropriate container-to-container edges
+  const finalEdges = hasCollapsedContainers ? finalEdgesResult : [...finalEdgesResult, ...hyperedgeResults];
+  
+  return { 
+    nodes: finalNodesResult, 
+    edges: finalEdges,
+    hyperedges: hyperedges // Return hyperedges separately for reuse
+  };
 };

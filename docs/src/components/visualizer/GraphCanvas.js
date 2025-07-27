@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ELK, ReactFlowComponents } from './externalLibraries.js';
 import { generateNodeColors } from './colorUtils.js';
 import { applyHierarchicalLayout } from './layoutAlgorithms.js';
+import { generateHyperedges, routeEdgesForCollapsedContainers, createChildNodeMapping } from './hyperedgeUtils.js';
 import { LayoutControls } from './LayoutControls.js';
 import { Legend } from './Legend.js';
 import { ReactFlowInner } from './ReactFlowInner.js';
@@ -87,6 +88,7 @@ export function GraphCanvas({ graphData }) {
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
   const [collapsedContainers, setCollapsedContainers] = useState({});
+  const [hyperedges, setHyperedges] = useState([]);
   
   // Remove locationData state - just compute it directly when needed
   // This prevents the infinite re-render cycle
@@ -174,9 +176,14 @@ export function GraphCanvas({ graphData }) {
         markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
       }));
 
+      // Precompute hyperedges once from the initial graph structure
+      const computedHyperedges = generateHyperedges(processedNodes, processedEdges);
+      setHyperedges(computedHyperedges);
+
       // Apply ELK layout with hierarchical grouping (use empty collapsed containers for initial layout)
-      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle, isDraggedRef);
+      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle, isDraggedRef, computedHyperedges);
       
+      // For initial layout, we don't need edge routing since no containers are collapsed yet
       setNodes(layoutResult.nodes);
       setEdges(layoutResult.edges);
     };
@@ -230,18 +237,36 @@ export function GraphCanvas({ graphData }) {
           markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
         }));
 
-        // Re-apply layout with new collapsed state
-        const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle, isDraggedRef);
+        // Re-apply layout with new collapsed state, using precomputed hyperedges
+        const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle, isDraggedRef, hyperedges);
+        
+        // Apply edge routing for collapsed containers
+        const childNodeMapping = createChildNodeMapping(layoutResult.nodes);
+        
+        // Convert collapsedContainers format from container_${id} -> boolean to locationId -> boolean
+        // Also create a simpler mapping: any container that's collapsed should be checked
+        const collapsedLocationMapping = {};
+        const collapsedContainerIds = new Set();
+        
+        Object.entries(collapsedContainers).forEach(([containerId, isCollapsed]) => {
+          if (containerId.startsWith('container_') && isCollapsed) {
+            const locationId = containerId.replace('container_', '');
+            collapsedLocationMapping[locationId] = isCollapsed;
+            collapsedContainerIds.add(containerId);
+          }
+        });
+        
+        const routedEdges = routeEdgesForCollapsedContainers(layoutResult.edges, collapsedLocationMapping, childNodeMapping, collapsedContainerIds);
         
         setNodes(layoutResult.nodes);
-        setEdges(layoutResult.edges);
+        setEdges(routedEdges);
       };
       
       processCollapsedContainersUpdate().catch(error => {
         console.error('🚨 COLLAPSED EFFECT ERROR:', error);
       });
     }
-  }, [collapsedContainers, graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
+  }, [collapsedContainers, graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle, hyperedges]);
 
   const handleLayoutChange = useCallback((newLayout) => {
     setCurrentLayout(newLayout);

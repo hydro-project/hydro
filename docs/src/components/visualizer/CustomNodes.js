@@ -2,10 +2,11 @@
  * Custom Node Components for ReactFlow
  * 
  * Contains custom node types including ContainerNode and LabelNode
- * with proper click/drag handling
+ * with proper click/drag handling and edge connection support
  */
 
 import React, { useRef } from 'react';
+import { ReactFlowComponents } from './externalLibraries.js';
 
 // Custom node for containers to handle clicks directly
 export const ContainerNode = ({ id, data }) => {
@@ -14,6 +15,9 @@ export const ContainerNode = ({ id, data }) => {
   const dragStartTimeRef = useRef(null);
   const dragStartPosRef = useRef(null);
   const dragThresholdRef = useRef(false);
+  
+  // Get ReactFlow components
+  const { Handle, Position } = ReactFlowComponents || {};
 
   // SOLUTION FOR REACTFLOW CLICK VS DRAG HANDLING:
   // We need to distinguish between clicks (for toggling) and drags (for moving).
@@ -97,6 +101,36 @@ export const ContainerNode = ({ id, data }) => {
         justifyContent: 'center'
       }}
     >
+      {/* ReactFlow handles for edge connections */}
+      {Handle && Position && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Top}
+            id="top"
+            style={{ background: '#555' }}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="bottom"
+            style={{ background: '#555' }}
+          />
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left"
+            style={{ background: '#555' }}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right"
+            style={{ background: '#555' }}
+          />
+        </>
+      )}
+      
       {/* Only show the label if the container is collapsed. */}
       {/* Expanded containers get their label from a separate LabelNode. */}
       {isCollapsed ? label : null}
