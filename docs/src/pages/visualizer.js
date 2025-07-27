@@ -300,11 +300,6 @@ const ContainerNode = ({ id, data }) => {
   // We need to distinguish between clicks (for toggling) and drags (for moving).
   // ReactFlow intercepts pointer events during drag, so we track drag state via position changes.
   const handlePointerDown = (event) => {
-    console.log('🖱️ POINTER DOWN on container:', id, {
-      clientX: event.clientX,
-      clientY: event.clientY,
-      timeStamp: event.timeStamp
-    });
     dragStartTimeRef.current = Date.now();
     dragStartPosRef.current = { x: event.clientX, y: event.clientY };
     dragThresholdRef.current = false;
@@ -324,18 +319,8 @@ const ContainerNode = ({ id, data }) => {
       const deltaY = Math.abs(event.clientY - dragStartPosRef.current.y);
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       
-      console.log('🖱️ POINTER MOVE on container:', id, {
-        deltaX,
-        deltaY,
-        distance,
-        thresholdBefore: dragThresholdRef.current
-      });
-      
       // If moved more than 5 pixels, consider it a drag
       if (distance > 5) {
-        if (!dragThresholdRef.current) {
-          console.log('🚨 DRAG THRESHOLD CROSSED for container:', id, 'distance:', distance);
-        }
         dragThresholdRef.current = true;
       }
     }
@@ -356,23 +341,10 @@ const ContainerNode = ({ id, data }) => {
     // Check if ReactFlow detected this container as being dragged
     const wasReactFlowDragged = isDraggedRef && isDraggedRef.current && isDraggedRef.current[id];
     
-    console.log('🖱️ POINTER UP on container:', id, {
-      timeDiff,
-      finalDistance,
-      dragThreshold: dragThresholdRef.current,
-      wasReactFlowDragged,
-      startPos: dragStartPosRef.current,
-      endPos: { x: event.clientX, y: event.clientY },
-      willToggle: timeDiff < 300 && finalDistance < 5 && !dragThresholdRef.current && !wasReactFlowDragged
-    });
-    
     // Only toggle if this was a quick click AND ReactFlow didn't detect a drag
     if (timeDiff < 300 && finalDistance < 5 && !dragThresholdRef.current && !wasReactFlowDragged && onContainerToggle) {
-      console.log('🔄 Container toggle triggered for:', id, 'time:', timeDiff, 'distance:', finalDistance);
       event.stopPropagation(); // Only stop propagation for actual clicks
       onContainerToggle(id);
-    } else {
-      console.log('🚫 Container toggle prevented for:', id, 'time:', timeDiff, 'distance:', finalDistance, 'dragThreshold:', dragThresholdRef.current, 'wasReactFlowDragged:', wasReactFlowDragged);
     }
     
     // Reset tracking
@@ -422,7 +394,7 @@ function GraphCanvas({ graphData }) {
   // Add mount/unmount tracking to verify if component is being recreated
   useEffect(() => {
     return () => {
-      console.log(`💀 GraphCanvas UNMOUNTING (ID: ${componentId.current})`);
+      // Component cleanup - no logging needed
     };
   }, []);
   
@@ -432,28 +404,21 @@ function GraphCanvas({ graphData }) {
   
   // Add logging to track when nodes change
   useEffect(() => {
-    console.log(`📊 NODES ARRAY CHANGED: length=${nodes.length}, renderCount=${renderCount.current}`, nodes.length > 0 ? nodes.map(n => n.id).slice(0, 5) : 'EMPTY');
     if (nodes.length === 0) {
       console.log('⚠️ NODES ARE EMPTY! This might explain why visualization disappears');
-      console.trace('Stack trace for empty nodes');
     }
   }, [nodes]);
   
   // Create stable change handlers using useCallback
   const onNodesChange = useCallback((changes) => {
-    console.log(`🔄 ON_NODES_CHANGE called with ${changes.length} changes:`, changes.map(c => `${c.type}:${c.id}`).join(', '));
-    
     // Track container drag states based on ReactFlow position changes
     changes.forEach(change => {
       if (change.type === 'position' && change.id.startsWith('container_') && change.dragging) {
-        console.log('🎯 REACTFLOW DRAG DETECTED for container:', change.id);
         isDraggedRef.current[change.id] = true;
       }
     });
     
     setNodes((nds) => {
-      console.log(`📝 SET_NODES: current length=${nds.length}, about to apply ${changes.length} changes`);
-      
       // Filter out automatic dimension changes that cause infinite loops
       // Only allow user-initiated changes like position and select
       const meaningfulChanges = changes.filter(change => {
@@ -462,15 +427,18 @@ function GraphCanvas({ graphData }) {
         return ['position', 'select'].includes(change.type);
       });
       
-      console.log(`📝 FILTERED CHANGES: ${meaningfulChanges.length} meaningful out of ${changes.length} total`);
-      
       if (meaningfulChanges.length === 0) {
-        console.log(`📝 NO MEANINGFUL CHANGES: returning current nodes (length=${nds.length})`);
         return nds; // Return current nodes unchanged
       }
       
       const updatedNodes = ReactFlowComponents.applyNodeChanges(meaningfulChanges, nds);
-      console.log(`📝 APPLIED CHANGES: result length=${updatedNodes.length}`);
+      
+      if (updatedNodes.length === 0 && nds.length > 0) {
+        console.error(`🚨 APPLY_NODE_CHANGES RETURNED EMPTY! Input had ${nds.length} nodes, changes:`, meaningfulChanges);
+        // Return original nodes to prevent empty state
+        return nds;
+      }
+      
       return updatedNodes;
     });
   }, []);
@@ -520,7 +488,6 @@ function GraphCanvas({ graphData }) {
   // Use useRef to create a stable callback reference
   const handleContainerToggleRef = useRef();
   handleContainerToggleRef.current = (containerId) => {
-    console.log('🎯 CONTAINER TOGGLE CALLED for:', containerId);
     setCollapsedContainers(prev => {
       const newState = {
         ...prev,
@@ -550,7 +517,6 @@ function GraphCanvas({ graphData }) {
     }
 
     const processData = async () => {
-      
       // Convert nodes with enhanced styling
       let processedNodes = (graphData.nodes || []).map(node => {
         const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
@@ -587,12 +553,13 @@ function GraphCanvas({ graphData }) {
       // Apply ELK layout with hierarchical grouping (use empty collapsed containers for initial layout)
       const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle, isDraggedRef);
       
-      console.log(`🎨 MAIN LAYOUT RESULT: ${layoutResult.nodes.length} nodes, ${layoutResult.edges.length} edges`);
       setNodes(layoutResult.nodes);
       setEdges(layoutResult.edges);
     };
 
-    processData();
+    processData().catch(error => {
+      console.error('🚨 MAIN EFFECT ERROR:', error);
+    });
   }, [graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
 
   // Separate useEffect to handle collapsed container changes without triggering full re-layout
@@ -605,7 +572,7 @@ function GraphCanvas({ graphData }) {
     
     // Only re-run layout if we have data and some containers are actually collapsed
     if (graphData && ELK) {
-      const processCollapsedContainersUpdate = async () => {        
+      const processCollapsedContainersUpdate = async () => {
         // Convert nodes again
         let processedNodes = (graphData.nodes || []).map(node => {
           const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
@@ -642,18 +609,22 @@ function GraphCanvas({ graphData }) {
         // Re-apply layout with new collapsed state
         const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle, isDraggedRef);
         
-        console.log(`🎨 COLLAPSED LAYOUT RESULT: ${layoutResult.nodes.length} nodes, ${layoutResult.edges.length} edges`);
         setNodes(layoutResult.nodes);
         setEdges(layoutResult.edges);
       };
       
-      processCollapsedContainersUpdate();
+      processCollapsedContainersUpdate().catch(error => {
+        console.error('🚨 COLLAPSED EFFECT ERROR:', error);
+      });
     }
   }, [collapsedContainers, graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
 
   // NEW HIERARCHICAL LAYOUT APPROACH
   const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef) => {
-    if (!ELK) return { nodes, edges };
+    if (!ELK) {
+      console.log(`🚨 HIERARCHICAL LAYOUT ABORT: ELK not available`);
+      return { nodes, edges };
+    }
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
     const locationGroups = new Map();
@@ -955,9 +926,6 @@ function GraphCanvas({ graphData }) {
       }
     });
 
-    // Combine containers and other nodes, ensuring containers come first.
-    const finalNodesResult = [...containerNodes, ...childAndOrphanNodes, ...labelNodes];
-    
     // Use the edges that were already processed during ELK layout
     // Convert them back to the ReactFlow format
     const finalEdgesResult = validElkEdges.map(elkEdge => {
@@ -1009,21 +977,27 @@ function GraphCanvas({ graphData }) {
       };
     });
     
+    // Combine containers and other nodes, ensuring containers come first.
+    const finalNodesResult = [...containerNodes, ...childAndOrphanNodes, ...labelNodes];
+    
+    if (finalNodesResult.length === 0) {
+      console.error(`🚨 HIERARCHICAL LAYOUT RETURNING EMPTY NODES!`);
+      console.error(`  Input: ${nodes.length} nodes, ${edges.length} edges`);
+      console.error(`  Locations: ${locations.size} locations`);
+    }
+    
     return { nodes: finalNodesResult, edges: finalEdgesResult };
   };
 
   const handleLayoutChange = useCallback((newLayout) => {
-    console.log('🎨 Layout changing to:', newLayout);
     setCurrentLayout(newLayout);
   }, []);
 
   const handlePaletteChange = useCallback((newPalette) => {
-    console.log('🎨 Palette changing to:', newPalette);
     setColorPalette(newPalette);
   }, []);
 
   if (!nodes) {
-    console.log('⚠️ GraphCanvas rendering "Preparing visualization..." because nodes is falsy:', nodes);
     return <div className={styles.loading}>Preparing visualization...</div>;
   }
 
