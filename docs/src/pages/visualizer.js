@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import Layout from '@theme/Layout';
 import { useLocation } from '@docusaurus/router';
 import styles from './visualizer.module.css';
@@ -243,23 +243,57 @@ const generateLocationBorderColor = (locationId, totalLocations, palette = 'Set3
 };
 
 function ReactFlowVisualization({ graphData }) {
+  const DEBUG_VERSION = '3.4';
+  console.log(`🏗️ ReactFlowVisualization v${DEBUG_VERSION} - Parent component rendering, graphData:`, !!graphData);
+  
+  // Add mount/unmount tracking to parent
+  useEffect(() => {
+    console.log(`🏁 v${DEBUG_VERSION} - ReactFlowVisualization MOUNTED`);
+    return () => {
+      console.log(`💀 v${DEBUG_VERSION} - ReactFlowVisualization UNMOUNTING`);
+    };
+  }, []);
+  
   const [reactFlowReady, setReactFlowReady] = useState(false);
+  
+  // Track what's causing parent re-renders
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  console.log(`🔄 v${DEBUG_VERSION} - Parent render #${renderCount.current}, reactFlowReady=${reactFlowReady}`);
+
+  // Memoize graphData to prevent GraphCanvas re-mounting
+  const stableGraphData = useMemo(() => {
+    console.log(`🏗️ v${DEBUG_VERSION} - stableGraphData useMemo recalculating, input graphData:`, !!graphData);
+    return graphData;
+  }, [graphData]);
 
   // Load external libraries when component mounts
   useEffect(() => {
+    console.log(`🏗️ v${DEBUG_VERSION} - Loading external libraries effect triggered, reactFlowReady=${reactFlowReady}...`);
+    if (reactFlowReady) {
+      console.log(`🏗️ v${DEBUG_VERSION} - Libraries already loaded, skipping`);
+      return;
+    }
+    
+    console.log(`🏗️ v${DEBUG_VERSION} - Actually loading libraries...`);
     loadExternalLibraries().then(() => {
+      console.log(`🏗️ v${DEBUG_VERSION} - Libraries loaded, calling setReactFlowReady(true)`);
       setReactFlowReady(true);
     }).catch((error) => {
       console.error('Failed to load external libraries:', error);
     });
-  }, []);
+  }, []); // Empty dependency array to run only once
 
   if (!reactFlowReady) {
+    console.log(`🏗️ v${DEBUG_VERSION} - Not ready yet, showing loading...`);
     return <div className={styles.loading}>Loading ReactFlow visualization...</div>;
   }
 
+  console.log(`🏗️ v${DEBUG_VERSION} - Rendering GraphCanvas with ready=true`);
+  console.log(`🏗️ v${DEBUG_VERSION} - About to return JSX: <GraphCanvas graphData={stableGraphData} />`);
+  console.log(`🏗️ v${DEBUG_VERSION} - stableGraphData reference:`, stableGraphData === graphData ? 'SAME as graphData' : 'DIFFERENT from graphData');
   // We are sure that ReactFlowComponents is loaded here, so we can render the main canvas
-  return <GraphCanvas graphData={graphData} />;
+  return <GraphCanvas graphData={stableGraphData} />;
 }
 
 // NEW: Custom node for containers to handle clicks directly
@@ -297,41 +331,163 @@ const ContainerNode = ({ id, data }) => {
 };
 
 function GraphCanvas({ graphData }) {
-  const { useNodesState, useEdgesState } = ReactFlowComponents;
-
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const DEBUG_VERSION = '3.5';
+  
+  // Track component creation vs re-render
+  const componentId = useRef(Math.random().toString(36).substr(2, 9));
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  
+  console.log(`🚀 GraphCanvas v${DEBUG_VERSION} - Component ID: ${componentId.current}, Render #${renderCount.current}`);
+  
+  // Add mount/unmount tracking to verify if component is being recreated
+  useEffect(() => {
+    console.log(`🏁 v${DEBUG_VERSION} - GraphCanvas MOUNTED (ID: ${componentId.current})`);
+    return () => {
+      console.log(`💀 v${DEBUG_VERSION} - GraphCanvas UNMOUNTING (ID: ${componentId.current})`);
+    };
+  }, []);
+  
+  // Track object identity to see if dependencies are changing
+  const prevRefs = useRef({});
+  const currentRefs = {
+    graphData,
+    locations: graphData?.locations,
+    nodes: graphData?.nodes,
+    edges: graphData?.edges
+  };
+  
+  Object.entries(currentRefs).forEach(([key, value]) => {
+    if (prevRefs.current[key] !== value) {
+      console.log(`🔍 v${DEBUG_VERSION} - ${key} identity changed:`, prevRefs.current[key] !== value);
+    }
+  });
+  prevRefs.current = currentRefs;
+  
+  console.log(`🔍 v${DEBUG_VERSION} - ReactFlowComponents identity:`, typeof ReactFlowComponents, !!ReactFlowComponents?.useNodesState);
+  
+  // FIXED: Replace broken CDN ReactFlow hooks with standard React state
+  console.log(`🔧 v${DEBUG_VERSION} - Using standard React useState instead of broken CDN hooks`);
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
+  
+  // Create stable change handlers using useCallback
+  const onNodesChange = useCallback((changes) => {
+    console.log(`� v${DEBUG_VERSION} - onNodesChange called with:`, changes.length, 'changes at render #', renderCount.current);
+    console.log(`� v${DEBUG_VERSION} - onNodesChange change types:`, changes.map(c => c.type));
+    console.log(`� v${DEBUG_VERSION} - onNodesChange first few changes:`, changes.slice(0, 3));
+    setNodes((nds) => {
+      console.log(`🚨 v${DEBUG_VERSION} - onNodesChange setNodes callback, current nodes:`, nds.length, 'new nodes will be calculated from changes');
+      
+      // Filter out automatic dimension changes that cause infinite loops
+      // Only allow user-initiated changes like position and select
+      const meaningfulChanges = changes.filter(change => {
+        // Exclude 'dimensions' type changes as these are automatic ReactFlow measurements
+        // Only allow position (drag) and select (click) changes
+        return ['position', 'select'].includes(change.type);
+      });
+      
+      if (meaningfulChanges.length === 0) {
+        console.log(`🚨 v${DEBUG_VERSION} - No meaningful changes (filtered out ${changes.length} automatic changes), returning current nodes unchanged`);
+        return nds; // Return current nodes unchanged
+      }
+      
+      console.log(`🚨 v${DEBUG_VERSION} - Processing ${meaningfulChanges.length} meaningful changes out of ${changes.length} total`);
+      console.log(`🚨 v${DEBUG_VERSION} - Change types being processed:`, meaningfulChanges.map(c => c.type));
+      return ReactFlowComponents.applyNodeChanges(meaningfulChanges, nds);
+    });
+  }, []);
+  
+  const onEdgesChange = useCallback((changes) => {
+    console.log(`� v${DEBUG_VERSION} - onEdgesChange called with:`, changes.length, 'changes');
+    setEdges((eds) => ReactFlowComponents.applyEdgeChanges(changes, eds));
+  }, []);
+  
+  console.log(`🔧 v${DEBUG_VERSION} - Standard state completed, nodes.length:`, nodes.length, 'edges.length:', edges.length);
+  
+  // Track nodes/edges reference changes
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  if (nodesRef.current !== nodes) {
+    console.log(`🔧 v${DEBUG_VERSION} - NODES REFERENCE CHANGED from length ${nodesRef.current.length} to ${nodes.length}`);
+    nodesRef.current = nodes;
+  }
+  if (edgesRef.current !== edges) {
+    console.log(`🔧 v${DEBUG_VERSION} - EDGES REFERENCE CHANGED from length ${edgesRef.current.length} to ${edges.length}`);
+    edgesRef.current = edges;
+  }
 
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
-  const [locationData, setLocationData] = useState(new Map());
   const [collapsedContainers, setCollapsedContainers] = useState({});
+  
+  console.log(`🔧 v${DEBUG_VERSION} - State values: currentLayout=${currentLayout}, colorPalette=${colorPalette}, collapsedContainers=${JSON.stringify(collapsedContainers)}`);
+
+  // Remove locationData state - just compute it directly when needed
+  // This prevents the infinite re-render cycle
+  const locationData = useMemo(() => {
+    console.log(`🔍 v${DEBUG_VERSION} - locationData useMemo recalculating`);
+    const locations = new Map();
+    if (graphData?.locations) {
+      graphData.locations.forEach(location => {
+        if (location && typeof location.id !== 'undefined') {
+          locations.set(parseInt(location.id, 10), location);
+        }
+      });
+    }
+    
+    (graphData?.nodes || []).forEach(node => {
+      if (node.data?.locationId !== undefined && node.data?.location && !locations.has(node.data.locationId)) {
+        locations.set(node.data.locationId, { id: node.data.locationId, label: node.data.location });
+      }
+    });
+    
+    console.log(`🔍 v${DEBUG_VERSION} - locationData useMemo result:`, locations.size, 'locations');
+    return locations;
+  }, [graphData]);
+
+  // Use useRef to create a stable callback reference
+  const handleContainerToggleRef = useRef();
+  handleContainerToggleRef.current = (containerId) => {
+    console.log('🔘 handleContainerToggle called for:', containerId);
+    
+    setCollapsedContainers(prev => {
+      console.log('🔘 Previous collapsedContainers state:', prev);
+      const newState = {
+        ...prev,
+        [containerId]: !prev[containerId]
+      };
+      console.log('🔘 New collapsedContainers state:', newState);
+      return newState;
+    });
+  };
+  
+  // Create a stable callback that never changes
+  const stableHandleContainerToggle = useCallback((containerId) => {
+    console.log(`🔧 v${DEBUG_VERSION} - stableHandleContainerToggle called with:`, containerId);
+    handleContainerToggleRef.current(containerId);
+  }, []);
+
+  console.log(`🔧 v${DEBUG_VERSION} - Stable callback created (should only appear once per component mount)`);
+
+  // Add counters to track useEffect execution
+  const mainEffectCount = useRef(0);
+  const collapsedEffectCount = useRef(0);
 
   // Process graph data when ReactFlow is loaded and data changes
   useEffect(() => {
-    if (!graphData || !ELK) return;
+    mainEffectCount.current += 1;
+    console.log(`🔄 v${DEBUG_VERSION} - Main useEffect #${mainEffectCount.current} - Dependencies changed`);
+    console.log(`🔄 v${DEBUG_VERSION} - Main useEffect deps: graphData=${!!graphData}, currentLayout=${currentLayout}, colorPalette=${colorPalette}, locationData.size=${locationData.size}, stableHandleContainerToggle=${typeof stableHandleContainerToggle}`);
+    
+    if (!graphData || !ELK) {
+      console.log(`🔄 v${DEBUG_VERSION} - Early return: graphData=${!!graphData}, ELK=${!!ELK}`);
+      return;
+    }
 
     const processData = async () => {
-      // Centralized location processing
-      const locations = new Map();
-      if (graphData.locations) {
-        graphData.locations.forEach(location => {
-          if (location && typeof location.id !== 'undefined') {
-            locations.set(parseInt(location.id, 10), location);
-          } else {
-            console.warn('Skipping invalid location object:', location);
-          }
-        });
-      }
+      console.log(`📊 v${DEBUG_VERSION} - Processing data #${mainEffectCount.current}`);
       
-      (graphData.nodes || []).forEach(node => {
-        if (node.data?.locationId !== undefined && node.data?.location && !locations.has(node.data.locationId)) {
-          locations.set(node.data.locationId, { id: node.data.locationId, label: node.data.location });
-        }
-      });
-      
-      setLocationData(new Map(locations));
-
       // Convert nodes with enhanced styling
       let processedNodes = (graphData.nodes || []).map(node => {
         const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
@@ -365,18 +521,88 @@ function GraphCanvas({ graphData }) {
         markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
       }));
 
-      // Apply ELK layout with hierarchical grouping
-      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locations, colorPalette, collapsedContainers);
+      // Apply ELK layout with hierarchical grouping (use empty collapsed containers for initial layout)
+      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle);
       
+      console.log(`🎯 v${DEBUG_VERSION} - Setting ${layoutResult.nodes.length} nodes, ${layoutResult.edges.length} edges`);
+      console.log(`🎯 v${DEBUG_VERSION} - About to call setNodes with:`, layoutResult.nodes.length, 'nodes');
+      console.log(`🎯 v${DEBUG_VERSION} - Current nodes length before setNodes:`, nodes.length);
       setNodes(layoutResult.nodes);
+      console.log(`🎯 v${DEBUG_VERSION} - setNodes completed`);
+      console.log(`🎯 v${DEBUG_VERSION} - About to call setEdges with:`, layoutResult.edges.length, 'edges');
       setEdges(layoutResult.edges);
+      console.log(`🎯 v${DEBUG_VERSION} - Both setNodes and setEdges completed`);
+      
+      console.log(`✅ v${DEBUG_VERSION} - Main processData complete #${mainEffectCount.current}`);
     };
 
     processData();
-  }, [graphData, currentLayout, colorPalette, collapsedContainers, setNodes, setEdges]);
+  }, [graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
+
+  // Separate useEffect to handle collapsed container changes without triggering full re-layout
+  useEffect(() => {
+    collapsedEffectCount.current += 1;
+    console.log(`🔘 v${DEBUG_VERSION} - Collapsed useEffect #${collapsedEffectCount.current}, containers:`, Object.keys(collapsedContainers));
+    
+    if (Object.keys(collapsedContainers).length === 0) {
+      console.log(`🔘 v${DEBUG_VERSION} - No collapsed containers, skipping`);
+      return;
+    }
+    
+    console.log(`🔘 v${DEBUG_VERSION} - Processing collapsed containers:`, collapsedContainers);
+    
+    // Only re-run layout if we have data and some containers are actually collapsed
+    if (graphData && ELK) {
+      const processCollapsedContainersUpdate = async () => {
+        console.log(`🔘 v${DEBUG_VERSION} - Updating layout for collapsed containers`);
+        
+        // Convert nodes again
+        let processedNodes = (graphData.nodes || []).map(node => {
+          const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
+          
+          return {
+            ...node,
+            position: { x: 0, y: 0 },
+            style: {
+              background: nodeColors.gradient,
+              border: `2px solid ${nodeColors.border}`,
+              borderRadius: '8px',
+              padding: '10px',
+              color: '#333',
+              fontSize: '12px',
+              fontWeight: '500',
+              width: 200,
+              height: 60,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+            },
+          };
+        });
+
+        // Convert edges again
+        const processedEdges = (graphData.edges || []).map(edge => ({
+          ...edge,
+          type: 'bezier',
+          style: { strokeWidth: 2, stroke: '#666666' },
+          markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
+        }));
+
+        // Re-apply layout with new collapsed state
+        const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle);
+        
+        console.log(`🔘 v${DEBUG_VERSION} - Updating nodes for collapsed containers`);
+        setNodes(layoutResult.nodes);
+        setEdges(layoutResult.edges);
+      };
+      
+      processCollapsedContainersUpdate();
+    }
+  }, [collapsedContainers, graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
 
   // NEW HIERARCHICAL LAYOUT APPROACH
-  const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}) => {
+  const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle) => {
     if (!ELK) return { nodes, edges };
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -586,7 +812,7 @@ function GraphCanvas({ graphData }) {
             locationId: location.id,
             isCollapsed: isCollapsed,
             nodeCount: elkNode.originalNodeIds?.length || 0,
-            onContainerToggle: handleContainerToggle, // Pass the handler directly
+            onContainerToggle: handleContainerToggle, // Pass the stable handler directly
           },
           draggable: true,
           selectable: false,
@@ -736,18 +962,13 @@ function GraphCanvas({ graphData }) {
   };
 
   const handleLayoutChange = useCallback((newLayout) => {
+    console.log('🎨 Layout changing to:', newLayout);
     setCurrentLayout(newLayout);
   }, []);
 
   const handlePaletteChange = useCallback((newPalette) => {
+    console.log('🎨 Palette changing to:', newPalette);
     setColorPalette(newPalette);
-  }, []);
-
-  const handleContainerToggle = useCallback((containerId) => {
-    setCollapsedContainers(prev => ({
-      ...prev,
-      [containerId]: !prev[containerId]
-    }));
   }, []);
 
   if (!nodes) {
@@ -826,7 +1047,7 @@ function GraphCanvas({ graphData }) {
         onEdgesChange={onEdgesChange}
         locationData={locationData}
         colorPalette={colorPalette}
-        onContainerToggle={handleContainerToggle}
+        onContainerToggle={stableHandleContainerToggle}
       />
     </div>
   );
