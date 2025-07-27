@@ -177,11 +177,11 @@ export const createChildNodeMapping = (nodes) => {
   const childNodeIdsByParent = {};
   
   nodes.forEach(node => {
-    if (node.parentNode) {
-      if (!childNodeIdsByParent[node.parentNode]) {
-        childNodeIdsByParent[node.parentNode] = new Set();
+    if (node.parentId) {
+      if (!childNodeIdsByParent[node.parentId]) {
+        childNodeIdsByParent[node.parentId] = new Set();
       }
-      childNodeIdsByParent[node.parentNode].add(node.id);
+      childNodeIdsByParent[node.parentId].add(node.id);
     }
   });
   

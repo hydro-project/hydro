@@ -5,15 +5,20 @@
  */
 
 import React, { useCallback } from 'react';
-import { ReactFlowComponents } from './externalLibraries.js';
+import { 
+  ReactFlow, 
+  Controls, 
+  MiniMap, 
+  Background, 
+  addEdge 
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import { ContainerNode, LabelNode } from './CustomNodes.js';
 import CustomEdge from './CustomEdge';
 import { generateLocationBorderColor, generateNodeColors } from './colorUtils.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, locationData, colorPalette, onContainerToggle }) {
-  const { ReactFlow, Controls, MiniMap, Background, addEdge } = ReactFlowComponents;
-
   const onConnect = useCallback((connection) => {
     onEdgesChange(addEdge(connection, edges));
   }, [onEdgesChange, edges]);

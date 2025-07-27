@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactFlowComponents } from './externalLibraries.js';
+import { getBezierPath } from '@xyflow/react';
 
 // This is a custom edge component that correctly renders edges between child nodes
 // inside a container. It works by calculating the absolute positions of the source
@@ -11,12 +11,9 @@ export default function CustomEdge({
   markerEnd,
   style,
 }) {
-  // Use getBezierPath from ReactFlowComponents
-  const { getBezierPath } = ReactFlowComponents;
-  // Use ReactFlowComponents to get nodes from the store
-  // (ReactFlow v11 context: nodes are available via window.ReactFlow.store or via props)
-  // We'll assume nodes are available via window.ReactFlow.store.getState().nodes
-  const nodes = window.ReactFlow.store.getState().nodes;
+  // Use getBezierPath from @xyflow/react
+  // Use ReactFlow store to get nodes - this is the v12 way
+  const nodes = window.ReactFlow?.store?.getState()?.nodes || [];
   const sourceNode = nodes.find((n) => n.id === source);
   const targetNode = nodes.find((n) => n.id === target);
 
@@ -25,22 +22,28 @@ export default function CustomEdge({
     return null;
   }
 
-  // Find parent containers for both source and target nodes
-  const sourceParent = sourceNode.parentNode ? nodes.find((n) => n.id === sourceNode.parentNode) : null;
-  const targetParent = targetNode.parentNode ? nodes.find((n) => n.id === targetNode.parentNode) : null;
+  // Find parent containers for both source and target nodes (v12: parentId instead of parentNode)
+  const sourceParent = sourceNode.parentId ? nodes.find((n) => n.id === sourceNode.parentId) : null;
+  const targetParent = targetNode.parentId ? nodes.find((n) => n.id === targetNode.parentId) : null;
 
   // Calculate absolute positions for source and target nodes
-  // If a node is in a container, its position is relative, so we add the parent's position.
-  const sourceAbsX = (sourceParent ? sourceParent.positionAbsolute.x : 0) + sourceNode.position.x;
-  const sourceAbsY = (sourceParent ? sourceParent.positionAbsolute.y : 0) + sourceNode.position.y;
-  const targetAbsX = (targetParent ? targetParent.positionAbsolute.x : 0) + targetNode.position.x;
-  const targetAbsY = (targetParent ? targetParent.positionAbsolute.y : 0) + targetNode.position.y;
+  // v12: Use measured.width/height instead of width/height
+  const sourceAbsX = (sourceParent ? sourceParent.positionAbsolute?.x || 0 : 0) + sourceNode.position.x;
+  const sourceAbsY = (sourceParent ? sourceParent.positionAbsolute?.y || 0 : 0) + sourceNode.position.y;
+  const targetAbsX = (targetParent ? targetParent.positionAbsolute?.x || 0 : 0) + targetNode.position.x;
+  const targetAbsY = (targetParent ? targetParent.positionAbsolute?.y || 0 : 0) + targetNode.position.y;
 
   // We also need to account for the node's dimensions to connect to the center of the sides.
-  const sourceX = sourceAbsX + (sourceNode.width / 2);
-  const sourceY = sourceAbsY + (sourceNode.height / 2);
-  const targetX = targetAbsX + (targetNode.width / 2);
-  const targetY = targetAbsY + (targetNode.height / 2);
+  // v12: Use measured dimensions
+  const sourceWidth = sourceNode.measured?.width || sourceNode.width || 100;
+  const sourceHeight = sourceNode.measured?.height || sourceNode.height || 50;
+  const targetWidth = targetNode.measured?.width || targetNode.width || 100;
+  const targetHeight = targetNode.measured?.height || targetNode.height || 50;
+  
+  const sourceX = sourceAbsX + (sourceWidth / 2);
+  const sourceY = sourceAbsY + (sourceHeight / 2);
+  const targetX = targetAbsX + (targetWidth / 2);
+  const targetY = targetAbsY + (targetHeight / 2);
 
   // Debug logging
   console.log('CustomEdge rendering', {

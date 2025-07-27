@@ -5,7 +5,13 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ELK, ReactFlowComponents } from './externalLibraries.js';
+import { 
+  useNodesState, 
+  useEdgesState, 
+  applyNodeChanges, 
+  applyEdgeChanges 
+} from '@xyflow/react';
+import { ELK } from './externalLibraries.js';
 import { generateNodeColors } from './colorUtils.js';
 import { applyHierarchicalLayout } from './layoutAlgorithms.js';
 import { generateHyperedges, routeEdgesForCollapsedContainers, createChildNodeMapping } from './hyperedgeUtils.js';
@@ -59,7 +65,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
         return nds; // Return current nodes unchanged
       }
       
-      const updatedNodes = ReactFlowComponents.applyNodeChanges(meaningfulChanges, nds);
+      const updatedNodes = applyNodeChanges(meaningfulChanges, nds);
       
       if (updatedNodes.length === 0 && nds.length > 0) {
         console.error(`🚨 APPLY_NODE_CHANGES RETURNED EMPTY! Input had ${nds.length} nodes, changes:`, meaningfulChanges);
@@ -72,7 +78,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
   }, []);
   
   const onEdgesChange = useCallback((changes) => {
-    setEdges((eds) => ReactFlowComponents.applyEdgeChanges(changes, eds));
+    setEdges((eds) => applyEdgeChanges(changes, eds));
   }, []);
     
   // Track nodes/edges reference changes
@@ -226,7 +232,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
       // Convert edges with enhanced styling
       const processedEdges = (graphData.edges || []).map(edge => ({
         ...edge,
-        type: 'bezier',
+        type: 'smoothstep',
         style: { strokeWidth: 2, stroke: '#666666' },
         markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
       }));
@@ -287,7 +293,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
         // Convert edges again
         const processedEdges = (graphData.edges || []).map(edge => ({
           ...edge,
-          type: 'bezier',
+          type: 'smoothstep',
           style: { strokeWidth: 2, stroke: '#666666' },
           markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
         }));

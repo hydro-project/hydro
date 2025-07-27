@@ -399,7 +399,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
           x: elkNode.x, // Position is relative to parent
           y: elkNode.y,
         },
-        parentNode: containerId,
+        parentId: containerId,
         extent: 'parent',
         style: { ...originalNode.style, zIndex: 10 },
         connectable: true, // FIXED: Make nodes connectable so edges can attach
@@ -443,7 +443,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
         data: { 
           label: containerNode.data.label 
         },
-        parentNode: containerNode.id,
+        parentId: containerNode.id,
         extent: 'parent',
         draggable: false,
         selectable: false,
@@ -506,9 +506,9 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     
     // An edge is internal if both its source and target are child nodes within the same container.
     const isInternalEdge = 
-      visibleSourceNode?.parentNode &&
-      visibleTargetNode?.parentNode &&
-      visibleSourceNode.parentNode === visibleTargetNode.parentNode;
+      visibleSourceNode?.parentId &&
+      visibleTargetNode?.parentId &&
+      visibleSourceNode.parentId === visibleTargetNode.parentId;
 
     // Determine if this is a network edge based on node types or locations
     let isNetworkEdge = false;
@@ -530,7 +530,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       id: `${sourceId}_to_${targetId}`, // Use consistent edge ID format
       source: sourceId,
       target: targetId,
-      type: isInternalEdge ? 'custom' : 'bezier', // Use custom type for internal edges
+      type: isInternalEdge ? 'custom' : 'smoothstep', // Use custom type for internal edges, smoothstep for external
       style: { 
         strokeWidth: 2, 
         stroke: '#666666',
@@ -562,7 +562,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     id: hyperedge.id,
     source: hyperedge.sources[0],
     target: hyperedge.targets[0],
-    type: 'bezier',
+    type: 'smoothstep',
     style: { 
       strokeWidth: 3, // Thicker for hyperedges
       stroke: '#880088', // Purple for container-to-container connections
@@ -664,8 +664,8 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       if (sourceNode && targetNode) {
         console.log('Source connectable:', sourceNode.connectable);
         console.log('Target connectable:', targetNode.connectable);
-        console.log('Source parentNode:', sourceNode.parentNode);
-        console.log('Target parentNode:', targetNode.parentNode);
+        console.log('Source parentId:', sourceNode.parentId);
+        console.log('Target parentId:', targetNode.parentId);
       }
     }
   }

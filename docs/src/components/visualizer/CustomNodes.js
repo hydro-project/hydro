@@ -6,7 +6,7 @@
  */
 
 import React, { useRef } from 'react';
-import { ReactFlowComponents } from './externalLibraries.js';
+import { Handle, Position } from '@xyflow/react';
 
 // Custom node for containers to handle clicks directly
 export const ContainerNode = ({ id, data }) => {
@@ -17,7 +17,7 @@ export const ContainerNode = ({ id, data }) => {
   const dragThresholdRef = useRef(false);
   
   // Get ReactFlow components
-  const { Handle, Position } = ReactFlowComponents || {};
+  // Handle and Position are imported directly from @xyflow/react
 
   // SOLUTION FOR REACTFLOW CLICK VS DRAG HANDLING:
   // We need to distinguish between clicks (for toggling) and drags (for moving).

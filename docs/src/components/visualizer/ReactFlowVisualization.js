@@ -38,6 +38,6 @@ export function ReactFlowVisualization({ graphData }) {
     return <div className={styles.loading}>Loading ReactFlow visualization...</div>;
   }
 
-  // We are sure that ReactFlowComponents is loaded here, so we can render the main canvas
+  // ReactFlow v12 is imported directly via npm, no loading needed
   return <GraphCanvas graphData={stableGraphData} />;
 }
