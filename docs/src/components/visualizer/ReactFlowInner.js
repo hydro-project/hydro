@@ -7,6 +7,7 @@
 import React, { useCallback } from 'react';
 import { ReactFlowComponents } from './externalLibraries.js';
 import { ContainerNode, LabelNode } from './CustomNodes.js';
+import CustomEdge from './CustomEdge';
 import { generateLocationBorderColor, generateNodeColors } from './colorUtils.js';
 import styles from '../../pages/visualizer.module.css';
 
@@ -22,6 +23,10 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, loc
     container: ContainerNode,
   };
 
+  const edgeTypes = {
+    custom: CustomEdge,
+  };
+
   return (
     <div className={styles.reactflowWrapper}>
       <ReactFlow
@@ -31,6 +36,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, loc
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
         attributionPosition="bottom-left"
         nodesDraggable={true}

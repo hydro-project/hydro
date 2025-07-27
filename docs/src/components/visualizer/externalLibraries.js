@@ -70,7 +70,8 @@ export const loadExternalLibraries = async () => {
     useEdgesState, 
     addEdge, 
     applyNodeChanges, 
-    applyEdgeChanges 
+    applyEdgeChanges,
+    getBezierPath
   } = ReactFlowLib;
   
   ReactFlowComponents = {
@@ -84,7 +85,8 @@ export const loadExternalLibraries = async () => {
     useEdgesState,
     addEdge,
     applyNodeChanges,
-    applyEdgeChanges
+    applyEdgeChanges,
+    getBezierPath
   };
   
   return { ReactFlowComponents, ELK };

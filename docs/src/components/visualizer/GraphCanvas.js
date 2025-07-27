@@ -14,7 +14,7 @@ import { Legend } from './Legend.js';
 import { ReactFlowInner } from './ReactFlowInner.js';
 import styles from '../../pages/visualizer.module.css';
 
-export function GraphCanvas({ graphData }) {
+export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
   // Track component creation vs re-render for debugging purposes
   const componentId = useRef(Math.random().toString(36).substr(2, 9));
   const renderCount = useRef(0);
@@ -87,8 +87,63 @@ export function GraphCanvas({ graphData }) {
 
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
-  const [collapsedContainers, setCollapsedContainers] = useState({});
+  
+  // Calculate initial collapsed state based on container sizes
+  const calculateInitialCollapsedState = useCallback((graphData) => {
+    if (!graphData?.nodes) return {};
+    
+    const NODE_THRESHOLD = maxVisibleNodes;
+    
+    // Count nodes per location/container
+    const containerSizes = new Map();
+    graphData.nodes.forEach(node => {
+      if (node.data?.locationId !== undefined) {
+        const locationId = node.data.locationId;
+        const containerId = `container_${locationId}`;
+        containerSizes.set(containerId, (containerSizes.get(containerId) || 0) + 1);
+      }
+    });
+    
+    // If no containers or very few nodes, expand everything
+    if (containerSizes.size === 0 || graphData.nodes.length <= NODE_THRESHOLD) {
+      const result = {};
+      containerSizes.forEach((_, containerId) => {
+        result[containerId] = false; // expanded
+      });
+      return result;
+    }
+    
+    // Sort containers by size (largest first)
+    const sortedContainers = Array.from(containerSizes.entries())
+      .sort(([,sizeA], [,sizeB]) => sizeB - sizeA);
+    
+    // Expand containers in order of size until we hit the threshold
+    const collapsedState = {};
+    let visibleNodes = 0;
+    
+    for (const [containerId, size] of sortedContainers) {
+      if (visibleNodes + size <= NODE_THRESHOLD) {
+        // Keep this container expanded
+        collapsedState[containerId] = false;
+        visibleNodes += size;
+      } else {
+        // Collapse this container
+        collapsedState[containerId] = true;
+      }
+    }
+    
+    return collapsedState;
+  }, [maxVisibleNodes]);
+  
+  const [collapsedContainers, setCollapsedContainers] = useState(() => 
+    calculateInitialCollapsedState(graphData)
+  );
   const [hyperedges, setHyperedges] = useState([]);
+  
+  // Reset collapsed state when graph data changes
+  useEffect(() => {
+    setCollapsedContainers(calculateInitialCollapsedState(graphData));
+  }, [graphData, calculateInitialCollapsedState]);
   
   // Remove locationData state - just compute it directly when needed
   // This prevents the infinite re-render cycle

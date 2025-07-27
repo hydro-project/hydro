@@ -58,10 +58,13 @@ export const generateHyperedges = (nodes, edges) => {
  * @returns {Array} Updated edges with proper routing
  */
 export const routeEdgesForCollapsedContainers = (edges, collapsedLocations, childNodeIdsByParent, collapsedContainerIds = null) => {
-  const routedEdges = edges.map(edge => {
+  const routedEdgeMap = new Map(); // Use Map to deduplicate by edge ID
+  
+  edges.forEach(edge => {
     // Skip hyperedges - they're handled separately
     if (edge.data?.isHyperedge) {
-      return edge;
+      routedEdgeMap.set(edge.id, edge);
+      return;
     }
     
     let newEdge = { ...edge };
@@ -125,6 +128,9 @@ export const routeEdgesForCollapsedContainers = (edges, collapsedLocations, chil
         newEdge.hidden = true; // Hide internal edges
       } else {
         // Route container to container (this creates the hyperedge visual)
+        // Create a consistent ID for container-to-container edges
+        const containerEdgeId = `${sourceInCollapsedContainer}_to_${targetInCollapsedContainer}`;
+        newEdge.id = containerEdgeId;
         newEdge.data = { ...newEdge.data, originalSource: newEdge.source, originalTarget: newEdge.target };
         newEdge.source = sourceInCollapsedContainer;
         newEdge.target = targetInCollapsedContainer;
@@ -146,8 +152,18 @@ export const routeEdgesForCollapsedContainers = (edges, collapsedLocations, chil
       newEdge.target = targetInCollapsedContainer;
     }
     
-    return newEdge;
+    // Store in map - this will automatically deduplicate by ID
+    routedEdgeMap.set(newEdge.id, newEdge);
   });
+  
+  const routedEdges = Array.from(routedEdgeMap.values());
+  
+  // DEBUG: Check for duplicate edge IDs in routed edges
+  const routedEdgeIds = routedEdges.map(edge => edge.id);
+  const duplicateRoutedIds = routedEdgeIds.filter((id, index) => routedEdgeIds.indexOf(id) !== index);
+  if (duplicateRoutedIds.length > 0) {
+    console.error('🚨 DUPLICATE ROUTED EDGE IDs:', duplicateRoutedIds);
+  }
   
   return routedEdges;
 };
