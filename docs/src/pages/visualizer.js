@@ -403,11 +403,7 @@ function GraphCanvas({ graphData }) {
   const [edges, setEdges] = useState([]);
   
   // Add logging to track when nodes change
-  useEffect(() => {
-    if (nodes.length === 0) {
-      console.log('⚠️ NODES ARE EMPTY! This might explain why visualization disappears');
-    }
-  }, [nodes]);
+  useEffect(() => {  }, [nodes]);
   
   // Create stable change handlers using useCallback
   const onNodesChange = useCallback((changes) => {
@@ -999,10 +995,6 @@ function GraphCanvas({ graphData }) {
 
   if (!nodes) {
     return <div className={styles.loading}>Preparing visualization...</div>;
-  }
-
-  if (nodes.length === 0) {
-    console.log('⚠️ GraphCanvas has empty nodes array, but still rendering ReactFlow');
   }
 
   return (
