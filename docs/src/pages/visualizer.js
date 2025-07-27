@@ -291,17 +291,94 @@ function ReactFlowVisualization({ graphData }) {
 // NEW: Custom node for containers to handle clicks directly
 const ContainerNode = ({ id, data }) => {
   // The toggle function is passed through the node's data
-  const { onContainerToggle, label, isCollapsed } = data;
+  const { onContainerToggle, label, isCollapsed, isDraggedRef } = data;
+  const dragStartTimeRef = useRef(null);
+  const dragStartPosRef = useRef(null);
+  const dragThresholdRef = useRef(false);
 
-  // SOLUTION FOR REACTFLOW CLICK HANDLING ISSUE:
-  // ReactFlow intercepts standard mouse events (onClick, onMouseDown) for its own drag/selection functionality.
-  // However, it allows pointer events through to custom node components.
-  // We use onPointerDown as the primary click handler since it consistently fires.
+  // SOLUTION FOR REACTFLOW CLICK VS DRAG HANDLING:
+  // We need to distinguish between clicks (for toggling) and drags (for moving).
+  // ReactFlow intercepts pointer events during drag, so we track drag state via position changes.
   const handlePointerDown = (event) => {
-    event.stopPropagation(); // Prevent ReactFlow from processing the event further
-    if (onContainerToggle) {
-      onContainerToggle(id);
+    console.log('🖱️ POINTER DOWN on container:', id, {
+      clientX: event.clientX,
+      clientY: event.clientY,
+      timeStamp: event.timeStamp
+    });
+    dragStartTimeRef.current = Date.now();
+    dragStartPosRef.current = { x: event.clientX, y: event.clientY };
+    dragThresholdRef.current = false;
+    
+    // Reset the drag state flag when starting a new interaction
+    if (isDraggedRef && isDraggedRef.current) {
+      isDraggedRef.current[id] = false;
     }
+    
+    // Don't stop propagation here - let ReactFlow handle drag initiation
+  };
+
+  const handlePointerMove = (event) => {
+    // If pointer moves significantly, consider this a drag operation
+    if (dragStartTimeRef.current && dragStartPosRef.current) {
+      const deltaX = Math.abs(event.clientX - dragStartPosRef.current.x);
+      const deltaY = Math.abs(event.clientY - dragStartPosRef.current.y);
+      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+      
+      console.log('🖱️ POINTER MOVE on container:', id, {
+        deltaX,
+        deltaY,
+        distance,
+        thresholdBefore: dragThresholdRef.current
+      });
+      
+      // If moved more than 5 pixels, consider it a drag
+      if (distance > 5) {
+        if (!dragThresholdRef.current) {
+          console.log('🚨 DRAG THRESHOLD CROSSED for container:', id, 'distance:', distance);
+        }
+        dragThresholdRef.current = true;
+      }
+    }
+  };
+
+  const handlePointerUp = (event) => {
+    const now = Date.now();
+    const timeDiff = dragStartTimeRef.current ? now - dragStartTimeRef.current : 0;
+    
+    // Calculate final distance moved
+    let finalDistance = 0;
+    if (dragStartPosRef.current) {
+      const deltaX = Math.abs(event.clientX - dragStartPosRef.current.x);
+      const deltaY = Math.abs(event.clientY - dragStartPosRef.current.y);
+      finalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    }
+    
+    // Check if ReactFlow detected this container as being dragged
+    const wasReactFlowDragged = isDraggedRef && isDraggedRef.current && isDraggedRef.current[id];
+    
+    console.log('🖱️ POINTER UP on container:', id, {
+      timeDiff,
+      finalDistance,
+      dragThreshold: dragThresholdRef.current,
+      wasReactFlowDragged,
+      startPos: dragStartPosRef.current,
+      endPos: { x: event.clientX, y: event.clientY },
+      willToggle: timeDiff < 300 && finalDistance < 5 && !dragThresholdRef.current && !wasReactFlowDragged
+    });
+    
+    // Only toggle if this was a quick click AND ReactFlow didn't detect a drag
+    if (timeDiff < 300 && finalDistance < 5 && !dragThresholdRef.current && !wasReactFlowDragged && onContainerToggle) {
+      console.log('🔄 Container toggle triggered for:', id, 'time:', timeDiff, 'distance:', finalDistance);
+      event.stopPropagation(); // Only stop propagation for actual clicks
+      onContainerToggle(id);
+    } else {
+      console.log('🚫 Container toggle prevented for:', id, 'time:', timeDiff, 'distance:', finalDistance, 'dragThreshold:', dragThresholdRef.current, 'wasReactFlowDragged:', wasReactFlowDragged);
+    }
+    
+    // Reset tracking
+    dragStartTimeRef.current = null;
+    dragStartPosRef.current = null;
+    dragThresholdRef.current = false;
   };
 
   // Keep right-click as an alternative interaction method
@@ -317,6 +394,8 @@ const ContainerNode = ({ id, data }) => {
   return (
     <div 
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
       style={{ 
         width: '100%', 
@@ -351,9 +430,29 @@ function GraphCanvas({ graphData }) {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   
+  // Add logging to track when nodes change
+  useEffect(() => {
+    console.log(`📊 NODES ARRAY CHANGED: length=${nodes.length}, renderCount=${renderCount.current}`, nodes.length > 0 ? nodes.map(n => n.id).slice(0, 5) : 'EMPTY');
+    if (nodes.length === 0) {
+      console.log('⚠️ NODES ARE EMPTY! This might explain why visualization disappears');
+      console.trace('Stack trace for empty nodes');
+    }
+  }, [nodes]);
+  
   // Create stable change handlers using useCallback
   const onNodesChange = useCallback((changes) => {
+    console.log(`🔄 ON_NODES_CHANGE called with ${changes.length} changes:`, changes.map(c => `${c.type}:${c.id}`).join(', '));
+    
+    // Track container drag states based on ReactFlow position changes
+    changes.forEach(change => {
+      if (change.type === 'position' && change.id.startsWith('container_') && change.dragging) {
+        console.log('🎯 REACTFLOW DRAG DETECTED for container:', change.id);
+        isDraggedRef.current[change.id] = true;
+      }
+    });
+    
     setNodes((nds) => {
+      console.log(`📝 SET_NODES: current length=${nds.length}, about to apply ${changes.length} changes`);
       
       // Filter out automatic dimension changes that cause infinite loops
       // Only allow user-initiated changes like position and select
@@ -363,10 +462,16 @@ function GraphCanvas({ graphData }) {
         return ['position', 'select'].includes(change.type);
       });
       
+      console.log(`📝 FILTERED CHANGES: ${meaningfulChanges.length} meaningful out of ${changes.length} total`);
+      
       if (meaningfulChanges.length === 0) {
+        console.log(`📝 NO MEANINGFUL CHANGES: returning current nodes (length=${nds.length})`);
         return nds; // Return current nodes unchanged
       }
       
+      const updatedNodes = ReactFlowComponents.applyNodeChanges(meaningfulChanges, nds);
+      console.log(`📝 APPLIED CHANGES: result length=${updatedNodes.length}`);
+      return updatedNodes;
     });
   }, []);
   
@@ -387,6 +492,9 @@ function GraphCanvas({ graphData }) {
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
   const [collapsedContainers, setCollapsedContainers] = useState({});
+  
+  // Track which containers are being dragged by ReactFlow
+  const isDraggedRef = useRef({});
   
   // Remove locationData state - just compute it directly when needed
   // This prevents the infinite re-render cycle
@@ -412,6 +520,7 @@ function GraphCanvas({ graphData }) {
   // Use useRef to create a stable callback reference
   const handleContainerToggleRef = useRef();
   handleContainerToggleRef.current = (containerId) => {
+    console.log('🎯 CONTAINER TOGGLE CALLED for:', containerId);
     setCollapsedContainers(prev => {
       const newState = {
         ...prev,
@@ -476,8 +585,9 @@ function GraphCanvas({ graphData }) {
       }));
 
       // Apply ELK layout with hierarchical grouping (use empty collapsed containers for initial layout)
-      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle);
+      const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, {}, stableHandleContainerToggle, isDraggedRef);
       
+      console.log(`🎨 MAIN LAYOUT RESULT: ${layoutResult.nodes.length} nodes, ${layoutResult.edges.length} edges`);
       setNodes(layoutResult.nodes);
       setEdges(layoutResult.edges);
     };
@@ -530,8 +640,9 @@ function GraphCanvas({ graphData }) {
         }));
 
         // Re-apply layout with new collapsed state
-        const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle);
+        const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locationData, colorPalette, collapsedContainers, stableHandleContainerToggle, isDraggedRef);
         
+        console.log(`🎨 COLLAPSED LAYOUT RESULT: ${layoutResult.nodes.length} nodes, ${layoutResult.edges.length} edges`);
         setNodes(layoutResult.nodes);
         setEdges(layoutResult.edges);
       };
@@ -541,7 +652,7 @@ function GraphCanvas({ graphData }) {
   }, [collapsedContainers, graphData, currentLayout, colorPalette, locationData, stableHandleContainerToggle]);
 
   // NEW HIERARCHICAL LAYOUT APPROACH
-  const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle) => {
+  const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef) => {
     if (!ELK) return { nodes, edges };
 
     const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -752,21 +863,11 @@ function GraphCanvas({ graphData }) {
             isCollapsed: isCollapsed,
             nodeCount: elkNode.originalNodeIds?.length || 0,
             onContainerToggle: handleContainerToggle, // Pass the stable handler directly
+            isDraggedRef: isDraggedRef, // Pass the drag tracking ref
           },
           draggable: true,
           selectable: true, // CHANGED: Make selectable to see if it helps with click detection
           connectable: true,
-        });
-        
-        console.log(`🏠 Created container node:`, {
-          id: elkNode.id,
-          type: 'container',
-          selectable: true,
-          draggable: true,
-          label: isCollapsed ? `${location.label || `Location ${location.id}`} (${elkNode.originalNodeIds?.length || 0} nodes)` : location.label || `Location ${location.id}`,
-          isCollapsed: isCollapsed,
-          hasToggleFunction: !!handleContainerToggle,
-          toggleFunctionType: typeof handleContainerToggle
         });
       }
     });
@@ -922,7 +1023,12 @@ function GraphCanvas({ graphData }) {
   }, []);
 
   if (!nodes) {
+    console.log('⚠️ GraphCanvas rendering "Preparing visualization..." because nodes is falsy:', nodes);
     return <div className={styles.loading}>Preparing visualization...</div>;
+  }
+
+  if (nodes.length === 0) {
+    console.log('⚠️ GraphCanvas has empty nodes array, but still rendering ReactFlow');
   }
 
   return (
@@ -1036,11 +1142,6 @@ function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, locationDa
     label: LabelNode,
     container: ContainerNode, // Register the new container node
   };
-  
-  console.log(`🔧 ReactFlowInner - nodeTypes registered:`, Object.keys(nodeTypes));
-  console.log(`🔧 ReactFlowInner - ContainerNode function:`, !!ContainerNode);
-  console.log(`🔧 ReactFlowInner - nodes.length:`, nodes.length);
-  console.log(`🔧 ReactFlowInner - container nodes:`, nodes.filter(n => n.type === 'container').map(n => ({ id: n.id, type: n.type, hasToggle: !!n.data?.onContainerToggle })));
 
   return (
     <div className={styles.reactflowWrapper}>
