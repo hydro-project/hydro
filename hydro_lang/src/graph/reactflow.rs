@@ -233,10 +233,8 @@ where
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
             "style": style,
-            // Use smart edge type for better routing and flexible connection points
-            "type": "smoothstep",
-            // Let ReactFlow choose optimal connection points
-            // Remove fixed sourceHandle/targetHandle to enable flexible connections
+            // Use built-in edge types for better routing
+            "type": "default",
             "animated": false
         });
 
@@ -378,8 +376,7 @@ pub fn open_reactflow_browser(
         ..Default::default()
     };
 
-    open_reactflow_docs_browser(ir, config)
-        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+    open_reactflow_docs_browser(ir, config).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
 /// Save ReactFlow JSON to file using the consolidated debug utilities
@@ -422,25 +419,22 @@ fn open_reactflow_docs_browser(
 ) -> Result<(), std::io::Error> {
     // Generate ReactFlow JSON
     let reactflow_json = super::render::render_hydro_ir_reactflow(ir, &config);
-    
+
     // Base64 encode the JSON for URL parameter
     let encoded_data = data_encoding::BASE64URL.encode(reactflow_json.as_bytes());
-    
+
     // Create the docs visualizer URL
     let docs_url = format!(
         "https://hydro-project.github.io/hydro/visualizer#data={}",
         encoded_data
     );
-    
+
     // For local development, use localhost instead
-    let local_url = format!(
-        "http://localhost:3000/visualizer#data={}",
-        encoded_data
-    );
-    
+    let local_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
+
     // Try to open the local URL first (for development), fallback to docs URL
     println!("Opening Hydro ReactFlow visualization in browser...");
-    
+
     // First try localhost for development
     match webbrowser::open(&local_url) {
         Ok(_) => {
@@ -452,7 +446,7 @@ fn open_reactflow_docs_browser(
             println!("Local server not available, opening docs visualizer...");
         }
     }
-    
+
     // Fallback to docs URL
     match webbrowser::open(&docs_url) {
         Ok(_) => {

@@ -8,75 +8,34 @@
 import React, { useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-// Custom node for containers to handle clicks directly
+// Custom node for containers with simplified click handling for ReactFlow v12
 export const ContainerNode = ({ id, data }) => {
-  // The toggle function is passed through the node's data
   const { onContainerToggle, label, isCollapsed, isDraggedRef } = data;
-  const dragStartTimeRef = useRef(null);
-  const dragStartPosRef = useRef(null);
-  const dragThresholdRef = useRef(false);
+  const clickTimeRef = useRef(null);
   
-  // Get ReactFlow components
-  // Handle and Position are imported directly from @xyflow/react
-
-  // SOLUTION FOR REACTFLOW CLICK VS DRAG HANDLING:
-  // We need to distinguish between clicks (for toggling) and drags (for moving).
-  // ReactFlow intercepts pointer events during drag, so we track drag state via position changes.
+  // ReactFlow v12 has much better drag/click distinction
   const handlePointerDown = (event) => {
-    dragStartTimeRef.current = Date.now();
-    dragStartPosRef.current = { x: event.clientX, y: event.clientY };
-    dragThresholdRef.current = false;
-    
-    // Reset the drag state flag when starting a new interaction
+    clickTimeRef.current = Date.now();
+    // Reset drag state
     if (isDraggedRef && isDraggedRef.current) {
       isDraggedRef.current[id] = false;
-    }
-    
-    // Don't stop propagation here - let ReactFlow handle drag initiation
-  };
-
-  const handlePointerMove = (event) => {
-    // If pointer moves significantly, consider this a drag operation
-    if (dragStartTimeRef.current && dragStartPosRef.current) {
-      const deltaX = Math.abs(event.clientX - dragStartPosRef.current.x);
-      const deltaY = Math.abs(event.clientY - dragStartPosRef.current.y);
-      const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
-      // If moved more than 5 pixels, consider it a drag
-      if (distance > 5) {
-        dragThresholdRef.current = true;
-      }
     }
   };
 
   const handlePointerUp = (event) => {
-    const now = Date.now();
-    const timeDiff = dragStartTimeRef.current ? now - dragStartTimeRef.current : 0;
-    
-    // Calculate final distance moved
-    let finalDistance = 0;
-    if (dragStartPosRef.current) {
-      const deltaX = Math.abs(event.clientX - dragStartPosRef.current.x);
-      const deltaY = Math.abs(event.clientY - dragStartPosRef.current.y);
-      finalDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    }
-    
-    // Check if ReactFlow detected this container as being dragged
+    const clickDuration = clickTimeRef.current ? Date.now() - clickTimeRef.current : 0;
     const wasReactFlowDragged = isDraggedRef && isDraggedRef.current && isDraggedRef.current[id];
     
-    // Only toggle if this was a quick click AND ReactFlow didn't detect a drag
-    if (timeDiff < 300 && finalDistance < 5 && !dragThresholdRef.current && !wasReactFlowDragged && onContainerToggle) {
-      event.stopPropagation(); // Only stop propagation for actual clicks
+    // ReactFlow v12 handles drag detection much better, so we can simplify this
+    if (clickDuration < 200 && !wasReactFlowDragged && onContainerToggle) {
+      event.stopPropagation();
       onContainerToggle(id);
     }
     
-    // Reset tracking
-    dragStartTimeRef.current = null;
-    dragStartPosRef.current = null;
-    dragThresholdRef.current = false;
+    clickTimeRef.current = null;
   };
 
-  // Keep right-click as an alternative interaction method
+  // Keep right-click as alternative
   const handleContextMenu = (event) => {
     event.preventDefault();
     if (onContainerToggle) {
@@ -84,12 +43,9 @@ export const ContainerNode = ({ id, data }) => {
     }
   };
 
-  // The outer div is sized and positioned by ReactFlow.
-  // This inner div fills the node, captures clicks, and displays content.
   return (
     <div 
       onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onContextMenu={handleContextMenu}
       style={{ 
@@ -101,7 +57,7 @@ export const ContainerNode = ({ id, data }) => {
         justifyContent: 'center'
       }}
     >
-      {/* ReactFlow handles for edge connections */}
+      {/* ReactFlow v12 handles are more reliable */}
       {Handle && Position && (
         <>
           <Handle
@@ -131,8 +87,6 @@ export const ContainerNode = ({ id, data }) => {
         </>
       )}
       
-      {/* Only show the label if the container is collapsed. */}
-      {/* Expanded containers get their label from a separate LabelNode. */}
       {isCollapsed ? label : null}
     </div>
   );
