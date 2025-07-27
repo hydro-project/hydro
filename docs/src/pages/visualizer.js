@@ -244,12 +244,6 @@ const generateLocationBorderColor = (locationId, totalLocations, palette = 'Set3
 
 function ReactFlowVisualization({ graphData }) {
   const [reactFlowReady, setReactFlowReady] = useState(false);
-  const [initialNodes, setInitialNodes] = useState([]);
-  const [initialEdges, setInitialEdges] = useState([]);
-  const [currentLayout, setCurrentLayout] = useState('mrtree');
-  const [colorPalette, setColorPalette] = useState('Set3');
-  const [locationData, setLocationData] = useState(new Map());
-  const [collapsedContainers, setCollapsedContainers] = useState({});
 
   // Load external libraries when component mounts
   useEffect(() => {
@@ -260,9 +254,62 @@ function ReactFlowVisualization({ graphData }) {
     });
   }, []);
 
+  if (!reactFlowReady) {
+    return <div className={styles.loading}>Loading ReactFlow visualization...</div>;
+  }
+
+  // We are sure that ReactFlowComponents is loaded here, so we can render the main canvas
+  return <GraphCanvas graphData={graphData} />;
+}
+
+// NEW: Custom node for containers to handle clicks directly
+const ContainerNode = ({ id, data }) => {
+  // The toggle function is passed through the node's data
+  const { onContainerToggle, label, isCollapsed } = data;
+
+  const handleMouseDown = (event) => {
+    // Using onMouseDown because onClick can be cancelled by drag events.
+    event.stopPropagation(); // Prevent ReactFlow from processing the event further
+    if (onContainerToggle) {
+      onContainerToggle(id);
+    }
+  };
+
+  // The outer div is sized and positioned by ReactFlow.
+  // This inner div fills the node, captures clicks, and displays content.
+  return (
+    <div 
+      onMouseDown={handleMouseDown} 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      {/* Only show the label if the container is collapsed. */}
+      {/* Expanded containers get their label from a separate LabelNode. */}
+      {isCollapsed ? label : null}
+    </div>
+  );
+};
+
+function GraphCanvas({ graphData }) {
+  const { useNodesState, useEdgesState } = ReactFlowComponents;
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const [currentLayout, setCurrentLayout] = useState('mrtree');
+  const [colorPalette, setColorPalette] = useState('Set3');
+  const [locationData, setLocationData] = useState(new Map());
+  const [collapsedContainers, setCollapsedContainers] = useState({});
+
   // Process graph data when ReactFlow is loaded and data changes
   useEffect(() => {
-    if (!reactFlowReady || !graphData || !ELK) return;
+    if (!graphData || !ELK) return;
 
     const processData = async () => {
       // Centralized location processing
@@ -270,7 +317,6 @@ function ReactFlowVisualization({ graphData }) {
       if (graphData.locations) {
         graphData.locations.forEach(location => {
           if (location && typeof location.id !== 'undefined') {
-            // Ensure the key is a number to match node.data.locationId
             locations.set(parseInt(location.id, 10), location);
           } else {
             console.warn('Skipping invalid location object:', location);
@@ -284,7 +330,7 @@ function ReactFlowVisualization({ graphData }) {
         }
       });
       
-      setLocationData(new Map(locations)); // Update state for the legend
+      setLocationData(new Map(locations));
 
       // Convert nodes with enhanced styling
       let processedNodes = (graphData.nodes || []).map(node => {
@@ -322,13 +368,12 @@ function ReactFlowVisualization({ graphData }) {
       // Apply ELK layout with hierarchical grouping
       const layoutResult = await applyHierarchicalLayout(processedNodes, processedEdges, currentLayout, locations, colorPalette, collapsedContainers);
       
-      // layoutResult now contains both regular nodes and container nodes
-      setInitialNodes(layoutResult.nodes);
-      setInitialEdges(layoutResult.edges);
+      setNodes(layoutResult.nodes);
+      setEdges(layoutResult.edges);
     };
 
     processData();
-  }, [reactFlowReady, graphData, currentLayout, colorPalette, collapsedContainers]);
+  }, [graphData, currentLayout, colorPalette, collapsedContainers, setNodes, setEdges]);
 
   // NEW HIERARCHICAL LAYOUT APPROACH
   const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}) => {
@@ -532,7 +577,7 @@ function ReactFlowVisualization({ graphData }) {
 
         containerNodes.push({
           id: elkNode.id,
-          type: isCollapsed ? 'default' : 'group', // Use regular node type for collapsed containers
+          type: 'container', // Use the new custom container node type
           position: { x: elkNode.x, y: elkNode.y },
           style: containerStyle,
           data: {
@@ -540,11 +585,12 @@ function ReactFlowVisualization({ graphData }) {
             isContainer: true,
             locationId: location.id,
             isCollapsed: isCollapsed,
-            nodeCount: elkNode.originalNodeIds?.length || 0
+            nodeCount: elkNode.originalNodeIds?.length || 0,
+            onContainerToggle: handleContainerToggle, // Pass the handler directly
           },
           draggable: true,
-          selectable: true,
-          connectable: true, // Always connectable, regardless of collapsed state
+          selectable: false,
+          connectable: true,
         });
       }
     });
@@ -704,12 +750,8 @@ function ReactFlowVisualization({ graphData }) {
     }));
   }, []);
 
-  if (!reactFlowReady) {
-    return <div className={styles.loading}>Loading ReactFlow visualization...</div>;
-  }
-
-  if (!ReactFlowComponents) {
-    return <div className={styles.loading}>ReactFlow not available.</div>;
+  if (!nodes) {
+    return <div className={styles.loading}>Preparing visualization...</div>;
   }
 
   return (
@@ -778,8 +820,10 @@ function ReactFlowVisualization({ graphData }) {
       </div>
       
       <ReactFlowInner 
-        nodes={initialNodes} 
-        edges={initialEdges}
+        nodes={nodes} 
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         locationData={locationData}
         colorPalette={colorPalette}
         onContainerToggle={handleContainerToggle}
@@ -789,49 +833,12 @@ function ReactFlowVisualization({ graphData }) {
 }
 
 // Inner component that uses ReactFlow hooks
-function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerToggle }) {
-  const { ReactFlow, Controls, MiniMap, Background, useNodesState, useEdgesState, addEdge } = ReactFlowComponents;
-
-  const [currentNodes, setNodes, onNodesChange] = useNodesState(nodes);
-  const [currentEdges, setEdges, onEdgesChange] = useEdgesState(edges);
-
-  // Using a timeout to distinguish click from drag
-  const clickTimeoutRef = useRef(null);
-
-  // Update nodes and edges when props change
-  useEffect(() => {
-    setNodes(nodes);
-  }, [nodes, setNodes]);
-
-  useEffect(() => {
-    setEdges(edges);
-  }, [edges, setEdges]);
+function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, locationData, colorPalette, onContainerToggle }) {
+  const { ReactFlow, Controls, MiniMap, Background, addEdge } = ReactFlowComponents;
 
   const onConnect = useCallback((connection) => {
-    setEdges((eds) => addEdge(connection, eds));
-  }, [setEdges, addEdge]);
-
-  const onNodeDragStart = useCallback(() => {
-    // If a drag starts, it's not a click, so clear the timeout.
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
-  }, []);
-
-  const onNodeClick = useCallback((event, node) => {
-    // On any click, first clear any previous timeout. This handles rapid clicks.
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
-
-    // If the node is a container, set a timeout to toggle it.
-    // This will be cancelled by onNodeDragStart if a drag begins.
-    if (node.type === 'group' || node.data?.isContainer) {
-      clickTimeoutRef.current = setTimeout(() => {
-        onContainerToggle(node.id);
-      }, 200); // A small delay to allow drag to start
-    }
-  }, [onContainerToggle]);
+    onEdgesChange(addEdge(connection, edges));
+  }, [onEdgesChange, edges]);
 
   // Custom label node component - no connection handles
   const LabelNode = ({ data }) => {
@@ -856,18 +863,17 @@ function ReactFlowInner({ nodes, edges, locationData, colorPalette, onContainerT
 
   const nodeTypes = {
     label: LabelNode,
+    container: ContainerNode, // Register the new container node
   };
 
   return (
     <div className={styles.reactflowWrapper}>
       <ReactFlow
-        nodes={currentNodes}
-        edges={currentEdges}
+        nodes={nodes}
+        edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        onNodeDragStart={onNodeDragStart}
         nodeTypes={nodeTypes}
         fitView
         attributionPosition="bottom-left"
