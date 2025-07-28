@@ -88,9 +88,51 @@ import { ReactFlowVisualization } from './visualizer';
       "id": 0,
       "label": "Location Name"
     }
-  ]
+  ],
+  "hierarchy": [              // Optional: hierarchical container definitions
+    {
+      "id": "datacenter1",
+      "name": "DataCenter 1",
+      "children": [
+        {
+          "id": "rack1",
+          "name": "Rack 1",
+          "children": [
+            {
+              "id": "server1",
+              "name": "Server 1"
+            },
+            {
+              "id": "server2", 
+              "name": "Server 2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nodeAssignments": {        // Optional: assigns nodes to hierarchy leaves
+    "node1": "server1",
+    "node2": "server2"
+  }
 }
 ```
+
+### Hierarchical Containers
+
+The visualizer supports organizing nodes into hierarchical containers. This allows you to represent deployment topologies, organizational structures, or logical groupings.
+
+**Hierarchy Structure:**
+- Each hierarchy node has an `id`, `name`, and optional `children`
+- Hierarchy can be nested to any depth
+- Leaf nodes (those without children) can have graph nodes assigned to them
+
+**Node Assignment:**
+- The `nodeAssignments` object maps graph node IDs to hierarchy leaf IDs
+- Assigned nodes will display their hierarchy path in the node label
+- Example: "DataCenter 1 / Rack 1 / Server 1 > Input Stream"
+- Nodes are visually contained within nested hierarchy containers
+- Containers automatically size to fit their contents and can be nested arbitrarily deep
 
 ### Node Types
 
@@ -143,7 +185,34 @@ The visualizer supports the following node types with automatic color coding:
       "source": "transform1",
       "target": "sink1"
     }
-  ]
+  ],
+  "hierarchy": [
+    {
+      "id": "datacenter1",
+      "name": "DataCenter 1",
+      "children": [
+        {
+          "id": "rack1",
+          "name": "Rack 1",
+          "children": [
+            {
+              "id": "server1",
+              "name": "Server 1"
+            },
+            {
+              "id": "server2", 
+              "name": "Server 2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "nodeAssignments": {
+    "source1": "server1",
+    "transform1": "server1", 
+    "sink1": "server2"
+  }
 }
 ```
 
