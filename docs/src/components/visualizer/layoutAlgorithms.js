@@ -1,78 +1,119 @@
-/**
- * Layout Algorithms for ReactFlow v12
- * 
- * Leverages ELK.js for all layout calculations and ReactFlow v12's improved
- * parent-child positioning, measured dimensions, and sub-flow capabilities
- */
+import { ELK } from './externalLibraries';
+import { generateLocationColor, generateLocationBorderColor } from './colorUtils';
+import { generateHyperedges } from './hyperedgeUtils';
 
-import { elkLayouts } from './layoutConfigs.js';
-import { generateLocationColor, generateLocationBorderColor } from './colorUtils.js';
-import { ELK } from './externalLibraries.js';
-import { generateHyperedges, routeEdgesForCollapsedContainers, createChildNodeMapping } from './hyperedgeUtils.js';
-
-/**
- * Enhanced ELK layout leveraging ReactFlow v12 features
- * Uses measured dimensions and better parent-child relationships
- */
-export const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
-  if (!ELK) return nodes;
-  
-  const graph = {
-    id: 'root',
-    layoutOptions: {
-      ...elkLayouts[layoutType] || elkLayouts.layered,
-      // ReactFlow v12: Better support for measured dimensions
-      'elk.nodeSize.constraints': 'NODE_LABELS',
-      'elk.nodeSize.options': 'DEFAULT_MINIMUM_SIZE COMPUTE_NODE_LABELS',
-    },
-    children: nodes.map(node => ({
-      id: node.id,
-      // ReactFlow v12: Use measured dimensions if available, fallback to defaults
-      width: node.measured?.width || node.width || 200,
-      height: node.measured?.height || node.height || 60,
-    })),
-    edges: edges.map(edge => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target]
-    }))
-  };
-  
-  try {
-    const elkResult = await ELK.layout(graph);
-    return nodes.map(node => {
-      const elkNode = elkResult.children?.find(n => n.id === node.id);
-      if (elkNode) {
-        return {
-          ...node,
-          position: { x: elkNode.x || 0, y: elkNode.y || 0 }
-        };
-      }
-      return node;
-    });
-  } catch (error) {
-    console.error('ELK layout failed:', error);
-    return nodes;
-  }
+const elkLayouts = {
+  mrtree: {
+    'elk.algorithm': 'mrtree',
+    'elk.direction': 'DOWN',
+    'elk.spacing.nodeNode': 50,
+    'elk.spacing.edgeNode': 20,
+  },
+  layered: {
+    'elk.algorithm': 'layered',
+    'elk.direction': 'DOWN',
+    'elk.spacing.nodeNode': 30,
+    'elk.layered.spacing.nodeNodeBetweenLayers': 50,
+  },
+  force: {
+    'elk.algorithm': 'force',
+    'elk.spacing.nodeNode': 100,
+  },
+  stress: {
+    'elk.algorithm': 'stress',
+    'elk.spacing.nodeNode': 100,
+  },
+  radial: {
+    'elk.algorithm': 'radial',
+    'elk.spacing.nodeNode': 100,
+  },
 };
 
-/**
- * Enhanced Hierarchical Layout for ReactFlow v12
- * Leverages native sub-flows, measured dimensions, and ELK for all calculations
- */
+// Cache for expanded container dimensions - calculated once on initialization
+let expandedContainerDimensionsCache = new Map();
+
+// Initialize expanded container dimensions cache
+const initializeExpandedContainerDimensions = async (nodes, locations, nodeMap) => {
+  console.log('🔄 CALCULATING EXPANDED CONTAINER DIMENSIONS...');
+  
+  const locationGroups = new Map();
+  
+  // Group nodes by location
+  nodes.forEach(node => {
+    const locationId = node.data?.locationId;
+    if (locationId !== undefined && locationId !== null) {
+      if (!locationGroups.has(locationId)) {
+        const location = locations.get(locationId);
+        if (location) {
+          locationGroups.set(locationId, { location, nodeIds: new Set() });
+        }
+      }
+      
+      const group = locationGroups.get(locationId);
+      if (group) {
+        group.nodeIds.add(node.id);
+      }
+    }
+  });
+  
+  // Calculate dimensions for each location
+  for (const [locationId, { location, nodeIds }] of locationGroups) {
+    const childNodes = Array.from(nodeIds)
+      .map(nodeId => nodeMap.get(nodeId))
+      .filter(node => node);
+      
+    if (childNodes.length === 0) {
+      expandedContainerDimensionsCache.set(locationId, { width: 200, height: 150 });
+      continue;
+    }
+    
+    // Create ELK layout for this container's children
+    const childElkGraph = {
+      id: `temp-container-${locationId}`,
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'DOWN',
+        'elk.spacing.nodeNode': 20,
+        'elk.padding': '[top=30,left=20,bottom=20,right=20]'
+      },
+      children: childNodes.map(node => ({
+        id: node.id,
+        width: node.measured?.width || parseFloat(node.style?.width) || 200,
+        height: node.measured?.height || parseFloat(node.style?.height) || 60,
+      }))
+    };
+    
+    try {
+      const elkResult = await ELK.layout(childElkGraph);
+      const dimensions = {
+        width: (elkResult.width || 300) + 40,
+        height: (elkResult.height || 200) + 60
+      };
+      expandedContainerDimensionsCache.set(locationId, dimensions);
+      console.log(`📋 Cached dimensions for location ${locationId}:`, dimensions);
+    } catch (error) {
+      console.error(`ELK sizing failed for location ${locationId}:`, error);
+      expandedContainerDimensionsCache.set(locationId, { width: 300, height: 200 });
+    }
+  }
+  
+  console.log('✅ CONTAINER DIMENSIONS CACHE INITIALIZED');
+};
+
 export const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef, precomputedHyperedges = []) => {
   if (!ELK) {
     console.log(`🚨 HIERARCHICAL LAYOUT ABORT: ELK not available`);
     return { nodes, edges };
   }
 
-  console.log('🎯 ENHANCED HIERARCHICAL LAYOUT START - ReactFlow v12 + ELK');
+  console.log('🎯 UNIFIED ELK LAYOUT START - ReactFlow v12 + ELK');
+  console.log('🔍 COLLAPSED CONTAINERS STATE:', JSON.stringify(collapsedContainers, null, 2));
   
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   const locationGroups = new Map();
   const orphanNodeIds = new Set(nodes.map(n => n.id));
 
-  // 1. Group nodes by location - ReactFlow v12 handles this more efficiently
+  // 1. Group nodes by location
   nodes.forEach(node => {
     const locationId = node.data?.locationId;
     if (locationId !== undefined && locationId !== null) {
@@ -91,115 +132,66 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     }
   });
 
-  // 2. Calculate container dimensions using ELK for internal layout
-  const calculateContainerDimensions = async (nodeIds, isCollapsed) => {
-    if (isCollapsed) {
-      return { width: 250, height: 80 };
-    }
-    
-    // Use ELK to calculate optimal container size based on child layout
-    const childNodes = Array.from(nodeIds)
-      .map(nodeId => nodeMap.get(nodeId))
-      .filter(node => node);
-      
-    if (childNodes.length === 0) {
-      return { width: 200, height: 150 };
-    }
-    
-    // Create a mini ELK layout just for this container's children
-    const childElkGraph = {
-      id: 'temp-container',
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': 'DOWN',
-        'elk.spacing.nodeNode': 20,
-        'elk.padding': '[top=30,left=20,bottom=20,right=20]'
-      },
-      children: childNodes.map(node => ({
-        id: node.id,
-        width: node.measured?.width || parseFloat(node.style?.width) || 200,
-        height: node.measured?.height || parseFloat(node.style?.height) || 60,
-      }))
-    };
-    
-    try {
-      const elkResult = await ELK.layout(childElkGraph);
-      // Add padding for container chrome
-      return {
-        width: (elkResult.width || 300) + 40,
-        height: (elkResult.height || 200) + 60
-      };
-    } catch (error) {
-      console.error('ELK container sizing failed:', error);
-      return { width: 300, height: 200 };
-    }
-  };
-
-  // 3. Build ELK graph structure using ReactFlow v12 sub-flow patterns
+  // 2. Build ELK graph structure - let ELK calculate everything
   const elkChildren = [];
-  const containerDimensionsPromises = [];
   
-  // Process each location group with ELK-calculated dimensions
+  // Process each location group
   for (const [locationId, { location, nodeIds }] of locationGroups) {
     const containerId = `container_${location.id}`;
     const isCollapsed = collapsedContainers[containerId];
     
-    containerDimensionsPromises.push(
-      calculateContainerDimensions(nodeIds, isCollapsed).then(containerDims => ({
-        locationId,
-        location,
-        nodeIds,
-        containerId,
-        isCollapsed,
-        containerDims
-      }))
-    );
-  }
-  
-  // Wait for all ELK dimension calculations
-  const containerData = await Promise.all(containerDimensionsPromises);
-  
-  // Build ELK children based on calculated dimensions
-  containerData.forEach(({ locationId, location, nodeIds, containerId, isCollapsed, containerDims }) => {
+    console.log(`🔍 CONTAINER SETUP - ${containerId}: isCollapsed = ${isCollapsed}, nodeCount = ${nodeIds.size}`);
+    
     if (isCollapsed) {
-      // Collapsed container: single ELK node
+      // Collapsed container: single ELK node with fixed size
       elkChildren.push({
         id: containerId,
-        width: containerDims.width,
-        height: containerDims.height,
+        width: 250,
+        height: 80,
         isCollapsed: true,
         originalNodeIds: Array.from(nodeIds)
       });
     } else {
-      // Expanded container: use ReactFlow v12 sub-flow pattern
+      // Expanded container: include child nodes and let ELK size the container
       const childElkNodes = Array.from(nodeIds).map(nodeId => {
         const node = nodeMap.get(nodeId);
+        const nodeWidth = node.measured?.width || parseFloat(node.style?.width) || 200;
+        const nodeHeight = node.measured?.height || parseFloat(node.style?.height) || 60;
+        
+        console.log(`📋 ELK child node ${nodeId}: ${nodeWidth} x ${nodeHeight}`);
+        
         return {
           id: node.id,
-          width: node.measured?.width || parseFloat(node.style?.width) || 200,
-          height: node.measured?.height || parseFloat(node.style?.height) || 60,
+          width: nodeWidth,
+          height: nodeHeight,
         };
       });
 
+      console.log(`🏗️ Creating expanded container ${containerId}: ${childElkNodes.length} children`);
+      
       elkChildren.push({
         id: containerId,
-        width: containerDims.width,
-        height: containerDims.height,
         children: childElkNodes,
         layoutOptions: {
           ...elkLayouts[layoutType],
           'elk.padding': '[top=35,left=20,bottom=20,right=20]',
           'elk.spacing.nodeNode': 15,
           'elk.nodeSize.constraints': 'NODE_LABELS',
+          'elk.nodeSize.options': 'MINIMUM_SIZE',
+          'elk.contentAlignment': 'V_TOP H_LEFT',
         }
       });
     }
-  });
+  }
 
   // Add orphan nodes to ELK graph
   orphanNodeIds.forEach(nodeId => {
     const node = nodeMap.get(nodeId);
-    elkChildren.push({ id: node.id, width: node.style.width, height: node.style.height });
+    elkChildren.push({ 
+      id: node.id, 
+      width: node.measured?.width || parseFloat(node.style?.width) || 200,
+      height: node.measured?.height || parseFloat(node.style?.height) || 60
+    });
   });
 
   // Build the set of all node IDs that will exist in the ELK graph
@@ -215,7 +207,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
   
   // Filter and reroute edges to only reference existing nodes
   const validElkEdges = [];
-  const elkEdgeMap = new Map(); // Use Map to deduplicate edges by ID
+  const elkEdgeMap = new Map();
   
   edges.forEach(edge => {
     let sourceId = edge.source;
@@ -248,7 +240,6 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
         targets: [targetId]
       };
       
-      // Use Map to automatically deduplicate by edge ID
       elkEdgeMap.set(edgeId, newEdge);
     }
   });
@@ -259,8 +250,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
   // Use precomputed hyperedges if available, otherwise generate them
   const hyperedges = precomputedHyperedges.length > 0 ? precomputedHyperedges : generateHyperedges(nodes, edges);
   
-  // Convert hyperedges to ELK format and include them in ELK's edge set
-  // This ensures ELK knows about all the connections that will be visible in ReactFlow
+  // Convert hyperedges to ELK format
   const elkHyperedges = hyperedges.map(hyperedge => ({
     id: hyperedge.id,
     sources: hyperedge.sources,
@@ -277,30 +267,23 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
     },
     children: elkChildren,
-    edges: allElkEdges // Give ELK the complete edge picture
+    edges: allElkEdges
   };
 
-  // DEBUG: Log what we're sending to ELK
-  console.log('📤 SENDING TO ELK:');
+  console.log('📤 SENDING TO ELK (UNIFIED SINGLE CALL):');
   console.log('Layout type:', layoutType);
-  console.log('Root layout options:', elkGraph.layoutOptions);
   console.log('Children summary:', elkChildren.map(child => ({
     id: child.id,
-    width: child.width,
-    height: child.height,
-    isCollapsed: child.isCollapsed,
-    childCount: child.children ? child.children.length : 0,
-    layoutOptions: child.layoutOptions
+    hasFixedSize: !!child.width,
+    childrenCount: child.children?.length || 0,
+    isCollapsed: !!child.isCollapsed
   })));
-  console.log('Regular edges:', validElkEdges.length);
-  console.log('Hyperedges:', elkHyperedges.length);
   console.log('Total edges to ELK:', allElkEdges.length);
 
-  // 3. Apply ELK layout
+  // 3. Apply ELK layout - SINGLE UNIFIED CALL
   const layoutedGraph = await ELK.layout(elkGraph);
 
-  // DEBUG: Log what ELK returned
-  console.log('📥 RECEIVED FROM ELK:');
+  console.log('📥 RECEIVED FROM ELK (UNIFIED RESULT):');
   console.log('Root dimensions:', { width: layoutedGraph.width, height: layoutedGraph.height });
   console.log('Children after layout:', layoutedGraph.children.map(child => ({
     id: child.id,
@@ -308,59 +291,49 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     y: child.y,
     width: child.width,
     height: child.height,
-    childCount: child.children ? child.children.length : 0
+    childCount: child.children ? child.children.length : 0,
+    sampleChildPositions: child.children ? child.children.slice(0, 3).map(c => ({ id: c.id, x: c.x, y: c.y })) : []
   })));
 
-  // 4. Process the layout result to create React Flow nodes
-  const finalNodes = [];
-  const layoutedNodeMap = new Map();
+  // 4. Process the layout result - USE ONLY ELK RESULTS
   const containerNodes = [];
   const childAndOrphanNodes = [];
+  const layoutedNodeMap = new Map();
 
-  // First pass: process layouted graph to establish a map of all nodes and their positions
+  // Build map of all layouted nodes
   layoutedGraph.children.forEach(elkNode => {
     layoutedNodeMap.set(elkNode.id, elkNode);
     if (elkNode.children) {
       elkNode.children.forEach(child => {
-        // Pass parent's absolute position to children for relative calculation
-        child.parentX = elkNode.x;
-        child.parentY = elkNode.y;
         layoutedNodeMap.set(child.id, child);
       });
     }
   });
 
-  // Second pass: Create all container nodes first
+  // Create container nodes - USE ELK SIZES ONLY
   layoutedGraph.children.forEach(elkNode => {
-    if (elkNode.children || elkNode.isCollapsed) { // It's a container (expanded or collapsed)
+    if (elkNode.children || elkNode.isCollapsed) { // It's a container
       const locationId = parseInt(elkNode.id.replace('container_', ''), 10);
       const location = locations.get(locationId);
-      const isCollapsed = collapsedContainers[elkNode.id];
+      const isCollapsed = !!elkNode.isCollapsed; // Use ELK's determination
 
-      // DEBUG: Log container processing
       console.log(`🏗️ Processing container ${elkNode.id}:`, {
         isCollapsed,
         elkPosition: { x: elkNode.x, y: elkNode.y },
         elkSize: { width: elkNode.width, height: elkNode.height },
-        hasChildren: !!elkNode.children,
-        childCount: elkNode.children ? elkNode.children.length : 0
+        childCount: elkNode.children ? elkNode.children.length : 0,
+        sizeSource: 'ELK_RESULT_ONLY'
       });
-
+      
       if (!location) {
-        console.warn(`Could not find location metadata for container ${elkNode.id}. This might be due to a mismatch in location IDs. Skipping container rendering.`);
-        // Even if we skip the container, we should still process its children as orphans.
-        if (elkNode.children) {
-          elkNode.children.forEach(child => {
-            layoutedNodeMap.set(child.id, { ...child, isOrphan: true });
-          });
-        }
+        console.warn(`Could not find location metadata for container ${elkNode.id}`);
         return;
       }
 
-      // Create container node with appropriate styling
+      // Create container style - USE ELK DIMENSIONS DIRECTLY
       const containerStyle = {
-        width: elkNode.width,
-        height: elkNode.height,
+        width: elkNode.width,   // ONLY from ELK result
+        height: elkNode.height, // ONLY from ELK result
         backgroundColor: generateLocationColor(location.id, locations.size, currentPalette),
         borderRadius: '8px',
         zIndex: 1,
@@ -370,7 +343,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       if (isCollapsed) {
         containerStyle.opacity = 0.8;
         containerStyle.border = `2px dashed ${generateLocationBorderColor(location.id, locations.size, currentPalette)}`;
-        containerStyle.backgroundColor = generateLocationColor(location.id, locations.size, currentPalette).replace('40', '60'); // More opaque
+        containerStyle.backgroundColor = generateLocationColor(location.id, locations.size, currentPalette).replace('40', '60');
         
         // Add content display styles for collapsed containers
         containerStyle.display = 'flex';
@@ -387,7 +360,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
 
       containerNodes.push({
         id: elkNode.id,
-        type: 'container', // Custom type needed for click-to-toggle behavior
+        type: 'container',
         position: { x: elkNode.x, y: elkNode.y },
         style: containerStyle,
         data: {
@@ -396,36 +369,35 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
           locationId: location.id,
           isCollapsed: isCollapsed,
           nodeCount: elkNode.originalNodeIds?.length || 0,
-          onContainerToggle: handleContainerToggle, // Pass the stable handler directly
-          isDraggedRef: isDraggedRef, // Pass the drag tracking ref
+          onContainerToggle: handleContainerToggle,
+          isDraggedRef: isDraggedRef,
         },
         draggable: true,
-        selectable: true, // CHANGED: Make selectable to see if it helps with click detection
+        selectable: true,
         connectable: true,
       });
 
-      // DEBUG: Log the React Flow container node we just created
       console.log(`➡️ Created React Flow container ${elkNode.id}:`, {
         position: { x: elkNode.x, y: elkNode.y },
-        style: { width: containerStyle.width, height: containerStyle.height },
+        size: { width: elkNode.width, height: elkNode.height },
         isCollapsed,
-        label: isCollapsed ? `${location.label || `Location ${location.id}`} (${elkNode.originalNodeIds?.length || 0} nodes)` : location.label || `Location ${location.id}`
+        sizeSource: 'ELK_RESULT_ONLY'
       });
     }
   });
 
-  const validContainerIds = new Set(containerNodes.map(n => n.id));
-
-  // Third pass: Create all child and orphan nodes, including ELK-positioned labels
+  // Create child and orphan nodes
   nodes.forEach(originalNode => {
     const locationId = originalNode.data?.locationId;
     const isChild = locationId !== undefined && locationId !== null;
     const containerId = isChild ? `container_${locationId}` : null;
-    const isContainerCollapsed = containerId && collapsedContainers[containerId];
-
-    // Skip processing nodes that are in collapsed containers entirely
-    if (isChild && isContainerCollapsed) {
-      return;
+    
+    // Skip if node is in a collapsed container
+    if (isChild && containerId) {
+      const elkContainer = layoutedGraph.children.find(c => c.id === containerId);
+      if (elkContainer && elkContainer.isCollapsed) {
+        return; // Skip nodes in collapsed containers
+      }
     }
 
     const elkNode = layoutedNodeMap.get(originalNode.id);
@@ -434,48 +406,72 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       return;
     }
 
-    if (isChild && validContainerIds.has(containerId)) {
-      // It's a child of a valid, existing container
+    if (isChild && containerId && containerNodes.some(c => c.id === containerId)) {
+      // Child node - Use ELK coordinates directly, let ReactFlow handle viewport transforms
+      
+      // Comprehensive ReactFlow viewport debugging
+      let viewportInfo = { scale: 1.0, translateX: 0, translateY: 0, transform: 'none' };
+      try {
+        const reactFlowViewport = document.querySelector('.react-flow__viewport');
+        if (reactFlowViewport) {
+          const transform = reactFlowViewport.style.transform;
+          viewportInfo.transform = transform;
+          
+          // Extract transform components
+          const transformMatch = transform.match(/translate\(([^,]+),([^)]+)\) scale\(([^)]+)\)/);
+          if (transformMatch) {
+            viewportInfo.translateX = parseFloat(transformMatch[1]);
+            viewportInfo.translateY = parseFloat(transformMatch[2]);
+            viewportInfo.scale = parseFloat(transformMatch[3]);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not analyze ReactFlow viewport:', error);
+      }
+      
+      // Apply inverse scale factor to compensate for ReactFlow viewport scaling
+      const inverseScale = viewportInfo.scale !== 0 ? (1 / viewportInfo.scale) : 1;
+      const finalX = elkNode.x * inverseScale;
+      const finalY = elkNode.y * inverseScale;
+      
+      console.log(`🔍 CHILD COORDINATE - ${originalNode.id}:`, {
+        containerId,
+        elkOriginalCoords: { x: elkNode.x, y: elkNode.y },
+        inverseScale: inverseScale.toFixed(4),
+        finalCoords: { x: finalX, y: finalY },
+        viewportInfo,
+        coordinateSource: 'ELK_HIERARCHICAL_INVERSE_SCALED',
+        note: 'Applying inverse scale to compensate for ReactFlow viewport scaling'
+      });
+      
       childAndOrphanNodes.push({
         ...originalNode,
-        position: {
-          x: elkNode.x, // Position is relative to parent
-          y: elkNode.y,
-        },
-        parentId: containerId,
+        position: { x: finalX, y: finalY },
+        parentNode: containerId,
         extent: 'parent',
         style: { ...originalNode.style, zIndex: 10 },
-        connectable: true, // FIXED: Make nodes connectable so edges can attach
+        connectable: true,
       });
     } else {
-      // It's an orphan (or its parent container was invalid and not created)
+      // Orphan node - use absolute coordinates
       childAndOrphanNodes.push({
         ...originalNode,
-        position: {
-          x: elkNode.x, // For orphans from invalid containers, position is absolute
-          y: elkNode.y,
-        },
-        connectable: true, // FIXED: Make nodes connectable so edges can attach
+        position: { x: elkNode.x, y: elkNode.y },
+        connectable: true,
       });
     }
   });
 
-  // Labels are now integrated directly into ContainerNode components - no separate label nodes needed
-  
-  // Build set of all visible node IDs (includes both child nodes and container nodes)
+  // Process edges with simplified logic
   const visibleNodeIds = new Set();
   childAndOrphanNodes.forEach(node => visibleNodeIds.add(node.id));
   containerNodes.forEach(node => visibleNodeIds.add(node.id));
   
-  // Process ALL original edges, not just ELK edges, to include internal container edges
-  console.log('🔄 PROCESSING ORIGINAL EDGES:');
-  console.log('Input edges:', edges.length);
-  
-  const finalEdgesResult = edges.map((originalEdge, index) => {
+  const finalEdgesResult = edges.map(originalEdge => {
     let sourceId = originalEdge.source;
     let targetId = originalEdge.target;
     
-    // Check if source node is in a collapsed container and redirect edge
+    // Redirect edges for collapsed containers
     const sourceNode = nodeMap.get(originalEdge.source);
     if (sourceNode?.data?.locationId !== undefined) {
       const sourceContainerId = `container_${sourceNode.data.locationId}`;
@@ -484,7 +480,6 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       }
     }
     
-    // Check if target node is in a collapsed container and redirect edge
     const targetNode = nodeMap.get(originalEdge.target);
     if (targetNode?.data?.locationId !== undefined) {
       const targetContainerId = `container_${targetNode.data.locationId}`;
@@ -493,78 +488,42 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       }
     }
     
-    // Only include edge if both endpoints are visible and different
+    // Filter invalid edges
     if (!visibleNodeIds.has(sourceId) || !visibleNodeIds.has(targetId) || sourceId === targetId) {
-      // DEBUG: Log why this edge was filtered out
-      if (index < 5) { // Only log first few to avoid spam
-        console.log(`Edge ${index} filtered out: ${originalEdge.source} -> ${originalEdge.target}`, {
-          sourceVisible: visibleNodeIds.has(sourceId),
-          targetVisible: visibleNodeIds.has(targetId),
-          sameSourceTarget: sourceId === targetId,
-          redirectedSource: sourceId !== originalEdge.source ? sourceId : 'no redirect',
-          redirectedTarget: targetId !== originalEdge.target ? targetId : 'no redirect'
-        });
-      }
-      return null; // Filter out invalid edges
+      return null;
     }
     
-    // Look up the actual visible nodes to determine their types/locations
+    // Determine edge styling
     const visibleSourceNode = childAndOrphanNodes.find(n => n.id === sourceId) || containerNodes.find(c => c.id === sourceId);
     const visibleTargetNode = childAndOrphanNodes.find(n => n.id === targetId) || containerNodes.find(c => c.id === targetId);
     
-    // An edge is internal if both its source and target are child nodes within the same container.
-    const isInternalEdge = 
-      visibleSourceNode?.parentId &&
-      visibleTargetNode?.parentId &&
-      visibleSourceNode.parentId === visibleTargetNode.parentId;
-
-    // Determine if this is a network edge based on node types or locations
     let isNetworkEdge = false;
     if (visibleSourceNode && visibleTargetNode) {
-      // Get location IDs for both nodes
       const sourceLocationId = visibleSourceNode.data?.locationId || (visibleSourceNode.id && visibleSourceNode.id.startsWith('container_') ? parseInt(visibleSourceNode.id.replace('container_', '')) : null);
       const targetLocationId = visibleTargetNode.data?.locationId || (visibleTargetNode.id && visibleTargetNode.id.startsWith('container_') ? parseInt(visibleTargetNode.id.replace('container_', '')) : null);
       
-      // An edge is a network edge if:
-      // 1. It connects nodes in different locations, OR
-      // 2. Either endpoint is a network node type (regardless of location)
       const isDifferentLocations = sourceLocationId !== null && targetLocationId !== null && sourceLocationId !== targetLocationId;
       const hasNetworkNode = (visibleSourceNode.data?.nodeType === 'Network') || (visibleTargetNode.data?.nodeType === 'Network');
       
       isNetworkEdge = isDifferentLocations || hasNetworkNode;
     }
     
-    const resultEdge = {
-      id: `${sourceId}_to_${targetId}`, // Use consistent edge ID format
+    return {
+      id: `${sourceId}_to_${targetId}`,
       source: sourceId,
       target: targetId,
-      type: 'smoothstep', // ReactFlow v12: Use smoothstep for all edges - excellent routing
+      type: 'smoothstep',
       style: { 
         strokeWidth: 2, 
         stroke: '#666666',
-        strokeDasharray: isNetworkEdge ? '5,5' : undefined, // Dashed lines for network edges
+        strokeDasharray: isNetworkEdge ? '5,5' : undefined,
       },
       markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#666666' },
-      animated: isNetworkEdge, // Animate network edges
+      animated: isNetworkEdge,
     };
-    
-    // DEBUG: Log first few internal edges being created
-    if (index < 5 && !sourceId.startsWith('container_') && !targetId.startsWith('container_')) {
-      console.log(`Creating internal edge ${index}:`, {
-        original: `${originalEdge.source} -> ${originalEdge.target}`,
-        final: `${sourceId} -> ${targetId}`,
-        id: resultEdge.id,
-        isNetworkEdge
-      });
-    }
-    
-    return resultEdge;
-  }).filter(edge => edge !== null); // Remove null entries
+  }).filter(edge => edge !== null);
   
-  console.log('Processed edges result:', finalEdgesResult.length);
-
-  // Process hyperedges for ReactFlow format (container-to-container edges)
-  // Only include hyperedges if there are actually collapsed containers
+  // Process hyperedges
   const hasCollapsedContainers = Object.values(collapsedContainers).some(Boolean);
   const hyperedgeResults = hasCollapsedContainers ? hyperedges.map(hyperedge => ({
     id: hyperedge.id,
@@ -572,180 +531,315 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     target: hyperedge.targets[0],
     type: 'smoothstep',
     style: { 
-      strokeWidth: 3, // Thicker for hyperedges
-      stroke: '#880088', // Purple for container-to-container connections
-      strokeDasharray: '8,4', // Distinctive dashed pattern
+      strokeWidth: 3,
+      stroke: '#880088',
+      strokeDasharray: '8,4',
     },
     markerEnd: { type: 'arrowclosed', width: 20, height: 20, color: '#880088' },
-    animated: true, // Always animate hyperedges
-    data: { isHyperedge: true } // Mark as hyperedge for easy identification
+    animated: true,
+    data: { isHyperedge: true }
   })) : [];
-  
-  // Combine containers and other nodes, ensuring containers come first.
+
+  // Combine containers and other nodes
   const finalNodesResult = [...containerNodes, ...childAndOrphanNodes];
   
-  // DEBUG: Log final result summary
-  console.log('🎯 FINAL LAYOUT RESULT:');
+  console.log('🎯 UNIFIED LAYOUT RESULT:');
   console.log('Total nodes:', finalNodesResult.length);
-  console.log('Container nodes:', containerNodes.map(node => ({
-    id: node.id,
-    position: node.position,
-    size: { width: node.style.width, height: node.style.height },
-    isCollapsed: node.data.isCollapsed
-  })));
+  console.log('Container nodes:', containerNodes.length);
   console.log('Child nodes:', childAndOrphanNodes.length);
   console.log('Total edges:', finalEdgesResult.length);
+
+  // COORDINATE INVESTIGATION - Streamlined check
+  console.log('🔍 CHECKING FOR COORDINATE DISCREPANCIES...');
   
-  if (finalNodesResult.length === 0) {
-    console.error(`🚨 HIERARCHICAL LAYOUT RETURNING EMPTY NODES!`);
-    console.error(`  Input: ${nodes.length} nodes, ${edges.length} edges`);
-    console.error(`  Locations: ${locations.size} locations`);
-  }
+  let overallLayoutBroken = false;
   
-  // Only include precomputed hyperedges when NO containers are collapsed
-  // When containers are collapsed, edge routing will create the appropriate container-to-container edges
-  const finalEdges = hasCollapsedContainers ? finalEdgesResult : [...finalEdgesResult, ...hyperedgeResults];
-  
-  // CRITICAL: Deduplicate final edges to prevent React warnings and rendering issues
-  console.log('🔄 DEDUPLICATION PROCESS:');
-  console.log('Before deduplication - finalEdges:', finalEdges.length);
-  
-  const finalEdgeMap = new Map();
-  const duplicatesFound = [];
-  
-  finalEdges.forEach((edge, index) => {
-    if (edge && edge.id) {
-      if (finalEdgeMap.has(edge.id)) {
-        duplicatesFound.push({
-          id: edge.id,
-          firstIndex: Array.from(finalEdgeMap.keys()).indexOf(edge.id),
-          duplicateIndex: index
+  containerNodes.forEach(container => {
+    const childNodesInContainer = childAndOrphanNodes.filter(child => child.parentNode === container.id);
+    if (childNodesInContainer.length > 0) {
+      console.log(`\n📦 CONTAINER ${container.id}:`);
+      
+      // Step 1: Analyze actual child positions vs container bounds
+      const childPositions = childNodesInContainer.map(child => child.position);
+      const minX = Math.min(...childPositions.map(pos => pos.x));
+      const maxX = Math.max(...childPositions.map(pos => pos.x));
+      const minY = Math.min(...childPositions.map(pos => pos.y));
+      const maxY = Math.max(...childPositions.map(pos => pos.y));
+      
+      // Step 2: Calculate required container size for child content
+      const requiredWidth = Math.max(maxX + 220, 300); // Add node width estimate
+      const requiredHeight = Math.max(maxY + 80, 200);  // Add node height estimate
+      
+      console.log(`  📍 CHILD NODES ANALYSIS:`);
+      console.log(`    Child positions: ${childNodesInContainer.length} nodes`);
+      console.log(`    X range: ${minX} to ${maxX} (span: ${maxX - minX})`);
+      console.log(`    Y range: ${minY} to ${maxY} (span: ${maxY - minY})`);
+      console.log(`    Required container size: ${requiredWidth} x ${requiredHeight}`);
+      
+      console.log(`  📦 CONTAINER ACTUAL:`);
+      console.log(`    Position: (${container.position.x}, ${container.position.y})`);
+      console.log(`    Size: ${container.style.width} x ${container.style.height}`);
+      console.log(`    Container coordinate space: 0 to ${container.style.width} x 0 to ${container.style.height}`);
+      
+      // Step 3: RIGOROUS boundary violation checks
+      const violatingNodes = childNodesInContainer.filter(child => {
+        const nodeRight = child.position.x + 220; // Estimate node width
+        const nodeBottom = child.position.y + 60;  // Estimate node height
+        return child.position.x < 0 || 
+               child.position.y < 0 || 
+               nodeRight > container.style.width || 
+               nodeBottom > container.style.height;
+      });
+      
+      // Step 4: Size adequacy check
+      const containerTooSmall = container.style.width < requiredWidth || container.style.height < requiredHeight;
+      
+      console.log(`  🚨 VISUAL LAYOUT PROBLEMS:`);
+      if (violatingNodes.length > 0) {
+        overallLayoutBroken = true;
+        console.log(`    ❌ BOUNDARY VIOLATIONS: ${violatingNodes.length} nodes outside container`);
+        violatingNodes.slice(0, 5).forEach(node => {
+          const nodeRight = node.position.x + 220;
+          const nodeBottom = node.position.y + 60;
+          console.log(`      Node ${node.id}: (${node.position.x}, ${node.position.y}) extends to (${nodeRight}, ${nodeBottom})`);
+          if (node.position.x < 0) console.log(`        ⚠️  X position ${node.position.x} < 0`);
+          if (node.position.y < 0) console.log(`        ⚠️  Y position ${node.position.y} < 0`);
+          if (nodeRight > container.style.width) console.log(`        ⚠️  Right edge ${nodeRight} > container width ${container.style.width}`);
+          if (nodeBottom > container.style.height) console.log(`        ⚠️  Bottom edge ${nodeBottom} > container height ${container.style.height}`);
         });
       }
-      finalEdgeMap.set(edge.id, edge);
-    } else {
-      console.warn('Edge without ID found at index', index, edge);
-    }
-  });
-  
-  if (duplicatesFound.length > 0) {
-    console.log('Duplicates found during deduplication:', duplicatesFound.slice(0, 5));
-  }
-  
-  const deduplicatedFinalEdges = Array.from(finalEdgeMap.values());
-  console.log('After deduplication - deduplicatedFinalEdges:', deduplicatedFinalEdges.length);
-  
-  // Check how many internal edges survived deduplication
-  const survivingInternalEdges = deduplicatedFinalEdges.filter(edge => 
-    !edge.source.startsWith('container_') && !edge.target.startsWith('container_')
-  );
-  console.log('Internal edges surviving deduplication:', survivingInternalEdges.length);
-  
-  // DEBUG: Log edge composition
-  console.log('🔗 EDGE COMPOSITION:');
-  console.log('Original edges:', edges.length);
-  console.log('finalEdgesResult:', finalEdgesResult.length, 'edges');
-  console.log('hasCollapsedContainers:', hasCollapsedContainers);
-  console.log('hyperedgeResults:', hyperedgeResults.length, 'edges');
-  console.log('Using finalEdges:', hasCollapsedContainers ? 'finalEdgesResult only' : 'finalEdgesResult + hyperedgeResults');
-  console.log('Before deduplication:', finalEdges.length);
-  console.log('After deduplication:', deduplicatedFinalEdges.length);
-  
-  // DEBUG: Show sample internal edges with more detail
-  const internalEdges = finalEdgesResult.filter(edge => {
-    const sourceIsContainer = edge.source.startsWith('container_');
-    const targetIsContainer = edge.target.startsWith('container_');
-    return !sourceIsContainer && !targetIsContainer; // Both are regular nodes
-  });
-  console.log('Internal container edges:', internalEdges.length);
-  if (internalEdges.length > 0) {
-    console.log('Sample internal edges:', internalEdges.slice(0, 5).map(e => `${e.source} -> ${e.target}`));
-    console.log('Sample internal edge objects:', internalEdges.slice(0, 2));
-    
-    // Check if the source and target nodes exist in the visible nodes
-    const firstInternalEdge = internalEdges[0];
-    if (firstInternalEdge) {
-      const sourceNode = finalNodesResult.find(n => n.id === firstInternalEdge.source);
-      const targetNode = finalNodesResult.find(n => n.id === firstInternalEdge.target);
-      console.log('First internal edge source node:', sourceNode ? 'FOUND' : 'NOT FOUND');
-      console.log('First internal edge target node:', targetNode ? 'FOUND' : 'NOT FOUND');
-      if (sourceNode && targetNode) {
-        console.log('Source connectable:', sourceNode.connectable);
-        console.log('Target connectable:', targetNode.connectable);
-        console.log('Source parentId:', sourceNode.parentId);
-        console.log('Target parentId:', targetNode.parentId);
+      
+      if (containerTooSmall) {
+        overallLayoutBroken = true;
+        console.log(`    ❌ CONTAINER TOO SMALL:`);
+        console.log(`      Current: ${container.style.width} x ${container.style.height}`);
+        console.log(`      Required: ${requiredWidth} x ${requiredHeight}`);
+        console.log(`      Deficit: ${requiredWidth - container.style.width} x ${requiredHeight - container.style.height}`);
+      }
+      
+      if (violatingNodes.length === 0 && !containerTooSmall) {
+        console.log(`    ✅ Container layout appears correct`);
+      }
+      
+      // Step 5: ELK coordinate system analysis
+      console.log(`  � COORDINATE SYSTEM DIAGNOSIS:`);
+      console.log(`    ELK coordinate source: ELK_HIERARCHICAL_DIRECT (no conversion)`);
+      console.log(`    ELK hierarchyHandling: INCLUDE_CHILDREN`);
+      console.log(`    Expected: ELK provides relative coordinates within parent container`);
+      
+      if (violatingNodes.length > 0 || containerTooSmall) {
+        console.log(`    💡 LIKELY ISSUES:`);
+        console.log(`      1. ELK not respecting container padding/constraints`);
+        console.log(`      2. ELK hierarchical layout incorrectly configured`);
+        console.log(`      3. Child node size estimates wrong in ELK input`);
+        console.log(`      4. Container size calculation broken`);
       }
     }
-  }
-  
-  // DEBUG: Comprehensive edge analysis
-  console.log('🔍 DETAILED EDGE ANALYSIS:');
-  console.log('finalEdgesResult breakdown:');
-  const edgeCategories = {
-    containerToContainer: finalEdgesResult.filter(e => e.source.startsWith('container_') && e.target.startsWith('container_')),
-    containerToNode: finalEdgesResult.filter(e => e.source.startsWith('container_') && !e.target.startsWith('container_')),
-    nodeToContainer: finalEdgesResult.filter(e => !e.source.startsWith('container_') && e.target.startsWith('container_')),
-    nodeToNode: finalEdgesResult.filter(e => !e.source.startsWith('container_') && !e.target.startsWith('container_'))
-  };
-  
-  console.log('Container->Container edges:', edgeCategories.containerToContainer.length);
-  console.log('Container->Node edges:', edgeCategories.containerToNode.length);
-  console.log('Node->Container edges:', edgeCategories.nodeToContainer.length);
-  console.log('Node->Node edges (internal):', edgeCategories.nodeToNode.length);
-  
-  // Show first few of each category
-  Object.entries(edgeCategories).forEach(([category, edges]) => {
-    if (edges.length > 0) {
-      console.log(`${category} sample:`, edges.slice(0, 2).map(e => `${e.source} -> ${e.target}`));
-    }
   });
   
-  // DEBUG: Check deduplicatedFinalEdges content
-  console.log('🔍 FINAL EDGES PASSED TO REACTFLOW:');
-  console.log('Total deduplicatedFinalEdges:', deduplicatedFinalEdges.length);
+  console.log(`\n🎯 OVERALL LAYOUT STATUS:`);
+  console.log(`⏳ Checking DOM positions in 1 second to compare with JavaScript coordinates...`);
   
-  const finalEdgeCategories = {
-    containerToContainer: deduplicatedFinalEdges.filter(e => e.source.startsWith('container_') && e.target.startsWith('container_')),
-    containerToNode: deduplicatedFinalEdges.filter(e => e.source.startsWith('container_') && !e.target.startsWith('container_')),
-    nodeToContainer: deduplicatedFinalEdges.filter(e => !e.source.startsWith('container_') && e.target.startsWith('container_')),
-    nodeToNode: deduplicatedFinalEdges.filter(e => !e.source.startsWith('container_') && !e.target.startsWith('container_'))
-  };
-  
-  console.log('Final Container->Container edges:', finalEdgeCategories.containerToContainer.length);
-  console.log('Final Container->Node edges:', finalEdgeCategories.containerToNode.length);
-  console.log('Final Node->Container edges:', finalEdgeCategories.nodeToContainer.length);
-  console.log('Final Node->Node edges (internal):', finalEdgeCategories.nodeToNode.length);
-  
-  // Show actual internal edge objects being passed to ReactFlow
-  if (finalEdgeCategories.nodeToNode.length > 0) {
-    console.log('First 3 internal edges passed to ReactFlow:');
-    finalEdgeCategories.nodeToNode.slice(0, 3).forEach((edge, index) => {
-      console.log(`Edge ${index + 1}:`, {
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        type: edge.type,
-        style: edge.style,
-        markerEnd: edge.markerEnd,
-        animated: edge.animated
-      });
+  // DOM REALITY CHECK - Compare actual rendered positions vs JavaScript coordinates
+  setTimeout(() => {
+    console.log('\n🌐 DOM REALITY CHECK - CHECKING ACTUAL RENDERED POSITIONS:');
+    let realLayoutBroken = false;
+    
+    // First, analyze ReactFlow's coordinate system behavior
+    console.log('\n🔧 REACTFLOW COORDINATE SYSTEM ANALYSIS:');
+    const reactFlowInstance = document.querySelector('.react-flow');
+    const reactFlowViewport = document.querySelector('.react-flow__viewport');
+    
+    if (reactFlowInstance && reactFlowViewport) {
+      const instanceRect = reactFlowInstance.getBoundingClientRect();
+      const viewportTransform = reactFlowViewport.style.transform;
+      
+      console.log(`📏 ReactFlow Instance: ${instanceRect.width.toFixed(1)} x ${instanceRect.height.toFixed(1)} at (${instanceRect.left.toFixed(1)}, ${instanceRect.top.toFixed(1)})`);
+      console.log(`🔄 Viewport Transform: ${viewportTransform}`);
+      
+      // Parse transform
+      const transformMatch = viewportTransform.match(/translate\(([^,]+),([^)]+)\) scale\(([^)]+)\)/);
+      if (transformMatch) {
+        const translateX = parseFloat(transformMatch[1]);
+        const translateY = parseFloat(transformMatch[2]);
+        const scale = parseFloat(transformMatch[3]);
+        
+        console.log(`📐 Transform Components:`);
+        console.log(`  Translation: (${translateX.toFixed(1)}, ${translateY.toFixed(1)})`);
+        console.log(`  Scale: ${scale.toFixed(6)}`);
+        console.log(`  Scale percentage: ${(scale * 100).toFixed(2)}%`);
+        
+        if (scale !== 1.0) {
+          console.log(`⚠️  NON-UNITY SCALE DETECTED: This affects all coordinate calculations!`);
+        }
+      }
+    }
+    
+    containerNodes.forEach(container => {
+      const childNodesInContainer = childAndOrphanNodes.filter(child => child.parentNode === container.id);
+      if (childNodesInContainer.length > 0) {
+        console.log(`\n📦 DOM CONTAINER ${container.id}:`);
+        
+        // Find the actual container DOM element
+        const containerElement = document.querySelector(`[data-id="${container.id}"]`);
+        if (containerElement) {
+          const containerRect = containerElement.getBoundingClientRect();
+          
+          // Calculate container position relative to ReactFlow instance
+          let containerRelativeToInstance = { x: 0, y: 0 };
+          if (reactFlowInstance) {
+            const instanceRect = reactFlowInstance.getBoundingClientRect();
+            containerRelativeToInstance.x = containerRect.left - instanceRect.left;
+            containerRelativeToInstance.y = containerRect.top - instanceRect.top;
+          }
+          
+          console.log(`  📦 DOM CONTAINER BOUNDS:`);
+          console.log(`    Screen position: (${containerRect.left.toFixed(1)}, ${containerRect.top.toFixed(1)})`);
+          console.log(`    Screen size: ${containerRect.width.toFixed(1)} x ${containerRect.height.toFixed(1)}`);
+          console.log(`    Relative to ReactFlow: (${containerRelativeToInstance.x.toFixed(1)}, ${containerRelativeToInstance.y.toFixed(1)})`);
+          console.log(`    JS position: (${container.position.x}, ${container.position.y})`);
+          console.log(`    JS size: ${container.style.width} x ${container.style.height}`);
+          
+          // Calculate scale factors
+          const widthScale = containerRect.width / container.style.width;
+          const heightScale = containerRect.height / container.style.height;
+          console.log(`    Size scaling: width ${widthScale.toFixed(4)}x, height ${heightScale.toFixed(4)}x`);
+        }
+        
+        // Check each child node's actual DOM position vs JS position
+        let domViolations = 0;
+        childNodesInContainer.slice(0, 5).forEach(child => {
+          const childElement = document.querySelector(`[data-id="${child.id}"]`);
+          if (childElement && containerElement) {
+            const childRect = childElement.getBoundingClientRect();
+            const containerRect = containerElement.getBoundingClientRect();
+            
+            // Calculate various coordinate representations
+            const domRelativeToContainer = {
+              x: childRect.left - containerRect.left,
+              y: childRect.top - containerRect.top
+            };
+            
+            const domRelativeToInstance = reactFlowInstance ? {
+              x: childRect.left - reactFlowInstance.getBoundingClientRect().left,
+              y: childRect.top - reactFlowInstance.getBoundingClientRect().top
+            } : { x: 0, y: 0 };
+            
+            console.log(`\n  📍 NODE ${child.id} COORDINATE ANALYSIS:`);
+            console.log(`    JS relative position: (${child.position.x}, ${child.position.y})`);
+            console.log(`    DOM screen position: (${childRect.left.toFixed(1)}, ${childRect.top.toFixed(1)})`);
+            console.log(`    DOM relative to container: (${domRelativeToContainer.x.toFixed(1)}, ${domRelativeToContainer.y.toFixed(1)})`);
+            console.log(`    DOM relative to ReactFlow: (${domRelativeToInstance.x.toFixed(1)}, ${domRelativeToInstance.y.toFixed(1)})`);
+            console.log(`    DOM node size: ${childRect.width.toFixed(1)} x ${childRect.height.toFixed(1)}`);
+            
+            // Calculate coordinate discrepancy
+            const discrepancyX = domRelativeToContainer.x - child.position.x;
+            const discrepancyY = domRelativeToContainer.y - child.position.y;
+            console.log(`    Coordinate discrepancy: (${discrepancyX.toFixed(1)}, ${discrepancyY.toFixed(1)})`);
+            
+            // Analyze potential causes of discrepancy
+            if (Math.abs(discrepancyX) > 5 || Math.abs(discrepancyY) > 5) {
+              console.log(`    ⚠️  SIGNIFICANT COORDINATE MISMATCH detected!`);
+              
+              // Check if discrepancy matches scale factor
+              const scaleInfo = reactFlowViewport ? reactFlowViewport.style.transform.match(/scale\(([^)]+)\)/) : null;
+              if (scaleInfo) {
+                const scale = parseFloat(scaleInfo[1]);
+                const scaledJSX = child.position.x * scale;
+                const scaledJSY = child.position.y * scale;
+                const scaleDiscrepancyX = domRelativeToContainer.x - scaledJSX;
+                const scaleDiscrepancyY = domRelativeToContainer.y - scaledJSY;
+                
+                console.log(`    📐 Scale analysis (scale=${scale.toFixed(4)}):`);
+                console.log(`      If JS coords were scaled: (${scaledJSX.toFixed(1)}, ${scaledJSY.toFixed(1)})`);
+                console.log(`      Scaled discrepancy: (${scaleDiscrepancyX.toFixed(1)}, ${scaleDiscrepancyY.toFixed(1)})`);
+                
+                if (Math.abs(scaleDiscrepancyX) < Math.abs(discrepancyX) && Math.abs(scaleDiscrepancyY) < Math.abs(discrepancyY)) {
+                  console.log(`    💡 SCALING APPEARS TO BE THE ISSUE!`);
+                }
+              }
+            }
+            
+            // Check if child is actually outside container in DOM
+            const outsideLeft = childRect.left < containerRect.left;
+            const outsideRight = childRect.right > containerRect.right;
+            const outsideTop = childRect.top < containerRect.top;
+            const outsideBottom = childRect.bottom > containerRect.bottom;
+            
+            if (outsideLeft || outsideRight || outsideTop || outsideBottom) {
+              domViolations++;
+              realLayoutBroken = true;
+              console.log(`    ❌ DOM BOUNDARY VIOLATION:`);
+              if (outsideLeft) console.log(`      ⚠️  Child left ${childRect.left.toFixed(1)} < container left ${containerRect.left.toFixed(1)}`);
+              if (outsideRight) console.log(`      ⚠️  Child right ${childRect.right.toFixed(1)} > container right ${containerRect.right.toFixed(1)}`);
+              if (outsideTop) console.log(`      ⚠️  Child top ${childRect.top.toFixed(1)} < container top ${containerRect.top.toFixed(1)}`);
+              if (outsideBottom) console.log(`      ⚠️  Child bottom ${childRect.bottom.toFixed(1)} > container bottom ${containerRect.bottom.toFixed(1)}`);
+            } else {
+              console.log(`    ✅ DOM position within container bounds`);
+            }
+          } else {
+            console.log(`    ⚠️  Could not find DOM element for ${child.id || container.id}`);
+          }
+        });
+        
+        if (domViolations > 0) {
+          console.log(`  ❌ ${domViolations} nodes actually outside container in DOM`);
+        } else {
+          console.log(`  ✅ All nodes within container bounds in DOM`);
+        }
+      }
     });
-  } else {
-    console.error('🚨 NO INTERNAL EDGES IN FINAL RESULT!');
+    
+    console.log(`\n🎯 FINAL REALITY CHECK:`);
+    if (realLayoutBroken) {
+      console.log(`❌ CONFIRMED: Layout is visually broken in DOM - nodes outside containers`);
+      console.log(`🔧 ROOT CAUSE ANALYSIS:`);
+      
+      // Analyze the most likely causes
+      const scaleInfo = reactFlowViewport ? reactFlowViewport.style.transform.match(/scale\(([^)]+)\)/) : null;
+      const scale = scaleInfo ? parseFloat(scaleInfo[1]) : 1.0;
+      
+      console.log(`📊 DIAGNOSTIC SUMMARY:`);
+      console.log(`  Current ReactFlow scale: ${scale.toFixed(6)}`);
+      console.log(`  Scale deviation from 1.0: ${Math.abs(scale - 1.0).toFixed(6)}`);
+      console.log(`  Coordinate approach: ELK_HIERARCHICAL_DIRECT (no manual scaling)`);
+      
+      if (Math.abs(scale - 1.0) > 0.01) {
+        console.log(`💡 PRIMARY HYPOTHESIS: ReactFlow scale factor ${scale.toFixed(4)} is causing coordinate mismatch`);
+        console.log(`� POTENTIAL SOLUTIONS:`);
+        console.log(`   A. Apply inverse scale factor to child coordinates: multiply by ${(1/scale).toFixed(4)}`);
+        console.log(`   B. Force ReactFlow scale to 1.0 before layout calculation`);
+        console.log(`   C. Use ReactFlow's coordinate transformation utilities`);
+        console.log(`   D. Investigate parentNode + extent:'parent' behavior with scaled viewports`);
+      } else {
+        console.log(`💡 SCALE IS NEAR 1.0 - other factors at play:`);
+        console.log(`🔧 INVESTIGATE:`);
+        console.log(`   A. Container padding/border offsets`);
+        console.log(`   B. ReactFlow internal coordinate transformations`);
+        console.log(`   C. CSS transforms or positioning issues`);
+        console.log(`   D. extent:'parent' implementation quirks`);
+      }
+      
+      // Provide specific next steps
+      console.log(`\n� RECOMMENDED NEXT STEPS:`);
+      console.log(`   1. Test with ReactFlow scale forced to 1.0`);
+      console.log(`   2. Try applying inverse scale factor: position * (1/scale)`);
+      console.log(`   3. Check if removing extent:'parent' fixes positioning`);
+      console.log(`   4. Examine ReactFlow v12 documentation for parentNode coordinate handling`);
+      
+    } else {
+      console.log(`✅ DOM layout is actually correct - coordinate system working properly!`);
+      console.log(`🎉 SUCCESS: ELK coordinates + ReactFlow parentNode system working as intended`);
+    }
+  }, 1000);
+
+  if (finalNodesResult.length === 0) {
+    console.error(`🚨 LAYOUT RETURNING EMPTY NODES!`);
+    return { nodes, edges };
   }
+
+  // Only include hyperedges when containers are collapsed
+  const finalEdges = hasCollapsedContainers ? [...finalEdgesResult, ...hyperedgeResults] : finalEdgesResult;
   
-  // DEBUG: Check for duplicate edge IDs in final result
-  const finalEdgeIds = deduplicatedFinalEdges.map(edge => edge.id);
-  const finalDuplicateIds = finalEdgeIds.filter((id, index) => finalEdgeIds.indexOf(id) !== index);
-  if (finalDuplicateIds.length > 0) {
-    console.error('🚨 DUPLICATE EDGE IDs STILL FOUND AFTER DEDUPLICATION:', finalDuplicateIds);
-  } else {
-    console.log('✅ No duplicate edge IDs found after deduplication');
-  }
-  
-  return { 
-    nodes: finalNodesResult, 
-    edges: deduplicatedFinalEdges,
-    hyperedges: hyperedges // Return hyperedges separately for reuse
-  };
+  return { nodes: finalNodesResult, edges: finalEdges };
 };

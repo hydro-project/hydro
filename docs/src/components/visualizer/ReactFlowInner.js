@@ -36,6 +36,19 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, loc
     type: 'smoothstep', // Better routing in v12
     animated: false,
     zIndex: 1000, // Ensure edges render above nodes
+    // CRITICAL: Ensure edges render properly within parent containers
+    style: {
+      strokeWidth: 2,
+      stroke: '#666666',
+    },
+    markerEnd: {
+      type: 'arrowclosed',
+      width: 20,
+      height: 20,
+      color: '#666666',
+    },
+    // CRITICAL: Force edge rendering
+    hidden: false,
   }), []);
 
   return (
@@ -59,6 +72,10 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, loc
         minZoom={0.1}
         // ReactFlow v12: Sub-flow support
         elevateEdgesOnSelect={true}
+        // CRITICAL: Enable sub-flow edge rendering for parent-child relationships
+        disableKeyboardA11y={false}
+        // CRITICAL: Ensure parent-child edge rendering works
+        onlyRenderVisibleElements={false}
       >
         <Controls />
         <MiniMap 
