@@ -2614,26 +2614,8 @@ where
         O: MinOrder<<L::Root as CanSend<'a, Cluster<'a, C2>>>::OutStrongestOrder<O>>,
     {
         let ids = other.members();
-
-        let to_send: Stream<(u32, Bytes), L, B, O, R> = self
-            .map::<Bytes, _>(q!(|v| bincode::serialize(&v).unwrap().into()))
-            .flat_map_ordered(q!(|v| { ids.iter().map(move |id| (id.raw_id, v.clone())) }));
-
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(L::Root::tagged_type().as_ref()));
-
-        Stream::new(
-            other.clone(),
-            HydroNode::Network {
-                from_key: None,
-                to_location: other.id(),
-                to_key: None,
-                serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(to_send.ir_node.into_inner()),
-                metadata: other.new_node_metadata::<T>(),
-            },
-        )
+        self.flat_map_ordered(q!(|v| { ids.iter().map(move |id| (*id, v.clone())) }))
+            .send_bincode(other)
     }
 
     pub fn broadcast_bincode_anonymous<C2, Tag>(
