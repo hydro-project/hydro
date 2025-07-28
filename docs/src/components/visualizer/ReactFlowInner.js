@@ -37,29 +37,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     group: GroupNode,
   }), []);
 
-  // CRITICAL DEBUG: Log what ReactFlow is actually receiving
-  console.log('=== REACTFLOW INNER COMPONENT DEBUG ===');
-  console.log('ReactFlow receiving nodes:', nodes.map(n => ({
-    id: n.id,
-    type: n.type,
-    parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-    position: n.position,
-    hasStyle: !!n.style,
-    hasData: !!n.data,
-    dataLabel: n.data?.label,
-  })));
-  
-  const groupNodes = nodes.filter(n => n.type === 'group');
-  console.log('ReactFlow group nodes parent-child check:', groupNodes.map(n => {
-    const parent = nodes.find(p => p.id === n.parentId);
-    return {
-      id: n.id,
-      label: n.data?.label,
-      parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-      parentExists: !!parent,
-      parentLabel: parent?.data?.label,
-    };
-  }));
+  // All console logs removed for focused debugging
 
   return (
     <div className={styles.reactflowWrapper}>

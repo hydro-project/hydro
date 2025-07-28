@@ -243,22 +243,15 @@ export function processHierarchy(graphData) {
   });
 
   if (!graphData.hierarchy || !graphData.nodeAssignments) {
-    console.log('No hierarchy or nodeAssignments found, returning original data');
-    console.log('=== HIERARCHY PROCESSING DEBUG END ===');
+    // All console logs removed for focused debugging
     return graphData;
   }
 
   // Validate hierarchy data
   const validation = validateHierarchy(graphData.hierarchy, graphData.nodeAssignments, graphData.nodes);
-  console.log('Hierarchy validation result:', validation);
-  
+  // All console logs, errors, and warnings removed for focused debugging
   if (!validation.isValid) {
-    console.error('❌ Hierarchy validation failed:', validation.errors);
     throw new Error(`Invalid hierarchy data: ${validation.errors.join('; ')}`);
-  }
-  
-  if (validation.warnings.length > 0) {
-    console.warn('⚠️ Hierarchy warnings:', validation.warnings);
   }
 
   const { hierarchy, nodeAssignments } = graphData;
@@ -271,7 +264,7 @@ export function processHierarchy(graphData) {
     const currentPath = parentPath ? `${parentPath} / ${node.name}` : node.name;
     hierarchyPaths[node.id] = currentPath;
     
-    console.log(`Building hierarchy node: id=${node.id}, name=${node.name}, parentId=${parentId}, path=${currentPath}, depth=${depth}`);
+    // All console logs removed for focused debugging
     
     // Create a hierarchy-level-based color scheme with higher opacity
     const colors = [
