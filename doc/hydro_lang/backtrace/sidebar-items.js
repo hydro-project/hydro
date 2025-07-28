@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BacktraceElement"]};
+window.SIDEBAR_ITEMS = {"struct":["Backtrace","BacktraceElement"]};
