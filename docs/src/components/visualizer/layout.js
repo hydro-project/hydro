@@ -1,8 +1,10 @@
 /**
  * Simple ELK Layout Integration
  * 
- * Provides flat graph layout using ELK algorithms
+ * Provides flat graph layout using ELK algorithms with shared configuration
  */
+
+import { ELK_LAYOUT_CONFIGS } from './reactFlowConfig.js';
 
 let ELK = null;
 
@@ -19,33 +21,6 @@ async function loadELK() {
     return null;
   }
 }
-
-const layoutConfigs = {
-  mrtree: {
-    'elk.algorithm': 'mrtree',
-    'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 50,
-    'elk.spacing.edgeNode': 20,
-  },
-  layered: {
-    'elk.algorithm': 'layered',
-    'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 30,
-    'elk.layered.spacing.nodeNodeBetweenLayers': 50,
-  },
-  force: {
-    'elk.algorithm': 'force',
-    'elk.spacing.nodeNode': 100,
-  },
-  stress: {
-    'elk.algorithm': 'stress',
-    'elk.spacing.nodeNode': 100,
-  },
-  radial: {
-    'elk.algorithm': 'radial',
-    'elk.spacing.nodeNode': 100,
-  },
-};
 
 export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
   const elk = await loadELK();
@@ -71,7 +46,7 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
   const elkGraph = {
     id: 'root',
     layoutOptions: {
-      ...layoutConfigs[layoutType],
+      ...ELK_LAYOUT_CONFIGS[layoutType],
       'elk.padding': '[top=20,left=20,bottom=20,right=20]',
     },
     children: elkNodes,

@@ -57,21 +57,8 @@ export function generateNodeColors(nodeType, paletteKey = 'Set3') {
   };
 }
 
-export function generateLocationColor(locationId, totalLocations, paletteKey = 'Set3') {
-  const palette = colorPalettes[paletteKey] || colorPalettes.Set3;
-  const colorIndex = locationId % palette.length;
-  const colors = palette[colorIndex];
-  
-  return colors.primary + '40'; // Add transparency
-}
-
-export function generateLocationBorderColor(locationId, totalLocations, paletteKey = 'Set3') {
-  const palette = colorPalettes[paletteKey] || colorPalettes.Set3;
-  const colorIndex = locationId % palette.length;
-  const colors = palette[colorIndex];
-  
-  return darkenColor(colors.primary, 0.3);
-}
+// Location-specific color functions removed
+// Location data is still tracked internally but not used for visualization
 
 function darkenColor(hex, factor) {
   // Remove # if present
