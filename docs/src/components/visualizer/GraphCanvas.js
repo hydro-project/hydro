@@ -19,6 +19,7 @@ import { processGraphData } from './reactFlowConfig.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
+  console.log('[GraphCanvas] Rendering with graphData:', graphData);
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [currentLayout, setCurrentLayout] = useState('mrtree');
@@ -61,14 +62,24 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
 
   // Process graph data when data changes
   useEffect(() => {
+    console.log('[DEBUG] useEffect triggered for graphData change');
     if (!graphData) {
       return;
     }
 
     const processData = async () => {
+      console.log('Processing graph data with layout:', currentLayout, 'and palette:', colorPalette);
       try {
         const result = await processGraphData(graphData, colorPalette, currentLayout, applyLayout);
+        // Debug: print style for all group nodes after processGraphData returns
+        result.nodes.filter(n => n.type === 'group').forEach(n => {
+          console.log(`[POST-PROCESSGRAPH-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
+        });
         setNodes(result.nodes);
+        // Debug: print style for all group nodes at state update
+        result.nodes.filter(n => n.type === 'group').forEach(n => {
+          console.log(`[SET-NODES-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
+        });
         setEdges(result.edges);
       } catch (error) {
         console.error('🚨 LAYOUT ERROR:', error);
@@ -93,6 +104,10 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
     return <div className={styles.loading}>Preparing visualization...</div>;
   }
 
+  // Debug: print style for all group nodes before rendering
+  nodes.filter(n => n.type === 'group').forEach(n => {
+    console.log(`[PRE-RENDER-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
+  });
   return (
     <div className={styles.visualizationWrapper}>
       <LayoutControls 

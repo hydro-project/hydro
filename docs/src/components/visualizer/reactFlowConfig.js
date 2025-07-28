@@ -99,14 +99,16 @@ export const DEFAULT_NODE_STYLE = {
  * Create styled node from raw node data
  */
 export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = null) {
-  console.log(`Creating styled node for ${node.id}, type: ${node.type}`);
   
   // For group nodes (hierarchy containers), preserve their existing style
   if (node.type === 'group') {
-    console.log(`Group node ${node.id} - preserving existing style:`, node.style);
     return {
       ...node,
-      // Don't override the style for group nodes - they already have color styling
+      style: {
+        width: node.style?.width ?? 1200,
+        height: node.style?.height ?? 240,
+        ...(node.style || {}),
+      },
     };
   }
   
@@ -119,7 +121,6 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
     displayLabel = `${node.data.hierarchyPath} > ${displayLabel}`;
   }
   
-  console.log(`Regular node ${node.id} - applying standard styling`);
   return {
     ...node,
     data: {
@@ -235,13 +236,6 @@ function validateHierarchy(hierarchy, nodeAssignments, nodes) {
  * Process hierarchy data and assign hierarchy paths to nodes
  */
 export function processHierarchy(graphData) {
-  console.log('=== HIERARCHY PROCESSING DEBUG START ===');
-  console.log('Input graphData:', {
-    nodes: graphData.nodes?.map(n => ({ id: n.id, label: n.data?.label })),
-    hierarchy: graphData.hierarchy,
-    nodeAssignments: graphData.nodeAssignments
-  });
-
   if (!graphData.hierarchy || !graphData.nodeAssignments) {
     // All console logs removed for focused debugging
     return graphData;
@@ -312,33 +306,21 @@ export function processHierarchy(graphData) {
       },
     };
     
-    console.log('Created hierarchy node:', hierarchyNode);
     hierarchyNodes.push(hierarchyNode);
     
     if (node.children) {
-      console.log(`Processing ${node.children.length} children of ${node.id}`);
       node.children.forEach(child => buildPaths(child, currentPath, node.id, depth + 1));
     }
   }
   
   // Build paths and create hierarchy nodes for all hierarchy levels
   hierarchy.forEach(rootNode => {
-    console.log('Processing root hierarchy node:', rootNode.id);
     buildPaths(rootNode, '', null, 0); // Start with depth 0
   });
-  
-  console.log('All hierarchy paths:', hierarchyPaths);
-  console.log('All hierarchy nodes:', hierarchyNodes.map(n => ({
-    id: n.id,
-    type: n.type,
-    parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-    label: n.data.label
-  })));
   
   // Assign hierarchy paths and parent relationships to graph nodes
   const processedNodes = graphData.nodes.map(node => {
     const assignment = nodeAssignments[node.id];
-    console.log(`Processing graph node ${node.id}, assignment: ${assignment}`);
     
     if (assignment && hierarchyPaths[assignment]) {
       const processedNode = {
@@ -352,16 +334,9 @@ export function processHierarchy(graphData) {
         extent: 'parent', // Constrain within parent bounds
       };
       
-      console.log(`Assigned node ${node.id} to parent ${assignment}:`, {
-        id: processedNode.id,
-        parentId: processedNode.parentId,
-        hierarchyPath: processedNode.data.hierarchyPath
-      });
-      
       return processedNode;
     }
     
-    console.log(`Node ${node.id} has no hierarchy assignment`);
     return node;
   });
   
@@ -370,15 +345,6 @@ export function processHierarchy(graphData) {
     nodes: [...hierarchyNodes, ...processedNodes], // Hierarchy nodes first, then graph nodes
   };
   
-  console.log('Final processed nodes:', result.nodes.map(n => ({
-    id: n.id,
-    type: n.type,
-    parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-    label: n.data?.label,
-    hierarchyPath: n.data?.hierarchyPath
-  })));
-  
-  console.log('=== HIERARCHY PROCESSING DEBUG END ===');
   return result;
 }
 
@@ -386,61 +352,22 @@ export function processHierarchy(graphData) {
  * Process graph data into styled nodes and edges
  */
 export async function processGraphData(graphData, colorPalette, currentLayout, applyLayout) {
-  console.log('=== PROCESS GRAPH DATA DEBUG START ===');
-  console.log('Input graphData:', {
-    nodeCount: graphData?.nodes?.length,
-    edgeCount: graphData?.edges?.length,
-    hasHierarchy: !!graphData?.hierarchy,
-    hasNodeAssignments: !!graphData?.nodeAssignments
-  });
-
   if (!graphData?.nodes?.length) {
-    console.log('No nodes found, returning empty result');
-    console.log('=== PROCESS GRAPH DATA DEBUG END ===');
+    console.warn('No nodes found, returning empty result');
     return { nodes: [], edges: [] };
   }
 
   // Process hierarchy data first
   const processedGraphData = processHierarchy(graphData);
   
-  console.log('After hierarchy processing:', {
-    nodeCount: processedGraphData.nodes.length,
-    hierarchyNodes: processedGraphData.nodes.filter(n => n.type === 'group').map(n => n.id),
-    regularNodes: processedGraphData.nodes.filter(n => n.type !== 'group').map(n => n.id)
-  });
-  
   const processedNodes = processedGraphData.nodes.map(node => 
     createStyledNode(node, colorPalette, processedGraphData.hierarchy)
   );
   const processedEdges = (processedGraphData.edges || []).map(edge => createStyledEdge(edge));
 
-  console.log('After styling, before layout:', {
-    nodeCount: processedNodes.length,
-    edgeCount: processedEdges.length,
-    nodes: processedNodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-      position: n.position
-    }))
-  });
-
   // Apply layout
   const layoutResult = await applyLayout(processedNodes, processedEdges, currentLayout);
-  
-  console.log('Final result after layout:', {
-    nodeCount: layoutResult.nodes.length,
-    edgeCount: layoutResult.edges.length,
-    nodes: layoutResult.nodes.map(n => ({
-      id: n.id,
-      type: n.type,
-      parentId: n.parentId, // FIXED: ReactFlow v12 uses parentId
-      position: n.position
-    }))
-  });
 
-  console.log('=== PROCESS GRAPH DATA DEBUG END ===');
-  
   return {
     nodes: layoutResult.nodes,
     edges: layoutResult.edges,

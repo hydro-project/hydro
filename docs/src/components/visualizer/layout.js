@@ -53,24 +53,17 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
         .filter(n => n.width)
         .map(n => n.width);
       const sumChildWidths = childWidths.reduce((a, b) => a + b, 0);
-      console.log(`[DIAG] Container ${container.id} has ${childElkNodes.length} children, sumChildWidths=${sumChildWidths}`);
-      console.log(`[DIAG] Container ${container.id} children:`, childElkNodes.map(n => ({ id: n.id, type: n.type, width: n.width, height: n.height })));
-      console.log(`[DIAG] Container ${container.id} layoutOptions:`, {
-        'elk.padding': '[top=15,left=20,bottom=15,right=20]',
-        'elk.spacing.nodeNode': 25,
-        'elk.algorithm': 'mrtree',
-        'elk.direction': 'DOWN',
-      });
       const elkContainer = {
         id: container.id,
-        // CRITICAL: Add explicit width/height for containers so ELK knows their size
         width: 300, // Provide initial size hint
         height: 200, // Provide initial size hint
         layoutOptions: {
-          'elk.padding': '[top=15,left=20,bottom=15,right=20]', // More breathing room
-          'elk.spacing.nodeNode': 25, // Increased from 10
-          // Use the SAME algorithm as the root for consistency
-          'elk.algorithm': 'mrtree', // Match the root algorithm
+          'elk.padding': '[top=15,left=20,bottom=15,right=20]',
+          'elk.spacing.nodeNode': 25,
+          'elk.spacing.edgeNode': 15,
+          'elk.spacing.edgeEdge': 10,
+          'elk.spacing.borderNode': 20,
+          'elk.algorithm': 'mrtree',
           'elk.direction': 'DOWN',
         },
         children: childElkNodes,
@@ -98,7 +91,9 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       'elk.padding': '[top=30,left=30,bottom=30,right=30]', // More breathing room for root
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN', // Back to INCLUDE_CHILDREN - this is more canonical
       'elk.spacing.nodeNode': 50, // Increased spacing between top-level containers
-    },
+      'elk.spacing.edgeNode': 20, // Space between edges and nodes at root level
+      'elk.spacing.edgeEdge': 15, // Space between parallel edges at root level
+    },  
     children: buildElkHierarchy(null), // Start with no parent (top level)
     edges: edges.map(edge => ({
       id: edge.id,
@@ -106,11 +101,9 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       targets: [edge.target],
     })),
   };
-  console.log('[DIAG] ELK input graph:', JSON.stringify(elkGraph, null, 2));
 
   try {
     const layoutResult = await elk.layout(elkGraph);
-    console.log('[DIAG] ELK layout result:', JSON.stringify(layoutResult, null, 2));
 
     // Apply positions back to nodes using a recursive function
     function applyPositions(elkNodes, depth = 0) {
@@ -118,33 +111,31 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       elkNodes.forEach(elkNode => {
         const reactFlowNode = nodes.find(n => n.id === elkNode.id);
         if (reactFlowNode) {
-          // Log ELK's calculated dimensions for containers
-          if (reactFlowNode.type === 'group') {
-            console.log(`[ELK] Container ${elkNode.id} dimensions: width=${elkNode.width}, height=${elkNode.height}, x=${elkNode.x}, y=${elkNode.y}`);
-            
-            // For containers, calculate tighter bounds based on actual child positions
-            if (elkNode.children && elkNode.children.length > 0) {
-              const childBounds = elkNode.children.reduce((bounds, child) => {
-                const right = (child.x || 0) + (child.width || 0);
-                const bottom = (child.y || 0) + (child.height || 0);
-                return {
-                  minX: Math.min(bounds.minX, child.x || 0),
-                  minY: Math.min(bounds.minY, child.y || 0),
-                  maxX: Math.max(bounds.maxX, right),
-                  maxY: Math.max(bounds.maxY, bottom),
-                };
-              }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
-              
-              // Add padding to the tight bounds
-              const padding = 40; // Updated to match new padding: 20 left/right + 15 top/bottom
-              const tightWidth = (childBounds.maxX - childBounds.minX) + padding;
-              const tightHeight = (childBounds.maxY - childBounds.minY) + padding;
-              
-              console.log(`[TIGHT] Container ${elkNode.id} tight bounds: width=${tightWidth}, height=${tightHeight} (vs ELK: ${elkNode.width}x${elkNode.height})`);
-              
-              elkNode.width = Math.max(tightWidth, elkNode.width * 0.6); // Use tighter bounds but not smaller than 60% of ELK's calculation
-              elkNode.height = Math.max(tightHeight, elkNode.height * 0.6);
-            }
+          // For containers, calculate tighter bounds based on actual child positions
+          if (reactFlowNode.type === 'group' && elkNode.children && elkNode.children.length > 0) {
+            const childBounds = elkNode.children.reduce((bounds, child) => {
+              const right = (child.x || 0) + (child.width || 0);
+              const bottom = (child.y || 0) + (child.height || 0);
+              return {
+                minX: Math.min(bounds.minX, child.x || 0),
+                minY: Math.min(bounds.minY, child.y || 0),
+                maxX: Math.max(bounds.maxX, right),
+                maxY: Math.max(bounds.maxY, bottom),
+              };
+            }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+            // Add padding to the tight bounds
+            const padding = 40;
+            const tightWidth = (childBounds.maxX - childBounds.minX) + padding;
+            const tightHeight = (childBounds.maxY - childBounds.minY) + padding;
+            elkNode.width = Math.max(tightWidth, elkNode.width * 0.6);
+            elkNode.height = Math.max(tightHeight, elkNode.height * 0.6);
+          }
+          let width = elkNode.width;
+          let height = elkNode.height;
+          if (typeof width === 'undefined' || typeof height === 'undefined') {
+            console.warn(`[ReactFlow] WARNING: Node ${elkNode.id} missing width/height from ELK! width=${width}, height=${height}`);
+            width = width || 300;
+            height = height || 200;
           }
           const processedNode = {
             ...reactFlowNode,
@@ -152,18 +143,14 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
               x: elkNode.x || 0,
               y: elkNode.y || 0,
             },
-            style: reactFlowNode.type === 'group' ? {
+            style: {
               ...reactFlowNode.style,
-              width: elkNode.width || 300,
-              height: elkNode.height || 200,
-            } : reactFlowNode.style,
+              width,
+              height,
+            },
             extent: reactFlowNode.parentId ? 'parent' : undefined,
             expandParent: reactFlowNode.type === 'group',
           };
-          // Log dimensions being applied to ReactFlow containers
-          if (processedNode.type === 'group') {
-            console.log(`[ReactFlow] Applying to container ${processedNode.id}: width=${processedNode.style.width}, height=${processedNode.style.height}, x=${processedNode.position.x}, y=${processedNode.position.y}`);
-          }
           layoutedNodes.push(processedNode);
         }
         // Recursively apply positions to children
@@ -209,15 +196,12 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
           maxY: Math.max(bounds.maxY, nodeBottom),
         };
       }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
-
-      console.log(`[BBOX] Layout bounding box: minX=${bbox.minX}, minY=${bbox.minY}, maxX=${bbox.maxX}, maxY=${bbox.maxY}`);
       
       // Shift all nodes to start from (20, 20) instead of having large offsets
       const offsetX = Math.max(0, bbox.minX - 20);
       const offsetY = Math.max(0, bbox.minY - 20);
       
       if (offsetX > 0 || offsetY > 0) {
-        console.log(`[BBOX] Applying offset: x=-${offsetX}, y=-${offsetY}`);
         sortedNodes.forEach(node => {
           if (node.position) {
             node.position.x -= offsetX;
