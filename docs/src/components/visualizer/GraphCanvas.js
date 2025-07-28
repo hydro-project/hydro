@@ -33,19 +33,16 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
     };
   }, []);
   
-  // FIXED: Replace broken CDN ReactFlow hooks with standard React state
+  // ReactFlow v12 has excellent built-in state management - minimal intervention needed
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
-  
-  // Add logging to track when nodes change
-  useEffect(() => {  }, [nodes]);
   
   // Track which containers are being dragged by ReactFlow
   const isDraggedRef = useRef({});
   
-  // ReactFlow v12 has better built-in change handling, but keep minimal filtering for safety
+  // ReactFlow v12 change handlers with minimal filtering for ELK compatibility
   const onNodesChange = useCallback((changes) => {
-    // Track container drag states based on ReactFlow position changes
+    // Track container drag states for click detection
     changes.forEach(change => {
       if (change.type === 'position' && change.id.startsWith('container_') && change.dragging) {
         isDraggedRef.current[change.id] = true;
@@ -53,18 +50,13 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
     });
     
     setNodes((nds) => {
-      // ReactFlow v12 has much better change handling, but filter out potentially problematic changes
-      const filteredChanges = changes.filter(change => {
-        // Allow most changes, but exclude problematic dimension updates that might cause loops
+      // ReactFlow v12: Only filter dimension changes during ELK layout operations
+      const validChanges = changes.filter(change => {
+        // Allow all changes except automatic dimensions during layout
         return change.type !== 'dimensions' || change.resizing;
       });
       
-      if (filteredChanges.length === 0) {
-        return nds;
-      }
-      
-      const updatedNodes = applyNodeChanges(filteredChanges, nds);
-      return updatedNodes.length > 0 ? updatedNodes : nds;
+      return validChanges.length > 0 ? applyNodeChanges(validChanges, nds) : nds;
     });
   }, []);
   

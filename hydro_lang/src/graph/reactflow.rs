@@ -233,8 +233,8 @@ where
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
             "style": style,
-            // Use built-in edge types for better routing
-            "type": "default",
+            // ReactFlow v12: Use smoothstep for better automatic routing and connection point selection
+            "type": "smoothstep",
             "animated": false
         });
 

@@ -1,8 +1,8 @@
 /**
- * Layout Algorithms
+ * Layout Algorithms for ReactFlow v12
  * 
- * Contains the hierarchical layout algorithm and helper functions
- * for positioning nodes using ELK.js
+ * Leverages ELK.js for all layout calculations and ReactFlow v12's improved
+ * parent-child positioning, measured dimensions, and sub-flow capabilities
  */
 
 import { elkLayouts } from './layoutConfigs.js';
@@ -10,17 +10,26 @@ import { generateLocationColor, generateLocationBorderColor } from './colorUtils
 import { ELK } from './externalLibraries.js';
 import { generateHyperedges, routeEdgesForCollapsedContainers, createChildNodeMapping } from './hyperedgeUtils.js';
 
-// This function is now unused in the hierarchical approach but kept for potential simple layouts.
+/**
+ * Enhanced ELK layout leveraging ReactFlow v12 features
+ * Uses measured dimensions and better parent-child relationships
+ */
 export const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
   if (!ELK) return nodes;
   
   const graph = {
     id: 'root',
-    layoutOptions: elkLayouts[layoutType] || elkLayouts.layered,
+    layoutOptions: {
+      ...elkLayouts[layoutType] || elkLayouts.layered,
+      // ReactFlow v12: Better support for measured dimensions
+      'elk.nodeSize.constraints': 'NODE_LABELS',
+      'elk.nodeSize.options': 'DEFAULT_MINIMUM_SIZE COMPUTE_NODE_LABELS',
+    },
     children: nodes.map(node => ({
       id: node.id,
-      width: 200,
-      height: 60,
+      // ReactFlow v12: Use measured dimensions if available, fallback to defaults
+      width: node.measured?.width || node.width || 200,
+      height: node.measured?.height || node.height || 60,
     })),
     edges: edges.map(edge => ({
       id: edge.id,
@@ -47,19 +56,23 @@ export const applyElkLayout = async (nodes, edges, layoutType = 'layered') => {
   }
 };
 
-// NEW HIERARCHICAL LAYOUT APPROACH
+/**
+ * Enhanced Hierarchical Layout for ReactFlow v12
+ * Leverages native sub-flows, measured dimensions, and ELK for all calculations
+ */
 export const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette, collapsedContainers = {}, handleContainerToggle, isDraggedRef, precomputedHyperedges = []) => {
   if (!ELK) {
     console.log(`🚨 HIERARCHICAL LAYOUT ABORT: ELK not available`);
     return { nodes, edges };
   }
 
+  console.log('🎯 ENHANCED HIERARCHICAL LAYOUT START - ReactFlow v12 + ELK');
+  
   const nodeMap = new Map(nodes.map(n => [n.id, n]));
   const locationGroups = new Map();
   const orphanNodeIds = new Set(nodes.map(n => n.id));
 
-  // 1. Group nodes by location, using the passed-in 'locations' map.
-  // This is more robust than iterating over location.nodes.
+  // 1. Group nodes by location - ReactFlow v12 handles this more efficiently
   nodes.forEach(node => {
     const locationId = node.data?.locationId;
     if (locationId !== undefined && locationId !== null) {
@@ -67,8 +80,6 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
         const location = locations.get(locationId);
         if (location) {
           locationGroups.set(locationId, { location, nodeIds: new Set() });
-        } else {
-          console.warn(`Could not find location metadata for locationId: ${locationId}`);
         }
       }
       
@@ -80,74 +91,106 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     }
   });
 
-  // Calculate actual container dimensions before ELK layout
-  const calculateContainerDimensions = (nodeIds, isCollapsed) => {
+  // 2. Calculate container dimensions using ELK for internal layout
+  const calculateContainerDimensions = async (nodeIds, isCollapsed) => {
     if (isCollapsed) {
       return { width: 250, height: 80 };
     }
     
-    // For expanded containers, estimate the space needed based on child nodes
-    const childNodes = Array.from(nodeIds).map(nodeId => nodeMap.get(nodeId));
-    const totalChildArea = childNodes.reduce((area, node) => {
-      const width = parseFloat(node.style.width) || 100;
-      const height = parseFloat(node.style.height) || 40;
-      return area + (width * height);
-    }, 0);
+    // Use ELK to calculate optimal container size based on child layout
+    const childNodes = Array.from(nodeIds)
+      .map(nodeId => nodeMap.get(nodeId))
+      .filter(node => node);
+      
+    if (childNodes.length === 0) {
+      return { width: 200, height: 150 };
+    }
     
-    // Estimate container dimensions based on total child area plus padding
-    const padding = 50; // top + bottom + left + right padding
-    const aspectRatio = 1.5; // prefer wider containers
-    
-    // Calculate dimensions that can contain all children with some spacing
-    const estimatedHeight = Math.sqrt(totalChildArea / aspectRatio) + padding;
-    const estimatedWidth = totalChildArea / estimatedHeight + padding;
-    
-    // Apply reasonable bounds
-    return {
-      width: Math.max(200, Math.min(estimatedWidth, 800)),
-      height: Math.max(150, Math.min(estimatedHeight, 600))
+    // Create a mini ELK layout just for this container's children
+    const childElkGraph = {
+      id: 'temp-container',
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'DOWN',
+        'elk.spacing.nodeNode': 20,
+        'elk.padding': '[top=30,left=20,bottom=20,right=20]'
+      },
+      children: childNodes.map(node => ({
+        id: node.id,
+        width: node.measured?.width || parseFloat(node.style?.width) || 200,
+        height: node.measured?.height || parseFloat(node.style?.height) || 60,
+      }))
     };
+    
+    try {
+      const elkResult = await ELK.layout(childElkGraph);
+      // Add padding for container chrome
+      return {
+        width: (elkResult.width || 300) + 40,
+        height: (elkResult.height || 200) + 60
+      };
+    } catch (error) {
+      console.error('ELK container sizing failed:', error);
+      return { width: 300, height: 200 };
+    }
   };
 
-  // Build the set of all node IDs that will exist in the ELK graph
+  // 3. Build ELK graph structure using ReactFlow v12 sub-flow patterns
   const elkChildren = [];
+  const containerDimensionsPromises = [];
   
-  // Add container nodes to ELK graph
-  locationGroups.forEach(({ location, nodeIds }) => {
+  // Process each location group with ELK-calculated dimensions
+  for (const [locationId, { location, nodeIds }] of locationGroups) {
     const containerId = `container_${location.id}`;
     const isCollapsed = collapsedContainers[containerId];
-    const containerDims = calculateContainerDimensions(nodeIds, isCollapsed);
     
+    containerDimensionsPromises.push(
+      calculateContainerDimensions(nodeIds, isCollapsed).then(containerDims => ({
+        locationId,
+        location,
+        nodeIds,
+        containerId,
+        isCollapsed,
+        containerDims
+      }))
+    );
+  }
+  
+  // Wait for all ELK dimension calculations
+  const containerData = await Promise.all(containerDimensionsPromises);
+  
+  // Build ELK children based on calculated dimensions
+  containerData.forEach(({ locationId, location, nodeIds, containerId, isCollapsed, containerDims }) => {
     if (isCollapsed) {
-      // If collapsed, use calculated dimensions as a single node
+      // Collapsed container: single ELK node
       elkChildren.push({
         id: containerId,
         width: containerDims.width,
         height: containerDims.height,
-        // Mark as collapsed for later processing
         isCollapsed: true,
         originalNodeIds: Array.from(nodeIds)
       });
     } else {
-      // If expanded, provide both child nodes AND the estimated container dimensions
+      // Expanded container: use ReactFlow v12 sub-flow pattern
       const childElkNodes = Array.from(nodeIds).map(nodeId => {
         const node = nodeMap.get(nodeId);
         return {
           id: node.id,
-          width: parseFloat(node.style.width),
-          height: parseFloat(node.style.height)
+          width: node.measured?.width || parseFloat(node.style?.width) || 200,
+          height: node.measured?.height || parseFloat(node.style?.height) || 60,
         };
       });
 
       elkChildren.push({
         id: containerId,
-        width: containerDims.width,  // Give ELK the estimated container size
+        width: containerDims.width,
         height: containerDims.height,
         children: childElkNodes,
         layoutOptions: {
-          'elk.padding': '[top=40,left=25,bottom=25,right=25]', // Reduced padding
-          'elk.spacing.nodeNode': 15, // Tighter internal spacing
-          ...elkLayouts[layoutType]
+          ...elkLayouts[layoutType],
+          'elk.padding': '[top=35,left=20,bottom=20,right=20]',
+          'elk.spacing.nodeNode': 15,
+          'elk.nodeSize.constraints': 'NODE_LABELS',
         }
       });
     }
@@ -530,7 +573,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       id: `${sourceId}_to_${targetId}`, // Use consistent edge ID format
       source: sourceId,
       target: targetId,
-      type: isInternalEdge ? 'custom' : 'smoothstep', // Use custom type for internal edges, smoothstep for external
+      type: 'smoothstep', // ReactFlow v12: Use smoothstep for all edges - excellent routing
       style: { 
         strokeWidth: 2, 
         stroke: '#666666',
