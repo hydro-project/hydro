@@ -170,7 +170,9 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                     );
                     let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
 
-                    samply_to_folded(loaded).await.into()
+                    ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
+                        .await
+                        .into()
                 } else if cfg!(target_family = "windows") {
                     let mut fold_er = DtraceFolder::from(
                         tracing_config
