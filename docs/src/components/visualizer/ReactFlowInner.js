@@ -15,7 +15,7 @@ import {
   useReactFlow 
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { ContainerNode, LabelNode } from './CustomNodes.js';
+import { ContainerNode } from './CustomNodes.js';
 import { generateLocationBorderColor, generateNodeColors } from './colorUtils.js';
 import styles from '../../pages/visualizer.module.css';
 
@@ -26,8 +26,8 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, loc
 
   // ReactFlow v12: Enhanced node types with better custom components
   const nodeTypes = useMemo(() => ({
-    label: LabelNode,
     container: ContainerNode,
+    // label: removed - using built-in 'default' type with custom styling
     // Use default type for most nodes to leverage v12 improvements
   }), []);
 

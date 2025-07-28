@@ -1,13 +1,15 @@
 /**
- * Enhanced Custom Node Components for ReactFlow v12
+ * Simplified Custom Node Components for ReactFlow v12
  * 
- * Leverages v12's improved event handling, sub-flows, and measured dimensions
+ * Leverages v12's improved event handling and sub-flows
+ * Reduced to only the essential custom behaviors that built-in types can't provide
  */
 
 import React, { useRef } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-// Enhanced ContainerNode leveraging ReactFlow v12's sub-flow improvements
+// Simplified ContainerNode - only the essential click-to-toggle behavior
+// All other features now use ReactFlow v12's built-in capabilities
 export const ContainerNode = ({ id, data }) => {
   const { onContainerToggle, label, isCollapsed, isDraggedRef } = data;
   const clickTimeRef = useRef(null);
@@ -52,9 +54,31 @@ export const ContainerNode = ({ id, data }) => {
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        position: 'relative' // Enable absolute positioning for label
       }}
     >
+      {/* Container label positioned at top center */}
+      {!isCollapsed && label && (
+        <div style={{
+          position: 'absolute',
+          top: '4px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          color: '#000',
+          textShadow: '1px 1px 2px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(255, 255, 255, 0.9), 1px -1px 2px rgba(255, 255, 255, 0.9), -1px 1px 2px rgba(255, 255, 255, 0.9)',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none', // Don't interfere with container clicks
+          zIndex: 10, // Ensure label appears above other content
+          userSelect: 'none',
+          letterSpacing: '0.5px'
+        }}>
+          {label}
+        </div>
+      )}
+
       {/* ReactFlow v12: Better handle positioning and connection */}
       <Handle
         type="target"
@@ -81,28 +105,26 @@ export const ContainerNode = ({ id, data }) => {
         style={{ background: '#555' }}
       />
       
-      {isCollapsed ? label : null}
+      {/* Show label in center only when collapsed */}
+      {isCollapsed && (
+        <div style={{
+          fontSize: '13px',
+          fontWeight: 'bold',
+          color: '#000',
+          textAlign: 'center',
+          textShadow: '1px 1px 2px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(255, 255, 255, 0.9), 1px -1px 2px rgba(255, 255, 255, 0.9), -1px 1px 2px rgba(255, 255, 255, 0.9)',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          letterSpacing: '0.5px',
+          maxWidth: '90%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          {label}
+        </div>
+      )}
     </div>
   );
 };
 
-// Enhanced LabelNode for ReactFlow v12
-export const LabelNode = ({ data }) => {
-  return (
-    <div style={{
-      background: 'rgba(255, 255, 255, 0.95)',
-      border: '1px solid #ddd',
-      borderRadius: '4px',
-      fontSize: '11px',
-      fontWeight: 'bold',
-      color: '#333',
-      padding: '4px 8px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      whiteSpace: 'nowrap',
-      pointerEvents: 'none', // v12: Better event isolation
-      userSelect: 'none'
-    }}>
-      {data.label}
-    </div>
-  );
-};
+// ✅ LabelNode completely removed - now using ReactFlow v12's built-in 'default' type

@@ -387,7 +387,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
 
       containerNodes.push({
         id: elkNode.id,
-        type: 'container', // Use the new custom container node type
+        type: 'container', // Custom type needed for click-to-toggle behavior
         position: { x: elkNode.x, y: elkNode.y },
         style: containerStyle,
         data: {
@@ -460,43 +460,8 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
     }
   });
 
-  // Process labels for expanded containers - position at center-top using ELK container dimensions
-  const labelNodes = [];
-  containerNodes.forEach(containerNode => {
-    if (!containerNode.data.isCollapsed) {
-      const labelText = containerNode.data.label || '';
-      const containerWidth = containerNode.style.width;
-      
-      // Calculate label width for centering
-      const avgCharWidth = 6.5; // 11px bold font
-      const horizontalPadding = 8; // 4px left + 4px right
-      const borderWidth = 2; // 1px left + 1px right  
-      const labelWidth = (labelText.length * avgCharWidth) + horizontalPadding + borderWidth;
-      
-      // Center horizontally within container, position at top
-      const centerX = (containerWidth - labelWidth) / 2;
-      
-      labelNodes.push({
-        id: `label-${containerNode.id}`,
-        type: 'label',
-        position: { 
-          x: Math.max(10, centerX), // Center horizontally with minimum margin
-          y: 10 // Position near top of container
-        },
-        data: { 
-          label: containerNode.data.label 
-        },
-        parentId: containerNode.id,
-        extent: 'parent',
-        draggable: false,
-        selectable: false,
-        connectable: false,
-        focusable: false,
-        deletable: false
-      });
-    }
-  });
-
+  // Labels are now integrated directly into ContainerNode components - no separate label nodes needed
+  
   // Build set of all visible node IDs (includes both child nodes and container nodes)
   const visibleNodeIds = new Set();
   childAndOrphanNodes.forEach(node => visibleNodeIds.add(node.id));
@@ -617,7 +582,7 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
   })) : [];
   
   // Combine containers and other nodes, ensuring containers come first.
-  const finalNodesResult = [...containerNodes, ...childAndOrphanNodes, ...labelNodes];
+  const finalNodesResult = [...containerNodes, ...childAndOrphanNodes];
   
   // DEBUG: Log final result summary
   console.log('🎯 FINAL LAYOUT RESULT:');
