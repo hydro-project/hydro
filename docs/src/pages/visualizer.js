@@ -1,14 +1,5 @@
 /**
  * ReactFlow Graph Visualization Component
- * 
- * IMPORTANT FIXES IMPLEMENTED:
- * 1. Infinite Re-render Fix: onNodesChange handler filters out 'dimensions' type changes
- *    to prevent ReactFlow's automatic dimension calculations from creating feedback loops
- * 
- * 2. Container Click Fix: ContainerNode components use onPointerDown instead of onMouseDown
- *    because ReactFlow intercepts mousedown events for drag/selection but allows pointer events through
- * 
- * Both fixes are critical for proper functionality - do not modify without understanding the root causes.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';

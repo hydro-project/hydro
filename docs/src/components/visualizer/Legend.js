@@ -1,52 +1,45 @@
 /**
- * Legend Component
+ * Legend Component for Graph Visualizer
  * 
- * Displays node type and location legends
+ * Displays a color-coded legend for different node types
  */
 
 import React from 'react';
-import { generateNodeColors, generateLocationColor, generateLocationBorderColor, colorPalettes } from './colorUtils.js';
+import { generateNodeColors } from './utils.js';
 import styles from '../../pages/visualizer.module.css';
 
-export function Legend({ colorPalette, locationData }) {
+const nodeTypes = [
+  'Source',
+  'Transform', 
+  'Sink',
+  'Network',
+  'Operator',
+  'Join',
+  'Union',
+  'Filter'
+];
+
+export function Legend({ colorPalette = 'Set3' }) {
   return (
     <div className={styles.unifiedLegend}>
-      <h4>Legend</h4>
-      
+      <h4>Node Types</h4>
       <div className={styles.legendSection}>
-        <strong>Node Types:</strong>
-        {['Source', 'Transform', 'Join', 'Aggregation', 'Network', 'Sink', 'Tee'].map(type => {
-          const colors = generateNodeColors(type, colorPalette);
+        {nodeTypes.map(nodeType => {
+          const colors = generateNodeColors(nodeType, colorPalette);
           return (
-            <div key={type} className={styles.legendItem}>
+            <div key={nodeType} className={styles.legendItem}>
               <div 
                 className={styles.legendColor}
-                style={{ background: colors.primary, borderColor: colors.border }}
+                style={{
+                  backgroundColor: colors.primary,
+                  borderColor: colors.border
+                }}
               />
-              <span>{type}</span>
+              <span>{nodeType}</span>
             </div>
           );
         })}
       </div>
-
-      {locationData.size > 0 && (
-        <div className={styles.legendSection}>
-          <strong>Locations:</strong>
-          {Array.from(locationData.entries()).map(([locationId, location]) => {
-            const bgColor = generateLocationColor(locationId, locationData.size, colorPalette);
-            const borderColor = generateLocationBorderColor(locationId, locationData.size, colorPalette);
-            return (
-              <div key={locationId} className={styles.legendItem}>
-                <div 
-                  className={styles.locationLegendColor}
-                  style={{ background: bgColor, borderColor: borderColor }}
-                />
-                <span>{location.label || location.name || `Location ${locationId}`}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

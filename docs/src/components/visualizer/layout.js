@@ -1,7 +1,26 @@
-import { ELK } from './externalLibraries';
-import { generateLocationColor, generateLocationBorderColor } from './colorUtils';
+/**
+ * Simple ELK Layout Integration
+ * 
+ * Provides flat graph layout using ELK algorithms
+ */
 
-const elkLayouts = {
+let ELK = null;
+
+// Load ELK dynamically
+async function loadELK() {
+  if (ELK) return ELK;
+  
+  try {
+    const elkModule = await import('elkjs');
+    ELK = new elkModule.default();
+    return ELK;
+  } catch (error) {
+    console.error('Failed to load ELK:', error);
+    return null;
+  }
+}
+
+const layoutConfigs = {
   mrtree: {
     'elk.algorithm': 'mrtree',
     'elk.direction': 'DOWN',
@@ -28,22 +47,21 @@ const elkLayouts = {
   },
 };
 
-export const applyHierarchicalLayout = async (nodes, edges, layoutType, locations, currentPalette) => {
-  if (!ELK) {
-    console.log(`🚨 LAYOUT ABORT: ELK not available`);
+export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
+  const elk = await loadELK();
+  
+  if (!elk) {
+    console.warn('ELK not available, using default positions');
     return { nodes, edges };
   }
 
-  console.log('🎯 FLAT ELK LAYOUT START - ReactFlow v12 + ELK');
-  
-  // Create simple flat ELK layout - no containers, just nodes and edges
+  // Convert to ELK format
   const elkNodes = nodes.map(node => ({
     id: node.id,
-    width: node.measured?.width || parseFloat(node.style?.width) || 200,
-    height: node.measured?.height || parseFloat(node.style?.height) || 60,
+    width: 200,
+    height: 60,
   }));
 
-  // Create simple ELK edges
   const elkEdges = edges.map(edge => ({
     id: edge.id,
     sources: [edge.source],
@@ -53,26 +71,17 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
   const elkGraph = {
     id: 'root',
     layoutOptions: {
-      ...elkLayouts[layoutType],
-      'elk.spacing.nodeNode': 50,
-      'elk.spacing.edgeNode': 20,
+      ...layoutConfigs[layoutType],
       'elk.padding': '[top=20,left=20,bottom=20,right=20]',
     },
     children: elkNodes,
     edges: elkEdges,
   };
 
-  console.log('🔧 ELK graph prepared:', {
-    nodes: elkNodes.length,
-    edges: elkEdges.length,
-    layout: layoutType
-  });
-
   try {
-    const layoutResult = await ELK.layout(elkGraph);
-    console.log('✅ ELK layout completed');
+    const layoutResult = await elk.layout(elkGraph);
     
-    // Convert ELK result back to ReactFlow format
+    // Apply positions back to nodes
     const layoutedNodes = nodes.map(node => {
       const elkNode = layoutResult.children?.find(n => n.id === node.id);
       
@@ -89,18 +98,13 @@ export const applyHierarchicalLayout = async (nodes, edges, layoutType, location
       return node;
     });
 
-    const layoutedEdges = edges.map(edge => ({
-      ...edge,
-      // Keep original edge properties, ELK will handle routing
-    }));
-
     return {
       nodes: layoutedNodes,
-      edges: layoutedEdges,
+      edges: edges, // Edges unchanged
     };
 
   } catch (error) {
-    console.error('🚨 ELK layout failed:', error);
+    console.error('ELK layout failed:', error);
     return { nodes, edges };
   }
-};
+}

@@ -49,13 +49,6 @@
   background: #f0f8ff;
 }
 
-.dropZone.hasData {
-  border: none;
-  margin: 0;
-  background: white;
-  height: calc(100vh - 120px);
-}
-
 .dropContent {
   text-align: center;
   padding: 40px;
@@ -93,254 +86,6 @@
   background: #005999;
 }
 
-/* Loading state */
-.loading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 400px;
-  font-size: 18px;
-  color: #666;
-}
-
-/* Visualization wrapper */
-.visualizationWrapper {
-  position: relative;
-  height: 100%;
-  width: 100%;
-  overflow: hidden;
-}
-
-/* ReactFlow wrapper */
-.reactflowWrapper {
-  width: 100%;
-  height: 100%;
-  background: #f5f5f5;
-}
-
-/* Layout controls inspired by template.html */
-.layoutControls {
-  position: absolute;
-  top: 40px;
-  right: 10px;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 11px;
-}
-
-.layoutSelect, .paletteSelect {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  font-size: 11px;
-  padding: 4px 6px;
-  width: 80px;
-  color: #495057;
-  cursor: pointer;
-}
-
-.layoutSelect:hover, .paletteSelect:hover {
-  border-color: #adb5bd;
-}
-
-/* Unified legend from template.html */
-.unifiedLegend {
-  position: absolute;
-  top: 90px;
-  right: 10px;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 8px;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  max-width: 220px;
-  font-size: 11px;
-}
-
-.unifiedLegend h4 {
-  margin: 0 0 6px 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #eee;
-  padding-bottom: 3px;
-}
-
-.legendSection {
-  margin-bottom: 8px;
-}
-
-.legendSection:last-child {
-  margin-bottom: 0;
-}
-
-.legendSection strong {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 10px;
-  color: #555;
-}
-
-.legendItem {
-  display: flex;
-  align-items: center;
-  margin: 3px 0;
-  font-size: 10px;
-}
-
-.legendColor {
-  width: 12px;
-  height: 12px;
-  border-radius: 2px;
-  margin-right: 6px;
-  border: 1px solid #666;
-  flex-shrink: 0;
-}
-
-.locationLegendColor {
-  width: 16px;
-  height: 10px;
-  border-radius: 2px;
-  margin-right: 6px;
-  border: 1px solid;
-  flex-shrink: 0;
-}
-
-/* Icon button styles for potential future controls */
-.iconButton {
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: 4px;
-  background: #f8f9fa;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #495057;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.iconButton:hover {
-  background: #e9ecef;
-  color: #212529;
-  transform: translateY(-1px);
-}
-
-.iconButton:active {
-  transform: translateY(0);
-}
-
-/* ReactFlow node enhancements from template.html */
-:global(.react-flow__node) {
-  cursor: pointer;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  transition: all 0.2s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-}
-
-:global(.react-flow__node:hover) {
-  transform: scale(1.02);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-/* Container node specific styles */
-:global(.react-flow__node.container-node) {
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #333;
-  padding: 25px 8px 8px 8px;
-  box-sizing: border-box;
-  cursor: pointer;
-  position: relative;
-  opacity: 0.7;
-}
-
-:global(.react-flow__node.container-node:hover) {
-  opacity: 0.9;
-  transform: none; /* Don't scale containers on hover */
-}
-
-/* Make child nodes appear above containers */
-:global(.react-flow__node:not(.container-node)) {
-  z-index: 10;
-}
-
-/* ReactFlow edge styling */
-:global(.react-flow__edge-path) {
-  stroke-width: 2;
-}
-
-:global(.react-flow__edge.selected .react-flow__edge-path) {
-  stroke-width: 3;
-}
-
-:global(.react-flow__edge:hover .react-flow__edge-path) {
-  stroke-width: 3;
-}
-
-/* MiniMap styling */
-:global(.react-flow__minimap) {
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 6px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-/* Controls styling */
-:global(.react-flow__controls) {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-:global(.react-flow__controls-button) {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #dee2e6;
-  color: #495057;
-  width: 32px;
-  height: 32px;
-  transition: all 0.2s ease;
-}
-
-:global(.react-flow__controls-button:hover) {
-  background: #f8f9fa;
-  border-color: #adb5bd;
-  transform: translateY(-1px);
-}
-
-:global(.react-flow__controls-button:active) {
-  transform: translateY(0);
-}
-
-/* Attribution styling */
-:global(.react-flow__attribution) {
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 4px;
-  font-size: 10px;
-  padding: 2px 6px;
-}
-
-.fileInputLabel:hover {
-  background: #005fa3;
-}
-
 .helpText {
   margin-top: 32px;
   padding-top: 24px;
@@ -357,6 +102,22 @@
   margin-top: 8px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   color: #d73a49;
+}
+
+/* Loading state */
+.loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #666;
+  min-height: 400px;
+  height: calc(100vh - 200px);
+  background: #f9f9f9;
+  border: 2px dashed #ddd;
+  margin: 20px;
+  border-radius: 8px;
 }
 
 /* Visualization container */
@@ -396,15 +157,7 @@
   background: #5a6268;
 }
 
-/* ReactFlow wrapper */
-.reactflowWrapper {
-  flex: 1;
-  position: relative;
-  height: calc(100vh - 200px);
-  min-height: 600px;
-}
-
-/* New visualization wrapper for our enhanced component */
+/* Visualization wrapper */
 .visualizationWrapper {
   position: relative;
   flex: 1;
@@ -412,7 +165,16 @@
   flex-direction: column;
 }
 
-/* Enhanced layout controls */
+/* ReactFlow wrapper */
+.reactflowWrapper {
+  flex: 1;
+  position: relative;
+  height: calc(100vh - 200px);
+  min-height: 600px;
+  background: #f5f5f5;
+}
+
+/* Layout controls */
 .layoutControls {
   position: absolute;
   top: 10px;
@@ -434,16 +196,6 @@
   color: #333;
 }
 
-.layoutControls select {
-  padding: 4px 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
-  font-size: 13px;
-}
-
-
-
 .layoutSelect, .paletteSelect {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
@@ -452,47 +204,125 @@
   padding: 6px 8px;
   min-width: 80px;
   color: #495057;
+  cursor: pointer;
 }
 
 .layoutSelect:hover, .paletteSelect:hover {
   border-color: #adb5bd;
 }
 
-.iconButton {
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  padding: 6px 8px;
+/* Legend */
+.unifiedLegend {
+  position: absolute;
+  top: 90px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 220px;
+  font-size: 11px;
+}
+
+.unifiedLegend h4 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 3px;
+}
+
+.legendSection {
+  margin-bottom: 8px;
+}
+
+.legendSection:last-child {
+  margin-bottom: 0;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  margin: 3px 0;
+  font-size: 10px;
+}
+
+.legendColor {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  margin-right: 6px;
+  border: 1px solid #666;
+  flex-shrink: 0;
+}
+
+/* ReactFlow global overrides */
+:global(.react-flow__node) {
   cursor: pointer;
-  font-size: 14px;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  min-width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.iconButton:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-}
-
-/* Loading state */
-.loading {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  color: #666;
-  min-height: 400px;
-  height: calc(100vh - 200px);
-  background: #f9f9f9;
-  border: 2px dashed #ddd;
-  margin: 20px;
   border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
+
+:global(.react-flow__node:hover) {
+  transform: scale(1.02);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+:global(.react-flow__edge-path) {
+  stroke-width: 2;
+}
+
+:global(.react-flow__edge.selected .react-flow__edge-path) {
+  stroke-width: 3;
+}
+
+:global(.react-flow__edge:hover .react-flow__edge-path) {
+  stroke-width: 3;
+}
+
+:global(.react-flow__minimap) {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+:global(.react-flow__controls) {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+:global(.react-flow__controls-button) {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #dee2e6;
+  color: #495057;
+  width: 32px;
+  height: 32px;
+  transition: all 0.2s ease;
+}
+
+:global(.react-flow__controls-button:hover) {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+:global(.react-flow__controls-button:active) {
+  transform: translateY(0);
+}
+
+:global(.react-flow__attribution) {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
 }
 
 /* Responsive design */

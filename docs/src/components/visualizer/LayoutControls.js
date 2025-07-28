@@ -5,30 +5,42 @@
  */
 
 import React from 'react';
-import { elkLayouts } from './layoutConfigs.js';
-import { colorPalettes } from './colorUtils.js';
 import styles from '../../pages/visualizer.module.css';
+
+const layoutOptions = {
+  mrtree: 'MR Tree',
+  layered: 'Layered',
+  force: 'Force',
+  stress: 'Stress',
+  radial: 'Radial'
+};
+
+const paletteOptions = {
+  Set3: 'Set3',
+  Pastel1: 'Pastel1', 
+  Dark2: 'Dark2'
+};
 
 export function LayoutControls({ currentLayout, onLayoutChange, colorPalette, onPaletteChange }) {
   return (
     <div className={styles.layoutControls}>
-      <select 
+            <select 
         className={styles.layoutSelect}
         value={currentLayout} 
         onChange={(e) => onLayoutChange(e.target.value)}
       >
-        {Object.keys(elkLayouts).map(key => (
-          <option key={key} value={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</option>
+        {Object.entries(layoutOptions).map(([key, label]) => (
+          <option key={key} value={key}>{label}</option>
         ))}
       </select>
-      
+
       <select 
         className={styles.paletteSelect}
         value={colorPalette} 
         onChange={(e) => onPaletteChange(e.target.value)}
       >
-        {Object.keys(colorPalettes).map(key => (
-          <option key={key} value={key}>{key}</option>
+        {Object.entries(paletteOptions).map(([key, label]) => (
+          <option key={key} value={key}>{label}</option>
         ))}
       </select>
     </div>
