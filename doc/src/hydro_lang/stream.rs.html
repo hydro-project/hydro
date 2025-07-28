@@ -1269,7 +1269,7 @@
 <a href=#1269 id=1269 data-nosnippet>1269</a>    /// # }));
 <a href=#1270 id=1270 data-nosnippet>1270</a>    /// ```
 <a href=#1271 id=1271 data-nosnippet>1271</a>    </span><span class="kw">pub fn </span>first(<span class="self">self</span>) -&gt; Optional&lt;T, L, B&gt; {
-<a href=#1272 id=1272 data-nosnippet>1272</a>        <span class="self">self</span>.reduce(<span class="macro">q!</span>(|<span class="kw">_</span>, <span class="kw">_</span>| {}))
+<a href=#1272 id=1272 data-nosnippet>1272</a>        Optional::new(<span class="self">self</span>.location, <span class="self">self</span>.ir_node.into_inner())
 <a href=#1273 id=1273 data-nosnippet>1273</a>    }
 <a href=#1274 id=1274 data-nosnippet>1274</a>
 <a href=#1275 id=1275 data-nosnippet>1275</a>    <span class="doccomment">/// Computes the last element in the stream as an [`Optional`], which
@@ -2842,37 +2842,4 @@
 <a href=#2842 id=2842 data-nosnippet>2842</a>            <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap().n, i);
 <a href=#2843 id=2843 data-nosnippet>2843</a>        }
 <a href=#2844 id=2844 data-nosnippet>2844</a>    }
-<a href=#2845 id=2845 data-nosnippet>2845</a>
-<a href=#2846 id=2846 data-nosnippet>2846</a>    <span class="attr">#[tokio::test]
-<a href=#2847 id=2847 data-nosnippet>2847</a>    </span><span class="kw">async fn </span>first_cardinality() {
-<a href=#2848 id=2848 data-nosnippet>2848</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
-<a href=#2849 id=2849 data-nosnippet>2849</a>
-<a href=#2850 id=2850 data-nosnippet>2850</a>        <span class="kw">let </span>flow = FlowBuilder::new();
-<a href=#2851 id=2851 data-nosnippet>2851</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#2852 id=2852 data-nosnippet>2852</a>        <span class="kw">let </span>external = flow.external_process::&lt;()&gt;();
-<a href=#2853 id=2853 data-nosnippet>2853</a>
-<a href=#2854 id=2854 data-nosnippet>2854</a>        <span class="kw">let </span>node_tick = node.tick();
-<a href=#2855 id=2855 data-nosnippet>2855</a>        <span class="kw">let </span>count = node_tick
-<a href=#2856 id=2856 data-nosnippet>2856</a>            .singleton(<span class="macro">q!</span>([<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]))
-<a href=#2857 id=2857 data-nosnippet>2857</a>            .into_stream()
-<a href=#2858 id=2858 data-nosnippet>2858</a>            .flatten_ordered()
-<a href=#2859 id=2859 data-nosnippet>2859</a>            .first()
-<a href=#2860 id=2860 data-nosnippet>2860</a>            .into_stream()
-<a href=#2861 id=2861 data-nosnippet>2861</a>            .count()
-<a href=#2862 id=2862 data-nosnippet>2862</a>            .all_ticks()
-<a href=#2863 id=2863 data-nosnippet>2863</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
-<a href=#2864 id=2864 data-nosnippet>2864</a>
-<a href=#2865 id=2865 data-nosnippet>2865</a>        <span class="kw">let </span>nodes = flow
-<a href=#2866 id=2866 data-nosnippet>2866</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
-<a href=#2867 id=2867 data-nosnippet>2867</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
-<a href=#2868 id=2868 data-nosnippet>2868</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
-<a href=#2869 id=2869 data-nosnippet>2869</a>
-<a href=#2870 id=2870 data-nosnippet>2870</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
-<a href=#2871 id=2871 data-nosnippet>2871</a>
-<a href=#2872 id=2872 data-nosnippet>2872</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_out = nodes.connect_source_bincode(count).<span class="kw">await</span>;
-<a href=#2873 id=2873 data-nosnippet>2873</a>
-<a href=#2874 id=2874 data-nosnippet>2874</a>        deployment.start().<span class="kw">await</span>.unwrap();
-<a href=#2875 id=2875 data-nosnippet>2875</a>
-<a href=#2876 id=2876 data-nosnippet>2876</a>        <span class="macro">assert_eq!</span>(external_out.next().<span class="kw">await</span>.unwrap(), <span class="number">1</span>);
-<a href=#2877 id=2877 data-nosnippet>2877</a>    }
-<a href=#2878 id=2878 data-nosnippet>2878</a>}</code></pre></div></section></main></body></html>
+<a href=#2845 id=2845 data-nosnippet>2845</a>}</code></pre></div></section></main></body></html>
