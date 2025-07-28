@@ -6,7 +6,7 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , d) | println ! ("node received: ({}, {:?})" , id , d) }),
         input: Map {
-            f: | (sender_id , b) | (ClusterId :: < _ > :: from_raw (sender_id . raw_id / 3usize as u32) , b),
+            f: | (sender_id , b) | (:: hydro_lang :: ClusterId :: < _ > :: from_raw (sender_id . raw_id / 3usize as u32) , b),
             input: Network {
                 from_key: None,
                 to_location: Process(
@@ -36,7 +36,7 @@ expression: built.ir()
                             | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) > (& res . unwrap ()) . unwrap () },
                         ),
                         input: Map {
-                            f: | (orig_dest , tuple) | { let orig_dest_id = orig_dest . raw_id ; let new_dest_id = (orig_dest_id * 3usize as u32) + (tuple . 1 as usize % 3usize) as u32 ; (ClusterId :: < () > :: from_raw (new_dest_id) , tuple) },
+                            f: | (orig_dest , struct_or_tuple) : (:: hydro_lang :: ClusterId < _ > , _) | { let mut s = :: std :: hash :: DefaultHasher :: new () ; :: std :: hash :: Hash :: hash (& struct_or_tuple . 1 , & mut s) ; let partition_val = :: std :: hash :: Hasher :: finish (& s) as u32 ; (:: hydro_lang :: ClusterId :: < () > :: from_raw ((orig_dest . raw_id * 3usize as u32) + (partition_val % 3usize as u32) as u32) , struct_or_tuple) },
                             input: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; | (id , n) | (id , (id , n)) }),
                                 input: Delta {

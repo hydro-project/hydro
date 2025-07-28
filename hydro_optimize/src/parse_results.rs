@@ -8,6 +8,8 @@ use hydro_lang::location::LocationId;
 use regex::Regex;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use crate::rewrites::{NetworkType, get_network_type};
+
 pub fn parse_cpu_usage(measurement: String) -> f64 {
     let regex = Regex::new(r"Total (\d+\.\d+)%").unwrap();
     regex
@@ -228,41 +230,6 @@ pub async fn get_usage(usage_out: &mut UnboundedReceiver<String>) -> f64 {
     parse_cpu_usage(measurement)
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub enum NetworkType {
-    Recv,
-    Send,
-    SendRecv,
-}
-
-pub fn get_network_type(node: &HydroNode, location: &LocationId) -> Option<NetworkType> {
-    let mut is_to_us = false;
-    let mut is_from_us = false;
-
-    if let HydroNode::Network {
-        input, to_location, ..
-    } = node
-    {
-        if input.metadata().location_kind.root() == location {
-            is_from_us = true;
-        }
-        if to_location.root() == location {
-            is_to_us = true;
-        }
-
-        return if is_from_us && is_to_us {
-            Some(NetworkType::SendRecv)
-        } else if is_from_us {
-            Some(NetworkType::Send)
-        } else if is_to_us {
-            Some(NetworkType::Recv)
-        } else {
-            None
-        };
-    }
-    None
-}
-
 fn analyze_overheads_node(
     node: &mut HydroNode,
     _next_stmt_id: &mut usize,
@@ -271,7 +238,7 @@ fn analyze_overheads_node(
     location: &LocationId,
 ) {
     let metadata = node.metadata();
-    let network_type = get_network_type(node, location);
+    let network_type = get_network_type(node, location.root().raw_id());
     match network_type {
         Some(NetworkType::Send) | Some(NetworkType::SendRecv) => {
             if let Some(cpu_usage) = metadata.cpu_usage {
