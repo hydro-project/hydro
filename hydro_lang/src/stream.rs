@@ -1415,15 +1415,33 @@ where
         let init = init.splice_fn0_ctx(&self.location).into();
         let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Scan {
-                init,
-                acc: f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
-            },
-        )
+        if L::is_top_level() {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Scan {
+                        init,
+                        acc: f,
+                        input: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<U>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<U>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<U>(),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Scan {
+                    init,
+                    acc: f,
+                    input: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<U>(),
+                },
+            )
+        }
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
