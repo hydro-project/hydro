@@ -127,7 +127,7 @@ where
                 "label": display_label,
                 "nodeType": match node_type {
                     HydroNodeType::Source => "Source",
-                    HydroNodeType::Transform => "Transform", 
+                    HydroNodeType::Transform => "Transform",
                     HydroNodeType::Join => "Join",
                     HydroNodeType::Aggregation => "Aggregation",
                     HydroNodeType::Network => "Network",
@@ -162,10 +162,10 @@ where
         // Find the locations of source and target nodes
         let src_location = self.find_node_location(src_id);
         let dst_location = self.find_node_location(dst_id);
-        
+
         // Determine if this is a cross-location edge
         let is_cross_location = src_location != dst_location;
-        
+
         // Create edge with styling information
         let mut edge = serde_json::json!({
             "id": edge_id,
@@ -182,30 +182,63 @@ where
 
         match edge_type {
             HydroEdgeType::Persistent => {
-                style.insert("stroke".to_string(), serde_json::Value::String("#008800".to_string()));
-                style.insert("strokeWidth".to_string(), serde_json::Value::Number(serde_json::Number::from(3)));
+                style.insert(
+                    "stroke".to_string(),
+                    serde_json::Value::String("#008800".to_string()),
+                );
+                style.insert(
+                    "strokeWidth".to_string(),
+                    serde_json::Value::Number(serde_json::Number::from(3)),
+                );
             }
             HydroEdgeType::Network => {
-                style.insert("stroke".to_string(), serde_json::Value::String("#880088".to_string()));
-                style.insert("strokeDasharray".to_string(), serde_json::Value::String("5,5".to_string()));
-                style.insert("strokeWidth".to_string(), serde_json::Value::Number(serde_json::Number::from(2)));
+                style.insert(
+                    "stroke".to_string(),
+                    serde_json::Value::String("#880088".to_string()),
+                );
+                style.insert(
+                    "strokeDasharray".to_string(),
+                    serde_json::Value::String("5,5".to_string()),
+                );
+                style.insert(
+                    "strokeWidth".to_string(),
+                    serde_json::Value::Number(serde_json::Number::from(2)),
+                );
                 animated = true;
             }
             HydroEdgeType::Cycle => {
-                style.insert("stroke".to_string(), serde_json::Value::String("#ff0000".to_string()));
+                style.insert(
+                    "stroke".to_string(),
+                    serde_json::Value::String("#ff0000".to_string()),
+                );
                 animated = true;
             }
             HydroEdgeType::Stream => {
-                style.insert("stroke".to_string(), serde_json::Value::String("#666666".to_string()));
-                style.insert("strokeWidth".to_string(), serde_json::Value::Number(serde_json::Number::from(2)));
+                style.insert(
+                    "stroke".to_string(),
+                    serde_json::Value::String("#666666".to_string()),
+                );
+                style.insert(
+                    "strokeWidth".to_string(),
+                    serde_json::Value::Number(serde_json::Number::from(2)),
+                );
             }
         }
 
         // Override styling for cross-location edges (network communication)
         if is_cross_location {
-            style.insert("stroke".to_string(), serde_json::Value::String("#880088".to_string()));
-            style.insert("strokeDasharray".to_string(), serde_json::Value::String("8,4".to_string()));
-            style.insert("strokeWidth".to_string(), serde_json::Value::Number(serde_json::Number::from(2)));
+            style.insert(
+                "stroke".to_string(),
+                serde_json::Value::String("#880088".to_string()),
+            );
+            style.insert(
+                "strokeDasharray".to_string(),
+                serde_json::Value::String("8,4".to_string()),
+            );
+            style.insert(
+                "strokeWidth".to_string(),
+                serde_json::Value::Number(serde_json::Number::from(2)),
+            );
             animated = true;
         }
 
