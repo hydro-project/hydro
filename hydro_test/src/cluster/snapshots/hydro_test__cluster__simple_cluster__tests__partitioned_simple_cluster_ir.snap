@@ -8,8 +8,6 @@ expression: built.ir()
         input: Map {
             f: | (sender_id , b) | (:: hydro_lang :: ClusterId :: < _ > :: from_raw (sender_id . raw_id / 3usize as u32) , b),
             input: Network {
-                from_key: None,
-                to_key: None,
                 serialize_fn: Some(
                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                 ),
@@ -20,8 +18,6 @@ expression: built.ir()
                 input: Inspect {
                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < () > :: from_raw ({ __hydro_lang_cluster_self_id_1 / 3usize as u32 }) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
                     input: Network {
-                        from_key: None,
-                        to_key: None,
                         serialize_fn: Some(
                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                         ),
