@@ -258,7 +258,6 @@ pub async fn accept_bound(bound: BoundServer) -> AcceptedServer {
             #[cfg(unix)]
             {
                 let stream = listener.accept().await.unwrap().0;
-                eprintln!("accepted");
                 AcceptedServer::UnixSocket(stream)
             }
 
