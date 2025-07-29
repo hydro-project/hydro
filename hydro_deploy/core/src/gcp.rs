@@ -337,9 +337,11 @@ impl Host for GcpComputeEngineHost {
         let vm_name = format!(
             "hydro-vm-instance-{}{}",
             nanoid!(8, &TERRAFORM_ALPHABET),
+            // Name must match regex: (?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)
+            // So no uppercase, no colons, no underscores, and no more than 61 chars
             self.display_name
                 .clone()
-                .map_or(String::new(), |name| format!("-{}", name))
+                .map_or(String::new(), |name| format!("-{}", name.split("::").last().unwrap().to_lowercase()))
         );
 
         let mut tags = vec![];
