@@ -74,7 +74,7 @@ mod tests {
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
     use hydro_lang::rewrites::persist_pullup;
     use hydro_lang::{ClusterId, Location};
-    use hydro_optimize::partitioner::{self, PartitionAttribute, Partitioner};
+    use hydro_optimize::partitioner::{self, Partitioner};
     use stageleft::q;
 
     #[test]
@@ -258,9 +258,10 @@ mod tests {
         let builder = hydro_lang::FlowBuilder::new();
         let (_, cluster) = super::simple_cluster(&builder);
         let partitioner = Partitioner {
-            nodes_to_partition: HashMap::from([(5, PartitionAttribute::TupleIndex(1))]),
+            nodes_to_partition: HashMap::from([(5, vec!["1".to_string()])]),
             num_partitions: 3,
-            partitioned_cluster_id: cluster.id().raw_id(),
+            location_id: cluster.id().raw_id(),
+            new_cluster_id: None,
         };
         let built = builder
             .optimize_with(persist_pullup::persist_pullup)

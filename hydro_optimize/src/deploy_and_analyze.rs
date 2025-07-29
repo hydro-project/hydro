@@ -173,7 +173,13 @@ pub async fn deploy_and_analyze<'a>(
                 tokio::time::sleep(Duration::from_secs(seconds as u64)).await;
             } else {
                 // Wait for a new line
-                std::io::stdin().read_line(&mut String::new()).unwrap();
+                eprintln!("Press enter to stop deployment and analyze results");
+                let _ = tokio::io::AsyncBufReadExt::lines(tokio::io::BufReader::new(
+                    tokio::io::stdin(),
+                ))
+                .next_line()
+                .await
+                .unwrap();
             }
         })
         .await
