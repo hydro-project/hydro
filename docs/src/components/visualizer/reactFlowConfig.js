@@ -153,10 +153,34 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
  * Create styled edge from raw edge data
  */
 export function createStyledEdge(edge) {
-  return {
+  const result = {
     ...DEFAULT_EDGE_OPTIONS,
     ...edge,
   };
+  
+  // Clean up any "null" string values that come from the backend
+  // This is the root cause - the backend is sending sourceHandle/targetHandle as "null" strings
+  if (result.sourceHandle === "null") {
+    delete result.sourceHandle;
+  }
+  if (result.targetHandle === "null") {
+    delete result.targetHandle;
+  }
+  
+  // Debug: Check for problematic handle values from backend
+  if (edge.id === 'e7') {
+    console.log('DEBUG - createStyledEdge e7 cleaned:', {
+      id: result.id,
+      sourceHandle: result.sourceHandle,
+      targetHandle: result.targetHandle,
+      sourceHandleType: typeof result.sourceHandle,
+      targetHandleType: typeof result.targetHandle,
+      hasSourceHandle: 'sourceHandle' in result,
+      hasTargetHandle: 'targetHandle' in result
+    });
+  }
+  
+  return result;
 }
 
 /**

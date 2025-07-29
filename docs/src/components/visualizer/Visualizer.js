@@ -4,7 +4,7 @@
  * A simplified, flat graph visualizer using ReactFlow v12 and ELK layout.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   useNodesState, 
   useEdgesState,
@@ -16,6 +16,7 @@ import { LayoutControls } from './LayoutControls.js';
 import { Legend } from './Legend.js';
 import { ReactFlowInner } from './ReactFlowInner.js';
 import { processGraphData } from './reactFlowConfig.js';
+import { useCollapsedContainers } from './useCollapsedContainers.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function Visualizer({ graphData }) {
@@ -24,6 +25,17 @@ export function Visualizer({ graphData }) {
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Collapsed containers state
+  const {
+    collapsedContainers,
+    toggleContainer,
+    isCollapsed,
+    childNodesByParent,
+    collapseAll,
+    expandAll,
+    hasCollapsedContainers,
+  } = useCollapsedContainers(nodes);
 
   // Warn about any group node with missing style before passing to ReactFlowInner
   useEffect(() => {
@@ -36,6 +48,16 @@ export function Visualizer({ graphData }) {
       });
     }
   }, [nodes]);
+
+  // Handle node clicks for expanding/collapsing containers
+  const handleNodeClick = useCallback((event, node) => {
+    console.log('Node clicked:', node.id, node.type);
+    if (node.type === 'group' || node.type === 'collapsedContainer') {
+      console.log('Toggling container:', node.id);
+      event.stopPropagation();
+      toggleContainer(node.id);
+    }
+  }, [toggleContainer]);
 
   // Process graph data and apply layout with proper memoization
   useEffect(() => {
@@ -92,7 +114,67 @@ export function Visualizer({ graphData }) {
     return () => {
       isCancelled = true;
     };
-  }, [graphData, currentLayout, colorPalette, setNodes, setEdges]); // Add setNodes and setEdges to dependencies
+  }, [graphData, currentLayout, colorPalette, setNodes, setEdges]); // Remove collapsed containers dependencies
+
+  // Handle collapsed container changes by updating the nodes state directly
+  useEffect(() => {
+    if (nodes.length === 0) return; // Don't process if no nodes
+    
+    console.log('Applying collapsed container changes');
+    
+    const { processCollapsedContainers, rerouteEdgesForCollapsedContainers } = require('./containerCollapse.js');
+    
+    const collapsedArray = Array.from(collapsedContainers);
+    const processedNodes = processCollapsedContainers(nodes, collapsedArray);
+    
+    // Also process edges to reroute them for collapsed containers
+    const processedEdges = rerouteEdgesForCollapsedContainers(
+      edges,
+      processedNodes,
+      childNodesByParent,
+      collapsedArray
+    );
+    
+    // Only update if there are actual changes - use a more robust comparison
+    const hasNodeChanges = processedNodes.some((node, i) => {
+      const original = nodes[i];
+      return !original || 
+             node.hidden !== original.hidden || 
+             node.type !== original.type ||
+             node.width !== original.width ||
+             node.height !== original.height;
+    }) || processedNodes.length !== nodes.length;
+    
+    const hasEdgeChanges = processedEdges.some((edge, i) => {
+      const original = edges[i];
+      return !original || 
+             edge.hidden !== original.hidden || 
+             edge.source !== original.source ||
+             edge.target !== original.target;
+    }) || processedEdges.length !== edges.length;
+    
+    if (hasNodeChanges || hasEdgeChanges) {
+      console.log('Updating nodes/edges with collapsed container changes');
+      if (hasNodeChanges) {
+        setNodes(processedNodes);
+      }
+      if (hasEdgeChanges) {
+        setEdges(processedEdges);
+      }
+      
+      // Force ReactFlow to update node internals (dimensions, etc.)
+      setTimeout(() => {
+        if (window.reactFlowInstance) {
+          console.log('Forcing ReactFlow to update node internals');
+          processedNodes.forEach(node => {
+            if (node.type === 'collapsedContainer') {
+              window.reactFlowInstance.updateNodeInternals(node.id);
+            }
+          });
+        }
+      }, 100);
+    }
+  }, [collapsedContainers, childNodesByParent, nodes.length, edges.length]); // Use lengths instead of full arrays
 
   if (isLoading) {
     return <div className={styles.loading}>Laying out graph...</div>;
@@ -119,6 +201,9 @@ export function Visualizer({ graphData }) {
         onLayoutChange={setCurrentLayout}
         colorPalette={colorPalette}
         onPaletteChange={setColorPalette}
+        hasCollapsedContainers={hasCollapsedContainers}
+        onCollapseAll={collapseAll}
+        onExpandAll={expandAll}
       />
       
       <Legend colorPalette={colorPalette} />
@@ -128,6 +213,7 @@ export function Visualizer({ graphData }) {
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
+        onNodeClick={handleNodeClick}
         colorPalette={colorPalette}
       />
     </div>

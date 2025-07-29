@@ -1,10 +1,20 @@
 /**
- * ReactFlow Inner Component
+ * ReactFlow Inner Compoexport function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, onNodeClick, colorPalette }) {
+  const reactFlowInstance = useReactFlow();
+  
+  // Store instance globally for access from Visualizer
+  React.useEffect(() => {
+    window.reactFlowInstance = reactFlowInstance;
+  }, [reactFlowInstance]);
+
+  const onConnect = useCallback((connection) => {
+    onEdgesChange(addEdge(connection, edges));
+  }, [onEdgesChange, edges]);
  * 
  * Core ReactFlow integration with custom node types
  */
 
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -12,6 +22,7 @@ import {
   Background,
   Handle,
   addEdge,
+  useReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import {
@@ -22,9 +33,10 @@ import {
   getMiniMapNodeColor
 } from './reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
+import { CollapsedContainerNode } from './CollapsedContainerNode.js';
 import styles from '../../pages/visualizer.module.css';
 
-export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette }) {
+export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette, onNodeClick }) {
   const onConnect = useCallback((connection) => {
     onEdgesChange(addEdge(connection, edges));
   }, [onEdgesChange, edges]);
@@ -67,6 +79,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
 
   const nodeTypes = useMemo(() => ({
     group: GroupNode,
+    collapsedContainer: CollapsedContainerNode,
     default: DefaultNode,
   }), [DefaultNode]);
 
@@ -78,6 +91,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         {...REACTFLOW_CONFIG}

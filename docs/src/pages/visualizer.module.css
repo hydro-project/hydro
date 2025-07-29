@@ -211,6 +211,25 @@
   border-color: #adb5bd;
 }
 
+.containerButton {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 16px;
+  padding: 6px 8px;
+  min-width: 32px;
+  color: #495057;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.containerButton:hover {
+  border-color: #adb5bd;
+  background: #e9ecef;
+}
+
 /* Legend */
 .unifiedLegend {
   position: absolute;

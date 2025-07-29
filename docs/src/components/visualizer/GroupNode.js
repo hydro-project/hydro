@@ -110,6 +110,28 @@ export function GroupNode(props) {
       >
         {data?.label || 'Container'}
       </div>
+      <div 
+        style={{
+          position: 'absolute',
+          top: '4px',
+          right: '4px',
+          width: '16px',
+          height: '16px',
+          background: getTextColor(id),
+          color: 'white',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '12px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          zIndex: 10,
+        }}
+        title="Click to collapse"
+      >
+        −
+      </div>
     </div>
   );
 }

@@ -21,7 +21,15 @@ const paletteOptions = {
   Dark2: 'Dark2'
 };
 
-export function LayoutControls({ currentLayout, onLayoutChange, colorPalette, onPaletteChange }) {
+export function LayoutControls({ 
+  currentLayout, 
+  onLayoutChange, 
+  colorPalette, 
+  onPaletteChange,
+  hasCollapsedContainers,
+  onCollapseAll,
+  onExpandAll 
+}) {
   return (
     <div className={styles.layoutControls}>
             <select 
@@ -43,6 +51,14 @@ export function LayoutControls({ currentLayout, onLayoutChange, colorPalette, on
           <option key={key} value={key}>{label}</option>
         ))}
       </select>
+      
+      <button 
+        className={styles.containerButton}
+        onClick={hasCollapsedContainers ? onExpandAll : onCollapseAll}
+        title={hasCollapsedContainers ? 'Expand All Containers' : 'Collapse All Containers'}
+      >
+        {hasCollapsedContainers ? '⊞' : '⊟'}
+      </button>
     </div>
   );
 }
