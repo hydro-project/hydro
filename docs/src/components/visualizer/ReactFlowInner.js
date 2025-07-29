@@ -41,12 +41,49 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
   }, [colorPalette]);
 
   // Define custom node types: only use GroupNode for type 'group'
-  // Fallback to default for others
-  const DefaultNode = ({ data }) => (
-    <div style={{ padding: 10, border: '1px solid #ccc', borderRadius: 8, background: '#fff' }}>
-      {data?.label || 'Node'}
-      <Handle type="source" position="right" />
-      <Handle type="target" position="left" />
+  // Fallback to default for others - pure gradient with no internal rectangles
+  const DefaultNode = ({ data, style }) => (
+    <div style={{ 
+      ...style,
+      // Override any internal styling that creates rectangles
+      padding: 0,
+      margin: 0,
+      border: 'none',
+      borderRadius: style?.borderRadius || '6px',
+      background: style?.background || style?.gradient || '#f0f0f0',
+      color: style?.color || '#fff',
+      fontSize: style?.fontSize || '13px',
+      fontWeight: style?.fontWeight || '500',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      textAlign: 'center',
+      boxShadow: 'none',
+      // Ensure no internal backgrounds
+      backgroundColor: 'transparent',
+      outline: 'none',
+      // Remove any default ReactFlow node styling
+      '--rfnode-color': 'transparent',
+    }}>
+      <span style={{ 
+        // Ensure the text span has no styling that creates rectangles
+        background: 'none',
+        backgroundColor: 'transparent',
+        border: 'none',
+        outline: 'none',
+        padding: style?.padding || '6px 10px',
+        margin: 0,
+        display: 'block',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        {data?.label || 'Node'}
+      </span>
+      <Handle type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+      <Handle type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
     </div>
   );
   const nodeTypes = useMemo(() => ({

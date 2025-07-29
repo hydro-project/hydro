@@ -58,13 +58,12 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
         width: 300, // Provide initial size hint
         height: 200, // Provide initial size hint
         layoutOptions: {
+          ...ELK_LAYOUT_CONFIGS[layoutType], // Use the selected layout algorithm!
           'elk.padding': '[top=15,left=20,bottom=15,right=20]',
           'elk.spacing.nodeNode': 25,
           'elk.spacing.edgeNode': 15,
           'elk.spacing.edgeEdge': 10,
           'elk.spacing.borderNode': 20,
-          'elk.algorithm': 'mrtree',
-          'elk.direction': 'DOWN',
         },
         children: childElkNodes,
       };

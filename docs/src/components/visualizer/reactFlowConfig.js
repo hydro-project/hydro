@@ -105,8 +105,8 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
     return {
       ...node,
       style: {
-        width: node.style?.width ?? 1200,
-        height: node.style?.height ?? 240,
+        width: node.style?.width ?? 1500,   // Increased from 1200
+        height: node.style?.height ?? 300,  // Increased from 240
         ...(node.style || {}),
       },
     };
@@ -115,11 +115,12 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
   // For regular nodes, apply standard styling
   const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
   
-  // Generate display label with hierarchy information
+  // Generate display label WITHOUT hierarchy information - just the node name
   let displayLabel = node.data?.label || node.id;
-  if (hierarchyData && node.data?.hierarchyPath) {
-    displayLabel = `${node.data.hierarchyPath} > ${displayLabel}`;
-  }
+  // Remove hierarchy path to keep labels clean and simple
+  
+  // Debug: log the colors being generated
+  console.log(`[createStyledNode] Node ${node.id}: nodeType=${node.data?.nodeType || 'Transform'}, gradient=${nodeColors.gradient}`);
   
   return {
     ...node,
@@ -130,8 +131,12 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
     position: { x: 0, y: 0 }, // Will be set by layout
     style: {
       ...DEFAULT_NODE_STYLE,
-      background: nodeColors.gradient,
-      border: `2px solid ${nodeColors.border}`,
+      color: '#fff',                       // White text for good contrast on gradients
+      background: nodeColors.gradient,     // Use the gradient from generateNodeColors
+      border: 'none',                      // No border for clean gradient look
+      borderRadius: '6px',                 // Slightly rounded corners
+      boxShadow: 'none',                   // Remove shadow - these should be text, not nodes
+      fontWeight: '500',                   // Medium font weight for readability
     },
   };
 }
