@@ -54,11 +54,10 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       const elkContainer = {
         ...container,  // PRESERVE all original properties (style, data, type, etc.)
         id: container.id,
-        // Let ELK calculate container size based on children and padding
+        // Let ELK calculate container size - temporarily remove padding to test
         layoutOptions: {
           ...ELK_LAYOUT_CONFIGS[layoutType], // Use the selected layout algorithm!
-          'elk.padding': '[top=12,left=12,bottom=12,right=12]',
-          'elk.spacing.nodeNode': 25,
+          'elk.spacing.nodeNode': 20,
           'elk.spacing.edgeNode': 15,
           'elk.spacing.edgeEdge': 10,
         },
@@ -130,13 +129,18 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
   try {
     const layoutResult = await elk.layout(elkGraph);
 
-    // Apply positions back to nodes using a recursive function - let ELK handle all calculations
+    // Apply positions back to nodes - debug coordinate systems
     function applyPositions(elkNodes, depth = 0) {
       const layoutedNodes = [];
       elkNodes.forEach(elkNode => {
         const reactFlowNode = nodes.find(n => n.id === elkNode.id);
         if (reactFlowNode) {
-          // Use ELK's calculated dimensions and positions directly - no manual overrides
+          // Debug: Log positions for child nodes to see the offset
+          if (reactFlowNode.parentId) {
+            console.log(`[DEBUG] Child node ${elkNode.id}: ELK pos=(${elkNode.x}, ${elkNode.y}), parent=${reactFlowNode.parentId}`);
+          }
+          
+          // Use ELK's results exactly as calculated - no adjustments
           const processedNode = {
             ...reactFlowNode,
             width: elkNode.width,
@@ -145,7 +149,6 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
               x: elkNode.x || 0,
               y: elkNode.y || 0,
             },
-            // Store the calculated dimensions in data for the component to use
             data: {
               ...reactFlowNode.data,
               nodeStyle: {
