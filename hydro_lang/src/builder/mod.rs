@@ -12,7 +12,7 @@ use stageleft::*;
 #[cfg(feature = "build")]
 use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use crate::ir::HydroLeaf;
-use crate::location::{Cluster, ExternalProcess, Process};
+use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
 #[cfg(feature = "build")]
@@ -173,7 +173,7 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn external_process<P>(&self) -> ExternalProcess<'a, P> {
+    pub fn external_process<P>(&self) -> External<'a, P> {
         let mut next_location_id = self.next_location_id.borrow_mut();
         let id = *next_location_id;
         *next_location_id += 1;
@@ -182,7 +182,7 @@ impl<'a> FlowBuilder<'a> {
             .borrow_mut()
             .push((id, type_name::<P>().to_string()));
 
-        ExternalProcess {
+        External {
             id,
             flow_state: self.flow_state().clone(),
             _phantom: PhantomData,
@@ -246,7 +246,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn with_external<P, D: Deploy<'a>>(
         self,
-        process: &ExternalProcess<P>,
+        process: &External<P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.with_default_optimize().with_external(process, spec)

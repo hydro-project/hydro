@@ -349,7 +349,7 @@ impl HydroLeaf {
         seen_tee_locations: &mut SeenTeeLocations,
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
-        externals: &HashMap<usize, D::ExternalProcess>,
+        externals: &HashMap<usize, D::External>,
     ) where
         D: Deploy<'a>,
     {
@@ -528,7 +528,7 @@ impl HydroLeaf {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
-                    LocationId::ExternalProcess(_) => panic!(),
+                    LocationId::External(_) => panic!(),
                 };
 
                 match builders_or_callback {
@@ -928,7 +928,7 @@ impl HydroNode {
         seen_tee_locations: &mut SeenTeeLocations,
         nodes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
-        externals: &HashMap<usize, D::ExternalProcess>,
+        externals: &HashMap<usize, D::External>,
     ) where
         D: Deploy<'a>,
     {
@@ -1405,7 +1405,7 @@ impl HydroNode {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
-                    LocationId::ExternalProcess(id) => id,
+                    LocationId::External(id) => id,
                 };
 
                 if let HydroSource::ExternalNetwork() = source {
@@ -1463,7 +1463,7 @@ impl HydroNode {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
-                    LocationId::ExternalProcess(_) => panic!(),
+                    LocationId::External(_) => panic!(),
                 };
 
                 let ident = ident.clone();
@@ -2161,7 +2161,7 @@ impl HydroNode {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
-                    LocationId::ExternalProcess(id) => id,
+                    LocationId::External(id) => id,
                 };
 
                 let receiver_stream_ident =
@@ -2521,7 +2521,7 @@ fn instantiate_network<'a, D>(
     to_key: Option<usize>,
     nodes: &HashMap<usize, D::Process>,
     clusters: &HashMap<usize, D::Cluster>,
-    externals: &HashMap<usize, D::ExternalProcess>,
+    externals: &HashMap<usize, D::External>,
     compile_env: &D::CompileEnv,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
@@ -2616,7 +2616,7 @@ where
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (LocationId::ExternalProcess(from), LocationId::Process(to)) => {
+        (LocationId::External(from), LocationId::Process(to)) => {
             let from_node = externals
                 .get(from)
                 .unwrap_or_else(|| {
@@ -2647,13 +2647,13 @@ where
                 D::e2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (LocationId::ExternalProcess(_from), LocationId::Cluster(_to)) => {
+        (LocationId::External(_from), LocationId::Cluster(_to)) => {
             todo!("NYI")
         }
-        (LocationId::ExternalProcess(_), LocationId::ExternalProcess(_)) => {
+        (LocationId::External(_), LocationId::External(_)) => {
             panic!("Cannot send from external to external")
         }
-        (LocationId::Process(from), LocationId::ExternalProcess(to)) => {
+        (LocationId::Process(from), LocationId::External(to)) => {
             let from_node = nodes
                 .get(from)
                 .unwrap_or_else(|| {
@@ -2681,7 +2681,7 @@ where
                 D::o2e_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (LocationId::Cluster(_from), LocationId::ExternalProcess(_to)) => {
+        (LocationId::Cluster(_from), LocationId::External(_to)) => {
             todo!("NYI")
         }
         (LocationId::Tick(_, _), _) => panic!(),

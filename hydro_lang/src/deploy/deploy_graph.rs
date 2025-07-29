@@ -32,7 +32,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     type CompileEnv = ();
     type Process = DeployNode;
     type Cluster = DeployCluster;
-    type ExternalProcess = DeployExternal;
+    type External = DeployExternal;
     type Meta = HashMap<usize, Vec<u32>>;
     type GraphId = ();
     type Port = String;
@@ -46,7 +46,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         cluster.next_port()
     }
 
-    fn allocate_external_port(external: &Self::ExternalProcess) -> Self::Port {
+    fn allocate_external_port(external: &Self::External) -> Self::Port {
         external.next_port()
     }
 
@@ -267,7 +267,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn e2o_source(
         _compile_env: &Self::CompileEnv,
-        _p1: &Self::ExternalProcess,
+        _p1: &Self::External,
         p1_port: &Self::Port,
         _p2: &Self::Process,
         p2_port: &Self::Port,
@@ -282,7 +282,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn e2o_connect(
-        p1: &Self::ExternalProcess,
+        p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
@@ -319,7 +319,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _compile_env: &Self::CompileEnv,
         _p1: &Self::Process,
         p1_port: &Self::Port,
-        _p2: &Self::ExternalProcess,
+        _p2: &Self::External,
         p2_port: &Self::Port,
     ) -> syn::Expr {
         let p1_port = p1_port.as_str();
@@ -334,7 +334,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn o2e_connect(
         p1: &Self::Process,
         p1_port: &Self::Port,
-        p2: &Self::ExternalProcess,
+        p2: &Self::External,
         p2_port: &Self::Port,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();

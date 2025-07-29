@@ -20,7 +20,7 @@ use crate::ir::HydroLeaf;
 use crate::location::external_process::{
     ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
-use crate::location::{Cluster, ExternalProcess, Location, LocationId, Process};
+use crate::location::{Cluster, External, Location, LocationId, Process};
 use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D>
@@ -39,7 +39,7 @@ where
     /// but with the type name of the tag.
     pub(super) process_id_name: Vec<(usize, String)>,
 
-    pub(super) externals: HashMap<usize, D::ExternalProcess>,
+    pub(super) externals: HashMap<usize, D::External>,
     pub(super) external_id_name: Vec<(usize, String)>,
 
     pub(super) clusters: HashMap<usize, D::Cluster>,
@@ -87,7 +87,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     pub fn with_external<P>(
         mut self,
-        process: &ExternalProcess<P>,
+        process: &External<P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> Self {
         let tag_name = std::any::type_name::<P>().to_string();
@@ -313,7 +313,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
 pub struct DeployResult<'a, D: Deploy<'a>> {
     processes: HashMap<usize, D::Process>,
     clusters: HashMap<usize, D::Cluster>,
-    externals: HashMap<usize, D::ExternalProcess>,
+    externals: HashMap<usize, D::External>,
     cluster_id_name: HashMap<usize, String>,
     process_id_name: HashMap<usize, String>,
 }
@@ -357,7 +357,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         })
     }
 
-    pub fn get_external<P>(&self, p: &ExternalProcess<P>) -> &D::ExternalProcess {
+    pub fn get_external<P>(&self, p: &External<P>) -> &D::External {
         self.externals.get(&p.id).unwrap()
     }
 

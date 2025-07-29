@@ -58,17 +58,17 @@ where
     pub(crate) _phantom: PhantomData<Type>,
 }
 
-pub struct ExternalProcess<'a, ProcessTag> {
+pub struct External<'a, Tag> {
     pub(crate) id: usize,
 
     pub(crate) flow_state: FlowState,
 
-    pub(crate) _phantom: Invariant<'a, ProcessTag>,
+    pub(crate) _phantom: Invariant<'a, Tag>,
 }
 
-impl<P> Clone for ExternalProcess<'_, P> {
+impl<P> Clone for External<'_, P> {
     fn clone(&self) -> Self {
-        ExternalProcess {
+        External {
             id: self.id,
             flow_state: self.flow_state.clone(),
             _phantom: PhantomData,
@@ -76,7 +76,7 @@ impl<P> Clone for ExternalProcess<'_, P> {
     }
 }
 
-impl<'a, P> Location<'a> for ExternalProcess<'a, P> {
+impl<'a, P> Location<'a> for External<'a, P> {
     type Root = Self;
 
     fn root(&self) -> Self::Root {
@@ -84,7 +84,7 @@ impl<'a, P> Location<'a> for ExternalProcess<'a, P> {
     }
 
     fn id(&self) -> LocationId {
-        LocationId::ExternalProcess(self.id)
+        LocationId::External(self.id)
     }
 
     fn flow_state(&self) -> &FlowState {
@@ -96,7 +96,7 @@ impl<'a, P> Location<'a> for ExternalProcess<'a, P> {
     }
 }
 
-impl<'a, P> ExternalProcess<'a, P> {
+impl<'a, P> External<'a, P> {
     pub fn source_external_bytes<L>(
         &self,
         to: &L,
@@ -133,7 +133,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         deserialize_fn: Some(deser_expr.into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),
-                            location_kind: LocationId::ExternalProcess(self.id),
+                            location_kind: LocationId::External(self.id),
                             metadata: self.new_node_metadata::<Bytes>(),
                         }),
                         metadata: to.new_node_metadata::<Bytes>(),
@@ -180,7 +180,7 @@ impl<'a, P> ExternalProcess<'a, P> {
                         deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
                         input: Box::new(HydroNode::Source {
                             source: HydroSource::ExternalNetwork(),
-                            location_kind: LocationId::ExternalProcess(self.id),
+                            location_kind: LocationId::External(self.id),
                             metadata: self.new_node_metadata::<T>(),
                         }),
                         metadata: to.new_node_metadata::<T>(),
