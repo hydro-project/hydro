@@ -22,11 +22,11 @@ expression: builder.finalize().ir()
                     ),
                     input: Source {
                         source: ExternalNetwork,
-                        location_kind: ExternalProcess(
+                        location_kind: External(
                             0,
                         ),
                         metadata: HydroIrMetadata {
-                            location_kind: ExternalProcess(
+                            location_kind: External(
                                 0,
                             ),
                             output_type: Some(

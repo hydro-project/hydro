@@ -38,7 +38,7 @@ pub trait Deploy<'a> {
 
     type Process: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
     type Cluster: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
-    type ExternalProcess: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
+    type External: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
         + RegisterPort<'a, Self>;
     type Port: Clone;
     type ExternalRawPort;
@@ -59,13 +59,13 @@ pub trait Deploy<'a> {
         panic!("No trivial cluster")
     }
 
-    fn trivial_external(_id: usize) -> Self::ExternalProcess {
+    fn trivial_external(_id: usize) -> Self::External {
         panic!("No trivial external process")
     }
 
     fn allocate_process_port(process: &Self::Process) -> Self::Port;
     fn allocate_cluster_port(cluster: &Self::Cluster) -> Self::Port;
-    fn allocate_external_port(external: &Self::ExternalProcess) -> Self::Port;
+    fn allocate_external_port(external: &Self::External) -> Self::Port;
 
     fn o2o_sink_source(
         compile_env: &Self::CompileEnv,
@@ -125,13 +125,13 @@ pub trait Deploy<'a> {
 
     fn e2o_source(
         compile_env: &Self::CompileEnv,
-        p1: &Self::ExternalProcess,
+        p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
     ) -> syn::Expr;
     fn e2o_connect(
-        p1: &Self::ExternalProcess,
+        p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
@@ -141,13 +141,13 @@ pub trait Deploy<'a> {
         compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
-        p2: &Self::ExternalProcess,
+        p2: &Self::External,
         p2_port: &Self::Port,
     ) -> syn::Expr;
     fn o2e_connect(
         p1: &Self::Process,
         p1_port: &Self::Port,
-        p2: &Self::ExternalProcess,
+        p2: &Self::External,
         p2_port: &Self::Port,
     ) -> Box<dyn FnOnce()>;
 
@@ -195,7 +195,7 @@ pub trait ExternalSpec<'a, D>
 where
     D: Deploy<'a> + ?Sized,
 {
-    fn build(self, id: usize, name_hint: &str) -> D::ExternalProcess;
+    fn build(self, id: usize, name_hint: &str) -> D::External;
 }
 
 pub trait Node {
