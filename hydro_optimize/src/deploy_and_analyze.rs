@@ -47,6 +47,7 @@ fn insert_counter_node(node: &mut HydroNode, next_stmt_id: &mut usize, duration:
         | HydroNode::Reduce { metadata, .. } // Output 1 value per tick
         | HydroNode::FoldKeyed { metadata, .. }
         | HydroNode::ReduceKeyed { metadata, .. }
+        | HydroNode::ReduceKeyedWatermark { metadata, .. }
         | HydroNode::Network { metadata, .. }
          => {
             let metadata = metadata.clone();

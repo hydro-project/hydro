@@ -313,8 +313,8 @@ fn input_dependency_analysis_node(
         }
         // Only the key is preserved
         HydroNode::ReduceKeyed { .. }
-        | HydroNode::FoldKeyed { .. } => {
-            assert_eq!(parent_ids.len(), 1, "Node {:?} has the wrong number of parents.", node);
+        | HydroNode::FoldKeyed { .. }
+        | HydroNode::ReduceKeyedWatermark { .. } => {
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {
                     if let Some(parent_dependency) = parent_dependencies_on_input.get(&0) {
@@ -533,7 +533,9 @@ fn partitioning_constraint_analysis_node(
                     }
                 }
             }
-            HydroNode::ReduceKeyed { .. } | HydroNode::FoldKeyed { .. } => {
+            HydroNode::ReduceKeyed { .. }
+            | HydroNode::FoldKeyed { .. }
+            | HydroNode::ReduceKeyedWatermark { .. } => {
                 // Can only partition on the key. The key's inherited dependencies are already in input_dependencies for this node
                 if let Some((inputs, dependencies)) = get_inputs_and_dependencies(
                     input_taint,

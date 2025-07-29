@@ -896,6 +896,12 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    ReduceKeyedWatermark {
+        f: DebugExpr,
+        input: Box<HydroNode>,
+        watermark: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
 
     Network {
         from_key: Option<usize>,
@@ -1066,6 +1072,13 @@ impl HydroNode {
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
                 transform(pos.as_mut(), seen_tees);
                 transform(neg.as_mut(), seen_tees);
+            }
+
+            HydroNode::ReduceKeyedWatermark {
+                input, watermark, ..
+            } => {
+                transform(input.as_mut(), seen_tees);
+                transform(watermark.as_mut(), seen_tees);
             }
 
             HydroNode::Map { input, .. }
@@ -1274,6 +1287,17 @@ impl HydroNode {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                metadata,
+            } => HydroNode::ReduceKeyedWatermark {
+                f: f.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                watermark: Box::new(watermark.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::Reduce { f, input, metadata } => HydroNode::Reduce {
@@ -2097,6 +2121,102 @@ impl HydroNode {
                 (fold_ident, input_location_id)
             }
 
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input,
+                watermark,
+                ..
+            } => {
+                let (input, lifetime) =
+                    if let HydroNode::Persist { inner: input, .. } = input.as_mut() {
+                        (input, quote!('static))
+                    } else {
+                        (input, quote!('tick))
+                    };
+
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let input_type = *input.metadata().output_type.clone().unwrap().0;
+                let (key_type, value_type) = if let syn::Type::Tuple(tuple) = input_type {
+                    assert_eq!(
+                        tuple.elems.len(),
+                        2,
+                        "ReduceKeyedWatermark input must be a tuple of (key, value)."
+                    );
+                    (tuple.elems[0].clone(), tuple.elems[1].clone())
+                } else {
+                    panic!("ReduceKeyedWatermark input must be a tuple of (key, value).");
+                };
+
+                let (watermark_ident, watermark_location_id) =
+                    watermark.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                let cross_singleton_ident = syn::Ident::new(
+                    &format!("reduce_keyed_watermark_cross_singleton_{}", *next_stmt_id),
+                    Span::call_site(),
+                );
+
+                let fold_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        assert_eq!(
+                            input_location_id, watermark_location_id,
+                            "ReduceKeyedWatermark inputs must be in the same location"
+                        );
+
+                        let builder = graph_builders.entry(input_location_id).or_default();
+                        // 1. Don't allow any values to be added to the map if the key <= the watermark
+                        // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
+                        //    If the watermark changed, delete all BTreeMap entries with a key <= the watermark.
+                        // 3. Convert the BTreeMap back into a stream of (k, v)
+                        builder.add_dfir(
+                            parse_quote! {
+                                #cross_singleton_ident = cross_singleton();
+                                #input_ident -> [input]#cross_singleton_ident;
+                                #watermark_ident -> [single]#cross_singleton_ident;
+
+                                #fold_ident = #cross_singleton_ident
+                                    -> filter_map(|((k, v), watermark)| {
+                                        if k > watermark {
+                                            Some((k, v, watermark))
+                                        } else {
+                                            None
+                                        }
+                                    })
+                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), #key_type::default()), |(map, curr_watermark), (k, v, watermark)| {
+                                        match map.entry(k) {
+                                            ::std::collections::btree_map::Entry::Vacant(e) => {
+                                                e.insert(v);
+                                            }
+                                            ::std::collections::btree_map::Entry::Occupied(mut e) => {
+                                                #f(e.get_mut(), v);
+                                            }
+                                        }
+
+                                        if *curr_watermark < watermark {
+                                            *curr_watermark = watermark;
+                                            map.retain(|k, _| k > curr_watermark);
+                                        }
+                                    })
+                                    -> flat_map(|(map, _curr_watermark)| map);
+                            },
+                            None,
+                            Some(&next_stmt_id.to_string()),
+                        );
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (fold_ident, input_location_id)
+            }
+
             HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
                 let operator: syn::Ident = if matches!(self, HydroNode::Reduce { .. }) {
                     parse_quote!(reduce)
@@ -2292,7 +2412,8 @@ impl HydroNode {
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
             | HydroNode::Reduce { f, .. }
-            | HydroNode::ReduceKeyed { f, .. } => {
+            | HydroNode::ReduceKeyed { f, .. }
+            | HydroNode::ReduceKeyedWatermark { f, .. } => {
                 transform(f);
             }
             HydroNode::Fold { init, acc, .. }
@@ -2352,6 +2473,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
         }
@@ -2390,6 +2512,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
         }
@@ -2448,6 +2571,14 @@ impl HydroNode {
                     vec![input.metadata()]
                 }
             }
+            HydroNode::ReduceKeyedWatermark { input, watermark, .. } => {
+                // Skip persist before fold/reduce
+                if let HydroNode::Persist { inner, .. } = input.as_ref() {
+                    vec![inner.metadata(), watermark.metadata()]
+                } else {
+                    vec![input.metadata(), watermark.metadata()]
+                }
+            }
         }
     }
 
@@ -2504,6 +2635,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
+            HydroNode::ReduceKeyedWatermark { f, .. } => format!("ReduceKeyedWatermark({:?})", f),
             HydroNode::Network { to_location, .. } => format!("Network(to {:?})", to_location),
             HydroNode::Counter { tag, duration, .. } => {
                 format!("Counter({:?}, {:?})", tag, duration)
