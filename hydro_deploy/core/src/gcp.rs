@@ -334,18 +334,22 @@ impl Host for GcpComputeEngineHost {
             );
 
         let vm_key = format!("vm-instance-{}", self.id);
-        let vm_name = format!(
-            "hydro-vm-instance-{}{}",
-            nanoid!(8, &TERRAFORM_ALPHABET),
-            // Name must match regex: (?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?)
-            // So no uppercase, no colons, no underscores, and no more than 61 chars
-            self.display_name
-                .clone()
-                .map_or(String::new(), |name| format!(
-                    "-{}",
-                    name.split("::").last().unwrap().to_lowercase()
-                ))
-        );
+        let mut vm_name = format!("hydro-vm-instance-{}", nanoid!(8, &TERRAFORM_ALPHABET),);
+        // Name must match regex: (?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?), max length = 63 (61 + 1 a-z before and after)
+        if let Some(mut display_name) = self.display_name.clone() {
+            vm_name.push('-');
+            display_name = display_name
+                .replace("_", "-")
+                .replace(":", "-")
+                .to_lowercase();
+
+            // Keep the latter half of display_name if it is too long
+            let num_chars_to_cut = vm_name.len() + display_name.len() - 63;
+            if num_chars_to_cut > 0 {
+                display_name.drain(0..num_chars_to_cut);
+            }
+            vm_name.push_str(&display_name);
+        }
 
         let mut tags = vec![];
         let mut external_interfaces = vec![];
