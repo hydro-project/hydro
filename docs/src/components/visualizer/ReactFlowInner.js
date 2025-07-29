@@ -33,7 +33,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     return getMiniMapNodeColor(node, colorPalette);
   }, [colorPalette]);
 
-  // Custom default node component - simplified to avoid coordinate issues
+  // Custom default node component - simplified to fill the container
   const DefaultNode = useCallback((props) => {
     const { data } = props;
     const nodeStyle = data?.nodeStyle || props.style || {};
@@ -54,10 +54,9 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         alignItems: 'center',
         justifyContent: 'center',
         textAlign: 'center',
-        border: 'none',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         cursor: 'grab',
-        // Remove position and overflow to let ReactFlow handle positioning
+        padding: '6px 10px',
+        boxSizing: 'border-box',
       }}>
         {data?.label || 'Node'}
         <Handle type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />

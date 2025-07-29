@@ -55,7 +55,7 @@ export function GroupNode(props) {
     background: getBackgroundColor(id),
     border: getBorderColor(id),
     borderRadius: '8px',
-    padding: '12px',
+    // Remove padding to test if this is causing the inset
     fontSize: '14px',
     fontWeight: 'bold',
     color: getTextColor(id),
@@ -96,8 +96,8 @@ export function GroupNode(props) {
       <div 
         style={{
           position: 'absolute',
-          bottom: '8px',
-          right: '12px',
+          bottom: '4px',
+          right: '4px',
           fontSize: '14px',
           fontWeight: 'bold',
           color: getTextColor(id),

@@ -129,18 +129,13 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
   try {
     const layoutResult = await elk.layout(elkGraph);
 
-    // Apply positions back to nodes - debug coordinate systems
+    // Apply positions back to nodes
     function applyPositions(elkNodes, depth = 0) {
       const layoutedNodes = [];
       elkNodes.forEach(elkNode => {
         const reactFlowNode = nodes.find(n => n.id === elkNode.id);
         if (reactFlowNode) {
-          // Debug: Log positions for child nodes to see the offset
-          if (reactFlowNode.parentId) {
-            console.log(`[DEBUG] Child node ${elkNode.id}: ELK pos=(${elkNode.x}, ${elkNode.y}), parent=${reactFlowNode.parentId}`);
-          }
-          
-          // Use ELK's results exactly as calculated - no adjustments
+          // Use ELK's results exactly as calculated
           const processedNode = {
             ...reactFlowNode,
             width: elkNode.width,
