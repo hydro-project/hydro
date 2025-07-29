@@ -277,7 +277,7 @@ fn extract_location_id(metadata: &crate::ir::HydroIrMetadata) -> (Option<usize>,
     match &metadata.location_kind {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
         LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-        LocationId::ExternalProcess(id) => (Some(*id), Some("External".to_string())),
+        LocationId::External(id) => (Some(*id), Some("External".to_string())),
         LocationId::Tick(_, inner) => match inner.as_ref() {
             LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
             LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
@@ -811,7 +811,7 @@ impl HydroNode {
                         structure.add_location(*id, "Cluster".to_string());
                         Some(*id)
                     }
-                    LocationId::ExternalProcess(id) => {
+                    LocationId::External(id) => {
                         structure.add_location(*id, "External".to_string());
                         Some(*id)
                     }

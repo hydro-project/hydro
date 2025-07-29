@@ -11,7 +11,7 @@ pub struct P1 {}
 pub struct P2 {}
 
 pub fn first_ten_distributed<'a>(
-    external: &ExternalProcess<'a, ()>,
+    external: &External<'a, ()>,
     process: &Process<'a, P1>,
     second_process: &Process<'a, P2>,
 ) -> ExternalBincodeSink<String> {

@@ -15,7 +15,7 @@ use crate::stream::ExactlyOnce;
 use crate::{Singleton, Stream, TotalOrder, Unbounded};
 
 pub mod external_process;
-pub use external_process::ExternalProcess;
+pub use external_process::External;
 
 pub mod process;
 pub use process::Process;
@@ -34,7 +34,7 @@ pub enum LocationId {
     Process(usize),
     Cluster(usize),
     Tick(usize, Box<LocationId>),
-    ExternalProcess(usize),
+    External(usize),
 }
 
 impl LocationId {
@@ -43,7 +43,7 @@ impl LocationId {
             LocationId::Process(_) => self,
             LocationId::Cluster(_) => self,
             LocationId::Tick(_, id) => id.root(),
-            LocationId::ExternalProcess(_) => self,
+            LocationId::External(_) => self,
         }
     }
 
@@ -52,7 +52,7 @@ impl LocationId {
             LocationId::Process(id) => *id,
             LocationId::Cluster(id) => *id,
             LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
-            LocationId::ExternalProcess(id) => *id,
+            LocationId::External(id) => *id,
         }
     }
 

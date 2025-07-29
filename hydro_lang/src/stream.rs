@@ -18,7 +18,7 @@ use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
-    CanSend, ExternalProcess, Location, LocationId, NoTick, Tick, check_matching_location,
+    CanSend, External, Location, LocationId, NoTick, Tick, check_matching_location,
 };
 use crate::staging_util::get_this_crate;
 use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
@@ -2475,10 +2475,10 @@ where
 
     pub fn send_bincode_external<L2, CoreType>(
         self,
-        other: &ExternalProcess<L2>,
+        other: &External<L2>,
     ) -> ExternalBincodeStream<L::Out<CoreType>>
     where
-        L: CanSend<'a, ExternalProcess<'a, L2>, In<CoreType> = T, Out<CoreType> = CoreType>,
+        L: CanSend<'a, External<'a, L2>, In<CoreType> = T, Out<CoreType> = CoreType>,
         L2: 'a,
         CoreType: Serialize + DeserializeOwned,
         // for now, we restirct Out<CoreType> to be CoreType, which means no tagged cluster -> external
@@ -2553,10 +2553,10 @@ where
         )
     }
 
-    pub fn send_bytes_external<L2>(self, other: &ExternalProcess<L2>) -> ExternalBytesPort
+    pub fn send_bytes_external<L2>(self, other: &External<L2>) -> ExternalBytesPort
     where
         L2: 'a,
-        L::Root: CanSend<'a, ExternalProcess<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
+        L::Root: CanSend<'a, External<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
     {
         let metadata = other.new_node_metadata::<Bytes>();
 

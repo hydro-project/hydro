@@ -10,7 +10,7 @@ use crate::deploy::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 #[cfg(feature = "viz")]
 use crate::graph::api::GraphApi;
 use crate::ir::{HydroLeaf, emit};
-use crate::location::{Cluster, ExternalProcess, Process};
+use crate::location::{Cluster, External, Process};
 use crate::staging_util::Invariant;
 
 pub struct BuiltFlow<'a> {
@@ -268,7 +268,7 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_external<P, D: Deploy<'a>>(
         self,
-        process: &ExternalProcess<P>,
+        process: &External<P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> DeployFlow<'a, D> {
         self.into_deploy().with_external(process, spec)
