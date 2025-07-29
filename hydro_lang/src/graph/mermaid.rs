@@ -75,6 +75,7 @@ where
         node_type: HydroNodeType,
         _location_id: Option<usize>,
         _location_type: Option<&str>,
+        _backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         let class_str = match node_type {
             HydroNodeType::Source => "sourceClass",

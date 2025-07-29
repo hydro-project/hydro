@@ -105,6 +105,7 @@ pub trait HydroGraphWrite {
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
+        backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err>;
 
     /// Write an edge between nodes with optional labeling.
@@ -179,9 +180,9 @@ impl Default for HydroWriteConfig {
 }
 
 /// Graph structure tracker for Hydro IR rendering.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>)>, /* node_id -> (label, type, location) */
+    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>, Option<crate::backtrace::Backtrace>)>, /* node_id -> (label, type, location, backtrace) */
     pub edges: Vec<(usize, usize, HydroEdgeType, Option<String>)>, // (src, dst, edge_type, label)
     pub locations: HashMap<usize, String>,                         // location_id -> location_type
     pub next_node_id: usize,
@@ -197,10 +198,11 @@ impl HydroGraphStructure {
         label: NodeLabel,
         node_type: HydroNodeType,
         location: Option<usize>,
+        backtrace: Option<crate::backtrace::Backtrace>,
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
-        self.nodes.insert(node_id, (label, node_type, location));
+        self.nodes.insert(node_id, (label, node_type, location, backtrace));
         node_id
     }
 
@@ -318,7 +320,7 @@ impl HydroLeaf {
         graph_write.write_prologue()?;
 
         // Write node definitions
-        for (&node_id, (label, node_type, location)) in &structure.nodes {
+        for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
             let (location_id, location_type) = if let Some(loc_id) = location {
                 (
                     Some(*loc_id),
@@ -336,13 +338,14 @@ impl HydroLeaf {
                 *node_type,
                 location_id,
                 location_type,
+                backtrace.as_ref(),
             )?;
         }
 
         // Group nodes by location if requested
         if config.show_location_groups {
             let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-            for (&node_id, (_, _, location)) in &structure.nodes {
+            for (&node_id, (_, _, location, _)) in &structure.nodes {
                 if let Some(location_id) = location {
                     nodes_by_location
                         .entry(*location_id)
@@ -390,7 +393,7 @@ impl HydroLeaf {
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
             let location_id = setup_location(structure, metadata);
-            let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id);
+            let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id, Some(metadata.backtrace.clone()));
             structure.add_edge(input_id, sink_id, edge_type, None);
             sink_id
         }
@@ -476,6 +479,7 @@ impl HydroNode {
                 NodeLabel::Static(params.op_name.to_string()),
                 params.node_type,
                 location_id,
+                Some(params.metadata.backtrace.clone()),
             );
             params
                 .structure
@@ -495,6 +499,7 @@ impl HydroNode {
                 NodeLabel::with_exprs(params.op_name.to_string(), vec![expr.clone()]),
                 params.node_type,
                 location_id,
+                Some(params.metadata.backtrace.clone()),
             );
             params
                 .structure
@@ -521,6 +526,7 @@ impl HydroNode {
                 ),
                 params.node_type,
                 location_id,
+                Some(params.metadata.backtrace.clone()),
             );
             params
                 .structure
@@ -535,13 +541,14 @@ impl HydroNode {
             label: String,
         ) -> usize {
             let location_id = setup_location(structure, metadata);
-            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id)
+            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id, Some(metadata.backtrace.clone()))
         }
 
         match self {
             HydroNode::Placeholder => structure.add_node(
                 NodeLabel::Static("PLACEHOLDER".to_string()),
                 HydroNodeType::Transform,
+                None,
                 None,
             ),
 
@@ -577,6 +584,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Tee,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
 
                 seen_tees.insert(ptr, tee_id);
@@ -704,6 +712,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
                 structure.add_edge(
                     left_id,
@@ -738,6 +747,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Join,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
                 structure.add_edge(
                     left_id,
@@ -834,6 +844,7 @@ impl HydroNode {
                     NodeLabel::Static(label),
                     HydroNodeType::Network,
                     to_location_id,
+                    Some(metadata.backtrace.clone()),
                 );
                 structure.add_edge(
                     input_id,
@@ -862,6 +873,7 @@ impl HydroNode {
                     NodeLabel::Static(extract_op_name(self.print_root())),
                     HydroNodeType::Transform,
                     location_id,
+                    Some(metadata.backtrace.clone()),
                 );
                 structure.add_edge(
                     first_id,
@@ -965,7 +977,7 @@ where
     // Write the graph using the same logic as individual leaves
     graph_write.write_prologue()?;
 
-    for (&node_id, (label, node_type, location)) in &structure.nodes {
+    for (&node_id, (label, node_type, location, backtrace)) in &structure.nodes {
         let (location_id, location_type) = if let Some(loc_id) = location {
             (
                 Some(*loc_id),
@@ -980,12 +992,13 @@ where
             *node_type,
             location_id,
             location_type,
+            backtrace.as_ref(),
         )?;
     }
 
     if config.show_location_groups {
         let mut nodes_by_location: HashMap<usize, Vec<usize>> = HashMap::new();
-        for (&node_id, (_, _, location)) in &structure.nodes {
+        for (&node_id, (_, _, location, _)) in &structure.nodes {
             if let Some(location_id) = location {
                 nodes_by_location
                     .entry(*location_id)

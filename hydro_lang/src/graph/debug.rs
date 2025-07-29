@@ -84,6 +84,25 @@ pub fn open_json_visualizer(
     config: Option<HydroWriteConfig>,
 ) -> Result<()> {
     let json_content = render_with_config(leaves, config, render_hydro_ir_json);
+    
+    // Debug: Print a snippet of the JSON to see if backtrace is included
+    println!("=== JSON CONTENT SAMPLE (for backtrace verification) ===");
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_content) {
+        if let Some(nodes) = parsed["nodes"].as_array() {
+            if let Some(first_node) = nodes.first() {
+                if let Some(backtrace) = first_node["data"]["backtrace"].as_array() {
+                    println!("First node has backtrace with {} elements", backtrace.len());
+                    if !backtrace.is_empty() {
+                        println!("Sample backtrace element: {}", serde_json::to_string_pretty(&backtrace[0]).unwrap_or_default());
+                    }
+                } else {
+                    println!("First node does not have backtrace data");
+                }
+            }
+        }
+    }
+    println!("=== END JSON SAMPLE ===");
+    
     open_json_browser(&json_content)
 }
 

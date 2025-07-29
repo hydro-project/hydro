@@ -130,6 +130,7 @@ where
         node_type: HydroNodeType,
         location_id: Option<usize>,
         location_type: Option<&str>,
+        backtrace: Option<&crate::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         let style = self.node_type_to_style(node_type);
 
@@ -187,6 +188,28 @@ where
             node_label.to_string()
         };
 
+        // Convert backtrace to JSON if available
+        let backtrace_json = if let Some(bt) = backtrace {
+            #[cfg(feature = "build")]
+            {
+                let elements = bt.elements();
+                serde_json::json!(elements.into_iter().map(|elem| {
+                    serde_json::json!({
+                        "fn_name": elem.fn_name,
+                        "filename": elem.filename,
+                        "lineno": elem.lineno,
+                        "addr": elem.addr
+                    })
+                }).collect::<Vec<_>>())
+            }
+            #[cfg(not(feature = "build"))]
+            {
+                serde_json::json!([])
+            }
+        } else {
+            serde_json::json!([])
+        };
+
         let node = serde_json::json!({
             "id": node_id.to_string(),
             "type": "default",
@@ -205,7 +228,8 @@ where
                     HydroNodeType::Network => "Network",
                     HydroNodeType::Sink => "Sink",
                     HydroNodeType::Tee => "Tee",
-                }
+                },
+                "backtrace": backtrace_json
             },
             "position": {
                 "x": 0,
