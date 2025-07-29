@@ -102,11 +102,18 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
   
   // For group nodes (hierarchy containers), preserve their existing style
   if (node.type === 'group') {
+    const width = node.style?.width ?? 300;
+    const height = node.style?.height ?? 200;
+    
     return {
       ...node,
+      // CRITICAL: Set both top-level width/height AND style width/height
+      // ReactFlow needs both for proper internal processing
+      width,
+      height,
       style: {
-        width: node.style?.width ?? 1500,   // Increased from 1200
-        height: node.style?.height ?? 300,  // Increased from 240
+        width,
+        height,
         ...(node.style || {}),
       },
     };
@@ -124,6 +131,7 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
   
   return {
     ...node,
+    type: node.type || 'default', // Ensure regular nodes have a type
     data: {
       ...node.data,
       label: displayLabel,
@@ -185,6 +193,12 @@ function validateHierarchy(hierarchy, nodeAssignments, nodes) {
     containers.forEach(container => {
       if (!container.id || !container.name) {
         errors.push(`Container missing id or name: ${JSON.stringify(container)}`);
+        return;
+      }
+      
+      // Additional validation: ensure name is not empty or just whitespace
+      if (typeof container.name !== 'string' || container.name.trim().length === 0) {
+        errors.push(`Container ${container.id} has invalid name - cannot render container label: "${container.name}"`);
         return;
       }
       
@@ -350,6 +364,9 @@ export function processHierarchy(graphData) {
     nodes: [...hierarchyNodes, ...processedNodes], // Hierarchy nodes first, then graph nodes
   };
   
+  // Debug: Log what we're returning from processHierarchy
+  console.log('[processHierarchy] Returning nodes:', result.nodes.map(n => ({ id: n.id, type: n.type, label: n.data?.label })));
+  
   return result;
 }
 
@@ -365,9 +382,22 @@ export async function processGraphData(graphData, colorPalette, currentLayout, a
   // Process hierarchy data first
   const processedGraphData = processHierarchy(graphData);
   
-  const processedNodes = processedGraphData.nodes.map(node => 
-    createStyledNode(node, colorPalette, processedGraphData.hierarchy)
-  );
+  // CRITICAL: Only apply createStyledNode to non-group nodes
+  // Group nodes (hierarchy containers) are already properly styled by processHierarchy
+  const processedNodes = processedGraphData.nodes.map(node => {
+    if (node.type === 'group') {
+      // Group nodes are already styled - don't re-process them
+      console.log(`[processGraphData] Keeping group node: ${node.id} (${node.data?.label})`);
+      return node;
+    }
+    // Only regular nodes need styling
+    console.log(`[processGraphData] Styling regular node: ${node.id} (${node.data?.label})`);
+    return createStyledNode(node, colorPalette, processedGraphData.hierarchy);
+  });
+  
+  // Debug: Log all final nodes to check for duplicates
+  console.log('[processGraphData] Final node list:');
+  
   const processedEdges = (processedGraphData.edges || []).map(edge => createStyledEdge(edge));
 
   // Apply layout

@@ -30,6 +30,9 @@ async function loadELK() {
 }
 
 export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
+  console.log('[applyLayout] Starting layout with:', { nodeCount: nodes.length, edgeCount: edges.length, layoutType });
+  // Remove the detailed logging for cleaner output
+  
   const elk = await loadELK();
   
   if (!elk) {
@@ -54,9 +57,10 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
         .map(n => n.width);
       const sumChildWidths = childWidths.reduce((a, b) => a + b, 0);
       const elkContainer = {
+        ...container,  // PRESERVE all original properties (style, data, type, etc.)
         id: container.id,
-        width: 300, // Provide initial size hint
-        height: 200, // Provide initial size hint
+        width: container.style?.width || 300, // Use original width or fallback
+        height: container.style?.height || 200, // Use original height or fallback
         layoutOptions: {
           ...ELK_LAYOUT_CONFIGS[layoutType], // Use the selected layout algorithm!
           'elk.padding': '[top=15,left=20,bottom=15,right=20]',
@@ -73,9 +77,10 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     const levelNodes = regularNodes.filter(node => node.parentId === parentId);
     levelNodes.forEach(node => {
       const elkNode = {
+        ...node,  // PRESERVE all original properties (style, data, type, etc.)
         id: node.id,
-        width: 200,
-        height: 60,
+        width: node.style?.width || 200,
+        height: node.style?.height || 60,
       };
       children.push(elkNode);
     });
@@ -100,6 +105,33 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       targets: [edge.target],
     })),
   };
+
+  // Debug: Log the ELK graph structure to see where nodes are placed
+  console.log('[ELK] Graph structure:');
+  console.log('  Root children:', elkGraph.children.map(c => `${c.id} (${c.children?.length || 0} children)`));
+  console.log('  Edges:', elkGraph.edges.map(e => `${e.sources[0]} -> ${e.targets[0]}`));
+  
+  // Helper function to get all node IDs from hierarchy
+  function getAllNodeIds(nodes) {
+    const ids = [];
+    nodes.forEach(node => {
+      ids.push(node.id);
+      if (node.children) {
+        ids.push(...getAllNodeIds(node.children));
+      }
+    });
+    return ids;
+  }
+  
+  // Only log missing nodes, not the full list
+  elkGraph.edges.forEach(edge => {
+    const allNodeIds = getAllNodeIds(elkGraph.children);
+    const sourceExists = allNodeIds.includes(edge.sources[0]);
+    const targetExists = allNodeIds.includes(edge.targets[0]);
+    if (!sourceExists || !targetExists) {
+      console.error(`[ELK] Missing node for edge ${edge.sources[0]} -> ${edge.targets[0]}. Source exists: ${sourceExists}, Target exists: ${targetExists}`);
+    }
+  });
 
   try {
     const layoutResult = await elk.layout(elkGraph);
@@ -136,22 +168,35 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
             width = width || 300;
             height = height || 200;
           }
+          
           const processedNode = {
             ...reactFlowNode,
+            width,
+            height,
             position: {
               x: elkNode.x || 0,
               y: elkNode.y || 0,
             },
+            // CRITICAL: For ReactFlow v12, custom data must be in the `data` prop.
+            // We also merge in the original style to preserve gradients, etc.
+            data: {
+              ...reactFlowNode.data,
+              nodeStyle: {
+                ...reactFlowNode.style,
+                width,
+                height,
+              },
+            },
             style: {
-              ...reactFlowNode.style,
+              // This top-level style is still useful for ReactFlow's internal calculations
               width,
               height,
             },
             extent: reactFlowNode.parentId ? 'parent' : undefined,
-            expandParent: reactFlowNode.type === 'group',
           };
           layoutedNodes.push(processedNode);
         }
+        
         // Recursively apply positions to children
         if (elkNode.children) {
           layoutedNodes.push(...applyPositions(elkNode.children, depth + 1));
@@ -210,6 +255,9 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       }
     }
 
+    console.log('[applyLayout] Layout complete');
+    // Remove detailed node logging for cleaner output
+    
     return {
       nodes: sortedNodes,
       edges: edges,

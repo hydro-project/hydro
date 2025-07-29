@@ -364,3 +364,28 @@
     font-size: 20px;
   }
 }
+
+/* ReactFlow Custom Node Styling */
+/* Disable ReactFlow's built-in group node styling more selectively */
+:global(.react-flow__node-group) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Make sure custom nodes are visible and properly styled */
+:global(.react-flow__node-groupContainer) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 5 !important;
+}
+
+/* Ensure regular nodes have higher z-index than group nodes */
+:global(.react-flow__node-default) {
+  z-index: 10 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}

@@ -1,37 +1,30 @@
 /**
- * ReactFlow Inner Component for v12
+ * ReactFlow Inner Component
  * 
- * Reusable ReactFlow wrapper with common configuration
+ * Core ReactFlow integration with custom node types
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { 
-  ReactFlow, 
-  Controls, 
-  MiniMap, 
-  Background, 
-  addEdge
+import {
+  ReactFlow,
+  Controls,
+  MiniMap,
+  Background,
+  Handle,
+  addEdge,
 } from '@xyflow/react';
-import { Handle } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { 
-  REACTFLOW_CONFIG, 
-  MINIMAP_CONFIG, 
-  BACKGROUND_CONFIG,
+import {
   DEFAULT_EDGE_OPTIONS,
+  REACTFLOW_CONFIG,
+  BACKGROUND_CONFIG,
+  MINIMAP_CONFIG,
   getMiniMapNodeColor
 } from './reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette }) {
-  // Warn about any group node with missing style before rendering
-  nodes.forEach(n => {
-    if (n.type === 'group' && (!n.style || typeof n.style.width === 'undefined' || typeof n.style.height === 'undefined' || !n.id)) {
-      console.warn('[ReactFlowInner] Invalid group node detected:', n);
-      console.trace('[ReactFlowInner] Stack trace for invalid group node');
-    }
-  });
   const onConnect = useCallback((connection) => {
     onEdgesChange(addEdge(connection, edges));
   }, [onEdgesChange, edges]);
@@ -40,69 +33,80 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     return getMiniMapNodeColor(node, colorPalette);
   }, [colorPalette]);
 
-  // Define custom node types: only use GroupNode for type 'group'
-  // Fallback to default for others - pure gradient with no internal rectangles
-  const DefaultNode = ({ data, style }) => (
-    <div style={{ 
-      ...style,
-      // Override any internal styling that creates rectangles
-      padding: 0,
-      margin: 0,
-      border: 'none',
-      borderRadius: style?.borderRadius || '6px',
-      background: style?.background || style?.gradient || '#f0f0f0',
-      color: style?.color || '#fff',
-      fontSize: style?.fontSize || '13px',
-      fontWeight: style?.fontWeight || '500',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      textAlign: 'center',
-      boxShadow: 'none',
-      // Ensure no internal backgrounds
-      backgroundColor: 'transparent',
-      outline: 'none',
-      // Remove any default ReactFlow node styling
-      '--rfnode-color': 'transparent',
-    }}>
-      <span style={{ 
-        // Ensure the text span has no styling that creates rectangles
-        background: 'none',
-        backgroundColor: 'transparent',
-        border: 'none',
-        outline: 'none',
-        padding: style?.padding || '6px 10px',
-        margin: 0,
-        display: 'block',
-        width: '100%',
-        height: '100%',
+  // Custom default node component to apply styling
+  const DefaultNode = useCallback((props) => {
+    const { data } = props;
+    const nodeStyle = data?.nodeStyle || props.style || {};
+    
+    // Enhanced styling with subtle gradients and polish
+    const baseBackground = nodeStyle.gradient || nodeStyle.background || '#f0f0f0';
+    
+    return (
+      <div style={{ 
+        background: baseBackground,
+        width: nodeStyle.width || 200,
+        height: nodeStyle.height || 60,
+        borderRadius: '8px',
+        color: nodeStyle.color || '#fff',
+        fontSize: '13px',
+        fontWeight: '600',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        textAlign: 'center',
+        padding: '6px 10px',
+        border: 'none',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.1)',
+        transition: 'all 0.2s ease',
+        cursor: 'grab',
+        position: 'relative',
+        overflow: 'hidden',
       }}>
-        {data?.label || 'Node'}
-      </span>
-      <Handle type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-      <Handle type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-    </div>
-  );
+        {/* Subtle highlight overlay for extra polish */}
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '50%',
+          background: 'linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0))',
+          borderRadius: '8px 8px 0 0',
+          pointerEvents: 'none',
+        }} />
+        
+        <span style={{ 
+          position: 'relative',
+          zIndex: 1,
+          background: 'none',
+          backgroundColor: 'transparent',
+          border: 'none',
+          outline: 'none',
+          padding: '6px 10px',
+          margin: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+        }}>
+          {data?.label || 'Node'}
+        </span>
+        <Handle type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+        <Handle type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8, boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+      </div>
+    );
+  }, []);
+
   const nodeTypes = useMemo(() => ({
     group: GroupNode,
     default: DefaultNode,
-  }), []);
-
-  // All console logs removed for focused debugging
+  }), [DefaultNode]);
 
   return (
     <div className={styles.reactflowWrapper}>
       <ReactFlow
-        nodes={nodes.map(n => {
-          if (n.type === 'group' && (!n.style || typeof n.style.width === 'undefined' || typeof n.style.height === 'undefined')) {
-            // Fallback to default type if style is missing
-            return { ...n, type: 'default' };
-          }
-          return { ...n, type: n.type === 'group' ? 'group' : 'default' };
-        })}
+        nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
@@ -110,6 +114,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         nodeTypes={nodeTypes}
         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         {...REACTFLOW_CONFIG}
+        nodesDraggable={true}
       >
         <Controls />
         <MiniMap 
