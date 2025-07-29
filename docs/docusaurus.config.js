@@ -147,6 +147,12 @@ const config = {
             position: "right",
           },
           {
+            href: "https://discord.gg/537CMYKQ",
+            position: "right",
+            className: "header-discord-link",
+            "aria-label": "Discord server",
+          },
+          {
             href: "/askai",
             label: "AI Assistant",
             position: "right",
