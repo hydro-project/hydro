@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["escape_dot","open_browser"],"struct":["HydroDot"]};
+window.SIDEBAR_ITEMS = {"fn":["escape_dot","open_browser"],"struct":["HydroDot","HydroJson"]};
