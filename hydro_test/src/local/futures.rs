@@ -35,7 +35,7 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
         let out = super::unordered(&p1);
@@ -67,7 +67,7 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
         let out = super::ordered(&p1);

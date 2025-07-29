@@ -62,7 +62,6 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     let output_type = output_debug_type.clone().0;
     let network_node = HydroNode::Network {
         from_key: None,
-        to_location: new_location.clone(),
         to_key: None,
         serialize_fn: Some(serialize_bincode_with_type(true, &output_type)).map(|e| e.into()),
         instantiate_fn: DebugInstantiate::Building,
@@ -142,23 +141,13 @@ fn decouple_node(
     // Replace location of sources, if necessary
     if decoupler.place_on_decoupled_machine.contains(next_stmt_id) {
         match node {
-            HydroNode::Source {
-                location_kind,
-                metadata,
-                ..
-            }
-            | HydroNode::Network {
-                to_location: location_kind,
-                metadata,
-                ..
-            } => {
+            HydroNode::Source { metadata, .. } | HydroNode::Network { metadata, .. } => {
                 println!(
                     "Changing source/network destination from {:?} to location {:?}, id: {}",
-                    location_kind,
+                    metadata.location_kind,
                     decoupler.decoupled_location.clone(),
                     next_stmt_id
                 );
-                *location_kind = decoupler.decoupled_location.clone();
                 metadata
                     .location_kind
                     .swap_root(decoupler.decoupled_location.clone());
@@ -270,6 +259,7 @@ pub fn decouple(ir: &mut [HydroLeaf], decoupler: &Decoupler) {
         &mut |node| {
             fix_cluster_self_id_node(node, locations);
         },
+        true,
     );
 }
 

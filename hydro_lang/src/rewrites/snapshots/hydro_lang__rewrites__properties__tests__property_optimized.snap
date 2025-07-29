@@ -14,9 +14,6 @@ expression: built.ir()
                     source: Iter(
                         { use crate :: __staged :: __deps :: * ; use crate :: __staged :: rewrites :: properties :: tests :: * ; vec ! [] },
                     ),
-                    location_kind: Process(
-                        0,
-                    ),
                     metadata: HydroIrMetadata {
                         location_kind: Process(
                             0,

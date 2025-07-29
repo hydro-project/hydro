@@ -2,15 +2,18 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
+use bytes::Bytes;
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, q};
 
 use super::builder::FlowState;
 use crate::backtrace::get_backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{HydroIrMetadata, HydroNode, HydroSource};
+use crate::ir::{DebugInstantiate, HydroIrMetadata, HydroNode, HydroSource};
+use crate::location::external_process::{ExternalBincodeSink, ExternalBytesPort};
 use crate::stream::ExactlyOnce;
 use crate::{Singleton, Stream, TotalOrder, Unbounded};
 
@@ -47,6 +50,13 @@ impl LocationId {
         }
     }
 
+    pub fn is_root(&self) -> bool {
+        match self {
+            LocationId::Process(_) | LocationId::Cluster(_) | LocationId::External(_) => true,
+            LocationId::Tick(_, _) => false,
+        }
+    }
+
     pub fn raw_id(&self) -> usize {
         match self {
             LocationId::Process(id) => *id,
@@ -62,6 +72,7 @@ impl LocationId {
                 id.swap_root(new_root);
             }
             _ => {
+                assert!(new_root.is_root());
                 *self = new_root;
             }
         }
@@ -123,7 +134,6 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Spin(),
-                    location_kind: self.id(),
                     metadata: self.new_node_metadata::<()>(),
                 }),
                 metadata: self.new_node_metadata::<()>(),
@@ -146,7 +156,6 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Stream(e.into()),
-                    location_kind: self.id(),
                     metadata: self.new_node_metadata::<T>(),
                 }),
                 metadata: self.new_node_metadata::<T>(),
@@ -171,11 +180,92 @@ pub trait Location<'a>: Clone {
             HydroNode::Persist {
                 inner: Box::new(HydroNode::Source {
                     source: HydroSource::Iter(e.into()),
-                    location_kind: self.id(),
                     metadata: self.new_node_metadata::<T>(),
                 }),
                 metadata: self.new_node_metadata::<T>(),
             },
+        )
+    }
+
+    fn source_external_bytes<L>(
+        &self,
+        from: External<L>,
+    ) -> (
+        ExternalBytesPort,
+        Stream<Bytes, Self, Unbounded, TotalOrder, ExactlyOnce>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let next_external_port_id = {
+            let mut flow_state = from.flow_state.borrow_mut();
+            let id = flow_state.next_external_out;
+            flow_state.next_external_out += 1;
+            id
+        };
+
+        let deser_expr: syn::Expr = syn::parse_quote!(|b| b.unwrap().freeze());
+
+        (
+            ExternalBytesPort {
+                process_id: from.id,
+                port_id: next_external_port_id,
+            },
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::ExternalInput {
+                        from_location: LocationId::External(from.id),
+                        from_key: Some(next_external_port_id),
+                        to_key: None,
+                        instantiate_fn: DebugInstantiate::Building,
+                        deserialize_fn: Some(deser_expr.into()),
+                        metadata: self.new_node_metadata::<Bytes>(),
+                    }),
+                    metadata: self.new_node_metadata::<Bytes>(),
+                },
+            ),
+        )
+    }
+
+    fn source_external_bincode<L, T>(
+        &self,
+        from: &External<L>,
+    ) -> (
+        ExternalBincodeSink<T>,
+        Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>,
+    )
+    where
+        Self: Sized + NoTick,
+        T: Serialize + DeserializeOwned,
+    {
+        let next_external_port_id = {
+            let mut flow_state = from.flow_state.borrow_mut();
+            let id = flow_state.next_external_out;
+            flow_state.next_external_out += 1;
+            id
+        };
+
+        (
+            ExternalBincodeSink {
+                process_id: from.id,
+                port_id: next_external_port_id,
+                _phantom: PhantomData,
+            },
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::ExternalInput {
+                        from_location: LocationId::External(from.id),
+                        from_key: Some(next_external_port_id),
+                        to_key: None,
+                        instantiate_fn: DebugInstantiate::Building,
+                        deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
+                        metadata: self.new_node_metadata::<T>(),
+                    }),
+                    metadata: self.new_node_metadata::<T>(),
+                },
+            ),
         )
     }
 
@@ -199,7 +289,6 @@ pub trait Location<'a>: Clone {
                 inner: Box::new(HydroNode::Persist {
                     inner: Box::new(HydroNode::Source {
                         source: HydroSource::Iter(e.into()),
-                        location_kind: self.id(),
                         metadata: self.new_node_metadata::<T>(),
                     }),
                     metadata: self.new_node_metadata::<T>(),

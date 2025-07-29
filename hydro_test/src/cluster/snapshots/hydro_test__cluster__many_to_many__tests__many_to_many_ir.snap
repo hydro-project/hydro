@@ -8,9 +8,6 @@ expression: built.ir()
         input: Unpersist {
             inner: Network {
                 from_key: None,
-                to_location: Cluster(
-                    0,
-                ),
                 to_key: None,
                 serialize_fn: Some(
                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , i32) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -25,9 +22,6 @@ expression: built.ir()
                         inner: Source {
                             source: Iter(
                                 { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 },
-                            ),
-                            location_kind: Cluster(
-                                0,
                             ),
                             metadata: HydroIrMetadata {
                                 location_kind: Cluster(

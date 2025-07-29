@@ -8,9 +8,6 @@ expression: built.ir()
         input: Unpersist {
             inner: Network {
                 from_key: None,
-                to_location: Process(
-                    0,
-                ),
                 to_key: None,
                 serialize_fn: Some(
                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -25,9 +22,6 @@ expression: built.ir()
                         input: Unpersist {
                             inner: Network {
                                 from_key: None,
-                                to_location: Cluster(
-                                    1,
-                                ),
                                 to_key: None,
                                 serialize_fn: Some(
                                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < () > , i32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -45,9 +39,6 @@ expression: built.ir()
                                                 inner: Source {
                                                     source: Iter(
                                                         unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < () >] > (__hydro_lang_cluster_ids_1) },
-                                                    ),
-                                                    location_kind: Process(
-                                                        0,
                                                     ),
                                                     metadata: HydroIrMetadata {
                                                         location_kind: Process(
@@ -80,9 +71,6 @@ expression: built.ir()
                                             inner: Source {
                                                 source: Iter(
                                                     { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; 0 .. 5 },
-                                                ),
-                                                location_kind: Process(
-                                                    0,
                                                 ),
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Process(

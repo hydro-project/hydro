@@ -51,7 +51,7 @@ async fn main() {
     };
 
     let builder = hydro_lang::FlowBuilder::new();
-    let external = builder.external_process();
+    let external = builder.external();
     let p1 = builder.process();
     let p2 = builder.process();
     let external_port =

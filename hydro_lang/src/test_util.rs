@@ -17,7 +17,7 @@ pub async fn multi_location_test<'a, T, C, O, R>(
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
     let process = flow.process::<()>();
-    let external = flow.external_process::<()>();
+    let external = flow.external::<()>();
     let out = thunk(&flow, &process);
     let out_port = out.send_bincode_external(&external);
     let nodes = flow
@@ -44,7 +44,7 @@ pub async fn stream_transform_test<'a, T, C, O, R>(
     let mut deployment = hydro_deploy::Deployment::new();
     let flow = FlowBuilder::new();
     let process = flow.process::<()>();
-    let external = flow.external_process::<()>();
+    let external = flow.external::<()>();
     let out = thunk(&process);
     let out_port = out.send_bincode_external(&external);
     let nodes = flow
