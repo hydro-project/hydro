@@ -37,10 +37,6 @@ where
     pub fn some(singleton: Singleton<T, L, B>) -> Self {
         Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
-
-    fn location_kind(&self) -> LocationId {
-        self.location.id()
-    }
 }
 
 impl<'a, T, L> DeferTick for Optional<T, Tick<L>, Bounded>
@@ -59,12 +55,10 @@ where
     type Location = Tick<L>;
 
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
-        let location_id = location.id();
         Optional::new(
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                location_kind: location_id,
                 metadata: location.new_node_metadata::<T>(),
             },
         )
@@ -89,7 +83,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             });
@@ -103,12 +96,10 @@ where
     type Location = Tick<L>;
 
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
-        let location_id = location.id();
         Optional::new(
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                location_kind: location_id,
                 metadata: location.new_node_metadata::<T>(),
             },
         )
@@ -133,7 +124,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             });
@@ -147,13 +137,11 @@ where
     type Location = L;
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
-        let location_id = location.id();
         Optional::new(
             location.clone(),
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    location_kind: location_id,
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 metadata: location.new_node_metadata::<T>(),
@@ -181,7 +169,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
@@ -469,8 +456,7 @@ where
         let core_ir = HydroNode::Persist {
             inner: Box::new(HydroNode::Source {
                 source: HydroSource::Iter(none.into()),
-                location_kind: self.location.id().root().clone(),
-                metadata: self.location.new_node_metadata::<Option<T>>(),
+                metadata: self.location.root().new_node_metadata::<Option<T>>(),
             }),
             metadata: self.location.new_node_metadata::<Option<T>>(),
         };

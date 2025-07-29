@@ -141,14 +141,11 @@ pub fn get_network_type(node: &HydroNode, location: usize) -> Option<NetworkType
     let mut is_to_us = false;
     let mut is_from_us = false;
 
-    if let HydroNode::Network {
-        input, to_location, ..
-    } = node
-    {
+    if let HydroNode::Network { input, .. } = node {
         if input.metadata().location_kind.root().raw_id() == location {
             is_from_us = true;
         }
-        if to_location.root().raw_id() == location {
+        if node.metadata().location_kind.root().raw_id() == location {
             is_to_us = true;
         }
 

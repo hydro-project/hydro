@@ -20,16 +20,17 @@ pub fn count_elems<'a, T: 'a>(
 mod tests {
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
+    use hydro_lang::Location;
 
     #[tokio::test]
     async fn test_count() {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
-        let (input_send, input) = external.source_external_bincode(&p1);
+        let (input_send, input) = p1.source_external_bincode(&external);
         let out = super::count_elems(&p1, input);
         let out_recv = out.send_bincode_external(&external);
 

@@ -43,6 +43,7 @@ pub fn chat_app<'a>(
 mod tests {
     use futures::{SinkExt, Stream, StreamExt};
     use hydro_deploy::Deployment;
+    use hydro_lang::Location;
 
     async fn take_next_n<T>(stream: &mut (impl Stream<Item = T> + Unpin), n: usize) -> Vec<T> {
         let mut out = Vec::with_capacity(n);
@@ -61,11 +62,11 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
-        let (users_send, users) = external.source_external_bincode(&p1);
-        let (messages_send, messages) = external.source_external_bincode(&p1);
+        let (users_send, users) = p1.source_external_bincode(&external);
+        let (messages_send, messages) = p1.source_external_bincode(&external);
         let out = super::chat_app(&p1, users, messages, false);
         let out_recv = out.send_bincode_external(&external);
 
@@ -126,11 +127,11 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
-        let (users_send, users) = external.source_external_bincode(&p1);
-        let (messages_send, messages) = external.source_external_bincode(&p1);
+        let (users_send, users) = p1.source_external_bincode(&external);
+        let (messages_send, messages) = p1.source_external_bincode(&external);
         let out = super::chat_app(&p1, users, messages, true);
         let out_recv = out.send_bincode_external(&external);
 

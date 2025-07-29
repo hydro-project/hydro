@@ -327,6 +327,14 @@ pub enum HydroLeaf {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    SendExternal {
+        from_key: Option<usize>,
+        to_location: usize,
+        to_key: Option<usize>,
+        serialize_fn: Option<DebugExpr>,
+        instantiate_fn: DebugInstantiate,
+        input: Box<HydroNode>,
+    },
     DestSink {
         sink: DebugExpr,
         input: Box<HydroNode>,
@@ -334,7 +342,6 @@ pub enum HydroLeaf {
     },
     CycleSink {
         ident: syn::Ident,
-        location_kind: LocationId,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -346,35 +353,143 @@ impl HydroLeaf {
         &mut self,
         compile_env: &D::CompileEnv,
         seen_tees: &mut SeenTees,
-        seen_tee_locations: &mut SeenTeeLocations,
         processes: &HashMap<usize, D::Process>,
         clusters: &HashMap<usize, D::Cluster>,
         externals: &HashMap<usize, D::External>,
     ) where
         D: Deploy<'a>,
     {
-        self.transform_children(
-            |n, s| {
-                n.compile_network::<D>(
-                    compile_env,
-                    s,
-                    seen_tee_locations,
-                    processes,
-                    clusters,
-                    externals,
-                );
+        self.transform_bottom_up(
+            &mut |l| {
+                if let HydroLeaf::SendExternal {
+                    input,
+                    from_key,
+                    to_location,
+                    to_key,
+                    instantiate_fn,
+                    ..
+                } = l
+                {
+                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
+                        DebugInstantiate::Building => instantiate_network::<D>(
+                            input.metadata().location_kind.root(),
+                            *from_key,
+                            &LocationId::External(*to_location),
+                            *to_key,
+                            processes,
+                            clusters,
+                            externals,
+                            compile_env,
+                        ),
+
+                        DebugInstantiate::Finalized(_) => panic!("network already finalized"),
+                    };
+
+                    *instantiate_fn = DebugInstantiateFinalized {
+                        sink: sink_expr,
+                        source: source_expr,
+                        connect_fn: Some(connect_fn),
+                    }
+                    .into();
+                }
+            },
+            &mut |n| {
+                if let HydroNode::Network {
+                    input,
+                    from_key,
+                    to_key,
+                    instantiate_fn,
+                    metadata,
+                    ..
+                } = n
+                {
+                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
+                        DebugInstantiate::Building => instantiate_network::<D>(
+                            input.metadata().location_kind.root(),
+                            *from_key,
+                            metadata.location_kind.root(),
+                            *to_key,
+                            processes,
+                            clusters,
+                            externals,
+                            compile_env,
+                        ),
+
+                        DebugInstantiate::Finalized(_) => panic!("network already finalized"),
+                    };
+
+                    *instantiate_fn = DebugInstantiateFinalized {
+                        sink: sink_expr,
+                        source: source_expr,
+                        connect_fn: Some(connect_fn),
+                    }
+                    .into();
+                } else if let HydroNode::ExternalInput {
+                    from_location,
+                    from_key,
+                    to_key,
+                    instantiate_fn,
+                    metadata,
+                    ..
+                } = n
+                {
+                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
+                        DebugInstantiate::Building => instantiate_network::<D>(
+                            from_location,
+                            *from_key,
+                            &metadata.location_kind,
+                            *to_key,
+                            processes,
+                            clusters,
+                            externals,
+                            compile_env,
+                        ),
+
+                        DebugInstantiate::Finalized(_) => panic!("network already finalized"),
+                    };
+
+                    *instantiate_fn = DebugInstantiateFinalized {
+                        sink: sink_expr,
+                        source: source_expr,
+                        connect_fn: Some(connect_fn),
+                    }
+                    .into();
+                }
             },
             seen_tees,
-        )
+            false,
+        );
     }
 
     pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
-        self.transform_children(
-            |n, s| {
-                n.connect_network(s);
+        self.transform_bottom_up(
+            &mut |l| {
+                if let HydroLeaf::SendExternal { instantiate_fn, .. } = l {
+                    match instantiate_fn {
+                        DebugInstantiate::Building => panic!("network not built"),
+
+                        DebugInstantiate::Finalized(finalized) => {
+                            (finalized.connect_fn.take().unwrap())();
+                        }
+                    }
+                }
+            },
+            &mut |n| {
+                if let HydroNode::Network { instantiate_fn, .. }
+                | HydroNode::ExternalInput { instantiate_fn, .. } = n
+                {
+                    match instantiate_fn {
+                        DebugInstantiate::Building => panic!("network not built"),
+
+                        DebugInstantiate::Finalized(finalized) => {
+                            (finalized.connect_fn.take().unwrap())();
+                        }
+                    }
+                }
             },
             seen_tees,
-        )
+            false,
+        );
     }
 
     pub fn transform_bottom_up(
@@ -382,8 +497,12 @@ impl HydroLeaf {
         transform_leaf: &mut impl FnMut(&mut HydroLeaf),
         transform_node: &mut impl FnMut(&mut HydroNode),
         seen_tees: &mut SeenTees,
+        check_well_formed: bool,
     ) {
-        self.transform_children(|n, s| n.transform_bottom_up(transform_node, s), seen_tees);
+        self.transform_children(
+            |n, s| n.transform_bottom_up(transform_node, s, check_well_formed),
+            seen_tees,
+        );
 
         transform_leaf(self);
     }
@@ -395,12 +514,10 @@ impl HydroLeaf {
     ) {
         match self {
             HydroLeaf::ForEach { f: _, input, .. }
+            | HydroLeaf::SendExternal { input, .. }
             | HydroLeaf::DestSink { sink: _, input, .. }
             | HydroLeaf::CycleSink {
-                ident: _,
-                location_kind: _,
-                input,
-                ..
+                ident: _, input, ..
             } => {
                 transform(input, seen_tees);
             }
@@ -414,6 +531,21 @@ impl HydroLeaf {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroLeaf::SendExternal {
+                from_key,
+                to_location,
+                to_key,
+                serialize_fn,
+                instantiate_fn,
+                input,
+            } => HydroLeaf::SendExternal {
+                from_key: *from_key,
+                to_location: *to_location,
+                to_key: *to_key,
+                serialize_fn: serialize_fn.clone(),
+                instantiate_fn: instantiate_fn.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+            },
             HydroLeaf::DestSink {
                 sink,
                 input,
@@ -425,12 +557,10 @@ impl HydroLeaf {
             },
             HydroLeaf::CycleSink {
                 ident,
-                location_kind,
                 input,
                 metadata,
             } => HydroLeaf::CycleSink {
                 ident: ident.clone(),
-                location_kind: location_kind.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -490,6 +620,56 @@ impl HydroLeaf {
                 *next_stmt_id += 1;
             }
 
+            HydroLeaf::SendExternal {
+                serialize_fn,
+                instantiate_fn,
+                input,
+                ..
+            } => {
+                let (input_ident, input_location_id) =
+                    input.emit_core(builders_or_callback, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let (sink_expr, _) = match instantiate_fn {
+                            DebugInstantiate::Building => (
+                                syn::parse_quote!(DUMMY_SINK),
+                                syn::parse_quote!(DUMMY_SOURCE),
+                            ),
+
+                            DebugInstantiate::Finalized(finalized) => {
+                                (finalized.sink.clone(), finalized.source.clone())
+                            }
+                        };
+
+                        let sender_builder = graph_builders.entry(input_location_id).or_default();
+                        if let Some(serialize_fn) = serialize_fn {
+                            sender_builder.add_dfir(
+                                parse_quote! {
+                                    #input_ident -> map(#serialize_fn) -> dest_sink(#sink_expr);
+                                },
+                                None,
+                                // operator tag separates send and receive, which otherwise have the same next_stmt_id
+                                Some(&format!("send{}", next_stmt_id)),
+                            );
+                        } else {
+                            sender_builder.add_dfir(
+                                parse_quote! {
+                                    #input_ident -> dest_sink(#sink_expr);
+                                },
+                                None,
+                                Some(&format!("send{}", next_stmt_id)),
+                            );
+                        }
+                    }
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
+                        leaf_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+            }
+
             HydroLeaf::DestSink { sink, input, .. } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
@@ -517,28 +697,23 @@ impl HydroLeaf {
 
             HydroLeaf::CycleSink {
                 ident,
-                location_kind,
                 input,
+                metadata,
                 ..
             } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                let location_id = match location_kind.root() {
-                    LocationId::Process(id) => id,
-                    LocationId::Cluster(id) => id,
-                    LocationId::Tick(_, _) => panic!(),
-                    LocationId::External(_) => panic!(),
-                };
+                let location_id = metadata.location_kind.root().raw_id();
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         assert_eq!(
-                            input_location_id, *location_id,
+                            input_location_id, location_id,
                             "cycle_sink location mismatch"
                         );
 
-                        graph_builders.entry(*location_id).or_default().add_dfir(
+                        graph_builders.entry(location_id).or_default().add_dfir(
                             parse_quote! {
                                 #ident = #input_ident;
                             },
@@ -558,6 +733,7 @@ impl HydroLeaf {
             HydroLeaf::ForEach { metadata, .. }
             | HydroLeaf::DestSink { metadata, .. }
             | HydroLeaf::CycleSink { metadata, .. } => metadata,
+            HydroLeaf::SendExternal { .. } => panic!(),
         }
     }
 
@@ -566,12 +742,14 @@ impl HydroLeaf {
             HydroLeaf::ForEach { metadata, .. }
             | HydroLeaf::DestSink { metadata, .. }
             | HydroLeaf::CycleSink { metadata, .. } => metadata,
+            HydroLeaf::SendExternal { .. } => panic!(),
         }
     }
 
     pub fn input_metadata(&self) -> Vec<&HydroIrMetadata> {
         match self {
             HydroLeaf::ForEach { input, .. }
+            | HydroLeaf::SendExternal { input, .. }
             | HydroLeaf::DestSink { input, .. }
             | HydroLeaf::CycleSink { input, .. } => {
                 vec![input.metadata()]
@@ -582,6 +760,7 @@ impl HydroLeaf {
     pub fn print_root(&self) -> String {
         match self {
             HydroLeaf::ForEach { f, .. } => format!("ForEach({:?})", f),
+            HydroLeaf::SendExternal { .. } => "SendExternal".to_string(),
             HydroLeaf::DestSink { sink, .. } => format!("DestSink({:?})", sink),
             HydroLeaf::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
         }
@@ -592,7 +771,7 @@ impl HydroLeaf {
             HydroLeaf::ForEach { f, .. } | HydroLeaf::DestSink { sink: f, .. } => {
                 transform(f);
             }
-            HydroLeaf::CycleSink { .. } => {}
+            HydroLeaf::SendExternal { .. } | HydroLeaf::CycleSink { .. } => {}
         }
     }
 }
@@ -626,10 +805,16 @@ pub fn transform_bottom_up(
     ir: &mut [HydroLeaf],
     transform_leaf: &mut impl FnMut(&mut HydroLeaf),
     transform_node: &mut impl FnMut(&mut HydroNode),
+    check_well_formed: bool,
 ) {
     let mut seen_tees = HashMap::new();
     ir.iter_mut().for_each(|leaf| {
-        leaf.transform_bottom_up(transform_leaf, transform_node, &mut seen_tees);
+        leaf.transform_bottom_up(
+            transform_leaf,
+            transform_node,
+            &mut seen_tees,
+            check_well_formed,
+        );
     });
 }
 
@@ -746,13 +931,11 @@ pub enum HydroNode {
 
     Source {
         source: HydroSource,
-        location_kind: LocationId,
         metadata: HydroIrMetadata,
     },
 
     CycleSource {
         ident: syn::Ident,
-        location_kind: LocationId,
         metadata: HydroIrMetadata,
     },
 
@@ -899,12 +1082,20 @@ pub enum HydroNode {
 
     Network {
         from_key: Option<usize>,
-        to_location: LocationId,
         to_key: Option<usize>,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
         input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
+    ExternalInput {
+        from_location: LocationId,
+        from_key: Option<usize>,
+        to_key: Option<usize>,
+        instantiate_fn: DebugInstantiate,
+        deserialize_fn: Option<DebugExpr>,
         metadata: HydroIrMetadata,
     },
 
@@ -920,103 +1111,33 @@ pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
 pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
 impl HydroNode {
-    #[cfg(feature = "build")]
-    pub fn compile_network<'a, D>(
-        &mut self,
-        compile_env: &D::CompileEnv,
-        seen_tees: &mut SeenTees,
-        seen_tee_locations: &mut SeenTeeLocations,
-        nodes: &HashMap<usize, D::Process>,
-        clusters: &HashMap<usize, D::Cluster>,
-        externals: &HashMap<usize, D::External>,
-    ) where
-        D: Deploy<'a>,
-    {
-        let mut curr_location = None;
-
-        self.transform_bottom_up(
-            &mut |n| {
-                if let HydroNode::Network {
-                    from_key,
-                    to_location,
-                    to_key,
-                    instantiate_fn,
-                    ..
-                } = n
-                {
-                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                        DebugInstantiate::Building => instantiate_network::<D>(
-                            curr_location.as_ref().unwrap(),
-                            *from_key,
-                            to_location,
-                            *to_key,
-                            nodes,
-                            clusters,
-                            externals,
-                            compile_env,
-                        ),
-
-                        DebugInstantiate::Finalized(_) => panic!("network already finalized"),
-                    };
-
-                    *instantiate_fn = DebugInstantiateFinalized {
-                        sink: sink_expr,
-                        source: source_expr,
-                        connect_fn: Some(connect_fn),
-                    }
-                    .into();
-                }
-
-                // Calculate location of current node to use as from_location
-                match n {
-                    HydroNode::Network {
-                        to_location: location_kind,
-                        ..
-                    }
-                    | HydroNode::CycleSource { location_kind, .. }
-                    | HydroNode::Source { location_kind, .. } => {
-                        curr_location = Some(location_kind.root().clone());
-                    }
-                    HydroNode::Tee { inner, .. } => {
-                        if let Some(tee_location) = seen_tee_locations.get(&inner.as_ptr()) {
-                            curr_location = Some(tee_location.clone());
-                        } else {
-                            seen_tee_locations
-                                .insert(inner.as_ptr(), curr_location.as_ref().unwrap().clone());
-                        }
-                    }
-                    _ => {}
-                }
-            },
-            seen_tees,
-        );
-    }
-
-    pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
-        self.transform_bottom_up(
-            &mut |n| {
-                if let HydroNode::Network { instantiate_fn, .. } = n {
-                    match instantiate_fn {
-                        DebugInstantiate::Building => panic!("network not built"),
-
-                        DebugInstantiate::Finalized(finalized) => {
-                            (finalized.connect_fn.take().unwrap())();
-                        }
-                    }
-                }
-            },
-            seen_tees,
-        );
-    }
-
     pub fn transform_bottom_up(
         &mut self,
         transform: &mut impl FnMut(&mut HydroNode),
         seen_tees: &mut SeenTees,
+        check_well_formed: bool,
     ) {
-        self.transform_children(|n, s| n.transform_bottom_up(transform, s), seen_tees);
+        self.transform_children(
+            |n, s| n.transform_bottom_up(transform, s, check_well_formed),
+            seen_tees,
+        );
 
         transform(self);
+
+        let self_location = self.metadata().location_kind.root();
+
+        if check_well_formed {
+            match &*self {
+                HydroNode::Network { .. } => {}
+                _ => {
+                    self.input_metadata().iter().for_each(|i| {
+                        if i.location_kind.root() != self_location {
+                            panic!("Mismatching IR locations, node: {:?}", self)
+                        }
+                    });
+                }
+            }
+        }
     }
 
     #[inline(always)]
@@ -1030,7 +1151,9 @@ impl HydroNode {
                 panic!();
             }
 
-            HydroNode::Source { .. } | HydroNode::CycleSource { .. } => {}
+            HydroNode::Source { .. }
+            | HydroNode::CycleSource { .. }
+            | HydroNode::ExternalInput { .. } => {}
 
             HydroNode::Tee { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
@@ -1094,22 +1217,12 @@ impl HydroNode {
     pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
-            HydroNode::Source {
-                source,
-                location_kind,
-                metadata,
-            } => HydroNode::Source {
+            HydroNode::Source { source, metadata } => HydroNode::Source {
                 source: source.clone(),
-                location_kind: location_kind.clone(),
                 metadata: metadata.clone(),
             },
-            HydroNode::CycleSource {
-                ident,
-                location_kind,
-                metadata,
-            } => HydroNode::CycleSource {
+            HydroNode::CycleSource { ident, metadata } => HydroNode::CycleSource {
                 ident: ident.clone(),
-                location_kind: location_kind.clone(),
                 metadata: metadata.clone(),
             },
             HydroNode::Tee { inner, metadata } => {
@@ -1288,7 +1401,6 @@ impl HydroNode {
             },
             HydroNode::Network {
                 from_key,
-                to_location,
                 to_key,
                 serialize_fn,
                 instantiate_fn,
@@ -1297,12 +1409,26 @@ impl HydroNode {
                 metadata,
             } => HydroNode::Network {
                 from_key: *from_key,
-                to_location: to_location.clone(),
                 to_key: *to_key,
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ExternalInput {
+                from_location,
+                from_key,
+                to_key,
+                instantiate_fn,
+                deserialize_fn,
+                metadata,
+            } => HydroNode::ExternalInput {
+                from_location: from_location.clone(),
+                from_key: *from_key,
+                to_key: *to_key,
+                instantiate_fn: instantiate_fn.clone(),
+                deserialize_fn: deserialize_fn.clone(),
                 metadata: metadata.clone(),
             },
             HydroNode::Counter {
@@ -1397,11 +1523,9 @@ impl HydroNode {
             }
 
             HydroNode::Source {
-                source,
-                location_kind,
-                ..
+                source, metadata, ..
             } => {
-                let location_id = match location_kind.clone() {
+                let location_id = match metadata.location_kind.root().clone() {
                     LocationId::Process(id) => id,
                     LocationId::Cluster(id) => id,
                     LocationId::Tick(_, _) => panic!(),
@@ -1455,16 +1579,9 @@ impl HydroNode {
             }
 
             HydroNode::CycleSource {
-                ident,
-                location_kind,
-                ..
+                ident, metadata, ..
             } => {
-                let location_id = *match location_kind.root() {
-                    LocationId::Process(id) => id,
-                    LocationId::Cluster(id) => id,
-                    LocationId::Tick(_, _) => panic!(),
-                    LocationId::External(_) => panic!(),
-                };
+                let location_id = metadata.location_kind.root().raw_id();
 
                 let ident = ident.clone();
 
@@ -2146,23 +2263,18 @@ impl HydroNode {
 
             HydroNode::Network {
                 from_key: _,
-                to_location,
                 to_key: _,
                 serialize_fn: serialize_pipeline,
                 instantiate_fn,
                 deserialize_fn: deserialize_pipeline,
                 input,
+                metadata,
                 ..
             } => {
                 let (input_ident, input_location_id) =
                     input.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                let to_id = match *to_location {
-                    LocationId::Process(id) => id,
-                    LocationId::Cluster(id) => id,
-                    LocationId::Tick(_, _) => panic!(),
-                    LocationId::External(id) => id,
-                };
+                let to_id = metadata.location_kind.root().raw_id();
 
                 let receiver_stream_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -2199,6 +2311,57 @@ impl HydroNode {
                                 Some(&format!("send{}", next_stmt_id)),
                             );
                         }
+
+                        let receiver_builder = graph_builders.entry(to_id).or_default();
+                        if let Some(deserialize_pipeline) = deserialize_pipeline {
+                            receiver_builder.add_dfir(parse_quote! {
+                                #receiver_stream_ident = source_stream(#source_expr) -> map(#deserialize_pipeline);
+                            }, None, Some(&format!("recv{}", next_stmt_id)));
+                        } else {
+                            receiver_builder.add_dfir(
+                                parse_quote! {
+                                    #receiver_stream_ident = source_stream(#source_expr);
+                                },
+                                None,
+                                Some(&format!("recv{}", next_stmt_id)),
+                            );
+                        }
+                    }
+                    BuildersOrCallback::Callback(_, node_callback) => {
+                        node_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+
+                (receiver_stream_ident, to_id)
+            }
+
+            HydroNode::ExternalInput {
+                from_key: _,
+                to_key: _,
+                instantiate_fn,
+                deserialize_fn: deserialize_pipeline,
+                metadata,
+                ..
+            } => {
+                let to_id = metadata.location_kind.root().raw_id();
+
+                let receiver_stream_ident =
+                    syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        let (_, source_expr) = match instantiate_fn {
+                            DebugInstantiate::Building => (
+                                syn::parse_quote!(DUMMY_SINK),
+                                syn::parse_quote!(DUMMY_SOURCE),
+                            ),
+
+                            DebugInstantiate::Finalized(finalized) => {
+                                (finalized.sink.clone(), finalized.source.clone())
+                            }
+                        };
 
                         let receiver_builder = graph_builders.entry(to_id).or_default();
                         if let Some(deserialize_pipeline) = deserialize_pipeline {
@@ -2313,6 +2476,11 @@ impl HydroNode {
                     transform(deserialize_fn);
                 }
             }
+            HydroNode::ExternalInput { deserialize_fn, .. } => {
+                if let Some(deserialize_fn) = deserialize_fn {
+                    transform(deserialize_fn);
+                }
+            }
             HydroNode::Counter { duration, .. } => {
                 transform(duration);
             }
@@ -2352,6 +2520,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
         }
@@ -2390,6 +2559,7 @@ impl HydroNode {
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
             HydroNode::ReduceKeyed { metadata, .. } => metadata,
+            HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
         }
@@ -2401,6 +2571,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Source { .. }
+            | HydroNode::ExternalInput { .. }
             | HydroNode::CycleSource { .. } // CycleSource and Tee should calculate input metadata in separate special ways
             | HydroNode::Tee { .. } => {
                 vec![]
@@ -2504,7 +2675,8 @@ impl HydroNode {
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
-            HydroNode::Network { to_location, .. } => format!("Network(to {:?})", to_location),
+            HydroNode::Network { .. } => "Network()".to_string(),
+            HydroNode::ExternalInput { .. } => "ExternalInput()".to_string(),
             HydroNode::Counter { tag, duration, .. } => {
                 format!("Counter({:?}, {:?})", tag, duration)
             }
@@ -2519,7 +2691,7 @@ fn instantiate_network<'a, D>(
     from_key: Option<usize>,
     to_location: &LocationId,
     to_key: Option<usize>,
-    nodes: &HashMap<usize, D::Process>,
+    processes: &HashMap<usize, D::Process>,
     clusters: &HashMap<usize, D::Cluster>,
     externals: &HashMap<usize, D::External>,
     compile_env: &D::CompileEnv,
@@ -2529,13 +2701,13 @@ where
 {
     let ((sink, source), connect_fn) = match (from_location, to_location) {
         (LocationId::Process(from), LocationId::Process(to)) => {
-            let from_node = nodes
+            let from_node = processes
                 .get(from)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", from)
                 })
                 .clone();
-            let to_node = nodes
+            let to_node = processes
                 .get(to)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", to)
@@ -2551,7 +2723,7 @@ where
             )
         }
         (LocationId::Process(from), LocationId::Cluster(to)) => {
-            let from_node = nodes
+            let from_node = processes
                 .get(from)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", from)
@@ -2579,7 +2751,7 @@ where
                     panic!("A cluster used in the graph was not instantiated: {}", from)
                 })
                 .clone();
-            let to_node = nodes
+            let to_node = processes
                 .get(to)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", to)
@@ -2627,7 +2799,7 @@ where
                 })
                 .clone();
 
-            let to_node = nodes
+            let to_node = processes
                 .get(to)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", to)
@@ -2654,7 +2826,7 @@ where
             panic!("Cannot send from external to external")
         }
         (LocationId::Process(from), LocationId::External(to)) => {
-            let from_node = nodes
+            let from_node = processes
                 .get(from)
                 .unwrap_or_else(|| {
                     panic!("A process used in the graph was not instantiated: {}", from)
@@ -2700,12 +2872,12 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"248");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
     }
 
     #[test]
     fn hydro_leaf_size() {
-        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"224");
+        insta::assert_snapshot!(size_of::<HydroLeaf>(), @"200");
     }
 
     #[test]

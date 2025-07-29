@@ -49,6 +49,7 @@ pub fn cycle_source_to_sink_input(ir: &mut [HydroLeaf]) -> HashMap<usize, usize>
         &mut |node| {
             link_cycles_node(node, &mut sources);
         },
+        false,
     );
 
     let mut source_to_sink_input = HashMap::new();
@@ -74,20 +75,10 @@ fn inject_location_leaf(
 ) {
     let inputs = leaf.input_metadata();
     let input_metadata = inputs.first().unwrap();
-    let input_id = input_metadata.id.unwrap();
 
     if let Some(location) = id_to_location.borrow().get(&input_metadata.id.unwrap()) {
-        let metadata = leaf.metadata_mut();
-        metadata.location_kind.swap_root(location.clone());
-
-        if let HydroLeaf::CycleSink { location_kind, .. } = leaf {
-            *location_kind = location.clone();
-            println!(
-                "Cycle sink with input {} has location {:?}",
-                input_id,
-                location.clone()
-            );
-        }
+        let metadata: &mut hydro_lang::ir::HydroIrMetadata = leaf.metadata_mut();
+        metadata.location_kind.swap_root(location.root().clone());
     } else {
         println!("Missing location for leaf: {:?}", leaf.print_root());
         *missing_location.borrow_mut() = true;
@@ -112,15 +103,13 @@ fn inject_location_node(
 ) {
     if let Some(op_id) = node.metadata().id {
         let inputs = match node {
-            HydroNode::Source { location_kind, .. }
-            | HydroNode::Network {
-                to_location: location_kind,
-                ..
-            } => {
+            HydroNode::Source { metadata, .. }
+            | HydroNode::ExternalInput { metadata, .. }
+            | HydroNode::Network { metadata, .. } => {
                 // Get location sources from the nodes must have it be correct: Source and Network
                 id_to_location
                     .borrow_mut()
-                    .insert(op_id, location_kind.clone());
+                    .insert(op_id, metadata.location_kind.clone());
                 return;
             }
             HydroNode::Tee { inner, .. } => {
@@ -141,31 +130,29 @@ fn inject_location_node(
         for input in inputs {
             let location = id_to_location.borrow().get(&input).cloned();
             if let Some(location) = location {
-                metadata.location_kind.swap_root(location.clone());
-                id_to_location.borrow_mut().insert(op_id, location.clone());
+                metadata.location_kind.swap_root(location.root().clone());
+                id_to_location
+                    .borrow_mut()
+                    .insert(op_id, metadata.location_kind.clone());
 
                 match node {
                     // Update Persist's location as well (we won't see it during traversal)
                     HydroNode::CrossProduct { left, right, .. }
                     | HydroNode::Join { left, right, .. } => {
-                        inject_location_input_persist(left, location.clone());
-                        inject_location_input_persist(right, location);
+                        inject_location_input_persist(left, location.root().clone());
+                        inject_location_input_persist(right, location.root().clone());
                     }
                     HydroNode::Difference { pos, neg, .. }
                     | HydroNode::AntiJoin { pos, neg, .. } => {
-                        inject_location_input_persist(pos, location.clone());
-                        inject_location_input_persist(neg, location);
+                        inject_location_input_persist(pos, location.root().clone());
+                        inject_location_input_persist(neg, location.root().clone());
                     }
                     HydroNode::Fold { input, .. }
                     | HydroNode::FoldKeyed { input, .. }
                     | HydroNode::Reduce { input, .. }
                     | HydroNode::ReduceKeyed { input, .. }
                     | HydroNode::Scan { input, .. } => {
-                        inject_location_input_persist(input, location);
-                    }
-                    // CycleSource also stores the location outside of its metadata, so update it as well
-                    HydroNode::CycleSource { location_kind, .. } => {
-                        location_kind.swap_root(location);
+                        inject_location_input_persist(input, location.root().clone());
                     }
                     _ => {}
                 }
@@ -199,6 +186,7 @@ pub fn inject_location(ir: &mut [HydroLeaf], cycle_source_to_sink_input: &HashMa
                     cycle_source_to_sink_input,
                 );
             },
+            true,
         );
 
         if !*missing_location.borrow() {

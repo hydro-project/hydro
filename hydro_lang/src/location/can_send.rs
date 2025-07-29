@@ -1,12 +1,9 @@
 use stageleft::quote_type;
 
-use super::{Cluster, ClusterId, External, Location, Process};
+use super::{Cluster, ClusterId, External, Process};
 use crate::stream::NoOrder;
 
-pub trait CanSend<'a, To>: Location<'a>
-where
-    To: Location<'a>,
-{
+pub trait CanSend<'a, To> {
     type In<Type>;
     type Out<Type>;
 

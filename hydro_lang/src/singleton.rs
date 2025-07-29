@@ -34,10 +34,6 @@ where
             _phantom: PhantomData,
         }
     }
-
-    fn location_kind(&self) -> LocationId {
-        self.location.id()
-    }
 }
 
 impl<'a, T, L> From<Singleton<T, L, Bounded>> for Singleton<T, L, Unbounded>
@@ -65,13 +61,11 @@ where
     type Location = Tick<L>;
 
     fn create_source(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
-        let location_id = location.id();
         Singleton::new(
             location.clone(),
             HydroNode::Chain {
                 first: Box::new(HydroNode::CycleSource {
                     ident,
-                    location_kind: location_id,
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 second: initial
@@ -103,7 +97,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             });
@@ -117,12 +110,10 @@ where
     type Location = Tick<L>;
 
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
-        let location_id = location.id();
         Singleton::new(
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                location_kind: location_id,
                 metadata: location.new_node_metadata::<T>(),
             },
         )
@@ -147,7 +138,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             });
@@ -161,13 +151,11 @@ where
     type Location = L;
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
-        let location_id = location.id();
         Singleton::new(
             location.clone(),
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    location_kind: location_id,
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 metadata: location.new_node_metadata::<T>(),
@@ -195,7 +183,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
@@ -641,9 +628,9 @@ mod tests {
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external_process::<()>();
+        let external = flow.external::<()>();
 
-        let (input_send, input) = external.source_external_bincode(&node);
+        let (input_send, input) = node.source_external_bincode(&external);
 
         let node_tick = node.tick();
         let (complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(q!(0)));

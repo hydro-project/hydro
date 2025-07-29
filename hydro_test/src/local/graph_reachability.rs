@@ -29,6 +29,7 @@ pub fn graph_reachability<'a>(
 mod tests {
     use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
+    use hydro_lang::Location;
 
     #[tokio::test]
     #[ignore = "broken because ticks in Hydro are only triggered by external input"]
@@ -36,11 +37,11 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process::<()>();
+        let external = builder.external::<()>();
         let p1 = builder.process();
 
-        let (roots_send, roots) = external.source_external_bincode(&p1);
-        let (edges_send, edges) = external.source_external_bincode(&p1);
+        let (roots_send, roots) = p1.source_external_bincode(&external);
+        let (edges_send, edges) = p1.source_external_bincode(&external);
         let out = super::graph_reachability(&p1, roots, edges);
         let out_recv = out.send_bincode_external(&external);
 

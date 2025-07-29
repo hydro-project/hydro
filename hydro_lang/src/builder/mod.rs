@@ -173,7 +173,7 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn external_process<P>(&self) -> External<'a, P> {
+    pub fn external<P>(&self) -> External<'a, P> {
         let mut next_location_id = self.next_location_id.borrow_mut();
         let id = *next_location_id;
         *next_location_id += 1;

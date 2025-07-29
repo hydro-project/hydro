@@ -15,7 +15,7 @@ pub fn first_ten_distributed<'a>(
     process: &Process<'a, P1>,
     second_process: &Process<'a, P2>,
 ) -> ExternalBincodeSink<String> {
-    let (numbers_external_port, numbers_external) = external.source_external_bincode(process);
+    let (numbers_external_port, numbers_external) = process.source_external_bincode(external);
     numbers_external.for_each(q!(|n| println!("hi: {:?}", n)));
 
     let numbers = process.source_iter(q!(0..10));
@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn first_ten_distributed_ir() {
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process();
+        let external = builder.external();
         let p1 = builder.process();
         let p2 = builder.process();
         super::first_ten_distributed(&external, &p1, &p2);
@@ -49,7 +49,7 @@ mod tests {
         let mut deployment = Deployment::new();
 
         let builder = hydro_lang::FlowBuilder::new();
-        let external = builder.external_process();
+        let external = builder.external();
         let p1 = builder.process();
         let p2 = builder.process();
         let external_port = super::first_ten_distributed(&external, &p1, &p2);

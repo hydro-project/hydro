@@ -145,7 +145,6 @@ where
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
-                location_kind: self.l.id(),
                 metadata: self.new_node_metadata::<T>(),
             },
         )
