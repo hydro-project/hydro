@@ -6,7 +6,7 @@
 use std::fmt::Write;
 use std::io::Result;
 
-use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
+use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid, render_hydro_ir_json};
 use crate::ir::HydroLeaf;
 
 /// Opens Hydro IR leaves as a single mermaid diagram.
@@ -66,6 +66,27 @@ pub fn save_dot(
     save_to_file(content, filename, "hydro_graph.dot", "DOT/Graphviz file")
 }
 
+/// Saves Hydro IR leaves as a JSON file for the new ReactFlow visualizer.
+/// If no filename is provided, saves to temporary directory.
+pub fn save_json(
+    leaves: &[HydroLeaf],
+    filename: Option<&str>,
+    config: Option<HydroWriteConfig>,
+) -> Result<std::path::PathBuf> {
+    let content = render_with_config(leaves, config, render_hydro_ir_json);
+    save_to_file(content, filename, "hydro_graph_visualizer.json", "JSON for ReactFlow visualizer")
+}
+
+/// Opens Hydro IR leaves in the new ReactFlow visualizer in browser.
+/// Generates JSON and opens it via URL encoding in the docs visualizer.
+pub fn open_json_visualizer(
+    leaves: &[HydroLeaf],
+    config: Option<HydroWriteConfig>,
+) -> Result<()> {
+    let json_content = render_with_config(leaves, config, render_hydro_ir_json);
+    open_json_browser(&json_content)
+}
+
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
     // Debug: Print the mermaid source being sent to browser
     println!("=== MERMAID SOURCE BEING SENT TO BROWSER ===");
@@ -95,6 +116,39 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
         write!(url, "%{:02x}", byte).unwrap();
     }
     webbrowser::open(&url)
+}
+
+fn open_json_browser(json_content: &str) -> Result<()> {
+    #[cfg(feature = "viz")]
+    {
+        use data_encoding::BASE64URL_NOPAD;
+        
+        // Encode the JSON data for URL  
+        let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
+        
+        // Try localhost first (for development), then fall back to docs site
+        let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
+        let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
+        
+        // Try to open localhost first
+        match webbrowser::open(&localhost_url) {
+            Ok(_) => {
+                println!("Opened new ReactFlow visualizer (localhost): {}", localhost_url);
+            }
+            Err(_) => {
+                // If localhost fails, try the main docs site
+                webbrowser::open(&docs_url)?;
+                println!("Opened new ReactFlow visualizer: {}", docs_url);
+            }
+        }
+    }
+    
+    #[cfg(not(feature = "viz"))]
+    {
+        println!("viz feature not enabled, cannot open browser");
+    }
+    
+    Ok(())
 }
 
 /// Helper function to create a complete HTML file with ReactFlow.js visualization and open it in browser.

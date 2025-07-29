@@ -154,8 +154,8 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
  */
 export function createStyledEdge(edge) {
   return {
-    ...edge,
     ...DEFAULT_EDGE_OPTIONS,
+    ...edge,
   };
 }
 

@@ -4,7 +4,7 @@ use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
-pub use super::graphviz::{HydroDot, escape_dot};
+pub use super::graphviz::{HydroDot, HydroJson, escape_dot};
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
 pub use super::reactflow::HydroReactFlow;
@@ -942,6 +942,9 @@ write_hydro_ir!(
     HydroReactFlow<_>,
     HydroReactFlow::new
 );
+
+render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
+write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
 
 fn write_hydro_ir_graph<W>(
     mut graph_write: W,
