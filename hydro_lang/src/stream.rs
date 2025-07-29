@@ -1956,8 +1956,8 @@ where
     ///     .reduce_keyed_watermark_commutative_idempotent(watermark, q!(|acc, x| *acc |= x))
     ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // (2, false)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, false));
+    /// // (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
     /// ```
     pub fn reduce_keyed_watermark_commutative_idempotent<O2, F>(
@@ -2206,8 +2206,8 @@ where
     ///     .reduce_keyed_watermark_idempotent(watermark, q!(|acc, x| *acc |= x))
     ///     .all_ticks()
     /// # }, |mut stream| async move {
-    /// // (2, false)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, false));
+    /// // (2, true)
+    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
     /// ```
     pub fn reduce_keyed_watermark_idempotent<O2, F>(
@@ -2939,7 +2939,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures::StreamExt;
+    use futures::{SinkExt, StreamExt};
     use hydro_deploy::Deployment;
     use serde::{Deserialize, Serialize};
     use stageleft::q;
@@ -3056,5 +3056,59 @@ mod tests {
         deployment.start().await.unwrap();
 
         assert_eq!(out.next().await.unwrap(), (2, 204));
+    }
+
+    #[tokio::test]
+    async fn reduce_keyed_watermark_garbage_collect() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external_process::<()>();
+        let (tick_send, tick_trigger) = external.source_external_bincode(&node);
+
+        let node_tick = node.tick();
+        let (watermark_complete_cycle, watermark) =
+            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
+        let next_watermark = watermark.clone().map(q!(|v| v + 1));
+        watermark_complete_cycle.complete_next_tick(next_watermark);
+
+        let sum = unsafe {
+            let tick_triggered_input = node
+                .source_iter(q!([(3, 103)]))
+                .tick_batch(&node_tick)
+                .continue_if(tick_trigger.clone().tick_batch(&node_tick).first());
+            node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+                .tick_batch(&node_tick)
+                .chain(tick_triggered_input)
+                .persist()
+                .reduce_keyed_watermark(
+                    watermark,
+                    q!(|acc, v| {
+                        *acc += v;
+                    }),
+                )
+        }
+        .all_ticks()
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_default_optimize()
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut tick_send = nodes.connect_sink_bincode(tick_send).await;
+        let mut out_recv = nodes.connect_source_bincode(sum).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(out_recv.next().await.unwrap(), (2, 204));
+
+        tick_send.send(()).await.unwrap();
+
+        assert_eq!(out_recv.next().await.unwrap(), (3, 103));
     }
 }
