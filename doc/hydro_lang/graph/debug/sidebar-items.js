@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["open_dot","open_json_visualizer","open_mermaid","open_reactflow_browser","save_and_open_reactflow_browser","save_dot","save_json","save_mermaid","save_reactflow_json"]};
+window.SIDEBAR_ITEMS = {"fn":["open_dot","open_mermaid","open_reactflow_browser","save_and_open_reactflow_browser","save_dot","save_mermaid","save_reactflow_json"]};
