@@ -341,7 +341,10 @@ impl Host for GcpComputeEngineHost {
             // So no uppercase, no colons, no underscores, and no more than 61 chars
             self.display_name
                 .clone()
-                .map_or(String::new(), |name| format!("-{}", name.split("::").last().unwrap().to_lowercase()))
+                .map_or(String::new(), |name| format!(
+                    "-{}",
+                    name.split("::").last().unwrap().to_lowercase()
+                ))
         );
 
         let mut tags = vec![];
