@@ -157,12 +157,10 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn compile(mut self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
-        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 env,
                 &mut seen_tees,
-                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -216,12 +214,10 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
-        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &(),
                 &mut seen_tees_instantiate,
-                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -271,7 +267,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
                     external.instantiate(
                         env,
                         &mut meta,
-                        compiled.remove(&external_id).unwrap(),
+                        Default::default(),
                         extra_stmts.remove(&external_id).unwrap_or_default(),
                     );
                     (external_id, external)

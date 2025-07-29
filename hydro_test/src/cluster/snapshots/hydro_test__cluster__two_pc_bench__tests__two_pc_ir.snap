@@ -7,12 +7,6 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_1,
         },
-        location_kind: Tick(
-            1,
-            Process(
-                0,
-            ),
-        ),
         input: DeferTick {
             input: AntiJoin {
                 pos: Tee {
@@ -21,12 +15,6 @@ expression: built.ir()
                             ident: Ident {
                                 sym: cycle_1,
                             },
-                            location_kind: Tick(
-                                1,
-                                Process(
-                                    0,
-                                ),
-                            ),
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
                                     1,
@@ -46,9 +34,6 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                     input: Network {
                                         from_key: None,
-                                        to_location: Process(
-                                            0,
-                                        ),
                                         to_key: None,
                                         serialize_fn: Some(
                                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -59,9 +44,6 @@ expression: built.ir()
                                         ),
                                         input: Network {
                                             from_key: None,
-                                            to_location: Cluster(
-                                                1,
-                                            ),
                                             to_key: None,
                                             serialize_fn: Some(
                                                 :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -74,9 +56,6 @@ expression: built.ir()
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , std :: iter :: Map < std :: slice :: Iter < hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > > , _ > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; let ids__free = unsafe { :: std :: mem :: transmute :: < _ , & [hydro_lang :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant >] > (__hydro_lang_cluster_ids_1) } ; | v | { ids__free . iter () . map (move | id | (* id , v . clone ())) } }),
                                                 input: Network {
                                                     from_key: None,
-                                                    to_location: Process(
-                                                        0,
-                                                    ),
                                                     to_key: None,
                                                     serialize_fn: Some(
                                                         :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -89,9 +68,6 @@ expression: built.ir()
                                                         ident: Ident {
                                                             sym: cycle_0,
                                                         },
-                                                        location_kind: Cluster(
-                                                            2,
-                                                        ),
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Cluster(
                                                                 2,
@@ -300,12 +276,6 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_2,
         },
-        location_kind: Tick(
-            1,
-            Process(
-                0,
-            ),
-        ),
         input: DeferTick {
             input: AntiJoin {
                 pos: Tee {
@@ -314,12 +284,6 @@ expression: built.ir()
                             ident: Ident {
                                 sym: cycle_2,
                             },
-                            location_kind: Tick(
-                                1,
-                                Process(
-                                    0,
-                                ),
-                            ),
                             metadata: HydroIrMetadata {
                                 location_kind: Tick(
                                     1,
@@ -339,9 +303,6 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc :: Participant > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: stream :: * ; | (_ , b) | b }),
                                     input: Network {
                                         from_key: None,
-                                        to_location: Process(
-                                            0,
-                                        ),
                                         to_key: None,
                                         serialize_fn: Some(
                                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -352,9 +313,6 @@ expression: built.ir()
                                         ),
                                         input: Network {
                                             from_key: None,
-                                            to_location: Cluster(
-                                                1,
-                                            ),
                                             to_key: None,
                                             serialize_fn: Some(
                                                 :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , u32))) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -572,9 +530,6 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_0,
         },
-        location_kind: Cluster(
-            2,
-        ),
         input: Chain {
             first: FlatMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: iter :: Map < std :: ops :: Range < usize > , _ > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: ClusterId :: < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > :: from_raw (__hydro_lang_cluster_self_id_2) ; let num_clients_per_node__free = 100usize ; move | _ | (0 .. num_clients_per_node__free) . map (move | i | ((CLUSTER_SELF_ID__free . raw_id * (num_clients_per_node__free as u32)) + i as u32 , 0)) }),
@@ -582,9 +537,6 @@ expression: built.ir()
                     inner: <tee 8>: Source {
                         source: Iter(
                             { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; () } ; [e__free] },
-                        ),
-                        location_kind: Cluster(
-                            2,
                         ),
                         metadata: HydroIrMetadata {
                             location_kind: Tick(
@@ -627,9 +579,6 @@ expression: built.ir()
                 input: Tee {
                     inner: <tee 9>: Network {
                         from_key: None,
-                        to_location: Cluster(
-                            2,
-                        ),
                         to_key: None,
                         serialize_fn: Some(
                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: ClusterId < _ > , (u32 , u32)) , _ > (| (id , data) | { (id . raw_id , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
@@ -710,12 +659,6 @@ expression: built.ir()
         ident: Ident {
             sym: cycle_3,
         },
-        location_kind: Tick(
-            0,
-            Cluster(
-                2,
-            ),
-        ),
         input: DeferTick {
             input: ReduceKeyed {
                 f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: time :: Instant , std :: time :: Instant , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr_time , new_time | { if new_time > * curr_time { * curr_time = new_time ; } } }),
@@ -726,12 +669,6 @@ expression: built.ir()
                                 ident: Ident {
                                     sym: cycle_3,
                                 },
-                                location_kind: Tick(
-                                    0,
-                                    Cluster(
-                                        2,
-                                    ),
-                                ),
                                 metadata: HydroIrMetadata {
                                     location_kind: Tick(
                                         0,
@@ -915,9 +852,6 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: cluster :: cluster_id :: ClusterId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 >) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (id , histogram) | (id , histogram . histogram . borrow_mut () . clone ()) }),
                                     input: Network {
                                         from_key: None,
-                                        to_location: Process(
-                                            3,
-                                        ),
                                         to_key: None,
                                         serialize_fn: Some(
                                             :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -1018,9 +952,6 @@ expression: built.ir()
                                                             input: Source {
                                                                 source: Stream(
                                                                     { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                                ),
-                                                                location_kind: Cluster(
-                                                                    2,
                                                                 ),
                                                                 metadata: HydroIrMetadata {
                                                                     location_kind: Cluster(
@@ -1162,9 +1093,6 @@ expression: built.ir()
                             source: Stream(
                                 { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                             ),
-                            location_kind: Process(
-                                3,
-                            ),
                             metadata: HydroIrMetadata {
                                 location_kind: Process(
                                     3,
@@ -1245,9 +1173,6 @@ expression: built.ir()
                             input: Persist {
                                 inner: Network {
                                     from_key: None,
-                                    to_location: Process(
-                                        3,
-                                    ),
                                     to_key: None,
                                     serialize_fn: Some(
                                         :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -1313,9 +1238,6 @@ expression: built.ir()
                                                                                             input: Source {
                                                                                                 source: Stream(
                                                                                                     { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                                                                ),
-                                                                                                location_kind: Cluster(
-                                                                                                    2,
                                                                                                 ),
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_kind: Cluster(
@@ -1513,9 +1435,6 @@ expression: built.ir()
                                                         source: Stream(
                                                             { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                                                         ),
-                                                        location_kind: Cluster(
-                                                            2,
-                                                        ),
                                                         metadata: HydroIrMetadata {
                                                             location_kind: Cluster(
                                                                 2,
@@ -1637,9 +1556,6 @@ expression: built.ir()
                         input: Source {
                             source: Stream(
                                 { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                            ),
-                            location_kind: Process(
-                                3,
                             ),
                             metadata: HydroIrMetadata {
                                 location_kind: Process(

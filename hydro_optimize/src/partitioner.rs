@@ -295,14 +295,6 @@ fn replace_process_node_location(node: &mut HydroNode, partitioner: &Partitioner
     if let Some(new_id) = new_cluster_id {
         // Change any HydroNodes with a location field
         match node {
-            HydroNode::Source { location_kind, .. }
-            | HydroNode::CycleSource { location_kind, .. }
-            | HydroNode::Network {
-                to_location: location_kind,
-                ..
-            } => {
-                replace_process_location_id(location_kind, *location_id, *new_id);
-            }
             // Update Persist's location as well (we won't see it during traversal)
             HydroNode::CrossProduct { left, right, .. } | HydroNode::Join { left, right, .. } => {
                 replace_process_input_persist_location_id(left, *location_id, *new_id);
@@ -340,11 +332,6 @@ fn replace_process_leaf_location(leaf: &mut HydroLeaf, partitioner: &Partitioner
     } = partitioner;
 
     if let Some(new_id) = new_cluster_id {
-        // Change any HydroLeafs with a location field
-        if let HydroLeaf::CycleSink { location_kind, .. } = leaf {
-            replace_process_location_id(location_kind, *location_id, *new_id);
-        }
-
         // Modify the metadata
         replace_process_location_id(
             &mut leaf.metadata_mut().location_kind,
