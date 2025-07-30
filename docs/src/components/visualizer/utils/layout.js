@@ -196,3 +196,112 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     throw error; // Let the error bubble up instead of silently falling back
   }
 }
+
+/**
+ * Apply layout readjustment for collapsed containers only
+ * This function will only reposition containers while keeping other nodes fixed
+ */
+export async function applyLayoutForCollapsedContainers(displayNodes, edges, layoutType = 'mrtree', changedContainerId = null) {
+  const elk = await loadELK();
+  
+  if (!elk) {
+    console.error('ELK not available for container layout');
+    throw new Error('ELK layout engine failed to load');
+  }
+
+  // Find only container nodes for repositioning (both group and collapsedContainer types)
+  const containerNodes = displayNodes.filter(node => 
+    node.type === 'group' || node.type === 'collapsedContainer'
+  );
+  
+  if (containerNodes.length === 0) {
+    return { nodes: displayNodes, edges };
+  }
+
+  // Create ELK nodes for containers only
+  const elkContainers = containerNodes.map(container => {
+    let width, height;
+    
+    // Check if this is a collapsed container and use appropriate dimensions
+    if (container.type === 'collapsedContainer') {
+      // Use the small collapsed dimensions
+      width = container.width || 180;
+      height = container.height || 60;
+    } else {
+      // Use the original large dimensions for expanded containers
+      width = parseFloat(container.style?.width?.toString().replace('px', '')) || 400;
+      height = parseFloat(container.style?.height?.toString().replace('px', '')) || 300;
+    }
+    
+    const elkContainer = {
+      id: container.id,
+      width: width,
+      height: height,
+    };
+    
+    // If this container wasn't the one that changed, try to keep its position fixed
+    if (changedContainerId && container.id !== changedContainerId) {
+      elkContainer.x = container.position.x;
+      elkContainer.y = container.position.y;
+      elkContainer.layoutOptions = {
+        'elk.position.x': container.position.x.toString(),
+        'elk.position.y': container.position.y.toString(),
+        'elk.nodeSize.constraints': 'FIXED_POS',
+        'elk.nodeSize.options': 'FIXED_POS'
+      };
+    } else {
+      // Allow the changed container to find a new position
+      elkContainer.layoutOptions = {
+        'elk.nodeSize.constraints': '',
+        'elk.nodeSize.options': ''
+      };
+    }
+    
+    return elkContainer;
+  });
+
+  // Create simple ELK graph for container layout
+  const elkGraph = {
+    id: 'container_root',
+    layoutOptions: {
+      ...ELK_LAYOUT_CONFIGS[layoutType],
+      'elk.spacing.nodeNode': 80, // Reduced spacing for better collapsed container layout
+      'elk.spacing.componentComponent': 60, // Reduced spacing
+      'elk.partitioning.activate': 'false'
+    },
+    children: elkContainers,
+    edges: [] // No edges needed for simple container repositioning
+  };
+
+  try {
+    const layoutResult = await elk.layout(elkGraph);
+    
+    // Apply new positions only to container nodes in displayNodes
+    const updatedDisplayNodes = displayNodes.map(node => {
+      if (node.type === 'group' || node.type === 'collapsedContainer') {
+        const elkContainer = layoutResult.children?.find(c => c.id === node.id);
+        if (elkContainer) {
+          // Only update position if this was the changed container OR if no specific container was changed
+          if (!changedContainerId || node.id === changedContainerId) {
+            return {
+              ...node,
+              position: {
+                x: elkContainer.x || node.position.x,
+                y: elkContainer.y || node.position.y
+              }
+            };
+          }
+        }
+      }
+      return node;
+    });
+    
+    return {
+      nodes: updatedDisplayNodes,
+      edges: edges,
+    };
+  } catch (error) {
+    console.error('Container layout with ELK failed:', error);
+    return { nodes: displayNodes, edges }; // Fallback to original
+  }
+}

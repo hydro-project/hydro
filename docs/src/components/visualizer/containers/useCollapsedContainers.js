@@ -8,9 +8,11 @@ import { filterNodesByType } from '../utils/constants.js';
 
 export function useCollapsedContainers(nodes) {
   const [collapsedContainers, setCollapsedContainers] = useState(new Set());
+  const [lastChangedContainer, setLastChangedContainer] = useState(null);
 
   // Toggle a container's collapsed state
   const toggleContainer = useCallback((containerId) => {
+    setLastChangedContainer(containerId);
     setCollapsedContainers(prev => {
       const newSet = new Set(prev);
       if (newSet.has(containerId)) {
@@ -46,11 +48,13 @@ export function useCollapsedContainers(nodes) {
   // Collapse all containers
   const collapseAll = useCallback(() => {
     const groupNodes = filterNodesByType(nodes, 'group');
+    setLastChangedContainer(null); // No specific container when collapsing all
     setCollapsedContainers(new Set(groupNodes.map(node => node.id)));
   }, [nodes]);
 
   // Expand all containers
   const expandAll = useCallback(() => {
+    setLastChangedContainer(null); // No specific container when expanding all
     setCollapsedContainers(new Set());
   }, []);
 
@@ -62,5 +66,6 @@ export function useCollapsedContainers(nodes) {
     collapseAll,
     expandAll,
     hasCollapsedContainers: collapsedContainers.size > 0,
+    lastChangedContainer,
   };
 }
