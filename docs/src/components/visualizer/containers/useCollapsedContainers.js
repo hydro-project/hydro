@@ -4,23 +4,20 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
+import { filterNodesByType } from '../utils/constants.js';
 
 export function useCollapsedContainers(nodes) {
   const [collapsedContainers, setCollapsedContainers] = useState(new Set());
 
   // Toggle a container's collapsed state
   const toggleContainer = useCallback((containerId) => {
-    console.log('toggleContainer called with:', containerId);
     setCollapsedContainers(prev => {
       const newSet = new Set(prev);
       if (newSet.has(containerId)) {
-        console.log('Expanding container:', containerId);
         newSet.delete(containerId);
       } else {
-        console.log('Collapsing container:', containerId);
         newSet.add(containerId);
       }
-      console.log('New collapsed containers:', Array.from(newSet));
       return newSet;
     });
   }, []);
@@ -48,7 +45,7 @@ export function useCollapsedContainers(nodes) {
 
   // Collapse all containers
   const collapseAll = useCallback(() => {
-    const groupNodes = nodes.filter(node => node.type === 'group');
+    const groupNodes = filterNodesByType(nodes, 'group');
     setCollapsedContainers(new Set(groupNodes.map(node => node.id)));
   }, [nodes]);
 

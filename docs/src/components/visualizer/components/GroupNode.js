@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import { COLORS } from '../utils/constants.js';
 
 export function GroupNode(props) {
   // In ReactFlow v12, custom components receive: id, data, width, height
@@ -78,17 +79,17 @@ export function GroupNode(props) {
   }
 
   function getBorderColor(nodeId) {
-    if (nodeId === 'cloud') return '3px solid rgb(59, 130, 246)';
-    if (nodeId === 'region') return '3px solid rgb(16, 185, 129)';
-    if (nodeId?.startsWith('az')) return '3px solid rgb(245, 158, 11)';
-    return '3px solid rgb(59, 130, 246)'; // default
+    if (nodeId === 'cloud') return `3px solid ${COLORS.DEFAULT_BLUE}`;
+    if (nodeId === 'region') return `3px solid ${COLORS.DEFAULT_GREEN}`;
+    if (nodeId?.startsWith('az')) return `3px solid ${COLORS.DEFAULT_ORANGE}`;
+    return `3px solid ${COLORS.DEFAULT_BLUE}`; // default
   }
 
   function getTextColor(nodeId) {
-    if (nodeId === 'cloud') return 'rgb(59, 130, 246)';
-    if (nodeId === 'region') return 'rgb(16, 185, 129)';
-    if (nodeId?.startsWith('az')) return 'rgb(245, 158, 11)';
-    return 'rgb(59, 130, 246)'; // default
+    if (nodeId === 'cloud') return COLORS.DEFAULT_BLUE;
+    if (nodeId === 'region') return COLORS.DEFAULT_GREEN;
+    if (nodeId?.startsWith('az')) return COLORS.DEFAULT_ORANGE;
+    return COLORS.DEFAULT_BLUE; // default
   }
   
   return (
@@ -101,7 +102,7 @@ export function GroupNode(props) {
           fontSize: '14px',
           fontWeight: 'bold',
           color: getTextColor(id),
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          backgroundColor: COLORS.WHITE_ALPHA,
           padding: '4px 8px',
           borderRadius: '4px',
           border: `1px solid ${getTextColor(id)}`,

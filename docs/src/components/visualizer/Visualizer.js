@@ -4,12 +4,10 @@
  * A simplified, flat graph visualizer using ReactFlow v12 and ELK layout.
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   useNodesState, 
-  useEdgesState,
-  applyNodeChanges, 
-  applyEdgeChanges 
+  useEdgesState
 } from '@xyflow/react';
 import { applyLayout } from './utils/layout.js';
 import { LayoutControls } from './components/LayoutControls.js';
@@ -18,6 +16,7 @@ import { ReactFlowInner } from './components/ReactFlowInner.js';
 import { processGraphData } from './utils/reactFlowConfig.js';
 import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
 import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containers/containerLogic.js';
+import { isValidGraphData, getUniqueNodesById } from './utils/constants.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function Visualizer({ graphData }) {
@@ -52,9 +51,7 @@ export function Visualizer({ graphData }) {
 
   // Handle node clicks for expanding/collapsing containers
   const handleNodeClick = useCallback((event, node) => {
-    console.log('Node clicked:', node.id, node.type);
     if (node.type === 'group' || node.type === 'collapsedContainer') {
-      console.log('Toggling container:', node.id);
       event.stopPropagation();
       toggleContainer(node.id);
     }
@@ -62,12 +59,11 @@ export function Visualizer({ graphData }) {
 
   // Process graph data and apply layout with proper memoization
   useEffect(() => {
-    console.log('[DEBUG] useEffect triggered for graphData change');
     
     let isCancelled = false;
     
     const processGraph = async () => {
-      if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+      if (!isValidGraphData(graphData)) {
         if (!isCancelled) {
           setNodes([]);
           setEdges([]);
@@ -83,11 +79,8 @@ export function Visualizer({ graphData }) {
         if (isCancelled) return; // Don't update state if component unmounted or effect cancelled
         
         // Ensure nodes have unique IDs to prevent ReactFlow duplication
-        const uniqueNodes = result.nodes.filter((node, index, array) => 
-          array.findIndex(n => n.id === node.id) === index
-        );
+        const uniqueNodes = getUniqueNodesById(result.nodes);
         
-        console.log(`[DEBUG] Deduplication: ${result.nodes.length} -> ${uniqueNodes.length} nodes`);
         
         setNodes(uniqueNodes);
         setEdges(result.edges);
@@ -117,7 +110,6 @@ export function Visualizer({ graphData }) {
   useEffect(() => {
     if (nodes.length === 0) return; // Don't process if no nodes
     
-    console.log('Applying collapsed container changes');
     
     const collapsedArray = Array.from(collapsedContainers);
     const processedNodes = processCollapsedContainers(nodes, collapsedArray);
@@ -149,7 +141,6 @@ export function Visualizer({ graphData }) {
     }) || processedEdges.length !== edges.length;
     
     if (hasNodeChanges || hasEdgeChanges) {
-      console.log('Updating nodes/edges with collapsed container changes');
       if (hasNodeChanges) {
         setNodes(processedNodes);
       }
@@ -160,7 +151,6 @@ export function Visualizer({ graphData }) {
       // Force ReactFlow to update node internals (dimensions, etc.)
       setTimeout(() => {
         if (window.reactFlowInstance) {
-          console.log('Forcing ReactFlow to update node internals');
           processedNodes.forEach(node => {
             if (node.type === 'collapsedContainer') {
               window.reactFlowInstance.updateNodeInternals(node.id);
@@ -186,7 +176,6 @@ export function Visualizer({ graphData }) {
   
   // Only log occasionally to avoid infinite loops
   if (nodeTypeCounts.total > 0 && Math.random() < 0.1) {
-    console.log(`[DEBUG] Node types:`, nodeTypeCounts);
   }
 
   return (

@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
+import { COLORS } from '../utils/constants.js';
 import styles from '../../../pages/visualizer.module.css';
 
 export function FileDropZone({ onFileLoad, hasData }) {
@@ -69,7 +70,7 @@ export function FileDropZone({ onFileLoad, hasData }) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      style={{ backgroundColor: '#fff', border: '3px dashed #ccc' }}
+      style={{ backgroundColor: COLORS.WHITE, border: `3px dashed ${COLORS.GRAY_LIGHT}` }}
     >
       <div className={styles.dropContent}>
         <h3>Hydro Graph Visualizer</h3>

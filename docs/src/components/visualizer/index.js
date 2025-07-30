@@ -5,7 +5,6 @@
  */
 
 export { Visualizer } from './Visualizer.js';
-export { GraphCanvas } from './components/GraphCanvas.js';
 export { ReactFlowVisualization } from './ReactFlowVisualization.js';
 export { FileDropZone } from './components/FileDropZone.js';
 
@@ -13,7 +12,6 @@ export { FileDropZone } from './components/FileDropZone.js';
 export { 
   useCollapsedContainers, 
   CollapsedContainerNode,
-  CollapsedContainerWrapper,
   processCollapsedContainers,
   rerouteEdgesForCollapsedContainers
 } from './containers/index.js';

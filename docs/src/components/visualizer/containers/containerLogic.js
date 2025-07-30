@@ -9,7 +9,6 @@
  */
 export function processCollapsedContainers(nodes, collapsedContainerIds) {
   const collapsedSet = new Set(collapsedContainerIds);
-  console.log('processCollapsedContainers - collapsedSet:', Array.from(collapsedSet));
   
   // Helper function to count leaf nodes recursively within a container
   function countLeafNodes(containerId, nodes) {
@@ -51,24 +50,19 @@ export function processCollapsedContainers(nodes, collapsedContainerIds) {
   return nodes.map(node => {
     // Handle group container nodes that should be collapsed
     if (node.type === 'group' && collapsedSet.has(node.id)) {
-      console.log('Creating collapsed container for:', node.id);
       const leafNodeCount = countLeafNodes(node.id, nodes);
       const collapsed = createCollapsedContainer(node, leafNodeCount);
-      console.log('Collapsed container created:', collapsed, 'with', leafNodeCount, 'leaf nodes');
       return collapsed;
     }
     
     // Handle collapsed containers that should be expanded
     if (node.type === 'collapsedContainer' && !collapsedSet.has(node.id)) {
-      console.log('Expanding collapsed container:', node.id);
       const expanded = restoreExpandedContainer(node);
-      console.log('Expanded container restored:', expanded);
       return expanded;
     }
     
     // Handle child nodes - hide them if ANY ancestor is collapsed (recursive)
     if (isNodeHiddenByAncestor(node, nodes)) {
-      console.log('Hiding node:', node.id, 'due to collapsed ancestor');
       return {
         ...node,
         hidden: true,
@@ -81,7 +75,7 @@ export function processCollapsedContainers(nodes, collapsedContainerIds) {
       hidden: false,
     };
     if (node.type === 'group') {
-      console.log('Keeping expanded group node:', node.id);
+      // Keep expanded group node without logging
     }
     return result;
   });
@@ -97,13 +91,9 @@ function createCollapsedContainer(groupNode, nodeCount = 0) {
   
   // Collapsed size should be much smaller - based on label length but capped
   const labelLength = groupNode.data?.label?.length || 10;
-  const collapsedWidth = Math.max(120, Math.min(200, labelLength * 8)); // Smaller range
-  const collapsedHeight = 40; // Much smaller height
-  
-  console.log('createCollapsedContainer - original width:', originalWidth, 'new width:', collapsedWidth);
-  console.log('createCollapsedContainer - original height:', originalHeight, 'new height:', collapsedHeight);
-  console.log('createCollapsedContainer - original type:', groupNode.type, 'new type: collapsedContainer');
-  
+  const collapsedWidth = Math.min(180, originalWidth * 0.3);
+  const collapsedHeight = Math.min(60, originalHeight * 0.2);
+
   return {
     ...groupNode,
     type: 'collapsedContainer', // Use a different type to render differently
@@ -142,8 +132,6 @@ function restoreExpandedContainer(collapsedNode) {
   const originalDimensions = collapsedNode.data?.originalDimensions;
   const originalStyle = collapsedNode.data?.nodeStyle;
   
-  console.log('restoreExpandedContainer - restoring to width:', originalDimensions?.width, 'height:', originalDimensions?.height);
-  
   return {
     ...collapsedNode,
     type: 'group', // Change back to group type
@@ -169,7 +157,6 @@ function restoreExpandedContainer(collapsedNode) {
  */
 export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByParent, collapsedContainerIds) {
   const collapsedSet = new Set(collapsedContainerIds);
-  console.log('rerouteEdgesForCollapsedContainers - processing', edges.length, 'edges for', Array.from(collapsedSet));
   
   // Create a set of hidden node IDs for quick lookup
   const hiddenNodeIds = new Set();
@@ -179,12 +166,10 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
     }
   });
   
-  console.log('Hidden nodes:', Array.from(hiddenNodeIds));
   
   return edges.map(edge => {
     // If we're expanding (no collapsed containers), restore any hidden edges
     if (collapsedSet.size === 0 && edge.hidden) {
-      console.log(`Restoring hidden edge ${edge.id}: ${edge.source}->${edge.target}`);
       return {
         ...edge,
         hidden: false,
@@ -207,7 +192,6 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
     // Hide edges that connect ONLY to hidden nodes (both endpoints hidden = internal edge)
     // Don't remove them - just hide them so they can be restored later
     if (hiddenNodeIds.has(edge.source) && hiddenNodeIds.has(edge.target)) {
-      console.log(`Hiding internal edge ${edge.id} because both endpoints are hidden: ${edge.source}->${edge.target}`);
       return {
         ...edge,
         hidden: true,
@@ -234,13 +218,11 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
     
     // Check if source is in a collapsed container
     if (sourceContainer && collapsedSet.has(sourceContainer)) {
-      console.log(`Rerouting edge ${edge.id} source from ${edge.source} to ${sourceContainer}`);
       newSource = sourceContainer;
     }
     
     // Check if target is in a collapsed container
     if (targetContainer && collapsedSet.has(targetContainer)) {
-      console.log(`Rerouting edge ${edge.id} target from ${edge.target} to ${targetContainer}`);
       newTarget = targetContainer;
     }
     
@@ -297,7 +279,6 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
     delete result.targetHandle;
     
     if (result.data.isRerouted || shouldHide) {
-      console.log(`Edge ${result.id}: ${edge.source}->${edge.target} rerouted to ${result.source}->${result.target}, hidden: ${result.hidden}`);
     }
     
     return result;
@@ -384,7 +365,6 @@ function findNodeContainer(nodeId, childNodesByParent, collapsedContainerIds) {
   // Start from the immediate parent and work outward
   for (const containerId of containerHierarchy) {
     if (collapsedSet.has(containerId)) {
-      console.log(`Node ${nodeId} belongs to collapsed container ${containerId} (hierarchy: ${containerHierarchy.join(' -> ')})`);
       return containerId;
     }
   }

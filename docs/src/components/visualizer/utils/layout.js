@@ -12,6 +12,7 @@
  */
 
 import { ELK_LAYOUT_CONFIGS } from './reactFlowConfig.js';
+import { filterNodesByType, filterNodesByParent, filterNodesExcludingType } from './constants.js';
 
 let ELK = null;
 
@@ -40,14 +41,14 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     throw new Error('ELK layout engine failed to load');
   }
 
-  const hierarchyNodes = nodes.filter(node => node.type === 'group');
-  const regularNodes = nodes.filter(node => node.type !== 'group');
+  const hierarchyNodes = filterNodesByType(nodes, 'group');
+  const regularNodes = filterNodesExcludingType(nodes, 'group');
 
   // Build ELK hierarchy structure
   function buildElkHierarchy(parentId = null) {
     const children = [];
     // Add hierarchy containers at this level
-    const containers = hierarchyNodes.filter(node => node.parentId === parentId);
+    const containers = filterNodesByParent(hierarchyNodes, parentId);
     containers.forEach(container => {
       // Recursively build children for this container
       const childElkNodes = buildElkHierarchy(container.id);
@@ -66,7 +67,7 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       children.push(elkContainer);
     });
     // Add regular nodes at this level - let ELK handle sizing
-    const levelNodes = regularNodes.filter(node => node.parentId === parentId);
+    const levelNodes = filterNodesByParent(regularNodes, parentId);
     levelNodes.forEach(node => {
       const elkNode = {
         ...node,  // PRESERVE all original properties (style, data, type, etc.)
