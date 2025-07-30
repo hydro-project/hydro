@@ -29,7 +29,6 @@ cargo smart-release --update-crates-index \
    --no-changelog-preview --allow-fully-generated-changelogs \
    --bump-dependencies auto --bump minor \ # or `patch`, `major`, `keep`, `auto`
    dfir_rs dfir_lang dfir_macro \
-   dfir_datalog dfir_datalog_core \
    hydro_lang hydro_optimize hydro_std \
    hydro_deploy hydro_deploy_integration \
    multiplatform_test
