@@ -7,6 +7,6 @@
 import React from 'react';
 import { Visualizer } from './Visualizer.js';
 
-export function ReactFlowVisualization({ graphData }) {
-  return <Visualizer graphData={graphData} />;
+export function ReactFlowVisualization({ graphData, onControlsReady }) {
+  return <Visualizer graphData={graphData} onControlsReady={onControlsReady} />;
 }

@@ -1,20 +1,10 @@
 /**
- * ReactFlow Inner Compoexport function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, onNodeClick, colorPalette }) {
-  const reactFlowInstance = useReactFlow();
-  
-  // Store instance globally for access from Visualizer
-  React.useEffect(() => {
-    window.reactFlowInstance = reactFlowInstance;
-  }, [reactFlowInstance]);
-
-  const onConnect = useCallback((connection) => {
-    onEdgesChange(addEdge(connection, edges));
-  }, [onEdgesChange, edges]);
+ * ReactFlow Inner Component
  * 
  * Core ReactFlow integration with custom node types
  */
 
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -45,6 +35,20 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
   const miniMapNodeColor = useCallback((node) => {
     return getMiniMapNodeColor(node, colorPalette);
   }, [colorPalette]);
+
+  // Component to handle ReactFlow instance setup - must be inside ReactFlow provider
+  const ReactFlowInstanceHandler = React.memo(() => {
+    const reactFlowInstance = useReactFlow();
+    
+    useEffect(() => {
+      window.reactFlowInstance = reactFlowInstance;
+      return () => {
+        window.reactFlowInstance = null;
+      };
+    }, [reactFlowInstance]);
+
+    return null; // This component doesn't render anything
+  });
 
   // Custom default node component - simplified to fill the container
   const DefaultNode = useCallback((props) => {
@@ -113,7 +117,11 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
         {...REACTFLOW_CONFIG}
         nodesDraggable={true}
+        defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+        minZoom={0.2}
+        maxZoom={2.0}
       >
+        <ReactFlowInstanceHandler />
         <Controls />
         <MiniMap 
           nodeColor={miniMapNodeColor}

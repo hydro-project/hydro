@@ -13,6 +13,7 @@ export default function Visualizer() {
   const location = useLocation();
   const [graphData, setGraphData] = useState(null);
   const [error, setError] = useState(null);
+  const [toolbarControls, setToolbarControls] = useState(null);
 
   // Check for URL-encoded data on component mount
   useEffect(() => {
@@ -63,11 +64,17 @@ export default function Visualizer() {
           <div className={styles.visualizationContainer}>
             <div className={styles.toolbar}>
               <h2>Hydro Graph Visualization</h2>
-              <button onClick={handleClearData} className={styles.clearButton}>
-                Load New Graph
-              </button>
+              <div className={styles.toolbarControls}>
+                {toolbarControls}
+                <button onClick={handleClearData} className={styles.clearButton}>
+                  Load New Graph
+                </button>
+              </div>
             </div>
-            <ReactFlowVisualization graphData={graphData} />
+            <ReactFlowVisualization 
+              graphData={graphData} 
+              onControlsReady={setToolbarControls}
+            />
           </div>
         ) : (
           <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />

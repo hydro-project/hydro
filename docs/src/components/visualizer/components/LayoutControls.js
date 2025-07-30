@@ -32,7 +32,11 @@ export function LayoutControls({
   onExpandAll,
   hierarchyChoices,
   currentGrouping,
-  onGroupingChange
+  onGroupingChange,
+  autoFit,
+  onAutoFitToggle,
+  onFitView,
+  fitViewDisabled
 }) {
   return (
     <div className={styles.layoutControls}>
@@ -69,6 +73,25 @@ export function LayoutControls({
       >
         {hasCollapsedContainers ? '⊞' : '⊟'}
       </button>
+
+      <button 
+        className={styles.fitViewButton}
+        onClick={onFitView}
+        disabled={fitViewDisabled}
+        title={fitViewDisabled ? "Auto Fit is enabled" : "Fit graph to viewport"}
+      >
+        🔍 Fit View
+      </button>
+
+      <label className={styles.autoFitLabel}>
+        <input 
+          type="checkbox" 
+          checked={autoFit}
+          onChange={(e) => onAutoFitToggle(e.target.checked)}
+          className={styles.autoFitCheckbox}
+        />
+        Auto Fit
+      </label>
     </div>
   );
 }

@@ -9,37 +9,37 @@ export const ELK_LAYOUT_CONFIGS = {
   mrtree: {
     'elk.algorithm': 'mrtree',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 50,
-    'elk.spacing.edgeNode': 20,
+    'elk.spacing.nodeNode': 25,  // Reduced from 50
+    'elk.spacing.edgeNode': 10,  // Reduced from 20
   },
   layered: {
     'elk.algorithm': 'layered',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 30,
-    'elk.layered.spacing.nodeNodeBetweenLayers': 50,
+    'elk.spacing.nodeNode': 15,  // Reduced from 30
+    'elk.layered.spacing.nodeNodeBetweenLayers': 25,  // Reduced from 50
   },
   force: {
     'elk.algorithm': 'force',
-    'elk.spacing.nodeNode': 100,
+    'elk.spacing.nodeNode': 50,  // Reduced from 100
   },
   stress: {
     'elk.algorithm': 'stress',
-    'elk.spacing.nodeNode': 100,
+    'elk.spacing.nodeNode': 50,  // Reduced from 100
   },
   radial: {
     'elk.algorithm': 'radial',
-    'elk.spacing.nodeNode': 100,
+    'elk.spacing.nodeNode': 50,  // Reduced from 100
   },
 };
 
 // Common ReactFlow configuration
 export const REACTFLOW_CONFIG = {
-  fitView: true,
+  fitView: false,  // Disable automatic fitView to prevent conflicts
   nodesDraggable: true,
   nodesConnectable: true,
   elementsSelectable: true,
   maxZoom: 2,
-  minZoom: 0.1,
+  minZoom: 0.2,  // Increased minimum zoom for better visibility
   nodeOrigin: [0.5, 0.5],
   elevateEdgesOnSelect: true,
   disableKeyboardA11y: false,

@@ -19,7 +19,7 @@ import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from '
 import { isValidGraphData, getUniqueNodesById } from './utils/constants.js';
 import styles from '../../pages/visualizer.module.css';
 
-export function Visualizer({ graphData }) {
+export function Visualizer({ graphData, onControlsReady }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [currentLayout, setCurrentLayout] = useState('mrtree');
@@ -28,6 +28,53 @@ export function Visualizer({ graphData }) {
   const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
   const [isLayouting, setIsLayouting] = useState(false);
   const [layoutOperationId, setLayoutOperationId] = useState(0);
+  const [autoFit, setAutoFit] = useState(true); // Default to auto-fit enabled
+  const [fitViewDisabled, setFitViewDisabled] = useState(false); // Track if Fit View button should be disabled
+  const [lastFitTimestamp, setLastFitTimestamp] = useState(0); // Track when fit was last applied
+  
+    // Suppress ResizeObserver errors globally for this component
+  useEffect(() => {
+    const originalError = window.onerror;
+    const originalUnhandledRejection = window.onunhandledrejection;
+    const originalConsoleError = console.error;
+    
+    window.onerror = (message, source, lineno, colno, error) => {
+      if (message && typeof message === 'string' && 
+          (message.includes('ResizeObserver loop completed with undelivered notifications') ||
+           message.includes('ResizeObserver'))) {
+        return true; // Suppress the error
+      }
+      if (originalError) {
+        return originalError(message, source, lineno, colno, error);
+      }
+      return false;
+    };
+    
+    window.onunhandledrejection = (event) => {
+      if (event.reason && event.reason.message && event.reason.message.includes('ResizeObserver')) {
+        event.preventDefault(); // Suppress the error
+        return;
+      }
+      if (originalUnhandledRejection) {
+        originalUnhandledRejection(event);
+      }
+    };
+    
+    // Also suppress ResizeObserver console errors
+    console.error = (...args) => {
+      const message = args.join(' ');
+      if (message.includes('ResizeObserver') || message.includes('loop completed with undelivered notifications')) {
+        return; // Suppress ResizeObserver errors
+      }
+      originalConsoleError.apply(console, args);
+    };
+    
+    return () => {
+      window.onerror = originalError;
+      window.onunhandledrejection = originalUnhandledRejection;
+      console.error = originalConsoleError;
+    };
+  }, []);
   
   // Grouping hierarchy state
   const [hierarchyChoices, setHierarchyChoices] = useState([]);
@@ -45,45 +92,124 @@ export function Visualizer({ graphData }) {
     lastChangedContainer,
   } = useCollapsedContainers(nodes);
 
+  // Helper function to handle viewport fitting after layout operations
+  const fitViewport = useCallback((duration = 300, operationName = 'layout', forceAutoFit = false) => {
+    // Skip auto-fitting if autoFit is disabled and this isn't a forced fit
+    if (!autoFit && !forceAutoFit) {
+      return;
+    }
+
+    // Track that we're applying fit
+    const timestamp = Date.now();
+    setLastFitTimestamp(timestamp);
+    setFitViewDisabled(true); // Disable Fit View button temporarily
+
+    // Add a delay to ensure ReactFlow is stable
+    setTimeout(() => {
+      try {
+        if (window.reactFlowInstance) {
+          // Get node bounds for viewport calculation
+          const nodes = window.reactFlowInstance.getNodes();
+          if (nodes.length > 0) {
+            const bounds = nodes.reduce((acc, node) => {
+              const x = node.position.x;
+              const y = node.position.y;
+              const width = node.measured?.width || node.style?.width || 100;
+              const height = node.measured?.height || node.style?.height || 100;
+              
+              return {
+                minX: Math.min(acc.minX, x),
+                minY: Math.min(acc.minY, y),
+                maxX: Math.max(acc.maxX, x + width),
+                maxY: Math.max(acc.maxY, y + height)
+              };
+            }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+            
+            // Manual viewport calculation as alternative to fitView
+            const graphWidth = bounds.maxX - bounds.minX;
+            const graphHeight = bounds.maxY - bounds.minY;
+            
+            // Get the ReactFlow container dimensions
+            const container = document.querySelector('.reactflowWrapper') || document.querySelector('[data-testid="rf__wrapper"]');
+            if (container) {
+              const containerRect = container.getBoundingClientRect();
+              const containerWidth = containerRect.width;
+              const containerHeight = containerRect.height;
+              
+              // Calculate zoom to fit with padding
+              const padding = 0.05; // 5% padding
+              const scaleX = (containerWidth * (1 - padding * 2)) / graphWidth;
+              const scaleY = (containerHeight * (1 - padding * 2)) / graphHeight;
+              const scale = Math.min(scaleX, scaleY, 2.0); // Cap at max zoom
+              const finalScale = Math.max(scale, 0.2); // Ensure minimum zoom
+              
+              // Calculate center position
+              const centerX = (bounds.minX + bounds.maxX) / 2;
+              const centerY = (bounds.minY + bounds.maxY) / 2;
+              
+              // Calculate viewport position to center the graph
+              const x = containerWidth / 2 - centerX * finalScale;
+              const y = containerHeight / 2 - centerY * finalScale;
+              
+              // Try fitView first, but fall back to manual setViewport
+              try {
+                window.reactFlowInstance.fitView({ 
+                  padding: 0.05,
+                  duration: duration,
+                  minZoom: 0.2,
+                  maxZoom: 2.0
+                });
+              } catch (fitViewError) {
+                // Fallback to manual viewport setting
+                window.reactFlowInstance.setViewport({ x, y, zoom: finalScale }, { duration });
+              }
+            }
+          }
+        }
+      } catch (outerError) {
+        // Suppress ResizeObserver errors and other harmless layout errors
+        if (outerError.name === 'ResizeObserver' || 
+            outerError.message?.includes('ResizeObserver') ||
+            outerError.message?.includes('loop completed with undelivered notifications')) {
+          return;
+        }
+        console.warn(`[Visualizer] Error in fitViewport:`, outerError);
+      }
+    }, 500); // 500ms delay to let ReactFlow stabilize
+  }, [autoFit]);
+
+  // Helper function to mark that changes occurred (enables Fit View button)
+  const markChangesOccurred = useCallback(() => {
+    if (autoFit) {
+      setFitViewDisabled(true); // Keep disabled when autoFit is on
+    } else {
+      setFitViewDisabled(false); // Enable when autoFit is off and changes occur
+    }
+  }, [autoFit]);
+
   // Safe layout operation wrapper to prevent race conditions
   const performLayoutOperation = useCallback(async (operationFn, operationName) => {
     if (isLayouting) {
-      console.warn(`[Visualizer] Skipping ${operationName} - layout operation already in progress`);
       return false;
     }
 
     const currentOpId = layoutOperationId + 1;
     setLayoutOperationId(currentOpId);
     setIsLayouting(true);
-    
-    console.log(`[Visualizer] Starting layout operation: ${operationName} (id: ${currentOpId})`);
 
     try {
       await operationFn(currentOpId);
-      console.log(`[Visualizer] Completed layout operation: ${operationName} (id: ${currentOpId})`);
       return true;
     } catch (error) {
       console.error(`[Visualizer] Failed ${operationName}:`, error);
       
       // Attempt recovery by resetting layout state
       if (error.name === 'ResizeObserver' || error.message?.includes('ResizeObserver')) {
-        console.warn('[Visualizer] ResizeObserver error detected, attempting recovery...');
-        // Force a clean re-render after a delay
-        setTimeout(() => {
-          if (window.reactFlowInstance) {
-            try {
-              window.reactFlowInstance.fitView({ padding: 0.1, duration: 0 });
-            } catch (recoveryError) {
-              console.error('[Visualizer] Recovery attempt failed:', recoveryError);
-            }
-          }
-        }, 100);
+        // ResizeObserver errors are usually harmless
       }
       
       return false;
     } finally {
-      // Always clear layouting state - remove the condition that could cause it to stick
-      console.log(`[Visualizer] Clearing layout state for operation: ${operationName} (id: ${currentOpId})`);
       setIsLayouting(false);
     }
   }, [isLayouting, layoutOperationId]);
@@ -119,23 +245,26 @@ export function Visualizer({ graphData }) {
           });
           
           setNodes(updatedNodes);
+          markChangesOccurred();
+          
+          // Deterministic viewport fitting after layout is complete
+          fitViewport(300, 'auto-collapse');
         }, 'auto-collapse');
       }
     }
-  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, setNodes]);
+  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, setNodes, markChangesOccurred]);
 
   // Reset auto-collapse flag when graph data changes
   useEffect(() => {
     setHasAutoCollapsed(false);
   }, [graphData]);
 
-  // Warn about any group node with missing style before passing to ReactFlowInner
+  // Validate group nodes have proper styling
   useEffect(() => {
     if (Array.isArray(nodes) && nodes.length > 0) {
       nodes.forEach(n => {
         if (n.type === 'group' && (!n.style || typeof n.style.width === 'undefined' || typeof n.style.height === 'undefined' || !n.id)) {
-          console.warn('[Visualizer] Invalid group node before ReactFlowInner:', n);
-          console.trace('[Visualizer] Stack trace for invalid group node');
+          console.warn('[Visualizer] Invalid group node detected:', n.id);
         }
       });
     }
@@ -160,14 +289,31 @@ export function Visualizer({ graphData }) {
     setCurrentGrouping(newGrouping);
   }, []);
 
+  // Handle manual fit view button click
+  const handleFitView = useCallback(() => {
+    fitViewport(300, 'manual', true); // Force autofit even if disabled
+  }, [fitViewport]);
+
+  // Handle auto-fit toggle
+  const handleAutoFitToggle = useCallback((enabled) => {
+    setAutoFit(enabled);
+    
+    if (enabled) {
+      // When auto-fit is enabled, apply fit immediately and keep button disabled
+      setFitViewDisabled(true);
+      fitViewport(300, 'auto-fit-enabled', true);
+    } else {
+      // When auto-fit is disabled, enable the Fit View button
+      setFitViewDisabled(false);
+    }
+  }, [fitViewport]);
+
   // Handle layout change with collapsed container awareness
   const handleLayoutChange = useCallback(async (newLayout) => {
-    console.log('[Visualizer] Layout change requested:', newLayout);
     setCurrentLayout(newLayout);
     
     // If we have collapsed containers, we need to re-apply layout with proper sizing
     if (hasCollapsedContainers && nodes.length > 0) {
-      console.log('[Visualizer] Re-applying layout for collapsed containers');
       performLayoutOperation(async (opId) => {
         const collapsedArray = Array.from(collapsedContainers);
         const currentDisplayNodes = processCollapsedContainers(nodes, collapsedArray);
@@ -186,11 +332,13 @@ export function Visualizer({ graphData }) {
         });
         
         setNodes(updatedNodes);
+        markChangesOccurred();
+        
+        // Deterministic viewport fitting after layout is complete
+        fitViewport(300, 'layout change');
       }, 'layout-change');
-    } else {
-      console.log('[Visualizer] No collapsed containers, normal layout change');
     }
-  }, [hasCollapsedContainers, nodes, edges, collapsedContainers, setNodes, performLayoutOperation]);
+  }, [hasCollapsedContainers, nodes, edges, collapsedContainers, setNodes, performLayoutOperation, markChangesOccurred]);
 
   // Wrapper for collapseAll with layout readjustment
   const handleCollapseAll = useCallback(async () => {
@@ -219,8 +367,12 @@ export function Visualizer({ graphData }) {
       });
       
       setNodes(updatedNodes);
+      markChangesOccurred();
+      
+      // Deterministic viewport fitting after layout is complete
+      fitViewport(300, 'collapse all');
     }, 'collapse-all');
-  }, [collapseAll, nodes, edges, currentLayout, setNodes, performLayoutOperation]);
+  }, [collapseAll, nodes, edges, currentLayout, setNodes, performLayoutOperation, markChangesOccurred]);
 
   // Wrapper for expandAll with layout readjustment
   const handleExpandAll = useCallback(async () => {
@@ -245,17 +397,17 @@ export function Visualizer({ graphData }) {
       });
       
       setNodes(updatedNodes);
+      markChangesOccurred();
+      
+      // Deterministic viewport fitting after layout is complete
+      fitViewport(300, 'expand all');
     }, 'expand-all');
-  }, [expandAll, nodes, edges, currentLayout, setNodes, performLayoutOperation]);
+  }, [expandAll, nodes, edges, currentLayout, setNodes, performLayoutOperation, markChangesOccurred]);
 
   // Handle node clicks for expanding/collapsing containers
   const handleNodeClick = useCallback(async (event, node) => {
-    console.log('[Visualizer] Node clicked:', node.type, node.id);
-    
     if (node.type === 'group' || node.type === 'collapsedContainer') {
       event.stopPropagation();
-      
-      console.log('[Visualizer] Attempting to toggle container:', node.id);
       
       return performLayoutOperation(async (opId) => {
         // Compute the new collapsed state directly instead of waiting for state update
@@ -265,10 +417,8 @@ export function Visualizer({ graphData }) {
         if (collapsedArray.includes(node.id)) {
           const index = collapsedArray.indexOf(node.id);
           collapsedArray.splice(index, 1);
-          console.log('[Visualizer] Expanding container:', node.id);
         } else {
           collapsedArray.push(node.id);
-          console.log('[Visualizer] Collapsing container:', node.id);
         }
         
         // Call toggleContainer() for state consistency but don't wait for it
@@ -291,9 +441,43 @@ export function Visualizer({ graphData }) {
         });
         
         setNodes(updatedNodes);
+        markChangesOccurred();
+        
+        // Deterministic viewport fitting after layout is complete
+        fitViewport(300, 'container toggle');
       }, `toggle-container-${node.id}`);
     }
-  }, [toggleContainer, nodes, edges, currentLayout, setNodes, collapsedContainers, performLayoutOperation]);
+  }, [toggleContainer, nodes, edges, currentLayout, setNodes, collapsedContainers, performLayoutOperation, markChangesOccurred]);
+
+  // Create toolbar controls and pass them to parent
+  useEffect(() => {
+    if (onControlsReady) {
+      const controls = (
+        <LayoutControls 
+          currentLayout={currentLayout}
+          onLayoutChange={handleLayoutChange}
+          colorPalette={colorPalette}
+          onPaletteChange={setColorPalette}
+          hasCollapsedContainers={hasCollapsedContainers}
+          onCollapseAll={handleCollapseAll}
+          onExpandAll={handleExpandAll}
+          hierarchyChoices={hierarchyChoices}
+          currentGrouping={currentGrouping}
+          onGroupingChange={handleGroupingChange}
+          autoFit={autoFit}
+          onAutoFitToggle={handleAutoFitToggle}
+          onFitView={handleFitView}
+          fitViewDisabled={fitViewDisabled}
+        />
+      );
+      onControlsReady(controls);
+    }
+  }, [
+    currentLayout, colorPalette, hasCollapsedContainers, hierarchyChoices, 
+    currentGrouping, autoFit, fitViewDisabled, onControlsReady,
+    handleLayoutChange, handleCollapseAll, handleExpandAll, 
+    handleGroupingChange, handleAutoFitToggle, handleFitView
+  ]);
 
   // Process graph data and apply layout with proper memoization
   useEffect(() => {
@@ -321,6 +505,7 @@ export function Visualizer({ graphData }) {
         
         setNodes(uniqueNodes);
         setEdges(result.edges);
+        markChangesOccurred();
       } catch (error) {
         if (!isCancelled) {
           console.error('Failed to process graph:', error);
@@ -341,7 +526,7 @@ export function Visualizer({ graphData }) {
     return () => {
       isCancelled = true;
     };
-  }, [graphData, currentLayout, colorPalette, currentGrouping, setNodes, setEdges]); // Remove isLayouting dependency
+  }, [graphData, currentLayout, colorPalette, currentGrouping, setNodes, setEdges, markChangesOccurred]); // Remove isLayouting dependency
 
   // Process collapsed containers as derived state using useMemo
   const { displayNodes, displayEdges } = useMemo(() => {
@@ -366,74 +551,15 @@ export function Visualizer({ graphData }) {
     };
   }, [nodes, edges, collapsedContainers, childNodesByParent]);
 
-  // Update ReactFlow internals when collapsed containers change
-  useEffect(() => {
-    if (window.reactFlowInstance && displayNodes.length > 0) {
-      // Use requestAnimationFrame to ensure DOM updates are complete
-      requestAnimationFrame(() => {
-        if (window.reactFlowInstance) {
-          displayNodes.forEach(node => {
-            if (node.type === 'collapsedContainer') {
-              try {
-                window.reactFlowInstance.updateNodeInternals(node.id);
-              } catch (error) {
-                console.warn('[Visualizer] Failed to update node internals:', error);
-              }
-            }
-          });
-        }
-      });
-    }
-  }, [displayNodes]);
-
-  // Trigger re-render after layout readjustments
-  useEffect(() => {
-    if (window.reactFlowInstance && nodes.length > 0) {
-      // Use requestAnimationFrame to ensure layout updates are complete
-      requestAnimationFrame(() => {
-        if (window.reactFlowInstance) {
-          try {
-            window.reactFlowInstance.fitView({ padding: 0.1, duration: 200 });
-          } catch (error) {
-            console.warn('[Visualizer] Failed to fit view after layout change:', error);
-          }
-        }
-      });
-    }
-  }, [lastChangedContainer]);
+  // Note: Removed ReactFlow updateNode/updateNodeInternals calls as they are not necessary
+  // and were causing errors. ReactFlow v12 handles node updates automatically.
 
   if (isLoading) {
     return <div className={styles.loading}>Laying out graph...</div>;
   }
 
-  // Only log group nodes on first render to avoid infinite logging
-  const nodeTypeCounts = {
-    total: nodes.length,
-    group: nodes.filter(n => n.type === 'group').length,
-    groupContainer: nodes.filter(n => n.type === 'groupContainer').length,
-    default: nodes.filter(n => n.type === 'default').length,
-    undefined: nodes.filter(n => !n.type || n.type === 'undefined').length
-  };
-  
-  // Only log occasionally to avoid infinite loops
-  if (nodeTypeCounts.total > 0 && Math.random() < 0.1) {
-  }
-
   return (
     <div className={styles.visualizationWrapper}>
-      <LayoutControls 
-        currentLayout={currentLayout}
-        onLayoutChange={handleLayoutChange}
-        colorPalette={colorPalette}
-        onPaletteChange={setColorPalette}
-        hasCollapsedContainers={hasCollapsedContainers}
-        onCollapseAll={handleCollapseAll}
-        onExpandAll={handleExpandAll}
-        hierarchyChoices={hierarchyChoices}
-        currentGrouping={currentGrouping}
-        onGroupingChange={handleGroupingChange}
-      />
-      
       <Legend colorPalette={colorPalette} />
       
       <ReactFlowInner
