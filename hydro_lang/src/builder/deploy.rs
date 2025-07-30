@@ -364,9 +364,9 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
             .raw_port(port.port_id)
     }
 
-    pub async fn connect_sink_bytes(
+    pub async fn connect_sink_bytes<M>(
         &self,
-        port: ExternalBytesPort,
+        port: ExternalBytesPort<M>,
     ) -> Pin<Box<dyn Sink<Bytes, Error = Error>>> {
         self.externals
             .get(&port.process_id)
@@ -375,9 +375,9 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
             .await
     }
 
-    pub async fn connect_sink_bincode<T: Serialize + DeserializeOwned + 'static>(
+    pub async fn connect_sink_bincode<T: Serialize + DeserializeOwned + 'static, Many>(
         &self,
-        port: ExternalBincodeSink<T>,
+        port: ExternalBincodeSink<T, Many>,
     ) -> Pin<Box<dyn Sink<T, Error = Error>>> {
         self.externals
             .get(&port.process_id)

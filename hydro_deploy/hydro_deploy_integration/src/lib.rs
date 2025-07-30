@@ -12,16 +12,17 @@ use async_trait::async_trait;
 use bytes::{Bytes, BytesMut};
 use futures::sink::Buffer;
 use futures::stream::FuturesUnordered;
-use futures::{Future, Sink, SinkExt, Stream, ready, stream};
+use futures::{Future, Sink, SinkExt, Stream, StreamExt, ready, stream};
 use pin_project_lite::pin_project;
 use serde::{Deserialize, Serialize};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
 #[cfg(unix)]
 use tokio::net::{UnixListener, UnixStream};
-use tokio_stream::StreamExt;
 use tokio_stream::wrappers::TcpListenerStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
+
+pub mod multi_connection;
 
 pub type InitConfig = (HashMap<String, ServerBindConfig>, Option<String>);
 
@@ -139,6 +140,7 @@ pub enum ServerBindConfig {
     Demux(HashMap<u32, ServerBindConfig>),
     Merge(Vec<ServerBindConfig>),
     Tagged(Box<ServerBindConfig>, u32),
+    MultiConnection(Box<ServerBindConfig>),
     Null,
 }
 
@@ -181,6 +183,9 @@ impl ServerBindConfig {
             }
             ServerBindConfig::Tagged(underlying, id) => {
                 BoundServer::Tagged(Box::new(underlying.bind().await), id)
+            }
+            ServerBindConfig::MultiConnection(underlying) => {
+                BoundServer::MultiConnection(Box::new(underlying.bind().await))
             }
             ServerBindConfig::Null => BoundServer::Null,
         }
@@ -231,6 +236,16 @@ pub trait ConnectedSource {
     fn into_source(self) -> Self::Stream;
 }
 
+pub trait ConnectedSourceSink {
+    type Output: Send;
+    type Stream: Stream<Item = Result<Self::Output, io::Error>> + Send + Sync;
+
+    type Input: Send;
+    type Sink: Sink<Self::Input, Error = io::Error> + Send + Sync;
+
+    fn into_source_sink(self) -> (Self::Stream, Self::Sink);
+}
+
 #[derive(Debug)]
 pub enum BoundServer {
     UnixSocket(UnixListener, tempfile::TempDir),
@@ -238,6 +253,7 @@ pub enum BoundServer {
     Demux(HashMap<u32, BoundServer>),
     Merge(Vec<BoundServer>),
     Tagged(Box<BoundServer>, u32),
+    MultiConnection(Box<BoundServer>),
     Null,
 }
 
@@ -248,6 +264,7 @@ pub enum AcceptedServer {
     Demux(HashMap<u32, AcceptedServer>),
     Merge(Vec<AcceptedServer>),
     Tagged(Box<AcceptedServer>, u32),
+    MultiConnection(Box<BoundServer>),
     Null,
 }
 
@@ -258,7 +275,6 @@ pub async fn accept_bound(bound: BoundServer) -> AcceptedServer {
             #[cfg(unix)]
             {
                 let stream = listener.accept().await.unwrap().0;
-                eprintln!("accepted");
                 AcceptedServer::UnixSocket(stream)
             }
 
@@ -293,6 +309,7 @@ pub async fn accept_bound(bound: BoundServer) -> AcceptedServer {
         BoundServer::Tagged(underlying, id) => {
             AcceptedServer::Tagged(Box::new(accept_bound(*underlying).await), id)
         }
+        BoundServer::MultiConnection(underlying) => AcceptedServer::MultiConnection(underlying),
         BoundServer::Null => AcceptedServer::Null,
     }
 }
@@ -335,6 +352,8 @@ impl BoundServer {
             BoundServer::Tagged(underlying, id) => {
                 ServerPort::Tagged(Box::new(underlying.server_port()), *id)
             }
+
+            BoundServer::MultiConnection(underlying) => underlying.server_port(),
 
             BoundServer::Null => ServerPort::Null,
         }
@@ -383,6 +402,9 @@ fn accept(bound: AcceptedServer) -> ConnectedDirect {
         }
         AcceptedServer::Demux(_) => panic!("Cannot connect to a demux pipe directly"),
         AcceptedServer::Tagged(_, _) => panic!("Cannot connect to a tagged pipe directly"),
+        AcceptedServer::MultiConnection(_) => {
+            panic!("Cannot connect to a multi-connection pipe directly")
+        }
         AcceptedServer::Null => {
             ConnectedDirect::from_defn(Connection::AsClient(ClientConnection::Null))
         }
