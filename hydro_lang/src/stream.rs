@@ -3012,7 +3012,7 @@ mod tests {
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external_process::<()>();
+        let external = flow.external::<()>();
 
         let node_tick = node.tick();
         let watermark = node_tick.singleton(q!(1));
@@ -3050,8 +3050,8 @@ mod tests {
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external_process::<()>();
-        let (tick_send, tick_trigger) = external.source_external_bincode(&node);
+        let external = flow.external::<()>();
+        let (tick_send, tick_trigger) = node.source_external_bincode(&external);
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
