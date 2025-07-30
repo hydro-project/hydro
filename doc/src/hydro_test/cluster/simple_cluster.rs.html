@@ -74,7 +74,7 @@
 <a href=#74 id=74 data-nosnippet>74</a>    <span class="kw">use </span>hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy};
 <a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">use </span>hydro_lang::rewrites::persist_pullup;
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span>hydro_lang::{ClusterId, Location};
-<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span>hydro_optimize::partitioner::{<span class="self">self</span>, Partitioner};
+<a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span>hydro_optimize::partitioner::{<span class="self">self</span>, PartitionAttribute, Partitioner};
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span>stageleft::q;
 <a href=#79 id=79 data-nosnippet>79</a>
 <a href=#80 id=80 data-nosnippet>80</a>    <span class="attr">#[test]
@@ -258,22 +258,21 @@
 <a href=#258 id=258 data-nosnippet>258</a>        <span class="kw">let </span>builder = hydro_lang::FlowBuilder::new();
 <a href=#259 id=259 data-nosnippet>259</a>        <span class="kw">let </span>(<span class="kw">_</span>, cluster) = <span class="kw">super</span>::simple_cluster(<span class="kw-2">&amp;</span>builder);
 <a href=#260 id=260 data-nosnippet>260</a>        <span class="kw">let </span>partitioner = Partitioner {
-<a href=#261 id=261 data-nosnippet>261</a>            nodes_to_partition: HashMap::from([(<span class="number">5</span>, <span class="macro">vec!</span>[<span class="string">"1"</span>.to_string()])]),
+<a href=#261 id=261 data-nosnippet>261</a>            nodes_to_partition: HashMap::from([(<span class="number">5</span>, PartitionAttribute::TupleIndex(<span class="number">1</span>))]),
 <a href=#262 id=262 data-nosnippet>262</a>            num_partitions: <span class="number">3</span>,
-<a href=#263 id=263 data-nosnippet>263</a>            location_id: cluster.id().raw_id(),
-<a href=#264 id=264 data-nosnippet>264</a>            new_cluster_id: <span class="prelude-val">None</span>,
-<a href=#265 id=265 data-nosnippet>265</a>        };
-<a href=#266 id=266 data-nosnippet>266</a>        <span class="kw">let </span>built = builder
-<a href=#267 id=267 data-nosnippet>267</a>            .optimize_with(persist_pullup::persist_pullup)
-<a href=#268 id=268 data-nosnippet>268</a>            .optimize_with(|leaves| partitioner::partition(leaves, <span class="kw-2">&amp;</span>partitioner))
-<a href=#269 id=269 data-nosnippet>269</a>            .into_deploy::&lt;HydroDeploy&gt;();
-<a href=#270 id=270 data-nosnippet>270</a>
-<a href=#271 id=271 data-nosnippet>271</a>        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
-<a href=#272 id=272 data-nosnippet>272</a>
-<a href=#273 id=273 data-nosnippet>273</a>        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.preview_compile().all_dfir() {
-<a href=#274 id=274 data-nosnippet>274</a>            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
-<a href=#275 id=275 data-nosnippet>275</a>                <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
-<a href=#276 id=276 data-nosnippet>276</a>            });
-<a href=#277 id=277 data-nosnippet>277</a>        }
-<a href=#278 id=278 data-nosnippet>278</a>    }
-<a href=#279 id=279 data-nosnippet>279</a>}</code></pre></div></section></main></body></html>
+<a href=#263 id=263 data-nosnippet>263</a>            partitioned_cluster_id: cluster.id().raw_id(),
+<a href=#264 id=264 data-nosnippet>264</a>        };
+<a href=#265 id=265 data-nosnippet>265</a>        <span class="kw">let </span>built = builder
+<a href=#266 id=266 data-nosnippet>266</a>            .optimize_with(persist_pullup::persist_pullup)
+<a href=#267 id=267 data-nosnippet>267</a>            .optimize_with(|leaves| partitioner::partition(leaves, <span class="kw-2">&amp;</span>partitioner))
+<a href=#268 id=268 data-nosnippet>268</a>            .into_deploy::&lt;HydroDeploy&gt;();
+<a href=#269 id=269 data-nosnippet>269</a>
+<a href=#270 id=270 data-nosnippet>270</a>        <span class="macro">insta::assert_debug_snapshot!</span>(built.ir());
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.preview_compile().all_dfir() {
+<a href=#273 id=273 data-nosnippet>273</a>            <span class="macro">insta::with_settings!</span>({snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)}, {
+<a href=#274 id=274 data-nosnippet>274</a>                <span class="macro">insta::assert_snapshot!</span>(ir.surface_syntax_string());
+<a href=#275 id=275 data-nosnippet>275</a>            });
+<a href=#276 id=276 data-nosnippet>276</a>        }
+<a href=#277 id=277 data-nosnippet>277</a>    }
+<a href=#278 id=278 data-nosnippet>278</a>}</code></pre></div></section></main></body></html>
