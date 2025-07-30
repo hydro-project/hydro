@@ -1,12 +1,9 @@
 use stageleft::quote_type;
 
-use super::{Cluster, ClusterId, ExternalProcess, Location, Process};
+use super::{Cluster, ClusterId, External, Process};
 use crate::stream::NoOrder;
 
-pub trait CanSend<'a, To>: Location<'a>
-where
-    To: Location<'a>,
-{
+pub trait CanSend<'a, To> {
     type In<Type>;
     type Out<Type>;
 
@@ -74,7 +71,7 @@ impl<'a, C1, C2> CanSend<'a, Cluster<'a, C2>> for Cluster<'a, C1> {
     }
 }
 
-impl<'a, P1, E2> CanSend<'a, ExternalProcess<'a, E2>> for Process<'a, P1> {
+impl<'a, P1, E2> CanSend<'a, External<'a, E2>> for Process<'a, P1> {
     type In<T> = T;
     type Out<T> = T;
     type OutStrongestOrder<InOrder> = InOrder;

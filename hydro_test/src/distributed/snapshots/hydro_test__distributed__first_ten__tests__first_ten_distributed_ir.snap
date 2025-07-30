@@ -7,33 +7,18 @@ expression: builder.finalize().ir()
         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
         input: Unpersist {
             inner: Persist {
-                inner: Network {
+                inner: ExternalInput {
+                    from_location: External(
+                        0,
+                    ),
                     from_key: Some(
                         0,
                     ),
-                    to_location: Process(
-                        1,
-                    ),
                     to_key: None,
-                    serialize_fn: None,
                     instantiate_fn: <network instantiate>,
                     deserialize_fn: Some(
                         | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },
                     ),
-                    input: Source {
-                        source: ExternalNetwork,
-                        location_kind: ExternalProcess(
-                            0,
-                        ),
-                        metadata: HydroIrMetadata {
-                            location_kind: ExternalProcess(
-                                0,
-                            ),
-                            output_type: Some(
-                                std :: string :: String,
-                            ),
-                        },
-                    },
                     metadata: HydroIrMetadata {
                         location_kind: Process(
                             1,
@@ -75,9 +60,6 @@ expression: builder.finalize().ir()
         input: Unpersist {
             inner: Network {
                 from_key: None,
-                to_location: Process(
-                    2,
-                ),
                 to_key: None,
                 serialize_fn: Some(
                     :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
@@ -92,9 +74,6 @@ expression: builder.finalize().ir()
                         inner: Source {
                             source: Iter(
                                 { use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 },
-                            ),
-                            location_kind: Process(
-                                1,
                             ),
                             metadata: HydroIrMetadata {
                                 location_kind: Process(

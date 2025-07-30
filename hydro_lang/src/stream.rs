@@ -18,7 +18,7 @@ use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
-    CanSend, ExternalProcess, Location, LocationId, NoTick, Tick, check_matching_location,
+    CanSend, External, Location, LocationId, NoTick, Tick, check_matching_location,
 };
 use crate::staging_util::get_this_crate;
 use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
@@ -142,15 +142,6 @@ where
     }
 }
 
-impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    fn location_kind(&self) -> LocationId {
-        self.location.id()
-    }
-}
-
 impl<'a, T, L, O, R> DeferTick for Stream<T, Tick<L>, Bounded, O, R>
 where
     L: Location<'a>,
@@ -167,12 +158,10 @@ where
     type Location = Tick<L>;
 
     fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
-        let location_id = location.id();
         Stream::new(
             location.clone(),
             HydroNode::CycleSource {
                 ident,
-                location_kind: location_id,
                 metadata: location.new_node_metadata::<T>(),
             },
         )
@@ -197,7 +186,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self.location.new_node_metadata::<T>(),
             });
@@ -211,14 +199,11 @@ where
     type Location = L;
 
     fn create_source(ident: syn::Ident, location: L) -> Self {
-        let location_id = location.id();
-
         Stream::new(
             location.clone(),
             HydroNode::Persist {
                 inner: Box::new(HydroNode::CycleSource {
                     ident,
-                    location_kind: location_id,
                     metadata: location.new_node_metadata::<T>(),
                 }),
                 metadata: location.new_node_metadata::<T>(),
@@ -246,7 +231,6 @@ where
             .expect(FLOW_USED_MESSAGE)
             .push(HydroLeaf::CycleSink {
                 ident,
-                location_kind: self.location_kind(),
                 input: Box::new(HydroNode::Unpersist {
                     inner: Box::new(self.ir_node.into_inner()),
                     metadata: metadata.clone(),
@@ -1415,15 +1399,33 @@ where
         let init = init.splice_fn0_ctx(&self.location).into();
         let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
 
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Scan {
-                init,
-                acc: f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata::<U>(),
-            },
-        )
+        if L::is_top_level() {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::Scan {
+                        init,
+                        acc: f,
+                        input: Box::new(HydroNode::Unpersist {
+                            inner: Box::new(self.ir_node.into_inner()),
+                            metadata: self.location.new_node_metadata::<U>(),
+                        }),
+                        metadata: self.location.new_node_metadata::<U>(),
+                    }),
+                    metadata: self.location.new_node_metadata::<U>(),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Scan {
+                    init,
+                    acc: f,
+                    input: Box::new(self.ir_node.into_inner()),
+                    metadata: self.location.new_node_metadata::<U>(),
+                },
+            )
+        }
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -2606,7 +2608,6 @@ where
             other.clone(),
             HydroNode::Network {
                 from_key: None,
-                to_location: other.id(),
                 to_key: None,
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
@@ -2619,17 +2620,15 @@ where
 
     pub fn send_bincode_external<L2, CoreType>(
         self,
-        other: &ExternalProcess<L2>,
+        other: &External<L2>,
     ) -> ExternalBincodeStream<L::Out<CoreType>>
     where
-        L: CanSend<'a, ExternalProcess<'a, L2>, In<CoreType> = T, Out<CoreType> = CoreType>,
+        L: CanSend<'a, External<'a, L2>, In<CoreType> = T, Out<CoreType> = CoreType>,
         L2: 'a,
         CoreType: Serialize + DeserializeOwned,
         // for now, we restirct Out<CoreType> to be CoreType, which means no tagged cluster -> external
     {
         let serialize_pipeline = Some(serialize_bincode::<CoreType>(L::is_demux()));
-
-        let metadata = other.new_node_metadata::<CoreType>();
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
@@ -2638,21 +2637,16 @@ where
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
 
-        let dummy_f: syn::Expr = syn::parse_quote!(());
-
-        leaves.push(HydroLeaf::ForEach {
-            f: dummy_f.into(),
-            input: Box::new(HydroNode::Network {
-                from_key: None,
-                to_location: other.id(),
-                to_key: Some(external_key),
-                serialize_fn: serialize_pipeline.map(|e| e.into()),
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: None,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: metadata.clone(),
+        leaves.push(HydroLeaf::SendExternal {
+            from_key: None,
+            to_location: other.id,
+            to_key: Some(external_key),
+            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(HydroNode::Unpersist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             }),
-            metadata,
         });
 
         ExternalBincodeStream {
@@ -2680,7 +2674,6 @@ where
             other.clone(),
             HydroNode::Network {
                 from_key: None,
-                to_location: other.id(),
                 to_key: None,
                 serialize_fn: None,
                 instantiate_fn: DebugInstantiate::Building,
@@ -2697,34 +2690,27 @@ where
         )
     }
 
-    pub fn send_bytes_external<L2>(self, other: &ExternalProcess<L2>) -> ExternalBytesPort
+    pub fn send_bytes_external<L2>(self, other: &External<L2>) -> ExternalBytesPort
     where
         L2: 'a,
-        L::Root: CanSend<'a, ExternalProcess<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
+        L::Root: CanSend<'a, External<'a, L2>, In<Bytes> = T, Out<Bytes> = Bytes>,
     {
-        let metadata = other.new_node_metadata::<Bytes>();
-
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
         let external_key = flow_state_borrow.next_external_out;
         flow_state_borrow.next_external_out += 1;
 
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
 
-        let dummy_f: syn::Expr = syn::parse_quote!(());
-
-        leaves.push(HydroLeaf::ForEach {
-            f: dummy_f.into(),
-            input: Box::new(HydroNode::Network {
-                from_key: None,
-                to_location: other.id(),
-                to_key: Some(external_key),
-                serialize_fn: None,
-                instantiate_fn: DebugInstantiate::Building,
-                deserialize_fn: None,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: metadata.clone(),
+        leaves.push(HydroLeaf::SendExternal {
+            from_key: None,
+            to_location: other.id,
+            to_key: Some(external_key),
+            serialize_fn: None,
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(HydroNode::Unpersist {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata::<T>(),
             }),
-            metadata,
         });
 
         ExternalBytesPort {
@@ -2962,7 +2948,7 @@ mod tests {
         let flow = FlowBuilder::new();
         let first_node = flow.process::<P1>();
         let second_node = flow.process::<P2>();
-        let external = flow.external_process::<P2>();
+        let external = flow.external::<P2>();
 
         let numbers = first_node.source_iter(q!(0..10));
         let out_port = numbers
@@ -2993,7 +2979,7 @@ mod tests {
 
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
-        let external = flow.external_process::<()>();
+        let external = flow.external::<()>();
 
         let node_tick = node.tick();
         let count = node_tick

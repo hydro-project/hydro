@@ -20,7 +20,7 @@ use crate::ir::HydroLeaf;
 use crate::location::external_process::{
     ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
-use crate::location::{Cluster, ExternalProcess, Location, LocationId, Process};
+use crate::location::{Cluster, External, Location, LocationId, Process};
 use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D>
@@ -39,7 +39,7 @@ where
     /// but with the type name of the tag.
     pub(super) process_id_name: Vec<(usize, String)>,
 
-    pub(super) externals: HashMap<usize, D::ExternalProcess>,
+    pub(super) externals: HashMap<usize, D::External>,
     pub(super) external_id_name: Vec<(usize, String)>,
 
     pub(super) clusters: HashMap<usize, D::Cluster>,
@@ -87,7 +87,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     pub fn with_external<P>(
         mut self,
-        process: &ExternalProcess<P>,
+        process: &External<P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> Self {
         let tag_name = std::any::type_name::<P>().to_string();
@@ -157,12 +157,10 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn compile(mut self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
-        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 env,
                 &mut seen_tees,
-                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -216,12 +214,10 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
-        let mut seen_tee_locations: HashMap<_, _> = HashMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &(),
                 &mut seen_tees_instantiate,
-                &mut seen_tee_locations,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -271,7 +267,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
                     external.instantiate(
                         env,
                         &mut meta,
-                        compiled.remove(&external_id).unwrap(),
+                        Default::default(),
                         extra_stmts.remove(&external_id).unwrap_or_default(),
                     );
                     (external_id, external)
@@ -313,7 +309,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
 pub struct DeployResult<'a, D: Deploy<'a>> {
     processes: HashMap<usize, D::Process>,
     clusters: HashMap<usize, D::Cluster>,
-    externals: HashMap<usize, D::ExternalProcess>,
+    externals: HashMap<usize, D::External>,
     cluster_id_name: HashMap<usize, String>,
     process_id_name: HashMap<usize, String>,
 }
@@ -357,7 +353,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         })
     }
 
-    pub fn get_external<P>(&self, p: &ExternalProcess<P>) -> &D::ExternalProcess {
+    pub fn get_external<P>(&self, p: &External<P>) -> &D::External {
         self.externals.get(&p.id).unwrap()
     }
 

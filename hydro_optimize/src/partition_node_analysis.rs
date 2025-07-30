@@ -192,7 +192,8 @@ fn input_dependency_analysis_node(
         | HydroNode::AntiJoin { .. } // [(a,1),(b,2)] anti-join [a] = [(b,2)]. Similar to Difference
         | HydroNode::Filter { .. } // Although it contains a function f, the output is just a subset of the input, so just inherit from the parent
         | HydroNode::Inspect { .. }
-        | HydroNode::Network { .. } => {
+        | HydroNode::Network { .. }
+        | HydroNode::ExternalInput { .. } => {
             // For each input the first (and potentially only) parent depends on, take its dependency
             for input_id in input_taint_entry.iter() {
                 if let Some(parent_dependencies_on_input) = parent_input_dependencies.get(input_id) {

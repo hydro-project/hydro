@@ -41,7 +41,7 @@ pub use optional::Optional;
 
 pub mod location;
 pub use location::cluster::CLUSTER_SELF_ID;
-pub use location::{Atomic, Cluster, ClusterId, ExternalProcess, Location, Process, Tick};
+pub use location::{Atomic, Cluster, ClusterId, External, Location, Process, Tick};
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]

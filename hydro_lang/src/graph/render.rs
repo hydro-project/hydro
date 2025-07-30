@@ -277,7 +277,7 @@ fn extract_location_id(metadata: &crate::ir::HydroIrMetadata) -> (Option<usize>,
     match &metadata.location_kind {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
         LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-        LocationId::ExternalProcess(id) => (Some(*id), Some("External".to_string())),
+        LocationId::External(id) => (Some(*id), Some("External".to_string())),
         LocationId::Tick(_, inner) => match inner.as_ref() {
             LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
             LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
@@ -406,6 +406,10 @@ impl HydroLeaf {
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
                 HydroEdgeType::Stream,
             ),
+
+            HydroLeaf::SendExternal { input, .. } => {
+                input.build_graph_structure(structure, seen_tees, config)
+            }
 
             HydroLeaf::DestSink {
                 sink,
@@ -555,6 +559,10 @@ impl HydroNode {
                     HydroSource::Spin() => "spin()".to_string(),
                 };
                 build_source_node(structure, metadata, label)
+            }
+
+            HydroNode::ExternalInput { metadata, .. } => {
+                build_source_node(structure, metadata, "external_network()".to_string())
             }
 
             HydroNode::CycleSource {
@@ -832,7 +840,6 @@ impl HydroNode {
             }
 
             HydroNode::Network {
-                to_location,
                 serialize_fn,
                 deserialize_fn,
                 input,
@@ -842,7 +849,7 @@ impl HydroNode {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let _from_location_id = setup_location(structure, metadata);
 
-                let to_location_id = match to_location {
+                let to_location_id = match metadata.location_kind.root() {
                     LocationId::Process(id) => {
                         structure.add_location(*id, "Process".to_string());
                         Some(*id)
@@ -851,7 +858,7 @@ impl HydroNode {
                         structure.add_location(*id, "Cluster".to_string());
                         Some(*id)
                     }
-                    LocationId::ExternalProcess(id) => {
+                    LocationId::External(id) => {
                         structure.add_location(*id, "External".to_string());
                         Some(*id)
                     }
