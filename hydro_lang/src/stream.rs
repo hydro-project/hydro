@@ -2548,6 +2548,7 @@ where
         ExternalBytesPort {
             process_id: other.id,
             port_id: external_key,
+            _phantom: Default::default()
         }
     }
 
