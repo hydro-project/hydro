@@ -1,5 +1,77 @@
 
 
+## v0.14.0 (2025-07-30)
+
+### New Features
+
+ - <csr-id-17f4a832dac816902eebd19118dc2c4902953261/> Aggregate client throughput/latency
+   Co-authored with @shadaj
+   
+   ---------
+ - <csr-id-b333b45e0936bbe481d7fbc285790d942779c494/> upgrade Stageleft to eliminate `__staged` compilation during development
+   Before Stageleft 0.9, we always compiled the `__staged` module in stage
+   0, which resulted in significant compilation penalties and Rust Analyzer
+   thrashing since any file changes triggered a re-run of the `build.rs`.
+   With Stageleft 0.9, we can defer compiling this module to the trybuild
+   stage 1.
+   
+   Stageleft 0.9 also cleans up how paths are rewritten to use the
+   `__staged` module, so we can simplify our logic as well. The only
+   significant rewrite remaining is when running unit tests, where we have
+   to regenerate `__staged` to access test-only module, and therefore have
+   to rewrite all paths to use that module.
+   
+   Finally, in the spirit of improving compilation efficiency, we disable
+   incremental builds for trybuild stage 1. We generate files with hash
+   based on contents, so we were never benefitting from incremental
+   compilation anyways. This reduces the disk space used significantly.
+
+### Refactor
+
+ - <csr-id-5ab815f3567d51e9bd114f90af8e837fe0732cd8/> use `async-ssh2-russh` (instead of `libssh2` bindings), fix #1463
+
+### New Features (BREAKING)
+
+ - <csr-id-45bd6e9759410dcb747c9224758c82f9874378d2/> add stream markers for tracking non-deterministic retries
+   This introduces an additional type paramter to `Stream` called
+   `Retries`, which tracks the presence (or lack) of non-determinstic
+   retries in the stream. `ExactlyOnce` means that each element has
+   deterministic order, while `AtLeastOnce` means that there may be
+   non-deterministic duplicates.
+   
+   A `TotalOrder, AtLeastOnce` stream describes elements with consecutive
+   duplication, but deterministic order if we ignore those immediate
+   elements. A `NoOrder, AtLeastOnce` stream has set semantics.
+   
+   Also fixes a bug in the return type for `*_keyed_*`, where the output
+   type was previously `TotalOrder` but now is `NoOrder`. We stream the
+   results of a keyed aggregation out of a `HashMap`, so the order will
+   indeed be non-deterministic.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 91 calendar days.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#1803](https://github.com/hydro-project/hydro/issues/1803), [#1900](https://github.com/hydro-project/hydro/issues/1900), [#1907](https://github.com/hydro-project/hydro/issues/1907), [#1910](https://github.com/hydro-project/hydro/issues/1910)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1803](https://github.com/hydro-project/hydro/issues/1803)**
+    - Use `async-ssh2-russh` (instead of `libssh2` bindings), fix #1463 ([`5ab815f`](https://github.com/hydro-project/hydro/commit/5ab815f3567d51e9bd114f90af8e837fe0732cd8))
+ * **[#1900](https://github.com/hydro-project/hydro/issues/1900)**
+    - Aggregate client throughput/latency ([`17f4a83`](https://github.com/hydro-project/hydro/commit/17f4a832dac816902eebd19118dc2c4902953261))
+ * **[#1907](https://github.com/hydro-project/hydro/issues/1907)**
+    - Upgrade Stageleft to eliminate `__staged` compilation during development ([`b333b45`](https://github.com/hydro-project/hydro/commit/b333b45e0936bbe481d7fbc285790d942779c494))
+ * **[#1910](https://github.com/hydro-project/hydro/issues/1910)**
+    - Add stream markers for tracking non-deterministic retries ([`45bd6e9`](https://github.com/hydro-project/hydro/commit/45bd6e9759410dcb747c9224758c82f9874378d2))
+</details>
+
 ## v0.13.0 (2025-04-11)
 
 ### New Features
@@ -23,7 +95,8 @@
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release over the course of 23 calendar days.
+ - 4 commits contributed to the release.
+ - 27 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 3 unique issues were worked on: [#1791](https://github.com/hydro-project/hydro/issues/1791), [#1796](https://github.com/hydro-project/hydro/issues/1796), [#1797](https://github.com/hydro-project/hydro/issues/1797)
 
@@ -39,6 +112,8 @@
     - Update Stageleft and reduce reliance on DFIR re-exports ([`5ac247c`](https://github.com/hydro-project/hydro/commit/5ac247ca2006bbb45c5511c78dc6d9028f7451da))
  * **[#1797](https://github.com/hydro-project/hydro/issues/1797)**
     - Don't pull in dfir_rs during the compilation stage ([`dfb7a1b`](https://github.com/hydro-project/hydro/commit/dfb7a1b5ad47f03822e9b7cae7dae81914b305e2))
+ * **Uncategorized**
+    - Release dfir_lang v0.13.0, dfir_datalog_core v0.13.0, dfir_datalog v0.13.0, dfir_macro v0.13.0, hydro_deploy_integration v0.13.0, dfir_rs v0.13.0, hydro_deploy v0.13.0, hydro_lang v0.13.0, hydro_std v0.13.0, hydro_cli v0.13.0, safety bump 8 crates ([`400fd8f`](https://github.com/hydro-project/hydro/commit/400fd8f2e8cada253f54980e7edce0631be70a82))
 </details>
 
 ## v0.12.1 (2025-03-15)

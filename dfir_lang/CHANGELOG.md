@@ -5,7 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.14.0 (2025-07-30)
+
+### Chore
+
+ - <csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/> update pinned nightly to 2025-04-27, update span API usage
+
+### New Features
+
+ - <csr-id-b58dfc899c67ee17a1818c484fa6cba7db3dd240/> add `scan` operator
+
+### Bug Fixes
+
+ - <csr-id-5b5bbe57b54a5d038bc28c0e674ed68ca34245d1/> Revert anti join allocation
+   Added unit test for Paxos compilation and non-negative throughtput
+ - <csr-id-0d841a536e1ab58838136e6c33b2115325ec1541/> add type arguments to `anti_join_multiset`, `difference_multiset` to mitigate #1857
+
+### New Features (BREAKING)
+
+ - <csr-id-d6ae619060339eb3dac5bec17d384430e3588093/> re-add loop lifetimes for anti_join_multiset, tests, remove MonotonicMap, fix #1830, fix #1823
+   Redo of #1835
+   
+   Also updates path of trybuild errors to allow them to be clicked in the
+   IDE
+   
+   ---
+   
+   Previous commit:
+   
+   Also implements loop lifetimes for `difference_multiset` which uses the
+   `anti_join_multiset` codegen.
+   
+   Updates tests for `difference`, `difference_multiset`, `anti_join`, and
+   `anti_join_multiset`
+ - <csr-id-9bb9d1f3a0108a4789de6065af9e644c47601b9f/> display loops in graph visualizations, refactor, fix #1699
+   Adds loops to display, new `GraphWrite.no_loops` option.
+   
+   Refactors how the heirarchy of `GraphWrite` items is handled to be
+   simpler.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 92 calendar days.
+ - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 6 unique issues were worked on: [#1843](https://github.com/hydro-project/hydro/issues/1843), [#1851](https://github.com/hydro-project/hydro/issues/1851), [#1858](https://github.com/hydro-project/hydro/issues/1858), [#1860](https://github.com/hydro-project/hydro/issues/1860), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1929](https://github.com/hydro-project/hydro/issues/1929)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1843](https://github.com/hydro-project/hydro/issues/1843)**
+    - Update pinned nightly to 2025-04-27, update span API usage ([`98baec7`](https://github.com/hydro-project/hydro/commit/98baec71a6f1d01d55a3c983fdbb7824c45305cd))
+ * **[#1851](https://github.com/hydro-project/hydro/issues/1851)**
+    - Display loops in graph visualizations, refactor, fix #1699 ([`9bb9d1f`](https://github.com/hydro-project/hydro/commit/9bb9d1f3a0108a4789de6065af9e644c47601b9f))
+ * **[#1858](https://github.com/hydro-project/hydro/issues/1858)**
+    - Add type arguments to `anti_join_multiset`, `difference_multiset` to mitigate #1857 ([`0d841a5`](https://github.com/hydro-project/hydro/commit/0d841a536e1ab58838136e6c33b2115325ec1541))
+ * **[#1860](https://github.com/hydro-project/hydro/issues/1860)**
+    - Revert anti join allocation ([`5b5bbe5`](https://github.com/hydro-project/hydro/commit/5b5bbe57b54a5d038bc28c0e674ed68ca34245d1))
+ * **[#1911](https://github.com/hydro-project/hydro/issues/1911)**
+    - Re-add loop lifetimes for anti_join_multiset, tests, remove MonotonicMap, fix #1830, fix #1823 ([`d6ae619`](https://github.com/hydro-project/hydro/commit/d6ae619060339eb3dac5bec17d384430e3588093))
+ * **[#1929](https://github.com/hydro-project/hydro/issues/1929)**
+    - Add `scan` operator ([`b58dfc8`](https://github.com/hydro-project/hydro/commit/b58dfc899c67ee17a1818c484fa6cba7db3dd240))
+</details>
+
 ## 0.13.0 (2025-04-11)
+
+<csr-id-3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a/>
+<csr-id-7f3ec9dcce0ef9d52af03083970c8d26b9993fc0/>
+<csr-id-2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f/>
 
 ### New Features
 
@@ -22,31 +93,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    samply by updating tracing filenames and refactoring related error and
    type handling. Key changes include:
    - Better error messages when `dtrace` or `samply` are not instaled.
-   - Fix integer rollover in `_counter()` by using `u64` instead of
+- Fix integer rollover in `_counter()` by using `u64` instead of
    inferred `i32`.
-   - Refactor samply profile conversion for asynchronous frame lookup.
-   
-   <details>
-   <summary>Show a summary per file</summary>
-   
-   | File | Description |
-   | ---- | ----------- |
-   | hydro_lang/src/rewrites/analyze_counter.rs | Adds custom panic with
-   measurement details if regex matching fails. (Used to diagnose
-   `_counter()` `i32` rollover) |
-   | hydro_deploy/core/src/localhost/samply.rs | Updates type for
-   addresses/resources, refactors frame lookup to use asynchronous
-   join_all, and adjusts string output for missing symbols. |
-   | hydro_deploy/core/src/localhost/mod.rs | Improves error handling
-   during command spawning with conditional context messages for when
-   `samply` or `dtrace` executables are not found. |
-   | hydro_deploy/core/src/localhost/launched_binary.rs | Uses
-   serde_path_to_error for improved deserialization error context. |
-   | dfir_lang/src/graph/ops/dest_sink.rs | Standardizes error messages by
-   removing extraneous punctuation. |
-   | dfir_lang/src/graph/ops/_counter.rs | Adds explicit type annotation
-   for a cell initialization to prevent `i32` rollover. |
-   </details>
+- Refactor samply profile conversion for asynchronous frame lookup.
 
 ### Other
 
@@ -82,7 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release over the course of 24 calendar days.
+ - 8 commits contributed to the release.
+ - 27 days passed between releases.
  - 7 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 7 unique issues were worked on: [#1741](https://github.com/hydro-project/hydro/issues/1741), [#1790](https://github.com/hydro-project/hydro/issues/1790), [#1795](https://github.com/hydro-project/hydro/issues/1795), [#1814](https://github.com/hydro-project/hydro/issues/1814), [#1822](https://github.com/hydro-project/hydro/issues/1822), [#1833](https://github.com/hydro-project/hydro/issues/1833), [#1835](https://github.com/hydro-project/hydro/issues/1835)
 
@@ -106,7 +156,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Fix loop hooks triggered too often, implement lifetimes for `zip` ([`40075b1`](https://github.com/hydro-project/hydro/commit/40075b198b13cb6b4804633b76c96c520394fa71))
  * **[#1835](https://github.com/hydro-project/hydro/issues/1835)**
     - Loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823 ([`fbaab5b`](https://github.com/hydro-project/hydro/commit/fbaab5b12c0c661ee08d8ded6862a38834ba62ae))
+ * **Uncategorized**
+    - Release dfir_lang v0.13.0, dfir_datalog_core v0.13.0, dfir_datalog v0.13.0, dfir_macro v0.13.0, hydro_deploy_integration v0.13.0, dfir_rs v0.13.0, hydro_deploy v0.13.0, hydro_lang v0.13.0, hydro_std v0.13.0, hydro_cli v0.13.0, safety bump 8 crates ([`400fd8f`](https://github.com/hydro-project/hydro/commit/400fd8f2e8cada253f54980e7edce0631be70a82))
 </details>
+
+<csr-unknown>
+<details>
+<summary>Show a summary per file</summary>
+FileDescriptionhydro_lang/src/rewrites/analyze_counter.rsAdds custom panic withmeasurement details if regex matching fails. (Used to diagnose_counter() i32 rollover)hydro_deploy/core/src/localhost/samply.rsUpdates type foraddresses/resources, refactors frame lookup to use asynchronousjoin_all, and adjusts string output for missing symbols.hydro_deploy/core/src/localhost/mod.rsImproves error handlingduring command spawning with conditional context messages for whensamply or dtrace executables are not found.hydro_deploy/core/src/localhost/launched_binary.rsUsesserde_path_to_error for improved deserialization error context.dfir_lang/src/graph/ops/dest_sink.rsStandardizes error messages byremoving extraneous punctuation.dfir_lang/src/graph/ops/_counter.rsAdds explicit type annotationfor a cell initialization to prevent i32 rollover.</details>
+<csr-unknown/>
 
 ## 0.12.1 (2025-03-15)
 

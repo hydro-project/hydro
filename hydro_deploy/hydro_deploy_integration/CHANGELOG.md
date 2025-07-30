@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.14.0 (2025-07-30)
+
+### New Features
+
+ - <csr-id-bd1afdff5fd7b8dc6d2c567cd2659542a84c6216/> allow running generated binaries with single-threaded Tokio runtime
+   Before, we had a janky architecture for establishing network connections
+   which relied on blocking on futures outside an async context, which
+   required a multi-threaded runtime. Now, we establish all connections
+   before launching the DFIR code, so that no blocking is required there.
+
+### Bug Fixes
+
+ - <csr-id-ca704e500245ee4ac0a528e2cf78e0dd2944f3a1/> leftover logging when setting up Unix sockets
+   Oops!
+
+### Refactor
+
+ - <csr-id-59041df58be2de0717b851cc1c3355479cd722f2/> minimize Tokio feature flags
+   Now that `hydro_lang` no longer needs multi-threaded runtime, we can
+   eliminate it from the features used in `trybuild` compilation. Minimizes
+   Tokio features elsewhere too.
+ - <csr-id-903fbdada5f3d729f6564915d77c4e15812aa1be/> eliminate `pin-project` proc macro dependency
+   This was the only use of the proc-macro version along the Hydro
+   dependencies, we can just use the declarative macro version.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 8 calendar days.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#1933](https://github.com/hydro-project/hydro/issues/1933), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1939](https://github.com/hydro-project/hydro/issues/1939), [#1963](https://github.com/hydro-project/hydro/issues/1963)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1933](https://github.com/hydro-project/hydro/issues/1933)**
+    - Eliminate `pin-project` proc macro dependency ([`903fbda`](https://github.com/hydro-project/hydro/commit/903fbdada5f3d729f6564915d77c4e15812aa1be))
+ * **[#1938](https://github.com/hydro-project/hydro/issues/1938)**
+    - Allow running generated binaries with single-threaded Tokio runtime ([`bd1afdf`](https://github.com/hydro-project/hydro/commit/bd1afdff5fd7b8dc6d2c567cd2659542a84c6216))
+ * **[#1939](https://github.com/hydro-project/hydro/issues/1939)**
+    - Minimize Tokio feature flags ([`59041df`](https://github.com/hydro-project/hydro/commit/59041df58be2de0717b851cc1c3355479cd722f2))
+ * **[#1963](https://github.com/hydro-project/hydro/issues/1963)**
+    - Leftover logging when setting up Unix sockets ([`ca704e5`](https://github.com/hydro-project/hydro/commit/ca704e500245ee4ac0a528e2cf78e0dd2944f3a1))
+</details>
+
 ## 0.13.0 (2025-04-11)
 
 ### New Features (BREAKING)
@@ -21,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release over the course of 23 calendar days.
+ - 2 commits contributed to the release.
+ - 27 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 1 unique issue was worked on: [#1797](https://github.com/hydro-project/hydro/issues/1797)
 
@@ -33,6 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  * **[#1797](https://github.com/hydro-project/hydro/issues/1797)**
     - Don't pull in dfir_rs during the compilation stage ([`dfb7a1b`](https://github.com/hydro-project/hydro/commit/dfb7a1b5ad47f03822e9b7cae7dae81914b305e2))
+ * **Uncategorized**
+    - Release dfir_lang v0.13.0, dfir_datalog_core v0.13.0, dfir_datalog v0.13.0, dfir_macro v0.13.0, hydro_deploy_integration v0.13.0, dfir_rs v0.13.0, hydro_deploy v0.13.0, hydro_lang v0.13.0, hydro_std v0.13.0, hydro_cli v0.13.0, safety bump 8 crates ([`400fd8f`](https://github.com/hydro-project/hydro/commit/400fd8f2e8cada253f54980e7edce0631be70a82))
 </details>
 
 ## 0.12.1 (2025-03-15)
