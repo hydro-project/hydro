@@ -2186,19 +2186,22 @@ impl HydroNode {
                                             None
                                         }
                                     })
-                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), #key_type::default()), |(map, curr_watermark), (k, v, watermark)| {
-                                        match map.entry(k) {
-                                            ::std::collections::btree_map::Entry::Vacant(e) => {
-                                                e.insert(v);
+                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), #key_type::default()), {
+                                        let __reduce_keyed_fn = #f;
+                                        move |(map, curr_watermark), (k, v, watermark)| {
+                                            match map.entry(k) {
+                                                ::std::collections::btree_map::Entry::Vacant(e) => {
+                                                    e.insert(v);
+                                                }
+                                                ::std::collections::btree_map::Entry::Occupied(mut e) => {
+                                                    __reduce_keyed_fn(e.get_mut(), v);
+                                                }
                                             }
-                                            ::std::collections::btree_map::Entry::Occupied(mut e) => {
-                                                #f(e.get_mut(), v);
-                                            }
-                                        }
 
-                                        if *curr_watermark < watermark {
-                                            *curr_watermark = watermark;
-                                            map.retain(|k, _| k > curr_watermark);
+                                            if *curr_watermark < watermark {
+                                                *curr_watermark = watermark;
+                                                map.retain(|k, _| k > curr_watermark);
+                                            }
                                         }
                                     })
                                     -> flat_map(|(map, _curr_watermark)| map);

@@ -701,12 +701,6 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
     )
 }
 
-#[derive(Clone)]
-pub enum CheckpointOrP2a<P, S> {
-    Checkpoint(usize),
-    P2a(P2a<P, S>),
-}
-
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
 pub fn index_payloads<'a, P: PaxosPayload>(
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
