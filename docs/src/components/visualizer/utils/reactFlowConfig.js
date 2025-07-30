@@ -306,8 +306,40 @@ export function processHierarchy(graphData, selectedGrouping = '') {
     return graphData;
   }
 
+  // FLATTEN HIERARCHY: Replace single-child container chains with combined containers
+  function flattenSingleChildContainers(nodes) {
+    return nodes.map(node => {
+      // If this node has exactly one child that is also a container, flatten it
+      if (node.children && node.children.length === 1) {
+        const child = node.children[0];
+        
+        // Only flatten if the child is also a container (has its own children)
+        if (child.children && child.children.length > 0) {
+          // Recursively flatten the child first
+          const flattenedChild = flattenSingleChildContainers([child])[0];
+          
+          return {
+            ...flattenedChild,
+            id: node.id, // Keep the parent's ID for assignments
+            name: `${node.name} -> ${flattenedChild.name}`, // Combine names
+            children: flattenedChild.children // Use the child's children
+          };
+        }
+      }
+      
+      // If not flattening, recursively process children
+      return {
+        ...node,
+        children: node.children ? flattenSingleChildContainers(node.children) : undefined
+      };
+    });
+  }
+  
+  // Apply flattening to the hierarchy
+  const flattenedHierarchy = flattenSingleChildContainers(hierarchy);
+  
   // Validate hierarchy data
-  const validation = validateHierarchy(hierarchy, nodeAssignments, graphData.nodes);
+  const validation = validateHierarchy(flattenedHierarchy, nodeAssignments, graphData.nodes);
   // All console logs, errors, and warnings removed for focused debugging
   if (!validation.isValid) {
     throw new Error(`Invalid hierarchy data: ${validation.errors.join('; ')}`);
@@ -377,7 +409,7 @@ export function processHierarchy(graphData, selectedGrouping = '') {
   }
   
   // Build paths and create hierarchy nodes for all hierarchy levels
-  hierarchy.forEach(rootNode => {
+  flattenedHierarchy.forEach(rootNode => {
     buildPaths(rootNode, '', null, 0); // Start with depth 0
   });
   
