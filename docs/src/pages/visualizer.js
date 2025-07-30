@@ -6,7 +6,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@theme/Layout';
 import { useLocation } from '@docusaurus/router';
 import { ReactFlowVisualization } from '../components/visualizer/ReactFlowVisualization.js';
-import { FileDropZone } from '../components/visualizer/FileDropZone.js';
+import { FileDropZone } from '../components/visualizer/components/FileDropZone.js';
 import styles from './visualizer.module.css';
 
 export default function Visualizer() {
