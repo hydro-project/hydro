@@ -2327,6 +2327,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-test",
+ "tokio-util",
  "toml",
  "trybuild",
  "trybuild-internals-api",

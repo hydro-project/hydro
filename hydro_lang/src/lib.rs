@@ -73,6 +73,14 @@ pub mod backtrace;
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod test_util;
 
+#[cfg(feature = "build")]
+#[ctor::ctor]
+fn setup_rewrites() {
+    stageleft::add_private_reexport(vec!["std", "io", "error"], vec!["std", "io"]);
+
+    stageleft::add_private_reexport(vec!["bytes", "bytes_mut"], vec!["bytes"]);
+}
+
 #[cfg(test)]
 mod test_init {
     #[ctor::ctor]
