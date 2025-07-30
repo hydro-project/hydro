@@ -15,12 +15,10 @@ export function CollapsedContainerWrapper({ nodes, edges, collapsedContainers, c
     
     // If no containers are collapsed, return original data
     if (collapsedContainers.size === 0) {
-      console.log('No collapsed containers, returning original data');
       return { processedNodes: nodes, processedEdges: edges || [] };
     }
     
     try {
-      console.log('Processing collapsed containers:', Array.from(collapsedContainers));
       const collapsedArray = Array.from(collapsedContainers);
       const processedNodes = processCollapsedContainers(nodes, collapsedArray);
       
@@ -28,7 +26,6 @@ export function CollapsedContainerWrapper({ nodes, edges, collapsedContainers, c
       // TODO: Implement proper edge rerouting once basic collapse/expand works
       const processedEdges = edges || [];
       
-      console.log('Processed nodes count:', processedNodes.length, 'vs original:', nodes.length);
       return { processedNodes, processedEdges };
     } catch (error) {
       console.error('Error processing collapsed containers:', error);

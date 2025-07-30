@@ -34,6 +34,7 @@ import {
 } from '../utils/reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
 import { CollapsedContainerNode } from '../containers/CollapsedContainerNode.js';
+import { enforceHandleConsistency, REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import styles from '../../../pages/visualizer.module.css';
 
 export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette, onNodeClick }) {
@@ -71,17 +72,33 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         boxSizing: 'border-box',
       }}>
         {data?.label || 'Node'}
-        <Handle type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-        <Handle type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+        {/* 
+          CRITICAL: These handle IDs must match GroupNode and CollapsedContainerNode
+          to prevent ReactFlow "Couldn't create edge for handle id" errors
+        */}
+        <Handle id={REQUIRED_HANDLE_IDS.source} type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.target} type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.sourceBottom} type="source" position="bottom" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.targetTop} type="target" position="top" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
       </div>
     );
   }, []);
 
-  const nodeTypes = useMemo(() => ({
-    group: GroupNode,
-    collapsedContainer: CollapsedContainerNode,
-    default: DefaultNode,
-  }), [DefaultNode]);
+  const nodeTypes = useMemo(() => {
+    const types = {
+      group: GroupNode,
+      collapsedContainer: CollapsedContainerNode,
+      default: DefaultNode,
+    };
+    
+    // CRITICAL: Log handle requirements during development
+    // This helps prevent ReactFlow handle errors by documenting the requirements
+    if (process.env.NODE_ENV === 'development') {
+      enforceHandleConsistency(types);
+    }
+    
+    return types;
+  }, [DefaultNode]);
 
   return (
     <div className={styles.reactflowWrapper}>

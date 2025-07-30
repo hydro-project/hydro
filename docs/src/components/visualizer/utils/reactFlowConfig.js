@@ -49,6 +49,7 @@ export const REACTFLOW_CONFIG = {
   },
   // Allow nodes to be positioned outside parent bounds during layout
   translateExtent: [[-Infinity, -Infinity], [Infinity, Infinity]],
+
 };
 
 // Common MiniMap configuration
@@ -125,9 +126,8 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
   // Generate display label WITHOUT hierarchy information - just the node name
   let displayLabel = node.data?.label || node.id;
   // Remove hierarchy path to keep labels clean and simple
-  
-  // Debug: log the colors being generated
-  console.log(`[createStyledNode] Node ${node.id}: nodeType=${node.data?.nodeType || 'Transform'}, gradient=${nodeColors.gradient}`);
+ 
+
   
   return {
     ...node,
@@ -160,24 +160,23 @@ export function createStyledEdge(edge) {
   
   // Clean up any "null" string values that come from the backend
   // This is the root cause - the backend is sending sourceHandle/targetHandle as "null" strings
-  if (result.sourceHandle === "null") {
-    delete result.sourceHandle;
+  if (result.sourceHandle === "null" || !result.sourceHandle) {
+    // For collapsed containers, use the right-side handle, otherwise use the default source handle
+    result.sourceHandle = "source";
   }
-  if (result.targetHandle === "null") {
-    delete result.targetHandle;
+  if (result.targetHandle === "null" || !result.targetHandle) {
+    // For collapsed containers, use the left-side handle, otherwise use the default target handle
+    result.targetHandle = "target";
   }
   
-  // Debug: Check for problematic handle values from backend
-  if (edge.id === 'e7') {
-    console.log('DEBUG - createStyledEdge e7 cleaned:', {
-      id: result.id,
-      sourceHandle: result.sourceHandle,
-      targetHandle: result.targetHandle,
-      sourceHandleType: typeof result.sourceHandle,
-      targetHandleType: typeof result.targetHandle,
-      hasSourceHandle: 'sourceHandle' in result,
-      hasTargetHandle: 'targetHandle' in result
-    });
+  // Additional validation to ensure we don't have any "null" string values
+  if (result.sourceHandle === "null") {
+    console.warn(`Edge ${result.id}: sourceHandle is still "null" after processing`);
+    result.sourceHandle = "source";
+  }
+  if (result.targetHandle === "null") {
+    console.warn(`Edge ${result.id}: targetHandle is still "null" after processing`);
+    result.targetHandle = "target";
   }
   
   return result;
@@ -409,9 +408,6 @@ export function processHierarchy(graphData, selectedGrouping = '') {
     nodes: [...hierarchyNodes, ...processedNodes], // Hierarchy nodes first, then graph nodes
   };
   
-  // Debug: Log what we're returning from processHierarchy
-  console.log('[processHierarchy] Returning nodes:', result.nodes.map(n => ({ id: n.id, type: n.type, label: n.data?.label })));
-  
   return result;
 }
 
@@ -439,18 +435,31 @@ export async function processGraphData(graphData, colorPalette, currentLayout, a
   const processedNodes = processedGraphData.nodes.map(node => {
     if (node.type === 'group') {
       // Group nodes are already styled - don't re-process them
-      console.log(`[processGraphData] Keeping group node: ${node.id} (${node.data?.label})`);
       return node;
     }
     // Only regular nodes need styling
-    console.log(`[processGraphData] Styling regular node: ${node.id} (${node.data?.label})`);
     return createStyledNode(node, colorPalette, processedGraphData.hierarchy);
   });
   
-  // Debug: Log all final nodes to check for duplicates
-  console.log('[processGraphData] Final node list:');
+  // Debug: Check for edge/node ID mismatches
+  const nodeIds = new Set(processedNodes.map(n => n.id));
+  const edgeSources = (processedGraphData.edges || []).map(e => e.source);
+  const edgeTargets = (processedGraphData.edges || []).map(e => e.target);
+  
+  // Check for missing nodes
+  const missingSources = edgeSources.filter(source => !nodeIds.has(source));
+  const missingTargets = edgeTargets.filter(target => !nodeIds.has(target));
+  
+  if (missingSources.length > 0) {
+    console.warn('[processGraphData] Missing source nodes:', missingSources);
+  }
+  if (missingTargets.length > 0) {
+    console.warn('[processGraphData] Missing target nodes:', missingTargets);
+  }
   
   const processedEdges = (processedGraphData.edges || []).map(edge => createStyledEdge(edge));
+  
+
 
   // Apply layout
   const layoutResult = await applyLayout(processedNodes, processedEdges, currentLayout);

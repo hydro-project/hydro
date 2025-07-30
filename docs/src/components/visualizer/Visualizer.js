@@ -4,7 +4,7 @@
  * A simplified, flat graph visualizer using ReactFlow v12 and ELK layout.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   useNodesState, 
   useEdgesState
@@ -47,7 +47,6 @@ export function Visualizer({ graphData }) {
     if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0) {
       const groupNodes = nodes.filter(node => node.type === 'group');
       if (groupNodes.length > 0) {
-        console.log('[Visualizer] Auto-collapsing all containers on initial load');
         setHasAutoCollapsed(true);
         // Small delay to ensure the container logic is ready
         setTimeout(() => {
@@ -86,7 +85,7 @@ export function Visualizer({ graphData }) {
       setHierarchyChoices([]);
       setCurrentGrouping('');
     }
-  }, [graphData, currentGrouping]);
+  }, [graphData]); // Remove currentGrouping to prevent infinite loops
 
   // Handle grouping change
   const handleGroupingChange = useCallback((newGrouping) => {
@@ -151,10 +150,11 @@ export function Visualizer({ graphData }) {
     };
   }, [graphData, currentLayout, colorPalette, currentGrouping, setNodes, setEdges]); // Add currentGrouping to dependencies
 
-  // Handle collapsed container changes by updating the nodes state directly
-  useEffect(() => {
-    if (nodes.length === 0) return; // Don't process if no nodes
-    
+  // Process collapsed containers as derived state using useMemo
+  const { displayNodes, displayEdges } = useMemo(() => {
+    if (nodes.length === 0) {
+      return { displayNodes: [], displayEdges: [] };
+    }
     
     const collapsedArray = Array.from(collapsedContainers);
     const processedNodes = processCollapsedContainers(nodes, collapsedArray);
@@ -167,44 +167,22 @@ export function Visualizer({ graphData }) {
       collapsedArray
     );
     
-    // Only update if there are actual changes - use a more robust comparison
-    const hasNodeChanges = processedNodes.some((node, i) => {
-      const original = nodes[i];
-      return !original || 
-             node.hidden !== original.hidden || 
-             node.type !== original.type ||
-             node.width !== original.width ||
-             node.height !== original.height;
-    }) || processedNodes.length !== nodes.length;
-    
-    const hasEdgeChanges = processedEdges.some((edge, i) => {
-      const original = edges[i];
-      return !original || 
-             edge.hidden !== original.hidden || 
-             edge.source !== original.source ||
-             edge.target !== original.target;
-    }) || processedEdges.length !== edges.length;
-    
-    if (hasNodeChanges || hasEdgeChanges) {
-      if (hasNodeChanges) {
-        setNodes(processedNodes);
-      }
-      if (hasEdgeChanges) {
-        setEdges(processedEdges);
-      }
-      
-      // Force ReactFlow to update node internals (dimensions, etc.)
-      setTimeout(() => {
-        if (window.reactFlowInstance) {
-          processedNodes.forEach(node => {
-            if (node.type === 'collapsedContainer') {
-              window.reactFlowInstance.updateNodeInternals(node.id);
-            }
-          });
+    return {
+      displayNodes: processedNodes,
+      displayEdges: processedEdges
+    };
+  }, [nodes, edges, collapsedContainers, childNodesByParent]);
+
+  // Update ReactFlow internals when collapsed containers change
+  useEffect(() => {
+    if (window.reactFlowInstance && displayNodes.length > 0) {
+      displayNodes.forEach(node => {
+        if (node.type === 'collapsedContainer') {
+          window.reactFlowInstance.updateNodeInternals(node.id);
         }
-      }, 100);
+      });
     }
-  }, [collapsedContainers, childNodesByParent, nodes.length, edges.length]); // Use lengths instead of full arrays
+  }, [displayNodes]);
 
   if (isLoading) {
     return <div className={styles.loading}>Laying out graph...</div>;
@@ -241,8 +219,8 @@ export function Visualizer({ graphData }) {
       <Legend colorPalette={colorPalette} />
       
       <ReactFlowInner
-        nodes={nodes}
-        edges={edges}
+        nodes={displayNodes}
+        edges={displayEdges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={handleNodeClick}

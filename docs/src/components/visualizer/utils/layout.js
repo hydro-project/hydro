@@ -31,7 +31,6 @@ async function loadELK() {
 }
 
 export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
-  console.log('[applyLayout] Starting layout with:', { nodeCount: nodes.length, edgeCount: edges.length, layoutType });
   // Remove the detailed logging for cleaner output
   
   const elk = await loadELK();
@@ -99,12 +98,7 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       targets: [edge.target],
     })),
   };
-
-  // Debug: Log the ELK graph structure to see where nodes are placed
-  console.log('[ELK] Graph structure:');
-  console.log('  Root children:', elkGraph.children.map(c => `${c.id} (${c.children?.length || 0} children)`));
-  console.log('  Edges:', elkGraph.edges.map(e => `${e.sources[0]} -> ${e.targets[0]}`));
-  
+ 
   // Helper function to get all node IDs from hierarchy
   function getAllNodeIds(nodes) {
     const ids = [];
@@ -191,8 +185,6 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     }
     
     layoutedNodes.forEach(node => addNodeAndParents(node.id));
-
-    console.log('[applyLayout] Layout complete');
     
     return {
       nodes: sortedNodes,
