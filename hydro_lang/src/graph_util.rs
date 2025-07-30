@@ -1,7 +1,7 @@
 #[cfg(feature = "viz")]
 use clap::{Parser, ValueEnum};
 
-/// Enum for choosing between mermaid, dot, and reactflow graph writing.
+/// Enum for choosing between mermaid, dot, and json graph writing.
 #[cfg(feature = "viz")]
 #[derive(Copy, Clone, Debug, ValueEnum)]
 pub enum GraphType {
@@ -9,8 +9,8 @@ pub enum GraphType {
     Mermaid,
     /// Dot (Graphviz) graphs.
     Dot,
-    /// Reactflow.js interactive graphs.
-    Reactflow,
+    /// JSON format for interactive graphs.
+    Json,
 }
 
 #[cfg(feature = "viz")]

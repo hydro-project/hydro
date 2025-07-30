@@ -5,9 +5,9 @@ use serde_json;
 
 use super::render::{HydroEdgeType, HydroGraphWrite, HydroNodeType};
 
-/// ReactFlow.js graph writer for Hydro IR.
-/// Outputs JSON that can be directly used with ReactFlow.js for interactive graph visualization.
-pub struct HydroReactFlow<W> {
+/// JSON graph writer for Hydro IR.
+/// Outputs JSON that can be used with interactive graph visualization tools.
+pub struct HydroJson<W> {
     write: W,
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
@@ -20,7 +20,7 @@ pub struct HydroReactFlow<W> {
     external_names: HashMap<usize, String>,
 }
 
-impl<W> HydroReactFlow<W> {
+impl<W> HydroJson<W> {
     pub fn new(write: W, config: &super::render::HydroWriteConfig) -> Self {
         let process_names: HashMap<usize, String> =
             config.process_id_name.iter().cloned().collect();
@@ -108,7 +108,7 @@ impl<W> HydroReactFlow<W> {
     }
 }
 
-impl<W> HydroGraphWrite for HydroReactFlow<W>
+impl<W> HydroGraphWrite for HydroJson<W>
 where
     W: Write,
 {
@@ -333,7 +333,7 @@ where
     }
 
     fn write_location_end(&mut self) -> Result<(), Self::Err> {
-        // Location grouping complete - nothing to do for ReactFlow
+        // Location grouping complete - nothing to do for JSON
         Ok(())
     }
 
@@ -341,17 +341,19 @@ where
         // Apply automatic layout using a simple algorithm
         self.apply_layout();
 
-        // Create the final JSON structure
+        // First, try to create backtrace-based hierarchy if available
+        let (hierarchy, node_assignments) = if self.has_backtrace_data() {
+            self.create_backtrace_hierarchy()
+        } else {
+            self.create_location_hierarchy()
+        };
+
+        // Create the final JSON structure in the format expected by the visualizer
         let output = serde_json::json!({
             "nodes": self.nodes,
             "edges": self.edges,
-            "locations": self.locations.iter().map(|(id, (label, nodes))| {
-                serde_json::json!({
-                    "id": id.to_string(),
-                    "label": label,
-                    "nodes": nodes
-                })
-            }).collect::<Vec<_>>()
+            "hierarchy": hierarchy,
+            "nodeAssignments": node_assignments
         });
 
         write!(
@@ -362,8 +364,245 @@ where
     }
 }
 
-/// Create ReactFlow JSON from Hydro IR with type names
-pub fn hydro_ir_to_reactflow(
+impl<W> HydroJson<W> {
+    /// Check if any nodes have backtrace data
+    fn has_backtrace_data(&self) -> bool {
+        self.nodes.iter().any(|node| {
+            node["data"]["backtrace"]
+                .as_array()
+                .is_some_and(|bt| !bt.is_empty())
+        })
+    }
+
+    /// Create location-based hierarchy (original behavior)
+    fn create_location_hierarchy(&self) -> (Vec<serde_json::Value>, serde_json::Map<String, serde_json::Value>) {
+        // Create hierarchy structure (single level: locations as parents, nodes as children)
+        let hierarchy: Vec<serde_json::Value> = self
+            .locations
+            .iter()
+            .map(|(location_id, (label, _))| {
+                serde_json::json!({
+                    "id": format!("loc_{}", location_id),
+                    "name": label,
+                    "children": [] // Single level hierarchy - no nested children
+                })
+            })
+            .collect();
+
+        // Create node assignments (mapping nodes to their locations)
+        let mut node_assignments = serde_json::Map::new();
+        for (location_id, (_, node_ids)) in &self.locations {
+            let location_key = format!("loc_{}", location_id);
+            for &node_id in node_ids {
+                let node_key = format!("n{}", node_id);
+                node_assignments.insert(node_key, serde_json::Value::String(location_key.clone()));
+            }
+        }
+
+        (hierarchy, node_assignments)
+    }
+
+    /// Create backtrace-based hierarchy
+    fn create_backtrace_hierarchy(&self) -> (Vec<serde_json::Value>, serde_json::Map<String, serde_json::Value>) {
+        use std::collections::HashMap;
+
+        let mut hierarchy_map: HashMap<String, (String, usize, Option<String>)> = HashMap::new(); // path -> (name, depth, parent_path)
+        let mut path_to_node_assignments: HashMap<String, Vec<String>> = HashMap::new(); // path -> [node_ids]
+
+        // Process each node's backtrace
+        for node in &self.nodes {
+            if let (Some(node_id), Some(backtrace_array)) = (
+                node["id"].as_str(),
+                node["data"]["backtrace"].as_array(),
+            ) {
+                if backtrace_array.is_empty() {
+                    continue;
+                }
+
+                // Extract user-relevant frames from backtrace
+                let user_frames: Vec<_> = backtrace_array
+                    .iter()
+                    .filter_map(|frame| {
+                        let filename = frame["filename"].as_str().unwrap_or("");
+                        let fn_name = frame["fn_name"].as_str().unwrap_or("");
+                        
+                        // Include frames that are from user code
+                        if filename.contains("hydro_test") 
+                            || filename.contains("src/")
+                            || (!filename.contains(".cargo/") 
+                                && !filename.contains(".rustup/")
+                                && !fn_name.contains("tokio")) {
+                            Some((filename, fn_name))
+                        } else {
+                            None
+                        }
+                    })
+                    .take(3) // Take top 3 user frames
+                    .collect();
+
+                if user_frames.is_empty() {
+                    continue;
+                }
+
+                // Build hierarchy path from backtrace frames (reverse order for call stack)
+                let mut hierarchy_path = Vec::new();
+                for (i, (filename, fn_name)) in user_frames.iter().rev().enumerate() {
+                    let label = if i == 0 {
+                        // Top level: show file
+                        Self::extract_file_path(filename)
+                    } else {
+                        // Function levels: show function name
+                        Self::extract_function_name(fn_name)
+                    };
+                    hierarchy_path.push(label);
+                }
+
+                // Create hierarchy nodes for this path
+                let mut current_path = String::new();
+                let mut parent_path: Option<String> = None;
+                let mut deepest_path = String::new();
+
+                for (depth, label) in hierarchy_path.iter().enumerate() {
+                    current_path = if current_path.is_empty() {
+                        label.clone()
+                    } else {
+                        format!("{}/{}", current_path, label)
+                    };
+
+                    if !hierarchy_map.contains_key(&current_path) {
+                        hierarchy_map.insert(
+                            current_path.clone(),
+                            (label.clone(), depth, parent_path.clone()),
+                        );
+                    }
+
+                    deepest_path = current_path.clone();
+                    parent_path = Some(current_path.clone());
+                }
+
+                // Assign node to the deepest hierarchy level
+                if !deepest_path.is_empty() {
+                    path_to_node_assignments
+                        .entry(deepest_path)
+                        .or_default()
+                        .push(node_id.to_string());
+                }
+            }
+        }
+
+        // Build hierarchy tree and create proper ID mapping
+        let (hierarchy, path_to_id_map) = self.build_hierarchy_tree_with_ids(&hierarchy_map);
+        
+        // Create node assignments using the actual hierarchy IDs
+        let mut node_assignments = serde_json::Map::new();
+        for (path, node_ids) in path_to_node_assignments {
+            if let Some(hierarchy_id) = path_to_id_map.get(&path) {
+                for node_id in node_ids {
+                    node_assignments.insert(node_id, serde_json::Value::String(hierarchy_id.clone()));
+                }
+            }
+        }
+        
+        (hierarchy, node_assignments)
+    }
+
+    /// Build a tree structure and return both the tree and path-to-ID mapping
+    fn build_hierarchy_tree_with_ids(&self, hierarchy_map: &HashMap<String, (String, usize, Option<String>)>) -> (Vec<serde_json::Value>, HashMap<String, String>) {
+        let mut path_to_id: HashMap<String, String> = HashMap::new();
+        let mut id_counter = 1;
+        
+        for path in hierarchy_map.keys() {
+            path_to_id.insert(path.clone(), format!("bt_{}", id_counter));
+            id_counter += 1;
+        }
+
+        // Find root items (depth 0)
+        let mut roots = Vec::new();
+        
+        for (path, (name, depth, _)) in hierarchy_map {
+            if *depth == 0 {
+                let tree_node = Self::build_tree_node(path, name, hierarchy_map, &path_to_id);
+                roots.push(tree_node);
+            }
+        }
+        
+        (roots, path_to_id)
+    }
+
+    /// Build a single tree node recursively
+    fn build_tree_node(
+        current_path: &str,
+        name: &str,
+        hierarchy_map: &HashMap<String, (String, usize, Option<String>)>,
+        path_to_id: &HashMap<String, String>,
+    ) -> serde_json::Value {
+        let current_id = path_to_id.get(current_path).unwrap().clone();
+        
+        // Find children (paths that have this path as parent)
+        let mut children = Vec::new();
+        for (child_path, (child_name, _, parent_path)) in hierarchy_map {
+            if let Some(parent) = parent_path {
+                if parent == current_path {
+                    let child_node = Self::build_tree_node(child_path, child_name, hierarchy_map, path_to_id);
+                    children.push(child_node);
+                }
+            }
+        }
+
+        if children.is_empty() {
+            serde_json::json!({
+                "id": current_id,
+                "name": name
+            })
+        } else {
+            serde_json::json!({
+                "id": current_id,
+                "name": name,
+                "children": children
+            })
+        }
+    }
+
+    /// Extract meaningful function name from backtrace
+    fn extract_function_name(fn_name: &str) -> String {
+        if fn_name.is_empty() {
+            return "unknown".to_string();
+        }
+        
+        // Remove module paths and keep just the function name
+        let parts: Vec<&str> = fn_name.split("::").collect();
+        let last_part = parts.last().unwrap_or(&"unknown");
+        
+        // Handle closure syntax
+        if *last_part == "{{closure}}" && parts.len() > 1 {
+            parts[parts.len() - 2].to_string()
+        } else {
+            last_part.to_string()
+        }
+    }
+
+    /// Extract meaningful file path
+    fn extract_file_path(filename: &str) -> String {
+        if filename.is_empty() {
+            return "unknown".to_string();
+        }
+        
+        // Extract the most relevant part of the file path
+        let parts: Vec<&str> = filename.split('/').collect();
+        let file_name = parts.last().unwrap_or(&"unknown");
+        
+        // If it's a source file, include the parent directory for context
+        if file_name.ends_with(".rs") && parts.len() > 1 {
+            let parent_dir = parts[parts.len() - 2];
+            format!("{}/{}", parent_dir, file_name)
+        } else {
+            file_name.to_string()
+        }
+    }
+}
+
+/// Create JSON from Hydro IR with type names
+pub fn hydro_ir_to_json(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
@@ -380,14 +619,14 @@ pub fn hydro_ir_to_reactflow(
         external_id_name: external_names,
     };
 
-    super::render::write_hydro_ir_reactflow(&mut output, ir, &config)?;
+    super::render::write_hydro_ir_json(&mut output, ir, &config)?;
 
     Ok(output)
 }
 
-/// Open ReactFlow visualization in browser using the docs visualizer with URL-encoded data
+/// Open JSON visualization in browser using the docs visualizer with URL-encoded data
 #[cfg(feature = "viz")]
-pub fn open_reactflow_browser(
+pub fn open_json_browser(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
@@ -400,11 +639,11 @@ pub fn open_reactflow_browser(
         ..Default::default()
     };
 
-    open_reactflow_docs_browser(ir, config).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
+    open_json_docs_browser(ir, config).map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
-/// Save ReactFlow JSON to file using the consolidated debug utilities
-pub fn save_reactflow_json(
+/// Save JSON to file using the consolidated debug utilities
+pub fn save_json(
     ir: &[crate::ir::HydroLeaf],
     process_names: Vec<(usize, String)>,
     cluster_names: Vec<(usize, String)>,
@@ -418,16 +657,16 @@ pub fn save_reactflow_json(
         ..Default::default()
     };
 
-    super::debug::save_reactflow_json(ir, Some(filename), Some(config))
+    super::debug::save_json(ir, Some(filename), Some(config))
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
 }
 
-/// Open ReactFlow visualization in browser for a BuiltFlow
+/// Open JSON visualization in browser for a BuiltFlow
 #[cfg(feature = "build")]
 pub fn open_browser(
     built_flow: &crate::builder::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    open_reactflow_browser(
+    open_json_browser(
         built_flow.ir(),
         built_flow.process_id_name().clone(),
         built_flow.cluster_id_name().clone(),
@@ -435,17 +674,17 @@ pub fn open_browser(
     )
 }
 
-/// Open ReactFlow visualization in the docs browser with URL-encoded data
+/// Open JSON visualization in the docs browser with URL-encoded data
 #[cfg(feature = "viz")]
-fn open_reactflow_docs_browser(
+fn open_json_docs_browser(
     ir: &[crate::ir::HydroLeaf],
     config: super::render::HydroWriteConfig,
 ) -> Result<(), std::io::Error> {
-    // Generate ReactFlow JSON
-    let reactflow_json = super::render::render_hydro_ir_reactflow(ir, &config);
+    // Generate JSON
+    let json_content = super::render::render_hydro_ir_json(ir, &config);
 
     // Base64 encode the JSON for URL parameter
-    let encoded_data = data_encoding::BASE64URL.encode(reactflow_json.as_bytes());
+    let encoded_data = data_encoding::BASE64URL.encode(json_content.as_bytes());
 
     // Create the docs visualizer URL
     let docs_url = format!(
@@ -457,7 +696,7 @@ fn open_reactflow_docs_browser(
     let local_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
 
     // Try to open the local URL first (for development), fallback to docs URL
-    println!("Opening Hydro ReactFlow visualization in browser...");
+    println!("Opening Hydro JSON visualization in browser...");
 
     // First try localhost for development
     match webbrowser::open(&local_url) {

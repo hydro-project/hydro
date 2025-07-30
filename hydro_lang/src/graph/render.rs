@@ -4,10 +4,10 @@ use std::fmt::Write;
 
 use auto_impl::auto_impl;
 
-pub use super::graphviz::{HydroDot, HydroJson, escape_dot};
+pub use super::dot::{HydroDot, escape_dot};
+pub use super::json::HydroJson;
 // Re-export specific implementations
 pub use super::mermaid::{HydroMermaid, escape_mermaid};
-pub use super::reactflow::HydroReactFlow;
 use crate::ir::{DebugExpr, HydroLeaf, HydroNode, HydroSource};
 
 /// Label for a graph node - can be either a static string or contain expressions.
@@ -182,7 +182,15 @@ impl Default for HydroWriteConfig {
 /// Graph structure tracker for Hydro IR rendering.
 #[derive(Default)]
 pub struct HydroGraphStructure {
-    pub nodes: HashMap<usize, (NodeLabel, HydroNodeType, Option<usize>, Option<crate::backtrace::Backtrace>)>, /* node_id -> (label, type, location, backtrace) */
+    pub nodes: HashMap<
+        usize,
+        (
+            NodeLabel,
+            HydroNodeType,
+            Option<usize>,
+            Option<crate::backtrace::Backtrace>,
+        ),
+    >, // node_id -> (label, type, location, backtrace)
     pub edges: Vec<(usize, usize, HydroEdgeType, Option<String>)>, // (src, dst, edge_type, label)
     pub locations: HashMap<usize, String>,                         // location_id -> location_type
     pub next_node_id: usize,
@@ -202,7 +210,8 @@ impl HydroGraphStructure {
     ) -> usize {
         let node_id = self.next_node_id;
         self.next_node_id += 1;
-        self.nodes.insert(node_id, (label, node_type, location, backtrace));
+        self.nodes
+            .insert(node_id, (label, node_type, location, backtrace));
         node_id
     }
 
@@ -393,7 +402,12 @@ impl HydroLeaf {
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
             let location_id = setup_location(structure, metadata);
-            let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id, Some(metadata.backtrace.clone()));
+            let sink_id = structure.add_node(
+                label,
+                HydroNodeType::Sink,
+                location_id,
+                Some(metadata.backtrace.clone()),
+            );
             structure.add_edge(input_id, sink_id, edge_type, None);
             sink_id
         }
@@ -541,7 +555,12 @@ impl HydroNode {
             label: String,
         ) -> usize {
             let location_id = setup_location(structure, metadata);
-            structure.add_node(NodeLabel::Static(label), HydroNodeType::Source, location_id, Some(metadata.backtrace.clone()))
+            structure.add_node(
+                NodeLabel::Static(label),
+                HydroNodeType::Source,
+                location_id,
+                Some(metadata.backtrace.clone()),
+            )
         }
 
         match self {
@@ -947,13 +966,6 @@ write_hydro_ir!(
 
 render_hydro_ir!(render_hydro_ir_dot, write_hydro_ir_dot);
 write_hydro_ir!(write_hydro_ir_dot, HydroDot<_>, HydroDot::new_with_config);
-
-render_hydro_ir!(render_hydro_ir_reactflow, write_hydro_ir_reactflow);
-write_hydro_ir!(
-    write_hydro_ir_reactflow,
-    HydroReactFlow<_>,
-    HydroReactFlow::new
-);
 
 render_hydro_ir!(render_hydro_ir_json, write_hydro_ir_json);
 write_hydro_ir!(write_hydro_ir_json, HydroJson<_>, HydroJson::new);
