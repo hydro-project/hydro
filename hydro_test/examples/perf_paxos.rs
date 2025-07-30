@@ -138,7 +138,7 @@ async fn main() {
         if let Some(new_cluster) = decoupled_cluster {
             clusters.push((
                 new_cluster.id().raw_id(),
-                format!("{}_decouple_{}", bottleneck_name, i),
+                format!("{}-decouple-{}", bottleneck_name, i),
                 bottleneck_num_nodes,
             ));
         }

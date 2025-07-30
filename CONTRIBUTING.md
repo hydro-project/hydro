@@ -14,7 +14,6 @@ Relative to the repository root:
   layer" while the flow syntax compiler is the "compiled layer".
 * `hydro_lang` and related (`hydro_*`) packages contain Hydro, which is a functional syntax built on
   top of `DFIR`.
-* `dfir_datalog` provides a datalog compiler, based on top of the DFIR flow syntax.
 * `docs` is the [Hydro.run](https://hydro.run/) website. `website_playground` contains the
   playground portion of the website, used for compiling DFIR in-browser via WASM.
 * `benches` contains some microbenchmarks for DFIR and other frameworks.
@@ -28,12 +27,6 @@ There are several subpackages included that are used by Hydro but are more gener
 * `pusherator` is a rudimentary library providing push-based iterators.
 * `multiplatform_test` provides a convenience macro for specifying and initializing tests on
   various platforms.
-
-There are auxillary repositories as well:
-
-* [`hydro-project/rust-sitter`](https://github.com/hydro-project/rust-sitter) provides a
-  [Tree-sitter](https://tree-sitter.github.io/tree-sitter/)-based parser generator interface, used
-  by `dfir_datalog`.
 
 ## Rust
 
