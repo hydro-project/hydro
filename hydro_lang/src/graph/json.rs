@@ -370,7 +370,19 @@ where
             "nodes": self.nodes,
             "edges": self.edges,
             "hierarchyChoices": hierarchy_choices,
-            "nodeAssignments": node_assignments_choices
+            "nodeAssignments": node_assignments_choices,
+            "legend": {
+                "title": "Node Types",
+                "items": [
+                    { "type": "Source", "label": "Source" },
+                    { "type": "Transform", "label": "Transform" },
+                    { "type": "Sink", "label": "Sink" },
+                    { "type": "Network", "label": "Network" },
+                    { "type": "Aggregation", "label": "Aggregation" },
+                    { "type": "Join", "label": "Join" },
+                    { "type": "Tee", "label": "Tee" }
+                ]
+            }
         });
 
         write!(
