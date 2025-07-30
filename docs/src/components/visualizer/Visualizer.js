@@ -25,6 +25,7 @@ export function Visualizer({ graphData }) {
   const [currentLayout, setCurrentLayout] = useState('mrtree');
   const [colorPalette, setColorPalette] = useState('Set3');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
   
   // Grouping hierarchy state
   const [hierarchyChoices, setHierarchyChoices] = useState([]);
@@ -40,6 +41,26 @@ export function Visualizer({ graphData }) {
     expandAll,
     hasCollapsedContainers,
   } = useCollapsedContainers(nodes);
+
+  // Auto-collapse all containers on initial load
+  useEffect(() => {
+    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0) {
+      const groupNodes = nodes.filter(node => node.type === 'group');
+      if (groupNodes.length > 0) {
+        console.log('[Visualizer] Auto-collapsing all containers on initial load');
+        setHasAutoCollapsed(true);
+        // Small delay to ensure the container logic is ready
+        setTimeout(() => {
+          collapseAll();
+        }, 50);
+      }
+    }
+  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, collapseAll]);
+
+  // Reset auto-collapse flag when graph data changes
+  useEffect(() => {
+    setHasAutoCollapsed(false);
+  }, [graphData]);
 
   // Warn about any group node with missing style before passing to ReactFlowInner
   useEffect(() => {

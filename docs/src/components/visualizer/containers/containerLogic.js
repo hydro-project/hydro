@@ -183,59 +183,48 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
         },
       };
     }
-    
+
     // If this edge has been previously rerouted and we're expanding, restore original
     if (collapsedSet.size === 0 && edge.data?.originalSource && edge.data?.originalTarget) {
       return restoreOriginalEdge(edge);
     }
-    
-    // Hide edges that connect ONLY to hidden nodes (both endpoints hidden = internal edge)
-    // Don't remove them - just hide them so they can be restored later
-    if (hiddenNodeIds.has(edge.source) && hiddenNodeIds.has(edge.target)) {
-      return {
-        ...edge,
-        hidden: true,
-        // Store original handles for restoration
-        data: {
-          ...edge.data,
-          originalSourceHandle: edge.data?.originalSourceHandle !== undefined ? edge.data.originalSourceHandle : edge.sourceHandle,
-          originalTargetHandle: edge.data?.originalTargetHandle !== undefined ? edge.data.originalTargetHandle : edge.targetHandle,
-        },
-        // Clean up handle properties to avoid ReactFlow errors
-        sourceHandle: undefined,
-        targetHandle: undefined,
-      };
-    }
-    
-    // Now process edges for rerouting (these are edges that don't connect to hidden nodes)
+
+    // FIRST: Process edges for rerouting (before checking if they should be hidden)
     let newSource = edge.source;
     let newTarget = edge.target;
     let shouldHide = false;
-    
+
     // Find which containers the source and target belong to (with recursive lookup)
     const sourceContainer = findNodeContainer(edge.source, childNodesByParent, collapsedContainerIds);
     const targetContainer = findNodeContainer(edge.target, childNodesByParent, collapsedContainerIds);
-    
+
     // Check if source is in a collapsed container
     if (sourceContainer && collapsedSet.has(sourceContainer)) {
       newSource = sourceContainer;
     }
-    
+
     // Check if target is in a collapsed container
     if (targetContainer && collapsedSet.has(targetContainer)) {
       newTarget = targetContainer;
     }
-    
+
+    // AFTER rerouting, determine if the edge should be hidden
     // Hide edges that are internal to collapsed containers
     if (sourceContainer && targetContainer && 
         sourceContainer === targetContainer && 
         collapsedSet.has(sourceContainer)) {
       shouldHide = true;
     }
-    
+
     // Hide self-loops on collapsed containers (but only if both source and target were rerouted)
     if (newSource === newTarget && collapsedSet.has(newSource) && 
         (sourceContainer || targetContainer)) {
+      shouldHide = true;
+    }
+
+    // Hide edges that connect ONLY to hidden nodes (both endpoints hidden = internal edge)
+    // But only after rerouting - this catches any remaining internal edges
+    if (hiddenNodeIds.has(newSource) && hiddenNodeIds.has(newTarget)) {
       shouldHide = true;
     }
     
