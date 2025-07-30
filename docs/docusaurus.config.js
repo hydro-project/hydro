@@ -93,6 +93,22 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    // Plugin to suppress web-worker warnings from elkjs
+    function(context, options) {
+      return {
+        name: 'webpack-suppress-warnings',
+        configureWebpack(config, isServer) {
+          return {
+            ignoreWarnings: [
+              {
+                module: /web-worker/,
+                message: /Critical dependency: the request of a dependency is an expression/,
+              },
+            ],
+          };
+        },
+      };
+    },
   ],
 
   themeConfig:

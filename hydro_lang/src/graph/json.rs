@@ -341,19 +341,36 @@ where
         // Apply automatic layout using a simple algorithm
         self.apply_layout();
 
-        // First, try to create backtrace-based hierarchy if available
-        let (hierarchy, node_assignments) = if self.has_backtrace_data() {
-            self.create_backtrace_hierarchy()
-        } else {
-            self.create_location_hierarchy()
-        };
+        // Create multiple hierarchy options
+        let mut hierarchy_choices = Vec::new();
+        let mut node_assignments_choices = serde_json::Map::new();
+
+        // Always add location-based hierarchy
+        let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
+        hierarchy_choices.push(serde_json::json!({
+            "id": "location",
+            "name": "By Location",
+            "hierarchy": location_hierarchy
+        }));
+        node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
+
+        // Add backtrace-based hierarchy if available
+        if self.has_backtrace_data() {
+            let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
+            hierarchy_choices.push(serde_json::json!({
+                "id": "backtrace",
+                "name": "By Backtrace",
+                "hierarchy": backtrace_hierarchy
+            }));
+            node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
+        }
 
         // Create the final JSON structure in the format expected by the visualizer
         let output = serde_json::json!({
             "nodes": self.nodes,
             "edges": self.edges,
-            "hierarchy": hierarchy,
-            "nodeAssignments": node_assignments
+            "hierarchyChoices": hierarchy_choices,
+            "nodeAssignments": node_assignments_choices
         });
 
         write!(
@@ -389,13 +406,16 @@ impl<W> HydroJson<W> {
             })
             .collect();
 
-        // Create node assignments (mapping nodes to their locations)
+        // Create node assignments by reading locationId from each node's data
+        // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         let mut node_assignments = serde_json::Map::new();
-        for (location_id, (_, node_ids)) in &self.locations {
-            let location_key = format!("loc_{}", location_id);
-            for &node_id in node_ids {
-                let node_key = format!("n{}", node_id);
-                node_assignments.insert(node_key, serde_json::Value::String(location_key.clone()));
+        for node in &self.nodes {
+            if let (Some(node_id), Some(location_id)) = (
+                node["id"].as_str(),
+                node["data"]["locationId"].as_u64(),
+            ) {
+                let location_key = format!("loc_{}", location_id);
+                node_assignments.insert(node_id.to_string(), serde_json::Value::String(location_key));
             }
         }
 

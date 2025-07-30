@@ -196,7 +196,7 @@
   color: #333;
 }
 
-.layoutSelect, .paletteSelect {
+.layoutSelect, .paletteSelect, .groupingSelect {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 4px;
@@ -207,8 +207,26 @@
   cursor: pointer;
 }
 
-.layoutSelect:hover, .paletteSelect:hover {
+.layoutSelect:hover, .paletteSelect:hover, .groupingSelect:hover {
   border-color: #adb5bd;
+}
+
+.groupingSelect.disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+}
+
+.groupingControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.controlLabel {
+  font-weight: 500;
+  color: #333;
+  font-size: 12px;
 }
 
 .containerButton {

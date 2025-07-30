@@ -1,10 +1,11 @@
 /**
  * Layout Controls Component
  * 
- * Dropdown controls for layout algorithm and color palette selection
+ * Dropdown controls for layout algorithm, color palette, and grouping hierarchy selection
  */
 
 import React from 'react';
+import { GroupingControls } from './GroupingControls.js';
 import styles from '../../../pages/visualizer.module.css';
 
 const layoutOptions = {
@@ -28,11 +29,14 @@ export function LayoutControls({
   onPaletteChange,
   hasCollapsedContainers,
   onCollapseAll,
-  onExpandAll 
+  onExpandAll,
+  hierarchyChoices,
+  currentGrouping,
+  onGroupingChange
 }) {
   return (
     <div className={styles.layoutControls}>
-            <select 
+      <select 
         className={styles.layoutSelect}
         value={currentLayout} 
         onChange={(e) => onLayoutChange(e.target.value)}
@@ -51,6 +55,12 @@ export function LayoutControls({
           <option key={key} value={key}>{label}</option>
         ))}
       </select>
+      
+      <GroupingControls
+        hierarchyChoices={hierarchyChoices}
+        currentGrouping={currentGrouping}
+        onGroupingChange={onGroupingChange}
+      />
       
       <button 
         className={styles.containerButton}

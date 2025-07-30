@@ -26,6 +26,10 @@ export function Visualizer({ graphData }) {
   const [colorPalette, setColorPalette] = useState('Set3');
   const [isLoading, setIsLoading] = useState(false);
   
+  // Grouping hierarchy state
+  const [hierarchyChoices, setHierarchyChoices] = useState([]);
+  const [currentGrouping, setCurrentGrouping] = useState('');
+  
   // Collapsed containers state
   const {
     collapsedContainers,
@@ -48,6 +52,25 @@ export function Visualizer({ graphData }) {
       });
     }
   }, [nodes]);
+
+  // Extract hierarchy choices from graph data and set default
+  useEffect(() => {
+    if (isValidGraphData(graphData) && graphData.hierarchyChoices) {
+      setHierarchyChoices(graphData.hierarchyChoices);
+      // Set default grouping to the first available choice
+      if (graphData.hierarchyChoices.length > 0 && !currentGrouping) {
+        setCurrentGrouping(graphData.hierarchyChoices[0].id);
+      }
+    } else {
+      setHierarchyChoices([]);
+      setCurrentGrouping('');
+    }
+  }, [graphData, currentGrouping]);
+
+  // Handle grouping change
+  const handleGroupingChange = useCallback((newGrouping) => {
+    setCurrentGrouping(newGrouping);
+  }, []);
 
   // Handle node clicks for expanding/collapsing containers
   const handleNodeClick = useCallback((event, node) => {
@@ -74,7 +97,8 @@ export function Visualizer({ graphData }) {
       setIsLoading(true);
 
       try {
-        const result = await processGraphData(graphData, colorPalette, currentLayout, applyLayout);
+        // Pass the current grouping to the graph processing
+        const result = await processGraphData(graphData, colorPalette, currentLayout, applyLayout, currentGrouping);
         
         if (isCancelled) return; // Don't update state if component unmounted or effect cancelled
         
@@ -104,7 +128,7 @@ export function Visualizer({ graphData }) {
     return () => {
       isCancelled = true;
     };
-  }, [graphData, currentLayout, colorPalette, setNodes, setEdges]); // Remove collapsed containers dependencies
+  }, [graphData, currentLayout, colorPalette, currentGrouping, setNodes, setEdges]); // Add currentGrouping to dependencies
 
   // Handle collapsed container changes by updating the nodes state directly
   useEffect(() => {
@@ -188,6 +212,9 @@ export function Visualizer({ graphData }) {
         hasCollapsedContainers={hasCollapsedContainers}
         onCollapseAll={collapseAll}
         onExpandAll={expandAll}
+        hierarchyChoices={hierarchyChoices}
+        currentGrouping={currentGrouping}
+        onGroupingChange={handleGroupingChange}
       />
       
       <Legend colorPalette={colorPalette} />
