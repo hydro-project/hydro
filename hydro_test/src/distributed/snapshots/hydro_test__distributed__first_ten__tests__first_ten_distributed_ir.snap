@@ -10,6 +10,7 @@ expression: builder.finalize().ir()
                 inner: ExternalInput {
                     from_external_id: 0,
                     from_key: 0,
+                    from_many: false,
                     instantiate_fn: <network instantiate>,
                     deserialize_fn: Some(
                         | res | { hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& res . unwrap ()) . unwrap () },

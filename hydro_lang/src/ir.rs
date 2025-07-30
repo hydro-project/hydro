@@ -444,6 +444,7 @@ impl HydroLeaf {
                 } else if let HydroNode::ExternalInput {
                     from_external_id,
                     from_key,
+                    from_many,
                     instantiate_fn,
                     metadata,
                     ..
@@ -478,9 +479,9 @@ impl HydroLeaf {
                                     (
                                         (
                                             parse_quote!(DUMMY),
-                                            D::e2o_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                                            D::e2o_source(compile_env, &from_node, &sink_port, &to_node, &source_port, *from_many),
                                         ),
-                                        D::e2o_connect(&from_node, &sink_port, &to_node, &source_port),
+                                        D::e2o_connect(&from_node, &sink_port, &to_node, &source_port, *from_many),
                                     )
                                 }
                                 LocationId::Cluster(_) => todo!(),
@@ -1130,6 +1131,7 @@ pub enum HydroNode {
     ExternalInput {
         from_external_id: usize,
         from_key: usize,
+        from_many: bool,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
         metadata: HydroIrMetadata,
@@ -1451,12 +1453,14 @@ impl HydroNode {
             HydroNode::ExternalInput {
                 from_external_id,
                 from_key,
+                from_many,
                 instantiate_fn,
                 deserialize_fn,
                 metadata,
             } => HydroNode::ExternalInput {
                 from_external_id: *from_external_id,
                 from_key: *from_key,
+                from_many: *from_many,
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),
                 metadata: metadata.clone(),
@@ -2821,7 +2825,7 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"200");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"208");
     }
 
     #[test]
