@@ -119,6 +119,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
 
       <Legend 
         colorPalette={colorPalette}
+        graphData={graphData}
       />
       
       <ReactFlowInner 

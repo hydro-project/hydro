@@ -249,6 +249,13 @@
   background: #e9ecef;
 }
 
+.separator {
+  width: 1px;
+  height: 24px;
+  background: #dee2e6;
+  margin: 0 4px;
+}
+
 .fitViewButton {
   background: #007bff;
   border: 1px solid #007bff;
@@ -298,7 +305,7 @@
 /* Legend */
 .unifiedLegend {
   position: absolute;
-  top: 90px;
+  top: 20px;
   right: 10px;
   z-index: 10;
   background: rgba(255, 255, 255, 0.95);
@@ -311,12 +318,35 @@
 }
 
 .unifiedLegend h4 {
-  margin: 0 0 6px 0;
+  margin: 0;
   font-size: 12px;
   font-weight: 600;
   color: #333;
+}
+
+.legendHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
   border-bottom: 1px solid #eee;
   padding-bottom: 3px;
+}
+
+.legendToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #666;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.legendToggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333;
 }
 
 .legendSection {
