@@ -31,10 +31,10 @@ import {
   BACKGROUND_CONFIG,
   MINIMAP_CONFIG,
   getMiniMapNodeColor
-} from './reactFlowConfig.js';
+} from '../utils/reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
-import { CollapsedContainerNode } from './CollapsedContainerNode.js';
-import styles from '../../pages/visualizer.module.css';
+import { CollapsedContainerNode } from '../containers/CollapsedContainerNode.js';
+import styles from '../../../pages/visualizer.module.css';
 
 export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette, onNodeClick }) {
   const onConnect = useCallback((connection) => {

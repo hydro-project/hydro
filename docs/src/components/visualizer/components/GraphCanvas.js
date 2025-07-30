@@ -11,12 +11,12 @@ import {
   applyNodeChanges, 
   applyEdgeChanges 
 } from '@xyflow/react';
-import { applyLayout } from './layout.js';
+import { applyLayout } from '../utils/layout.js';
 import { LayoutControls } from './LayoutControls.js';
 import { Legend } from './Legend.js';
 import { ReactFlowInner } from './ReactFlowInner.js';
-import { processGraphData } from './reactFlowConfig.js';
-import styles from '../../pages/visualizer.module.css';
+import { processGraphData } from '../utils/reactFlowConfig.js';
+import styles from '../../../pages/visualizer.module.css';
 
 export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
   console.log('[GraphCanvas] Rendering with graphData:', graphData);

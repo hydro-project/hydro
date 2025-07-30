@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useEffect } from 'react';
-import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containerCollapse.js';
+import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containerLogic.js';
 
 export function CollapsedContainerWrapper({ nodes, edges, collapsedContainers, childNodesByParent, children }) {
   // Process nodes and edges based on collapsed state

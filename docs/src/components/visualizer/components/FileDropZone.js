@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import styles from '../../pages/visualizer.module.css';
+import styles from '../../../pages/visualizer.module.css';
 
 export function FileDropZone({ onFileLoad, hasData }) {
   const [isDragOver, setIsDragOver] = useState(false);

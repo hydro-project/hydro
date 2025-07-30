@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { generateNodeColors } from './utils.js';
-import styles from '../../pages/visualizer.module.css';
+import { generateNodeColors } from '../utils/utils.js';
+import styles from '../../../pages/visualizer.module.css';
 
 const nodeTypes = [
   'Source',

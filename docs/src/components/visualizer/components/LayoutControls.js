@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import styles from '../../pages/visualizer.module.css';
+import styles from '../../../pages/visualizer.module.css';
 
 const layoutOptions = {
   mrtree: 'MR Tree',

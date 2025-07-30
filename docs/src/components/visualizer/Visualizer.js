@@ -11,12 +11,13 @@ import {
   applyNodeChanges, 
   applyEdgeChanges 
 } from '@xyflow/react';
-import { applyLayout } from './layout.js';
-import { LayoutControls } from './LayoutControls.js';
-import { Legend } from './Legend.js';
-import { ReactFlowInner } from './ReactFlowInner.js';
-import { processGraphData } from './reactFlowConfig.js';
-import { useCollapsedContainers } from './useCollapsedContainers.js';
+import { applyLayout } from './utils/layout.js';
+import { LayoutControls } from './components/LayoutControls.js';
+import { Legend } from './components/Legend.js';
+import { ReactFlowInner } from './components/ReactFlowInner.js';
+import { processGraphData } from './utils/reactFlowConfig.js';
+import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
+import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containers/containerLogic.js';
 import styles from '../../pages/visualizer.module.css';
 
 export function Visualizer({ graphData }) {
@@ -77,10 +78,6 @@ export function Visualizer({ graphData }) {
       setIsLoading(true);
 
       try {
-        // Import the functions inside the effect to avoid dependency issues
-        const { processGraphData } = await import('./reactFlowConfig.js');
-        const { applyLayout } = await import('./layout.js');
-        
         const result = await processGraphData(graphData, colorPalette, currentLayout, applyLayout);
         
         if (isCancelled) return; // Don't update state if component unmounted or effect cancelled
@@ -121,8 +118,6 @@ export function Visualizer({ graphData }) {
     if (nodes.length === 0) return; // Don't process if no nodes
     
     console.log('Applying collapsed container changes');
-    
-    const { processCollapsedContainers, rerouteEdgesForCollapsedContainers } = require('./containerCollapse.js');
     
     const collapsedArray = Array.from(collapsedContainers);
     const processedNodes = processCollapsedContainers(nodes, collapsedArray);

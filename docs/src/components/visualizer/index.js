@@ -5,8 +5,15 @@
  */
 
 export { Visualizer } from './Visualizer.js';
-export { GraphCanvas } from './GraphCanvas.js';
+export { GraphCanvas } from './components/GraphCanvas.js';
 export { ReactFlowVisualization } from './ReactFlowVisualization.js';
-export { FileDropZone } from './FileDropZone.js';
-export { useCollapsedContainers } from './useCollapsedContainers.js';
-export { CollapsedContainerNode } from './CollapsedContainerNode.js';
+export { FileDropZone } from './components/FileDropZone.js';
+
+// Container collapse/expand functionality
+export { 
+  useCollapsedContainers, 
+  CollapsedContainerNode,
+  CollapsedContainerWrapper,
+  processCollapsedContainers,
+  rerouteEdgesForCollapsedContainers
+} from './containers/index.js';
