@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.14.0 (2025-07-30)
+## 0.14.0 (2025-07-31)
+
+<csr-id-59041df58be2de0717b851cc1c3355479cd722f2/>
+<csr-id-cb54ace31866d68f424798f876f9e4e8ffd9d881/>
+<csr-id-c3ccee6638f2e006f837fd6f946d1b942e40c144/>
+<csr-id-09fc5f3d430e455a11fee054d7243c02ecb3c02d/>
+<csr-id-de6c8ce3d258ecd1a2038e2a09d5ea8860e8ad42/>
 
 ### Documentation
 
@@ -27,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-5b5bbe57b54a5d038bc28c0e674ed68ca34245d1/> Revert anti join allocation
    Added unit test for Paxos compilation and non-negative throughtput
  - <csr-id-0d841a536e1ab58838136e6c33b2115325ec1541/> add type arguments to `anti_join_multiset`, `difference_multiset` to mitigate #1857
+ - <csr-id-96ec97a324254929b4677e9e769dbccab917d767/> workaround to publish `example_test`
 
 ### Refactor
 
@@ -86,8 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 13 commits contributed to the release over the course of 92 calendar days.
- - 13 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 15 commits contributed to the release over the course of 93 calendar days.
+ - 14 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 13 unique issues were worked on: [#1825](https://github.com/hydro-project/hydro/issues/1825), [#1837](https://github.com/hydro-project/hydro/issues/1837), [#1847](https://github.com/hydro-project/hydro/issues/1847), [#1848](https://github.com/hydro-project/hydro/issues/1848), [#1851](https://github.com/hydro-project/hydro/issues/1851), [#1858](https://github.com/hydro-project/hydro/issues/1858), [#1859](https://github.com/hydro-project/hydro/issues/1859), [#1860](https://github.com/hydro-project/hydro/issues/1860), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1912](https://github.com/hydro-project/hydro/issues/1912), [#1929](https://github.com/hydro-project/hydro/issues/1929), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1939](https://github.com/hydro-project/hydro/issues/1939)
 
 ### Commit Details
@@ -122,6 +129,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Allow running generated binaries with single-threaded Tokio runtime ([`bd1afdf`](https://github.com/hydro-project/hydro/commit/bd1afdff5fd7b8dc6d2c567cd2659542a84c6216))
  * **[#1939](https://github.com/hydro-project/hydro/issues/1939)**
     - Minimize Tokio feature flags ([`59041df`](https://github.com/hydro-project/hydro/commit/59041df58be2de0717b851cc1c3355479cd722f2))
+ * **Uncategorized**
+    - Workaround to publish `example_test` ([`96ec97a`](https://github.com/hydro-project/hydro/commit/96ec97a324254929b4677e9e769dbccab917d767))
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## 0.13.0 (2025-04-11)

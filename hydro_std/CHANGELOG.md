@@ -1,6 +1,8 @@
 
 
-## v0.14.0 (2025-07-30)
+## v0.14.0 (2025-07-31)
+
+<csr-id-5ab815f3567d51e9bd114f90af8e837fe0732cd8/>
 
 ### New Features
 
@@ -52,7 +54,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 91 calendar days.
+ - 5 commits contributed to the release over the course of 91 calendar days.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1803](https://github.com/hydro-project/hydro/issues/1803), [#1900](https://github.com/hydro-project/hydro/issues/1900), [#1907](https://github.com/hydro-project/hydro/issues/1907), [#1910](https://github.com/hydro-project/hydro/issues/1910)
 
@@ -70,6 +72,8 @@
     - Upgrade Stageleft to eliminate `__staged` compilation during development ([`b333b45`](https://github.com/hydro-project/hydro/commit/b333b45e0936bbe481d7fbc285790d942779c494))
  * **[#1910](https://github.com/hydro-project/hydro/issues/1910)**
     - Add stream markers for tracking non-deterministic retries ([`45bd6e9`](https://github.com/hydro-project/hydro/commit/45bd6e9759410dcb747c9224758c82f9874378d2))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## v0.13.0 (2025-04-11)

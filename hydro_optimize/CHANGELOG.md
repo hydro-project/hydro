@@ -1,6 +1,10 @@
 
 
-## v0.13.0 (2025-07-30)
+## v0.13.0 (2025-07-31)
+
+<csr-id-edab6c2b94b08ff2204411409e840fcc43112609/>
+<csr-id-22a7d0d9a057356a4a01ccdad6febc8aa229d325/>
+<csr-id-fb016b017a42df95286cb2236ef987ea68be9ea7/>
 
 ### Chore
 
@@ -74,7 +78,7 @@
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release over the course of 12 calendar days.
+ - 12 commits contributed to the release over the course of 12 calendar days.
  - 11 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 11 unique issues were worked on: [#1859](https://github.com/hydro-project/hydro/issues/1859), [#1930](https://github.com/hydro-project/hydro/issues/1930), [#1934](https://github.com/hydro-project/hydro/issues/1934), [#1935](https://github.com/hydro-project/hydro/issues/1935), [#1937](https://github.com/hydro-project/hydro/issues/1937), [#1940](https://github.com/hydro-project/hydro/issues/1940), [#1947](https://github.com/hydro-project/hydro/issues/1947), [#1952](https://github.com/hydro-project/hydro/issues/1952), [#1955](https://github.com/hydro-project/hydro/issues/1955), [#1958](https://github.com/hydro-project/hydro/issues/1958), [#1962](https://github.com/hydro-project/hydro/issues/1962)
 
@@ -106,5 +110,7 @@
     - Invert external sources and clean up locations in IR ([`fb016b0`](https://github.com/hydro-project/hydro/commit/fb016b017a42df95286cb2236ef987ea68be9ea7))
  * **[#1962](https://github.com/hydro-project/hydro/issues/1962)**
     - Separate externals from other location kinds, clean up network operators ([`22a7d0d`](https://github.com/hydro-project/hydro/commit/22a7d0d9a057356a4a01ccdad6febc8aa229d325))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
