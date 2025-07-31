@@ -18,7 +18,7 @@ export function InfoPanel({
   childNodesByParent,
   onPositionChange 
 }) {
-  const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const [legendCollapsed, setLegendCollapsed] = useState(true);
   const [hierarchyCollapsed, setHierarchyCollapsed] = useState(false);
 
   // Get legend data from the graph JSON, fallback to default if not provided
@@ -203,7 +203,7 @@ export function InfoPanel({
           </CollapsibleSection>
         )}
 
-               <CollapsibleSection
+        <CollapsibleSection
           title={legendData.title}
           isCollapsed={legendCollapsed}
           onToggle={() => setLegendCollapsed(!legendCollapsed)}
