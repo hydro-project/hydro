@@ -123,6 +123,16 @@ pub trait Deploy<'a> {
         c2_port: &Self::Port,
     ) -> Box<dyn FnOnce()>;
 
+    fn e2o_many_source(
+        compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
+        p2: &Self::Process,
+        p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr;
+    fn e2o_many_sink(shared_handle: String) -> syn::Expr;
+
     fn e2o_source(
         compile_env: &Self::CompileEnv,
         p1: &Self::External,
@@ -135,6 +145,7 @@ pub trait Deploy<'a> {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
     ) -> Box<dyn FnOnce()>;
 
     fn o2e_sink(
@@ -223,10 +234,30 @@ where
     fn register(&self, key: usize, port: D::Port);
     fn raw_port(&self, key: usize) -> D::ExternalRawPort;
 
-    fn as_bytes_sink(
+    #[expect(clippy::type_complexity, reason = "Dynamic generic stream handling")]
+    fn as_bytes_bidi(
         &self,
         key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Sink<Bytes, Error = Error>>>> + 'a;
+    ) -> impl Future<
+        Output = (
+            Pin<Box<dyn Stream<Item = Bytes>>>,
+            Pin<Box<dyn Sink<Bytes, Error = Error>>>,
+        ),
+    > + 'a;
+
+    #[expect(clippy::type_complexity, reason = "Dynamic generic stream handling")]
+    fn as_bincode_bidi<InT, OutT>(
+        &self,
+        key: usize,
+    ) -> impl Future<
+        Output = (
+            Pin<Box<dyn Stream<Item = OutT>>>,
+            Pin<Box<dyn Sink<InT, Error = Error>>>,
+        ),
+    > + 'a
+    where
+        InT: Serialize + 'static,
+        OutT: DeserializeOwned + 'static;
 
     fn as_bincode_sink<T>(
         &self,
@@ -234,11 +265,6 @@ where
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a
     where
         T: Serialize + 'static;
-
-    fn as_bytes_source(
-        &self,
-        key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = Bytes>>>> + 'a;
 
     fn as_bincode_source<T>(
         &self,
