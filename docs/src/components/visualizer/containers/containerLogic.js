@@ -300,24 +300,10 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
 
     // Additional safety check: make sure newSource and newTarget actually exist in visible nodes
     if (!visibleNodes.has(newSource) || !visibleNodes.has(newTarget)) {
-      // CRITICAL: Don't remove internal edges entirely - preserve them as hidden for restoration
-      // If both source and target are hidden (internal edge), mark as hidden but preserve
+      // CRITICAL: For internal edges (both source and target hidden), filter them out completely
+      // Don't use hidden: true as ReactFlow may still render them as dashed lines
       if (hiddenNodes.has(edge.source) && hiddenNodes.has(edge.target)) {
-        return {
-          ...edge,
-          hidden: true,
-          sourceHandle: edge.sourceHandle || REQUIRED_HANDLE_IDS.source,
-          targetHandle: edge.targetHandle || REQUIRED_HANDLE_IDS.target,
-          data: {
-            ...edge.data,
-            // Mark as internal edge for restoration
-            isInternalEdge: true,
-            originalSource: edge.data?.originalSource || edge.source,
-            originalTarget: edge.data?.originalTarget || edge.target,
-            originalSourceHandle: edge.data?.originalSourceHandle || edge.sourceHandle,
-            originalTargetHandle: edge.data?.originalTargetHandle || edge.targetHandle,
-          },
-        };
+        return null; // Filter out completely - will be removed by .filter() below
       }
       
       // For other cases where edges would connect to non-existent nodes, log and skip
@@ -345,7 +331,7 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
 
     // Create rerouted edge and cache original for restoration
     // CRITICAL: Handle IDs must be consistent across all node types
-    return {
+    const reroutedEdge = {
       ...edge,
       source: newSource,
       target: newTarget,
@@ -361,6 +347,13 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
         isRerouted: true,
       },
     };
+
+    // Filter out self-loop edges - they appear as lines through containers
+    if (newSource === newTarget) {
+      return null; // These create visual artifacts when containers connect to themselves
+    }
+    
+    return reroutedEdge;
   }).filter(edge => edge !== null); // Remove any null edges from safety check
   
   return resultEdges;

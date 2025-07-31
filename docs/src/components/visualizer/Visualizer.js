@@ -154,6 +154,18 @@ export function Visualizer({ graphData, onControlsReady }) {
     }
   }, [isLayouting, layoutOperationId]);
 
+  // Helper function to process nodes and edges for collapsed containers (DRY)
+  const processNodesAndEdgesForLayout = useCallback((collapsedArray) => {
+    const currentDisplayNodes = processCollapsedContainers(nodes, collapsedArray);
+    const currentDisplayEdges = rerouteEdgesForCollapsedContainers(
+      edges,
+      currentDisplayNodes,
+      childNodesByParent,
+      collapsedArray
+    );
+    return { currentDisplayNodes, currentDisplayEdges };
+  }, [nodes, edges, childNodesByParent]);
+
   // Auto-collapse all containers on initial load with staged initialization
   // Robust staged initialization with retries and stuck overlay
   useEffect(() => {
@@ -181,8 +193,8 @@ export function Visualizer({ graphData, onControlsReady }) {
             await new Promise(resolve => setTimeout(resolve, 100));
             const allCollapsedArray = groupNodes.map(node => node.id);
             collapseAll();
-            const currentDisplayNodes = processCollapsedContainers(nodes, allCollapsedArray);
-            const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout);
+            const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(allCollapsedArray);
+            const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
             const updatedNodes = nodes.map(baseNode => {
               const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
               if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
@@ -282,9 +294,8 @@ export function Visualizer({ graphData, onControlsReady }) {
     if (hasCollapsedContainers && nodes.length > 0) {
       performLayoutOperation(async (opId) => {
         const collapsedArray = Array.from(collapsedContainers);
-        const currentDisplayNodes = processCollapsedContainers(nodes, collapsedArray);
-        
-        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, newLayout);
+        const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
+        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, newLayout);
         
         const updatedNodes = nodes.map(baseNode => {
           const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
@@ -316,9 +327,8 @@ export function Visualizer({ graphData, onControlsReady }) {
       collapseAll();
       
       // Use the computed collapsed state immediately
-      const currentDisplayNodes = processCollapsedContainers(nodes, allCollapsedArray);
-      
-      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout);
+      const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(allCollapsedArray);
+      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
       
       const updatedNodes = nodes.map(baseNode => {
         const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
@@ -345,9 +355,8 @@ export function Visualizer({ graphData, onControlsReady }) {
       expandAll();
       
       // Use empty collapsed array immediately (all expanded)
-      const currentDisplayNodes = processCollapsedContainers(nodes, []);
-      
-      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout);
+      const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout([]);
+      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
       
       const updatedNodes = nodes.map(baseNode => {
         const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
@@ -388,9 +397,8 @@ export function Visualizer({ graphData, onControlsReady }) {
         toggleContainer(node.id);
         
         // Use the computed collapsed state immediately
-        const currentDisplayNodes = processCollapsedContainers(nodes, collapsedArray);
-        
-        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout, node.id);
+        const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
+        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout, node.id);
         
         const updatedNodes = nodes.map(baseNode => {
           const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
