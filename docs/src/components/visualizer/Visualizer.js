@@ -490,10 +490,11 @@ export function Visualizer({ graphData, onControlsReady }) {
     const collapsedArray = Array.from(collapsedContainers);
     const processedNodes = processCollapsedContainers(nodes, collapsedArray);
     
-    // Also process edges to reroute them for collapsed containers
+    // CRITICAL: Use the same processedNodes for edge processing to ensure consistency
+    // This prevents race conditions where edges are calculated with different node visibility
     const processedEdges = rerouteEdgesForCollapsedContainers(
       edges,
-      processedNodes,
+      processedNodes, // Use processedNodes instead of original nodes
       childNodesByParent,
       collapsedArray
     );

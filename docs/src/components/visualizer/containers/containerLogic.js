@@ -199,16 +199,43 @@ function getAllDescendants(containerId, nodes) {
  */
 export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByParent, collapsedContainerIds) {
   const collapsedSet = new Set(collapsedContainerIds);
-  
-  // If no containers are collapsed, just return edges as-is for now
+
+  // If no containers are collapsed, restore any previously rerouted edges and ensure handles are clean
   if (collapsedSet.size === 0) {
     return edges.map(edge => {
-      // CRITICAL: Always ensure handle IDs are set to valid defaults
-      // These must match the Handle IDs defined in GroupNode.js and CollapsedContainerNode.js
+      // CRITICAL: Restore any edge that was modified during collapse (rerouted, hidden, or marked as internal)
+      if (edge.data?.isRerouted || edge.data?.isInternalEdge || edge.hidden) {
+        // Use stored original values if available, otherwise current values
+        const restoredSource = edge.data?.originalSource || edge.source;
+        const restoredTarget = edge.data?.originalTarget || edge.target;
+        const restoredSourceHandle = edge.data?.originalSourceHandle || edge.sourceHandle || REQUIRED_HANDLE_IDS.source;
+        const restoredTargetHandle = edge.data?.originalTargetHandle || edge.targetHandle || REQUIRED_HANDLE_IDS.target;
+        
+        return {
+          ...edge,
+          source: restoredSource,
+          target: restoredTarget,
+          sourceHandle: restoredSourceHandle,
+          targetHandle: restoredTargetHandle,
+          hidden: false,
+          data: {
+            ...edge.data,
+            // Clean up ALL modification markers
+            originalSource: undefined,
+            originalTarget: undefined,
+            originalSourceHandle: undefined,
+            originalTargetHandle: undefined,
+            isRerouted: undefined,
+            isInternalEdge: undefined,
+          },
+        };
+      }
+      
+      // For non-modified edges, just ensure handle IDs are set to valid defaults
       return {
         ...edge,
-        sourceHandle: edge.sourceHandle || REQUIRED_HANDLE_IDS.source, // Must exist on all node types
-        targetHandle: edge.targetHandle || REQUIRED_HANDLE_IDS.target, // Must exist on all node types
+        sourceHandle: edge.sourceHandle || REQUIRED_HANDLE_IDS.source,
+        targetHandle: edge.targetHandle || REQUIRED_HANDLE_IDS.target,
       };
     });
   }
@@ -272,6 +299,27 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
 
     // Additional safety check: make sure newSource and newTarget actually exist in visible nodes
     if (!visibleNodes.has(newSource) || !visibleNodes.has(newTarget)) {
+      // CRITICAL: Don't remove internal edges entirely - preserve them as hidden for restoration
+      // If both source and target are hidden (internal edge), mark as hidden but preserve
+      if (hiddenNodes.has(edge.source) && hiddenNodes.has(edge.target)) {
+        return {
+          ...edge,
+          hidden: true,
+          sourceHandle: edge.sourceHandle || REQUIRED_HANDLE_IDS.source,
+          targetHandle: edge.targetHandle || REQUIRED_HANDLE_IDS.target,
+          data: {
+            ...edge.data,
+            // Mark as internal edge for restoration
+            isInternalEdge: true,
+            originalSource: edge.data?.originalSource || edge.source,
+            originalTarget: edge.data?.originalTarget || edge.target,
+            originalSourceHandle: edge.data?.originalSourceHandle || edge.sourceHandle,
+            originalTargetHandle: edge.data?.originalTargetHandle || edge.targetHandle,
+          },
+        };
+      }
+      
+      // For other cases where edges would connect to non-existent nodes, log and skip
       console.warn(`Edge ${edge.id} would connect to non-existent nodes:`, {
         edge,
         newSource,
@@ -280,7 +328,6 @@ export function rerouteEdgesForCollapsedContainers(edges, nodes, childNodesByPar
         targetExists: visibleNodes.has(newTarget),
         visibleNodes: Array.from(visibleNodes)
       });
-      // Skip this edge entirely if it would connect to non-existent nodes
       return null;
     }
 
@@ -337,12 +384,13 @@ function restoreOriginalEdge(edge) {
     },
     data: {
       ...edge.data,
-      // Clean up rerouting data
+      // Clean up ALL rerouting and internal edge data
       originalSource: undefined,
       originalTarget: undefined,
       originalSourceHandle: undefined,
       originalTargetHandle: undefined,
       isRerouted: false,
+      isInternalEdge: undefined,
     },
   };
   
