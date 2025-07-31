@@ -9,11 +9,12 @@
  * - Edge styling and behavior (DEFAULT_EDGE_OPTIONS)
  * - MiniMap configuration (MINIMAP_CONFIG)
  * - Background configuration (BACKGROUND_CONFIG)
- * - ELK layout algorithm settings (ELK_LAYOUT_CONFIGS)
  * - Node styling utilities
  * 
- * All zoom levels, animation timings, and layout spacing values are
+ * All zoom levels, animation timings, and spacing values are
  * imported from constants.js to maintain consistency across the app.
+ * 
+ * ELK layout configurations have been moved to elkConfig.js for better organization.
  * 
  * DO NOT override these settings in individual components - modify them here instead.
  */
@@ -24,37 +25,8 @@ import {
   COMPONENT_COLORS, 
   DEFAULT_STYLES, 
   ANIMATION_TIMINGS, 
-  ZOOM_LEVELS, 
-  LAYOUT_SPACING 
+  ZOOM_LEVELS 
 } from './constants.js';
-
-// ELK layout configurations
-export const ELK_LAYOUT_CONFIGS = {
-  mrtree: {
-    'elk.algorithm': 'mrtree',
-    'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
-    'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
-  },
-  layered: {
-    'elk.algorithm': 'layered',
-    'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_COMPACT,
-    'elk.layered.spacing.nodeNodeBetweenLayers': LAYOUT_SPACING.LAYER_SEPARATION,
-  },
-  force: {
-    'elk.algorithm': 'force',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
-  },
-  stress: {
-    'elk.algorithm': 'stress',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
-  },
-  radial: {
-    'elk.algorithm': 'radial',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
-  },
-};
 
 // Common ReactFlow configuration
 export const REACTFLOW_CONFIG = {

@@ -1,17 +1,15 @@
 /**
  * Simple ELK Layout Integration
  * 
- * Provides        layoutOptions: {
-          'elk.spacing.nodeNode': 30,
-          'elk.algorithm': 'layered',
-          'elk.layered.spacing.nodeNodeBetweenLayers': 40,
-          'elk.layered.spacing.borderToNode': 20,
-        },
-        children: buildElkHierarchy(container.id),
-      };aph layout using ELK algorithms with shared configuration
+ * Provides graph layout using ELK algorithms with centralized configuration from elkConfig.js
  */
 
-import { ELK_LAYOUT_CONFIGS } from './reactFlowConfig.js';
+import { 
+  getELKConfig, 
+  getContainerELKConfig, 
+  createFixedPositionOptions, 
+  createFreePositionOptions 
+} from './elkConfig.js';
 import { filterNodesByType, filterNodesByParent, filterNodesExcludingType } from './constants.js';
 
 let ELK = null;
@@ -54,13 +52,8 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
       const elkContainer = {
         ...container,  // PRESERVE all original properties (style, data, type, etc.)
         id: container.id,
-        // Let ELK calculate container size - temporarily remove padding to test
-        layoutOptions: {
-          ...ELK_LAYOUT_CONFIGS[layoutType], // Use the selected layout algorithm!
-          'elk.spacing.nodeNode': 20,
-          'elk.spacing.edgeNode': 15,
-          'elk.spacing.edgeEdge': 10,
-        },
+        // Let ELK calculate container size - use centralized container config
+        layoutOptions: getContainerELKConfig(layoutType, 'hierarchy'),
         children: childElkNodes,
       };
       children.push(elkContainer);
@@ -80,17 +73,10 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     return children;
   }
 
-  // Build the ELK graph with hierarchy - let ELK handle all sizing and positioning
+  // Build the ELK graph with hierarchy - use centralized root config
   const elkGraph = {
     id: 'root',
-    layoutOptions: {
-      ...ELK_LAYOUT_CONFIGS[layoutType],
-      'elk.padding': '[top=20,left=20,bottom=20,right=20]', // Root level padding for canvas margins
-      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-      'elk.spacing.nodeNode': 40, // Spacing between top-level containers
-      'elk.spacing.edgeNode': 20,
-      'elk.spacing.edgeEdge': 15,
-    },  
+    layoutOptions: getContainerELKConfig(layoutType, 'root'),
     children: buildElkHierarchy(null), // Start with no parent (top level)
     edges: edges.map(edge => ({
       id: edge.id,
@@ -241,20 +227,13 @@ export async function applyLayoutForCollapsedContainers(displayNodes, edges, lay
     
     // If this container wasn't the one that changed, try to keep its position fixed
     if (changedContainerId && container.id !== changedContainerId) {
-      elkContainer.x = container.position.x;
-      elkContainer.y = container.position.y;
-      elkContainer.layoutOptions = {
-        'elk.position.x': container.position.x.toString(),
-        'elk.position.y': container.position.y.toString(),
-        'elk.nodeSize.constraints': 'FIXED_POS',
-        'elk.nodeSize.options': 'FIXED_POS'
-      };
+      elkContainer.layoutOptions = createFixedPositionOptions(
+        container.position.x, 
+        container.position.y
+      );
     } else {
       // Allow the changed container to find a new position
-      elkContainer.layoutOptions = {
-        'elk.nodeSize.constraints': '',
-        'elk.nodeSize.options': ''
-      };
+      elkContainer.layoutOptions = createFreePositionOptions();
     }
     
     return elkContainer;
@@ -263,12 +242,7 @@ export async function applyLayoutForCollapsedContainers(displayNodes, edges, lay
   // Create simple ELK graph for container layout
   const elkGraph = {
     id: 'container_root',
-    layoutOptions: {
-      ...ELK_LAYOUT_CONFIGS[layoutType],
-      'elk.spacing.nodeNode': 80, // Reduced spacing for better collapsed container layout
-      'elk.spacing.componentComponent': 60, // Reduced spacing
-      'elk.partitioning.activate': 'false'
-    },
+    layoutOptions: getContainerELKConfig(layoutType, 'collapsed'),
     children: elkContainers,
     edges: [] // No edges needed for simple container repositioning
   };

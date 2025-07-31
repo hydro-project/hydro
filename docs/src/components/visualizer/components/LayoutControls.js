@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { GroupingControls } from './GroupingControls.js';
+import { getLayoutOptions } from '../utils/elkConfig.js';
 import styles from '../../../pages/visualizer.module.css';
 
 // SVG Icons for pack/unpack operations
@@ -22,13 +23,8 @@ const UnpackIcon = () => (
   </svg>
 );
 
-const layoutOptions = {
-  mrtree: 'MR Tree',
-  layered: 'Layered',
-  force: 'Force',
-  stress: 'Stress',
-  radial: 'Radial'
-};
+// Get layout options from centralized ELK config
+const layoutOptions = getLayoutOptions();
 
 const paletteOptions = {
   Set3: 'Set3',
