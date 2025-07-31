@@ -1,35 +1,58 @@
 /**
- * Shared configuration and utilities for ReactFlow components
+ * Centralized ReactFlow Configuration
+ * 
+ * This file contains ALL ReactFlow-related configurations in one location.
+ * This includes:
+ * - Core ReactFlow component settings (REACTFLOW_CONFIG)
+ * - Default viewport settings (DEFAULT_VIEWPORT)
+ * - FitView behavior configuration (FIT_VIEW_CONFIG)
+ * - Edge styling and behavior (DEFAULT_EDGE_OPTIONS)
+ * - MiniMap configuration (MINIMAP_CONFIG)
+ * - Background configuration (BACKGROUND_CONFIG)
+ * - ELK layout algorithm settings (ELK_LAYOUT_CONFIGS)
+ * - Node styling utilities
+ * 
+ * All zoom levels, animation timings, and layout spacing values are
+ * imported from constants.js to maintain consistency across the app.
+ * 
+ * DO NOT override these settings in individual components - modify them here instead.
  */
 
 import { generateNodeColors } from './utils.js';
-import { COLORS, COMPONENT_COLORS, DEFAULT_STYLES } from './constants.js';
+import { 
+  COLORS, 
+  COMPONENT_COLORS, 
+  DEFAULT_STYLES, 
+  ANIMATION_TIMINGS, 
+  ZOOM_LEVELS, 
+  LAYOUT_SPACING 
+} from './constants.js';
 
 // ELK layout configurations
 export const ELK_LAYOUT_CONFIGS = {
   mrtree: {
     'elk.algorithm': 'mrtree',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 25,  // Reduced from 50
-    'elk.spacing.edgeNode': 10,  // Reduced from 20
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
+    'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
   },
   layered: {
     'elk.algorithm': 'layered',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': 15,  // Reduced from 30
-    'elk.layered.spacing.nodeNodeBetweenLayers': 25,  // Reduced from 50
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_COMPACT,
+    'elk.layered.spacing.nodeNodeBetweenLayers': LAYOUT_SPACING.LAYER_SEPARATION,
   },
   force: {
     'elk.algorithm': 'force',
-    'elk.spacing.nodeNode': 50,  // Reduced from 100
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
   },
   stress: {
     'elk.algorithm': 'stress',
-    'elk.spacing.nodeNode': 50,  // Reduced from 100
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
   },
   radial: {
     'elk.algorithm': 'radial',
-    'elk.spacing.nodeNode': 50,  // Reduced from 100
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
   },
 };
 
@@ -39,18 +62,28 @@ export const REACTFLOW_CONFIG = {
   nodesDraggable: true,
   nodesConnectable: true,
   elementsSelectable: true,
-  maxZoom: 2,
-  minZoom: 0.2,  // Increased minimum zoom for better visibility
+  maxZoom: ZOOM_LEVELS.MAX_INTERACTIVE,
+  minZoom: ZOOM_LEVELS.MIN_INTERACTIVE,
   nodeOrigin: [0.5, 0.5],
   elevateEdgesOnSelect: true,
   disableKeyboardA11y: false,
-  // CRITICAL: These settings are needed for proper group node behavior
-  defaultEdgeOptions: {
-    style: { strokeWidth: 2 },
-  },
   // Allow nodes to be positioned outside parent bounds during layout
   translateExtent: [[-Infinity, -Infinity], [Infinity, Infinity]],
+};
 
+// Default viewport configuration
+export const DEFAULT_VIEWPORT = {
+  x: 0,
+  y: 0,
+  zoom: ZOOM_LEVELS.DEFAULT,
+};
+
+// FitView configuration for programmatic viewport adjustments
+export const FIT_VIEW_CONFIG = {
+  padding: 0.1,
+  duration: ANIMATION_TIMINGS.FIT_VIEW_DURATION,
+  minZoom: ZOOM_LEVELS.MIN_FIT_VIEW,
+  maxZoom: ZOOM_LEVELS.MAX_FIT_VIEW,
 };
 
 // Common MiniMap configuration

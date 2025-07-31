@@ -21,6 +21,7 @@ import {
   REACTFLOW_CONFIG,
   BACKGROUND_CONFIG,
   MINIMAP_CONFIG,
+  DEFAULT_VIEWPORT,
   getMiniMapNodeColor
 } from '../utils/reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
@@ -160,11 +161,8 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+          defaultViewport={DEFAULT_VIEWPORT}
           {...REACTFLOW_CONFIG}
-          nodesDraggable={true}
-          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
-          minZoom={0.2}
-          maxZoom={2.0}
         >
           <ReactFlowInstanceHandler />
           <Controls />

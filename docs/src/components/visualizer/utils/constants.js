@@ -262,3 +262,34 @@ export const getUniqueNodesById = (nodes) => {
     array.findIndex(n => n.id === node.id) === index
   );
 };
+
+// ============================================================================
+// REACTFLOW INTEGRATION CONSTANTS
+// These constants support the ReactFlow configuration in reactFlowConfig.js
+// ============================================================================
+
+// Animation and timing constants
+export const ANIMATION_TIMINGS = {
+  FIT_VIEW_DURATION: 300,
+  FIT_VIEW_DEBOUNCE: 100,
+  LAYOUT_DEBOUNCE: 200,
+  RESIZE_DEBOUNCE: 500,
+};
+
+// Zoom level constants
+export const ZOOM_LEVELS = {
+  MIN_INTERACTIVE: 0.2,    // Minimum zoom for interactive use
+  MAX_INTERACTIVE: 2.0,    // Maximum zoom for interactive use
+  MIN_FIT_VIEW: 0.1,       // Minimum zoom for automatic fit view
+  MAX_FIT_VIEW: 1.5,       // Maximum zoom for automatic fit view
+  DEFAULT: 0.5,            // Default initial zoom level
+};
+
+// Layout spacing constants (used in ELK configurations)
+export const LAYOUT_SPACING = {
+  NODE_TO_NODE_COMPACT: 15,     // Tight spacing between nodes
+  NODE_TO_NODE_NORMAL: 25,      // Normal spacing between nodes
+  NODE_TO_NODE_LOOSE: 50,       // Loose spacing between nodes
+  EDGE_TO_NODE: 10,             // Spacing between edges and nodes
+  LAYER_SEPARATION: 25,         // Spacing between layers in layered layouts
+};

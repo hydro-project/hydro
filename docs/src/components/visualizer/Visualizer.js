@@ -13,7 +13,7 @@ import { applyLayout, applyLayoutForCollapsedContainers } from './utils/layout.j
 import { LayoutControls } from './components/LayoutControls.js';
 import { InfoPanel } from './components/InfoPanel.js';
 import { ReactFlowInner } from './components/ReactFlowInner.js';
-import { processGraphData } from './utils/reactFlowConfig.js';
+import { processGraphData, FIT_VIEW_CONFIG } from './utils/reactFlowConfig.js';
 import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
 import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containers/containerLogic.js';
 import { isValidGraphData, getUniqueNodesById, COMPONENT_COLORS } from './utils/constants.js';
@@ -83,10 +83,10 @@ export function Visualizer({ graphData, onControlsReady }) {
       window.fitViewTimeout = setTimeout(() => {
         window.dispatchEvent(new CustomEvent('fitViewRequest', {
           detail: {
-            padding: 0.1,
+            padding: FIT_VIEW_CONFIG.padding,
             duration: duration,
-            minZoom: 0.1,
-            maxZoom: 1.5,
+            minZoom: FIT_VIEW_CONFIG.minZoom,
+            maxZoom: FIT_VIEW_CONFIG.maxZoom,
             operationName,
             timestamp
           }
