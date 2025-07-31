@@ -15,8 +15,8 @@ use super::ports::{self, RustCratePortConfig};
 use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
-    Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
-    TracingResults,
+    BaseServerStrategy, Host, LaunchedBinary, LaunchedHost, ResourceBatch, ResourceResult,
+    ServerStrategy, Service, TracingResults,
 };
 
 pub struct RustCrateService {
@@ -172,7 +172,7 @@ impl Service for RustCrateService {
         }
 
         for port in self.external_ports.iter() {
-            host.request_port(&ServerStrategy::ExternalTcpPort(*port));
+            host.request_port_base(&BaseServerStrategy::ExternalTcpPort(*port));
         }
     }
 
