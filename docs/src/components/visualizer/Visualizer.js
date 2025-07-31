@@ -169,7 +169,7 @@ export function Visualizer({ graphData, onControlsReady }) {
   // Auto-collapse all containers on initial load with staged initialization
   // Robust staged initialization with retries and stuck overlay
   useEffect(() => {
-    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting && !initFailed) {
+    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting && !initFailed && !isLoading) {
       const groupNodes = nodes.filter(node => node.type === 'group');
       if (groupNodes.length > 0) {
         setHasAutoCollapsed(true);
@@ -227,7 +227,7 @@ export function Visualizer({ graphData, onControlsReady }) {
     return () => {
       if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
     };
-  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, setNodes, debouncedFitViewport, initAttempts, initFailed]);
+  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, debouncedFitViewport, initAttempts, initFailed]);
 
   // Reset auto-collapse flag when graph data changes
   useEffect(() => {
@@ -268,7 +268,9 @@ export function Visualizer({ graphData, onControlsReady }) {
     setCurrentGrouping(newGrouping);
     // Reset auto-collapse flag so it will trigger again for the new grouping
     setHasAutoCollapsed(false);
-  }, []);
+    // Temporarily disable auto-collapse to prevent race condition during grouping change
+    setIsLoading(true);
+  }, [currentGrouping]);
 
   // Handle manual fit view button click
   const handleFitView = useCallback(() => {
@@ -314,7 +316,7 @@ export function Visualizer({ graphData, onControlsReady }) {
         debouncedFitViewport(300, 'layout change');
       }, 'layout-change');
     }
-  }, [hasCollapsedContainers, nodes, edges, collapsedContainers, setNodes, performLayoutOperation]);
+  }, [hasCollapsedContainers, nodes, edges, collapsedContainers, performLayoutOperation]);
 
   // Wrapper for collapseAll with layout readjustment
   const handleCollapseAll = useCallback(async () => {
@@ -346,7 +348,7 @@ export function Visualizer({ graphData, onControlsReady }) {
       // Deterministic viewport fitting after layout is complete
       debouncedFitViewport(300, 'collapse all');
     }, 'collapse-all');
-  }, [collapseAll, nodes, edges, currentLayout, setNodes, performLayoutOperation]);
+  }, [collapseAll, nodes, edges, currentLayout, performLayoutOperation]);
 
   // Wrapper for expandAll with layout readjustment
   const handleExpandAll = useCallback(async () => {
@@ -374,7 +376,7 @@ export function Visualizer({ graphData, onControlsReady }) {
       // Deterministic viewport fitting after layout is complete
       debouncedFitViewport(300, 'expand all');
     }, 'expand-all');
-  }, [expandAll, nodes, edges, currentLayout, setNodes, performLayoutOperation]);
+  }, [expandAll, nodes, edges, currentLayout, performLayoutOperation]);
 
   // Handle node clicks for expanding/collapsing containers
   const handleNodeClick = useCallback(async (event, node) => {
@@ -417,7 +419,7 @@ export function Visualizer({ graphData, onControlsReady }) {
         debouncedFitViewport(300, 'container toggle');
       }, `toggle-container-${node.id}`);
     }
-  }, [toggleContainer, nodes, edges, currentLayout, setNodes, collapsedContainers, performLayoutOperation]);
+  }, [toggleContainer, nodes, edges, currentLayout, collapsedContainers, performLayoutOperation]);
 
   // Handle container toggle from hierarchy tree
   const handleHierarchyToggle = useCallback(async (containerId) => {
@@ -514,7 +516,7 @@ export function Visualizer({ graphData, onControlsReady }) {
     return () => {
       isCancelled = true;
     };
-  }, [graphData, currentLayout, colorPalette, currentGrouping, setNodes, setEdges]); // Remove isLayouting dependency
+  }, [graphData, currentLayout, colorPalette, currentGrouping]); // Remove setNodes, setEdges dependencies
 
   // Process collapsed containers as derived state using useMemo
   const { displayNodes, displayEdges } = useMemo(() => {

@@ -63,6 +63,17 @@ export default function VisualizerPage() {
     window.history.replaceState(null, null, window.location.pathname);
   }, []);
 
+  // Memoize the visualization component to prevent unnecessary re-renders
+  const visualizationComponent = React.useMemo(() => {
+    if (!graphData) return null;
+    return (
+      <ReactFlowVisualization 
+        graphData={graphData} 
+        onControlsReady={setToolbarControls}
+      />
+    );
+  }, [graphData]);
+
   return (
     <Layout
       title="Graph Visualizer"
@@ -88,12 +99,7 @@ export default function VisualizerPage() {
                     </button>
                   </div>
                 </div>
-                {React.useMemo(() => (
-                  <ReactFlowVisualization 
-                    graphData={graphData} 
-                    onControlsReady={setToolbarControls}
-                  />
-                ), [graphData])}
+                {visualizationComponent}
               </div>
             ) : (
               <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />

@@ -138,12 +138,15 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
         // Use a conservative limit of 1800 characters for the base URL + encoded data
         const MAX_SAFE_URL_LENGTH: usize = 1800;
         let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
-        
+
         if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
             // Large graph - save to temp file and give instructions
             let temp_file = save_json_to_temp(json_content)?;
-            
-            println!("📊 Graph is too large for URL encoding ({} chars)", encoded_data.len());
+
+            println!(
+                "📊 Graph is too large for URL encoding ({} chars)",
+                encoded_data.len()
+            );
             println!("💾 Saved JSON to temporary file: {}", temp_file.display());
             println!();
             println!("🎯 To visualize this graph:");
@@ -151,8 +154,10 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
             println!("   2. Drag and drop the JSON file onto the visualizer");
             println!("   3. Or use the file upload button in the visualizer");
             println!();
-            println!("💡 Alternatively, you can copy the file path above and use it with your preferred method.");
-            
+            println!(
+                "💡 Alternatively, you can copy the file path above and use it with your preferred method."
+            );
+
             return Ok(());
         }
 
@@ -185,21 +190,21 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
 /// Save JSON content to a temporary file with a descriptive name
 fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
     use std::io::Write;
-    
+
     // Create a descriptive filename with timestamp
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    
+
     let filename = format!("hydro_graph_{}.json", timestamp);
     let temp_file = std::env::temp_dir().join(filename);
-    
+
     // Write the JSON content to the temp file
     let mut file = std::fs::File::create(&temp_file)?;
     file.write_all(json_content.as_bytes())?;
     file.flush()?;
-    
+
     Ok(temp_file)
 }
 
@@ -218,12 +223,15 @@ pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result
         // Use a conservative limit of 1800 characters for the base URL + encoded data
         const MAX_SAFE_URL_LENGTH: usize = 1800;
         let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
-        
+
         if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
             // Large graph - save to temp file and give instructions
             let temp_file = save_json_to_temp(json_content)?;
-            
-            println!("📊 Graph is too large for URL encoding ({} chars)", encoded_data.len());
+
+            println!(
+                "📊 Graph is too large for URL encoding ({} chars)",
+                encoded_data.len()
+            );
             println!("💾 Saved JSON to temporary file: {}", temp_file.display());
             println!();
             println!("🎯 To visualize this graph:");
@@ -231,8 +239,10 @@ pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result
             println!("   2. Drag and drop the JSON file onto the visualizer");
             println!("   3. Or use the file upload button in the visualizer");
             println!();
-            println!("💡 Alternatively, you can copy the file path above and use it with your preferred method.");
-            
+            println!(
+                "💡 Alternatively, you can copy the file path above and use it with your preferred method."
+            );
+
             return Ok(());
         }
 
