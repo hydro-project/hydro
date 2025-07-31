@@ -349,7 +349,7 @@ where
         let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
         hierarchy_choices.push(serde_json::json!({
             "id": "location",
-            "name": "By Location",
+            "name": "Location",
             "hierarchy": location_hierarchy
         }));
         node_assignments_choices.insert("location".to_string(), serde_json::Value::Object(location_assignments));
@@ -359,7 +359,7 @@ where
             let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
             hierarchy_choices.push(serde_json::json!({
                 "id": "backtrace",
-                "name": "By Backtrace",
+                "name": "Backtrace",
                 "hierarchy": backtrace_hierarchy
             }));
             node_assignments_choices.insert("backtrace".to_string(), serde_json::Value::Object(backtrace_assignments));
