@@ -4,20 +4,38 @@
 
 import { COLOR_PALETTES } from './constants.js';
 
-const nodeTypeColors = {
-  'Source': 0,
-  'Transform': 1,
-  'Sink': 2,
-  'Network': 3,
-  'Operator': 4,
-  'Join': 5,
-  'Union': 6,
-  'Filter': 7,
-};
-
-export function generateNodeColors(nodeType, paletteKey = 'Set3') {
+/**
+ * Generate node colors dynamically based on provided node type configuration
+ * @param {string} nodeType - The node type to get colors for
+ * @param {string} paletteKey - The color palette to use
+ * @param {Object} nodeTypeConfig - Configuration object with node type mappings
+ * @returns {Object} Color configuration for the node type
+ */
+export function generateNodeColors(nodeType, paletteKey = 'Set3', nodeTypeConfig = null) {
   const palette = COLOR_PALETTES[paletteKey] || COLOR_PALETTES.Set3;
-  const colorIndex = nodeTypeColors[nodeType] || 0;
+  
+  // Use provided configuration or fall back to defaults
+  let colorIndex = 0; // Default color index
+  if (nodeTypeConfig?.types) {
+    const typeConfig = nodeTypeConfig.types.find(t => t.id === nodeType);
+    if (typeConfig && typeof typeConfig.colorIndex === 'number') {
+      colorIndex = typeConfig.colorIndex;
+    }
+  } else {
+    // Legacy fallback for backwards compatibility
+    const defaultMapping = {
+      'Source': 0,
+      'Transform': 1,
+      'Sink': 2,
+      'Network': 3,
+      'Operator': 4,
+      'Join': 5,
+      'Union': 6,
+      'Filter': 7,
+    };
+    colorIndex = defaultMapping[nodeType] || 0;
+  }
+  
   const colors = palette[colorIndex % palette.length];
   
   // Create a subtle gradient using only the primary color with lighter/darker shades

@@ -10,6 +10,7 @@ import { Handle } from '@xyflow/react';
 import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';
+import { getContainerHandles } from '../utils/handleStyles.js';
 
 export function GroupNode(props) {
   // In ReactFlow v12, custom components receive: id, data, width, height
@@ -139,63 +140,11 @@ export function GroupNode(props) {
       
       {/* 
         CRITICAL: Connection handles for ReactFlow edges
-        
-        These Handle IDs MUST match exactly with:
-        1. CollapsedContainerNode.js handles 
-        2. Handle IDs used in containerLogic.js edge processing
-        3. Any other node types that can be edge targets
-        
-        DO NOT CHANGE these IDs without updating all related components!
-        This fixes ReactFlow v12 handle errors when collapsing containers.
+        Using centralized handle configuration for consistency
       */}
-      <Handle 
-        type="source" 
-        position="right" 
-        id={REQUIRED_HANDLE_IDS.source} // CRITICAL: Must match CollapsedContainerNode and edge processing
-        style={{ 
-          background: getTextColor(id), 
-          border: `2px solid ${getBackgroundColor(id)}`, 
-          width: 10, 
-          height: 10,
-          right: -5 
-        }} 
-      />
-      <Handle 
-        type="target" 
-        position="left" 
-        id={REQUIRED_HANDLE_IDS.target} // CRITICAL: Must match CollapsedContainerNode and edge processing
-        style={{ 
-          background: getTextColor(id), 
-          border: `2px solid ${getBackgroundColor(id)}`, 
-          width: 10, 
-          height: 10,
-          left: -5 
-        }} 
-      />
-      <Handle 
-        type="source" 
-        position="bottom" 
-        id={REQUIRED_HANDLE_IDS.sourceBottom} // CRITICAL: Must match CollapsedContainerNode
-        style={{ 
-          background: getTextColor(id), 
-          border: `2px solid ${getBackgroundColor(id)}`, 
-          width: 10, 
-          height: 10,
-          bottom: -5 
-        }} 
-      />
-      <Handle 
-        type="target" 
-        position="top" 
-        id={REQUIRED_HANDLE_IDS.targetTop} // CRITICAL: Must match CollapsedContainerNode
-        style={{ 
-          background: getTextColor(id), 
-          border: `2px solid ${getBackgroundColor(id)}`, 
-          width: 10, 
-          height: 10,
-          top: -5 
-        }} 
-      />
+      {getContainerHandles().map(handleProps => (
+        <Handle key={handleProps.id} {...handleProps} />
+      ))}
     </div>
   );
 }

@@ -105,7 +105,7 @@ export const DEFAULT_NODE_STYLE = {
 /**
  * Create styled node from raw node data
  */
-export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = null) {
+export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = null, nodeTypeConfig = null) {
   
   // For group nodes (hierarchy containers), preserve their existing style
   if (node.type === 'group') {
@@ -127,7 +127,9 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
   }
   
   // For regular nodes, apply standard styling
-  const nodeColors = generateNodeColors(node.data?.nodeType || 'Transform', colorPalette);
+  const defaultType = nodeTypeConfig?.defaultType || 'Transform';
+  const nodeType = node.data?.nodeType || defaultType;
+  const nodeColors = generateNodeColors(nodeType, colorPalette, nodeTypeConfig);
   
   // Generate display label WITHOUT hierarchy information - just the node name
   let displayLabel = node.data?.label || node.id;
@@ -161,17 +163,34 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
 export function createStyledEdge(edge) {
   const result = {
     ...DEFAULT_EDGE_OPTIONS,
-    ...edge,
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: edge.label,
   };
   
+  // Only respect style parameters from Rust backend
+  if (edge.style) {
+    // Apply dashed line styling for network/cross-location edges
+    if (edge.style.isDashed) {
+      result.style = {
+        ...result.style,
+        strokeDasharray: '5,5', // Dashed line for special edges
+        stroke: COMPONENT_COLORS.EDGE_NETWORK, // Special color for network/cross-location edges
+      };
+    }
+    
+    // Apply animation from backend hints
+    if (edge.style.animated) {
+      result.animated = true;
+    }
+  }
+  
   // Clean up any "null" string values that come from the backend
-  // This is the root cause - the backend is sending sourceHandle/targetHandle as "null" strings
   if (result.sourceHandle === "null" || !result.sourceHandle) {
-    // For collapsed containers, use the right-side handle, otherwise use the default source handle
     result.sourceHandle = "source";
   }
   if (result.targetHandle === "null" || !result.targetHandle) {
-    // For collapsed containers, use the left-side handle, otherwise use the default target handle
     result.targetHandle = "target";
   }
   
@@ -191,11 +210,10 @@ export function createStyledEdge(edge) {
 /**
  * Get node color for MiniMap
  */
-export function getMiniMapNodeColor(node, colorPalette = 'Set3') {
-  const nodeColors = generateNodeColors(
-    node.data?.nodeType || node.data?.type || 'Transform', 
-    colorPalette
-  );
+export function getMiniMapNodeColor(node, colorPalette = 'Set3', nodeTypeConfig = null) {
+  const defaultType = nodeTypeConfig?.defaultType || 'Transform';
+  const nodeType = node.data?.nodeType || node.data?.type || defaultType;
+  const nodeColors = generateNodeColors(nodeType, colorPalette, nodeTypeConfig);
   return nodeColors.primary;
 }
 
@@ -458,6 +476,9 @@ export async function processGraphData(graphData, colorPalette, currentLayout, a
     return { nodes: [], edges: [] };
   }
 
+  // Extract node type configuration from graph data
+  const nodeTypeConfig = graphData.nodeTypeConfig || null;
+
   // Use the selected grouping hierarchy, or fall back to first available one
   let selectedGrouping = currentGrouping;
   if (!selectedGrouping && graphData.hierarchyChoices && graphData.hierarchyChoices.length > 0) {
@@ -476,7 +497,7 @@ export async function processGraphData(graphData, colorPalette, currentLayout, a
       return node;
     }
     // Only regular nodes need styling
-    return createStyledNode(node, colorPalette, processedGraphData.hierarchy);
+    return createStyledNode(node, colorPalette, processedGraphData.hierarchy, nodeTypeConfig);
   });
   
   // Debug: Check for edge/node ID mismatches

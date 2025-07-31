@@ -210,7 +210,7 @@ export function InfoPanel({
           onToggle={() => setLegendCollapsed(!legendCollapsed)}
         >
           {legendData.items.map(item => {
-            const colors = generateNodeColors(item.type, colorPalette);
+            const colors = generateNodeColors(item.type, colorPalette, graphData?.nodeTypeConfig);
             return (
               <div key={item.type} style={{
                 display: 'flex',

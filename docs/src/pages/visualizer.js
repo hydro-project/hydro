@@ -5,84 +5,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '@theme/Layout';
 import { useLocation } from '@docusaurus/router';
+import BrowserOnly from '@docusaurus/BrowserOnly';
 import { ReactFlowVisualization } from '../components/visualizer/ReactFlowVisualization.js';
 import { FileDropZone } from '../components/visualizer/components/FileDropZone.js';
 import styles from './visualizer.module.css';
 
-// Global ResizeObserver error suppression - must be at the top level
-const suppressResizeObserverErrors = () => {
-  const originalError = window.console.error;
-  const originalOnError = window.onerror;
-  const originalOnUnhandledRejection = window.onunhandledrejection;
-  const resizeObserverErrorPattern = /ResizeObserver loop completed with undelivered notifications/;
-  
-  // Suppress console.error
-  window.console.error = (...args) => {
-    if (args[0] && resizeObserverErrorPattern.test(args[0])) {
-      return;
-    }
-    originalError.apply(console, args);
-  };
-  
-  // Suppress window.onerror (catches uncaught errors that webpack overlay shows)
-  window.onerror = (message, source, lineno, colno, error) => {
-    if (message && resizeObserverErrorPattern.test(message)) {
-      return true; // Suppress the error
-    }
-    if (originalOnError) {
-      return originalOnError(message, source, lineno, colno, error);
-    }
-    return false;
-  };
-  
-  // Suppress unhandled promise rejections
-  window.onunhandledrejection = (event) => {
-    if (event.reason && resizeObserverErrorPattern.test(event.reason.message || event.reason)) {
-      event.preventDefault();
-      return;
-    }
-    if (originalOnUnhandledRejection) {
-      originalOnUnhandledRejection(event);
-    }
-  };
-  
-  // Also try to suppress addEventListener error events
-  const originalAddEventListener = window.addEventListener;
-  window.addEventListener = function(type, listener, options) {
-    if (type === 'error') {
-      const wrappedListener = function(event) {
-        if (event.message && resizeObserverErrorPattern.test(event.message)) {
-          event.preventDefault();
-          event.stopPropagation();
-          return;
-        }
-        if (typeof listener === 'function') {
-          listener.call(this, event);
-        } else if (listener && typeof listener.handleEvent === 'function') {
-          listener.handleEvent(event);
-        }
-      };
-      return originalAddEventListener.call(this, type, wrappedListener, options);
-    }
-    return originalAddEventListener.call(this, type, listener, options);
-  };
-  
-  return () => {
-    window.console.error = originalError;
-    window.onerror = originalOnError;
-    window.onunhandledrejection = originalOnUnhandledRejection;
-    window.addEventListener = originalAddEventListener;
-  };
-};
-
-// Apply error suppression immediately when module loads
-const restoreErrorHandling = suppressResizeObserverErrors();
-
-export default function Visualizer() {
+export default function VisualizerPage() {
   const location = useLocation();
   const [graphData, setGraphData] = useState(null);
   const [error, setError] = useState(null);
   const [toolbarControls, setToolbarControls] = useState(null);
+
+  // Simple ResizeObserver error suppression
+  useEffect(() => {
+    const originalError = console.error;
+    console.error = (...args) => {
+      if (args[0]?.includes?.('ResizeObserver loop')) {
+        return; // Suppress ResizeObserver errors
+      }
+      originalError.apply(console, args);
+    };
+    
+    return () => {
+      console.error = originalError;
+    };
+  }, []);
 
   // Check for URL-encoded data on component mount
   useEffect(() => {
@@ -121,33 +68,39 @@ export default function Visualizer() {
       title="Graph Visualizer"
       description="Interactive ReactFlow visualization for Hydro graphs"
     >
-      <div className={styles.container}>
-        {error && (
-          <div className={styles.error}>
-            <strong>Error:</strong> {error}
-            <button onClick={() => setError(null)} className={styles.closeError}>×</button>
-          </div>
-        )}
-        {graphData ? (
-          <div className={styles.visualizationContainer}>
-            <div className={styles.toolbar}>
-              <h2>Hydro Graph Visualization</h2>
-              <div className={styles.toolbarControls}>
-                {toolbarControls}
-                <button onClick={handleClearData} className={styles.clearButton}>
-                  Load New Graph
-                </button>
+      <BrowserOnly fallback={<div>Loading visualizer...</div>}>
+        {() => (
+          <div className={styles.container}>
+            {error && (
+              <div className={styles.error}>
+                <strong>Error:</strong> {error}
+                <button onClick={() => setError(null)} className={styles.closeError}>×</button>
               </div>
-            </div>
-            <ReactFlowVisualization 
-              graphData={graphData} 
-              onControlsReady={setToolbarControls}
-            />
+            )}
+            {graphData ? (
+              <div className={styles.visualizationContainer}>
+                <div className={styles.toolbar}>
+                  <h2>Hydro Graph Visualization</h2>
+                  <div className={styles.toolbarControls}>
+                    {toolbarControls}
+                    <button onClick={handleClearData} className={styles.clearButton}>
+                      Load New Graph
+                    </button>
+                  </div>
+                </div>
+                {React.useMemo(() => (
+                  <ReactFlowVisualization 
+                    graphData={graphData} 
+                    onControlsReady={setToolbarControls}
+                  />
+                ), [graphData])}
+              </div>
+            ) : (
+              <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />
+            )}
           </div>
-        ) : (
-          <FileDropZone onFileLoad={handleFileLoad} hasData={!!graphData} />
         )}
-      </div>
+      </BrowserOnly>
     </Layout>
   );
 }

@@ -9,6 +9,7 @@ import { Handle } from '@xyflow/react';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';
 import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
+import { getContainerHandles } from '../utils/handleStyles.js';
 
 export function CollapsedContainerNode(props) {
   const { data, width, height, id } = props;
@@ -114,63 +115,11 @@ export function CollapsedContainerNode(props) {
       
       {/* 
         CRITICAL: Connection handles for ReactFlow edges
-        
-        These Handle IDs MUST match exactly with:
-        1. GroupNode.js handles 
-        2. Handle IDs used in containerLogic.js edge processing
-        3. Any other node types that can be edge targets
-        
-        DO NOT CHANGE these IDs without updating all related components!
-        This ensures seamless edge connections when expanding/collapsing containers.
+        Using centralized handle configuration for consistency
       */}
-      <Handle 
-        type="source" 
-        position="right" 
-        id={REQUIRED_HANDLE_IDS.source} // CRITICAL: Must match GroupNode and edge processing
-        style={{ 
-          background: textColor, 
-          border: `2px solid ${backgroundColor}`, 
-          width: 10, 
-          height: 10,
-          right: -5 
-        }} 
-      />
-      <Handle 
-        type="target" 
-        position="left" 
-        id={REQUIRED_HANDLE_IDS.target} // CRITICAL: Must match GroupNode and edge processing
-        style={{ 
-          background: textColor, 
-          border: `2px solid ${backgroundColor}`, 
-          width: 10, 
-          height: 10,
-          left: -5 
-        }} 
-      />
-      <Handle 
-        type="source" 
-        position="bottom" 
-        id={REQUIRED_HANDLE_IDS.sourceBottom} // CRITICAL: Must match GroupNode
-        style={{ 
-          background: textColor, 
-          border: `2px solid ${backgroundColor}`, 
-          width: 10, 
-          height: 10,
-          bottom: -5 
-        }} 
-      />
-      <Handle 
-        type="target" 
-        position="top" 
-        id={REQUIRED_HANDLE_IDS.targetTop} // CRITICAL: Must match GroupNode
-        style={{ 
-          background: textColor, 
-          border: `2px solid ${backgroundColor}`, 
-          width: 10, 
-          height: 10,
-          top: -5 
-        }} 
-      />
+      {getContainerHandles().map(handleProps => (
+        <Handle key={handleProps.id} {...handleProps} />
+      ))}
     </div>
   );
 }

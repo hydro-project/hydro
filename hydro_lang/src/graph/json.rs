@@ -12,6 +12,7 @@ pub struct HydroJson<W> {
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
     locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
+    node_locations: HashMap<usize, usize>, // node_id -> location_id
     edge_count: usize,
     config: super::render::HydroWriteConfig,
     // Type name mappings
@@ -34,6 +35,7 @@ impl<W> HydroJson<W> {
             nodes: Vec::new(),
             edges: Vec::new(),
             locations: HashMap::new(),
+            node_locations: HashMap::new(),
             edge_count: 0,
             config: config.clone(),
             process_names,
@@ -43,55 +45,27 @@ impl<W> HydroJson<W> {
     }
 
     fn node_type_to_style(&self, _node_type: HydroNodeType) -> serde_json::Value {
-        // Base template for all nodes with modern card styling
-        let base_style = serde_json::json!({
-            "color": "#2d3748",
-            "border": "1px solid rgba(0, 0, 0, 0.1)",
-            "borderRadius": "12px",
-            "padding": "12px 16px",
-            "fontSize": "13px",
-            "fontFamily": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-            "fontWeight": "500",
-            "boxShadow": "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
-            "transition": "all 0.2s ease-in-out"
-        });
-
-        // Store node type for the frontend ColorBrewer system to use
-        // The actual colors will be applied dynamically by the JavaScript based on the selected palette
-        let mut style = base_style;
-
-        // Add hover effect styling
-        style["&:hover"] = serde_json::json!({
-            "transform": "translateY(-2px)",
-            "boxShadow": "0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)"
-        });
-
-        style
+        // No styling in backend - let the visualizer handle all presentation
+        serde_json::json!({})
     }
     fn edge_type_to_style(&self, edge_type: HydroEdgeType) -> serde_json::Value {
-        // Base template for all edges
-        let mut style = serde_json::json!({
-            "strokeWidth": 2,
-            "animated": false
-        });
+        // Minimal styling - let the visualizer handle presentation
+        // Only include essential behavior hints for the frontend
+        let mut style = serde_json::json!({});
 
-        // Apply type-specific overrides
+        // Apply type-specific behavior hints only (not colors/styling)
         match edge_type {
-            HydroEdgeType::Stream => {
-                style["stroke"] = serde_json::Value::String("#666666".to_string());
-            }
-            HydroEdgeType::Persistent => {
-                style["stroke"] = serde_json::Value::String("#008800".to_string());
-                style["strokeWidth"] = serde_json::Value::Number(serde_json::Number::from(3));
-            }
             HydroEdgeType::Network => {
-                style["stroke"] = serde_json::Value::String("#880088".to_string());
-                style["strokeDasharray"] = serde_json::Value::String("5,5".to_string());
+                // Network edges should be animated and dashed to show cross-location communication
                 style["animated"] = serde_json::Value::Bool(true);
+                style["isDashed"] = serde_json::Value::Bool(true);
             }
             HydroEdgeType::Cycle => {
-                style["stroke"] = serde_json::Value::String("#ff0000".to_string());
+                // Cycle edges should be animated to show feedback loops
                 style["animated"] = serde_json::Value::Bool(true);
+            }
+            _ => {
+                // All other edge types use default visualizer styling
             }
         }
 
@@ -119,6 +93,7 @@ where
         self.nodes.clear();
         self.edges.clear();
         self.locations.clear();
+        self.node_locations.clear();
         self.edge_count = 0;
         Ok(())
     }
@@ -238,6 +213,12 @@ where
             "style": style
         });
         self.nodes.push(node);
+        
+        // Track node location for cross-location edge detection
+        if let Some(loc_id) = location_id {
+            self.node_locations.insert(node_id, loc_id);
+        }
+        
         Ok(())
     }
 
@@ -248,41 +229,41 @@ where
         edge_type: HydroEdgeType,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
-        let style = self.edge_type_to_style(edge_type);
+        let mut style = self.edge_type_to_style(edge_type);
         let edge_id = format!("e{}", self.edge_count);
         self.edge_count += 1;
+
+        // Check if this edge crosses location boundaries
+        let is_cross_location = if let (Some(src_location), Some(dst_location)) = 
+            (self.node_locations.get(&src_id), self.node_locations.get(&dst_id)) {
+            src_location != dst_location
+        } else {
+            false
+        };
+
+        // Mark cross-location edges with special styling
+        if is_cross_location {
+            style["animated"] = serde_json::Value::Bool(true);
+            style["isDashed"] = serde_json::Value::Bool(true);
+        }
 
         let mut edge = serde_json::json!({
             "id": edge_id,
             "source": src_id.to_string(),
             "target": dst_id.to_string(),
-            "style": style,
-            // ReactFlow v12: Use smoothstep for better automatic routing and connection point selection
-            "type": "smoothstep",
-            "animated": false
+            "style": style
         });
 
-        // Add animation for certain edge types
-        if matches!(edge_type, HydroEdgeType::Network | HydroEdgeType::Cycle) {
-            edge["animated"] = serde_json::Value::Bool(true);
+        // Add animation for certain edge types or cross-location edges
+        if matches!(edge_type, HydroEdgeType::Network | HydroEdgeType::Cycle) || is_cross_location {
+            if let Some(style_obj) = edge["style"].as_object_mut() {
+                style_obj.insert("animated".to_string(), serde_json::Value::Bool(true));
+            }
         }
 
         if let Some(label_text) = label {
             edge["label"] = serde_json::Value::String(label_text.to_string());
-            edge["labelStyle"] = serde_json::json!({
-                "fontSize": "10px",
-                "fontFamily": "monospace",
-                "fill": "#333333",
-                "backgroundColor": "rgba(255, 255, 255, 0.8)",
-                "padding": "2px 4px",
-                "borderRadius": "3px"
-            });
-            // Center the label on the edge
-            edge["labelShowBg"] = serde_json::Value::Bool(true);
-            edge["labelBgStyle"] = serde_json::json!({
-                "fill": "rgba(255, 255, 255, 0.8)",
-                "fillOpacity": 0.8
-            });
+            // Remove label styling - let the visualizer handle it
         }
 
         self.edges.push(edge);
@@ -371,6 +352,18 @@ where
             "edges": self.edges,
             "hierarchyChoices": hierarchy_choices,
             "nodeAssignments": node_assignments_choices,
+            "nodeTypeConfig": {
+                "types": [
+                    { "id": "Source", "label": "Source", "colorIndex": 0 },
+                    { "id": "Transform", "label": "Transform", "colorIndex": 1 },
+                    { "id": "Sink", "label": "Sink", "colorIndex": 2 },
+                    { "id": "Network", "label": "Network", "colorIndex": 3 },
+                    { "id": "Aggregation", "label": "Aggregation", "colorIndex": 4 },
+                    { "id": "Join", "label": "Join", "colorIndex": 5 },
+                    { "id": "Tee", "label": "Tee", "colorIndex": 6 }
+                ],
+                "defaultType": "Transform"
+            },
             "legend": {
                 "title": "Node Types",
                 "items": [

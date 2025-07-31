@@ -24,6 +24,9 @@ export function Legend({ colorPalette = 'Set3', graphData, onPositionChange }) {
     ]
   };
 
+  // Get node type configuration for color mapping
+  const nodeTypeConfig = graphData?.nodeTypeConfig || null;
+
   return (
     <DockablePanel
       id="legend"
@@ -37,7 +40,7 @@ export function Legend({ colorPalette = 'Set3', graphData, onPositionChange }) {
     >
       <div>
         {legendData.items.map(item => {
-          const colors = generateNodeColors(item.type, colorPalette);
+          const colors = generateNodeColors(item.type, colorPalette, nodeTypeConfig);
           return (
             <div key={item.type} style={{
               display: 'flex',

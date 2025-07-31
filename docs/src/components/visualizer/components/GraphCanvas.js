@@ -19,7 +19,6 @@ import { processGraphData } from '../utils/reactFlowConfig.js';
 import styles from '../../../pages/visualizer.module.css';
 
 export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
-  console.log('[GraphCanvas] Rendering with graphData:', graphData);
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [currentLayout, setCurrentLayout] = useState('mrtree');
@@ -40,9 +39,10 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
     setEdges((eds) => applyEdgeChanges(changes, eds));
   }, []);
   
-  // Keep locationData for internal tracking but remove from visualization components
+  // Optional: Keep locationData for internal tracking but remove from visualization components
   const locationData = useMemo(() => {
     const locations = new Map();
+    // Only process location data if it exists in the graph data
     if (graphData?.locations) {
       graphData.locations.forEach(location => {
         if (location && typeof location.id !== 'undefined') {
@@ -51,6 +51,7 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
       });
     }
     
+    // Optional: process node location data if present
     (graphData?.nodes || []).forEach(node => {
       if (node.data?.locationId !== undefined && node.data?.location && !locations.has(node.data.locationId)) {
         locations.set(node.data.locationId, { id: node.data.locationId, label: node.data.location });
@@ -62,24 +63,14 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
 
   // Process graph data when data changes
   useEffect(() => {
-    console.log('[DEBUG] useEffect triggered for graphData change');
     if (!graphData) {
       return;
     }
 
     const processData = async () => {
-      console.log('Processing graph data with layout:', currentLayout, 'and palette:', colorPalette);
       try {
         const result = await processGraphData(graphData, colorPalette, currentLayout, applyLayout);
-        // Debug: print style for all group nodes after processGraphData returns
-        result.nodes.filter(n => n.type === 'group').forEach(n => {
-          console.log(`[POST-PROCESSGRAPH-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
-        });
         setNodes(result.nodes);
-        // Debug: print style for all group nodes at state update
-        result.nodes.filter(n => n.type === 'group').forEach(n => {
-          console.log(`[SET-NODES-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
-        });
         setEdges(result.edges);
       } catch (error) {
         console.error('🚨 LAYOUT ERROR:', error);
@@ -104,10 +95,6 @@ export function GraphCanvas({ graphData, maxVisibleNodes = 50 }) {
     return <div className={styles.loading}>Preparing visualization...</div>;
   }
 
-  // Debug: print style for all group nodes before rendering
-  nodes.filter(n => n.type === 'group').forEach(n => {
-    console.log(`[PRE-RENDER-GROUPNODE-STYLE] id=${n.id} style=`, n.style);
-  });
   return (
     <div className={styles.visualizationWrapper}>
       <LayoutControls 

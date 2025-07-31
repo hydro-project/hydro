@@ -490,6 +490,33 @@
   padding: 2px 6px;
 }
 
+/* Hide all ReactFlow handles for clean edge connections */
+:global(.react-flow__handle) {
+  opacity: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  width: 1px !important;
+  height: 1px !important;
+  pointer-events: none !important;
+}
+
+/* Ensure handles don't interfere with edge positioning */
+:global(.react-flow__handle-left) {
+  left: -0.5px !important;
+}
+
+:global(.react-flow__handle-right) {
+  right: -0.5px !important;
+}
+
+:global(.react-flow__handle-top) {
+  top: -0.5px !important;
+}
+
+:global(.react-flow__handle-bottom) {
+  bottom: -0.5px !important;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .toolbar {

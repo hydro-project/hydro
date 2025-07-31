@@ -144,6 +144,7 @@ export const COMPONENT_COLORS = {
   EDGE_DEFAULT: COLORS.GRAY_400,
   EDGE_HOVER: COLORS.GRAY_600,
   EDGE_SELECTED: COLORS.INFO_500,
+  EDGE_NETWORK: COLORS.PURPLE_500,  // Special color for cross-location/network edges
   
   // Handle/connection point colors
   HANDLE_DEFAULT: COLORS.GRAY_500,
@@ -290,7 +291,7 @@ export const LAYOUT_SPACING = {
   NODE_TO_NODE_COMPACT: 15,     // Tight spacing between nodes
   NODE_TO_NODE_NORMAL: 75,      // Normal spacing between nodes
   NODE_TO_NODE_LOOSE: 125,      // Loose spacing between nodes
-  EDGE_TO_NODE: 50,             // Spacing between edges and nodes
+  EDGE_TO_NODE: 0,             // Spacing between edges and nodes
   EDGE_TO_EDGE: 10,             // Spacing between edges
   EDGE_TO_EDGE_ALTERNATE: 15,   // Alternative spacing between edges
   LAYER_SEPARATION: 25,         // Spacing between layers in layered layouts
