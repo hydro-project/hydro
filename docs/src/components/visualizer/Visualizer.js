@@ -514,6 +514,12 @@ export function Visualizer({ graphData, onControlsReady }) {
       return { displayNodes: [], displayEdges: [] };
     }
     
+    // Skip container processing during initialization to prevent race condition
+    // where edges are processed before auto-collapse completes
+    if (isInitializing) {
+      return { displayNodes: nodes, displayEdges: edges };
+    }
+    
     const collapsedArray = Array.from(collapsedContainers);
     const processedNodes = processCollapsedContainers(nodes, collapsedArray);
     
@@ -530,7 +536,7 @@ export function Visualizer({ graphData, onControlsReady }) {
       displayNodes: processedNodes,
       displayEdges: processedEdges
     };
-  }, [nodes, edges, collapsedContainers, childNodesByParent]);
+  }, [nodes, edges, collapsedContainers, childNodesByParent, isInitializing]);
 
   // Note: Removed ReactFlow updateNode/updateNodeInternals calls as they are not necessary
   // and were causing errors. ReactFlow v12 handles node updates automatically.
