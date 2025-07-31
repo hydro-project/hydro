@@ -8,6 +8,7 @@ import React from 'react';
 import { Handle } from '@xyflow/react';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';
+import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
 
 export function CollapsedContainerNode(props) {
   const { data, width, height, id } = props;
@@ -27,9 +28,9 @@ export function CollapsedContainerNode(props) {
   
   // Extract colors from the original style or use defaults
   const originalStyle = data?.nodeStyle || {};
-  let backgroundColor = originalStyle.background || 'rgba(59, 130, 246, 0.25)';
-  let borderColor = 'rgb(59, 130, 246)';
-  let textColor = 'rgb(59, 130, 246)';
+  let backgroundColor = originalStyle.background || COLORS.CONTAINER_L0;
+  let borderColor = COLORS.CONTAINER_BORDER_L0;
+  let textColor = COLORS.CONTAINER_BORDER_L0;
   
   // Parse border to get border color if available
   if (originalStyle.border) {
@@ -66,7 +67,7 @@ export function CollapsedContainerNode(props) {
     width: '16px',
     height: '16px',
     background: textColor,
-    color: 'white',
+    color: COMPONENT_COLORS.TEXT_INVERSE,
     borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
@@ -88,8 +89,8 @@ export function CollapsedContainerNode(props) {
     position: 'absolute',
     bottom: '2px',
     left: '4px',
-    background: 'rgba(0,0,0,0.6)',
-    color: 'white',
+    background: 'rgba(0,0,0,0.7)',
+    color: COMPONENT_COLORS.TEXT_INVERSE,
     fontSize: '10px',
     padding: '2px 4px',
     borderRadius: '10px',

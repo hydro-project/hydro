@@ -7,6 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { generateNodeColors, truncateContainerName } from '../utils/utils.js';
 import { DockablePanel, DOCK_POSITIONS } from './DockablePanel.js';
+import { COMPONENT_COLORS } from '../utils/constants.js';
 import styles from '../../../pages/visualizer.module.css';
 
 export function InfoPanel({ 
@@ -162,7 +163,7 @@ export function InfoPanel({
           fontSize: '11px',
           fontWeight: 'bold',
           marginBottom: '6px',
-          color: '#333'
+          color: COMPONENT_COLORS.TEXT_PRIMARY
         }}
         onClick={onToggle}
       >
@@ -223,7 +224,7 @@ export function InfoPanel({
                     height: '12px',
                     borderRadius: '2px',
                     marginRight: '6px',
-                    border: '1px solid #666',
+                    border: `1px solid ${COMPONENT_COLORS.BORDER_MEDIUM}`,
                     flexShrink: 0,
                     backgroundColor: colors.primary,
                     borderColor: colors.border

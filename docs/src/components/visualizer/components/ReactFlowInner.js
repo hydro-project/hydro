@@ -20,12 +20,13 @@ import {
   DEFAULT_EDGE_OPTIONS,
   REACTFLOW_CONFIG,
   BACKGROUND_CONFIG,
-  MINIMAP_CONFIG
+  MINIMAP_CONFIG,
+  getMiniMapNodeColor
 } from '../utils/reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
 import { CollapsedContainerNode } from '../containers/CollapsedContainerNode.js';
-import { getMiniMapNodeColor } from '../utils/reactFlowConfig.js';
 import { enforceHandleConsistency, REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
+import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
 import styles from '../../../pages/visualizer.module.css';
 
 export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, colorPalette, onNodeClick }) {
@@ -94,7 +95,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     const nodeStyle = data?.nodeStyle || props.style || {};
     
     // Use the background from nodeStyle
-    const background = nodeStyle.gradient || nodeStyle.background || '#f0f0f0';
+    const background = nodeStyle.gradient || nodeStyle.background || COMPONENT_COLORS.BACKGROUND_SECONDARY;
     
     return (
       <div style={{ 
@@ -102,7 +103,7 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
         width: '100%',
         height: '100%',
         borderRadius: '8px',
-        color: nodeStyle.color || '#fff',
+        color: nodeStyle.color || COMPONENT_COLORS.TEXT_INVERSE,
         fontSize: '13px',
         fontWeight: '600',
         display: 'flex',
@@ -118,10 +119,10 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
           CRITICAL: These handle IDs must match GroupNode and CollapsedContainerNode
           to prevent ReactFlow "Couldn't create edge for handle id" errors
         */}
-        <Handle id={REQUIRED_HANDLE_IDS.source} type="source" position="right" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.target} type="target" position="left" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.sourceBottom} type="source" position="bottom" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.targetTop} type="target" position="top" style={{ background: '#666', border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.source} type="source" position="right" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.target} type="target" position="left" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.sourceBottom} type="source" position="bottom" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.targetTop} type="target" position="top" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
       </div>
     );
   }, []);

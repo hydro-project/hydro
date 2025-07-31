@@ -3,6 +3,7 @@
  */
 
 import { generateNodeColors } from './utils.js';
+import { COLORS, COMPONENT_COLORS, DEFAULT_STYLES } from './constants.js';
 
 // ELK layout configurations
 export const ELK_LAYOUT_CONFIGS = {
@@ -55,13 +56,13 @@ export const REACTFLOW_CONFIG = {
 // Common MiniMap configuration
 export const MINIMAP_CONFIG = {
   nodeStrokeWidth: 2,
-  nodeStrokeColor: "#666",
-  maskColor: "rgba(240, 240, 240, 0.6)",
+  nodeStrokeColor: COMPONENT_COLORS.HANDLE_DEFAULT,
+  maskColor: COLORS.GRAY_200,
 };
 
 // Common Background configuration
 export const BACKGROUND_CONFIG = {
-  color: "#f5f5f5",
+  color: COMPONENT_COLORS.BACKGROUND_SECONDARY,
   gap: 20,
 };
 
@@ -71,21 +72,21 @@ export const DEFAULT_EDGE_OPTIONS = {
   animated: false,
   style: {
     strokeWidth: 2,
-    stroke: '#666666',
+    stroke: COMPONENT_COLORS.EDGE_DEFAULT,
   },
   markerEnd: {
     type: 'arrowclosed',
     width: 20,
     height: 20,
-    color: '#666666',
+    color: COMPONENT_COLORS.EDGE_DEFAULT,
   },
 };
 
 // Default node style configuration
 export const DEFAULT_NODE_STYLE = {
-  borderRadius: '8px',
+  borderRadius: DEFAULT_STYLES.BORDER_RADIUS,
   padding: '10px',
-  color: '#333',
+  color: COMPONENT_COLORS.TEXT_PRIMARY,
   fontSize: '12px',
   fontWeight: '500',
   width: 200,
@@ -139,10 +140,10 @@ export function createStyledNode(node, colorPalette = 'Set3', hierarchyData = nu
     position: { x: 0, y: 0 }, // Will be set by layout
     style: {
       ...DEFAULT_NODE_STYLE,
-      color: '#fff',                       // White text for good contrast on gradients
+      color: COMPONENT_COLORS.TEXT_INVERSE,                       // White text for good contrast on gradients
       background: nodeColors.gradient,     // Use the gradient from generateNodeColors
       border: 'none',                      // No border for clean gradient look
-      borderRadius: '6px',                 // Slightly rounded corners
+      borderRadius: DEFAULT_STYLES.BORDER_RADIUS,                 // Rounded corners
       boxShadow: 'none',                   // Remove shadow - these should be text, not nodes
       fontWeight: '500',                   // Medium font weight for readability
     },
@@ -357,19 +358,19 @@ export function processHierarchy(graphData, selectedGrouping = '') {
     
     // Create a hierarchy-level-based color scheme with higher opacity
     const colors = [
-      'rgba(59, 130, 246, 0.25)',   // Blue - Level 0 (datacenter)
-      'rgba(16, 185, 129, 0.25)',   // Green - Level 1 (building) 
-      'rgba(245, 158, 11, 0.25)',   // Orange - Level 2 (floor)
-      'rgba(139, 92, 246, 0.25)',   // Purple - Level 3 (room)
-      'rgba(239, 68, 68, 0.25)',    // Red - Level 4 (additional nesting)
+      COLORS.CONTAINER_L0,   // Level 0 - datacenter/top level
+      COLORS.CONTAINER_L1,   // Level 1 - region/building 
+      COLORS.CONTAINER_L2,   // Level 2 - zone/floor
+      COLORS.CONTAINER_L3,   // Level 3 - area/room
+      COLORS.CONTAINER_L4,   // Level 4 - additional nesting
     ];
     
     const borderColors = [
-      'rgb(59, 130, 246)',   // Blue
-      'rgb(16, 185, 129)',   // Green 
-      'rgb(245, 158, 11)',   // Orange
-      'rgb(139, 92, 246)',   // Purple
-      'rgb(239, 68, 68)',    // Red
+      COLORS.CONTAINER_BORDER_L0,   // Blue
+      COLORS.CONTAINER_BORDER_L1,   // Green 
+      COLORS.CONTAINER_BORDER_L2,   // Amber
+      COLORS.CONTAINER_BORDER_L3,   // Purple
+      COLORS.CONTAINER_BORDER_L4,   // Red
     ];
     
     const backgroundColor = colors[depth % colors.length];

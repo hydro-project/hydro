@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Handle } from '@xyflow/react';
-import { COLORS } from '../utils/constants.js';
+import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';
 
@@ -74,24 +74,24 @@ export function GroupNode(props) {
 
   // Helper functions to get colors based on node ID
   function getBackgroundColor(nodeId) {
-    if (nodeId === 'cloud') return 'rgba(59, 130, 246, 0.25)';
-    if (nodeId === 'region') return 'rgba(16, 185, 129, 0.25)';
-    if (nodeId?.startsWith('az')) return 'rgba(245, 158, 11, 0.25)';
-    return 'rgba(59, 130, 246, 0.25)'; // default
+    if (nodeId === 'cloud') return COLORS.CONTAINER_L0;
+    if (nodeId === 'region') return COLORS.CONTAINER_L1;
+    if (nodeId?.startsWith('az')) return COLORS.CONTAINER_L2;
+    return COLORS.CONTAINER_L0; // default
   }
 
   function getBorderColor(nodeId) {
-    if (nodeId === 'cloud') return `3px solid ${COLORS.DEFAULT_GRAY}`;
-    if (nodeId === 'region') return `3px solid ${COLORS.DEFAULT_GREEN}`;
-    if (nodeId?.startsWith('az')) return `3px solid ${COLORS.DEFAULT_ORANGE}`;
-    return `3px solid ${COLORS.DEFAULT_GRAY}`; // default
+    if (nodeId === 'cloud') return `3px solid ${COLORS.CONTAINER_BORDER_L0}`;
+    if (nodeId === 'region') return `3px solid ${COLORS.CONTAINER_BORDER_L1}`;
+    if (nodeId?.startsWith('az')) return `3px solid ${COLORS.CONTAINER_BORDER_L2}`;
+    return `3px solid ${COLORS.CONTAINER_BORDER_L0}`; // default
   }
 
   function getTextColor(nodeId) {
-    if (nodeId === 'cloud') return COLORS.DEFAULT_GRAY;
-    if (nodeId === 'region') return COLORS.DEFAULT_GREEN;
-    if (nodeId?.startsWith('az')) return COLORS.DEFAULT_ORANGE;
-    return COLORS.DEFAULT_GRAY; // default
+    if (nodeId === 'cloud') return COLORS.CONTAINER_BORDER_L0;
+    if (nodeId === 'region') return COLORS.CONTAINER_BORDER_L1;
+    if (nodeId?.startsWith('az')) return COLORS.CONTAINER_BORDER_L2;
+    return COLORS.CONTAINER_BORDER_L0; // default
   }
   
   return (
@@ -104,7 +104,7 @@ export function GroupNode(props) {
           fontSize: '14px',
           fontWeight: 'bold',
           color: getTextColor(id),
-          backgroundColor: COLORS.WHITE_ALPHA,
+          backgroundColor: COLORS.GRAY_50,
           padding: '4px 8px',
           borderRadius: '4px',
           border: `1px solid ${getTextColor(id)}`,
@@ -122,7 +122,7 @@ export function GroupNode(props) {
           width: '16px',
           height: '16px',
           background: getTextColor(id),
-          color: 'white',
+          color: COMPONENT_COLORS.TEXT_INVERSE,
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',

@@ -4,6 +4,7 @@
  */
 
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
+import { COMPONENT_COLORS } from '../utils/constants.js';
 
 /**
  * Process nodes to handle collapsed containers
@@ -380,7 +381,7 @@ function restoreOriginalEdge(edge) {
     style: {
       ...edge.style,
       strokeWidth: edge.style?.strokeWidth || 2,
-      stroke: edge.style?.stroke || '#999',
+      stroke: edge.style?.stroke || COMPONENT_COLORS.EDGE_DEFAULT,
     },
     data: {
       ...edge.data,

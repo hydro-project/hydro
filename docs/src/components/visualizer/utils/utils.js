@@ -2,32 +2,7 @@
  * Utility functions for the visualizer
  */
 
-// Color palettes for different node types
-const colorPalettes = {
-  Set3: [
-    { primary: '#8dd3c7', secondary: '#ffffb3' },
-    { primary: '#bebada', secondary: '#fb8072' },
-    { primary: '#80b1d3', secondary: '#fdb462' },
-    { primary: '#fccde5', secondary: '#b3de69' },
-    { primary: '#d9d9d9', secondary: '#fccde5' },
-    { primary: '#bc80bd', secondary: '#ccebc5' },
-    { primary: '#ccebc5', secondary: '#ffed6f' },
-    { primary: '#ffed6f', secondary: '#8dd3c7' },
-  ],
-  Pastel1: [
-    { primary: '#fbb4ae', secondary: '#b3cde3' },
-    { primary: '#ccebc5', secondary: '#decbe4' },
-    { primary: '#fed9a6', secondary: '#fddaec' },
-    { primary: '#f2f2f2', secondary: '#e5d8bd' },
-    { primary: '#b3de69', secondary: '#fbb4ae' },
-  ],
-  Dark2: [
-    { primary: '#1b9e77', secondary: '#d95f02' },
-    { primary: '#7570b3', secondary: '#e7298a' },
-    { primary: '#66a61e', secondary: '#e6ab02' },
-    { primary: '#a6761d', secondary: '#666666' },
-  ],
-};
+import { COLOR_PALETTES } from './constants.js';
 
 const nodeTypeColors = {
   'Source': 0,
@@ -41,7 +16,7 @@ const nodeTypeColors = {
 };
 
 export function generateNodeColors(nodeType, paletteKey = 'Set3') {
-  const palette = colorPalettes[paletteKey] || colorPalettes.Set3;
+  const palette = COLOR_PALETTES[paletteKey] || COLOR_PALETTES.Set3;
   const colorIndex = nodeTypeColors[nodeType] || 0;
   const colors = palette[colorIndex % palette.length];
   

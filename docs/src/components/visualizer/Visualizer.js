@@ -16,7 +16,7 @@ import { ReactFlowInner } from './components/ReactFlowInner.js';
 import { processGraphData } from './utils/reactFlowConfig.js';
 import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
 import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containers/containerLogic.js';
-import { isValidGraphData, getUniqueNodesById } from './utils/constants.js';
+import { isValidGraphData, getUniqueNodesById, COMPONENT_COLORS } from './utils/constants.js';
 import styles from '../../pages/visualizer.module.css';
 
 // Initialization retry constants
@@ -580,7 +580,7 @@ export function Visualizer({ graphData, onControlsReady }) {
         <div className={styles.initializationOverlay}>
           <div className={styles.initializationContent}>
             <div className={styles.spinner}></div>
-            <span style={{color: 'red'}}>Graph failed to initialize after several attempts.</span>
+            <span style={{color: COMPONENT_COLORS.STATUS_ERROR}}>Graph failed to initialize after several attempts.</span>
             <button
               className={styles.clearButton}
               style={{marginTop: 16}}
