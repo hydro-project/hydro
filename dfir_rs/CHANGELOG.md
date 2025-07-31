@@ -5,7 +5,141 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.14.0 (2025-07-31)
+
+<csr-id-59041df58be2de0717b851cc1c3355479cd722f2/>
+<csr-id-cb54ace31866d68f424798f876f9e4e8ffd9d881/>
+<csr-id-c3ccee6638f2e006f837fd6f946d1b942e40c144/>
+<csr-id-09fc5f3d430e455a11fee054d7243c02ecb3c02d/>
+<csr-id-de6c8ce3d258ecd1a2038e2a09d5ea8860e8ad42/>
+
+### Documentation
+
+ - <csr-id-ec1d8a0c1b91a0a7f1bb322e975d59c5bcbcf801/> add note to install nodejs
+
+### New Features
+
+ - <csr-id-bd1afdff5fd7b8dc6d2c567cd2659542a84c6216/> allow running generated binaries with single-threaded Tokio runtime
+   Before, we had a janky architecture for establishing network connections
+   which relied on blocking on futures outside an async context, which
+   required a multi-threaded runtime. Now, we establish all connections
+   before launching the DFIR code, so that no blocking is required there.
+ - <csr-id-b58dfc899c67ee17a1818c484fa6cba7db3dd240/> add `scan` operator
+ - <csr-id-99a8f1dfdde087578f25c19e502ad13e1d98a394/> Decoupling analysis
+   A Gurobi license is required to run code that uses `hydro_optimize` (for ILP over decoupling decisions)
+
+### Bug Fixes
+
+ - <csr-id-5b5bbe57b54a5d038bc28c0e674ed68ca34245d1/> Revert anti join allocation
+   Added unit test for Paxos compilation and non-negative throughtput
+ - <csr-id-0d841a536e1ab58838136e6c33b2115325ec1541/> add type arguments to `anti_join_multiset`, `difference_multiset` to mitigate #1857
+ - <csr-id-96ec97a324254929b4677e9e769dbccab917d767/> workaround to publish `example_test`
+
+### Refactor
+
+ - <csr-id-59041df58be2de0717b851cc1c3355479cd722f2/> minimize Tokio feature flags
+   Now that `hydro_lang` no longer needs multi-threaded runtime, we can
+   eliminate it from the features used in `trybuild` compilation. Minimizes
+   Tokio features elsewhere too.
+ - <csr-id-cb54ace31866d68f424798f876f9e4e8ffd9d881/> move example testing code into separate crate
+   To prep for testing of hydro_deploy #1374 #1810
+
+### Test
+
+ - <csr-id-c3ccee6638f2e006f837fd6f946d1b942e40c144/> test some hydro examples on localhost, fix #1374
+
+### Chore (BREAKING)
+
+ - <csr-id-09fc5f3d430e455a11fee054d7243c02ecb3c02d/> move datalog from repo, remove datalog playground from web, #1809
+   #1809
+   
+   moved to https://github.com/hydro-project/dfir-datalog
+   
+   tests moved in https://github.com/hydro-project/dfir-datalog/pull/1
+   
+   Removes dedalus examples in `hydro_cli_examples`
+   
+   Changes pinned nightly rust version from 2024-04-05 to 2024-04-04 as the
+   former did not have intel mac support.
+
+### New Features (BREAKING)
+
+ - <csr-id-d6ae619060339eb3dac5bec17d384430e3588093/> re-add loop lifetimes for anti_join_multiset, tests, remove MonotonicMap, fix #1830, fix #1823
+   Redo of #1835
+   
+   Also updates path of trybuild errors to allow them to be clicked in the
+   IDE
+   
+   ---
+   
+   Previous commit:
+   
+   Also implements loop lifetimes for `difference_multiset` which uses the
+   `anti_join_multiset` codegen.
+   
+   Updates tests for `difference`, `difference_multiset`, `anti_join`, and
+   `anti_join_multiset`
+ - <csr-id-9bb9d1f3a0108a4789de6065af9e644c47601b9f/> display loops in graph visualizations, refactor, fix #1699
+   Adds loops to display, new `GraphWrite.no_loops` option.
+   
+   Refactors how the heirarchy of `GraphWrite` items is handled to be
+   simpler.
+
+### Refactor (BREAKING)
+
+ - <csr-id-de6c8ce3d258ecd1a2038e2a09d5ea8860e8ad42/> use direct `&dyn Any` upcasting for Rust 1.86, update pyo3, fix #1821
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 15 commits contributed to the release over the course of 93 calendar days.
+ - 14 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 13 unique issues were worked on: [#1825](https://github.com/hydro-project/hydro/issues/1825), [#1837](https://github.com/hydro-project/hydro/issues/1837), [#1847](https://github.com/hydro-project/hydro/issues/1847), [#1848](https://github.com/hydro-project/hydro/issues/1848), [#1851](https://github.com/hydro-project/hydro/issues/1851), [#1858](https://github.com/hydro-project/hydro/issues/1858), [#1859](https://github.com/hydro-project/hydro/issues/1859), [#1860](https://github.com/hydro-project/hydro/issues/1860), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1912](https://github.com/hydro-project/hydro/issues/1912), [#1929](https://github.com/hydro-project/hydro/issues/1929), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1939](https://github.com/hydro-project/hydro/issues/1939)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1825](https://github.com/hydro-project/hydro/issues/1825)**
+    - Use direct `&dyn Any` upcasting for Rust 1.86, update pyo3, fix #1821 ([`de6c8ce`](https://github.com/hydro-project/hydro/commit/de6c8ce3d258ecd1a2038e2a09d5ea8860e8ad42))
+ * **[#1837](https://github.com/hydro-project/hydro/issues/1837)**
+    - Move datalog from repo, remove datalog playground from web, #1809 ([`09fc5f3`](https://github.com/hydro-project/hydro/commit/09fc5f3d430e455a11fee054d7243c02ecb3c02d))
+ * **[#1847](https://github.com/hydro-project/hydro/issues/1847)**
+    - Move example testing code into separate crate ([`cb54ace`](https://github.com/hydro-project/hydro/commit/cb54ace31866d68f424798f876f9e4e8ffd9d881))
+ * **[#1848](https://github.com/hydro-project/hydro/issues/1848)**
+    - Test some hydro examples on localhost, fix #1374 ([`c3ccee6`](https://github.com/hydro-project/hydro/commit/c3ccee6638f2e006f837fd6f946d1b942e40c144))
+ * **[#1851](https://github.com/hydro-project/hydro/issues/1851)**
+    - Display loops in graph visualizations, refactor, fix #1699 ([`9bb9d1f`](https://github.com/hydro-project/hydro/commit/9bb9d1f3a0108a4789de6065af9e644c47601b9f))
+ * **[#1858](https://github.com/hydro-project/hydro/issues/1858)**
+    - Add type arguments to `anti_join_multiset`, `difference_multiset` to mitigate #1857 ([`0d841a5`](https://github.com/hydro-project/hydro/commit/0d841a536e1ab58838136e6c33b2115325ec1541))
+ * **[#1859](https://github.com/hydro-project/hydro/issues/1859)**
+    - Decoupling analysis ([`99a8f1d`](https://github.com/hydro-project/hydro/commit/99a8f1dfdde087578f25c19e502ad13e1d98a394))
+ * **[#1860](https://github.com/hydro-project/hydro/issues/1860)**
+    - Revert anti join allocation ([`5b5bbe5`](https://github.com/hydro-project/hydro/commit/5b5bbe57b54a5d038bc28c0e674ed68ca34245d1))
+ * **[#1911](https://github.com/hydro-project/hydro/issues/1911)**
+    - Re-add loop lifetimes for anti_join_multiset, tests, remove MonotonicMap, fix #1830, fix #1823 ([`d6ae619`](https://github.com/hydro-project/hydro/commit/d6ae619060339eb3dac5bec17d384430e3588093))
+ * **[#1912](https://github.com/hydro-project/hydro/issues/1912)**
+    - Add note to install nodejs ([`ec1d8a0`](https://github.com/hydro-project/hydro/commit/ec1d8a0c1b91a0a7f1bb322e975d59c5bcbcf801))
+ * **[#1929](https://github.com/hydro-project/hydro/issues/1929)**
+    - Add `scan` operator ([`b58dfc8`](https://github.com/hydro-project/hydro/commit/b58dfc899c67ee17a1818c484fa6cba7db3dd240))
+ * **[#1938](https://github.com/hydro-project/hydro/issues/1938)**
+    - Allow running generated binaries with single-threaded Tokio runtime ([`bd1afdf`](https://github.com/hydro-project/hydro/commit/bd1afdff5fd7b8dc6d2c567cd2659542a84c6216))
+ * **[#1939](https://github.com/hydro-project/hydro/issues/1939)**
+    - Minimize Tokio feature flags ([`59041df`](https://github.com/hydro-project/hydro/commit/59041df58be2de0717b851cc1c3355479cd722f2))
+ * **Uncategorized**
+    - Workaround to publish `example_test` ([`96ec97a`](https://github.com/hydro-project/hydro/commit/96ec97a324254929b4677e9e769dbccab917d767))
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
+</details>
+
 ## 0.13.0 (2025-04-11)
+
+<csr-id-3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a/>
+<csr-id-b07926f0b1007875eebf3fdc49223aa0cc0ed035/>
+<csr-id-2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f/>
+<csr-id-304a8efd2213b31ff80d50925ebda177621dd6ee/>
 
 ### New Features
 
@@ -69,7 +203,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 24 calendar days.
+ - 9 commits contributed to the release.
+ - 27 days passed between releases.
  - 8 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 8 unique issues were worked on: [#1741](https://github.com/hydro-project/hydro/issues/1741), [#1795](https://github.com/hydro-project/hydro/issues/1795), [#1797](https://github.com/hydro-project/hydro/issues/1797), [#1808](https://github.com/hydro-project/hydro/issues/1808), [#1815](https://github.com/hydro-project/hydro/issues/1815), [#1822](https://github.com/hydro-project/hydro/issues/1822), [#1833](https://github.com/hydro-project/hydro/issues/1833), [#1835](https://github.com/hydro-project/hydro/issues/1835)
 
@@ -95,6 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Fix loop hooks triggered too often, implement lifetimes for `zip` ([`40075b1`](https://github.com/hydro-project/hydro/commit/40075b198b13cb6b4804633b76c96c520394fa71))
  * **[#1835](https://github.com/hydro-project/hydro/issues/1835)**
     - Loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823 ([`fbaab5b`](https://github.com/hydro-project/hydro/commit/fbaab5b12c0c661ee08d8ded6862a38834ba62ae))
+ * **Uncategorized**
+    - Release dfir_lang v0.13.0, dfir_datalog_core v0.13.0, dfir_datalog v0.13.0, dfir_macro v0.13.0, hydro_deploy_integration v0.13.0, dfir_rs v0.13.0, hydro_deploy v0.13.0, hydro_lang v0.13.0, hydro_std v0.13.0, hydro_cli v0.13.0, safety bump 8 crates ([`400fd8f`](https://github.com/hydro-project/hydro/commit/400fd8f2e8cada253f54980e7edce0631be70a82))
 </details>
 
 ## 0.12.1 (2025-03-15)
