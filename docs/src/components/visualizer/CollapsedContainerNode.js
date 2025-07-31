@@ -17,9 +17,9 @@ export function CollapsedContainerNode(props) {
   
   // Extract colors from the original style or use defaults
   const originalStyle = data?.nodeStyle || {};
-  let backgroundColor = originalStyle.background || COLORS.DEFAULT_BLUE_ALPHA;
-  let borderColor = COLORS.DEFAULT_BLUE;
-  let textColor = COLORS.DEFAULT_BLUE;
+  let backgroundColor = originalStyle.background || COLORS.DEFAULT_GRAY_ALPHA;
+  let borderColor = COLORS.DEFAULT_GRAY;
+  let textColor = COLORS.DEFAULT_GRAY;
   
   // Parse border to get border color if available
   if (originalStyle.border) {

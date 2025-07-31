@@ -7,9 +7,10 @@
 import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ReactFlow,
+  ReactFlowProvider,
   Controls,
-  MiniMap,
   Background,
+  MiniMap,
   Handle,
   addEdge,
   useReactFlow,
@@ -19,11 +20,11 @@ import {
   DEFAULT_EDGE_OPTIONS,
   REACTFLOW_CONFIG,
   BACKGROUND_CONFIG,
-  MINIMAP_CONFIG,
-  getMiniMapNodeColor
+  MINIMAP_CONFIG
 } from '../utils/reactFlowConfig.js';
 import { GroupNode } from './GroupNode.js';
 import { CollapsedContainerNode } from '../containers/CollapsedContainerNode.js';
+import { getMiniMapNodeColor } from '../utils/reactFlowConfig.js';
 import { enforceHandleConsistency, REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import styles from '../../../pages/visualizer.module.css';
 
@@ -31,10 +32,6 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
   const onConnect = useCallback((connection) => {
     onEdgesChange(addEdge(connection, edges));
   }, [onEdgesChange, edges]);
-
-  const miniMapNodeColor = useCallback((node) => {
-    return getMiniMapNodeColor(node, colorPalette);
-  }, [colorPalette]);
 
   // Component to handle ReactFlow instance setup - must be inside ReactFlow provider
   const ReactFlowInstanceHandler = React.memo(() => {
@@ -145,31 +142,38 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     return types;
   }, [DefaultNode]);
 
+  // MiniMap node color configuration
+  const miniMapNodeColor = useCallback((node) => {
+    return getMiniMapNodeColor(node, colorPalette);
+  }, [colorPalette]);
+
   return (
     <div className={styles.reactflowWrapper}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeClick={onNodeClick}
-        nodeTypes={nodeTypes}
-        defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
-        {...REACTFLOW_CONFIG}
-        nodesDraggable={true}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
-        minZoom={0.2}
-        maxZoom={2.0}
-      >
-        <ReactFlowInstanceHandler />
-        <Controls />
-        <MiniMap 
-          nodeColor={miniMapNodeColor}
-          {...MINIMAP_CONFIG}
-        />
-        <Background {...BACKGROUND_CONFIG} />
-      </ReactFlow>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeClick={onNodeClick}
+          nodeTypes={nodeTypes}
+          defaultEdgeOptions={DEFAULT_EDGE_OPTIONS}
+          {...REACTFLOW_CONFIG}
+          nodesDraggable={true}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.5 }}
+          minZoom={0.2}
+          maxZoom={2.0}
+        >
+          <ReactFlowInstanceHandler />
+          <Controls />
+          <MiniMap 
+            {...MINIMAP_CONFIG}
+            nodeColor={miniMapNodeColor}
+          />
+          <Background {...BACKGROUND_CONFIG} />
+        </ReactFlow>
+      </ReactFlowProvider>
     </div>
   );
 }

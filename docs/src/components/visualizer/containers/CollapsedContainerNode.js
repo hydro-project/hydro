@@ -7,6 +7,7 @@
 import React from 'react';
 import { Handle } from '@xyflow/react';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
+import { truncateContainerName } from '../utils/utils.js';
 
 export function CollapsedContainerNode(props) {
   const { data, width, height, id } = props;
@@ -14,6 +15,15 @@ export function CollapsedContainerNode(props) {
   // Use the width/height from props (ReactFlow passes these) or fall back to data
   const effectiveWidth = width || data?.originalDimensions?.width || 180;
   const effectiveHeight = height || 60;
+  
+  // Truncate the container label for display
+  const fullLabel = data?.label || 'Container';
+  const displayLabel = truncateContainerName(fullLabel, 15, {
+    side: 'left',
+    splitOnDelimiter: true,
+    delimiterPenalty: 0.2
+  });
+  const showTooltip = fullLabel !== displayLabel;
   
   // Extract colors from the original style or use defaults
   const originalStyle = data?.nodeStyle || {};
@@ -91,8 +101,8 @@ export function CollapsedContainerNode(props) {
   
   return (
     <div style={containerStyle}>
-      <div style={labelStyle}>
-        {data?.label || 'Container'}
+      <div style={labelStyle} title={showTooltip ? fullLabel : undefined}>
+        {displayLabel}
       </div>
       <div style={expandIconStyle} title="Click to expand">
         +

@@ -11,7 +11,7 @@ import {
 } from '@xyflow/react';
 import { applyLayout, applyLayoutForCollapsedContainers } from './utils/layout.js';
 import { LayoutControls } from './components/LayoutControls.js';
-import { Legend } from './components/Legend.js';
+import { InfoPanel } from './components/InfoPanel.js';
 import { ReactFlowInner } from './components/ReactFlowInner.js';
 import { processGraphData } from './utils/reactFlowConfig.js';
 import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
@@ -39,6 +39,11 @@ export function Visualizer({ graphData, onControlsReady }) {
   const [initAttempts, setInitAttempts] = useState(0);
   const [initFailed, setInitFailed] = useState(false);
   const initTimeoutRef = useRef(null);
+  
+  // Panel positions state
+  const [panelPositions, setPanelPositions] = useState({
+    info: { position: 'top-right', docked: true }
+  });
   
   // Grouping hierarchy state
   const [hierarchyChoices, setHierarchyChoices] = useState([]);
@@ -404,6 +409,26 @@ export function Visualizer({ graphData, onControlsReady }) {
     }
   }, [toggleContainer, nodes, edges, currentLayout, setNodes, collapsedContainers, performLayoutOperation]);
 
+  // Handle container toggle from hierarchy tree
+  const handleHierarchyToggle = useCallback(async (containerId) => {
+    // Create a mock event and node object for compatibility with handleNodeClick
+    const mockEvent = { stopPropagation: () => {} };
+    const mockNode = { 
+      id: containerId, 
+      type: collapsedContainers.has(containerId) ? 'collapsedContainer' : 'group'
+    };
+    
+    return handleNodeClick(mockEvent, mockNode);
+  }, [handleNodeClick, collapsedContainers]);
+
+  // Handle panel position changes
+  const handlePanelPositionChange = useCallback((panelId, position, docked) => {
+    setPanelPositions(prev => ({
+      ...prev,
+      [panelId]: { position, docked }
+    }));
+  }, []);
+
   // Create toolbar controls and pass them to parent
   useEffect(() => {
     if (onControlsReady) {
@@ -514,7 +539,15 @@ export function Visualizer({ graphData, onControlsReady }) {
 
   return (
     <div className={styles.visualizationWrapper}>
-      <Legend colorPalette={colorPalette} graphData={graphData} />
+      <InfoPanel 
+        colorPalette={colorPalette} 
+        graphData={graphData}
+        nodes={nodes}
+        collapsedContainers={collapsedContainers}
+        onToggleContainer={handleHierarchyToggle}
+        childNodesByParent={childNodesByParent}
+        onPositionChange={(position, docked) => handlePanelPositionChange('info', position, docked)}
+      />
 
       <ReactFlowInner
         nodes={displayNodes}

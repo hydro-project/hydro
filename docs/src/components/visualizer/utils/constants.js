@@ -5,8 +5,8 @@
 
 export const COLORS = {
   // Default colors
-  DEFAULT_BLUE: 'rgb(59, 130, 246)',
-  DEFAULT_BLUE_ALPHA: 'rgba(59, 130, 246, 0.25)',
+  DEFAULT_GRAY: 'rgba(181, 182, 183, 1)',
+  DEFAULT_GRAY_ALPHA: 'rgba(242, 242, 243, 0.25)',
   DEFAULT_GREEN: 'rgb(16, 185, 129)',
   DEFAULT_ORANGE: 'rgb(245, 158, 11)',
   

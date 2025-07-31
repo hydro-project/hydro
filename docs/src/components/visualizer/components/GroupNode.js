@@ -9,11 +9,21 @@ import React from 'react';
 import { Handle } from '@xyflow/react';
 import { COLORS } from '../utils/constants.js';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
+import { truncateContainerName } from '../utils/utils.js';
 
 export function GroupNode(props) {
   // In ReactFlow v12, custom components receive: id, data, width, height
   // No style prop! Get styling from data.nodeStyle
-  const { data, width, height, id } = props;
+  const { id, data, width, height } = props;
+  
+  // Truncate the container label for display
+  const fullLabel = data?.label || 'Container';
+  const displayLabel = truncateContainerName(fullLabel, 15, {
+    side: 'left',
+    splitOnDelimiter: true,
+    delimiterPenalty: 0.2
+  });
+  const showTooltip = fullLabel !== displayLabel;
   
   // Get style from data.nodeStyle where we stored it
   const nodeStyle = data?.nodeStyle || {};
@@ -71,17 +81,17 @@ export function GroupNode(props) {
   }
 
   function getBorderColor(nodeId) {
-    if (nodeId === 'cloud') return `3px solid ${COLORS.DEFAULT_BLUE}`;
+    if (nodeId === 'cloud') return `3px solid ${COLORS.DEFAULT_GRAY}`;
     if (nodeId === 'region') return `3px solid ${COLORS.DEFAULT_GREEN}`;
     if (nodeId?.startsWith('az')) return `3px solid ${COLORS.DEFAULT_ORANGE}`;
-    return `3px solid ${COLORS.DEFAULT_BLUE}`; // default
+    return `3px solid ${COLORS.DEFAULT_GRAY}`; // default
   }
 
   function getTextColor(nodeId) {
-    if (nodeId === 'cloud') return COLORS.DEFAULT_BLUE;
+    if (nodeId === 'cloud') return COLORS.DEFAULT_GRAY;
     if (nodeId === 'region') return COLORS.DEFAULT_GREEN;
     if (nodeId?.startsWith('az')) return COLORS.DEFAULT_ORANGE;
-    return COLORS.DEFAULT_BLUE; // default
+    return COLORS.DEFAULT_GRAY; // default
   }
   
   return (
@@ -100,8 +110,9 @@ export function GroupNode(props) {
           border: `1px solid ${getTextColor(id)}`,
           zIndex: 10,
         }}
+        title={showTooltip ? fullLabel : undefined}
       >
-        {data?.label || 'Container'}
+        {displayLabel}
       </div>
       <div 
         style={{

@@ -523,6 +523,37 @@
   .dropContent h3 {
     font-size: 20px;
   }
+  
+  /* Stack panels vertically on mobile */
+  .unifiedLegend {
+    top: 10px;
+    right: 10px;
+    max-width: 180px;
+  }
+  
+  .hierarchyTree {
+    bottom: 10px;
+    right: 10px;
+    max-width: 180px;
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .unifiedLegend {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+  }
+  
+  .hierarchyTree {
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+    max-width: none;
+    max-height: 150px;
+  }
 }
 
 /* ReactFlow Custom Node Styling */
@@ -548,4 +579,359 @@
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Hierarchy Tree */
+.hierarchyTree {
+  position: absolute;
+  bottom: 20px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 11px;
+}
+
+.hierarchyTree h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.hierarchyHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 3px;
+}
+
+.hierarchyToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #666;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.hierarchyToggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.hierarchyContent {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.treeNode {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  margin: 1px 0;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.treeNode:hover {
+  background-color: rgba(0, 120, 204, 0.1);
+}
+
+.treeNodeExpanded {
+  font-weight: 500;
+  color: #333;
+}
+
+.treeNodeCollapsed {
+  font-weight: 400;
+  color: #666;
+}
+
+.treeToggle {
+  margin-right: 4px;
+  color: #666;
+  font-size: 8px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.treeNodeExpanded .treeToggle {
+  color: #0078cc;
+}
+
+.treeNodeCollapsed .treeToggle {
+  color: #999;
+}
+
+.treeLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+.treeNodeCount {
+  color: #888;
+  font-size: 9px;
+  flex-shrink: 0;
+}
+
+.treeChildren {
+  border-left: 1px solid #ddd;
+  margin-left: 6px;
+}
+
+.treeLeafIndicator {
+  display: flex;
+  align-items: center;
+  padding: 1px 4px;
+  margin: 1px 0;
+  font-size: 9px;
+  line-height: 1.2;
+  color: #888;
+  font-style: italic;
+}
+
+.treeLeafIndicator .treeToggle {
+  color: #ccc;
+  font-size: 6px;
+}
+
+.treeLeafIndicator .treeLabel {
+  color: #aaa;
+  font-size: 8px;
+}
+
+.treeLeafIndicator .treeNodeCount {
+  color: #bbb;
+  font-size: 8px;
+}
+
+/* Dockable Panel System */
+.dockablePanel {
+  position: absolute;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 11px;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.dockablePanel:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.dockablePanelDragging {
+  z-index: 1000;
+  transform: rotate(2deg);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.dockablePanelCollapsed {
+  /* Collapsed panels show only header */
+  min-height: auto;
+}
+
+.dockablePanelDocked {
+  /* Docked panels have stable positioning */
+  cursor: default;
+}
+
+.dockablePanelFloating {
+  cursor: move;
+  border: 2px solid rgba(0, 120, 204, 0.3);
+}
+
+/* Dock positions */
+.dockablePanelTopLeft {
+  top: 20px;
+  left: 10px;
+}
+
+.dockablePanelTopRight {
+  top: 20px;
+  right: 10px;
+}
+
+.dockablePanelBottomLeft {
+  bottom: 20px;
+  left: 10px;
+}
+
+.dockablePanelBottomRight {
+  bottom: 20px;
+  right: 10px;
+}
+
+/* Panel header */
+.dockablePanelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: grab;
+  user-select: none;
+}
+
+.dockablePanelHeader:active {
+  cursor: grabbing;
+}
+
+.dockablePanelTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+
+.dockablePanelControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dockablePanelToggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  color: #666;
+  padding: 2px 4px;
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.dockablePanelToggle:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #333;
+}
+
+.dockablePanelDragHandle {
+  color: #999;
+  font-size: 10px;
+  cursor: grab;
+  padding: 2px;
+  line-height: 0.8;
+  letter-spacing: -1px;
+}
+
+.dockablePanelDragHandle:hover {
+  color: #666;
+}
+
+.dockablePanelDragHandle:active {
+  cursor: grabbing;
+}
+
+/* Panel content */
+.dockablePanelContent {
+  padding: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  min-width: 200px;
+}
+
+/* Dock zone overlay and indicators */
+.dockZoneOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.dockZone {
+  position: absolute;
+  background: rgba(0, 120, 204, 0.2);
+  border: 2px dashed rgba(0, 120, 204, 0.5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.dockZoneOverlay:hover .dockZone {
+  opacity: 1;
+}
+
+.dockZoneTopLeft {
+  top: 10px;
+  left: 10px;
+  width: 20%;
+  height: 20%;
+}
+
+.dockZoneTopRight {
+  top: 10px;
+  right: 10px;
+  width: 20%;
+  height: 20%;
+}
+
+.dockZoneBottomLeft {
+  bottom: 10px;
+  left: 10px;
+  width: 20%;
+  height: 20%;
+}
+
+.dockZoneBottomRight {
+  bottom: 10px;
+  right: 10px;
+  width: 20%;
+  height: 20%;
+}
+
+/* Legacy styles for backward compatibility */
+.unifiedLegend {
+  /* Keep for components not yet converted */
+  position: absolute;
+  top: 20px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 220px;
+  font-size: 11px;
+}
+
+.hierarchyTree {
+  /* Keep for components not yet converted */
+  position: absolute;
+  bottom: 20px;
+  right: 10px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 8px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  max-width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-size: 11px;
 }
