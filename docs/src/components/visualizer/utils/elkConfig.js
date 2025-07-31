@@ -29,7 +29,7 @@ export const ELK_LAYOUT_CONFIGS = {
   mrtree: {
     'elk.algorithm': 'mrtree',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
     'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
   },
   
@@ -37,27 +37,27 @@ export const ELK_LAYOUT_CONFIGS = {
   layered: {
     'elk.algorithm': 'layered',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
     'elk.layered.spacing.nodeNodeBetweenLayers': LAYOUT_SPACING.LAYER_SEPARATION,
-    'elk.layered.spacing.borderToNode': 20,
+    'elk.layered.spacing.borderToNode': LAYOUT_SPACING.BORDER_TO_NODE,
   },
   
   // Force-directed layout - good for general graphs
   force: {
     'elk.algorithm': 'force',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
   },
   
   // Stress minimization layout - good for complex networks
   stress: {
     'elk.algorithm': 'stress',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
   },
   
   // Radial layout - good for tree-like structures
   radial: {
     'elk.algorithm': 'radial',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
   },
 };
 
@@ -92,10 +92,10 @@ export const ELK_OPTIONS = {
   // Common spacing values
   SPACING: {
     EDGE_TO_NODE: LAYOUT_SPACING.EDGE_TO_NODE,
-    EDGE_TO_EDGE: 10,
-    COMPONENT_TO_COMPONENT: 60,
-    CONTAINER_PADDING: 20,
-    ROOT_PADDING: 20,
+    EDGE_TO_EDGE: LAYOUT_SPACING.EDGE_TO_EDGE,
+    COMPONENT_TO_COMPONENT: LAYOUT_SPACING.COMPONENT_TO_COMPONENT,
+    CONTAINER_PADDING: LAYOUT_SPACING.CONTAINER_PADDING,
+    ROOT_PADDING: LAYOUT_SPACING.ROOT_PADDING,
   },
 };
 
@@ -107,14 +107,15 @@ export const ELK_OPTIONS = {
 export const ELK_CONTAINER_CONFIGS = {
   // Configuration for standard hierarchy containers
   hierarchyContainer: {
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.padding': `[top=${LAYOUT_SPACING.CONTAINER_PADDING},left=${LAYOUT_SPACING.CONTAINER_PADDING},bottom=${LAYOUT_SPACING.CONTAINER_PADDING},right=${LAYOUT_SPACING.CONTAINER_PADDING}]`,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL, // Use smaller spacing to reduce vertical bias
     'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
     'elk.spacing.edgeEdge': ELK_OPTIONS.SPACING.EDGE_TO_EDGE,
   },
   
   // Configuration for collapsed container repositioning
   collapsedContainer: {
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE, // Use consistent spacing
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL, // Use consistent spacing
     'elk.spacing.componentComponent': ELK_OPTIONS.SPACING.COMPONENT_TO_COMPONENT,
     'elk.partitioning.activate': 'false',
   },
@@ -123,9 +124,9 @@ export const ELK_CONTAINER_CONFIGS = {
   rootLevel: {
     'elk.padding': `[top=${ELK_OPTIONS.SPACING.ROOT_PADDING},left=${ELK_OPTIONS.SPACING.ROOT_PADDING},bottom=${ELK_OPTIONS.SPACING.ROOT_PADDING},right=${ELK_OPTIONS.SPACING.ROOT_PADDING}]`,
     'elk.hierarchyHandling': ELK_OPTIONS.HIERARCHY_HANDLING.INCLUDE_CHILDREN,
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE, // Use consistent spacing
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL, // Use consistent spacing
     'elk.spacing.edgeNode': ELK_OPTIONS.SPACING.CONTAINER_PADDING,
-    'elk.spacing.edgeEdge': 15,
+    'elk.spacing.edgeEdge': LAYOUT_SPACING.EDGE_TO_EDGE_ALTERNATE,
   },
 };
 

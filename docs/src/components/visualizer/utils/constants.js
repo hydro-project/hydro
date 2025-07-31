@@ -288,8 +288,14 @@ export const ZOOM_LEVELS = {
 // Layout spacing constants (used in ELK configurations)
 export const LAYOUT_SPACING = {
   NODE_TO_NODE_COMPACT: 15,     // Tight spacing between nodes
-  NODE_TO_NODE_NORMAL: 25,      // Normal spacing between nodes
-  NODE_TO_NODE_LOOSE: 50,       // Loose spacing between nodes
-  EDGE_TO_NODE: 10,             // Spacing between edges and nodes
+  NODE_TO_NODE_NORMAL: 75,      // Normal spacing between nodes
+  NODE_TO_NODE_LOOSE: 125,      // Loose spacing between nodes
+  EDGE_TO_NODE: 50,             // Spacing between edges and nodes
+  EDGE_TO_EDGE: 10,             // Spacing between edges
+  EDGE_TO_EDGE_ALTERNATE: 15,   // Alternative spacing between edges
   LAYER_SEPARATION: 25,         // Spacing between layers in layered layouts
+  COMPONENT_TO_COMPONENT: 60,   // Spacing between disconnected components
+  CONTAINER_PADDING: 60,        // Internal padding within containers (reduced from 120 to match sides)
+  ROOT_PADDING: 20,             // Root level padding
+  BORDER_TO_NODE: 20,           // Spacing from border to nodes
 };
