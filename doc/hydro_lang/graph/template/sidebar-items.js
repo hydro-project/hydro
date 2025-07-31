@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["REACTFLOW_TEMPLATE"],"fn":["get_template"]};
+window.SIDEBAR_ITEMS = {"constant":["JSON_TEMPLATE"],"fn":["get_template"]};
