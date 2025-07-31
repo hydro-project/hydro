@@ -29,7 +29,6 @@ cargo smart-release --update-crates-index \
    --no-changelog-preview --allow-fully-generated-changelogs \
    --bump-dependencies auto --bump minor \ # or `patch`, `major`, `keep`, `auto`
    dfir_rs dfir_lang dfir_macro \
-   dfir_datalog dfir_datalog_core \
    hydro_lang hydro_optimize hydro_std \
    hydro_deploy hydro_deploy_integration \
    multiplatform_test
@@ -120,9 +119,14 @@ When adding a new crate which is published, you need to:
    (substitute correct version).
 3. You must commit a new (empty) file `my_crate/CHANGELOG.md` to ensure the file will be tracked
    by git and pushed by `cargo-smart-release`
-4. If you want your package to be lockstep-versioned alongside hydro then make sure to add it
+4. (A) If you want your crate to be lockstep-versioned alongside hydro then make sure to add it
    to the [command in the `release.yml` workflow](https://github.com/hydro-project/hydro/blob/main/.github/workflows/release.yml#L82).
    (also update the `cargo smart-release` test command above in this file).
+5. (B) Otherwise, if your crate is only used via `[dev-dependencies]` then the crate may not
+   initially publish due to https://github.com/Byron/cargo-smart-release/issues/36. To workaround
+   this, additionally add the crate as a regular `[dependencies]` but marked as `optional = true`.
+   When doing the dry run, look for `[INFO ] WOULD modify existing changelog for 'new_crate'.` to
+   verify it will publish.
 
 Then just run the release workflow as normal.
 

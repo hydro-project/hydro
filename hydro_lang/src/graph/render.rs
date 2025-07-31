@@ -277,7 +277,6 @@ fn extract_location_id(metadata: &crate::ir::HydroIrMetadata) -> (Option<usize>,
     match &metadata.location_kind {
         LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
         LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
-        LocationId::External(id) => (Some(*id), Some("External".to_string())),
         LocationId::Tick(_, inner) => match inner.as_ref() {
             LocationId::Process(id) => (Some(*id), Some("Process".to_string())),
             LocationId::Cluster(id) => (Some(*id), Some("Cluster".to_string())),
@@ -384,12 +383,12 @@ impl HydroLeaf {
             seen_tees: &mut HashMap<*const std::cell::RefCell<HydroNode>, usize>,
             config: &HydroWriteConfig,
             input: &HydroNode,
-            metadata: &crate::ir::HydroIrMetadata,
+            metadata: Option<&crate::ir::HydroIrMetadata>,
             label: NodeLabel,
             edge_type: HydroEdgeType,
         ) -> usize {
             let input_id = input.build_graph_structure(structure, seen_tees, config);
-            let location_id = setup_location(structure, metadata);
+            let location_id = metadata.and_then(|m| setup_location(structure, m));
             let sink_id = structure.add_node(label, HydroNodeType::Sink, location_id);
             structure.add_edge(input_id, sink_id, edge_type, None);
             sink_id
@@ -402,14 +401,28 @@ impl HydroLeaf {
                 seen_tees,
                 config,
                 input,
-                metadata,
+                Some(metadata),
                 NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
                 HydroEdgeType::Stream,
             ),
 
-            HydroLeaf::SendExternal { input, .. } => {
-                input.build_graph_structure(structure, seen_tees, config)
-            }
+            HydroLeaf::SendExternal {
+                to_external_id,
+                to_key,
+                input,
+                ..
+            } => build_sink_node(
+                structure,
+                seen_tees,
+                config,
+                input,
+                None,
+                NodeLabel::with_exprs(
+                    format!("send_external({}:{})", to_external_id, to_key),
+                    vec![],
+                ),
+                HydroEdgeType::Stream,
+            ),
 
             HydroLeaf::DestSink {
                 sink,
@@ -420,7 +433,7 @@ impl HydroLeaf {
                 seen_tees,
                 config,
                 input,
-                metadata,
+                Some(metadata),
                 NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
                 HydroEdgeType::Stream,
             ),
@@ -436,7 +449,7 @@ impl HydroLeaf {
                 seen_tees,
                 config,
                 input,
-                metadata,
+                Some(metadata),
                 NodeLabel::static_label(format!("cycle_sink({})", ident)),
                 HydroEdgeType::Cycle,
             ),
@@ -561,9 +574,16 @@ impl HydroNode {
                 build_source_node(structure, metadata, label)
             }
 
-            HydroNode::ExternalInput { metadata, .. } => {
-                build_source_node(structure, metadata, "external_network()".to_string())
-            }
+            HydroNode::ExternalInput {
+                from_external_id,
+                from_key,
+                metadata,
+                ..
+            } => build_source_node(
+                structure,
+                metadata,
+                format!("external_input({}:{})", from_external_id, from_key),
+            ),
 
             HydroNode::CycleSource {
                 ident, metadata, ..
@@ -856,10 +876,6 @@ impl HydroNode {
                     }
                     LocationId::Cluster(id) => {
                         structure.add_location(*id, "Cluster".to_string());
-                        Some(*id)
-                    }
-                    LocationId::External(id) => {
-                        structure.add_location(*id, "External".to_string());
                         Some(*id)
                     }
                     _ => None,

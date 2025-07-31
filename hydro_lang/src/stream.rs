@@ -2607,8 +2607,6 @@ where
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_key: None,
-                to_key: None,
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -2638,9 +2636,8 @@ where
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
 
         leaves.push(HydroLeaf::SendExternal {
-            from_key: None,
-            to_location: other.id,
-            to_key: Some(external_key),
+            to_external_id: other.id,
+            to_key: external_key,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
@@ -2673,8 +2670,6 @@ where
         Stream::new(
             other.clone(),
             HydroNode::Network {
-                from_key: None,
-                to_key: None,
                 serialize_fn: None,
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: if let Some(c_type) = L::Root::tagged_type() {
@@ -2702,9 +2697,8 @@ where
         let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
 
         leaves.push(HydroLeaf::SendExternal {
-            from_key: None,
-            to_location: other.id,
-            to_key: Some(external_key),
+            to_external_id: other.id,
+            to_key: external_key,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {

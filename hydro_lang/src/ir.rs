@@ -328,9 +328,8 @@ pub enum HydroLeaf {
         metadata: HydroIrMetadata,
     },
     SendExternal {
-        from_key: Option<usize>,
-        to_location: usize,
-        to_key: Option<usize>,
+        to_external_id: usize,
+        to_key: usize,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         input: Box<HydroNode>,
@@ -363,24 +362,47 @@ impl HydroLeaf {
             &mut |l| {
                 if let HydroLeaf::SendExternal {
                     input,
-                    from_key,
-                    to_location,
+                    to_external_id,
                     to_key,
                     instantiate_fn,
                     ..
                 } = l
                 {
-                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                        DebugInstantiate::Building => instantiate_network::<D>(
-                            input.metadata().location_kind.root(),
-                            *from_key,
-                            &LocationId::External(*to_location),
-                            *to_key,
-                            processes,
-                            clusters,
-                            externals,
-                            compile_env,
-                        ),
+                    let ((sink_expr, source_expr), connect_fn) = match instantiate_fn {
+                        DebugInstantiate::Building => {
+                            let to_node = externals
+                                .get(to_external_id)
+                                .unwrap_or_else(|| {
+                                    panic!("A external used in the graph was not instantiated: {}", to_external_id)
+                                })
+                                .clone();
+
+                            match input.metadata().location_kind.root() {
+                                LocationId::Process(process_id) => {
+                                    let from_node = processes
+                                        .get(process_id)
+                                        .unwrap_or_else(|| {
+                                            panic!("A process used in the graph was not instantiated: {}", process_id)
+                                        })
+                                        .clone();
+
+                                    let sink_port = D::allocate_process_port(&from_node);
+                                    let source_port = D::allocate_external_port(&to_node);
+
+                                    to_node.register(*to_key, source_port.clone());
+
+                                    (
+                                        (
+                                            D::o2e_sink(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                                            parse_quote!(DUMMY),
+                                        ),
+                                        D::o2e_connect(&from_node, &sink_port, &to_node, &source_port),
+                                    )
+                                }
+                                LocationId::Cluster(_) => todo!(),
+                                _ => panic!()
+                            }
+                        },
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
                     };
@@ -396,8 +418,6 @@ impl HydroLeaf {
             &mut |n| {
                 if let HydroNode::Network {
                     input,
-                    from_key,
-                    to_key,
                     instantiate_fn,
                     metadata,
                     ..
@@ -406,12 +426,9 @@ impl HydroLeaf {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building => instantiate_network::<D>(
                             input.metadata().location_kind.root(),
-                            *from_key,
                             metadata.location_kind.root(),
-                            *to_key,
                             processes,
                             clusters,
-                            externals,
                             compile_env,
                         ),
 
@@ -425,25 +442,51 @@ impl HydroLeaf {
                     }
                     .into();
                 } else if let HydroNode::ExternalInput {
-                    from_location,
+                    from_external_id,
                     from_key,
-                    to_key,
                     instantiate_fn,
                     metadata,
                     ..
                 } = n
                 {
-                    let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
-                        DebugInstantiate::Building => instantiate_network::<D>(
-                            from_location,
-                            *from_key,
-                            &metadata.location_kind,
-                            *to_key,
-                            processes,
-                            clusters,
-                            externals,
-                            compile_env,
-                        ),
+                    let ((sink_expr, source_expr), connect_fn) = match instantiate_fn {
+                        DebugInstantiate::Building => {
+                            let from_node = externals
+                                .get(from_external_id)
+                                .unwrap_or_else(|| {
+                                    panic!(
+                                        "A external used in the graph was not instantiated: {}",
+                                        from_external_id
+                                    )
+                                })
+                                .clone();
+
+                            match metadata.location_kind.root() {
+                                LocationId::Process(process_id) => {
+                                    let to_node = processes
+                                        .get(process_id)
+                                        .unwrap_or_else(|| {
+                                            panic!("A process used in the graph was not instantiated: {}", process_id)
+                                        })
+                                        .clone();
+
+                                    let sink_port = D::allocate_external_port(&from_node);
+                                    let source_port = D::allocate_process_port(&to_node);
+
+                                    from_node.register(*from_key, sink_port.clone());
+
+                                    (
+                                        (
+                                            parse_quote!(DUMMY),
+                                            D::e2o_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
+                                        ),
+                                        D::e2o_connect(&from_node, &sink_port, &to_node, &source_port),
+                                    )
+                                }
+                                LocationId::Cluster(_) => todo!(),
+                                _ => panic!()
+                            }
+                        },
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
                     };
@@ -513,12 +556,10 @@ impl HydroLeaf {
         seen_tees: &mut SeenTees,
     ) {
         match self {
-            HydroLeaf::ForEach { f: _, input, .. }
+            HydroLeaf::ForEach { input, .. }
             | HydroLeaf::SendExternal { input, .. }
-            | HydroLeaf::DestSink { sink: _, input, .. }
-            | HydroLeaf::CycleSink {
-                ident: _, input, ..
-            } => {
+            | HydroLeaf::DestSink { input, .. }
+            | HydroLeaf::CycleSink { input, .. } => {
                 transform(input, seen_tees);
             }
         }
@@ -532,15 +573,13 @@ impl HydroLeaf {
                 metadata: metadata.clone(),
             },
             HydroLeaf::SendExternal {
-                from_key,
-                to_location,
+                to_external_id,
                 to_key,
                 serialize_fn,
                 instantiate_fn,
                 input,
             } => HydroLeaf::SendExternal {
-                from_key: *from_key,
-                to_location: *to_location,
+                to_external_id: *to_external_id,
                 to_key: *to_key,
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
@@ -1087,8 +1126,6 @@ pub enum HydroNode {
     },
 
     Network {
-        from_key: Option<usize>,
-        to_key: Option<usize>,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
@@ -1097,9 +1134,8 @@ pub enum HydroNode {
     },
 
     ExternalInput {
-        from_location: LocationId,
-        from_key: Option<usize>,
-        to_key: Option<usize>,
+        from_external_id: usize,
+        from_key: usize,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
         metadata: HydroIrMetadata,
@@ -1424,16 +1460,12 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Network {
-                from_key,
-                to_key,
                 serialize_fn,
                 instantiate_fn,
                 deserialize_fn,
                 input,
                 metadata,
             } => HydroNode::Network {
-                from_key: *from_key,
-                to_key: *to_key,
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),
@@ -1441,16 +1473,14 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::ExternalInput {
-                from_location,
+                from_external_id,
                 from_key,
-                to_key,
                 instantiate_fn,
                 deserialize_fn,
                 metadata,
             } => HydroNode::ExternalInput {
-                from_location: from_location.clone(),
+                from_external_id: *from_external_id,
                 from_key: *from_key,
-                to_key: *to_key,
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),
                 metadata: metadata.clone(),
@@ -1549,12 +1579,7 @@ impl HydroNode {
             HydroNode::Source {
                 source, metadata, ..
             } => {
-                let location_id = match metadata.location_kind.root().clone() {
-                    LocationId::Process(id) => id,
-                    LocationId::Cluster(id) => id,
-                    LocationId::Tick(_, _) => panic!(),
-                    LocationId::External(id) => id,
-                };
+                let location_id = metadata.location_kind.root().raw_id();
 
                 if let HydroSource::ExternalNetwork() = source {
                     (syn::Ident::new("DUMMY", Span::call_site()), location_id)
@@ -2385,8 +2410,6 @@ impl HydroNode {
             }
 
             HydroNode::Network {
-                from_key: _,
-                to_key: _,
                 serialize_fn: serialize_pipeline,
                 instantiate_fn,
                 deserialize_fn: deserialize_pipeline,
@@ -2461,8 +2484,6 @@ impl HydroNode {
             }
 
             HydroNode::ExternalInput {
-                from_key: _,
-                to_key: _,
                 instantiate_fn,
                 deserialize_fn: deserialize_pipeline,
                 metadata,
@@ -2820,15 +2841,11 @@ impl HydroNode {
 }
 
 #[cfg(feature = "build")]
-#[expect(clippy::too_many_arguments, reason = "networking internals")]
 fn instantiate_network<'a, D>(
     from_location: &LocationId,
-    from_key: Option<usize>,
     to_location: &LocationId,
-    to_key: Option<usize>,
     processes: &HashMap<usize, D::Process>,
     clusters: &HashMap<usize, D::Cluster>,
-    externals: &HashMap<usize, D::External>,
     compile_env: &D::CompileEnv,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
@@ -2923,74 +2940,6 @@ where
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (LocationId::External(from), LocationId::Process(to)) => {
-            let from_node = externals
-                .get(from)
-                .unwrap_or_else(|| {
-                    panic!(
-                        "A external used in the graph was not instantiated: {}",
-                        from
-                    )
-                })
-                .clone();
-
-            let to_node = processes
-                .get(to)
-                .unwrap_or_else(|| {
-                    panic!("A process used in the graph was not instantiated: {}", to)
-                })
-                .clone();
-
-            let sink_port = D::allocate_external_port(&from_node);
-            let source_port = D::allocate_process_port(&to_node);
-
-            from_node.register(from_key.unwrap(), sink_port.clone());
-
-            (
-                (
-                    parse_quote!(DUMMY),
-                    D::e2o_source(compile_env, &from_node, &sink_port, &to_node, &source_port),
-                ),
-                D::e2o_connect(&from_node, &sink_port, &to_node, &source_port),
-            )
-        }
-        (LocationId::External(_from), LocationId::Cluster(_to)) => {
-            todo!("NYI")
-        }
-        (LocationId::External(_), LocationId::External(_)) => {
-            panic!("Cannot send from external to external")
-        }
-        (LocationId::Process(from), LocationId::External(to)) => {
-            let from_node = processes
-                .get(from)
-                .unwrap_or_else(|| {
-                    panic!("A process used in the graph was not instantiated: {}", from)
-                })
-                .clone();
-
-            let to_node = externals
-                .get(to)
-                .unwrap_or_else(|| {
-                    panic!("A external used in the graph was not instantiated: {}", to)
-                })
-                .clone();
-
-            let sink_port = D::allocate_process_port(&from_node);
-            let source_port = D::allocate_external_port(&to_node);
-
-            to_node.register(to_key.unwrap(), source_port.clone());
-
-            (
-                (
-                    D::o2e_sink(compile_env, &from_node, &sink_port, &to_node, &source_port),
-                    parse_quote!(DUMMY),
-                ),
-                D::o2e_connect(&from_node, &sink_port, &to_node, &source_port),
-            )
-        }
-        (LocationId::Cluster(_from), LocationId::External(_to)) => {
-            todo!("NYI")
-        }
         (LocationId::Tick(_, _), _) => panic!(),
         (_, LocationId::Tick(_, _)) => panic!(),
     };
@@ -3007,7 +2956,7 @@ mod test {
 
     #[test]
     fn hydro_node_size() {
-        insta::assert_snapshot!(size_of::<HydroNode>(), @"232");
+        insta::assert_snapshot!(size_of::<HydroNode>(), @"200");
     }
 
     #[test]
