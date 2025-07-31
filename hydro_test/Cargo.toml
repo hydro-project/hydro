@@ -18,6 +18,9 @@ colored = "3.0.0"
 palette = "0.7.6"
 tokio = "1.29.0"
 
+# added to workaround `cargo smart-release` https://github.com/Byron/cargo-smart-release/issues/36
+example_test = { path = "../example_test", version = "^0.0.0", optional = true }
+
 [build-dependencies]
 stageleft_tool.workspace = true
 
