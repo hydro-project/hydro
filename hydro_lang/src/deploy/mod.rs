@@ -129,12 +129,14 @@ pub trait Deploy<'a> {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
     ) -> syn::Expr;
     fn e2o_connect(
         p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
     ) -> Box<dyn FnOnce()>;
 
     fn o2e_sink(

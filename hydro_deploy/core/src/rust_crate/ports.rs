@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::ops::Deref;
 use std::sync::{Arc, Weak};
 
@@ -11,7 +12,7 @@ use hydro_deploy_integration::ServerPort;
 use tokio::sync::RwLock;
 
 use super::RustCrateService;
-use crate::{ClientStrategy, Host, HostStrategyGetter, LaunchedHost, ServerStrategy};
+use crate::{ClientStrategy, Host, LaunchedHost, ServerStrategy};
 
 pub trait RustCrateSource: Send + Sync {
     fn source_path(&self) -> SourcePath;
@@ -41,7 +42,7 @@ pub trait RustCrateSource: Send + Sync {
     }
 }
 
-pub trait RustCrateServer: DynClone + Send + Sync {
+pub trait RustCrateServer: DynClone + Debug + Send + Sync {
     fn get_port(&self) -> ServerPort;
     fn launched_host(&self) -> Arc<dyn LaunchedHost>;
 }
@@ -180,7 +181,7 @@ impl RustCrateSink for DemuxSink {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RustCratePortConfig {
     pub service: Weak<RwLock<RustCrateService>>,
     pub service_host: Arc<dyn Host>,
@@ -268,37 +269,46 @@ impl RustCrateServer for RustCratePortConfig {
 pub enum SourcePath {
     Null,
     Direct(Arc<dyn Host>),
+    Many(Arc<dyn Host>),
     Tagged(Box<SourcePath>, u32),
 }
 
 impl SourcePath {
+    #[expect(clippy::type_complexity, reason = "internals // TODO")]
     fn plan<T: RustCrateServer + Clone + 'static>(
         &self,
         server: &T,
         server_host: &dyn Host,
-    ) -> Result<(HostStrategyGetter, ServerConfig)> {
+    ) -> Result<(Box<dyn FnOnce(&dyn Any) -> ServerStrategy>, ServerConfig)> {
         match self {
             SourcePath::Direct(client_host) => {
                 let (conn_type, bind_type) = server_host.strategy_as_server(client_host.deref())?;
                 let base_config = ServerConfig::from_strategy(&conn_type, Arc::new(server.clone()));
-                Ok((bind_type, base_config))
+                Ok((
+                    Box::new(|host| ServerStrategy::Direct(bind_type(host))),
+                    base_config,
+                ))
+            }
+
+            SourcePath::Many(client_host) => {
+                let (conn_type, bind_type) = server_host.strategy_as_server(client_host.deref())?;
+                let base_config = ServerConfig::from_strategy(&conn_type, Arc::new(server.clone()));
+                Ok((
+                    Box::new(|host| ServerStrategy::Many(bind_type(host))),
+                    base_config,
+                ))
             }
 
             SourcePath::Tagged(underlying, tag) => {
                 let (bind_type, base_config) = underlying.plan(server, server_host)?;
                 let tag = *tag;
-                let strategy_getter: HostStrategyGetter =
-                    Box::new(move |host| ServerStrategy::Tagged(Box::new(bind_type(host)), tag));
                 Ok((
-                    strategy_getter,
+                    Box::new(move |host| ServerStrategy::Tagged(Box::new(bind_type(host)), tag)),
                     ServerConfig::TaggedUnwrap(Box::new(base_config)),
                 ))
             }
 
-            SourcePath::Null => {
-                let strategy_getter: HostStrategyGetter = Box::new(|_| ServerStrategy::Null);
-                Ok((strategy_getter, ServerConfig::Null))
-            }
+            SourcePath::Null => Ok((Box::new(|_| ServerStrategy::Null), ServerConfig::Null)),
         }
     }
 }
@@ -378,12 +388,12 @@ impl RustCrateSink for RustCratePortConfig {
                     .insert(port.clone(), client_port);
             };
 
-            (bind_type)(&*client_write.on)
+            ServerStrategy::Direct((bind_type)(&*client_write.on))
         }))
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum ServerConfig {
     Direct(Arc<dyn RustCrateServer>),
     Forwarded(Arc<dyn RustCrateServer>),

@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
+use hydro_deploy_integration::multi_connection::ConnectedMultiConnection;
 use hydro_deploy_integration::{
-    ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
+    ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedSourceSink,
+    ConnectedTagged, DeployPorts,
 };
 use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, RuntimeData, q};
+use tokio_util::codec::LengthDelimitedCodec;
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct HydroMeta {
@@ -114,8 +117,18 @@ pub fn deploy_e2o(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     _e1_port: &str,
     p2_port: &str,
+    many: bool,
 ) -> syn::Expr {
-    q!(env.port(p2_port).connect::<ConnectedDirect>().into_source()).splice_untyped_ctx(&())
+    if many {
+        q!(env
+            .port(p2_port)
+            .connect::<ConnectedMultiConnection<_, _, LengthDelimitedCodec>>()
+            .into_source_sink()
+            .0)
+        .splice_untyped_ctx(&())
+    } else {
+        q!(env.port(p2_port).connect::<ConnectedDirect>().into_source()).splice_untyped_ctx(&())
+    }
 }
 
 pub fn deploy_o2e(

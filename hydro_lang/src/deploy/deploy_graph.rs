@@ -271,6 +271,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         p1_port: &Self::Port,
         _p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
     ) -> syn::Expr {
         let p1_port = p1_port.as_str();
         let p2_port = p2_port.as_str();
@@ -278,6 +279,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
             RuntimeData::new("__hydro_lang_trybuild_cli"),
             p1_port,
             p2_port,
+            many,
         )
     }
 
@@ -286,6 +288,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();
         let p1_port = p1_port.clone();
@@ -295,10 +298,17 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .declare_client(self_underlying);
+            let source_port = if many {
+                self_underlying
+                    .try_read()
+                    .unwrap()
+                    .declare_many_client(self_underlying)
+            } else {
+                self_underlying
+                    .try_read()
+                    .unwrap()
+                    .declare_client(self_underlying)
+            };
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
@@ -573,9 +583,10 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
     fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy>::ExternalRawPort {
         self.client_ports
-            .borrow_mut()
-            .remove(self.allocated_ports.borrow().get(&key).unwrap())
+            .borrow()
+            .get(self.allocated_ports.borrow().get(&key).unwrap())
             .unwrap()
+            .clone()
     }
 
     fn as_bytes_sink(
