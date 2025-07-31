@@ -134,6 +134,29 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
         // Encode the JSON data for URL
         let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
 
+        // URLs longer than ~2000 characters may fail in some browsers
+        // Use a conservative limit of 1800 characters for the base URL + encoded data
+        const MAX_SAFE_URL_LENGTH: usize = 1800;
+        let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
+        
+        if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
+            // Large graph - save to temp file and give instructions
+            let temp_file = save_json_to_temp(json_content)?;
+            
+            println!("📊 Graph is too large for URL encoding ({} chars)", encoded_data.len());
+            println!("💾 Saved JSON to temporary file: {}", temp_file.display());
+            println!();
+            println!("🎯 To visualize this graph:");
+            println!("   1. Open https://hydro.run/docs/visualizer");
+            println!("   2. Drag and drop the JSON file onto the visualizer");
+            println!("   3. Or use the file upload button in the visualizer");
+            println!();
+            println!("💡 Alternatively, you can copy the file path above and use it with your preferred method.");
+            
+            return Ok(());
+        }
+
+        // Small graph - use URL encoding as before
         // Try localhost first (for development), then fall back to docs site
         let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
         let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
@@ -159,6 +182,27 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
     Ok(())
 }
 
+/// Save JSON content to a temporary file with a descriptive name
+fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
+    use std::io::Write;
+    
+    // Create a descriptive filename with timestamp
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    
+    let filename = format!("hydro_graph_{}.json", timestamp);
+    let temp_file = std::env::temp_dir().join(filename);
+    
+    // Write the JSON content to the temp file
+    let mut file = std::fs::File::create(&temp_file)?;
+    file.write_all(json_content.as_bytes())?;
+    file.flush()?;
+    
+    Ok(temp_file)
+}
+
 /// Helper function to create a complete HTML file with JSON visualization and open it in browser.
 /// Creates files in temporary directory to avoid cluttering the workspace.
 pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result<()> {
@@ -170,6 +214,29 @@ pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result
         // Encode the JSON data for URL
         let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
 
+        // URLs longer than ~2000 characters may fail in some browsers
+        // Use a conservative limit of 1800 characters for the base URL + encoded data
+        const MAX_SAFE_URL_LENGTH: usize = 1800;
+        let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
+        
+        if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
+            // Large graph - save to temp file and give instructions
+            let temp_file = save_json_to_temp(json_content)?;
+            
+            println!("📊 Graph is too large for URL encoding ({} chars)", encoded_data.len());
+            println!("💾 Saved JSON to temporary file: {}", temp_file.display());
+            println!();
+            println!("🎯 To visualize this graph:");
+            println!("   1. Open https://hydro.run/docs/visualizer");
+            println!("   2. Drag and drop the JSON file onto the visualizer");
+            println!("   3. Or use the file upload button in the visualizer");
+            println!();
+            println!("💡 Alternatively, you can copy the file path above and use it with your preferred method.");
+            
+            return Ok(());
+        }
+
+        // Small graph - use URL encoding as before
         // Try localhost first (for development), then fall back to docs site
         let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
         let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
