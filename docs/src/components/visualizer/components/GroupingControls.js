@@ -10,13 +10,16 @@ import styles from '../../../pages/visualizer.module.css';
 export function GroupingControls({ 
   hierarchyChoices, 
   currentGrouping, 
-  onGroupingChange 
+  onGroupingChange,
+  compact = false // New prop to enable compact styling for Info Panel
 }) {
   // If there's only one choice or no choices, show disabled dropdown
   const isDisabled = !hierarchyChoices || hierarchyChoices.length <= 1;
   
+  const containerClass = compact ? styles.infoPanelGroupingControls : styles.groupingControls;
+  
   return (
-    <div className={styles.groupingControls}>
+    <div className={containerClass}>
       <label className={styles.controlLabel}>Group by:</label>
       <select 
         className={`${styles.groupingSelect} ${isDisabled ? styles.disabled : ''}`}

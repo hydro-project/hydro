@@ -453,9 +453,6 @@ export function Visualizer({ graphData, onControlsReady }) {
           hasCollapsedContainers={hasCollapsedContainers}
           onCollapseAll={handleCollapseAll}
           onExpandAll={handleExpandAll}
-          hierarchyChoices={hierarchyChoices}
-          currentGrouping={currentGrouping}
-          onGroupingChange={handleGroupingChange}
           autoFit={autoFit}
           onAutoFitToggle={handleAutoFitToggle}
           onFitView={handleFitView}
@@ -464,10 +461,9 @@ export function Visualizer({ graphData, onControlsReady }) {
       onControlsReady(controls);
     }
   }, [
-    currentLayout, colorPalette, hasCollapsedContainers, hierarchyChoices, 
-    currentGrouping, autoFit, onControlsReady,
+    currentLayout, colorPalette, hasCollapsedContainers, autoFit, onControlsReady,
     handleLayoutChange, handleCollapseAll, handleExpandAll, 
-    handleGroupingChange, handleAutoFitToggle, handleFitView
+    handleAutoFitToggle, handleFitView
   ]);
 
   // Process graph data and apply layout with proper memoization
@@ -565,6 +561,9 @@ export function Visualizer({ graphData, onControlsReady }) {
         onToggleContainer={handleHierarchyToggle}
         childNodesByParent={childNodesByParent}
         onPositionChange={(position, docked) => handlePanelPositionChange('info', position, docked)}
+        hierarchyChoices={hierarchyChoices}
+        currentGrouping={currentGrouping}
+        onGroupingChange={handleGroupingChange}
       />
 
       <ReactFlowInner

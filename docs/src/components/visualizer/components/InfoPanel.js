@@ -1,12 +1,13 @@
 /**
  * Combined Info Panel Component
  * 
- * Displays legend and container hierarchy with collapsible sections
+ * Displays grouping controls, legend and container hierarchy with collapsible sections
  */
 
 import React, { useState, useMemo } from 'react';
 import { generateNodeColors, truncateContainerName } from '../utils/utils.js';
 import { DockablePanel, DOCK_POSITIONS } from './DockablePanel.js';
+import { GroupingControls } from './GroupingControls.js';
 import { COMPONENT_COLORS } from '../utils/constants.js';
 import styles from '../../../pages/visualizer.module.css';
 
@@ -17,10 +18,15 @@ export function InfoPanel({
   collapsedContainers,
   onToggleContainer,
   childNodesByParent,
-  onPositionChange 
+  onPositionChange,
+  // New props for grouping
+  hierarchyChoices,
+  currentGrouping,
+  onGroupingChange
 }) {
   const [legendCollapsed, setLegendCollapsed] = useState(true);
   const [hierarchyCollapsed, setHierarchyCollapsed] = useState(false);
+  const [groupingCollapsed, setGroupingCollapsed] = useState(false);
 
   // Get legend data from the graph JSON, fallback to default if not provided
   const legendData = graphData?.legend || {
@@ -35,6 +41,9 @@ export function InfoPanel({
       { type: "Tee", label: "Tee" }
     ]
   };
+
+  // Get the current grouping name for the section title
+  const currentGroupingName = hierarchyChoices?.find(choice => choice.id === currentGrouping)?.name || 'Container';
 
   // Build hierarchy tree structure from nodes
   const hierarchyTree = useMemo(() => {
@@ -192,17 +201,38 @@ export function InfoPanel({
       minHeight={200}
     >
       <div style={{ fontSize: '10px' }}>
-        {hierarchyTree.length > 0 && (
-          <CollapsibleSection
-            title="Container Hierarchy"
-            isCollapsed={hierarchyCollapsed}
-            onToggle={() => setHierarchyCollapsed(!hierarchyCollapsed)}
-          >
-            {hierarchyTree.map(node => (
-              <TreeNode key={node.id} node={node} depth={0} />
-            ))}
-          </CollapsibleSection>
-        )}
+        {/* Grouping & Hierarchy Section */}
+        <CollapsibleSection
+          title="Grouping & Hierarchy"
+          isCollapsed={groupingCollapsed}
+          onToggle={() => setGroupingCollapsed(!groupingCollapsed)}
+        >
+          <div style={{ marginBottom: '8px' }}>
+            <GroupingControls
+              hierarchyChoices={hierarchyChoices}
+              currentGrouping={currentGrouping}
+              onGroupingChange={onGroupingChange}
+              compact={true}
+            />
+          </div>
+          
+          {hierarchyTree.length > 0 && (
+            <div>
+              <div style={{
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: COMPONENT_COLORS.TEXT_SECONDARY,
+                marginBottom: '4px',
+                paddingLeft: '4px'
+              }}>
+                {currentGroupingName} Hierarchy
+              </div>
+              {hierarchyTree.map(node => (
+                <TreeNode key={node.id} node={node} depth={0} />
+              ))}
+            </div>
+          )}
+        </CollapsibleSection>
 
         <CollapsibleSection
           title={legendData.title}

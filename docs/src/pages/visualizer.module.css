@@ -751,6 +751,42 @@
   font-size: 8px;
 }
 
+/* Enhanced grouping controls within Info Panel */
+.infoPanelGroupingControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.infoPanelGroupingControls .controlLabel {
+  font-size: 9px;
+  font-weight: 500;
+  color: #666;
+  min-width: 50px;
+}
+
+.infoPanelGroupingControls .groupingSelect {
+  flex: 1;
+  font-size: 9px;
+  padding: 3px 6px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  background: #fff;
+  color: #333;
+  min-width: 0;
+}
+
+.infoPanelGroupingControls .groupingSelect:hover {
+  border-color: #007acc;
+}
+
+.infoPanelGroupingControls .groupingSelect.disabled {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
 /* Dockable Panel System */
 .dockablePanel {
   position: absolute;

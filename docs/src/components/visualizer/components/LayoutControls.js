@@ -1,11 +1,10 @@
 /**
  * Layout Controls Component
  * 
- * Dropdown controls for layout algorithm, color palette, and grouping hierarchy selection
+ * Dropdown controls for layout algorithm and color palette
  */
 
 import React from 'react';
-import { GroupingControls } from './GroupingControls.js';
 import { getLayoutOptions } from '../utils/elkConfig.js';
 import styles from '../../../pages/visualizer.module.css';
 
@@ -40,9 +39,6 @@ export function LayoutControls({
   hasCollapsedContainers,
   onCollapseAll,
   onExpandAll,
-  hierarchyChoices,
-  currentGrouping,
-  onGroupingChange,
   autoFit,
   onAutoFitToggle,
   onFitView
@@ -68,12 +64,6 @@ export function LayoutControls({
           <option key={key} value={key}>{label}</option>
         ))}
       </select>
-      
-      <GroupingControls
-        hierarchyChoices={hierarchyChoices}
-        currentGrouping={currentGrouping}
-        onGroupingChange={onGroupingChange}
-      />
       
       <button 
         className={styles.containerButton}
