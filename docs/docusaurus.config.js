@@ -93,6 +93,7 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    require.resolve("./webpack.overlay-disable.js"),
     // Plugin to suppress web-worker warnings from elkjs
     function(context, options) {
       return {

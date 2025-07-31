@@ -41,8 +41,49 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
     const reactFlowInstance = useReactFlow();
     
     useEffect(() => {
+      let lastFitViewCall = 0;
+      const MIN_FIT_VIEW_INTERVAL = 100; // Minimum time between fitView calls
+      
+      // Handle custom fitView requests with proper debouncing
+      const handleFitViewRequest = (event) => {
+        const { padding, duration, minZoom, maxZoom, operationName, timestamp } = event.detail;
+        const now = Date.now();
+        
+        // Debounce rapid fitView calls
+        if (now - lastFitViewCall < MIN_FIT_VIEW_INTERVAL) {
+          return;
+        }
+        lastFitViewCall = now;
+        
+        try {
+          // Use a combination of requestAnimationFrame and setTimeout for maximum stability
+          requestAnimationFrame(() => {
+            setTimeout(() => {
+              try {
+                reactFlowInstance.fitView({ 
+                  padding,
+                  duration,
+                  minZoom,
+                  maxZoom
+                });
+              } catch (error) {
+                console.warn(`[ReactFlowInner] fitView failed for ${operationName}:`, error);
+              }
+            }, 50); // Small additional delay
+          });
+        } catch (error) {
+          console.warn(`[ReactFlowInner] fitView setup failed for ${operationName}:`, error);
+        }
+      };
+
+      // Listen for custom fitView events
+      window.addEventListener('fitViewRequest', handleFitViewRequest);
+      
+      // Keep the global reference for backwards compatibility
       window.reactFlowInstance = reactFlowInstance;
+      
       return () => {
+        window.removeEventListener('fitViewRequest', handleFitViewRequest);
         window.reactFlowInstance = null;
       };
     }, [reactFlowInstance]);

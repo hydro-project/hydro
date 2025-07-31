@@ -4,7 +4,7 @@
  * A simplified, flat graph visualizer using ReactFlow v12 and ELK layout.
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   useNodesState, 
   useEdgesState
@@ -19,6 +19,11 @@ import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from '
 import { isValidGraphData, getUniqueNodesById } from './utils/constants.js';
 import styles from '../../pages/visualizer.module.css';
 
+// Initialization retry constants
+const MAX_INIT_ATTEMPTS = 4;
+const INIT_RETRY_DELAY = 800; // ms between retries
+const INIT_TIMEOUT = 3000; // ms to consider an attempt stuck
+
 export function Visualizer({ graphData, onControlsReady }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -30,6 +35,10 @@ export function Visualizer({ graphData, onControlsReady }) {
   const [layoutOperationId, setLayoutOperationId] = useState(0);
   const [autoFit, setAutoFit] = useState(true); // Default to auto-fit enabled
   const [lastFitTimestamp, setLastFitTimestamp] = useState(0); // Track when fit was last applied
+  const [isInitializing, setIsInitializing] = useState(false); // Track initialization overlay
+  const [initAttempts, setInitAttempts] = useState(0);
+  const [initFailed, setInitFailed] = useState(false);
+  const initTimeoutRef = useRef(null);
   
   // Grouping hierarchy state
   const [hierarchyChoices, setHierarchyChoices] = useState([]);
@@ -58,26 +67,42 @@ export function Visualizer({ graphData, onControlsReady }) {
     const timestamp = Date.now();
     setLastFitTimestamp(timestamp);
 
-    // Use ReactFlow's built-in fitView method without manual DOM calculations
-    // Debounce to prevent cascading resize events
-    const timeoutId = setTimeout(() => {
-      if (window.reactFlowInstance) {
-        try {
-          // Use ReactFlow's fitView which handles ResizeObserver properly
-          window.reactFlowInstance.fitView({ 
-            padding: 0.1, // 10% padding
+    // Use a more robust approach to prevent ResizeObserver loops
+    const scheduleFitView = () => {
+      // Clear any existing timeout first
+      if (window.fitViewTimeout) {
+        clearTimeout(window.fitViewTimeout);
+      }
+
+      // Schedule the fitView call for the next frame cycle
+      window.fitViewTimeout = setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('fitViewRequest', {
+          detail: {
+            padding: 0.1,
             duration: duration,
             minZoom: 0.1,
-            maxZoom: 1.5
-          });
-        } catch (error) {
-          console.warn(`[Visualizer] fitView failed for ${operationName}:`, error);
-        }
-      }
-    }, 100); // Small delay to let DOM settle
+            maxZoom: 1.5,
+            operationName,
+            timestamp
+          }
+        }));
+      }, 200); // Increased delay to ensure DOM stability
+    };
 
-    // Cleanup timeout if component unmounts
-    return () => clearTimeout(timeoutId);
+    // Use requestIdleCallback if available, otherwise fallback to setTimeout
+    if (window.requestIdleCallback) {
+      window.requestIdleCallback(scheduleFitView, { timeout: 500 });
+    } else {
+      scheduleFitView();
+    }
+
+    // Cleanup function
+    return () => {
+      if (window.fitViewTimeout) {
+        clearTimeout(window.fitViewTimeout);
+        window.fitViewTimeout = null;
+      }
+    };
   }, [autoFit]);
 
   // Debounced fitViewport to prevent ResizeObserver loops
@@ -87,10 +112,14 @@ export function Visualizer({ graphData, onControlsReady }) {
       clearTimeout(window.fitViewportTimeout);
     }
     
+    // Use longer debounce during initialization or auto-collapse operations
+    const isInitialization = operationName === 'auto-collapse' || operationName === 'layout';
+    const debounceDelay = isInitialization ? 500 : 150; // Longer delay for initialization
+    
     // Set new timeout
     window.fitViewportTimeout = setTimeout(() => {
       fitViewport(duration, operationName, forceAutoFit);
-    }, 150); // Debounce for 150ms
+    }, debounceDelay);
   }, [fitViewport]);
 
   // Safe layout operation wrapper to prevent race conditions
@@ -120,48 +149,76 @@ export function Visualizer({ graphData, onControlsReady }) {
     }
   }, [isLayouting, layoutOperationId]);
 
-  // Auto-collapse all containers on initial load
+  // Auto-collapse all containers on initial load with staged initialization
+  // Robust staged initialization with retries and stuck overlay
   useEffect(() => {
-    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting) {
+    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting && !initFailed) {
       const groupNodes = nodes.filter(node => node.type === 'group');
       if (groupNodes.length > 0) {
         setHasAutoCollapsed(true);
-        
-        performLayoutOperation(async (opId) => {
-          // Instead of calling collapseAll() and waiting, directly compute the collapsed state
-          const allCollapsedArray = groupNodes.map(node => node.id);
-          
-          // Call collapseAll() for state consistency but don't wait for it
-          collapseAll();
-          
-          // Use the computed collapsed state immediately
-          const currentDisplayNodes = processCollapsedContainers(nodes, allCollapsedArray);
-          
-          const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout);
-          
-          const updatedNodes = nodes.map(baseNode => {
-            const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-            if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-              return {
-                ...baseNode,
-                position: displayNode.position
-              };
-            }
-            return baseNode;
-          });
-          
-          setNodes(updatedNodes);
-          
-          // Deterministic viewport fitting after layout is complete
-          debouncedFitViewport(300, 'auto-collapse');
-        }, 'auto-collapse');
+        setIsInitializing(true);
+        setInitAttempts((prev) => prev + 1);
+
+        // Timeout: if initialization takes too long, trigger retry or stuck overlay
+        if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
+        initTimeoutRef.current = setTimeout(() => {
+          if (initAttempts + 1 >= MAX_INIT_ATTEMPTS) {
+            setIsInitializing(false);
+            setInitFailed(true);
+          } else {
+            setHasAutoCollapsed(false); // allow retry
+          }
+        }, INIT_TIMEOUT);
+
+        // Staged/idle initialization
+        const doInit = () => {
+          performLayoutOperation(async (opId) => {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const allCollapsedArray = groupNodes.map(node => node.id);
+            collapseAll();
+            const currentDisplayNodes = processCollapsedContainers(nodes, allCollapsedArray);
+            const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, edges, currentLayout);
+            const updatedNodes = nodes.map(baseNode => {
+              const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
+              if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
+                return {
+                  ...baseNode,
+                  position: displayNode.position
+                };
+              }
+              return baseNode;
+            });
+            setNodes(updatedNodes);
+            await new Promise(resolve => setTimeout(resolve, 200));
+            setTimeout(() => {
+              debouncedFitViewport(300, 'auto-collapse');
+              setTimeout(() => {
+                setIsInitializing(false);
+                if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
+              }, 400);
+            }, 300);
+          }, 'auto-collapse');
+        };
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(doInit, { timeout: 500 });
+        } else {
+          setTimeout(doInit, 100);
+        }
       }
     }
-  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, setNodes]);
+    // Cleanup timeout on unmount
+    return () => {
+      if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
+    };
+  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, setNodes, debouncedFitViewport, initAttempts, initFailed]);
 
   // Reset auto-collapse flag when graph data changes
   useEffect(() => {
     setHasAutoCollapsed(false);
+    setIsInitializing(false);
+    setInitAttempts(0);
+    setInitFailed(false);
+    if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
   }, [graphData]);
 
   // Validate group nodes have proper styling
@@ -457,7 +514,7 @@ export function Visualizer({ graphData, onControlsReady }) {
   return (
     <div className={styles.visualizationWrapper}>
       <Legend colorPalette={colorPalette} graphData={graphData} />
-      
+
       <ReactFlowInner
         nodes={displayNodes}
         edges={displayEdges}
@@ -466,6 +523,35 @@ export function Visualizer({ graphData, onControlsReady }) {
         onNodeClick={handleNodeClick}
         colorPalette={colorPalette}
       />
+
+      {/* Initialization overlay to hide viewport during setup */}
+      {isInitializing && (
+        <div className={styles.initializationOverlay}>
+          <div className={styles.initializationContent}>
+            <div className={styles.spinner}></div>
+            <span>Preparing graph...</span>
+          </div>
+        </div>
+      )}
+      {/* Stuck overlay if all attempts fail */}
+      {initFailed && (
+        <div className={styles.initializationOverlay}>
+          <div className={styles.initializationContent}>
+            <div className={styles.spinner}></div>
+            <span style={{color: 'red'}}>Graph failed to initialize after several attempts.</span>
+            <button
+              className={styles.clearButton}
+              style={{marginTop: 16}}
+              onClick={() => {
+                setInitFailed(false);
+                setInitAttempts(0);
+                setHasAutoCollapsed(false);
+                setIsInitializing(false);
+              }}
+            >Retry Initialization</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
