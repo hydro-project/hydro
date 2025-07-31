@@ -254,6 +254,8 @@ export function Visualizer({ graphData, onControlsReady }) {
   // Handle grouping change
   const handleGroupingChange = useCallback((newGrouping) => {
     setCurrentGrouping(newGrouping);
+    // Reset auto-collapse flag so it will trigger again for the new grouping
+    setHasAutoCollapsed(false);
   }, []);
 
   // Handle manual fit view button click
