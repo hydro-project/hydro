@@ -29,7 +29,7 @@ export const ELK_LAYOUT_CONFIGS = {
   mrtree: {
     'elk.algorithm': 'mrtree',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
     'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
   },
   
@@ -37,7 +37,7 @@ export const ELK_LAYOUT_CONFIGS = {
   layered: {
     'elk.algorithm': 'layered',
     'elk.direction': 'DOWN',
-    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_COMPACT,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
     'elk.layered.spacing.nodeNodeBetweenLayers': LAYOUT_SPACING.LAYER_SEPARATION,
     'elk.layered.spacing.borderToNode': 20,
   },
@@ -107,14 +107,14 @@ export const ELK_OPTIONS = {
 export const ELK_CONTAINER_CONFIGS = {
   // Configuration for standard hierarchy containers
   hierarchyContainer: {
-    'elk.spacing.nodeNode': 20,
-    'elk.spacing.edgeNode': 15,
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE,
+    'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE,
     'elk.spacing.edgeEdge': ELK_OPTIONS.SPACING.EDGE_TO_EDGE,
   },
   
   // Configuration for collapsed container repositioning
   collapsedContainer: {
-    'elk.spacing.nodeNode': 80, // More space for collapsed containers
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE, // Use consistent spacing
     'elk.spacing.componentComponent': ELK_OPTIONS.SPACING.COMPONENT_TO_COMPONENT,
     'elk.partitioning.activate': 'false',
   },
@@ -123,7 +123,7 @@ export const ELK_CONTAINER_CONFIGS = {
   rootLevel: {
     'elk.padding': `[top=${ELK_OPTIONS.SPACING.ROOT_PADDING},left=${ELK_OPTIONS.SPACING.ROOT_PADDING},bottom=${ELK_OPTIONS.SPACING.ROOT_PADDING},right=${ELK_OPTIONS.SPACING.ROOT_PADDING}]`,
     'elk.hierarchyHandling': ELK_OPTIONS.HIERARCHY_HANDLING.INCLUDE_CHILDREN,
-    'elk.spacing.nodeNode': 40, // Spacing between top-level containers
+    'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_LOOSE, // Use consistent spacing
     'elk.spacing.edgeNode': ELK_OPTIONS.SPACING.CONTAINER_PADDING,
     'elk.spacing.edgeEdge': 15,
   },
