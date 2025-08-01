@@ -5,7 +5,7 @@
  */
 
 import assert from 'assert';
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../constants.js';
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../dist/constants.js';
 
 console.log('Running Constants tests...');
 

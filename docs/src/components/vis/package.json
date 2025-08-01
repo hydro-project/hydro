@@ -3,16 +3,24 @@
   "version": "1.0.0",
   "type": "module",
   "description": "Next generation Hydro graph visualization components",
+  "main": "index.ts",
+  "types": "index.ts",
   "scripts": {
-    "test": "node __tests__/runTests.js",
-    "test:vis-state": "node __tests__/VisState.test.js",
-    "test:constants": "node __tests__/constants.test.js",
-    "test:json-parser": "node __tests__/JSONParser.test.js",
-    "test:integration": "node __tests__/integration.test.js",
-    "test:fuzz": "node __tests__/fuzzTest.js",
-    "test:all": "npm test && npm run test:integration && npm run test:fuzz"
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "test": "npm run build && node __tests__/runTests.js",
+    "test:vis-state": "npm run build && node __tests__/VisState.test.js",
+    "test:constants": "npm run build && node __tests__/constants.test.js",
+    "test:json-parser": "npm run build && node __tests__/JSONParser.test.js",
+    "test:integration": "npm run build && node __tests__/integration.test.js",
+    "test:fuzz": "npm run build && node __tests__/fuzzTest.js",
+    "test:all": "npm test && npm run test:integration && npm run test:fuzz",
+    "type-check": "tsc --noEmit"
   },
-  "keywords": ["visualization", "graph", "hydro"],
+  "keywords": ["visualization", "graph", "hydro", "typescript"],
   "author": "Hydro Project",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
 }

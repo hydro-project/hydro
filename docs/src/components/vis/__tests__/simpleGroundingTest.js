@@ -1,4 +1,4 @@
-import { createVisualizationState } from '../VisState.js';
+import { createVisualizationState } from '../dist/VisState.js';
 import assert from 'assert';
 
 function testSimpleGrounding() {

@@ -5,7 +5,11 @@
  * Provides efficient access to visible/non-hidden elements through Maps and collections.
  */
 
-import { NODE_STYLES, EDGE_STYLES } from './constants.js';
+import {
+  NODE_STYLES,
+  EDGE_STYLES, 
+  CONTAINER_STYLES
+} from './constants.js';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -50,6 +54,28 @@ const ENTITY_TYPES = {
  * ```
  */
 export class VisualizationState {
+  // Core graph elements
+  private readonly graphNodes: Map<string, any>;
+  private readonly graphEdges: Map<string, any>;
+  private readonly containers: Map<string, any>;
+  private readonly hyperEdges: Map<string, any>;
+  
+  // Efficient access collections for visible elements
+  private readonly visibleNodes: Map<string, any>;
+  private readonly visibleEdges: Map<string, any>;
+  private readonly visibleContainers: Map<string, any>;
+  private readonly expandedContainers: Map<string, any>;
+  
+  // Collapsed container representations
+  private readonly collapsedContainers: Map<string, any>;
+  
+  // Container hierarchy tracking
+  private readonly containerChildren: Map<string, Set<string>>;
+  private readonly nodeContainers: Map<string, string>;
+  
+  // Edge tracking for hyperEdge management
+  private readonly nodeToEdges: Map<string, Set<string>>;
+
   /**
    * Create a new VisualizationState instance
    * @constructor
@@ -207,7 +233,7 @@ export class VisualizationState {
    * });
    * ```
    */
-  setGraphNode(id, { label, style = NODE_STYLES.DEFAULT, hidden = false, ...otherProps }) {
+  setGraphNode(id: string, { label, style = NODE_STYLES.DEFAULT as any, hidden = false, ...otherProps }: any) {
     if (!id || typeof id !== 'string') {
       throw new Error('Node ID must be a non-empty string');
     }
@@ -275,7 +301,7 @@ export class VisualizationState {
   /**
    * Add or update a graph edge
    */
-  setGraphEdge(id, { source, target, style = EDGE_STYLES.DEFAULT, hidden = false, ...otherProps }) {
+  setGraphEdge(id: string, { source, target, style = EDGE_STYLES.DEFAULT as any, hidden = false, ...otherProps }: any) {
     const edge = {
       id,
       source,
@@ -584,8 +610,13 @@ export class VisualizationState {
    */
   collapseContainer(containerId) {
     const container = this.getContainer(containerId);
-    if (!this._validateEntity(container, c => !c.collapsed)) {
-      return; // Already collapsed or doesn't exist
+    // Allow collapsing containers even if they're hidden by parent containers
+    // Just check that the container exists and is not already explicitly collapsed
+    if (!container) {
+      throw new Error(`Cannot collapse container: container '${containerId}' does not exist`);
+    }
+    if (container.collapsed) {
+      return; // Already collapsed
     }
     
     // First, recursively collapse any child containers (bottom-up)
@@ -606,8 +637,13 @@ export class VisualizationState {
    */
   expandContainer(containerId) {
     const container = this.getContainer(containerId);
-    if (!this._validateEntity(container, c => c.collapsed)) {
-      return; // Already expanded or doesn't exist
+    // Allow expanding containers even if they're hidden by parent containers
+    // Just check that the container exists and is currently collapsed
+    if (!container) {
+      throw new Error(`Cannot expand container: container '${containerId}' does not exist`);
+    }
+    if (!container.collapsed) {
+      return; // Already expanded
     }
     
     // First expand this container and ground edges/hyperEdges to child level
@@ -1025,8 +1061,8 @@ export class VisualizationState {
     }
     
     // If multiple internal endpoints, prefer containers over nodes
-    const containerEndpoints = Array.from(internalEndpoints).filter(id => this.containers.has(id));
-    const nodeEndpoints = Array.from(internalEndpoints).filter(id => this.graphNodes.has(id));
+    const containerEndpoints = Array.from(internalEndpoints).filter(id => this.containers.has(id as string));
+    const nodeEndpoints = Array.from(internalEndpoints).filter(id => this.graphNodes.has(id as string));
     
     if (containerEndpoints.length > 0) {
       return containerEndpoints[0]; // Prefer containers

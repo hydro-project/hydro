@@ -9,7 +9,7 @@
  * @since 2025-08-01
  * 
  * @example
- * ```javascript
+ * ```typescript
  * import { createVisualizationState, NODE_STYLES, parseHydroGraphJSON } from './vis';
  * 
  * // Create a new visualization state
@@ -26,9 +26,8 @@
 
 /**
  * The current version of the vis components package.
- * @constant {string}
  */
-export const VERSION = '1.0.0';
+export const VERSION = '1.0.0' as const;
 
 // ============ State Management ============
 
@@ -36,8 +35,7 @@ export const VERSION = '1.0.0';
  * Core visualization state class that manages all graph elements including nodes, edges, 
  * containers, and hyperEdges with efficient visibility tracking.
  * 
- * @class VisualizationState
- * @see {@link ./VisState.js} for full implementation details
+ * @see {@link ./VisState.ts} for full implementation details
  */
 export { VisualizationState } from './VisState.js';
 
@@ -45,29 +43,22 @@ export { VisualizationState } from './VisState.js';
  * Factory function to create a new VisualizationState instance.
  * Preferred over direct constructor usage for consistency.
  * 
- * @function createVisualizationState
- * @returns {VisualizationState} A new visualization state instance
+ * @returns A new visualization state instance
  * @example
- * ```javascript
+ * ```typescript
  * const state = createVisualizationState();
  * state.setGraphNode('myNode', { label: 'Hello World' });
  * ```
  */
 export { createVisualizationState } from './VisState.js';
 
-// ============ Styling and Layout Constants ============
+// ============ Types and Constants ============
 
 /**
  * Pre-defined node styling constants for consistent visual representation.
  * 
- * @namespace NODE_STYLES
- * @property {string} DEFAULT - Standard node appearance
- * @property {string} HIGHLIGHTED - Emphasized node for user attention
- * @property {string} SELECTED - Currently selected node
- * @property {string} WARNING - Node indicating warning state
- * @property {string} ERROR - Node indicating error state
  * @example
- * ```javascript
+ * ```typescript
  * state.setGraphNode('warningNode', { 
  *   label: 'Check this!', 
  *   style: NODE_STYLES.WARNING 
@@ -79,14 +70,8 @@ export { NODE_STYLES } from './constants.js';
 /**
  * Pre-defined edge styling constants for consistent visual representation.
  * 
- * @namespace EDGE_STYLES
- * @property {string} DEFAULT - Standard edge appearance
- * @property {string} HIGHLIGHTED - Emphasized edge for user attention
- * @property {string} DASHED - Dashed line style for conditional connections
- * @property {string} THICK - Thick line for important connections
- * @property {string} WARNING - Edge indicating warning state
  * @example
- * ```javascript
+ * ```typescript
  * state.setGraphEdge('importantEdge', { 
  *   source: 'node1', 
  *   target: 'node2',
@@ -98,26 +83,31 @@ export { EDGE_STYLES } from './constants.js';
 
 /**
  * Pre-defined container styling constants for hierarchical groupings.
- * 
- * @namespace CONTAINER_STYLES
- * @property {string} DEFAULT - Standard container appearance
- * @property {string} HIGHLIGHTED - Emphasized container for user attention
- * @property {string} SELECTED - Currently selected container
- * @property {string} MINIMIZED - Collapsed/minimized container state
  */
 export { CONTAINER_STYLES } from './constants.js';
 
 /**
  * Layout dimension constants for consistent spacing and sizing.
- * 
- * @namespace LAYOUT_CONSTANTS
- * @property {number} DEFAULT_NODE_WIDTH - Standard node width in pixels
- * @property {number} DEFAULT_NODE_HEIGHT - Standard node height in pixels
- * @property {number} DEFAULT_CONTAINER_PADDING - Container padding in pixels
- * @property {number} MIN_CONTAINER_WIDTH - Minimum container width in pixels
- * @property {number} MIN_CONTAINER_HEIGHT - Minimum container height in pixels
  */
 export { LAYOUT_CONSTANTS } from './constants.js';
+
+/**
+ * TypeScript type definitions for better development experience.
+ */
+export type {
+  NodeStyle,
+  EdgeStyle,
+  ContainerStyle,
+  Dimensions,
+  GraphNode,
+  GraphEdge,
+  Container,
+  HyperEdge,
+  CollapsedContainer,
+  CreateNodeProps,
+  CreateEdgeProps,
+  CreateContainerProps
+} from './constants.js';
 
 // ============ JSON Data Processing ============
 
@@ -125,15 +115,12 @@ export { LAYOUT_CONSTANTS } from './constants.js';
  * Parse Hydro graph JSON data and create a populated VisualizationState.
  * Converts legacy visualization format into the new state management system.
  * 
- * @function parseHydroGraphJSON
- * @param {Object|string} jsonData - The JSON data (object or JSON string)
- * @param {string} [selectedGrouping] - Which hierarchy grouping to use (defaults to first available)
- * @returns {Object} Object containing the populated state and metadata
- * @returns {VisualizationState} returns.state - The populated visualization state
- * @returns {Object} returns.metadata - Parsing metadata including selected grouping
+ * @param jsonData - The JSON data (object or JSON string)
+ * @param selectedGrouping - Which hierarchy grouping to use (defaults to first available)
+ * @returns Object containing the populated state and metadata
  * @throws {Error} When JSON data is invalid or malformed
  * @example
- * ```javascript
+ * ```typescript
  * const { state, metadata } = parseHydroGraphJSON(hydroData, 'myGrouping');
  * console.log(`Parsed ${state.getVisibleNodes().length} nodes`);
  * console.log(`Used grouping: ${metadata.selectedGrouping}`);
@@ -145,9 +132,8 @@ export { parseHydroGraphJSON } from './JSONParser.js';
  * Create a reusable parser instance for processing multiple Hydro graph datasets.
  * Useful when parsing multiple graphs with similar structure/settings.
  * 
- * @function createHydroGraphParser
- * @param {Object} [options] - Parser configuration options
- * @returns {Function} Parser function that accepts JSON data
+ * @param options - Parser configuration options
+ * @returns Parser function that accepts JSON data
  */
 export { createHydroGraphParser } from './JSONParser.js';
 
@@ -155,13 +141,10 @@ export { createHydroGraphParser } from './JSONParser.js';
  * Extract available hierarchical groupings from Hydro graph JSON data.
  * Useful for presenting grouping options to users before parsing.
  * 
- * @function getAvailableGroupings
- * @param {Object|string} jsonData - The JSON data (object or JSON string)
- * @returns {Array<Object>} Array of available grouping objects
- * @returns {string} returns[].id - Unique identifier for the grouping
- * @returns {string} returns[].name - Human-readable name for the grouping
+ * @param jsonData - The JSON data (object or JSON string)
+ * @returns Array of available grouping objects
  * @example
- * ```javascript
+ * ```typescript
  * const groupings = getAvailableGroupings(hydroData);
  * groupings.forEach(g => console.log(`${g.name} (${g.id})`));
  * ```
@@ -172,17 +155,10 @@ export { getAvailableGroupings } from './JSONParser.js';
  * Validate Hydro graph JSON data structure and content.
  * Provides detailed validation results including errors and warnings.
  * 
- * @function validateHydroGraphJSON
- * @param {Object|string} jsonData - The JSON data (object or JSON string)
- * @returns {Object} Validation result object
- * @returns {boolean} returns.isValid - Whether the data is valid
- * @returns {Array<string>} returns.errors - Critical validation errors
- * @returns {Array<string>} returns.warnings - Non-critical validation warnings
- * @returns {number} returns.nodeCount - Number of nodes found
- * @returns {number} returns.edgeCount - Number of edges found
- * @returns {number} returns.hierarchyCount - Number of hierarchies found
+ * @param jsonData - The JSON data (object or JSON string)
+ * @returns Validation result object
  * @example
- * ```javascript
+ * ```typescript
  * const validation = validateHydroGraphJSON(suspiciousData);
  * if (!validation.isValid) {
  *   console.error('Validation failed:', validation.errors);
@@ -194,3 +170,13 @@ export { getAvailableGroupings } from './JSONParser.js';
  * ```
  */
 export { validateHydroGraphJSON } from './JSONParser.js';
+
+/**
+ * Parser and validation result types for better TypeScript integration.
+ */
+export type {
+  ParseResult,
+  ValidationResult,
+  GroupingOption,
+  ParserOptions
+} from './JSONParser.js';

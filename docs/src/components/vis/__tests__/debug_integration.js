@@ -6,7 +6,7 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseHydroGraphJSON } from '../JSONParser.js';
+import { parseHydroGraphJSON } from '../dist/JSONParser.js';
 import { InvariantChecker } from './fuzzTest.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

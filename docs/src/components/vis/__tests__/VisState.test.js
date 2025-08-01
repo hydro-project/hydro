@@ -5,8 +5,8 @@
  */
 
 import assert from 'assert';
-import { VisualizationState, createVisualizationState } from '../VisState.js';
-import { NODE_STYLES, EDGE_STYLES } from '../constants.js';
+import { VisualizationState, createVisualizationState } from '../dist/VisState.js';
+import { NODE_STYLES, EDGE_STYLES } from '../dist/constants.js';
 
 // Test utilities
 function createTestState() {

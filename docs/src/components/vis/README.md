@@ -1,10 +1,10 @@
 # Vis - Next Generation Hydro Graph Visualizer
 
-A modern, efficient visualization system for Hydro graphs with support for hierarchical containers, edge routing, and dynamic collapse/expand operations.
+A modern, efficient visualization system for Hydro graphs with support for hierarchical containers, edge routing, and dynamic collapse/expand operations. **Now with full TypeScript support!**
 
 ## Core Components
 
-### VisualizationState (`VisState.js`)
+### VisualizationState (`VisState.ts`)
 The main state management class that handles:
 - **Graph Nodes**: Basic graph nodes with styling and visibility
 - **Graph Edges**: Connections between nodes with automatic visibility management
@@ -12,11 +12,12 @@ The main state management class that handles:
 - **HyperEdges**: Automatically generated edges for collapsed containers
 - **Efficient Access**: Optimized Maps for quick access to visible elements
 
-### Constants (`constants.js`)
-Centralized styling and layout constants:
+### Constants & Types (`constants.ts`)
+Centralized styling and layout constants with full TypeScript support:
 - Node styles (DEFAULT, HIGHLIGHTED, SELECTED, WARNING, ERROR)
 - Edge styles (DEFAULT, HIGHLIGHTED, DASHED, THICK, WARNING)
 - Container styles and layout dimensions
+- **Type definitions** for all interfaces and configurations
 
 ## Key Features
 
@@ -40,31 +41,45 @@ Centralized styling and layout constants:
 - Clean transition logic
 - Immutable operation patterns
 
+### 🚀 **TypeScript Benefits**
+- **Compile-time type safety** prevents runtime errors
+- **IntelliSense support** with auto-completion
+- **Clear API contracts** through interface definitions
+- **Better refactoring** with IDE support
+
 ## Usage Example
 
-```javascript
-import { createVisualizationState, NODE_STYLES, EDGE_STYLES } from './vis';
+```typescript
+import { 
+  createVisualizationState, 
+  NODE_STYLES, 
+  EDGE_STYLES,
+  type GraphNode,
+  type CreateNodeProps 
+} from './vis';
 
 const state = createVisualizationState();
 
-// Add nodes
-state.setGraphNode('node1', { 
+// Add nodes with type safety
+const nodeProps: CreateNodeProps = {
   label: 'My Node', 
   style: NODE_STYLES.DEFAULT 
-});
+};
+const node: GraphNode = state.setGraphNode('node1', nodeProps);
+
 state.setGraphNode('node2', { 
   label: 'Another Node', 
   style: NODE_STYLES.HIGHLIGHTED 
 });
 
-// Add edges
+// Add edges with auto-completion
 state.setGraphEdge('edge1', {
   source: 'node1',
   target: 'node2',
   style: EDGE_STYLES.THICK
 });
 
-// Create container
+// Create container with type-checked dimensions
 state.setContainer('container1', {
   children: ['node1', 'node2'],
   expandedDimensions: { width: 200, height: 150 }
@@ -73,10 +88,50 @@ state.setContainer('container1', {
 // Collapse container (creates hyperEdges automatically)
 state.collapseContainer('container1');
 
-// Get visible elements for rendering
-const visibleNodes = state.getVisibleNodes();
+// Get visible elements for rendering - all properly typed
+const visibleNodes: GraphNode[] = state.getVisibleNodes();
 const visibleEdges = state.getVisibleEdges();
 const hyperEdges = state.getHyperEdges();
+```
+
+## TypeScript Integration
+
+### Type Safety Benefits
+```typescript
+// Compile-time error prevention
+state.setGraphNode('node1', {
+  label: 'My Node',
+  style: 'invalid-style' // ❌ TypeScript error: not assignable to NodeStyle
+});
+
+state.setGraphNode('node1', {
+  label: 'My Node',
+  style: NODE_STYLES.WARNING // ✅ Valid: type-checked constant
+});
+
+// Auto-completion for method parameters
+state.setContainer('container1', {
+  expandedDimensions: { 
+    width: 200,
+    height: 150
+  },
+  // ✨ IDE shows available properties: collapsed, hidden, children, etc.
+});
+```
+
+### Interface Definitions
+```typescript
+interface CreateNodeProps {
+  label: string;
+  style?: NodeStyle;
+  hidden?: boolean;
+  [key: string]: any; // Allow custom properties
+}
+
+interface GraphNode extends BaseEntity {
+  label: string;
+  style: NodeStyle;
+}
 ```
 
 ## Testing
