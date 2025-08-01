@@ -20,39 +20,104 @@ const ENTITY_TYPES = {
 };
 
 /**
- * Core visualization state class that manages all graph elements
+ * Core visualization state class that manages all graph elements including nodes, edges, 
+ * containers, and hyperEdges with efficient visibility tracking and hierarchy management.
+ * 
+ * Features:
+ * - O(1) element lookups using Maps
+ * - Automatic visibility management
+ * - Hierarchical container support with collapse/expand
+ * - Smart edge routing and hyperEdge generation
+ * - Efficient update operations
+ * 
+ * @class VisualizationState
+ * @example
+ * ```javascript
+ * const state = new VisualizationState();
+ * 
+ * // Add nodes
+ * state.setGraphNode('n1', { label: 'Node 1' });
+ * state.setGraphNode('n2', { label: 'Node 2' });
+ * 
+ * // Add edges
+ * state.setGraphEdge('e1', { source: 'n1', target: 'n2' });
+ * 
+ * // Create container
+ * state.setContainer('c1', { children: ['n1', 'n2'] });
+ * 
+ * // Collapse container (automatically creates hyperEdges)
+ * state.collapseContainer('c1');
+ * ```
  */
 export class VisualizationState {
+  /**
+   * Create a new VisualizationState instance
+   * @constructor
+   */
   constructor() {
     // Core graph elements
-    this.graphNodes = new Map(); // id -> GraphNode
-    this.graphEdges = new Map(); // id -> GraphEdge
-    this.containers = new Map(); // id -> Container
-    this.hyperEdges = new Map(); // id -> HyperEdge
+    /** @type {Map<string, Object>} Map of node ID to GraphNode objects */
+    this.graphNodes = new Map(); 
+    /** @type {Map<string, Object>} Map of edge ID to GraphEdge objects */
+    this.graphEdges = new Map(); 
+    /** @type {Map<string, Object>} Map of container ID to Container objects */
+    this.containers = new Map(); 
+    /** @type {Map<string, Object>} Map of hyperEdge ID to HyperEdge objects */
+    this.hyperEdges = new Map(); 
     
     // Efficient access collections for visible elements
-    this.visibleNodes = new Map(); // id -> GraphNode (non-hidden)
-    this.visibleEdges = new Map(); // id -> GraphEdge (non-hidden)
-    this.visibleContainers = new Map(); // id -> Container (non-hidden)
-    this.expandedContainers = new Map(); // id -> Container (non-collapsed)
+    /** @type {Map<string, Object>} Non-hidden nodes for rendering */
+    this.visibleNodes = new Map(); 
+    /** @type {Map<string, Object>} Non-hidden edges for rendering */
+    this.visibleEdges = new Map(); 
+    /** @type {Map<string, Object>} Non-hidden containers for rendering */
+    this.visibleContainers = new Map(); 
+    /** @type {Map<string, Object>} Non-collapsed containers */
+    this.expandedContainers = new Map(); 
     
     // Collapsed container representations
-    this.collapsedContainers = new Map(); // id -> CollapsedContainer
+    /** @type {Map<string, Object>} Collapsed container representations */
+    this.collapsedContainers = new Map(); 
     
     // Container hierarchy tracking
-    this.containerChildren = new Map(); // containerId -> Set of child node/container ids
-    this.nodeContainers = new Map(); // nodeId -> containerId
+    /** @type {Map<string, Set<string>>} Container ID to Set of child IDs */
+    this.containerChildren = new Map(); 
+    /** @type {Map<string, string>} Node ID to parent container ID */
+    this.nodeContainers = new Map(); 
     
     // Edge tracking for hyperEdge management
-    this.nodeToEdges = new Map(); // nodeId -> Set of edge ids connected to this node
+    /** @type {Map<string, Set<string>>} Node ID to Set of connected edge IDs */
+    this.nodeToEdges = new Map(); 
   }
 
   // ============ Generic Entity Management ============
 
   /**
    * Validate that an entity exists and optionally check a condition
+   * @param {string} entityType - The type of entity being validated
+   * @param {string} id - The ID of the entity
+   * @param {Object|null} entity - The entity object to validate
+   * @param {string} operation - The operation being attempted
+   * @param {Function} [conditionFn] - Optional condition function to check
+   * @throws {Error} When entity doesn't exist or condition fails
    */
-  _validateEntity(entity, conditionFn = null) {
+  _validateEntity(entityType, id, entity, operation, conditionFn = null) {
+    if (!entity) {
+      throw new Error(`Cannot ${operation}: ${entityType} '${id}' does not exist`);
+    }
+    if (conditionFn && !conditionFn(entity)) {
+      throw new Error(`Cannot ${operation}: ${entityType} '${id}' does not support this operation`);
+    }
+    return true;
+  }
+
+  /**
+   * Validate that an entity exists and optionally check a condition (non-throwing version)
+   * @param {Object|null} entity - The entity object to validate
+   * @param {Function} [conditionFn] - Optional condition function to check
+   * @returns {boolean} True if entity exists and passes condition
+   */
+  _validateEntitySafe(entity, conditionFn = null) {
     if (!entity) return false;
     return conditionFn ? conditionFn(entity) : true;
   }
@@ -67,17 +132,23 @@ export class VisualizationState {
 
   /**
    * Generic method to set hidden flag for any entity type that supports it
+   * @param {string} entityType - The type of entity
+   * @param {string} id - The entity ID
+   * @param {boolean} hidden - Whether the entity should be hidden
+   * @throws {Error} When entity doesn't exist or doesn't support hiding
    */
   _setEntityHidden(entityType, id, hidden) {
     const entity = this._getEntity(entityType, id);
-    if (this._validateEntity(entity, e => 'hidden' in e)) {
-      entity.hidden = hidden;
-      this._updateVisibilityCollection(entityType, id, entity);
-    }
+    this._validateEntity(entityType, id, entity, 'set hidden flag', e => 'hidden' in e);
+    entity.hidden = hidden;
+    this._updateVisibilityCollection(entityType, id, entity);
   }
 
   /**
    * Generic method to get hidden flag for any entity type that supports it
+   * @param {string} entityType - The type of entity
+   * @param {string} id - The entity ID
+   * @returns {boolean|undefined} The hidden flag or undefined if entity doesn't exist
    */
   _getEntityHidden(entityType, id) {
     const entity = this._getEntity(entityType, id);
@@ -119,8 +190,31 @@ export class VisualizationState {
   
   /**
    * Add or update a graph node
+   * @param {string} id - Unique identifier for the node
+   * @param {Object} props - Node properties
+   * @param {string} props.label - Display label for the node
+   * @param {string} [props.style=NODE_STYLES.DEFAULT] - Visual style identifier
+   * @param {boolean} [props.hidden=false] - Whether the node is hidden
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {Object} The created/updated node object
+   * @throws {Error} When required properties are missing
+   * @example
+   * ```javascript
+   * const node = state.setGraphNode('node1', {
+   *   label: 'My Node',
+   *   style: NODE_STYLES.HIGHLIGHTED,
+   *   customData: { type: 'processor' }
+   * });
+   * ```
    */
   setGraphNode(id, { label, style = NODE_STYLES.DEFAULT, hidden = false, ...otherProps }) {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Node ID must be a non-empty string');
+    }
+    if (!label || typeof label !== 'string') {
+      throw new Error('Node label must be a non-empty string');
+    }
+
     const node = {
       id,
       label,
@@ -136,6 +230,8 @@ export class VisualizationState {
 
   /**
    * Get a graph node by id
+   * @param {string} id - The node ID to retrieve
+   * @returns {Object|undefined} The node object or undefined if not found
    */
   getGraphNode(id) {
     return this._getEntity(ENTITY_TYPES.NODE, id);
@@ -143,6 +239,9 @@ export class VisualizationState {
 
   /**
    * Set hidden flag for a graph node
+   * @param {string} id - The node ID
+   * @param {boolean} hidden - Whether the node should be hidden
+   * @throws {Error} When node doesn't exist
    */
   setNodeHidden(id, hidden) {
     this._setEntityHidden(ENTITY_TYPES.NODE, id, hidden);
@@ -150,6 +249,8 @@ export class VisualizationState {
 
   /**
    * Get hidden flag for a graph node
+   * @param {string} id - The node ID
+   * @returns {boolean|undefined} The hidden flag or undefined if node doesn't exist
    */
   getNodeHidden(id) {
     return this._getEntityHidden(ENTITY_TYPES.NODE, id);
@@ -157,8 +258,13 @@ export class VisualizationState {
 
   /**
    * Remove a graph node
+   * @param {string} id - The node ID to remove
+   * @throws {Error} When node doesn't exist
    */
   removeGraphNode(id) {
+    if (!this.graphNodes.has(id)) {
+      throw new Error(`Cannot remove node: node '${id}' does not exist`);
+    }
     this.graphNodes.delete(id);
     this.visibleNodes.delete(id);
     this.nodeContainers.delete(id);
@@ -225,6 +331,25 @@ export class VisualizationState {
   
   /**
    * Add or update a container
+   * @param {string} id - Unique identifier for the container
+   * @param {Object} props - Container properties
+   * @param {Object} [props.expandedDimensions={width: 0, height: 0}] - Dimensions when expanded
+   * @param {number} props.expandedDimensions.width - Width in pixels
+   * @param {number} props.expandedDimensions.height - Height in pixels
+   * @param {boolean} [props.collapsed=false] - Whether the container is collapsed
+   * @param {boolean} [props.hidden=false] - Whether the container is hidden
+   * @param {Array<string>} [props.children=[]] - Array of child node/container IDs
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {Object} The created/updated container object
+   * @throws {Error} When required properties are missing or invalid
+   * @example
+   * ```javascript
+   * const container = state.setContainer('container1', {
+   *   expandedDimensions: { width: 200, height: 150 },
+   *   children: ['node1', 'node2'],
+   *   label: 'My Container'
+   * });
+   * ```
    */
   setContainer(id, { 
     expandedDimensions = { width: 0, height: 0 }, 
@@ -233,6 +358,13 @@ export class VisualizationState {
     children = [],
     ...otherProps 
   }) {
+    if (!id || typeof id !== 'string') {
+      throw new Error('Container ID must be a non-empty string');
+    }
+    if (!Array.isArray(children)) {
+      throw new Error('Container children must be an array');
+    }
+
     const container = {
       id,
       expandedDimensions,
@@ -257,6 +389,8 @@ export class VisualizationState {
 
   /**
    * Get a container by id
+   * @param {string} id - The container ID to retrieve
+   * @returns {Object|undefined} The container object or undefined if not found
    */
   getContainer(id) {
     return this._getEntity(ENTITY_TYPES.CONTAINER, id);
@@ -264,17 +398,21 @@ export class VisualizationState {
 
   /**
    * Set collapsed flag for a container
+   * @param {string} id - The container ID
+   * @param {boolean} collapsed - Whether the container should be collapsed
+   * @throws {Error} When container doesn't exist
    */
   setContainerCollapsed(id, collapsed) {
     const container = this.getContainer(id);
-    if (this._validateEntity(container)) {
-      container.collapsed = collapsed;
-      this._updateExpandedContainers(id, container);
-    }
+    this._validateEntity(ENTITY_TYPES.CONTAINER, id, container, 'set collapsed flag');
+    container.collapsed = collapsed;
+    this._updateExpandedContainers(id, container);
   }
 
   /**
    * Get collapsed flag for a container
+   * @param {string} id - The container ID
+   * @returns {boolean|undefined} The collapsed flag or undefined if container doesn't exist
    */
   getContainerCollapsed(id) {
     const container = this.getContainer(id);
@@ -283,6 +421,9 @@ export class VisualizationState {
 
   /**
    * Set hidden flag for a container
+   * @param {string} id - The container ID
+   * @param {boolean} hidden - Whether the container should be hidden
+   * @throws {Error} When container doesn't exist
    */
   setContainerHidden(id, hidden) {
     this._setEntityHidden(ENTITY_TYPES.CONTAINER, id, hidden);
@@ -290,6 +431,8 @@ export class VisualizationState {
 
   /**
    * Get hidden flag for a container
+   * @param {string} id - The container ID
+   * @returns {boolean|undefined} The hidden flag or undefined if container doesn't exist
    */
   getContainerHidden(id) {
     return this._getEntityHidden(ENTITY_TYPES.CONTAINER, id);
@@ -297,26 +440,30 @@ export class VisualizationState {
 
   /**
    * Add a child to a container
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to add
+   * @throws {Error} When container doesn't exist
    */
   addContainerChild(containerId, childId) {
     const container = this.getContainer(containerId);
-    if (this._validateEntity(container)) {
-      container.children.add(childId);
-      this.containerChildren.set(containerId, container.children);
-      this.nodeContainers.set(childId, containerId);
-    }
+    this._validateEntity(ENTITY_TYPES.CONTAINER, containerId, container, 'add child');
+    container.children.add(childId);
+    this.containerChildren.set(containerId, container.children);
+    this.nodeContainers.set(childId, containerId);
   }
 
   /**
    * Remove a child from a container
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to remove
+   * @throws {Error} When container doesn't exist
    */
   removeContainerChild(containerId, childId) {
     const container = this.getContainer(containerId);
-    if (this._validateEntity(container)) {
-      container.children.delete(childId);
-      this.containerChildren.set(containerId, container.children);
-      this.nodeContainers.delete(childId);
-    }
+    this._validateEntity(ENTITY_TYPES.CONTAINER, containerId, container, 'remove child');
+    container.children.delete(childId);
+    this.containerChildren.set(containerId, container.children);
+    this.nodeContainers.delete(childId);
   }
 
   /**
@@ -1055,7 +1202,23 @@ export class VisualizationState {
 }
 
 /**
- * Create a new visualization state instance
+ * Factory function to create a new VisualizationState instance.
+ * Preferred over direct constructor usage for consistency and potential future initialization logic.
+ * 
+ * @function createVisualizationState
+ * @returns {VisualizationState} A new, empty visualization state instance
+ * @example
+ * ```javascript
+ * // Preferred approach
+ * const state = createVisualizationState();
+ * 
+ * // Instead of direct constructor
+ * // const state = new VisualizationState(); // works but not recommended
+ * 
+ * // Add some data
+ * state.setGraphNode('node1', { label: 'My First Node' });
+ * console.log(state.getGraphNode('node1')); // { id: 'node1', label: 'My First Node', ... }
+ * ```
  */
 export function createVisualizationState() {
   return new VisualizationState();
