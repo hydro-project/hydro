@@ -3009,7 +3009,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = unsafe {
             node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
@@ -3049,7 +3049,7 @@ mod tests {
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
-            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
+            node_tick.cycle_with_initial(node_tick.singleton(q!(2)));
         let next_watermark = watermark.clone().map(q!(|v| v + 1));
         watermark_complete_cycle.complete_next_tick(next_watermark);
 
