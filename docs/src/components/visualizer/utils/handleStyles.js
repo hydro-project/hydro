@@ -5,6 +5,7 @@
  * across all node types (GroupNode, CollapsedContainerNode, etc.)
  */
 
+import { Position } from '@xyflow/react';
 import { REQUIRED_HANDLE_IDS } from './handleValidation.js';
 
 /**
@@ -14,43 +15,43 @@ import { REQUIRED_HANDLE_IDS } from './handleValidation.js';
  */
 export function createInvisibleHandleStyle(position) {
   const baseStyle = {
-    background: 'transparent',
-    border: 'none',
-    width: 1,            // Minimal size for connection point
-    height: 1,           // Minimal size for connection point
-    opacity: 0,          // Completely invisible
-    zIndex: 1000,        // Ensure handles are on top for edge connections
-    pointerEvents: 'none', // Don't interfere with interactions
+    background: 'red',      // Temporary: make visible for debugging
+    border: '2px solid blue', // Temporary: make visible for debugging
+    width: 12,              // Temporary: make larger for debugging
+    height: 12,             // Temporary: make larger for debugging
+    opacity: 1,             // Temporary: make visible for debugging
+    zIndex: 1000,           // Ensure handles are on top for edge connections
+    pointerEvents: 'all',   // Enable interactions for debugging
+    borderRadius: '50%',    // Make them circular for visibility
   };
 
-  // Position handles exactly at the border with precise negative offset
-  // This ensures edges connect directly to the border without gaps
+  // Position handles clearly inside the container bounds for debugging
   switch (position) {
     case 'right':
       return { 
         ...baseStyle, 
-        right: -0.5, 
+        right: 2,               // Inside the container
         top: '50%',
         transform: 'translateY(-50%)'
       };
     case 'left':
       return { 
         ...baseStyle, 
-        left: -0.5,
+        left: 2,                // Inside the container
         top: '50%', 
         transform: 'translateY(-50%)'
       };
     case 'bottom':
       return { 
         ...baseStyle, 
-        bottom: -0.5,
+        bottom: 2,              // Inside the container
         left: '50%',
         transform: 'translateX(-50%)'
       };
     case 'top':
       return { 
         ...baseStyle, 
-        top: -0.5,
+        top: 2,                 // Inside the container
         left: '50%',
         transform: 'translateX(-50%)'
       };
@@ -67,25 +68,25 @@ export function getContainerHandles() {
   return [
     {
       type: "source",
-      position: "right",
+      position: Position.Right,
       id: REQUIRED_HANDLE_IDS.source,
       style: createInvisibleHandleStyle('right')
     },
     {
       type: "target",
-      position: "left", 
+      position: Position.Left, 
       id: REQUIRED_HANDLE_IDS.target,
       style: createInvisibleHandleStyle('left')
     },
     {
       type: "source",
-      position: "bottom",
+      position: Position.Bottom,
       id: REQUIRED_HANDLE_IDS.sourceBottom,
       style: createInvisibleHandleStyle('bottom')
     },
     {
       type: "target",
-      position: "top",
+      position: Position.Top,
       id: REQUIRED_HANDLE_IDS.targetTop,
       style: createInvisibleHandleStyle('top')
     }

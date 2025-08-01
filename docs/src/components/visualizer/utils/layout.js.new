@@ -196,29 +196,24 @@ export async function layoutVisualElements(
     console.log(`[Layout] 🎯 FINAL_NODES: ${finalVisibleNodes.length} final visible nodes`);
     finalVisibleNodes.forEach(node => {
       console.log(`[Layout] 🎯 FINAL_NODE: ${node.id} (type: ${node.type}, pos: ${node.position?.x || 0},${node.position?.y || 0}, size: ${node.width || '?'}x${node.height || '?'})`);
-      console.log(`[Layout] 🎯 NODE_DATA:`, JSON.stringify({
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        width: node.width,
-        height: node.height,
-        style: node.style
-      }, null, 2));
     });
     
-    const reroutedEdges = transformAndRerouteEdges(allEdges, allNodes, finalVisibleNodes);
+    // Create a map of ELK edge routing information
+    const elkEdgeRouting = new Map();
+    if (elkResult.elkResult?.edges) {
+      elkResult.elkResult.edges.forEach(elkEdge => {
+        elkEdgeRouting.set(elkEdge.id, elkEdge);
+      });
+    }
+    
+    const reroutedEdges = transformAndRerouteEdges(allEdges, allNodes, finalVisibleNodes, elkEdgeRouting);
     
     console.log(`[Layout] 🎯 FINAL_EDGES: ${reroutedEdges.length} rerouted edges`);
     reroutedEdges.forEach(edge => {
       console.log(`[Layout] 🎯 FINAL_EDGE: ${edge.id} (${edge.source} -> ${edge.target})`);
-      console.log(`[Layout] 🎯 EDGE_DATA:`, JSON.stringify({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle,
-        targetHandle: edge.targetHandle,
-        type: edge.type
-      }, null, 2));
+      if (edge.data?.elkRouting) {
+        console.log(`[Layout] 🎯 EDGE_ROUTING: ELK path data included`);
+      }
     });
     
     return {
@@ -310,7 +305,7 @@ export function createVisualFilters(visualState) {
       });
     },
     
-    transformAndRerouteEdges: (edges, nodes, transformedNodes) => {
+    transformAndRerouteEdges: (edges, nodes, transformedNodes, elkEdgeRouting = null) => {
       // Build maps for efficient lookups
       const nodeMap = new Map(nodes.map(node => [node.id, node]));
       const transformedNodeMap = new Map(transformedNodes.map(node => [node.id, node]));
@@ -380,14 +375,15 @@ export function createVisualFilters(visualState) {
             // Check if we have ELK routing information for this edge
             // Use clean edge ID format to avoid collision
             const reroutedEdgeId = `${edge.id.split('_rerouted_')[0]}_rerouted_${newSource}_${newTarget}`;
+            const elkRouting = elkEdgeRouting?.get(reroutedEdgeId);
             
             const reroutedEdge = {
               ...edge,
               id: reroutedEdgeId,
               source: newSource,
               target: newTarget,
-              sourceHandle: 'source', // Use standard handle IDs
-              targetHandle: 'target', // Use standard handle IDs
+              sourceHandle: edge.sourceHandle || 'source', // Preserve original handle or default to 'source'
+              targetHandle: edge.targetHandle || 'target', // Preserve original handle or default to 'target'
               data: {
                 ...edge.data,
                 isRerouted: true,
@@ -395,10 +391,36 @@ export function createVisualFilters(visualState) {
                 originalTarget: edge.target,
                 originalSourceHandle: edge.sourceHandle,
                 originalTargetHandle: edge.targetHandle,
+                // Include ELK routing information if available
+                ...(elkRouting && {
+                  elkRouting: {
+                    sections: elkRouting.sections,
+                    // Extract routing coordinates for ReactFlow
+                    pathData: elkRouting.sections?.map(section => ({
+                      startPoint: section.startPoint,
+                      endPoint: section.endPoint,
+                      bendPoints: section.bendPoints || []
+                    }))
+                  },
+                  // Convert ELK routing to ReactFlow-compatible path
+                  ...(elkRouting.sections && elkRouting.sections.length > 0 && {
+                    style: {
+                      strokeDasharray: '0', // Ensure solid line
+                    },
+                    // Add path points that ReactFlow can use
+                    data: {
+                      ...edge.data,
+                      elkPath: elkRouting.sections[0], // Use first section
+                      customPath: true,
+                      // Convert ELK coordinates to ReactFlow path
+                      pathPoints: elkRouting.sections[0].bendPoints || []
+                    }
+                  })
+                })
               }
             };
             
-            console.log(`[Layout] 🔗 REROUTED: ${reroutedEdge.id} (${newSource} -> ${newTarget})`);
+            console.log(`[Layout] 🔗 REROUTED: ${reroutedEdge.id}${elkRouting ? ' (with ELK routing)' : ''}`);
             reroutedEdges.push(reroutedEdge);
           }
         }

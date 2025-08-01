@@ -7,6 +7,7 @@
 import React from 'react';
 import { Handle } from '@xyflow/react';
 import { COLORS, DEFAULT_STYLES } from '../utils/constants.js';
+import { getContainerHandles } from '../utils/handleStyles.js';
 
 export function CollapsedContainerNode(props) {
   const { data, width, height, id } = props;
@@ -89,15 +90,6 @@ export function CollapsedContainerNode(props) {
   // Count how many nodes would be inside this container
   const nodeCount = data?.nodeCount || '?';
   
-  // Reusable handle style function
-  const getHandleStyle = (position) => ({
-    background: textColor, 
-    border: `${DEFAULT_STYLES.BORDER_WIDTH} solid ${backgroundColor}`, 
-    width: 10, 
-    height: 10,
-    [position]: -5 
-  });
-  
   return (
     <div style={containerStyle}>
       <div style={labelStyle}>
@@ -110,31 +102,13 @@ export function CollapsedContainerNode(props) {
         {nodeCount}
       </div>
       
-      {/* Add connection handles for edges */}
-      <Handle 
-        type="source" 
-        position="right" 
-        id="source-right"
-        style={getHandleStyle('right')}
-      />
-      <Handle 
-        type="target" 
-        position="left" 
-        id="target-left"
-        style={getHandleStyle('left')}
-      />
-      <Handle 
-        type="source" 
-        position="bottom" 
-        id="source-bottom"
-        style={getHandleStyle('bottom')}
-      />
-      <Handle 
-        type="target" 
-        position="top" 
-        id="target-top"
-        style={getHandleStyle('top')}
-      />
+      {/* 
+        CRITICAL: Connection handles for ReactFlow edges
+        Using centralized handle configuration for consistency with GroupNode
+      */}
+      {getContainerHandles().map(handleProps => (
+        <Handle key={handleProps.id} {...handleProps} />
+      ))}
     </div>
   );
 }

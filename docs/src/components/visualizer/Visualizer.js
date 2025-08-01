@@ -9,14 +9,13 @@ import {
   useNodesState, 
   useEdgesState
 } from '@xyflow/react';
-import { applyLayout, applyLayoutForCollapsedContainers, applyLayoutWithExplicitContainerStates, clearContainerDimensionsCache } from './utils/layout.js';
+import { applyLayout, layoutVisualElements, clearContainerDimensionsCache, createVisualStateFromGraph, createVisualFilters, VisualState } from './utils/layout.js';
+import { createReactFlowStateManager } from './utils/reactFlowStateManager.js';
 import { LayoutControls } from './components/LayoutControls.js';
 import { InfoPanel } from './components/InfoPanel.js';
 import { ReactFlowInner } from './components/ReactFlowInner.js';
 import { processGraphData, FIT_VIEW_CONFIG } from './utils/reactFlowConfig.js';
-import { useCollapsedContainers } from './containers/useCollapsedContainers.js';
-import { processCollapsedContainers, rerouteEdgesForCollapsedContainers } from './containers/containerLogic.js';
-import { isValidGraphData, getUniqueNodesById, COMPONENT_COLORS } from './utils/constants.js';
+import { isValidGraphData, getUniqueNodesById, COMPONENT_COLORS, filterNodesByType } from './utils/constants.js';
 import styles from '../../pages/visualizer.module.css';
 
 // Initialization retry constants
@@ -49,17 +48,124 @@ export function Visualizer({ graphData, onControlsReady }) {
   const [hierarchyChoices, setHierarchyChoices] = useState([]);
   const [currentGrouping, setCurrentGrouping] = useState('');
   
-  // Collapsed containers state
-  const {
-    collapsedContainers,
-    toggleContainer,
-    isCollapsed,
-    childNodesByParent,
-    collapseAll,
-    expandAll,
-    hasCollapsedContainers,
-    lastChangedContainer,
-  } = useCollapsedContainers(nodes);
+  // Central Visual State Management
+  const [visualState, setVisualState] = useState(null);
+  
+  // ReactFlow State Manager - wraps all ReactFlow interactions with VisualState as source of truth
+  const reactFlowStateManager = useMemo(() => {
+    return createReactFlowStateManager(setNodes, setEdges);
+  }, [setNodes, setEdges]);
+  
+  // Get all child node IDs for each parent container (computed from nodes)
+  const childNodesByParent = useMemo(() => {
+    const map = new Map();
+    nodes.forEach(node => {
+      if (node.parentId) {
+        if (!map.has(node.parentId)) {
+          map.set(node.parentId, new Set());
+        }
+        map.get(node.parentId).add(node.id);
+      }
+    });
+    return map;
+  }, [nodes]);
+  
+  // Initialize visual state when nodes/edges change
+  useEffect(() => {
+    if (nodes.length > 0) {
+      setVisualState(createVisualStateFromGraph(nodes, edges));
+    }
+  }, [nodes.length > 0 ? nodes.map(n => n.id).join(',') : '', edges.length]);
+
+  // Container state management functions
+  const toggleContainer = useCallback((containerId) => {
+    if (!visualState) return;
+    
+    const newState = new VisualState();
+    // Copy all existing state
+    visualState.containers.forEach((state, id) => {
+      newState.setContainerState(id, state);
+    });
+    visualState.nodes.forEach((state, id) => {
+      newState.setNodeState(id, state);
+    });
+    visualState.edges.forEach((state, id) => {
+      newState.setEdgeState(id, state);
+    });
+    
+    // Toggle the specific container
+    const currentState = visualState.getContainerState(containerId);
+    const newContainerState = currentState === 'collapsed' ? 'expanded' : 'collapsed';
+    newState.setContainerState(containerId, newContainerState);
+    
+    setVisualState(newState);
+  }, [visualState]);
+
+  const collapseAll = useCallback(() => {
+    if (!visualState) return;
+    
+    const newState = new VisualState();
+    // Copy node and edge state
+    visualState.nodes.forEach((state, id) => {
+      newState.setNodeState(id, state);
+    });
+    visualState.edges.forEach((state, id) => {
+      newState.setEdgeState(id, state);
+    });
+    
+    // Set all containers to collapsed
+    const groupNodes = filterNodesByType(nodes, 'group');
+    groupNodes.forEach(container => {
+      newState.setContainerState(container.id, 'collapsed');
+    });
+    
+    setVisualState(newState);
+  }, [visualState, nodes]);
+
+  const expandAll = useCallback(() => {
+    if (!visualState) return;
+    
+    const newState = new VisualState();
+    // Copy node and edge state
+    visualState.nodes.forEach((state, id) => {
+      newState.setNodeState(id, state);
+    });
+    visualState.edges.forEach((state, id) => {
+      newState.setEdgeState(id, state);
+    });
+    
+    // Set all containers to expanded
+    const groupNodes = filterNodesByType(nodes, 'group');
+    groupNodes.forEach(container => {
+      newState.setContainerState(container.id, 'expanded');
+    });
+    
+    setVisualState(newState);
+  }, [visualState, nodes]);
+
+  const isCollapsed = useCallback((containerId) => {
+    return visualState?.getContainerState(containerId) === 'collapsed';
+  }, [visualState]);
+
+  const hasCollapsedContainers = useMemo(() => {
+    if (!visualState) return false;
+    for (const [_, state] of visualState.containers) {
+      if (state === 'collapsed') return true;
+    }
+    return false;
+  }, [visualState]);
+
+  // Get collapsed containers as array for backward compatibility
+  const collapsedContainers = useMemo(() => {
+    if (!visualState) return new Set();
+    const collapsed = new Set();
+    visualState.containers.forEach((state, id) => {
+      if (state === 'collapsed') {
+        collapsed.add(id);
+      }
+    });
+    return collapsed;
+  }, [visualState]);
 
   // Helper function to handle viewport fitting after layout operations
   const fitViewport = useCallback((duration = 300, operationName = 'layout', forceAutoFit = false) => {
@@ -154,23 +260,11 @@ export function Visualizer({ graphData, onControlsReady }) {
     }
   }, [isLayouting, layoutOperationId]);
 
-  // Helper function to process nodes and edges for collapsed containers (DRY)
-  const processNodesAndEdgesForLayout = useCallback((collapsedArray) => {
-    const currentDisplayNodes = processCollapsedContainers(nodes, collapsedArray);
-    const currentDisplayEdges = rerouteEdgesForCollapsedContainers(
-      edges,
-      currentDisplayNodes,
-      childNodesByParent,
-      collapsedArray
-    );
-    return { currentDisplayNodes, currentDisplayEdges };
-  }, [nodes, edges, childNodesByParent]);
-
   // Auto-collapse all containers on initial load with staged initialization
-  // Robust staged initialization with retries and stuck overlay
+  // Using VisualState API for centralized state management
   useEffect(() => {
-    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting && !initFailed && !isLoading) {
-      const groupNodes = nodes.filter(node => node.type === 'group');
+    if (nodes.length > 0 && !hasAutoCollapsed && childNodesByParent.size > 0 && !isLayouting && !initFailed && !isLoading && visualState) {
+      const groupNodes = filterNodesByType(nodes, 'group');
       if (groupNodes.length > 0) {
         setHasAutoCollapsed(true);
         setIsInitializing(true);
@@ -187,25 +281,34 @@ export function Visualizer({ graphData, onControlsReady }) {
           }
         }, INIT_TIMEOUT);
 
-        // Staged/idle initialization
-        const doInit = () => {
+        // Staged/idle initialization using VisualState
+        const doInit = async () => {
           performLayoutOperation(async (opId) => {
             await new Promise(resolve => setTimeout(resolve, 100));
-            const allCollapsedArray = groupNodes.map(node => node.id);
-            collapseAll();
-            const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(allCollapsedArray);
-            const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
-            const updatedNodes = nodes.map(baseNode => {
-              const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-              if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-                return {
-                  ...baseNode,
-                  position: displayNode.position
-                };
-              }
-              return baseNode;
+            
+            // STEP 1: First run full layout to populate dimension cache
+            console.log('[Visualizer] 🚀 INIT: Running full layout to populate dimension cache...');
+            const fullLayoutResult = await applyLayout(nodes, edges, currentLayout);
+            
+            // STEP 2: Create collapsed visual state
+            console.log('[Visualizer] 🚀 INIT: Creating collapsed visual state...');
+            const initState = createVisualStateFromGraph(fullLayoutResult.nodes, edges);
+            groupNodes.forEach(container => {
+              initState.setContainerState(container.id, 'collapsed');
             });
-            setNodes(updatedNodes);
+            
+            // STEP 3: Apply collapsed layout using ReactFlow state manager
+            console.log('[Visualizer] 🚀 INIT: Applying collapsed layout via ReactFlow state manager...');
+            const collapsedResult = await reactFlowStateManager.initializeReactFlow(
+              initState, 
+              fullLayoutResult.nodes, 
+              edges, 
+              currentLayout, 
+              'auto-collapse'
+            );
+            
+            setVisualState(initState); // Update visual state
+            
             await new Promise(resolve => setTimeout(resolve, 200));
             setTimeout(() => {
               debouncedFitViewport(300, 'auto-collapse');
@@ -227,7 +330,7 @@ export function Visualizer({ graphData, onControlsReady }) {
     return () => {
       if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current);
     };
-  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, collapseAll, nodes, edges, currentLayout, debouncedFitViewport, initAttempts, initFailed]);
+  }, [nodes.length, hasAutoCollapsed, childNodesByParent.size, isLayouting, performLayoutOperation, nodes, edges, currentLayout, debouncedFitViewport, initAttempts, initFailed, visualState]);
 
   // Reset auto-collapse flag when graph data changes
   useEffect(() => {
@@ -288,153 +391,127 @@ export function Visualizer({ graphData, onControlsReady }) {
     // When auto-fit is disabled, no action needed - button is always available
   }, [debouncedFitViewport]);
 
-  // Handle layout change with collapsed container awareness
+  // Handle layout change with VisualState-based layout
   const handleLayoutChange = useCallback(async (newLayout) => {
     setCurrentLayout(newLayout);
     
-    // If we have collapsed containers, we need to re-apply layout with proper sizing
-    if (hasCollapsedContainers && nodes.length > 0) {
+    // If we have containers, re-apply layout with current visual state
+    if (visualState && nodes.length > 0) {
       performLayoutOperation(async (opId) => {
-        const collapsedArray = Array.from(collapsedContainers);
-        const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
-        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, newLayout);
-        
-        const updatedNodes = nodes.map(baseNode => {
-          const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-          if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-            return {
-              ...baseNode,
-              position: displayNode.position
-            };
-          }
-          return baseNode;
-        });
-        
-        setNodes(updatedNodes);
+        const result = await reactFlowStateManager.updateLayout(
+          visualState, 
+          nodes, 
+          edges, 
+          newLayout, 
+          'layout-change'
+        );
         
         // Deterministic viewport fitting after layout is complete
         debouncedFitViewport(300, 'layout change');
       }, 'layout-change');
     }
-  }, [hasCollapsedContainers, nodes, edges, collapsedContainers, performLayoutOperation]);
+  }, [visualState, nodes, edges, performLayoutOperation, debouncedFitViewport]);
 
-  // Wrapper for collapseAll with layout readjustment
+  // Wrapper for collapseAll with VisualState-based layout
   const handleCollapseAll = useCallback(async () => {
+    if (!visualState) return;
+    
     return performLayoutOperation(async (opId) => {
-      // Compute the collapsed state directly instead of waiting for state update
-      const groupNodes = nodes.filter(node => node.type === 'group');
-      const allCollapsedArray = groupNodes.map(node => node.id);
-      
-      // Call collapseAll() for state consistency but don't wait for it
-      collapseAll();
-      
-      // Use the computed collapsed state immediately
-      const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(allCollapsedArray);
-      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
-      
-      const updatedNodes = nodes.map(baseNode => {
-        const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-        if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-          return {
-            ...baseNode,
-            position: displayNode.position
-          };
-        }
-        return baseNode;
+      // Create new visual state with all containers collapsed
+      const newState = createVisualStateFromGraph(nodes, edges);
+      const groupNodes = filterNodesByType(nodes, 'group');
+      groupNodes.forEach(container => {
+        newState.setContainerState(container.id, 'collapsed');
       });
       
-      setNodes(updatedNodes);
+      // Apply layout with new state via ReactFlow state manager
+      const result = await reactFlowStateManager.updateContainerStates(
+        newState, 
+        nodes, 
+        edges, 
+        currentLayout, 
+        'collapse-all'
+      );
+      
+      setVisualState(newState); // Update state
       
       // Deterministic viewport fitting after layout is complete
       debouncedFitViewport(300, 'collapse all');
     }, 'collapse-all');
-  }, [collapseAll, nodes, edges, currentLayout, performLayoutOperation]);
+  }, [visualState, nodes, edges, currentLayout, performLayoutOperation, debouncedFitViewport, reactFlowStateManager]);
 
-  // Wrapper for expandAll with layout readjustment
+  // Wrapper for expandAll with VisualState-based layout
   const handleExpandAll = useCallback(async () => {
+    if (!visualState) return;
+    
     return performLayoutOperation(async (opId) => {
-      // Call expandAll() for state consistency but don't wait for it
-      expandAll();
-      
-      // Use empty collapsed array immediately (all expanded)
-      const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout([]);
-      const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout);
-      
-      const updatedNodes = nodes.map(baseNode => {
-        const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-        if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-          return {
-            ...baseNode,
-            position: displayNode.position
-          };
-        }
-        return baseNode;
+      // Create new visual state with all containers expanded
+      const newState = createVisualStateFromGraph(nodes, edges);
+      const groupNodes = filterNodesByType(nodes, 'group');
+      groupNodes.forEach(container => {
+        newState.setContainerState(container.id, 'expanded');
       });
       
-      setNodes(updatedNodes);
+      // Apply layout with new state via ReactFlow state manager
+      const result = await reactFlowStateManager.updateContainerStates(
+        newState, 
+        nodes, 
+        edges, 
+        currentLayout, 
+        'expand-all'
+      );
+      
+      setVisualState(newState); // Update state
       
       // Deterministic viewport fitting after layout is complete
       debouncedFitViewport(300, 'expand all');
     }, 'expand-all');
-  }, [expandAll, nodes, edges, currentLayout, performLayoutOperation]);
+  }, [visualState, nodes, edges, currentLayout, performLayoutOperation, debouncedFitViewport, reactFlowStateManager]);
 
   // Handle node clicks for expanding/collapsing containers
   const handleNodeClick = useCallback(async (event, node) => {
     if (node.type === 'group' || node.type === 'collapsedContainer') {
       event.stopPropagation();
       
+      if (!visualState) return;
+      
       return performLayoutOperation(async (opId) => {
-        // Compute the new collapsed state directly instead of waiting for state update
-        const collapsedArray = Array.from(collapsedContainers);
-        
-        // Toggle the specific container in our computed array
-        if (collapsedArray.includes(node.id)) {
-          const index = collapsedArray.indexOf(node.id);
-          collapsedArray.splice(index, 1);
-        } else {
-          collapsedArray.push(node.id);
-        }
-        
-        // Call toggleContainer() for state consistency but don't wait for it
-        toggleContainer(node.id);
-        
-        // EXPLICIT API: Build container states map
-        const containerStates = {};
-        const { currentDisplayNodes } = processNodesAndEdgesForLayout(collapsedArray);
-        const containerNodes = currentDisplayNodes.filter(n => n.type === 'group' || n.type === 'collapsedContainer');
-        
-        containerNodes.forEach(container => {
-          if (collapsedArray.includes(container.id)) {
-            containerStates[container.id] = 'collapsed';
-          } else {
-            containerStates[container.id] = 'expanded';
-          }
+        // Create new visual state with toggled container
+        const newState = new VisualState();
+        // Copy all existing state
+        visualState.containers.forEach((state, id) => {
+          newState.setContainerState(id, state);
+        });
+        visualState.nodes.forEach((state, id) => {
+          newState.setNodeState(id, state);
+        });
+        visualState.edges.forEach((state, id) => {
+          newState.setEdgeState(id, state);
         });
         
-        console.log(`[Visualizer] 🎯 EXPLICIT NODE CLICK: Container ${node.id} states:`, containerStates);
+        // Toggle the specific container
+        const currentState = visualState.getContainerState(node.id);
+        const newContainerState = currentState === 'collapsed' ? 'expanded' : 'collapsed';
+        newState.setContainerState(node.id, newContainerState);
         
-        // Use the explicit API with container states
-        const { currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
-        const result = await applyLayoutWithExplicitContainerStates(currentDisplayNodes, currentDisplayEdges, containerStates, currentLayout);
+        console.log(`[Visualizer] 🎯 VISUAL STATE: Container ${node.id} toggled to ${newContainerState}`);
         
-        const updatedNodes = nodes.map(baseNode => {
-          const displayNode = result.nodes.find(dn => dn.id === baseNode.id);
-          if (displayNode && (displayNode.type === 'group' || displayNode.type === 'collapsedContainer')) {
-            return {
-              ...baseNode,
-              position: displayNode.position
-            };
-          }
-          return baseNode;
-        });
+        // Use the ReactFlow state manager to apply the new state
+        const result = await reactFlowStateManager.updateContainerStates(
+          newState, 
+          nodes, 
+          edges, 
+          currentLayout, 
+          `toggle-container-${node.id}`
+        );
         
-        setNodes(updatedNodes);
+        setVisualState(newState); // Update the visual state
         
         // Deterministic viewport fitting after layout is complete
         debouncedFitViewport(300, 'container toggle');
       }, `toggle-container-${node.id}`);
     }
-  }, [toggleContainer, nodes, edges, currentLayout, collapsedContainers, performLayoutOperation]);
+  }, [visualState, nodes, edges, currentLayout, performLayoutOperation, debouncedFitViewport, reactFlowStateManager]);
 
   // Handle container toggle from hierarchy tree
   const handleHierarchyToggle = useCallback(async (containerId) => {
@@ -529,35 +606,24 @@ export function Visualizer({ graphData, onControlsReady }) {
     };
   }, [graphData, currentLayout, colorPalette, currentGrouping]); // Remove setNodes, setEdges dependencies
 
-  // Process collapsed containers as derived state using useMemo
+  // Process visual state as derived state using useMemo
   const { displayNodes, displayEdges } = useMemo(() => {
-    if (nodes.length === 0) {
+    if (nodes.length === 0 || !visualState) {
       return { displayNodes: [], displayEdges: [] };
     }
     
     // Skip container processing during initialization to prevent race condition
-    // where edges are processed before auto-collapse completes
     if (isInitializing) {
       return { displayNodes: nodes, displayEdges: edges };
     }
     
-    const collapsedArray = Array.from(collapsedContainers);
-    const processedNodes = processCollapsedContainers(nodes, collapsedArray);
-    
-    // CRITICAL: Use the same processedNodes for edge processing to ensure consistency
-    // This prevents race conditions where edges are calculated with different node visibility
-    const processedEdges = rerouteEdgesForCollapsedContainers(
-      edges,
-      processedNodes, // Use processedNodes instead of original nodes
-      childNodesByParent,
-      collapsedArray
-    );
-    
+    // The layout function now handles all visual state filtering and edge rerouting
+    // We just use the nodes and edges exactly as returned by the layout
     return {
-      displayNodes: processedNodes,
-      displayEdges: processedEdges
+      displayNodes: nodes,
+      displayEdges: edges
     };
-  }, [nodes, edges, collapsedContainers, childNodesByParent, isInitializing]);
+  }, [nodes, edges, visualState, isInitializing]);
 
   // Note: Removed ReactFlow updateNode/updateNodeInternals calls as they are not necessary
   // and were causing errors. ReactFlow v12 handles node updates automatically.

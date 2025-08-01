@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Handle } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';

@@ -12,6 +12,7 @@ import {
   Background,
   MiniMap,
   Handle,
+  Position,
   addEdge,
   useReactFlow,
 } from '@xyflow/react';
@@ -120,10 +121,10 @@ export function ReactFlowInner({ nodes, edges, onNodesChange, onEdgesChange, col
           CRITICAL: These handle IDs must match GroupNode and CollapsedContainerNode
           to prevent ReactFlow "Couldn't create edge for handle id" errors
         */}
-        <Handle id={REQUIRED_HANDLE_IDS.source} type="source" position="right" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.target} type="target" position="left" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.sourceBottom} type="source" position="bottom" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
-        <Handle id={REQUIRED_HANDLE_IDS.targetTop} type="target" position="top" style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.source} type="source" position={Position.Right} style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.target} type="target" position={Position.Left} style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.sourceBottom} type="source" position={Position.Bottom} style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
+        <Handle id={REQUIRED_HANDLE_IDS.targetTop} type="target" position={Position.Top} style={{ background: COMPONENT_COLORS.HANDLE_DEFAULT, border: 'none', width: 8, height: 8 }} />
       </div>
     );
   }, []);

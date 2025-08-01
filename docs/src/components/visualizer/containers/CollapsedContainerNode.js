@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Handle } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import { REQUIRED_HANDLE_IDS } from '../utils/handleValidation.js';
 import { truncateContainerName } from '../utils/utils.js';
 import { COLORS, COMPONENT_COLORS } from '../utils/constants.js';
@@ -13,6 +13,8 @@ import { getContainerHandles } from '../utils/handleStyles.js';
 
 export function CollapsedContainerNode(props) {
   const { data, width, height, id } = props;
+  
+  console.log(`[CollapsedContainerNode] 🎯 RENDERING: ${id}`, props);
   
   // Use the width/height from props (ReactFlow passes these) or fall back to data
   const effectiveWidth = width || data?.originalDimensions?.width || 180;
@@ -59,6 +61,7 @@ export function CollapsedContainerNode(props) {
     position: 'relative',
     transition: 'all 0.2s ease',
     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    overflow: 'visible', // CRITICAL: Allow handles to be visible outside container bounds
   };
   
   const expandIconStyle = {
@@ -101,6 +104,9 @@ export function CollapsedContainerNode(props) {
   // Count how many nodes would be inside this container
   const nodeCount = data?.nodeCount || '?';
   
+  const handles = getContainerHandles();
+  console.log(`[CollapsedContainerNode] 🎯 HANDLES: ${id} creating ${handles.length} handles`, handles);
+  
   return (
     <div style={containerStyle}>
       <div style={labelStyle} title={showTooltip ? fullLabel : undefined}>
@@ -120,6 +126,40 @@ export function CollapsedContainerNode(props) {
       {getContainerHandles().map(handleProps => (
         <Handle key={handleProps.id} {...handleProps} />
       ))}
+      
+      {/* TEMPORARY DEBUG: Test basic handles */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="debug-source"
+        style={{
+          background: 'lime',
+          border: '3px solid black',
+          width: 20,
+          height: 20,
+          position: 'absolute',
+          right: -10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 2000
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="debug-target"
+        style={{
+          background: 'yellow',
+          border: '3px solid black',
+          width: 20,
+          height: 20,
+          position: 'absolute',
+          left: -10,
+          top: '50%',
+          transform: 'translateY(-50%)',
+          zIndex: 2000
+        }}
+      />
     </div>
   );
 }

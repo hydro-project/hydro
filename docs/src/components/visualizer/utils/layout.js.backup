@@ -1,12 +1,13 @@
 /**
- * Clean Layout Coordinator
+ * Simple ELK Layout Integration
  * 
- * Provides graph layout using ELK and ReactFlow state managers with centralized
- * VisualState as the single source of truth.
+ * Provides graph layout using ELK algorithms with centralized configuration from elkConfig.js
  */
 
 import { createELKStateManager } from './elkStateManager.js';
 import { filterNodesByType, filterNodesByParent, filterNodesExcludingType } from './constants.js';
+
+let ELK = null;
 
 // Cache for storing original expanded container dimensions
 // This ensures we always use the correct expanded dimensions for layout calculations
@@ -70,9 +71,20 @@ class VisualState {
   }
 }
 
-/**
- * Apply full layout for dimension caching (backward compatibility)
- */
+// Load ELK dynamically - keeping for backward compatibility
+async function loadELK() {
+  if (ELK) return ELK;
+  
+  try {
+    const elkModule = await import('elkjs');
+    ELK = new elkModule.default();
+    return ELK;
+  } catch (error) {
+    console.error('Failed to load ELK:', error);
+    return null;
+  }
+}
+
 export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
   console.log(`[Layout] 🚀 APPLY_LAYOUT: Using ELK state manager for full layout`);
   
@@ -99,7 +111,8 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
 }
 
 /**
- * Apply layout readjustment for collapsed containers only (backward compatibility)
+ * Apply layout readjustment for collapsed containers only
+ * This function will only reposition containers while keeping other nodes fixed
  */
 export async function applyLayoutForCollapsedContainers(displayNodes, edges, layoutType = 'mrtree', changedContainerId = null) {
   console.log(`[Layout] 🔄 CONTAINER_LAYOUT: Using ELK state manager for container repositioning`);
@@ -161,19 +174,206 @@ export async function layoutVisualElements(
     );
     
     console.log(`[Layout] 🎯 VISUAL_COORDINATOR: ELK calculation complete`);
+
+  // STEP 1: Filter nodes based on visual state
+  console.log(`[Layout] 🔍 VISUAL COORDINATOR: Filtering nodes based on state...`);
+  const visibleNodes = allNodes.filter(node => {
+    if (node.type === 'group' || node.type === 'collapsedContainer') {
+      const containerState = state.getContainerState(node.id);
+      if (containerState === 'hidden') {
+        console.log(`[Layout] � VISUAL COORDINATOR: Container ${node.id} → HIDDEN (filtered out)`);
+        return false;
+      }
+      return true;
+    } else {
+      const nodeState = state.getNodeState(node.id);
+      if (nodeState === 'hidden') {
+        console.log(`[Layout] 👻 VISUAL COORDINATOR: Node ${node.id} → HIDDEN (filtered out)`);
+        return false;
+      }
+      return true;
+    }
+  });
+
+  // STEP 2: Filter edges based on visual state AND node visibility
+  console.log(`[Layout] 🔗 VISUAL COORDINATOR: Filtering edges based on state and node visibility...`);
+  const visibleNodeIds = new Set(visibleNodes.map(node => node.id));
+  const visibleEdges = allEdges.filter(edge => {
+    // First check edge's own visibility state
+    const edgeState = state.getEdgeState(edge.id);
+    if (edgeState === 'hidden') {
+      console.log(`[Layout] 👻 VISUAL COORDINATOR: Edge ${edge.id} → HIDDEN (filtered out)`);
+      return false;
+    }
+    
+    // Then check if both source and target nodes are visible
+    const sourceVisible = visibleNodeIds.has(edge.source);
+    const targetVisible = visibleNodeIds.has(edge.target);
+    
+    if (!sourceVisible || !targetVisible) {
+      console.log(`[Layout] 🔗 VISUAL COORDINATOR: Edge ${edge.id} → FILTERED (source:${sourceVisible}, target:${targetVisible})`);
+      return false;
+    }
+    
+    return true;
+  });
+
+  // Find container nodes for positioning
+  const containerNodes = visibleNodes.filter(node => 
+    node.type === 'group' || node.type === 'collapsedContainer'
+  );
+  
+  if (containerNodes.length === 0) {
+    console.log(`[Layout] ⚠️ VISUAL COORDINATOR: No containers to layout`);
+    return { nodes: visibleNodes, edges: visibleEdges };
+  }
+
+  // STEP 3: Validate that all containers have explicit states
+  containerNodes.forEach(container => {
+    const containerState = state.getContainerState(container.id);
+    if (!['expanded', 'collapsed'].includes(containerState)) {
+      throw new Error(`Container ${container.id} has invalid state '${containerState}'. Must specify 'expanded' or 'collapsed'.`);
+    }
+  });
+
+  // STEP 4: Set dimensions based on explicit states
+  console.log(`[Layout] 📐 VISUAL COORDINATOR: Setting dimensions based on explicit states...`);
+  const containersWithExplicitDimensions = containerNodes.map(container => {
+    const containerState = state.getContainerState(container.id);
+    let width, height;
+    
+    if (containerState === 'collapsed') {
+      width = 180;
+      height = 60;
+      console.log(`[Layout] ❌ VISUAL COORDINATOR: ${container.id} → COLLAPSED (${width}x${height})`);
+    } else if (containerState === 'expanded') {
+      const cachedDimensions = state.dimensionsCache.get(container.id);
+      if (!cachedDimensions) {
+        throw new Error(`Container ${container.id} requested as 'expanded' but no cached dimensions found`);
+      }
+      width = cachedDimensions.width;
+      height = cachedDimensions.height;
+      console.log(`[Layout] ✅ VISUAL COORDINATOR: ${container.id} → EXPANDED (${width}x${height}) from cache`);
+    }
+    
+    return {
+      ...container,
+      width: width,
+      height: height,
+      style: {
+        ...container.style,
+        width: width,
+        height: height,
+      }
+    };
+  });
+
+  // STEP 5: Create ELK nodes - all free positioning since we're being explicit about dimensions
+  console.log(`[Layout] 🏗️ VISUAL COORDINATOR: Creating ELK nodes with explicit dimensions...`);
+  const elkContainers = containersWithExplicitDimensions.map(container => ({
+    id: container.id,
+    width: container.width,
+    height: container.height,
+    layoutOptions: createFreePositionOptions() // Let ELK find optimal positions
+  }));
+
+  // STEP 5.5: Pre-calculate rerouted edges for ELK to consider during layout
+  console.log(`[Layout] 🔗 VISUAL COORDINATOR: Pre-calculating rerouted edges for ELK...`);
+  const { transformAndRerouteEdges: preRouteEdges, transformNodes: preTransformNodes } = createVisualFilters(state);
+  
+  // Transform nodes to get preliminary collapsed state
+  const preliminaryTransformedNodes = preTransformNodes(visibleNodes);
+  const preliminaryVisibleNodes = preliminaryTransformedNodes.filter(node => !node.hidden);
+  
+  // Get preliminary rerouted edges
+  const preliminaryReroutedEdges = preRouteEdges(allEdges, allNodes, preliminaryVisibleNodes);
+  
+  // Convert to ELK edge format
+  const elkEdges = preliminaryReroutedEdges.map(edge => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
+  
+  console.log(`[Layout] 🔗 VISUAL COORDINATOR: ${elkEdges.length} edges for ELK layout`);
+
+  // Create ELK graph with edges for proper container positioning
+  const elkGraph = {
+    id: 'visual_coordinator_root',
+    layoutOptions: getContainerELKConfig(layoutType, 'collapsed'),
+    children: elkContainers,
+    edges: elkEdges // Include edges so ELK can optimize container positions
+  };
+
+  // LOG ELK INPUT
+  console.log(`[Layout] 🎯 VISUAL COORDINATOR - ELK INPUT:`);
+  elkContainers.forEach(container => {
+    console.log(`[Layout] 🎯 VISUAL COORDINATOR: ${container.id}: ${container.width}x${container.height}`);
+  });
+
+  try {
+    console.log(`[Layout] 🚀 VISUAL COORDINATOR: Calling ELK layout...`);
+    const layoutResult = await elk.layout(elkGraph);
+    console.log(`[Layout] ✅ VISUAL COORDINATOR: ELK layout completed successfully`);
+    
+    // DEBUG: Log complete ELK output
+    console.log(`[Layout] 🔍 ELK OUTPUT - Complete layout result:`);
+    if (layoutResult.children) {
+      console.log(`[Layout] 🔍 ELK NODES:`);
+      layoutResult.children.forEach(node => {
+        console.log(`[Layout] 🔍   Node ${node.id}: x=${node.x}, y=${node.y}, w=${node.width}, h=${node.height}`);
+      });
+    }
+    if (layoutResult.edges) {
+      console.log(`[Layout] 🔍 ELK EDGES:`);
+      layoutResult.edges.forEach(edge => {
+        console.log(`[Layout] 🔍   Edge ${edge.id}: ${edge.sources} -> ${edge.targets}`);
+        if (edge.sections) {
+          console.log(`[Layout] 🔍     Sections (${edge.sections.length}):`);
+          edge.sections.forEach((section, i) => {
+            console.log(`[Layout] 🔍       Section ${i}: start=(${section.startPoint?.x},${section.startPoint?.y}) end=(${section.endPoint?.x},${section.endPoint?.y})`);
+            if (section.bendPoints && section.bendPoints.length > 0) {
+              console.log(`[Layout] 🔍       Bend points:`, section.bendPoints.map(bp => `(${bp.x},${bp.y})`).join(', '));
+            }
+          });
+        }
+      });
+    } else {
+      console.log(`[Layout] 🔍 ELK EDGES: No edge routing information provided by ELK`);
+    }
+    
+    // Apply new positions to all container nodes
+    console.log(`[Layout] 🎨 VISUAL COORDINATOR: Applying new positions...`);
+    const updatedNodes = visibleNodes.map(node => {
+      if (node.type === 'group' || node.type === 'collapsedContainer') {
+        const elkContainer = layoutResult.children?.find(c => c.id === node.id);
+        if (elkContainer) {
+          return {
+            ...node,
+            position: {
+              x: elkContainer.x || node.position.x,
+              y: elkContainer.y || node.position.y
+            }
+          };
+        }
+      }
+      return node;
+    });
+    
+    console.log(`[Layout] 🏁 VISUAL COORDINATOR: Layout complete. Visible nodes: ${updatedNodes.length}, Visible edges: ${visibleEdges.length}`);
     
     // STEP 6: Reroute edges based on final positioned nodes and ELK routing
-    console.log(`[Layout] 🔗 VISUAL_COORDINATOR: Rerouting edges for positioned containers...`);
+    console.log(`[Layout] 🔗 VISUAL COORDINATOR: Rerouting edges for positioned containers...`);
     const { transformAndRerouteEdges, transformNodes } = createVisualFilters(state);
     
     // Transform nodes to apply collapsed state (hide child nodes, transform containers)
-    const transformedNodes = transformNodes(elkResult.nodes);
+    const transformedNodes = transformNodes(updatedNodes);
     
     // Apply ELK-calculated dimensions to collapsed containers
     const transformedNodesWithELKDimensions = transformedNodes.map(node => {
       if (node.type === 'collapsedContainer') {
         // Find the ELK-calculated dimensions for this container
-        const elkContainer = elkResult.elkResult?.children?.find(c => c.id === node.id);
+        const elkContainer = layoutResult.children?.find(c => c.id === node.id);
         if (elkContainer) {
           return {
             ...node,
@@ -193,32 +393,37 @@ export async function layoutVisualElements(
     // Only use nodes that are actually visible (not hidden by collapsed parents)
     const finalVisibleNodes = transformedNodesWithELKDimensions.filter(node => !node.hidden);
     
-    console.log(`[Layout] 🎯 FINAL_NODES: ${finalVisibleNodes.length} final visible nodes`);
+    console.log(`[Layout] 🎯 FINAL NODES DEBUG: ${finalVisibleNodes.length} final visible nodes:`);
     finalVisibleNodes.forEach(node => {
-      console.log(`[Layout] 🎯 FINAL_NODE: ${node.id} (type: ${node.type}, pos: ${node.position?.x || 0},${node.position?.y || 0}, size: ${node.width || '?'}x${node.height || '?'})`);
-      console.log(`[Layout] 🎯 NODE_DATA:`, JSON.stringify({
-        id: node.id,
-        type: node.type,
-        position: node.position,
-        width: node.width,
-        height: node.height,
-        style: node.style
-      }, null, 2));
+      console.log(`[Layout] 🎯 FINAL NODE: ${node.id} (type: ${node.type}, pos: ${node.position?.x || 0},${node.position?.y || 0}, size: ${node.width || '?'}x${node.height || '?'})`);
+      if (node.parentId) {
+        console.log(`[Layout] 🎯   Parent: ${node.parentId}`);
+      }
     });
     
-    const reroutedEdges = transformAndRerouteEdges(allEdges, allNodes, finalVisibleNodes);
+    console.log(`[Layout] 🎯 TRANSFORMED NODES DEBUG: ${transformedNodesWithELKDimensions.length} total transformed nodes:`);
+    transformedNodesWithELKDimensions.forEach(node => {
+      console.log(`[Layout] 🎯 TRANSFORMED: ${node.id} (type: ${node.type}, hidden: ${node.hidden}, parent: ${node.parentId || 'none'})`);
+    });
     
-    console.log(`[Layout] 🎯 FINAL_EDGES: ${reroutedEdges.length} rerouted edges`);
+    // Create a map of ELK edge routing information
+    const elkEdgeRouting = new Map();
+    if (layoutResult.edges) {
+      layoutResult.edges.forEach(elkEdge => {
+        elkEdgeRouting.set(elkEdge.id, elkEdge);
+      });
+    }
+    
+    const reroutedEdges = transformAndRerouteEdges(allEdges, allNodes, finalVisibleNodes, elkEdgeRouting);
+    
+    console.log(`[Layout] 🎯 FINAL EDGES DEBUG: ${reroutedEdges.length} rerouted edges:`);
     reroutedEdges.forEach(edge => {
-      console.log(`[Layout] 🎯 FINAL_EDGE: ${edge.id} (${edge.source} -> ${edge.target})`);
-      console.log(`[Layout] 🎯 EDGE_DATA:`, JSON.stringify({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        sourceHandle: edge.sourceHandle,
-        targetHandle: edge.targetHandle,
-        type: edge.type
-      }, null, 2));
+      console.log(`[Layout] 🎯 FINAL EDGE: ${edge.id} (${edge.source} -> ${edge.target})`);
+      console.log(`[Layout] 🎯 EDGE HANDLES: source=${edge.sourceHandle}, target=${edge.targetHandle}`);
+      if (edge.data?.elkRouting) {
+        console.log(`[Layout] 🎯 EDGE ROUTING: ELK path data included`);
+      }
+      console.log(`[Layout] 🎯 EDGE DATA:`, edge.data);
     });
     
     return {
@@ -226,8 +431,8 @@ export async function layoutVisualElements(
       edges: reroutedEdges,
     };
   } catch (error) {
-    console.error(`[Layout] ❌ VISUAL_COORDINATOR_FAILED:`, error);
-    throw error;
+    console.error(`[Layout] ❌ VISUAL COORDINATOR FAILED:`, error);
+    return { nodes: visibleNodes, edges: visibleEdges };
   }
 }
 
@@ -310,13 +515,13 @@ export function createVisualFilters(visualState) {
       });
     },
     
-    transformAndRerouteEdges: (edges, nodes, transformedNodes) => {
+    transformAndRerouteEdges: (edges, nodes, transformedNodes, elkEdgeRouting = null) => {
       // Build maps for efficient lookups
       const nodeMap = new Map(nodes.map(node => [node.id, node]));
       const transformedNodeMap = new Map(transformedNodes.map(node => [node.id, node]));
       const visibleNodeIds = new Set(transformedNodes.filter(node => !node.hidden).map(node => node.id));
       
-      console.log(`[Layout] 🔗 EDGE_REROUTING: Processing ${edges.length} edges, ${visibleNodeIds.size} visible nodes`);
+      console.log(`[Layout] 🔗 EDGE REROUTING: Processing ${edges.length} edges, ${visibleNodeIds.size} visible nodes`);
       
       // Helper function to find the top-level visible container for a node
       function findVisibleContainer(nodeId, visited = new Set()) {
@@ -380,14 +585,15 @@ export function createVisualFilters(visualState) {
             // Check if we have ELK routing information for this edge
             // Use clean edge ID format to avoid collision
             const reroutedEdgeId = `${edge.id.split('_rerouted_')[0]}_rerouted_${newSource}_${newTarget}`;
+            const elkRouting = elkEdgeRouting?.get(reroutedEdgeId);
             
             const reroutedEdge = {
               ...edge,
               id: reroutedEdgeId,
               source: newSource,
               target: newTarget,
-              sourceHandle: 'source', // Use standard handle IDs
-              targetHandle: 'target', // Use standard handle IDs
+              sourceHandle: edge.sourceHandle || 'source', // Preserve original handle or default to 'source'
+              targetHandle: edge.targetHandle || 'target', // Preserve original handle or default to 'target'
               data: {
                 ...edge.data,
                 isRerouted: true,
@@ -395,16 +601,42 @@ export function createVisualFilters(visualState) {
                 originalTarget: edge.target,
                 originalSourceHandle: edge.sourceHandle,
                 originalTargetHandle: edge.targetHandle,
+                // Include ELK routing information if available
+                ...(elkRouting && {
+                  elkRouting: {
+                    sections: elkRouting.sections,
+                    // Extract routing coordinates for ReactFlow
+                    pathData: elkRouting.sections?.map(section => ({
+                      startPoint: section.startPoint,
+                      endPoint: section.endPoint,
+                      bendPoints: section.bendPoints || []
+                    }))
+                  },
+                  // Convert ELK routing to ReactFlow-compatible path
+                  ...(elkRouting.sections && elkRouting.sections.length > 0 && {
+                    style: {
+                      strokeDasharray: '0', // Ensure solid line
+                    },
+                    // Add path points that ReactFlow can use
+                    data: {
+                      ...edge.data,
+                      elkPath: elkRouting.sections[0], // Use first section
+                      customPath: true,
+                      // Convert ELK coordinates to ReactFlow path
+                      pathPoints: elkRouting.sections[0].bendPoints || []
+                    }
+                  })
+                })
               }
             };
             
-            console.log(`[Layout] 🔗 REROUTED: ${reroutedEdge.id} (${newSource} -> ${newTarget})`);
+            console.log(`[Layout] 🔗 REROUTED: ${reroutedEdge.id}${elkRouting ? ' (with ELK routing)' : ''}`);
             reroutedEdges.push(reroutedEdge);
           }
         }
       });
       
-      console.log(`[Layout] 🔗 EDGE_REROUTING_COMPLETE: ${reroutedEdges.length} rerouted edges`);
+      console.log(`[Layout] 🔗 EDGE REROUTING COMPLETE: ${reroutedEdges.length} rerouted edges`);
       return reroutedEdges;
     },
     
