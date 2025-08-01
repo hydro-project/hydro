@@ -11,7 +11,7 @@ use serde::Serialize;
 use tokio::sync::{RwLock, mpsc};
 
 use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
-use super::ports::{self, RustCratePortConfig, RustCrateSink, SourcePath};
+use super::ports::{self, RustCratePortConfig};
 use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
@@ -120,39 +120,6 @@ impl RustCrateService {
             service_server_defns: self.server_defns.clone(),
             port: name,
             merge: false,
-        }
-    }
-
-    pub fn add_connection(
-        &mut self,
-        self_arc: &Arc<RwLock<RustCrateService>>,
-        my_port: String,
-        sink: &dyn RustCrateSink,
-    ) -> Result<()> {
-        let forward_res = sink.instantiate(&SourcePath::Direct(self.on.clone()));
-        if let Ok(instantiated) = forward_res {
-            // TODO(shadaj): if already in this map, we want to broadcast
-            assert!(!self.port_to_server.contains_key(&my_port));
-            self.port_to_server.insert(my_port, instantiated());
-            Ok(())
-        } else {
-            drop(forward_res);
-            let instantiated = sink.instantiate_reverse(
-                &self.on,
-                Arc::new(RustCratePortConfig {
-                    service: Arc::downgrade(self_arc),
-                    service_host: self.on.clone(),
-                    service_server_defns: self.server_defns.clone(),
-                    port: my_port.clone(),
-                    merge: false,
-                }),
-                &|p| p,
-            )?;
-
-            assert!(!self.port_to_bind.contains_key(&my_port));
-            self.port_to_bind.insert(my_port, (instantiated)(sink));
-
-            Ok(())
         }
     }
 
