@@ -41,7 +41,7 @@ pub use optional::Optional;
 
 pub mod location;
 pub use location::cluster::CLUSTER_SELF_ID;
-pub use location::{Atomic, Cluster, ClusterId, External, Location, Process, Tick};
+pub use location::{Atomic, Cluster, ClusterId, External, Location, NetworkHint, Process, Tick};
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
@@ -72,6 +72,15 @@ pub mod backtrace;
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod test_util;
+
+#[cfg(feature = "build")]
+#[ctor::ctor]
+fn init_rewrites() {
+    stageleft::add_private_reexport(
+        vec!["tokio_util", "codec", "lines_codec"],
+        vec!["tokio_util", "codec"],
+    );
+}
 
 #[cfg(test)]
 mod test_init {
