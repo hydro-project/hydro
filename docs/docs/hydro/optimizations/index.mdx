@@ -43,5 +43,6 @@ The throughput, latency, and CPU usage of 2PC can then be automatically measured
 :::tip
 
 In order to opt into decoupling and partitioning, Hydro programs must be deployed with the `deploy_and_analyze` function.
+You must also install perf locally. On Debian, this can be done by executing the following command: `sudo sh -c 'apt update && apt install -y linux-perf binutils && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'`.
 
 :::
