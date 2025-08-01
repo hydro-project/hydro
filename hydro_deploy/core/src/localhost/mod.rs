@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -11,8 +10,8 @@ use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
 use crate::rust_crate::tracing_options::TracingOptions;
 use crate::{
-    ClientStrategy, Host, HostStrategyGetter, HostTargetType, LaunchedBinary, LaunchedHost,
-    ResourceBatch, ResourceResult, ServerStrategy,
+    BaseServerStrategy, ClientStrategy, Host, HostStrategyGetter, HostTargetType, LaunchedBinary,
+    LaunchedHost, PortNetworkHint, ResourceBatch, ResourceResult,
 };
 
 pub mod launched_binary;
@@ -47,7 +46,7 @@ impl Host for LocalhostHost {
         HostTargetType::Local
     }
 
-    fn request_port(&self, _bind_type: &ServerStrategy) {}
+    fn request_port_base(&self, _bind_type: &BaseServerStrategy) {}
     fn collect_resources(&self, _resource_batch: &mut ResourceBatch) {}
     fn request_custom_binary(&self) {}
 
@@ -66,20 +65,32 @@ impl Host for LocalhostHost {
     fn strategy_as_server<'a>(
         &'a self,
         connection_from: &dyn Host,
+        network_hint: PortNetworkHint,
     ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)> {
         if self.client_only {
             anyhow::bail!("Localhost cannot be a server if it is client only")
         }
 
-        if connection_from.can_connect_to(ClientStrategy::UnixSocket(self.id)) {
+        if matches!(network_hint, PortNetworkHint::Auto)
+            && connection_from.can_connect_to(ClientStrategy::UnixSocket(self.id))
+        {
             Ok((
                 ClientStrategy::UnixSocket(self.id),
-                Box::new(|_| ServerStrategy::UnixSocket),
+                Box::new(|_| BaseServerStrategy::UnixSocket),
             ))
-        } else if connection_from.can_connect_to(ClientStrategy::InternalTcpPort(self)) {
+        } else if matches!(
+            network_hint,
+            PortNetworkHint::Auto | PortNetworkHint::TcpPort(_)
+        ) && connection_from.can_connect_to(ClientStrategy::InternalTcpPort(self))
+        {
             Ok((
                 ClientStrategy::InternalTcpPort(self),
-                Box::new(|_| ServerStrategy::InternalTcpPort),
+                Box::new(move |_| {
+                    BaseServerStrategy::InternalTcpPort(match network_hint {
+                        PortNetworkHint::Auto => None,
+                        PortNetworkHint::TcpPort(port) => port,
+                    })
+                }),
             ))
         } else {
             anyhow::bail!("Could not find a strategy to connect to localhost")
@@ -110,31 +121,13 @@ struct LaunchedLocalhost;
 
 #[async_trait]
 impl LaunchedHost for LaunchedLocalhost {
-    fn server_config(&self, bind_type: &ServerStrategy) -> ServerBindConfig {
+    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig {
         match bind_type {
-            ServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
-            ServerStrategy::InternalTcpPort => ServerBindConfig::TcpPort("127.0.0.1".to_string()),
-            ServerStrategy::ExternalTcpPort(_) => panic!("Cannot bind to external port"),
-            ServerStrategy::Demux(demux) => {
-                let mut config_map = HashMap::new();
-                for (key, underlying) in demux {
-                    config_map.insert(*key, self.server_config(underlying));
-                }
-
-                ServerBindConfig::Demux(config_map)
+            BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
+            BaseServerStrategy::InternalTcpPort(port) => {
+                ServerBindConfig::TcpPort("127.0.0.1".to_string(), *port)
             }
-            ServerStrategy::Merge(merge) => {
-                let mut configs = vec![];
-                for underlying in merge {
-                    configs.push(self.server_config(underlying));
-                }
-
-                ServerBindConfig::Merge(configs)
-            }
-            ServerStrategy::Tagged(underlying, id) => {
-                ServerBindConfig::Tagged(Box::new(self.server_config(underlying)), *id)
-            }
-            ServerStrategy::Null => ServerBindConfig::Null,
+            BaseServerStrategy::ExternalTcpPort(_) => panic!("Cannot bind to external port"),
         }
     }
 
