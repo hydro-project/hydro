@@ -1,5 +1,5 @@
 ## Getting Started
-This is a template for a Rust project that uses [Hydro](http://github.com/hydro-project/hydro) for distributed services. To generate a project, run 
+This is a template for a Rust project that uses [Hydro](https://github.com/hydro-project/hydro) for distributed services. To generate a project, run
 
 ```bash
 cargo install cargo-generate
