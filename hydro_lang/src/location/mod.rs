@@ -2,20 +2,24 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::time::Duration;
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use futures::stream::Stream as FuturesStream;
 use proc_macro2::Span;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use stageleft::{QuotedWithContext, q};
+use stageleft::{QuotedWithContext, q, quote_type};
+use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
 use super::builder::FlowState;
 use crate::backtrace::get_backtrace;
 use crate::cycle::{CycleCollection, ForwardRef, ForwardRefMarker};
-use crate::ir::{DebugInstantiate, HydroIrMetadata, HydroNode, HydroSource};
-use crate::location::external_process::{ExternalBincodeSink, ExternalBytesPort};
+use crate::ir::{DebugInstantiate, HydroIrMetadata, HydroLeaf, HydroNode, HydroSource};
+use crate::location::external_process::{
+    ExternalBincodeBidi, ExternalBincodeSink, ExternalBytesPort, Many,
+};
+use crate::staging_util::get_this_crate;
 use crate::stream::ExactlyOnce;
-use crate::{Singleton, Stream, TotalOrder, Unbounded};
+use crate::{NoOrder, Singleton, Stream, TotalOrder, Unbounded};
 
 pub mod external_process;
 pub use external_process::External;
@@ -80,6 +84,12 @@ pub fn check_matching_location<'a, L: Location<'a>>(l1: &L, l2: &L) {
     assert_eq!(l1.id(), l2.id(), "locations do not match");
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum NetworkHint {
+    Auto,
+    TcpPort(Option<u16>),
+}
+
 pub trait Location<'a>: Clone {
     type Root: Location<'a>;
 
@@ -114,7 +124,7 @@ pub trait Location<'a>: Clone {
         HydroIrMetadata {
             location_kind: self.id(),
             backtrace: get_backtrace(2),
-            output_type: Some(stageleft::quote_type::<T>().into()),
+            output_type: Some(quote_type::<T>().into()),
             cardinality: None,
             cpu_usage: None,
             network_recv_cpu_usage: None,
@@ -186,10 +196,10 @@ pub trait Location<'a>: Clone {
 
     fn source_external_bytes<L>(
         &self,
-        from: External<L>,
+        from: &External<L>,
     ) -> (
         ExternalBytesPort,
-        Stream<Bytes, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        Stream<std::io::Result<BytesMut>, Self, Unbounded, TotalOrder, ExactlyOnce>,
     )
     where
         Self: Sized + NoTick,
@@ -201,12 +211,11 @@ pub trait Location<'a>: Clone {
             id
         };
 
-        let deser_expr: syn::Expr = syn::parse_quote!(|b| b.unwrap().freeze());
-
         (
             ExternalBytesPort {
                 process_id: from.id,
                 port_id: next_external_port_id,
+                _phantom: Default::default(),
             },
             Stream::new(
                 self.clone(),
@@ -214,11 +223,14 @@ pub trait Location<'a>: Clone {
                     inner: Box::new(HydroNode::ExternalInput {
                         from_external_id: from.id,
                         from_key: next_external_port_id,
+                        from_many: false,
+                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                        port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: Some(deser_expr.into()),
-                        metadata: self.new_node_metadata::<Bytes>(),
+                        deserialize_fn: None,
+                        metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
                     }),
-                    metadata: self.new_node_metadata::<Bytes>(),
+                    metadata: self.new_node_metadata::<std::io::Result<BytesMut>>(),
                 },
             ),
         )
@@ -254,6 +266,9 @@ pub trait Location<'a>: Clone {
                     inner: Box::new(HydroNode::ExternalInput {
                         from_external_id: from.id,
                         from_key: next_external_port_id,
+                        from_many: false,
+                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                        port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
                         metadata: self.new_node_metadata::<T>(),
@@ -261,6 +276,160 @@ pub trait Location<'a>: Clone {
                     metadata: self.new_node_metadata::<T>(),
                 },
             ),
+        )
+    }
+
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn bidi_external_many_bytes<L, T, Codec: Encoder<T> + Decoder>(
+        &self,
+        from: &External<L>,
+        port_hint: NetworkHint,
+    ) -> (
+        ExternalBytesPort<Many>,
+        Stream<
+            Result<(u64, <Codec as Decoder>::Item), <Codec as Decoder>::Error>,
+            Self,
+            Unbounded,
+            NoOrder,
+            ExactlyOnce,
+        >,
+        ForwardRef<'a, Stream<(u64, T), Self, Unbounded, TotalOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let next_external_port_id = {
+            let mut flow_state = from.flow_state.borrow_mut();
+            let id = flow_state.next_external_out;
+            flow_state.next_external_out += 1;
+            id
+        };
+
+        let (fwd_ref, to_sink) =
+            self.forward_ref::<Stream<(u64, T), Self, Unbounded, TotalOrder, ExactlyOnce>>();
+        let mut flow_state_borrow = self.flow_state().borrow_mut();
+
+        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
+
+        leaves.push(HydroLeaf::SendExternal {
+            to_external_id: from.id,
+            to_key: next_external_port_id,
+            to_many: true,
+            serialize_fn: None,
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(HydroNode::Unpersist {
+                inner: Box::new(to_sink.ir_node.into_inner()),
+                metadata: self.new_node_metadata::<(u64, T)>(),
+            }),
+        });
+
+        (
+            ExternalBytesPort {
+                process_id: from.id,
+                port_id: next_external_port_id,
+                _phantom: PhantomData,
+            },
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::ExternalInput {
+                        from_external_id: from.id,
+                        from_key: next_external_port_id,
+                        from_many: true,
+                        codec_type: quote_type::<Codec>().into(),
+                        port_hint,
+                        instantiate_fn: DebugInstantiate::Building,
+                        deserialize_fn: None,
+                        metadata: self
+                            .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(
+                            ),
+                    }),
+                    metadata: self
+                        .new_node_metadata::<std::io::Result<(u64, <Codec as Decoder>::Item)>>(),
+                },
+            ),
+            fwd_ref,
+        )
+    }
+
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn bidi_external_many_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
+        &self,
+        from: &External<L>,
+    ) -> (
+        ExternalBincodeBidi<InT, OutT, Many>,
+        Stream<(u64, InT), Self, Unbounded, NoOrder, ExactlyOnce>,
+        ForwardRef<'a, Stream<(u64, OutT), Self, Unbounded, TotalOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let next_external_port_id = {
+            let mut flow_state = from.flow_state.borrow_mut();
+            let id = flow_state.next_external_out;
+            flow_state.next_external_out += 1;
+            id
+        };
+
+        let root = get_this_crate();
+
+        let (fwd_ref, to_sink) =
+            self.forward_ref::<Stream<(u64, OutT), Self, Unbounded, TotalOrder, ExactlyOnce>>();
+        let mut flow_state_borrow = self.flow_state().borrow_mut();
+
+        let leaves = flow_state_borrow.leaves.as_mut().expect("Attempted to add a leaf to a flow that has already been finalized. No leaves can be added after the flow has been compiled()");
+
+        let out_t_type = quote_type::<OutT>();
+        let ser_fn: syn::Expr = syn::parse_quote! {
+            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(u64, #out_t_type), _>(
+                |(id, b)| (id, #root::runtime_support::bincode::serialize(&b).unwrap().into())
+            )
+        };
+
+        leaves.push(HydroLeaf::SendExternal {
+            to_external_id: from.id,
+            to_key: next_external_port_id,
+            to_many: true,
+            serialize_fn: Some(ser_fn.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(HydroNode::Unpersist {
+                inner: Box::new(to_sink.ir_node.into_inner()),
+                metadata: self.new_node_metadata::<(u64, Bytes)>(),
+            }),
+        });
+
+        let in_t_type = quote_type::<InT>();
+
+        let deser_fn: syn::Expr = syn::parse_quote! {
+            |res| {
+                let (id, b) = res.unwrap();
+                (id, #root::runtime_support::bincode::deserialize::<#in_t_type>(&b).unwrap())
+            }
+        };
+
+        (
+            ExternalBincodeBidi {
+                process_id: from.id,
+                port_id: next_external_port_id,
+                _phantom: PhantomData,
+            },
+            Stream::new(
+                self.clone(),
+                HydroNode::Persist {
+                    inner: Box::new(HydroNode::ExternalInput {
+                        from_external_id: from.id,
+                        from_key: next_external_port_id,
+                        from_many: true,
+                        codec_type: quote_type::<LengthDelimitedCodec>().into(),
+                        port_hint: NetworkHint::Auto,
+                        instantiate_fn: DebugInstantiate::Building,
+                        deserialize_fn: Some(deser_fn.into()),
+                        metadata: self.new_node_metadata::<std::io::Result<(u64, BytesMut)>>(),
+                    }),
+                    metadata: self.new_node_metadata::<std::io::Result<(u64, BytesMut)>>(),
+                },
+            ),
+            fwd_ref,
         )
     }
 
@@ -354,5 +523,226 @@ pub trait Location<'a>: Clone {
             },
             S::create_source(ident, self.clone()),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashSet;
+
+    use futures::{SinkExt, StreamExt};
+    use hydro_deploy::Deployment;
+    use stageleft::q;
+    use tokio_util::codec::LengthDelimitedCodec;
+
+    use crate::{FlowBuilder, Location, NetworkHint};
+
+    #[tokio::test]
+    async fn external_bytes() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input) = first_node.source_external_bytes(&external);
+        let out = input
+            .map(q!(|r| r.unwrap()))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect_sink_bytes(in_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(vec![1, 2, 3].into()).await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), vec![1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn multi_external_source() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        let out = input.send_bincode_external(&external);
+        complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])));
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let (_, mut external_in_1) = nodes.connect_bincode(in_port.clone()).await;
+        let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
+        let external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in_1.send(123).await.unwrap();
+        external_in_2.send(456).await.unwrap();
+
+        assert_eq!(
+            external_out.take(2).collect::<HashSet<_>>().await,
+            vec![(0, 123), (1, 456)].into_iter().collect()
+        );
+    }
+
+    #[tokio::test]
+    async fn second_connection_only_multi_source() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        let out = input.send_bincode_external(&external);
+        complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])));
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        // intentionally skipped to test stream waking logic
+        let (_, mut _external_in_1) = nodes.connect_bincode(in_port.clone()).await;
+        let (_, mut external_in_2) = nodes.connect_bincode(in_port).await;
+        let mut external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in_2.send(456).await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), (1, 456));
+    }
+
+    #[tokio::test]
+    async fn multi_external_bytes() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (in_port, input, complete_sink) = first_node
+            .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+        let out = input
+            .map(q!(|r| r.unwrap()))
+            .send_bincode_external(&external);
+        complete_sink.complete(first_node.source_iter(q!([])));
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in_1 = nodes.connect_sink_bytes(in_port.clone()).await;
+        let mut external_in_2 = nodes.connect_sink_bytes(in_port).await;
+        let external_out = nodes.connect_source_bincode(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in_1.send(vec![1, 2, 3].into()).await.unwrap();
+        external_in_2.send(vec![4, 5].into()).await.unwrap();
+
+        assert_eq!(
+            external_out.take(2).collect::<HashSet<_>>().await,
+            vec![
+                (0, (&[1u8, 2, 3] as &[u8]).into()),
+                (1, (&[4u8, 5] as &[u8]).into())
+            ]
+            .into_iter()
+            .collect()
+        );
+    }
+
+    #[tokio::test]
+    async fn echo_external_bytes() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (port, input, complete_sink) = first_node
+            .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
+        complete_sink.complete(
+            unsafe { input.assume_ordering() }
+                .map(q!(|r| r.unwrap()))
+                .map(q!(|(id, bytes)| {
+                    (id, bytes.into_iter().map(|x| x + 1).collect())
+                })),
+        );
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let (mut external_out_1, mut external_in_1) = nodes.connect_bytes(port.clone()).await;
+        let (mut external_out_2, mut external_in_2) = nodes.connect_bytes(port).await;
+
+        deployment.start().await.unwrap();
+
+        external_in_1.send(vec![1, 2, 3].into()).await.unwrap();
+        external_in_2.send(vec![4, 5].into()).await.unwrap();
+
+        assert_eq!(external_out_1.next().await.unwrap().unwrap(), vec![2, 3, 4]);
+        assert_eq!(external_out_2.next().await.unwrap().unwrap(), vec![5, 6]);
+    }
+
+    #[tokio::test]
+    async fn echo_external_bincode() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let first_node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
+        complete_sink.complete(unsafe { input.assume_ordering() }.map(q!(|(id, text): (
+            u64,
+            String
+        )| {
+            (id, text.to_uppercase())
+        })));
+
+        let nodes = flow
+            .with_process(&first_node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let (mut external_out_1, mut external_in_1) = nodes.connect_bincode(port.clone()).await;
+        let (mut external_out_2, mut external_in_2) = nodes.connect_bincode(port).await;
+
+        deployment.start().await.unwrap();
+
+        external_in_1.send("hi".to_string()).await.unwrap();
+        external_in_2.send("hello".to_string()).await.unwrap();
+
+        assert_eq!(external_out_1.next().await.unwrap(), "HI");
+        assert_eq!(external_out_2.next().await.unwrap(), "HELLO");
     }
 }

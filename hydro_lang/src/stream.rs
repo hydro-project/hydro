@@ -2476,6 +2476,7 @@ where
         leaves.push(HydroLeaf::SendExternal {
             to_external_id: other.id,
             to_key: external_key,
+            to_many: false,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
@@ -2537,6 +2538,7 @@ where
         leaves.push(HydroLeaf::SendExternal {
             to_external_id: other.id,
             to_key: external_key,
+            to_many: false,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
@@ -2548,6 +2550,7 @@ where
         ExternalBytesPort {
             process_id: other.id,
             port_id: external_key,
+            _phantom: Default::default(),
         }
     }
 

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use anyhow::Result;
@@ -8,12 +9,9 @@ use nanoid::nanoid;
 use serde_json::json;
 
 use super::terraform::{TERRAFORM_ALPHABET, TerraformOutput, TerraformProvider};
-use super::{
-    ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult,
-    ServerStrategy,
-};
-use crate::HostStrategyGetter;
+use super::{ClientStrategy, Host, HostTargetType, LaunchedHost, ResourceBatch, ResourceResult};
 use crate::ssh::LaunchedSshHost;
+use crate::{BaseServerStrategy, HostStrategyGetter, PortNetworkHint};
 
 pub struct LaunchedVirtualMachine {
     resource_result: Arc<ResourceResult>,
@@ -82,17 +80,23 @@ impl AzureHost {
     }
 }
 
+impl Debug for AzureHost {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("AzureHost({})", self.id))
+    }
+}
+
 #[async_trait]
 impl Host for AzureHost {
     fn target_type(&self) -> HostTargetType {
         HostTargetType::Linux
     }
 
-    fn request_port(&self, bind_type: &ServerStrategy) {
+    fn request_port_base(&self, bind_type: &BaseServerStrategy) {
         match bind_type {
-            ServerStrategy::UnixSocket => {}
-            ServerStrategy::InternalTcpPort => {}
-            ServerStrategy::ExternalTcpPort(port) => {
+            BaseServerStrategy::UnixSocket => {}
+            BaseServerStrategy::InternalTcpPort(_) => {}
+            BaseServerStrategy::ExternalTcpPort(port) => {
                 let mut external_ports = self.external_ports.lock().unwrap();
                 if !external_ports.contains(port) {
                     if self.launched.get().is_some() {
@@ -101,25 +105,11 @@ impl Host for AzureHost {
                     external_ports.push(*port);
                 }
             }
-            ServerStrategy::Demux(demux) => {
-                for bind_type in demux.values() {
-                    self.request_port(bind_type);
-                }
-            }
-            ServerStrategy::Merge(merge) => {
-                for bind_type in merge {
-                    self.request_port(bind_type);
-                }
-            }
-            ServerStrategy::Tagged(underlying, _) => {
-                self.request_port(underlying);
-            }
-            ServerStrategy::Null => {}
         }
     }
 
     fn request_custom_binary(&self) {
-        self.request_port(&ServerStrategy::ExternalTcpPort(22));
+        self.request_port_base(&BaseServerStrategy::ExternalTcpPort(22));
     }
 
     fn id(&self) -> usize {
@@ -430,25 +420,39 @@ impl Host for AzureHost {
     fn strategy_as_server<'a>(
         &'a self,
         client_host: &dyn Host,
+        network_hint: PortNetworkHint,
     ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)> {
-        if client_host.can_connect_to(ClientStrategy::UnixSocket(self.id)) {
+        if matches!(network_hint, PortNetworkHint::Auto)
+            && client_host.can_connect_to(ClientStrategy::UnixSocket(self.id))
+        {
             Ok((
                 ClientStrategy::UnixSocket(self.id),
-                Box::new(|_| ServerStrategy::UnixSocket),
+                Box::new(|_| BaseServerStrategy::UnixSocket),
             ))
-        } else if client_host.can_connect_to(ClientStrategy::InternalTcpPort(self)) {
+        } else if matches!(
+            network_hint,
+            PortNetworkHint::Auto | PortNetworkHint::TcpPort(_)
+        ) && client_host.can_connect_to(ClientStrategy::InternalTcpPort(self))
+        {
             Ok((
                 ClientStrategy::InternalTcpPort(self),
-                Box::new(|_| ServerStrategy::InternalTcpPort),
+                Box::new(move |_| {
+                    BaseServerStrategy::InternalTcpPort(match network_hint {
+                        PortNetworkHint::Auto => None,
+                        PortNetworkHint::TcpPort(port) => port,
+                    })
+                }),
             ))
-        } else if client_host.can_connect_to(ClientStrategy::ForwardedTcpPort(self)) {
+        } else if matches!(network_hint, PortNetworkHint::Auto)
+            && client_host.can_connect_to(ClientStrategy::ForwardedTcpPort(self))
+        {
             Ok((
                 ClientStrategy::ForwardedTcpPort(self),
                 Box::new(|me| {
                     me.downcast_ref::<AzureHost>()
                         .unwrap()
-                        .request_port(&ServerStrategy::ExternalTcpPort(22)); // needed to forward
-                    ServerStrategy::InternalTcpPort
+                        .request_port_base(&BaseServerStrategy::ExternalTcpPort(22)); // needed to forward
+                    BaseServerStrategy::InternalTcpPort(None)
                 }),
             ))
         } else {

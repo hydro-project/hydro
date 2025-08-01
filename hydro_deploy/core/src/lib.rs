@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -104,7 +105,36 @@ pub trait LaunchedBinary: Send + Sync {
 pub trait LaunchedHost: Send + Sync {
     /// Given a pre-selected network type, computes concrete information needed for a service
     /// to listen to network connections (such as the IP address to bind to).
-    fn server_config(&self, strategy: &ServerStrategy) -> ServerBindConfig;
+    fn base_server_config(&self, strategy: &BaseServerStrategy) -> ServerBindConfig;
+
+    fn server_config(&self, strategy: &ServerStrategy) -> ServerBindConfig {
+        match strategy {
+            ServerStrategy::Direct(b) => self.base_server_config(b),
+            ServerStrategy::Many(b) => {
+                ServerBindConfig::MultiConnection(Box::new(self.base_server_config(b)))
+            }
+            ServerStrategy::Demux(demux) => {
+                let mut config_map = HashMap::new();
+                for (key, underlying) in demux {
+                    config_map.insert(*key, self.server_config(underlying));
+                }
+
+                ServerBindConfig::Demux(config_map)
+            }
+            ServerStrategy::Merge(merge) => {
+                let mut configs = vec![];
+                for underlying in merge {
+                    configs.push(self.server_config(underlying));
+                }
+
+                ServerBindConfig::Merge(configs)
+            }
+            ServerStrategy::Tagged(underlying, id) => {
+                ServerBindConfig::Tagged(Box::new(self.server_config(underlying)), *id)
+            }
+            ServerStrategy::Null => ServerBindConfig::Null,
+        }
+    }
 
     async fn copy_binary(&self, binary: &BuildOutput) -> Result<()>;
 
@@ -119,14 +149,19 @@ pub trait LaunchedHost: Send + Sync {
     async fn forward_port(&self, addr: &SocketAddr) -> Result<SocketAddr>;
 }
 
-/// Types of connections that a host can make to another host.
-pub enum ServerStrategy {
+pub enum BaseServerStrategy {
     UnixSocket,
-    InternalTcpPort,
+    InternalTcpPort(Option<u16>),
     ExternalTcpPort(
         /// The port number to bind to, which must be explicit to open the firewall.
         u16,
     ),
+}
+
+/// Types of connection that a service can receive when configured as the server.
+pub enum ServerStrategy {
+    Direct(BaseServerStrategy),
+    Many(BaseServerStrategy),
     Demux(HashMap<u32, ServerStrategy>),
     Merge(Vec<ServerStrategy>),
     Tagged(Box<ServerStrategy>, u32),
@@ -155,12 +190,39 @@ pub enum HostTargetType {
     Linux,
 }
 
-pub type HostStrategyGetter = Box<dyn FnOnce(&dyn Any) -> ServerStrategy>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PortNetworkHint {
+    Auto,
+    TcpPort(Option<u16>),
+}
 
-pub trait Host: Any + Send + Sync {
+pub type HostStrategyGetter = Box<dyn FnOnce(&dyn Any) -> BaseServerStrategy>;
+
+pub trait Host: Any + Send + Sync + Debug {
     fn target_type(&self) -> HostTargetType;
 
-    fn request_port(&self, bind_type: &ServerStrategy);
+    fn request_port_base(&self, bind_type: &BaseServerStrategy);
+
+    fn request_port(&self, bind_type: &ServerStrategy) {
+        match bind_type {
+            ServerStrategy::Direct(base) => self.request_port_base(base),
+            ServerStrategy::Many(base) => self.request_port_base(base),
+            ServerStrategy::Demux(demux) => {
+                for bind_type in demux.values() {
+                    self.request_port(bind_type);
+                }
+            }
+            ServerStrategy::Merge(merge) => {
+                for bind_type in merge {
+                    self.request_port(bind_type);
+                }
+            }
+            ServerStrategy::Tagged(underlying, _) => {
+                self.request_port(underlying);
+            }
+            ServerStrategy::Null => {}
+        }
+    }
 
     /// An identifier for this host, which is unique within a deployment.
     fn id(&self) -> usize;
@@ -185,6 +247,7 @@ pub trait Host: Any + Send + Sync {
     fn strategy_as_server<'a>(
         &'a self,
         connection_from: &dyn Host,
+        server_tcp_port_hint: PortNetworkHint,
     ) -> Result<(ClientStrategy<'a>, HostStrategyGetter)>;
 
     /// Determines whether this host can connect to another host using the given strategy.
