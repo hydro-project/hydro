@@ -2294,8 +2294,8 @@ impl HydroNode {
                 let (watermark_ident, watermark_location_id) =
                     watermark.emit_core(builders_or_callback, built_tees, next_stmt_id);
 
-                let cross_singleton_ident = syn::Ident::new(
-                    &format!("reduce_keyed_watermark_cross_singleton_{}", *next_stmt_id),
+                let chain_ident = syn::Ident::new(
+                    &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
                     Span::call_site(),
                 );
 
@@ -2310,39 +2310,41 @@ impl HydroNode {
                         );
 
                         let builder = graph_builders.entry(input_location_id).or_default();
-                        // 1. Don't allow any values to be added to the map if the key <= the watermark
+                        // 1. Don't allow any values to be added to the map if the key <=the watermark
                         // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
-                        //    If the watermark changed, delete all BTreeMap entries with a key <= the watermark.
+                        //    If the watermark changed, delete all BTreeMap entries with a key < the watermark.
                         // 3. Convert the BTreeMap back into a stream of (k, v)
                         builder.add_dfir(
                             parse_quote! {
-                                #cross_singleton_ident = cross_singleton();
-                                #input_ident -> [input]#cross_singleton_ident;
-                                #watermark_ident -> [single]#cross_singleton_ident;
+                                #chain_ident = chain();
+                                #input_ident
+                                    -> map(|x| (Some(x), None))
+                                    -> [0]#chain_ident;
+                                #watermark_ident
+                                    -> map(|watermark| (None, Some(watermark)))
+                                    -> [1]#chain_ident;
 
-                                #fold_ident = #cross_singleton_ident
-                                    -> filter_map(|((k, v), watermark)| {
-                                        if k > watermark {
-                                            Some((k, v, watermark))
-                                        } else {
-                                            None
-                                        }
-                                    })
+                                #fold_ident = #chain_ident
                                     -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), #key_type::default()), {
                                         let __reduce_keyed_fn = #f;
-                                        move |(map, curr_watermark), (k, v, watermark)| {
-                                            match map.entry(k) {
-                                                ::std::collections::btree_map::Entry::Vacant(e) => {
-                                                    e.insert(v);
+                                        move |(map, curr_watermark), (opt_payload, opt_watermark)| {
+                                            if let Some((k, v)) = opt_payload {
+                                                if k >= *curr_watermark {
+                                                    match map.entry(k) {
+                                                        ::std::collections::btree_map::Entry::Vacant(e) => {
+                                                            e.insert(v);
+                                                        }
+                                                        ::std::collections::btree_map::Entry::Occupied(mut e) => {
+                                                            __reduce_keyed_fn(e.get_mut(), v);
+                                                        }
+                                                    }
                                                 }
-                                                ::std::collections::btree_map::Entry::Occupied(mut e) => {
-                                                    __reduce_keyed_fn(e.get_mut(), v);
+                                            } else {
+                                                let watermark = opt_watermark.unwrap();
+                                                if *curr_watermark < watermark {
+                                                    *curr_watermark = watermark;
+                                                    map.retain(|k, _| k >= curr_watermark);
                                                 }
-                                            }
-
-                                            if *curr_watermark < watermark {
-                                                *curr_watermark = watermark;
-                                                map.retain(|k, _| k > curr_watermark);
                                             }
                                         }
                                     })
