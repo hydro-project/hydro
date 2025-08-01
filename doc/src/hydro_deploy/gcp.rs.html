@@ -334,204 +334,195 @@
 <a href=#334 id=334 data-nosnippet>334</a>            );
 <a href=#335 id=335 data-nosnippet>335</a>
 <a href=#336 id=336 data-nosnippet>336</a>        <span class="kw">let </span>vm_key = <span class="macro">format!</span>(<span class="string">"vm-instance-{}"</span>, <span class="self">self</span>.id);
-<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">let </span><span class="kw-2">mut </span>vm_name = <span class="macro">format!</span>(<span class="string">"hydro-vm-instance-{}"</span>, <span class="macro">nanoid!</span>(<span class="number">8</span>, <span class="kw-2">&amp;</span>TERRAFORM_ALPHABET),);
-<a href=#338 id=338 data-nosnippet>338</a>        <span class="comment">// Name must match regex: (?:[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?), max length = 63 (61 + 1 a-z before and after)
-<a href=#339 id=339 data-nosnippet>339</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(<span class="kw-2">mut </span>display_name) = <span class="self">self</span>.display_name.clone() {
-<a href=#340 id=340 data-nosnippet>340</a>            vm_name.push(<span class="string">'-'</span>);
-<a href=#341 id=341 data-nosnippet>341</a>            display_name = display_name
-<a href=#342 id=342 data-nosnippet>342</a>                .replace(<span class="string">"_"</span>, <span class="string">"-"</span>)
-<a href=#343 id=343 data-nosnippet>343</a>                .replace(<span class="string">":"</span>, <span class="string">"-"</span>)
-<a href=#344 id=344 data-nosnippet>344</a>                .to_lowercase();
-<a href=#345 id=345 data-nosnippet>345</a>
-<a href=#346 id=346 data-nosnippet>346</a>            <span class="comment">// Keep the latter half of display_name if it is too long
-<a href=#347 id=347 data-nosnippet>347</a>            </span><span class="kw">let </span>num_chars_to_cut = vm_name.len() + display_name.len() - <span class="number">63</span>;
-<a href=#348 id=348 data-nosnippet>348</a>            <span class="kw">if </span>num_chars_to_cut &gt; <span class="number">0 </span>{
-<a href=#349 id=349 data-nosnippet>349</a>                display_name.drain(<span class="number">0</span>..num_chars_to_cut);
-<a href=#350 id=350 data-nosnippet>350</a>            }
-<a href=#351 id=351 data-nosnippet>351</a>            vm_name.push_str(<span class="kw-2">&amp;</span>display_name);
-<a href=#352 id=352 data-nosnippet>352</a>        }
-<a href=#353 id=353 data-nosnippet>353</a>
-<a href=#354 id=354 data-nosnippet>354</a>        <span class="kw">let </span><span class="kw-2">mut </span>tags = <span class="macro">vec!</span>[];
-<a href=#355 id=355 data-nosnippet>355</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_interfaces = <span class="macro">vec!</span>[];
-<a href=#356 id=356 data-nosnippet>356</a>
-<a href=#357 id=357 data-nosnippet>357</a>        <span class="kw">let </span>external_ports = <span class="self">self</span>.external_ports.lock().unwrap();
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="kw">if </span>external_ports.is_empty() {
-<a href=#359 id=359 data-nosnippet>359</a>            external_interfaces.push(<span class="macro">json!</span>({ <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.self_link}}"</span>) }));
-<a href=#360 id=360 data-nosnippet>360</a>        } <span class="kw">else </span>{
-<a href=#361 id=361 data-nosnippet>361</a>            external_interfaces.push(<span class="macro">json!</span>({
-<a href=#362 id=362 data-nosnippet>362</a>                <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.self_link}}"</span>),
-<a href=#363 id=363 data-nosnippet>363</a>                <span class="string">"access_config"</span>: [
-<a href=#364 id=364 data-nosnippet>364</a>                    {
-<a href=#365 id=365 data-nosnippet>365</a>                        <span class="string">"network_tier"</span>: <span class="string">"STANDARD"
-<a href=#366 id=366 data-nosnippet>366</a>                    </span>}
-<a href=#367 id=367 data-nosnippet>367</a>                ]
-<a href=#368 id=368 data-nosnippet>368</a>            }));
-<a href=#369 id=369 data-nosnippet>369</a>
-<a href=#370 id=370 data-nosnippet>370</a>            <span class="comment">// open the external ports that were requested
-<a href=#371 id=371 data-nosnippet>371</a>            </span><span class="kw">let </span>my_external_tags = external_ports.iter().map(|port| {
-<a href=#372 id=372 data-nosnippet>372</a>                <span class="kw">let </span>rule_id = <span class="macro">nanoid!</span>(<span class="number">8</span>, <span class="kw-2">&amp;</span>TERRAFORM_ALPHABET);
-<a href=#373 id=373 data-nosnippet>373</a>                <span class="kw">let </span>firewall_rule = resource_batch
-<a href=#374 id=374 data-nosnippet>374</a>                    .terraform
-<a href=#375 id=375 data-nosnippet>375</a>                    .resource
-<a href=#376 id=376 data-nosnippet>376</a>                    .entry(<span class="string">"google_compute_firewall"</span>.to_string())
-<a href=#377 id=377 data-nosnippet>377</a>                    .or_default()
-<a href=#378 id=378 data-nosnippet>378</a>                    .entry(<span class="macro">format!</span>(<span class="string">"open-external-port-{}"</span>, port))
-<a href=#379 id=379 data-nosnippet>379</a>                    .or_insert(<span class="macro">json!</span>({
-<a href=#380 id=380 data-nosnippet>380</a>                        <span class="string">"name"</span>: <span class="macro">format!</span>(<span class="string">"open-external-port-{}-{}"</span>, port, rule_id),
-<a href=#381 id=381 data-nosnippet>381</a>                        <span class="string">"project"</span>: project,
-<a href=#382 id=382 data-nosnippet>382</a>                        <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.name}}"</span>),
-<a href=#383 id=383 data-nosnippet>383</a>                        <span class="string">"target_tags"</span>: [<span class="macro">format!</span>(<span class="string">"open-external-port-tag-{}-{}"</span>, port, rule_id)],
-<a href=#384 id=384 data-nosnippet>384</a>                        <span class="string">"source_ranges"</span>: [<span class="string">"0.0.0.0/0"</span>],
-<a href=#385 id=385 data-nosnippet>385</a>                        <span class="string">"allow"</span>: [
-<a href=#386 id=386 data-nosnippet>386</a>                            {
-<a href=#387 id=387 data-nosnippet>387</a>                                <span class="string">"protocol"</span>: <span class="string">"tcp"</span>,
-<a href=#388 id=388 data-nosnippet>388</a>                                <span class="string">"ports"</span>: <span class="macro">vec!</span>[port.to_string()]
-<a href=#389 id=389 data-nosnippet>389</a>                            }
-<a href=#390 id=390 data-nosnippet>390</a>                        ]
-<a href=#391 id=391 data-nosnippet>391</a>                    }));
-<a href=#392 id=392 data-nosnippet>392</a>
-<a href=#393 id=393 data-nosnippet>393</a>                firewall_rule[<span class="string">"target_tags"</span>].as_array().unwrap()[<span class="number">0</span>].clone()
-<a href=#394 id=394 data-nosnippet>394</a>            });
-<a href=#395 id=395 data-nosnippet>395</a>
-<a href=#396 id=396 data-nosnippet>396</a>            tags.extend(my_external_tags);
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">let </span>vm_name = <span class="macro">format!</span>(
+<a href=#338 id=338 data-nosnippet>338</a>            <span class="string">"hydro-vm-instance-{}{}"</span>,
+<a href=#339 id=339 data-nosnippet>339</a>            <span class="macro">nanoid!</span>(<span class="number">8</span>, <span class="kw-2">&amp;</span>TERRAFORM_ALPHABET),
+<a href=#340 id=340 data-nosnippet>340</a>            <span class="self">self</span>.display_name
+<a href=#341 id=341 data-nosnippet>341</a>                .clone()
+<a href=#342 id=342 data-nosnippet>342</a>                .map_or(String::new(), |name| <span class="macro">format!</span>(<span class="string">"-{}"</span>, name))
+<a href=#343 id=343 data-nosnippet>343</a>        );
+<a href=#344 id=344 data-nosnippet>344</a>
+<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">let </span><span class="kw-2">mut </span>tags = <span class="macro">vec!</span>[];
+<a href=#346 id=346 data-nosnippet>346</a>        <span class="kw">let </span><span class="kw-2">mut </span>external_interfaces = <span class="macro">vec!</span>[];
+<a href=#347 id=347 data-nosnippet>347</a>
+<a href=#348 id=348 data-nosnippet>348</a>        <span class="kw">let </span>external_ports = <span class="self">self</span>.external_ports.lock().unwrap();
+<a href=#349 id=349 data-nosnippet>349</a>        <span class="kw">if </span>external_ports.is_empty() {
+<a href=#350 id=350 data-nosnippet>350</a>            external_interfaces.push(<span class="macro">json!</span>({ <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.self_link}}"</span>) }));
+<a href=#351 id=351 data-nosnippet>351</a>        } <span class="kw">else </span>{
+<a href=#352 id=352 data-nosnippet>352</a>            external_interfaces.push(<span class="macro">json!</span>({
+<a href=#353 id=353 data-nosnippet>353</a>                <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.self_link}}"</span>),
+<a href=#354 id=354 data-nosnippet>354</a>                <span class="string">"access_config"</span>: [
+<a href=#355 id=355 data-nosnippet>355</a>                    {
+<a href=#356 id=356 data-nosnippet>356</a>                        <span class="string">"network_tier"</span>: <span class="string">"STANDARD"
+<a href=#357 id=357 data-nosnippet>357</a>                    </span>}
+<a href=#358 id=358 data-nosnippet>358</a>                ]
+<a href=#359 id=359 data-nosnippet>359</a>            }));
+<a href=#360 id=360 data-nosnippet>360</a>
+<a href=#361 id=361 data-nosnippet>361</a>            <span class="comment">// open the external ports that were requested
+<a href=#362 id=362 data-nosnippet>362</a>            </span><span class="kw">let </span>my_external_tags = external_ports.iter().map(|port| {
+<a href=#363 id=363 data-nosnippet>363</a>                <span class="kw">let </span>rule_id = <span class="macro">nanoid!</span>(<span class="number">8</span>, <span class="kw-2">&amp;</span>TERRAFORM_ALPHABET);
+<a href=#364 id=364 data-nosnippet>364</a>                <span class="kw">let </span>firewall_rule = resource_batch
+<a href=#365 id=365 data-nosnippet>365</a>                    .terraform
+<a href=#366 id=366 data-nosnippet>366</a>                    .resource
+<a href=#367 id=367 data-nosnippet>367</a>                    .entry(<span class="string">"google_compute_firewall"</span>.to_string())
+<a href=#368 id=368 data-nosnippet>368</a>                    .or_default()
+<a href=#369 id=369 data-nosnippet>369</a>                    .entry(<span class="macro">format!</span>(<span class="string">"open-external-port-{}"</span>, port))
+<a href=#370 id=370 data-nosnippet>370</a>                    .or_insert(<span class="macro">json!</span>({
+<a href=#371 id=371 data-nosnippet>371</a>                        <span class="string">"name"</span>: <span class="macro">format!</span>(<span class="string">"open-external-port-{}-{}"</span>, port, rule_id),
+<a href=#372 id=372 data-nosnippet>372</a>                        <span class="string">"project"</span>: project,
+<a href=#373 id=373 data-nosnippet>373</a>                        <span class="string">"network"</span>: <span class="macro">format!</span>(<span class="string">"${{{vpc_path}.name}}"</span>),
+<a href=#374 id=374 data-nosnippet>374</a>                        <span class="string">"target_tags"</span>: [<span class="macro">format!</span>(<span class="string">"open-external-port-tag-{}-{}"</span>, port, rule_id)],
+<a href=#375 id=375 data-nosnippet>375</a>                        <span class="string">"source_ranges"</span>: [<span class="string">"0.0.0.0/0"</span>],
+<a href=#376 id=376 data-nosnippet>376</a>                        <span class="string">"allow"</span>: [
+<a href=#377 id=377 data-nosnippet>377</a>                            {
+<a href=#378 id=378 data-nosnippet>378</a>                                <span class="string">"protocol"</span>: <span class="string">"tcp"</span>,
+<a href=#379 id=379 data-nosnippet>379</a>                                <span class="string">"ports"</span>: <span class="macro">vec!</span>[port.to_string()]
+<a href=#380 id=380 data-nosnippet>380</a>                            }
+<a href=#381 id=381 data-nosnippet>381</a>                        ]
+<a href=#382 id=382 data-nosnippet>382</a>                    }));
+<a href=#383 id=383 data-nosnippet>383</a>
+<a href=#384 id=384 data-nosnippet>384</a>                firewall_rule[<span class="string">"target_tags"</span>].as_array().unwrap()[<span class="number">0</span>].clone()
+<a href=#385 id=385 data-nosnippet>385</a>            });
+<a href=#386 id=386 data-nosnippet>386</a>
+<a href=#387 id=387 data-nosnippet>387</a>            tags.extend(my_external_tags);
+<a href=#388 id=388 data-nosnippet>388</a>
+<a href=#389 id=389 data-nosnippet>389</a>            resource_batch.terraform.output.insert(
+<a href=#390 id=390 data-nosnippet>390</a>                <span class="macro">format!</span>(<span class="string">"{vm_key}-public-ip"</span>),
+<a href=#391 id=391 data-nosnippet>391</a>                TerraformOutput {
+<a href=#392 id=392 data-nosnippet>392</a>                    value: <span class="macro">format!</span>(<span class="string">"${{google_compute_instance.{vm_key}.network_interface[0].access_config[0].nat_ip}}"</span>)
+<a href=#393 id=393 data-nosnippet>393</a>                }
+<a href=#394 id=394 data-nosnippet>394</a>            );
+<a href=#395 id=395 data-nosnippet>395</a>        }
+<a href=#396 id=396 data-nosnippet>396</a>        drop(external_ports); <span class="comment">// Drop the lock as soon as possible.
 <a href=#397 id=397 data-nosnippet>397</a>
-<a href=#398 id=398 data-nosnippet>398</a>            resource_batch.terraform.output.insert(
-<a href=#399 id=399 data-nosnippet>399</a>                <span class="macro">format!</span>(<span class="string">"{vm_key}-public-ip"</span>),
-<a href=#400 id=400 data-nosnippet>400</a>                TerraformOutput {
-<a href=#401 id=401 data-nosnippet>401</a>                    value: <span class="macro">format!</span>(<span class="string">"${{google_compute_instance.{vm_key}.network_interface[0].access_config[0].nat_ip}}"</span>)
-<a href=#402 id=402 data-nosnippet>402</a>                }
-<a href=#403 id=403 data-nosnippet>403</a>            );
-<a href=#404 id=404 data-nosnippet>404</a>        }
-<a href=#405 id=405 data-nosnippet>405</a>        drop(external_ports); <span class="comment">// Drop the lock as soon as possible.
-<a href=#406 id=406 data-nosnippet>406</a>
-<a href=#407 id=407 data-nosnippet>407</a>        </span><span class="kw">let </span>user = <span class="self">self</span>.user.as_deref().unwrap_or(<span class="string">"hydro"</span>);
-<a href=#408 id=408 data-nosnippet>408</a>        resource_batch
-<a href=#409 id=409 data-nosnippet>409</a>            .terraform
-<a href=#410 id=410 data-nosnippet>410</a>            .resource
-<a href=#411 id=411 data-nosnippet>411</a>            .entry(<span class="string">"google_compute_instance"</span>.to_string())
-<a href=#412 id=412 data-nosnippet>412</a>            .or_default()
-<a href=#413 id=413 data-nosnippet>413</a>            .insert(
-<a href=#414 id=414 data-nosnippet>414</a>                vm_key.clone(),
-<a href=#415 id=415 data-nosnippet>415</a>                <span class="macro">json!</span>({
-<a href=#416 id=416 data-nosnippet>416</a>                    <span class="string">"name"</span>: vm_name,
-<a href=#417 id=417 data-nosnippet>417</a>                    <span class="string">"project"</span>: project,
-<a href=#418 id=418 data-nosnippet>418</a>                    <span class="string">"machine_type"</span>: <span class="self">self</span>.machine_type,
-<a href=#419 id=419 data-nosnippet>419</a>                    <span class="string">"zone"</span>: <span class="self">self</span>.region,
-<a href=#420 id=420 data-nosnippet>420</a>                    <span class="string">"tags"</span>: tags,
-<a href=#421 id=421 data-nosnippet>421</a>                    <span class="string">"metadata"</span>: {
-<a href=#422 id=422 data-nosnippet>422</a>                        <span class="string">"ssh-keys"</span>: <span class="macro">format!</span>(<span class="string">"{user}:${{tls_private_key.vm_instance_ssh_key.public_key_openssh}}"</span>)
-<a href=#423 id=423 data-nosnippet>423</a>                    },
-<a href=#424 id=424 data-nosnippet>424</a>                    <span class="string">"boot_disk"</span>: [
-<a href=#425 id=425 data-nosnippet>425</a>                        {
-<a href=#426 id=426 data-nosnippet>426</a>                            <span class="string">"initialize_params"</span>: [
-<a href=#427 id=427 data-nosnippet>427</a>                                {
-<a href=#428 id=428 data-nosnippet>428</a>                                    <span class="string">"image"</span>: <span class="self">self</span>.image
-<a href=#429 id=429 data-nosnippet>429</a>                                }
-<a href=#430 id=430 data-nosnippet>430</a>                            ]
-<a href=#431 id=431 data-nosnippet>431</a>                        }
-<a href=#432 id=432 data-nosnippet>432</a>                    ],
-<a href=#433 id=433 data-nosnippet>433</a>                    <span class="string">"network_interface"</span>: external_interfaces,
-<a href=#434 id=434 data-nosnippet>434</a>                }),
-<a href=#435 id=435 data-nosnippet>435</a>            );
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>        resource_batch.terraform.output.insert(
-<a href=#438 id=438 data-nosnippet>438</a>            <span class="macro">format!</span>(<span class="string">"{vm_key}-internal-ip"</span>),
-<a href=#439 id=439 data-nosnippet>439</a>            TerraformOutput {
-<a href=#440 id=440 data-nosnippet>440</a>                value: <span class="macro">format!</span>(
-<a href=#441 id=441 data-nosnippet>441</a>                    <span class="string">"${{google_compute_instance.{vm_key}.network_interface[0].network_ip}}"
-<a href=#442 id=442 data-nosnippet>442</a>                </span>),
-<a href=#443 id=443 data-nosnippet>443</a>            },
-<a href=#444 id=444 data-nosnippet>444</a>        );
-<a href=#445 id=445 data-nosnippet>445</a>    }
-<a href=#446 id=446 data-nosnippet>446</a>
-<a href=#447 id=447 data-nosnippet>447</a>    <span class="kw">fn </span>launched(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;&gt; {
-<a href=#448 id=448 data-nosnippet>448</a>        <span class="self">self</span>.launched
-<a href=#449 id=449 data-nosnippet>449</a>            .get()
-<a href=#450 id=450 data-nosnippet>450</a>            .map(|a| a.clone() <span class="kw">as </span>Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;)
-<a href=#451 id=451 data-nosnippet>451</a>    }
-<a href=#452 id=452 data-nosnippet>452</a>
-<a href=#453 id=453 data-nosnippet>453</a>    <span class="kw">fn </span>provision(<span class="kw-2">&amp;</span><span class="self">self</span>, resource_result: <span class="kw-2">&amp;</span>Arc&lt;ResourceResult&gt;) -&gt; Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt; {
-<a href=#454 id=454 data-nosnippet>454</a>        <span class="self">self</span>.launched
-<a href=#455 id=455 data-nosnippet>455</a>            .get_or_init(|| {
-<a href=#456 id=456 data-nosnippet>456</a>                <span class="kw">let </span>id = <span class="self">self</span>.id;
-<a href=#457 id=457 data-nosnippet>457</a>
-<a href=#458 id=458 data-nosnippet>458</a>                <span class="kw">let </span>internal_ip = resource_result
-<a href=#459 id=459 data-nosnippet>459</a>                    .terraform
-<a href=#460 id=460 data-nosnippet>460</a>                    .outputs
-<a href=#461 id=461 data-nosnippet>461</a>                    .get(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vm-instance-{id}-internal-ip"</span>))
-<a href=#462 id=462 data-nosnippet>462</a>                    .unwrap()
-<a href=#463 id=463 data-nosnippet>463</a>                    .value
-<a href=#464 id=464 data-nosnippet>464</a>                    .clone();
-<a href=#465 id=465 data-nosnippet>465</a>
-<a href=#466 id=466 data-nosnippet>466</a>                <span class="kw">let </span>external_ip = resource_result
-<a href=#467 id=467 data-nosnippet>467</a>                    .terraform
-<a href=#468 id=468 data-nosnippet>468</a>                    .outputs
-<a href=#469 id=469 data-nosnippet>469</a>                    .get(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vm-instance-{id}-public-ip"</span>))
-<a href=#470 id=470 data-nosnippet>470</a>                    .map(|v| v.value.clone());
-<a href=#471 id=471 data-nosnippet>471</a>
-<a href=#472 id=472 data-nosnippet>472</a>                Arc::new(LaunchedComputeEngine {
-<a href=#473 id=473 data-nosnippet>473</a>                    resource_result: resource_result.clone(),
-<a href=#474 id=474 data-nosnippet>474</a>                    user: <span class="self">self</span>.user.as_ref().cloned().unwrap_or(<span class="string">"hydro"</span>.to_string()),
-<a href=#475 id=475 data-nosnippet>475</a>                    internal_ip,
-<a href=#476 id=476 data-nosnippet>476</a>                    external_ip,
-<a href=#477 id=477 data-nosnippet>477</a>                })
-<a href=#478 id=478 data-nosnippet>478</a>            })
-<a href=#479 id=479 data-nosnippet>479</a>            .clone()
-<a href=#480 id=480 data-nosnippet>480</a>    }
-<a href=#481 id=481 data-nosnippet>481</a>
-<a href=#482 id=482 data-nosnippet>482</a>    <span class="kw">fn </span>strategy_as_server&lt;<span class="lifetime">'a</span>&gt;(
-<a href=#483 id=483 data-nosnippet>483</a>        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
-<a href=#484 id=484 data-nosnippet>484</a>        client_host: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Host,
-<a href=#485 id=485 data-nosnippet>485</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ClientStrategy&lt;<span class="lifetime">'a</span>&gt;, HostStrategyGetter)&gt; {
-<a href=#486 id=486 data-nosnippet>486</a>        <span class="kw">if </span>client_host.can_connect_to(ClientStrategy::UnixSocket(<span class="self">self</span>.id)) {
-<a href=#487 id=487 data-nosnippet>487</a>            <span class="prelude-val">Ok</span>((
-<a href=#488 id=488 data-nosnippet>488</a>                ClientStrategy::UnixSocket(<span class="self">self</span>.id),
-<a href=#489 id=489 data-nosnippet>489</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::UnixSocket),
-<a href=#490 id=490 data-nosnippet>490</a>            ))
-<a href=#491 id=491 data-nosnippet>491</a>        } <span class="kw">else if </span>client_host.can_connect_to(ClientStrategy::InternalTcpPort(<span class="self">self</span>)) {
-<a href=#492 id=492 data-nosnippet>492</a>            <span class="prelude-val">Ok</span>((
-<a href=#493 id=493 data-nosnippet>493</a>                ClientStrategy::InternalTcpPort(<span class="self">self</span>),
-<a href=#494 id=494 data-nosnippet>494</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::InternalTcpPort),
-<a href=#495 id=495 data-nosnippet>495</a>            ))
-<a href=#496 id=496 data-nosnippet>496</a>        } <span class="kw">else if </span>client_host.can_connect_to(ClientStrategy::ForwardedTcpPort(<span class="self">self</span>)) {
-<a href=#497 id=497 data-nosnippet>497</a>            <span class="prelude-val">Ok</span>((
-<a href=#498 id=498 data-nosnippet>498</a>                ClientStrategy::ForwardedTcpPort(<span class="self">self</span>),
-<a href=#499 id=499 data-nosnippet>499</a>                Box::new(|me| {
-<a href=#500 id=500 data-nosnippet>500</a>                    me.downcast_ref::&lt;GcpComputeEngineHost&gt;()
-<a href=#501 id=501 data-nosnippet>501</a>                        .unwrap()
-<a href=#502 id=502 data-nosnippet>502</a>                        .request_port(<span class="kw-2">&amp;</span>ServerStrategy::ExternalTcpPort(<span class="number">22</span>)); <span class="comment">// needed to forward
-<a href=#503 id=503 data-nosnippet>503</a>                    </span>ServerStrategy::InternalTcpPort
-<a href=#504 id=504 data-nosnippet>504</a>                }),
-<a href=#505 id=505 data-nosnippet>505</a>            ))
-<a href=#506 id=506 data-nosnippet>506</a>        } <span class="kw">else </span>{
-<a href=#507 id=507 data-nosnippet>507</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Could not find a strategy to connect to GCP instance"</span>)
-<a href=#508 id=508 data-nosnippet>508</a>        }
-<a href=#509 id=509 data-nosnippet>509</a>    }
-<a href=#510 id=510 data-nosnippet>510</a>
-<a href=#511 id=511 data-nosnippet>511</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
-<a href=#512 id=512 data-nosnippet>512</a>        <span class="kw">match </span>typ {
-<a href=#513 id=513 data-nosnippet>513</a>            ClientStrategy::UnixSocket(id) =&gt; {
-<a href=#514 id=514 data-nosnippet>514</a>                <span class="attr">#[cfg(unix)]
-<a href=#515 id=515 data-nosnippet>515</a>                </span>{
-<a href=#516 id=516 data-nosnippet>516</a>                    <span class="self">self</span>.id == id
-<a href=#517 id=517 data-nosnippet>517</a>                }
-<a href=#518 id=518 data-nosnippet>518</a>
-<a href=#519 id=519 data-nosnippet>519</a>                <span class="attr">#[cfg(not(unix))]
-<a href=#520 id=520 data-nosnippet>520</a>                </span>{
-<a href=#521 id=521 data-nosnippet>521</a>                    <span class="kw">let _ </span>= id;
+<a href=#398 id=398 data-nosnippet>398</a>        </span><span class="kw">let </span>user = <span class="self">self</span>.user.as_deref().unwrap_or(<span class="string">"hydro"</span>);
+<a href=#399 id=399 data-nosnippet>399</a>        resource_batch
+<a href=#400 id=400 data-nosnippet>400</a>            .terraform
+<a href=#401 id=401 data-nosnippet>401</a>            .resource
+<a href=#402 id=402 data-nosnippet>402</a>            .entry(<span class="string">"google_compute_instance"</span>.to_string())
+<a href=#403 id=403 data-nosnippet>403</a>            .or_default()
+<a href=#404 id=404 data-nosnippet>404</a>            .insert(
+<a href=#405 id=405 data-nosnippet>405</a>                vm_key.clone(),
+<a href=#406 id=406 data-nosnippet>406</a>                <span class="macro">json!</span>({
+<a href=#407 id=407 data-nosnippet>407</a>                    <span class="string">"name"</span>: vm_name,
+<a href=#408 id=408 data-nosnippet>408</a>                    <span class="string">"project"</span>: project,
+<a href=#409 id=409 data-nosnippet>409</a>                    <span class="string">"machine_type"</span>: <span class="self">self</span>.machine_type,
+<a href=#410 id=410 data-nosnippet>410</a>                    <span class="string">"zone"</span>: <span class="self">self</span>.region,
+<a href=#411 id=411 data-nosnippet>411</a>                    <span class="string">"tags"</span>: tags,
+<a href=#412 id=412 data-nosnippet>412</a>                    <span class="string">"metadata"</span>: {
+<a href=#413 id=413 data-nosnippet>413</a>                        <span class="string">"ssh-keys"</span>: <span class="macro">format!</span>(<span class="string">"{user}:${{tls_private_key.vm_instance_ssh_key.public_key_openssh}}"</span>)
+<a href=#414 id=414 data-nosnippet>414</a>                    },
+<a href=#415 id=415 data-nosnippet>415</a>                    <span class="string">"boot_disk"</span>: [
+<a href=#416 id=416 data-nosnippet>416</a>                        {
+<a href=#417 id=417 data-nosnippet>417</a>                            <span class="string">"initialize_params"</span>: [
+<a href=#418 id=418 data-nosnippet>418</a>                                {
+<a href=#419 id=419 data-nosnippet>419</a>                                    <span class="string">"image"</span>: <span class="self">self</span>.image
+<a href=#420 id=420 data-nosnippet>420</a>                                }
+<a href=#421 id=421 data-nosnippet>421</a>                            ]
+<a href=#422 id=422 data-nosnippet>422</a>                        }
+<a href=#423 id=423 data-nosnippet>423</a>                    ],
+<a href=#424 id=424 data-nosnippet>424</a>                    <span class="string">"network_interface"</span>: external_interfaces,
+<a href=#425 id=425 data-nosnippet>425</a>                }),
+<a href=#426 id=426 data-nosnippet>426</a>            );
+<a href=#427 id=427 data-nosnippet>427</a>
+<a href=#428 id=428 data-nosnippet>428</a>        resource_batch.terraform.output.insert(
+<a href=#429 id=429 data-nosnippet>429</a>            <span class="macro">format!</span>(<span class="string">"{vm_key}-internal-ip"</span>),
+<a href=#430 id=430 data-nosnippet>430</a>            TerraformOutput {
+<a href=#431 id=431 data-nosnippet>431</a>                value: <span class="macro">format!</span>(
+<a href=#432 id=432 data-nosnippet>432</a>                    <span class="string">"${{google_compute_instance.{vm_key}.network_interface[0].network_ip}}"
+<a href=#433 id=433 data-nosnippet>433</a>                </span>),
+<a href=#434 id=434 data-nosnippet>434</a>            },
+<a href=#435 id=435 data-nosnippet>435</a>        );
+<a href=#436 id=436 data-nosnippet>436</a>    }
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a>    <span class="kw">fn </span>launched(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;&gt; {
+<a href=#439 id=439 data-nosnippet>439</a>        <span class="self">self</span>.launched
+<a href=#440 id=440 data-nosnippet>440</a>            .get()
+<a href=#441 id=441 data-nosnippet>441</a>            .map(|a| a.clone() <span class="kw">as </span>Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt;)
+<a href=#442 id=442 data-nosnippet>442</a>    }
+<a href=#443 id=443 data-nosnippet>443</a>
+<a href=#444 id=444 data-nosnippet>444</a>    <span class="kw">fn </span>provision(<span class="kw-2">&amp;</span><span class="self">self</span>, resource_result: <span class="kw-2">&amp;</span>Arc&lt;ResourceResult&gt;) -&gt; Arc&lt;<span class="kw">dyn </span>LaunchedHost&gt; {
+<a href=#445 id=445 data-nosnippet>445</a>        <span class="self">self</span>.launched
+<a href=#446 id=446 data-nosnippet>446</a>            .get_or_init(|| {
+<a href=#447 id=447 data-nosnippet>447</a>                <span class="kw">let </span>id = <span class="self">self</span>.id;
+<a href=#448 id=448 data-nosnippet>448</a>
+<a href=#449 id=449 data-nosnippet>449</a>                <span class="kw">let </span>internal_ip = resource_result
+<a href=#450 id=450 data-nosnippet>450</a>                    .terraform
+<a href=#451 id=451 data-nosnippet>451</a>                    .outputs
+<a href=#452 id=452 data-nosnippet>452</a>                    .get(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vm-instance-{id}-internal-ip"</span>))
+<a href=#453 id=453 data-nosnippet>453</a>                    .unwrap()
+<a href=#454 id=454 data-nosnippet>454</a>                    .value
+<a href=#455 id=455 data-nosnippet>455</a>                    .clone();
+<a href=#456 id=456 data-nosnippet>456</a>
+<a href=#457 id=457 data-nosnippet>457</a>                <span class="kw">let </span>external_ip = resource_result
+<a href=#458 id=458 data-nosnippet>458</a>                    .terraform
+<a href=#459 id=459 data-nosnippet>459</a>                    .outputs
+<a href=#460 id=460 data-nosnippet>460</a>                    .get(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"vm-instance-{id}-public-ip"</span>))
+<a href=#461 id=461 data-nosnippet>461</a>                    .map(|v| v.value.clone());
+<a href=#462 id=462 data-nosnippet>462</a>
+<a href=#463 id=463 data-nosnippet>463</a>                Arc::new(LaunchedComputeEngine {
+<a href=#464 id=464 data-nosnippet>464</a>                    resource_result: resource_result.clone(),
+<a href=#465 id=465 data-nosnippet>465</a>                    user: <span class="self">self</span>.user.as_ref().cloned().unwrap_or(<span class="string">"hydro"</span>.to_string()),
+<a href=#466 id=466 data-nosnippet>466</a>                    internal_ip,
+<a href=#467 id=467 data-nosnippet>467</a>                    external_ip,
+<a href=#468 id=468 data-nosnippet>468</a>                })
+<a href=#469 id=469 data-nosnippet>469</a>            })
+<a href=#470 id=470 data-nosnippet>470</a>            .clone()
+<a href=#471 id=471 data-nosnippet>471</a>    }
+<a href=#472 id=472 data-nosnippet>472</a>
+<a href=#473 id=473 data-nosnippet>473</a>    <span class="kw">fn </span>strategy_as_server&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#474 id=474 data-nosnippet>474</a>        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
+<a href=#475 id=475 data-nosnippet>475</a>        client_host: <span class="kw-2">&amp;</span><span class="kw">dyn </span>Host,
+<a href=#476 id=476 data-nosnippet>476</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(ClientStrategy&lt;<span class="lifetime">'a</span>&gt;, HostStrategyGetter)&gt; {
+<a href=#477 id=477 data-nosnippet>477</a>        <span class="kw">if </span>client_host.can_connect_to(ClientStrategy::UnixSocket(<span class="self">self</span>.id)) {
+<a href=#478 id=478 data-nosnippet>478</a>            <span class="prelude-val">Ok</span>((
+<a href=#479 id=479 data-nosnippet>479</a>                ClientStrategy::UnixSocket(<span class="self">self</span>.id),
+<a href=#480 id=480 data-nosnippet>480</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::UnixSocket),
+<a href=#481 id=481 data-nosnippet>481</a>            ))
+<a href=#482 id=482 data-nosnippet>482</a>        } <span class="kw">else if </span>client_host.can_connect_to(ClientStrategy::InternalTcpPort(<span class="self">self</span>)) {
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="prelude-val">Ok</span>((
+<a href=#484 id=484 data-nosnippet>484</a>                ClientStrategy::InternalTcpPort(<span class="self">self</span>),
+<a href=#485 id=485 data-nosnippet>485</a>                Box::new(|<span class="kw">_</span>| ServerStrategy::InternalTcpPort),
+<a href=#486 id=486 data-nosnippet>486</a>            ))
+<a href=#487 id=487 data-nosnippet>487</a>        } <span class="kw">else if </span>client_host.can_connect_to(ClientStrategy::ForwardedTcpPort(<span class="self">self</span>)) {
+<a href=#488 id=488 data-nosnippet>488</a>            <span class="prelude-val">Ok</span>((
+<a href=#489 id=489 data-nosnippet>489</a>                ClientStrategy::ForwardedTcpPort(<span class="self">self</span>),
+<a href=#490 id=490 data-nosnippet>490</a>                Box::new(|me| {
+<a href=#491 id=491 data-nosnippet>491</a>                    me.downcast_ref::&lt;GcpComputeEngineHost&gt;()
+<a href=#492 id=492 data-nosnippet>492</a>                        .unwrap()
+<a href=#493 id=493 data-nosnippet>493</a>                        .request_port(<span class="kw-2">&amp;</span>ServerStrategy::ExternalTcpPort(<span class="number">22</span>)); <span class="comment">// needed to forward
+<a href=#494 id=494 data-nosnippet>494</a>                    </span>ServerStrategy::InternalTcpPort
+<a href=#495 id=495 data-nosnippet>495</a>                }),
+<a href=#496 id=496 data-nosnippet>496</a>            ))
+<a href=#497 id=497 data-nosnippet>497</a>        } <span class="kw">else </span>{
+<a href=#498 id=498 data-nosnippet>498</a>            <span class="macro">anyhow::bail!</span>(<span class="string">"Could not find a strategy to connect to GCP instance"</span>)
+<a href=#499 id=499 data-nosnippet>499</a>        }
+<a href=#500 id=500 data-nosnippet>500</a>    }
+<a href=#501 id=501 data-nosnippet>501</a>
+<a href=#502 id=502 data-nosnippet>502</a>    <span class="kw">fn </span>can_connect_to(<span class="kw-2">&amp;</span><span class="self">self</span>, typ: ClientStrategy) -&gt; bool {
+<a href=#503 id=503 data-nosnippet>503</a>        <span class="kw">match </span>typ {
+<a href=#504 id=504 data-nosnippet>504</a>            ClientStrategy::UnixSocket(id) =&gt; {
+<a href=#505 id=505 data-nosnippet>505</a>                <span class="attr">#[cfg(unix)]
+<a href=#506 id=506 data-nosnippet>506</a>                </span>{
+<a href=#507 id=507 data-nosnippet>507</a>                    <span class="self">self</span>.id == id
+<a href=#508 id=508 data-nosnippet>508</a>                }
+<a href=#509 id=509 data-nosnippet>509</a>
+<a href=#510 id=510 data-nosnippet>510</a>                <span class="attr">#[cfg(not(unix))]
+<a href=#511 id=511 data-nosnippet>511</a>                </span>{
+<a href=#512 id=512 data-nosnippet>512</a>                    <span class="kw">let _ </span>= id;
+<a href=#513 id=513 data-nosnippet>513</a>                    <span class="bool-val">false
+<a href=#514 id=514 data-nosnippet>514</a>                </span>}
+<a href=#515 id=515 data-nosnippet>515</a>            }
+<a href=#516 id=516 data-nosnippet>516</a>            ClientStrategy::InternalTcpPort(target_host) =&gt; {
+<a href=#517 id=517 data-nosnippet>517</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(gcp_target) =
+<a href=#518 id=518 data-nosnippet>518</a>                    &lt;<span class="kw">dyn </span>Any&gt;::downcast_ref::&lt;GcpComputeEngineHost&gt;(target_host)
+<a href=#519 id=519 data-nosnippet>519</a>                {
+<a href=#520 id=520 data-nosnippet>520</a>                    <span class="self">self</span>.project == gcp_target.project
+<a href=#521 id=521 data-nosnippet>521</a>                } <span class="kw">else </span>{
 <a href=#522 id=522 data-nosnippet>522</a>                    <span class="bool-val">false
 <a href=#523 id=523 data-nosnippet>523</a>                </span>}
 <a href=#524 id=524 data-nosnippet>524</a>            }
-<a href=#525 id=525 data-nosnippet>525</a>            ClientStrategy::InternalTcpPort(target_host) =&gt; {
-<a href=#526 id=526 data-nosnippet>526</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(gcp_target) =
-<a href=#527 id=527 data-nosnippet>527</a>                    &lt;<span class="kw">dyn </span>Any&gt;::downcast_ref::&lt;GcpComputeEngineHost&gt;(target_host)
-<a href=#528 id=528 data-nosnippet>528</a>                {
-<a href=#529 id=529 data-nosnippet>529</a>                    <span class="self">self</span>.project == gcp_target.project
-<a href=#530 id=530 data-nosnippet>530</a>                } <span class="kw">else </span>{
-<a href=#531 id=531 data-nosnippet>531</a>                    <span class="bool-val">false
-<a href=#532 id=532 data-nosnippet>532</a>                </span>}
-<a href=#533 id=533 data-nosnippet>533</a>            }
-<a href=#534 id=534 data-nosnippet>534</a>            ClientStrategy::ForwardedTcpPort(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
-<a href=#535 id=535 data-nosnippet>535</a>        }
-<a href=#536 id=536 data-nosnippet>536</a>    }
-<a href=#537 id=537 data-nosnippet>537</a>}</code></pre></div></section></main></body></html>
+<a href=#525 id=525 data-nosnippet>525</a>            ClientStrategy::ForwardedTcpPort(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#526 id=526 data-nosnippet>526</a>        }
+<a href=#527 id=527 data-nosnippet>527</a>    }
+<a href=#528 id=528 data-nosnippet>528</a>}</code></pre></div></section></main></body></html>

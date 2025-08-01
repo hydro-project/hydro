@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["External","ExternalBincodeSink","ExternalBincodeStream","ExternalBytesPort"]};
+window.SIDEBAR_ITEMS = {"struct":["ExternalBincodeSink","ExternalBincodeStream","ExternalBytesPort","ExternalProcess"]};
