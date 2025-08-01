@@ -9,7 +9,7 @@ import {
   useNodesState, 
   useEdgesState
 } from '@xyflow/react';
-import { applyLayout, applyLayoutForCollapsedContainers } from './utils/layout.js';
+import { applyLayout, applyLayoutForCollapsedContainers, applyLayoutWithExplicitContainerStates, clearContainerDimensionsCache } from './utils/layout.js';
 import { LayoutControls } from './components/LayoutControls.js';
 import { InfoPanel } from './components/InfoPanel.js';
 import { ReactFlowInner } from './components/ReactFlowInner.js';
@@ -398,9 +398,24 @@ export function Visualizer({ graphData, onControlsReady }) {
         // Call toggleContainer() for state consistency but don't wait for it
         toggleContainer(node.id);
         
-        // Use the computed collapsed state immediately
-        const { currentDisplayNodes, currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
-        const result = await applyLayoutForCollapsedContainers(currentDisplayNodes, currentDisplayEdges, currentLayout, node.id);
+        // EXPLICIT API: Build container states map
+        const containerStates = {};
+        const { currentDisplayNodes } = processNodesAndEdgesForLayout(collapsedArray);
+        const containerNodes = currentDisplayNodes.filter(n => n.type === 'group' || n.type === 'collapsedContainer');
+        
+        containerNodes.forEach(container => {
+          if (collapsedArray.includes(container.id)) {
+            containerStates[container.id] = 'collapsed';
+          } else {
+            containerStates[container.id] = 'expanded';
+          }
+        });
+        
+        console.log(`[Visualizer] 🎯 EXPLICIT NODE CLICK: Container ${node.id} states:`, containerStates);
+        
+        // Use the explicit API with container states
+        const { currentDisplayEdges } = processNodesAndEdgesForLayout(collapsedArray);
+        const result = await applyLayoutWithExplicitContainerStates(currentDisplayNodes, currentDisplayEdges, containerStates, currentLayout);
         
         const updatedNodes = nodes.map(baseNode => {
           const displayNode = result.nodes.find(dn => dn.id === baseNode.id);

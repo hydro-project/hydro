@@ -14,6 +14,10 @@ import { filterNodesByType, filterNodesByParent, filterNodesExcludingType } from
 
 let ELK = null;
 
+// Cache for storing original expanded container dimensions
+// This ensures we always use the correct expanded dimensions for layout calculations
+const containerDimensionsCache = new Map();
+
 // Load ELK dynamically
 async function loadELK() {
   if (ELK) return ELK;
@@ -151,6 +155,18 @@ export async function applyLayout(nodes, edges, layoutType = 'mrtree') {
     }
     const layoutedNodes = applyPositions(layoutResult.children || []);
 
+    // CRITICAL: Cache the expanded dimensions of all group nodes for later use
+    // This ensures we always have the correct expanded dimensions for layout calculations
+    layoutedNodes.forEach(node => {
+      if (node.type === 'group') {
+        console.log(`[Layout] 💾 CACHING: ${node.id} → ${node.width}x${node.height}`);
+        containerDimensionsCache.set(node.id, {
+          width: node.width,
+          height: node.height
+        });
+      }
+    });
+
     // CRITICAL: Sort nodes so parents come before children (ReactFlow v12 requirement)
     const sortedNodes = [];
     const nodeMap = new Map(layoutedNodes.map(node => [node.id, node]));
@@ -278,4 +294,142 @@ export async function applyLayoutForCollapsedContainers(displayNodes, edges, lay
     console.error('Container layout with ELK failed:', error);
     return { nodes: displayNodes, edges }; // Fallback to original
   }
+}
+
+/**
+ * Layout wrapper with explicit container state specification
+ * This function forces callers to be explicit about the intended state of each container
+ */
+export async function applyLayoutWithExplicitContainerStates(
+  displayNodes, 
+  edges, 
+  containerStates, // { containerId: 'expanded' | 'collapsed' | 'hidden' }
+  layoutType = 'mrtree'
+) {
+  console.log(`[Layout] 🔧 EXPLICIT LAYOUT: Container states:`, containerStates);
+  
+  const elk = await loadELK();
+  
+  if (!elk) {
+    console.error('ELK not available for explicit layout');
+    throw new Error('ELK layout engine failed to load');
+  }
+
+  // Find only container nodes for repositioning
+  const containerNodes = displayNodes.filter(node => 
+    node.type === 'group' || node.type === 'collapsedContainer'
+  );
+  
+  if (containerNodes.length === 0) {
+    return { nodes: displayNodes, edges };
+  }
+
+  // STEP 1: Validate that all containers have explicit states
+  containerNodes.forEach(container => {
+    if (!containerStates.hasOwnProperty(container.id)) {
+      throw new Error(`Container ${container.id} missing explicit state. Must specify 'expanded', 'collapsed', or 'hidden'.`);
+    }
+  });
+
+  // STEP 2: Set dimensions based on explicit states
+  console.log(`[Layout] 📐 EXPLICIT: Setting dimensions based on explicit states...`);
+  const containersWithExplicitDimensions = containerNodes.map(container => {
+    const state = containerStates[container.id];
+    let width, height;
+    
+    if (state === 'collapsed') {
+      width = 180;
+      height = 60;
+      console.log(`[Layout] ❌ EXPLICIT: ${container.id} → COLLAPSED (${width}x${height})`);
+    } else if (state === 'expanded') {
+      const cachedDimensions = containerDimensionsCache.get(container.id);
+      if (!cachedDimensions) {
+        throw new Error(`Container ${container.id} requested as 'expanded' but no cached dimensions found`);
+      }
+      width = cachedDimensions.width;
+      height = cachedDimensions.height;
+      console.log(`[Layout] ✅ EXPLICIT: ${container.id} → EXPANDED (${width}x${height}) from cache`);
+    } else if (state === 'hidden') {
+      // Hidden containers are filtered out below
+      console.log(`[Layout] 👻 EXPLICIT: ${container.id} → HIDDEN (will be filtered out)`);
+      return null;
+    } else {
+      throw new Error(`Invalid container state '${state}' for ${container.id}. Must be 'expanded', 'collapsed', or 'hidden'.`);
+    }
+    
+    return {
+      ...container,
+      width: width,
+      height: height,
+      style: {
+        ...container.style,
+        width: width,
+        height: height,
+      }
+    };
+  }).filter(container => container !== null); // Remove hidden containers
+
+  // STEP 3: Create ELK nodes - all free positioning since we're being explicit about dimensions
+  console.log(`[Layout] 🏗️ EXPLICIT: Creating ELK nodes with explicit dimensions...`);
+  const elkContainers = containersWithExplicitDimensions.map(container => ({
+    id: container.id,
+    width: container.width,
+    height: container.height,
+    layoutOptions: createFreePositionOptions() // Let ELK find optimal positions
+  }));
+
+  // Create ELK graph
+  const elkGraph = {
+    id: 'explicit_container_root',
+    layoutOptions: getContainerELKConfig(layoutType, 'collapsed'),
+    children: elkContainers,
+    edges: []
+  };
+
+  // LOG ELK INPUT
+  console.log(`[Layout] 🎯 EXPLICIT LAYOUT - ELK INPUT:`);
+  elkContainers.forEach(container => {
+    console.log(`[Layout] 🎯 EXPLICIT: ${container.id}: ${container.width}x${container.height}`);
+  });
+
+  try {
+    console.log(`[Layout] 🚀 EXPLICIT: Calling ELK layout...`);
+    const layoutResult = await elk.layout(elkGraph);
+    console.log(`[Layout] ✅ EXPLICIT: ELK layout completed successfully`);
+    
+    // Apply new positions to all container nodes
+    console.log(`[Layout] 🎨 EXPLICIT: Applying new positions...`);
+    const updatedDisplayNodes = displayNodes.map(node => {
+      if (node.type === 'group' || node.type === 'collapsedContainer') {
+        const elkContainer = layoutResult.children?.find(c => c.id === node.id);
+        if (elkContainer) {
+          return {
+            ...node,
+            position: {
+              x: elkContainer.x || node.position.x,
+              y: elkContainer.y || node.position.y
+            }
+          };
+        }
+      }
+      return node;
+    });
+    
+    console.log(`[Layout] 🏁 EXPLICIT: Layout complete`);
+    return {
+      nodes: updatedDisplayNodes,
+      edges: edges,
+    };
+  } catch (error) {
+    console.error(`[Layout] ❌ EXPLICIT LAYOUT FAILED:`, error);
+    return { nodes: displayNodes, edges };
+  }
+}
+
+/**
+ * Clear the container dimensions cache when graph data changes
+ * This should be called whenever new graph data is loaded
+ */
+export function clearContainerDimensionsCache() {
+  containerDimensionsCache.clear();
 }
