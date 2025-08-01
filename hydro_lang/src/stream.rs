@@ -1794,7 +1794,7 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(2));
+    /// let watermark = tick.singleton(q!(1));
     /// let numbers = process.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]));
     /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
@@ -1951,7 +1951,7 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(2));
+    /// let watermark = tick.singleton(q!(1));
     /// let numbers = process.source_iter(q!([(0, false), (1, false), (2, false), (2, true)]));
     /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
@@ -2076,7 +2076,7 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(2));
+    /// let watermark = tick.singleton(q!(1));
     /// let numbers = process.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]));
     /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
@@ -2201,7 +2201,7 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(2));
+    /// let watermark = tick.singleton(q!(1));
     /// let numbers = process.source_iter(q!([(0, false), (1, false), (2, false), (2, true)]));
     /// let batch = unsafe { numbers.tick_batch(&tick) };
     /// batch
@@ -3009,7 +3009,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(2));
+        let watermark = node_tick.singleton(q!(1));
 
         let sum = unsafe {
             node.source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
@@ -3049,7 +3049,7 @@ mod tests {
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
-            node_tick.cycle_with_initial(node_tick.singleton(q!(2)));
+            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
         let next_watermark = watermark.clone().map(q!(|v| v + 1));
         watermark_complete_cycle.complete_next_tick(next_watermark);
 

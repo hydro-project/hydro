@@ -2325,26 +2325,32 @@ impl HydroNode {
                                     -> [1]#chain_ident;
 
                                 #fold_ident = #chain_ident
-                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), #key_type::default()), {
+                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), None), {
                                         let __reduce_keyed_fn = #f;
-                                        move |(map, curr_watermark), (opt_payload, opt_watermark)| {
+                                        move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                             if let Some((k, v)) = opt_payload {
-                                                if k >= *curr_watermark {
-                                                    match map.entry(k) {
-                                                        ::std::collections::btree_map::Entry::Vacant(e) => {
-                                                            e.insert(v);
-                                                        }
-                                                        ::std::collections::btree_map::Entry::Occupied(mut e) => {
-                                                            __reduce_keyed_fn(e.get_mut(), v);
-                                                        }
+                                                if let Some(curr_watermark) = *opt_curr_watermark {
+                                                    if k <= curr_watermark {
+                                                        return;
+                                                    }
+                                                }
+                                                match map.entry(k) {
+                                                    ::std::collections::btree_map::Entry::Vacant(e) => {
+                                                        e.insert(v);
+                                                    }
+                                                    ::std::collections::btree_map::Entry::Occupied(mut e) => {
+                                                        __reduce_keyed_fn(e.get_mut(), v);
                                                     }
                                                 }
                                             } else {
                                                 let watermark = opt_watermark.unwrap();
-                                                if *curr_watermark < watermark {
-                                                    *curr_watermark = watermark;
-                                                    map.retain(|k, _| k >= curr_watermark);
+                                                if let Some(curr_watermark) = *opt_curr_watermark {
+                                                    if watermark <= curr_watermark {
+                                                        return;
+                                                    }
                                                 }
+                                                *opt_curr_watermark = opt_watermark;
+                                                map.retain(|k, _| *k > watermark);
                                             }
                                         }
                                     })
