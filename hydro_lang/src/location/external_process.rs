@@ -6,34 +6,58 @@ use serde::de::DeserializeOwned;
 use crate::builder::FlowState;
 use crate::staging_util::Invariant;
 
-pub struct ExternalBytesPort {
-    #[cfg_attr(
-        not(feature = "build"),
-        expect(unused, reason = "unused without feature")
-    )]
+pub enum NotMany {}
+pub enum Many {}
+
+pub struct ExternalBytesPort<Many = NotMany> {
     pub(crate) process_id: usize,
-    #[cfg_attr(
-        not(feature = "build"),
-        expect(unused, reason = "unused without feature")
-    )]
     pub(crate) port_id: usize,
+    pub(crate) _phantom: PhantomData<Many>,
 }
 
-pub struct ExternalBincodeSink<Type>
+impl Clone for ExternalBytesPort<Many> {
+    fn clone(&self) -> Self {
+        Self {
+            process_id: self.process_id,
+            port_id: self.port_id,
+            _phantom: Default::default(),
+        }
+    }
+}
+
+pub struct ExternalBincodeSink<Type, Many = NotMany>
 where
     Type: Serialize,
 {
-    #[cfg_attr(
-        not(feature = "build"),
-        expect(unused, reason = "unused without feature")
-    )]
     pub(crate) process_id: usize,
-    #[cfg_attr(
-        not(feature = "build"),
-        expect(unused, reason = "unused without feature")
-    )]
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<Type>,
+    pub(crate) _phantom: PhantomData<(Type, Many)>,
+}
+
+impl<T: Serialize> Clone for ExternalBincodeSink<T, Many> {
+    fn clone(&self) -> Self {
+        Self {
+            process_id: self.process_id,
+            port_id: self.port_id,
+            _phantom: Default::default(),
+        }
+    }
+}
+
+pub struct ExternalBincodeBidi<InType, OutType, Many = NotMany> {
+    pub(crate) process_id: usize,
+    pub(crate) port_id: usize,
+    pub(crate) _phantom: PhantomData<(InType, OutType, Many)>,
+}
+
+impl<InT, OutT> Clone for ExternalBincodeBidi<InT, OutT, Many> {
+    fn clone(&self) -> Self {
+        Self {
+            process_id: self.process_id,
+            port_id: self.port_id,
+            _phantom: Default::default(),
+        }
+    }
 }
 
 pub struct ExternalBincodeStream<Type>
