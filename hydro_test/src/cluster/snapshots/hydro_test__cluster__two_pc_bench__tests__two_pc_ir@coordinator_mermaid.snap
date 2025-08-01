@@ -38,10 +38,11 @@ linkStyle default stroke:#aaa
 32v1["<div style=text-align:center>(32v1)</div> <code><br>tee()</code>"]:::otherClass
 33v1["<div style=text-align:center>(33v1)</div> <code><br>anti_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 34v1["<div style=text-align:center>(34v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-35v1["<div style=text-align:center>(35v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-36v1["<div style=text-align:center>(36v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-43v1["<div style=text-align:center>(43v1)</div> <code><br>identity()</code>"]:::otherClass
-45v1["<div style=text-align:center>(45v1)</div> <code><br>identity()</code>"]:::otherClass
+35v1["<div style=text-align:center>(35v1)</div> <code><br>map({<br>    |(client_id, (key, _val))| (client_id, key)<br>})</code>"]:::otherClass
+36v1["<div style=text-align:center>(36v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.raw_id,<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+37v1["<div style=text-align:center>(37v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+44v1["<div style=text-align:center>(44v1)</div> <code><br>identity()</code>"]:::otherClass
+46v1["<div style=text-align:center>(46v1)</div> <code><br>identity()</code>"]:::otherClass
 1v1-->2v1
 2v1-->3v1
 4v1-->5v1
@@ -57,7 +58,7 @@ linkStyle default stroke:#aaa
 15v1-->16v1
 12v1-->|pos|17v1
 16v1--x|neg|17v1; linkStyle 14 stroke:red
-17v1-->43v1
+17v1-->44v1
 16v1-->19v1
 20v1-->21v1
 19v1-->20v1
@@ -72,19 +73,20 @@ linkStyle default stroke:#aaa
 31v1-->32v1
 28v1-->|pos|33v1
 32v1--x|neg|33v1; linkStyle 29 stroke:red
-33v1-->45v1
-35v1-->36v1
+33v1-->46v1
 32v1-->35v1
-43v1--o18v1; linkStyle 33 stroke:red
-45v1--o34v1; linkStyle 34 stroke:red
+36v1-->37v1
+35v1-->36v1
+44v1--o18v1; linkStyle 34 stroke:red
+46v1--o34v1; linkStyle 35 stroke:red
 4v1
 5v1
 20v1
 21v1
-35v1
 36v1
-43v1
-45v1
+37v1
+44v1
+46v1
 subgraph var_stream_10 ["var <tt>stream_10</tt>"]
     style var_stream_10 fill:transparent
     12v1
@@ -162,6 +164,10 @@ end
 subgraph var_stream_34 ["var <tt>stream_34</tt>"]
     style var_stream_34 fill:transparent
     34v1
+end
+subgraph var_stream_39 ["var <tt>stream_39</tt>"]
+    style var_stream_39 fill:transparent
+    35v1
 end
 subgraph var_stream_5 ["var <tt>stream_5</tt>"]
     style var_stream_5 fill:transparent
