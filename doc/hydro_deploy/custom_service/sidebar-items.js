@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["CustomClientPort","CustomService"]};
+window.SIDEBAR_ITEMS = {"enum":["ServerPort"],"struct":["CustomClientPort","CustomService"]};
