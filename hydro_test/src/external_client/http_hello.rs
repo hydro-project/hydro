@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use hydro_lang::*;
 
 pub fn http_hello_server<'a, P>(
@@ -10,28 +8,16 @@ pub fn http_hello_server<'a, P>(
             "Received line from client #{}: '{}'",
             id, line
         )))
-        .scan(
-            q!(|| HashMap::<u64, String>::new()),
-            q!(|acc, (id, line)| {
-                let buffer = acc.entry(id).or_default();
+        .fold_keyed_early_stop(
+            q!(|| String::new()),
+            q!(|buffer, line| {
                 buffer.push_str(&line);
                 buffer.push_str("\r\n");
 
                 // Check if this is an empty line (end of HTTP headers)
-                if line.trim().is_empty() {
-                    println!("Complete HTTP request received for connection #{}", id);
-
-                    // Return the raw complete request
-                    let raw_request = buffer.clone();
-                    acc.remove(&id);
-
-                    Some(Some((id, raw_request)))
-                } else {
-                    Some(None)
-                }
+                line.trim().is_empty()
             }),
         )
-        .flatten_ordered()
         .map(q!(|(id, raw_request)| {
             let lines: Vec<&str> = raw_request.lines().collect();
 

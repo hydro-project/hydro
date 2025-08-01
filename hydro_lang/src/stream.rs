@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::future::Future;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -20,6 +21,7 @@ use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
     CanSend, External, Location, LocationId, NoTick, Tick, check_matching_location,
 };
+use crate::manual_expr::ManualExpr;
 use crate::staging_util::get_this_crate;
 use crate::{Bounded, Cluster, ClusterId, Optional, Singleton, Unbounded};
 
@@ -1682,6 +1684,125 @@ where
                 metadata: self.location.new_node_metadata::<(K, V1)>(),
             },
         )
+    }
+}
+
+impl<'a, K, V, L, B> Stream<(K, V), L, B, TotalOrder, ExactlyOnce>
+where
+    K: Eq + Hash,
+    L: Location<'a>,
+{
+    /// A special case of [`Stream::scan`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
+    /// in the second element are transformed via the `f` combinator.
+    ///
+    /// Unlike [`Stream::fold_keyed`] which only returns the final accumulated value, `scan` produces a new stream
+    /// containing all intermediate accumulated values paired with the key. The scan operation can also terminate
+    /// early by returning `None`.
+    ///
+    /// The function takes a mutable reference to the accumulator and the current element, and returns
+    /// an `Option<U>`. If the function returns `Some(value)`, `value` is emitted to the output stream.
+    /// If the function returns `None`, the stream is terminated and no more elements are processed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 1), (0, 2), (1, 3), (1, 4)]))
+    ///     .scan_keyed(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             Some(*acc)
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: (0, 1), (0, 3), (1, 3), (1, 7)
+    /// # for w in vec![(0, 1), (0, 3), (1, 3), (1, 7)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn scan_keyed<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Stream<(K, U), L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Clone,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) -> Option<U> + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        self.scan(
+            q!(|| HashMap::new()),
+            q!(move |acc, (k, v)| {
+                let existing_state = acc.entry(k.clone()).or_insert_with(&init);
+                if let Some(out) = f(existing_state, v) {
+                    Some(Some((k, out)))
+                } else {
+                    acc.remove(&k);
+                    Some(None)
+                }
+            }),
+        )
+        .flatten_ordered()
+    }
+
+    /// Like [`Stream::fold_keyed`], in the spirit of SQL's GROUP BY and aggregation constructs. But the aggregation
+    /// function returns a boolean, which when true indicates that the aggregated result is complete and can be
+    /// released to downstream computation. Unlike [`Stream::fold_keyed`], this means that even if the input stream
+    /// is [`Unbounded`], the outputs of the fold can be processed like normal stream elements.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(0, 2), (0, 3), (1, 3), (1, 6)]))
+    ///     .fold_keyed_early_stop(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             x % 2 == 0
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: (0, 2), (1, 9)
+    /// # for w in vec![(0, 2), (1, 9)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn fold_keyed_early_stop<A, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Stream<(K, A), L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Clone,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V) -> bool + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+        self.scan(
+            q!(|| HashMap::new()),
+            q!(move |acc, (k, v)| {
+                let existing_state = acc.entry(k.clone()).or_insert_with(&init);
+                if f(existing_state, v) {
+                    let out = acc.remove(&k).unwrap();
+                    Some(Some((k, out)))
+                } else {
+                    Some(None)
+                }
+            }),
+        )
+        .flatten_ordered()
     }
 }
 
