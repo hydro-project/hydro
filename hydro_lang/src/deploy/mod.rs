@@ -2,7 +2,7 @@ use std::future::Future;
 use std::io::Error;
 use std::pin::Pin;
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use dfir_lang::graph::DfirGraph;
 use futures::{Sink, Stream};
 use serde::Serialize;
@@ -31,6 +31,8 @@ pub mod deploy_graph;
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub use deploy_graph::*;
+
+use crate::NetworkHint;
 
 pub trait Deploy<'a> {
     type InstantiateEnv;
@@ -123,6 +125,16 @@ pub trait Deploy<'a> {
         c2_port: &Self::Port,
     ) -> Box<dyn FnOnce()>;
 
+    fn e2o_many_source(
+        compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
+        p2: &Self::Process,
+        p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr;
+    fn e2o_many_sink(shared_handle: String) -> syn::Expr;
+
     fn e2o_source(
         compile_env: &Self::CompileEnv,
         p1: &Self::External,
@@ -135,6 +147,8 @@ pub trait Deploy<'a> {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
+        server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()>;
 
     fn o2e_sink(
@@ -216,6 +230,11 @@ pub trait Node {
     );
 }
 
+type DynSourceSink<Out, In, InErr> = (
+    Pin<Box<dyn Stream<Item = Out>>>,
+    Pin<Box<dyn Sink<In, Error = InErr>>>,
+);
+
 pub trait RegisterPort<'a, D>: Clone
 where
     D: Deploy<'a> + ?Sized,
@@ -223,10 +242,18 @@ where
     fn register(&self, key: usize, port: D::Port);
     fn raw_port(&self, key: usize) -> D::ExternalRawPort;
 
-    fn as_bytes_sink(
+    fn as_bytes_bidi(
         &self,
         key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Sink<Bytes, Error = Error>>>> + 'a;
+    ) -> impl Future<Output = DynSourceSink<Result<BytesMut, Error>, Bytes, Error>> + 'a;
+
+    fn as_bincode_bidi<InT, OutT>(
+        &self,
+        key: usize,
+    ) -> impl Future<Output = DynSourceSink<OutT, InT, Error>> + 'a
+    where
+        InT: Serialize + 'static,
+        OutT: DeserializeOwned + 'static;
 
     fn as_bincode_sink<T>(
         &self,
@@ -234,11 +261,6 @@ where
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a
     where
         T: Serialize + 'static;
-
-    fn as_bytes_source(
-        &self,
-        key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = Bytes>>>> + 'a;
 
     fn as_bincode_source<T>(
         &self,

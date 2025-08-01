@@ -4,7 +4,7 @@ use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use futures::{Sink, Stream};
 use proc_macro2::Span;
 use serde::Serialize;
@@ -18,7 +18,7 @@ use crate::deploy::{
 };
 use crate::ir::HydroLeaf;
 use crate::location::external_process::{
-    ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
+    ExternalBincodeBidi, ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
 use crate::location::{Cluster, External, Location, LocationId, Process};
 use crate::staging_util::Invariant;
@@ -157,9 +157,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn compile(mut self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
+        let mut extra_stmts = BTreeMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 env,
+                &mut extra_stmts,
                 &mut seen_tees,
                 &self.processes,
                 &self.clusters,
@@ -173,9 +175,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
     }
 
-    fn extra_stmts(&self, env: &<D as Deploy<'a>>::CompileEnv) -> BTreeMap<usize, Vec<syn::Stmt>> {
-        let mut extra_stmts: BTreeMap<usize, Vec<syn::Stmt>> = BTreeMap::new();
-
+    fn cluster_id_stmts(
+        &self,
+        extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>,
+        env: &<D as Deploy<'a>>::CompileEnv,
+    ) {
         let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
         all_clusters_sorted.sort();
 
@@ -206,7 +210,6 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     });
             }
         }
-        extra_stmts
     }
 }
 
@@ -214,9 +217,11 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
+        let mut extra_stmts = BTreeMap::new();
         self.ir.get_mut().iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &(),
+                &mut extra_stmts,
                 &mut seen_tees_instantiate,
                 &self.processes,
                 &self.clusters,
@@ -225,7 +230,7 @@ impl<'a, D: Deploy<'a, CompileEnv = ()>> DeployFlow<'a, D> {
         });
 
         let mut compiled = build_inner(self.ir.get_mut());
-        let mut extra_stmts = self.extra_stmts(&());
+        self.cluster_id_stmts(&mut extra_stmts, &());
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (
@@ -357,27 +362,55 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.externals.get(&p.id).unwrap()
     }
 
-    pub fn raw_port(&self, port: ExternalBytesPort) -> D::ExternalRawPort {
+    pub fn raw_port<M>(&self, port: ExternalBytesPort<M>) -> D::ExternalRawPort {
         self.externals
             .get(&port.process_id)
             .unwrap()
             .raw_port(port.port_id)
     }
 
-    pub async fn connect_sink_bytes(
+    pub async fn connect_bytes<M>(
         &self,
-        port: ExternalBytesPort,
-    ) -> Pin<Box<dyn Sink<Bytes, Error = Error>>> {
+        port: ExternalBytesPort<M>,
+    ) -> (
+        Pin<Box<dyn Stream<Item = Result<BytesMut, Error>>>>,
+        Pin<Box<dyn Sink<Bytes, Error = Error>>>,
+    ) {
         self.externals
             .get(&port.process_id)
             .unwrap()
-            .as_bytes_sink(port.port_id)
+            .as_bytes_bidi(port.port_id)
             .await
     }
 
-    pub async fn connect_sink_bincode<T: Serialize + DeserializeOwned + 'static>(
+    pub async fn connect_sink_bytes<M>(
         &self,
-        port: ExternalBincodeSink<T>,
+        port: ExternalBytesPort<M>,
+    ) -> Pin<Box<dyn Sink<Bytes, Error = Error>>> {
+        self.connect_bytes(port).await.1
+    }
+
+    pub async fn connect_bincode<
+        InT: Serialize + 'static,
+        OutT: DeserializeOwned + 'static,
+        Many,
+    >(
+        &self,
+        port: ExternalBincodeBidi<InT, OutT, Many>,
+    ) -> (
+        Pin<Box<dyn Stream<Item = OutT>>>,
+        Pin<Box<dyn Sink<InT, Error = Error>>>,
+    ) {
+        self.externals
+            .get(&port.process_id)
+            .unwrap()
+            .as_bincode_bidi(port.port_id)
+            .await
+    }
+
+    pub async fn connect_sink_bincode<T: Serialize + DeserializeOwned + 'static, Many>(
+        &self,
+        port: ExternalBincodeSink<T, Many>,
     ) -> Pin<Box<dyn Sink<T, Error = Error>>> {
         self.externals
             .get(&port.process_id)
@@ -389,12 +422,8 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
     pub async fn connect_source_bytes(
         &self,
         port: ExternalBytesPort,
-    ) -> Pin<Box<dyn Stream<Item = Bytes>>> {
-        self.externals
-            .get(&port.process_id)
-            .unwrap()
-            .as_bytes_source(port.port_id)
-            .await
+    ) -> Pin<Box<dyn Stream<Item = Result<BytesMut, Error>>>> {
+        self.connect_bytes(port).await.0
     }
 
     pub async fn connect_source_bincode<T: Serialize + DeserializeOwned + 'static>(
