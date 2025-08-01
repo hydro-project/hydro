@@ -365,7 +365,7 @@ export class VisualizationState {
     this.nodeToEdges.clear();
   }
 
-  // ============ Container Collapse/Expand Transitions ============
+  // ============ Container Collapse/Expand Symmetric Operations ============
   
   /**
    * Collapse a container (depth-first, bottom-up with edge lifting)
@@ -385,11 +385,12 @@ export class VisualizationState {
     }
     
     // Now collapse this container and lift edges/hyperEdges to this level
-    this._performContainerCollapse(containerId);
+    this._performCollapseWithLift(containerId);
   }
   
   /**
-   * Expand a container (depth-first, top-down restoration)
+   * Expand a container (depth-first, top-down with edge grounding)
+   * SYMMETRIC INVERSE of collapseContainer()
    */
   expandContainer(containerId) {
     const container = this.containers.get(containerId);
@@ -397,8 +398,8 @@ export class VisualizationState {
       return; // Already expanded or doesn't exist
     }
     
-    // First expand this container
-    this._performContainerExpansion(containerId);
+    // First expand this container and ground edges/hyperEdges to child level
+    this._performExpandWithGround(containerId);
     
     // Then recursively expand any child containers (top-down)
     const children = this.getContainerChildren(containerId);
@@ -409,11 +410,13 @@ export class VisualizationState {
     }
   }
 
+  // ============ Collapse/Expand Core Implementation (Symmetric Pair) ============
+
   /**
    * Perform the actual collapse operation for a single container
    * This includes lifting edges and hyperEdges from child containers
    */
-  _performContainerCollapse(containerId) {
+  _performCollapseWithLift(containerId) {
     const container = this.containers.get(containerId);
     
     // 1. Create collapsed container representation
@@ -446,9 +449,104 @@ export class VisualizationState {
       this.setNodeHidden(nodeId, true);
     }
     
-    // 5. Lift edges and hyperEdges to this container level
+    // 5. Handle existing hyperEdges that point to nodes we're hiding
+    this._rerouteHyperEdgesToCollapsedContainer(containerId, containerNodes);
+    
+    // 6. Lift edges and hyperEdges to this container level
     this._liftEdgesToContainer(containerId, containerNodes, childContainers);
   }
+
+  /**
+   * Perform the actual expansion operation for a single container
+   * This includes grounding edges and hyperEdges to child containers
+   * SYMMETRIC INVERSE of _performCollapseWithLift()
+   */
+  _performExpandWithGround(containerId) {
+    const container = this.containers.get(containerId);
+    const collapsedContainer = this.collapsedContainers.get(containerId);
+    
+    if (!collapsedContainer) return;
+    
+    // 1. Mark container as expanded
+    container.collapsed = false;
+    this._updateExpandedContainers(containerId, container);
+    
+    // 2. Remove collapsed container representation
+    this.collapsedContainers.delete(containerId);
+    
+    // 3. Show all direct children (nodes and containers)
+    // Since we're going top-down in a tree, all direct children should become visible
+    const children = this.getContainerChildren(containerId);
+    const containerNodes = new Set();
+    
+    for (const childId of children) {
+      if (this.graphNodes.has(childId)) {
+        // Show child node only if its parent container is being expanded
+        this.setNodeHidden(childId, false);
+        containerNodes.add(childId);
+      }
+      // Child containers will be handled by recursive expansion call
+      // but we need to ensure their children are properly handled
+    }
+    
+    // 4. Ground hyperEdges and edges from this container to child level
+    this._groundEdgesFromContainer(containerId);
+  }
+
+  /**
+   * Reroute existing hyperEdges that point to nodes we're about to hide
+   * when collapsing a container
+   */
+  _rerouteHyperEdgesToCollapsedContainer(containerId, containerNodes) {
+    const hyperEdgesToUpdate = [];
+    
+    // Find hyperEdges that have sources or targets in the nodes we're hiding
+    for (const [hyperEdgeId, hyperEdge] of this.hyperEdges) {
+      let needsUpdate = false;
+      let newSource = hyperEdge.source;
+      let newTarget = hyperEdge.target;
+      
+      // Check if source is a node we're hiding
+      if (containerNodes.has(hyperEdge.source)) {
+        newSource = containerId;
+        needsUpdate = true;
+      }
+      
+      // Check if target is a node we're hiding
+      if (containerNodes.has(hyperEdge.target)) {
+        newTarget = containerId;
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        hyperEdgesToUpdate.push({
+          id: hyperEdgeId,
+          originalHyperEdge: hyperEdge,
+          newSource,
+          newTarget
+        });
+      }
+    }
+    
+    // Update the hyperEdges
+    for (const update of hyperEdgesToUpdate) {
+      this.removeHyperEdge(update.id);
+      
+      // Only create a new hyperEdge if source and target are different
+      if (update.newSource !== update.newTarget) {
+        const newHyperEdgeId = `hyper_${update.newSource}_to_${update.newTarget}`;
+        this.setHyperEdge(newHyperEdgeId, {
+          source: update.newSource,
+          target: update.newTarget,
+          style: update.originalHyperEdge.style,
+          originalEdges: update.originalHyperEdge.originalEdges,
+          originalInternalEndpoint: update.originalHyperEdge.originalInternalEndpoint
+        });
+      }
+    }
+  }
+
+  // ============ Edge Lifting/Grounding Coordination (Symmetric Pair) ============
 
   /**
    * Lift edges and hyperEdges from nodes and child containers to the parent container
@@ -463,8 +561,25 @@ export class VisualizationState {
     this._liftChildContainerHyperEdges(containerId, childContainers, liftedConnections);
     
     // Create new hyperEdges for all lifted connections
-    this._createHyperEdgesFromConnections(containerId, liftedConnections);
+    this._createHyperEdgesFromLiftedConnections(containerId, liftedConnections);
   }
+
+  /**
+   * Ground hyperEdges and edges connected to the expanding container
+   * This is the inverse of lifting: restore connections to the correct child endpoints
+   * SYMMETRIC INVERSE of _liftEdgesToContainer()
+   */
+  _groundEdgesFromContainer(containerId) {
+    const children = this.getContainerChildren(containerId);
+    
+    // Process hyperEdges connected to this container
+    this._groundContainerHyperEdges(containerId);
+    
+    // Process direct node edges that were hidden during collapse
+    this._groundNodeEdges(containerId, children);
+  }
+
+  // ============ Node Edge Processing (Symmetric Pair) ============
 
   /**
    * Lift edges from direct child nodes
@@ -489,13 +604,27 @@ export class VisualizationState {
           // Both endpoints in container - hide the edge (internal edge)
           this.setEdgeHidden(edgeId, true);
         } else if (sourceInContainer || targetInContainer) {
-          // One endpoint in container, one external - check if external node is visible
+          // One endpoint in container, one external - check if external endpoint is visible
           const externalId = sourceInContainer ? edge.target : edge.source;
           const internalId = sourceInContainer ? edge.source : edge.target;
-          const externalNode = this.graphNodes.get(externalId);
           
-          // Only create hyperEdge if the external endpoint is actually visible
+          // Check if external endpoint should be connected to
+          let shouldConnect = false;
+          
+          // Check if external endpoint is a visible node
+          const externalNode = this.graphNodes.get(externalId);
           if (externalNode && !externalNode.hidden) {
+            shouldConnect = true;
+          }
+          
+          // Check if external endpoint is a visible, collapsed container
+          const externalContainer = this.containers.get(externalId);
+          if (externalContainer && !externalContainer.hidden && externalContainer.collapsed) {
+            shouldConnect = true;
+          }
+          
+          // Only create hyperEdge if the external endpoint should be connected
+          if (shouldConnect) {
             const isOutgoing = sourceInContainer; // container -> external
             this._addToLiftedConnections(liftedConnections, externalId, edge, isOutgoing, internalId);
           }
@@ -506,6 +635,28 @@ export class VisualizationState {
       }
     }
   }
+
+  /**
+   * Ground edges from direct child nodes
+   * SYMMETRIC INVERSE of _liftNodeEdges()
+   */
+  _groundNodeEdges(containerId, children) {
+    // Restore internal edges (edges between nodes in this container)
+    // These are edges where both endpoints are now visible nodes
+    for (const [edgeId, edge] of this.graphEdges) {
+      if (!edge.hidden) continue; // Skip already visible edges
+      
+      const sourceNode = this.graphNodes.get(edge.source);
+      const targetNode = this.graphNodes.get(edge.target);
+      
+      // Both endpoints must be nodes (not containers) and visible
+      if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
+        this.setEdgeHidden(edgeId, false);
+      }
+    }
+  }
+
+  // ============ Container HyperEdge Processing (Symmetric Pair) ============
 
   /**
    * Lift hyperEdges from child containers to this container level
@@ -560,6 +711,35 @@ export class VisualizationState {
   }
 
   /**
+   * Ground hyperEdges connected to the expanding container
+   * SYMMETRIC INVERSE of _liftChildContainerHyperEdges()
+   */
+  _groundContainerHyperEdges(containerId) {
+    const hyperEdgesToRemove = [];
+    
+    for (const [hyperEdgeId, hyperEdge] of this.hyperEdges) {
+      if (hyperEdge.source === containerId || hyperEdge.target === containerId) {
+        hyperEdgesToRemove.push(hyperEdgeId);
+        
+        // Determine the external endpoint and internal endpoint
+        const isSourceContainer = hyperEdge.source === containerId;
+        const externalId = isSourceContainer ? hyperEdge.target : hyperEdge.source;
+        const internalEndpoint = hyperEdge.originalInternalEndpoint;
+        
+        // Ground the connection based on the state of both endpoints
+        this._groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer);
+      }
+    }
+    
+    // Remove the grounded hyperEdges
+    for (const hyperEdgeId of hyperEdgesToRemove) {
+      this.removeHyperEdge(hyperEdgeId);
+    }
+  }
+
+  // ============ Helper Functions (Symmetric Pairs) ============
+
+  /**
    * Helper to add an edge to lifted connections with proper direction
    */
   _addToLiftedConnections(liftedConnections, externalId, edge, isOutgoing, internalEndpoint) {
@@ -580,9 +760,28 @@ export class VisualizationState {
   }
 
   /**
+   * Ground a single connection during container expansion
+   * SYMMETRIC INVERSE of _addToLiftedConnections()
+   */
+  _groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer) {
+    if (hyperEdge.originalEdges) {
+      // Restore original edges only if both endpoints are visible
+      for (const originalEdge of hyperEdge.originalEdges) {
+        const sourceNode = this.graphNodes.get(originalEdge.source);
+        const targetNode = this.graphNodes.get(originalEdge.target);
+        
+        // Only restore edge if both endpoints are visible nodes
+        if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
+          this.setEdgeHidden(originalEdge.id, false);
+        }
+      }
+    }
+  }
+
+  /**
    * Create hyperEdges from lifted connections
    */
-  _createHyperEdgesFromConnections(containerId, liftedConnections) {
+  _createHyperEdgesFromLiftedConnections(containerId, liftedConnections) {
     for (const [externalId, connections] of liftedConnections) {
       if (connections.incoming.size > 0) {
         const hyperEdgeId = `hyper_${externalId}_to_${containerId}`;
@@ -637,12 +836,16 @@ export class VisualizationState {
     
     return Array.from(internalEndpoints)[0]; // Fallback
   }
+
+  // ============ Ground Implementation Helper Methods ============
+  
+  // ============ Expand Implementation (Ground Edges) ============
   
   /**
    * Perform the actual expansion operation for a single container
-   * Mirror image of collapse: restore nodes, edges, and remove hyperEdges with grounding
+   * This includes grounding edges and hyperEdges to child containers
    */
-  _performContainerExpansion(containerId) {
+  _performExpandWithGround(containerId) {
     const container = this.containers.get(containerId);
     const collapsedContainer = this.collapsedContainers.get(containerId);
     
@@ -670,10 +873,30 @@ export class VisualizationState {
       // but we need to ensure their children are properly handled
     }
     
-    // 4. Ground hyperEdges connected to this container
-    this._groundHyperEdges(containerId);
+    // 4. Ground hyperEdges and edges from this container to child level
+    this._groundEdgesFromContainer(containerId);
+  }
+
+  /**
+   * Ground hyperEdges and edges connected to the expanding container
+  /**
+   * This is the inverse of lifting: restore connections to the correct child endpoints
+   */
+  _groundEdgesFromContainer(containerId) {
+    const children = this.getContainerChildren(containerId);
     
-    // 5. Restore internal edges (edges between nodes in this container)
+    // Process hyperEdges connected to this container
+    this._groundContainerHyperEdges(containerId);
+    
+    // Process direct node edges that were hidden during collapse
+    this._groundNodeEdges(containerId, children);
+  }
+
+  /**
+   * Ground edges from direct child nodes
+   */
+  _groundNodeEdges(containerId, children) {
+    // Restore internal edges (edges between nodes in this container)
     // These are edges where both endpoints are now visible nodes
     for (const [edgeId, edge] of this.graphEdges) {
       if (!edge.hidden) continue; // Skip already visible edges
@@ -685,73 +908,6 @@ export class VisualizationState {
       if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
         this.setEdgeHidden(edgeId, false);
       }
-    }
-  }
-
-  /**
-   * Ground hyperEdges connected to the expanding container
-   * This is the inverse of lifting: restore connections to the correct child endpoints
-   */
-  _groundHyperEdges(containerId) {
-    const hyperEdgesToRemove = [];
-    const children = this.getContainerChildren(containerId);
-    
-    for (const [hyperEdgeId, hyperEdge] of this.hyperEdges) {
-      if (hyperEdge.source === containerId || hyperEdge.target === containerId) {
-        hyperEdgesToRemove.push(hyperEdgeId);
-        
-        // Determine the external endpoint and internal endpoint
-        const isSourceContainer = hyperEdge.source === containerId;
-        const externalId = isSourceContainer ? hyperEdge.target : hyperEdge.source;
-        const internalEndpoint = hyperEdge.originalInternalEndpoint;
-        
-        // Ground the connection based on the state of both endpoints
-        this._groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer);
-      }
-    }
-    
-    // Remove the grounded hyperEdges
-    for (const hyperEdgeId of hyperEdgesToRemove) {
-      this.removeHyperEdge(hyperEdgeId);
-    }
-  }
-
-  /**
-   * Ground a single connection between external and internal endpoints
-   */
-  _groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer) {
-    // Always restore original edges first, regardless of endpoint states
-    if (hyperEdge.originalEdges) {
-      for (const originalEdge of hyperEdge.originalEdges) {
-        this.setEdgeHidden(originalEdge.id, false);
-      }
-    }
-    
-    // Then determine if we need to create new connections based on current states
-    const externalNode = this.graphNodes.get(externalId);
-    const externalContainer = this.containers.get(externalId);
-    const internalNode = this.graphNodes.get(internalEndpoint);
-    const internalContainer = this.containers.get(internalEndpoint);
-    
-    const externalIsNode = externalNode && !externalNode.hidden;
-    const externalIsCollapsedContainer = externalContainer && !externalContainer.hidden && externalContainer.collapsed;
-    const internalIsNode = internalNode && !internalNode.hidden;
-    const internalIsCollapsedContainer = internalContainer && !internalContainer.hidden && internalContainer.collapsed;
-    
-    // Create new hyperEdge only if we have at least one collapsed container and both endpoints are valid
-    if ((externalIsNode || externalIsCollapsedContainer) && 
-        (internalIsNode || internalIsCollapsedContainer) &&
-        (externalIsCollapsedContainer || internalIsCollapsedContainer)) {
-      
-      const newHyperEdgeId = `hyper_${isSourceContainer ? internalEndpoint : externalId}_to_${isSourceContainer ? externalId : internalEndpoint}`;
-      
-      this.setHyperEdge(newHyperEdgeId, {
-        source: isSourceContainer ? internalEndpoint : externalId,
-        target: isSourceContainer ? externalId : internalEndpoint,
-        style: hyperEdge.style,
-        originalEdges: hyperEdge.originalEdges,
-        originalInternalEndpoint: internalEndpoint // Preserve for future operations
-      });
     }
   }
 

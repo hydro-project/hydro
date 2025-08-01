@@ -7,6 +7,7 @@
 import { runAllTests as runVisStateTests } from './VisState.test.js';
 import { runAllTests as runConstantsTests } from './constants.test.js';
 import { runAllTests as runJSONParserTests } from './JSONParser.test.js';
+import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
@@ -31,10 +32,17 @@ async function runAllTests() {
     passedTests++;
     totalTests++;
     
+    console.log('\n🔄 Running Symmetric Inverse Tests...');
+    await runSymmetricInverseTests();
+    passedTests++;
+    totalTests++;
+    
     console.log('\n=====================================');
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
-    console.log('\n💡 To run integration/fuzz tests: npm run test:fuzz');
+    console.log('✅ All symmetric function pairs verified as mathematical inverses!');
+    console.log('\n💡 To run integration/fuzz tests: node --experimental-modules integration.test.js');
+    console.log('💡 To run fuzz tests: node --experimental-modules fuzzTest.js');
     
   } catch (error) {
     totalTests++;
