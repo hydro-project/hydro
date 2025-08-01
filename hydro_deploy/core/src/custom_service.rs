@@ -4,14 +4,17 @@ use std::sync::{Arc, OnceLock, Weak};
 
 use anyhow::{Result, bail};
 use async_trait::async_trait;
-use hydro_deploy_integration::{ConnectedDirect, ServerPort};
+use hydro_deploy_integration::ConnectedDirect;
+pub use hydro_deploy_integration::ServerPort;
 use tokio::sync::RwLock;
 
 use crate::rust_crate::ports::{
     ReverseSinkInstantiator, RustCrateServer, RustCrateSink, RustCrateSource, ServerConfig,
     SourcePath,
 };
-use crate::{Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service};
+use crate::{
+    BaseServerStrategy, Host, LaunchedHost, ResourceBatch, ResourceResult, ServerStrategy, Service,
+};
 
 /// Represents an unknown, third-party service that is not part of the Hydroflow ecosystem.
 pub struct CustomService {
@@ -35,7 +38,11 @@ impl CustomService {
     }
 
     pub fn declare_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
-        CustomClientPort::new(Arc::downgrade(self_arc))
+        CustomClientPort::new(Arc::downgrade(self_arc), false)
+    }
+
+    pub fn declare_many_client(&self, self_arc: &Arc<RwLock<Self>>) -> CustomClientPort {
+        CustomClientPort::new(Arc::downgrade(self_arc), true)
     }
 }
 
@@ -49,7 +56,7 @@ impl Service for CustomService {
         let host = &self.on;
 
         for port in self.external_ports.iter() {
-            host.request_port(&ServerStrategy::ExternalTcpPort(*port));
+            host.request_port_base(&BaseServerStrategy::ExternalTcpPort(*port));
         }
     }
 
@@ -77,15 +84,18 @@ impl Service for CustomService {
     }
 }
 
+#[derive(Clone)]
 pub struct CustomClientPort {
     pub on: Weak<RwLock<CustomService>>,
+    many: bool,
     client_port: OnceLock<ServerConfig>,
 }
 
 impl CustomClientPort {
-    pub fn new(on: Weak<RwLock<CustomService>>) -> Self {
+    fn new(on: Weak<RwLock<CustomService>>, many: bool) -> Self {
         Self {
             on,
+            many,
             client_port: OnceLock::new(),
         }
     }
@@ -112,7 +122,11 @@ impl CustomClientPort {
 
 impl RustCrateSource for CustomClientPort {
     fn source_path(&self) -> SourcePath {
-        SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+        if self.many {
+            SourcePath::Many(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+        } else {
+            SourcePath::Direct(self.on.upgrade().unwrap().try_read().unwrap().on.clone())
+        }
     }
 
     fn host(&self) -> Arc<dyn Host> {
@@ -151,7 +165,8 @@ impl RustCrateSink for CustomClientPort {
 
         let server_host = server_host.clone();
 
-        let (conn_type, bind_type) = server_host.strategy_as_server(client_read.on.deref())?;
+        let (conn_type, bind_type) =
+            server_host.strategy_as_server(client_read.on.deref(), crate::PortNetworkHint::Auto)?;
 
         let client_port = wrap_client_port(ServerConfig::from_strategy(&conn_type, server_sink));
 
@@ -164,7 +179,7 @@ impl RustCrateSink for CustomClientPort {
             me.downcast_ref::<CustomClientPort>()
                 .unwrap()
                 .record_server_config(client_port);
-            bind_type(&*server_host)
+            ServerStrategy::Direct(bind_type(&*server_host))
         }))
     }
 }
