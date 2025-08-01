@@ -6,7 +6,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use dfir_lang::graph::DfirGraph;
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use hydro_deploy::custom_service::CustomClientPort;
@@ -14,16 +14,20 @@ use hydro_deploy::rust_crate::RustCrateService;
 use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
-use hydro_deploy_integration::{ConnectedSink, ConnectedSource};
+use hydro_deploy_integration::{ConnectedSink, ConnectedSource, ConnectedSourceSink};
 use nameof::name_of;
+use proc_macro2::Span;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::{QuotedWithContext, RuntimeData};
+use syn::parse_quote;
 use tokio::sync::RwLock;
 
 use super::trybuild::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
 use super::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort};
+use crate::NetworkHint;
 use crate::deploy_runtime::*;
+use crate::staging_util::get_this_crate;
 
 pub struct HydroDeploy {}
 
@@ -265,6 +269,47 @@ impl<'a> Deploy<'a> for HydroDeploy {
         })
     }
 
+    fn e2o_many_source(
+        _compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
+        _p2: &Self::Process,
+        p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr {
+        let source_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_source", &shared_handle),
+            Span::call_site(),
+        );
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+
+        let root = get_this_crate();
+        let connect_expr: syn::Expr = parse_quote!(
+            #root::runtime_support::dfir_rs::util::deploy::ConnectedSourceSink::into_source_sink(
+                __hydro_lang_trybuild_cli
+                    .port(#p2_port)
+                    .connect::<#root::runtime_support::dfir_rs::util::deploy::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>()
+            )
+        );
+
+        extra_stmts.push(syn::parse_quote! {
+            let (#source_ident, #sink_ident) = #connect_expr;
+        });
+
+        parse_quote!(#source_ident)
+    }
+
+    fn e2o_many_sink(shared_handle: String) -> syn::Expr {
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        parse_quote!(#sink_ident)
+    }
+
     fn e2o_source(
         _compile_env: &Self::CompileEnv,
         _p1: &Self::External,
@@ -286,6 +331,8 @@ impl<'a> Deploy<'a> for HydroDeploy {
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        many: bool,
+        server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();
         let p1_port = p1_port.clone();
@@ -295,17 +342,28 @@ impl<'a> Deploy<'a> for HydroDeploy {
         Box::new(move || {
             let self_underlying_borrow = p1.underlying.borrow();
             let self_underlying = self_underlying_borrow.as_ref().unwrap();
-            let source_port = self_underlying
-                .try_read()
-                .unwrap()
-                .declare_client(self_underlying);
+            let source_port = if many {
+                self_underlying
+                    .try_read()
+                    .unwrap()
+                    .declare_many_client(self_underlying)
+            } else {
+                self_underlying
+                    .try_read()
+                    .unwrap()
+                    .declare_client(self_underlying)
+            };
 
             let other_underlying_borrow = p2.underlying.borrow();
             let other_underlying = other_underlying_borrow.as_ref().unwrap();
-            let recipient_port = other_underlying
-                .try_read()
-                .unwrap()
-                .get_port(p2_port.clone(), other_underlying);
+            let recipient_port = other_underlying.try_read().unwrap().get_port_with_hint(
+                p2_port.clone(),
+                match server_hint {
+                    NetworkHint::Auto => hydro_deploy::PortNetworkHint::Auto,
+                    NetworkHint::TcpPort(p) => hydro_deploy::PortNetworkHint::TcpPort(p),
+                },
+                other_underlying,
+            );
 
             source_port.send_to(&recipient_port);
 
@@ -573,19 +631,55 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
     fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy>::ExternalRawPort {
         self.client_ports
-            .borrow_mut()
-            .remove(self.allocated_ports.borrow().get(&key).unwrap())
+            .borrow()
+            .get(self.allocated_ports.borrow().get(&key).unwrap())
             .unwrap()
+            .clone()
     }
 
-    fn as_bytes_sink(
+    fn as_bytes_bidi(
         &self,
         key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Sink<Bytes, Error = Error>>>> + 'a {
+    ) -> impl Future<
+        Output = (
+            Pin<Box<dyn Stream<Item = Result<BytesMut, Error>>>>,
+            Pin<Box<dyn Sink<Bytes, Error = Error>>>,
+        ),
+    > + 'a {
+        let port = self.raw_port(key);
+
+        async move {
+            let (source, sink) = port.connect().await.into_source_sink();
+            (
+                Box::pin(source) as Pin<Box<dyn Stream<Item = Result<BytesMut, Error>>>>,
+                Box::pin(sink) as Pin<Box<dyn Sink<Bytes, Error = Error>>>,
+            )
+        }
+    }
+
+    fn as_bincode_bidi<InT, OutT>(
+        &self,
+        key: usize,
+    ) -> impl Future<
+        Output = (
+            Pin<Box<dyn Stream<Item = OutT>>>,
+            Pin<Box<dyn Sink<InT, Error = Error>>>,
+        ),
+    > + 'a
+    where
+        InT: Serialize + 'static,
+        OutT: DeserializeOwned + 'static,
+    {
         let port = self.raw_port(key);
         async move {
-            let sink = port.connect().await.into_sink();
-            sink as Pin<Box<dyn Sink<Bytes, Error = Error>>>
+            let (source, sink) = port.connect().await.into_source_sink();
+            (
+                Box::pin(source.map(|item| bincode::deserialize(&item.unwrap()).unwrap()))
+                    as Pin<Box<dyn Stream<Item = OutT>>>,
+                Box::pin(
+                    sink.with(|item| async move { Ok(bincode::serialize(&item).unwrap().into()) }),
+                ) as Pin<Box<dyn Sink<InT, Error = Error>>>,
+            )
         }
     }
 
@@ -598,17 +692,6 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
             let sink = port.connect().await.into_sink();
             Box::pin(sink.with(|item| async move { Ok(bincode::serialize(&item).unwrap().into()) }))
                 as Pin<Box<dyn Sink<T, Error = Error>>>
-        }
-    }
-
-    fn as_bytes_source(
-        &self,
-        key: usize,
-    ) -> impl Future<Output = Pin<Box<dyn Stream<Item = Bytes>>>> + 'a {
-        let port = self.raw_port(key);
-        async move {
-            let source = port.connect().await.into_source();
-            Box::pin(source.map(|r| r.unwrap().freeze())) as Pin<Box<dyn Stream<Item = Bytes>>>
         }
     }
 
