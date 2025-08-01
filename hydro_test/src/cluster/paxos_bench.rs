@@ -81,10 +81,7 @@ pub fn paxos_bench<'a>(
         acceptor_checkpoint_complete.complete(a_checkpoint);
 
         let c_received_payloads = processed_payloads
-            .map(q!(|payload| (
-                payload.value.0,
-                ((payload.key, payload.value.1), Ok(()))
-            )))
+            .map(q!(|payload| (payload.value.0, (payload.key, Ok(())))))
             .send_bincode_anonymous(clients);
 
         // we only mark a transaction as committed when all replicas have applied it
@@ -97,9 +94,23 @@ pub fn paxos_bench<'a>(
         .end_atomic()
     };
 
-    let bench_results = unsafe { bench_client(clients, paxos_processor, num_clients_per_node) };
+    let bench_results = unsafe {
+        bench_client(
+            clients,
+            rand_u32_workload_generator,
+            paxos_processor,
+            num_clients_per_node,
+        )
+    };
 
     print_bench_results(bench_results, client_aggregator, clients);
+}
+
+/// Generates a random u32 for each virtual client ID
+pub fn rand_u32_workload_generator<'a, Client>(
+    virtual_clients: Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
+) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder> {
+    virtual_clients.map(q!(move |virtual_id| (virtual_id, rand::random())))
 }
 
 #[cfg(test)]
