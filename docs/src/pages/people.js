@@ -137,7 +137,7 @@ export default function Home() {
               <PersonCard
                 name={"Mae Milano"}
                 role={"Professor, Princeton University"}
-                url={"http://www.languagesforsyste.ms"}
+                url={"https://www.languagesforsyste.ms"}
                 img={mae}
               ></PersonCard>
               <PersonCard
