@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -28,7 +27,7 @@ use crate::rust_crate::build::BuildOutput;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{PriorityBroadcast, async_retry, prioritized_broadcast};
-use crate::{LaunchedBinary, LaunchedHost, ResourceResult, ServerStrategy, TracingResults};
+use crate::{BaseServerStrategy, LaunchedBinary, LaunchedHost, ResourceResult, TracingResults};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
@@ -222,37 +221,6 @@ pub trait LaunchedSshHost: Send + Sync {
             .join("vm_instance_ssh_key_pem")
     }
 
-    fn server_config(&self, bind_type: &ServerStrategy) -> ServerBindConfig {
-        match bind_type {
-            ServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
-            ServerStrategy::InternalTcpPort => {
-                ServerBindConfig::TcpPort(self.get_internal_ip().clone())
-            }
-            ServerStrategy::ExternalTcpPort(_) => todo!(),
-            ServerStrategy::Demux(demux) => {
-                let mut config_map = HashMap::new();
-                for (key, underlying) in demux {
-                    config_map.insert(*key, LaunchedSshHost::server_config(self, underlying));
-                }
-
-                ServerBindConfig::Demux(config_map)
-            }
-            ServerStrategy::Merge(merge) => {
-                let mut configs = vec![];
-                for underlying in merge {
-                    configs.push(LaunchedSshHost::server_config(self, underlying));
-                }
-
-                ServerBindConfig::Merge(configs)
-            }
-            ServerStrategy::Tagged(underlying, id) => ServerBindConfig::Tagged(
-                Box::new(LaunchedSshHost::server_config(self, underlying)),
-                *id,
-            ),
-            ServerStrategy::Null => ServerBindConfig::Null,
-        }
-    }
-
     async fn open_ssh_session(&self) -> Result<AsyncSession<NoCheckHandler>> {
         let target_addr = SocketAddr::new(
             self.get_external_ip()
@@ -314,8 +282,14 @@ where
 
 #[async_trait]
 impl<T: LaunchedSshHost> LaunchedHost for T {
-    fn server_config(&self, bind_type: &ServerStrategy) -> ServerBindConfig {
-        LaunchedSshHost::server_config(self, bind_type)
+    fn base_server_config(&self, bind_type: &BaseServerStrategy) -> ServerBindConfig {
+        match bind_type {
+            BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
+            BaseServerStrategy::InternalTcpPort(hint) => {
+                ServerBindConfig::TcpPort(self.get_internal_ip().clone(), *hint)
+            }
+            BaseServerStrategy::ExternalTcpPort(_) => todo!(),
+        }
     }
 
     async fn copy_binary(&self, binary: &BuildOutput) -> Result<()> {
