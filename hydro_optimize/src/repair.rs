@@ -193,13 +193,7 @@ pub fn inject_location(ir: &mut [HydroLeaf], cycle_source_to_sink_input: &HashMa
             println!("Locations injected!");
 
             // Check well-formedness here
-            transform_bottom_up(
-                ir,
-                &mut |_| {},
-                &mut |_| {},
-                true,
-            );
-
+            transform_bottom_up(ir, &mut |_| {}, &mut |_| {}, true);
             break;
         }
     }
