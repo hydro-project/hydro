@@ -5,10 +5,10 @@
  * Handles hierarchical layouts with proper container dimension management.
  */
 
-import { LayoutEngine, LayoutResult, LayoutConfig } from './types';
-import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
-import { createELKStateManager, ELKStateManager, LayoutDimensions } from './ELKStateManager';
-import { ELK_ALGORITHMS, ELKAlgorithm } from '../shared/config';
+import { LayoutEngine, LayoutResult, LayoutConfig } from './types.js';
+import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
+import { createELKStateManager, ELKStateManager, LayoutDimensions } from './ELKStateManager.js';
+import { ELK_ALGORITHMS, ELKAlgorithm } from '../shared/config.js';
 
 // ============ Constants ============
 

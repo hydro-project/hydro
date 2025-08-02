@@ -5,8 +5,8 @@
  * This maintains backward compatibility while centralizing configuration.
  */
 
-import type { LayoutConfig } from './types';
-import { ELK_LAYOUT_CONFIG, type ELKLayoutConfig } from '../shared/config';
+import { LayoutConfig } from './types.js';
+import { ELK_LAYOUT_CONFIG, type ELKLayoutConfig } from '../shared/config.js';
 
 // Re-export for backward compatibility
 export const DEFAULT_LAYOUT_CONFIG: Required<LayoutConfig> = {

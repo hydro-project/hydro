@@ -24,19 +24,19 @@ import {
 
 import '@xyflow/react/dist/style.css';
 
-import { VisualizationState } from '../shared/types';
-import { ELKLayoutEngine } from '../layout/ELKLayoutEngine';
-import { LayoutConfig, DEFAULT_LAYOUT_CONFIG } from '../layout/index';
-import { ReactFlowConverter } from './ReactFlowConverter';
-import { applyNodeStyling } from './nodeStyler';
-import { GraphStandardNode, GraphContainerNode } from './nodes';
-import { GraphStandardEdge, GraphHyperEdge } from './edges';
+import { VisualizationState } from '../shared/types.js';
+import { ELKLayoutEngine } from '../layout/ELKLayoutEngine.js';
+import { LayoutConfig, DEFAULT_LAYOUT_CONFIG } from '../layout/index.js';
+import { ReactFlowConverter } from './ReactFlowConverter.js';
+import { applyNodeStyling } from './nodeStyler.js';
+import { GraphStandardNode, GraphContainerNode } from './nodes.js';
+import { GraphStandardEdge, GraphHyperEdge } from './edges.js';
 import { 
   RenderConfig, 
   GraphFlowEventHandlers
-} from './types';
-import { DEFAULT_RENDER_CONFIG } from './config';
-import { MINIMAP_CONFIG, PANEL_COLORS, TYPOGRAPHY } from '../shared/config';
+} from './types.js';
+import { DEFAULT_RENDER_CONFIG } from './config.js';
+import { MINIMAP_CONFIG, PANEL_COLORS, TYPOGRAPHY } from '../shared/config.js';
 
 // Node and Edge type definitions for ReactFlow
 const nodeTypes = {

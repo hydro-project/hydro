@@ -5,8 +5,8 @@
  */
 
 import React, { useMemo } from 'react';
-import { HierarchyTreeProps, HierarchyTreeNode } from './types';
-import { COMPONENT_COLORS } from '../shared/config';
+import { HierarchyTreeProps, HierarchyTreeNode } from './types.js';
+import { COMPONENT_COLORS } from '../shared/config.js';
 
 export function HierarchyTree({
   hierarchyTree,

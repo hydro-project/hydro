@@ -5,14 +5,14 @@
  */
 
 // Core layout engine
-export { ELKLayoutEngine } from './ELKLayoutEngine';
+export { ELKLayoutEngine } from './ELKLayoutEngine.js';
 
 // State management
-export { createELKStateManager } from './ELKStateManager';
-export type { ELKStateManager, LayoutDimensions, LayoutPosition } from './ELKStateManager';
+export { createELKStateManager } from './ELKStateManager.js';
+export type { ELKStateManager, LayoutDimensions, LayoutPosition } from './ELKStateManager.js';
 
 // Configuration
-export { DEFAULT_LAYOUT_CONFIG, LAYOUT_CONFIGS, getLayoutConfig, createLayoutConfig } from './config';
+export { DEFAULT_LAYOUT_CONFIG, LAYOUT_CONFIGS, getLayoutConfig, createLayoutConfig } from './config.js';
 
 // Types
 export type {
@@ -31,7 +31,7 @@ export type {
   PositionedEdge,
   PositionedContainer,
   PositionedHyperEdge,
-} from './types';
+} from './types.js';
 
 // Re-export shared config types for convenience
-export type { ELKAlgorithm, ELKDirection } from '../shared/config';
+export type { ELKAlgorithm, ELKDirection } from '../shared/config.js';

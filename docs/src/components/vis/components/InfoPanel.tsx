@@ -6,13 +6,13 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { InfoPanelProps, HierarchyTreeNode, LegendData } from './types';
-import { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
-import { CollapsibleSection } from './CollapsibleSection';
-import { GroupingControls } from './GroupingControls';
-import { HierarchyTree } from './HierarchyTree';
-import { Legend } from './Legend';
-import { COMPONENT_COLORS } from '../shared/config';
+import { InfoPanelProps, HierarchyTreeNode, LegendData } from './types.js';
+import { DockablePanel, PANEL_POSITIONS } from './DockablePanel.js';
+import { CollapsibleSection } from './CollapsibleSection.js';
+import { GroupingControls } from './GroupingControls.js';
+import { HierarchyTree } from './HierarchyTree.js';
+import { Legend } from './Legend.js';
+import { COMPONENT_COLORS } from '../shared/config.js';
 
 export function InfoPanel({
   visualizationState,
@@ -197,8 +197,8 @@ export function InfoPanel({
 }
 
 // Re-export sub-components for individual use
-export { Legend } from './Legend';
-export { HierarchyTree } from './HierarchyTree';
-export { GroupingControls } from './GroupingControls';
-export { CollapsibleSection } from './CollapsibleSection';
-export { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
+export { Legend } from './Legend.js';
+export { HierarchyTree } from './HierarchyTree.js';
+export { GroupingControls } from './GroupingControls.js';
+export { CollapsibleSection } from './CollapsibleSection.js';
+export { DockablePanel, PANEL_POSITIONS } from './DockablePanel.js';

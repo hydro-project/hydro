@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { GroupingOption } from './types';
-import { COMPONENT_COLORS } from '../shared/config';
+import { GroupingOption } from './types.js';
+import { COMPONENT_COLORS } from '../shared/config.js';
 
 export interface GroupingControlsProps {
   hierarchyChoices?: GroupingOption[];

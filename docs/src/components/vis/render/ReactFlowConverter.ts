@@ -4,7 +4,7 @@
  * Converts positioned layout data to ReactFlow-compatible format with strong typing.
  */
 
-import { LayoutResult } from '../layout/types';
+import { LayoutResult } from '../layout/types.js';
 import { Node, Edge } from '@xyflow/react';
 import { 
   TypedReactFlowData, 
@@ -15,8 +15,8 @@ import {
   StandardNodeData,
   validateReactFlowData,
   isValidELKContainer
-} from './types';
-import { validateELKResult, validateReactFlowResult, logValidationReport } from './validation';
+} from './types.js';
+import { validateELKResult, validateReactFlowResult, logValidationReport } from './validation.js';
 
 export class ReactFlowConverter {
   static convert(layoutResult: LayoutResult): TypedReactFlowData {

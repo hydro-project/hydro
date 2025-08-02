@@ -4,9 +4,9 @@
  * A reusable collapsible section component for organizing panel content.
  */
 
-import React from 'react';
-import { CollapsibleSectionProps } from './types';
-import { COMPONENT_COLORS } from '../shared/config';
+import React, { useState } from 'react';
+import { CollapsibleSectionProps } from './types.js';
+import { COMPONENT_COLORS } from '../shared/config.js';
 
 export function CollapsibleSection({
   title,
