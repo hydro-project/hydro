@@ -40,7 +40,7 @@ mod tests {
 
         let flow = FlowBuilder::new();
         let node = flow.process::<P1>();
-        let external = flow.external_process::<()>();
+        let external = flow.external::<()>();
 
         let out_port = node
             .source_iter(q!(0..5))
