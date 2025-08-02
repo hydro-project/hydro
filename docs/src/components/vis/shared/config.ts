@@ -589,11 +589,12 @@ export interface ELKLayoutConfig {
 export const DEFAULT_NODE_STYLE = {
   borderRadius: DEFAULT_STYLES.BORDER_RADIUS,
   padding: `${SIZES.NODE_PADDING}px`,
-  color: COMPONENT_COLORS.TEXT_INVERSE,  // White text for good contrast on gradients
+  color: '#ffffff',  // Pure white for maximum contrast
   fontFamily: TYPOGRAPHY.FONT_FAMILY,
-  fontSize: TYPOGRAPHY.FONT_SIZES.MD,
-  fontWeight: TYPOGRAPHY.FONT_WEIGHTS.MEDIUM,
-  border: 'none',  // No border for clean gradient look
+  fontSize: '13px',  // Optimized size for readability
+  fontWeight: '600', // Semibold for better contrast
+  textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',  // Text shadow for contrast
+  border: 'none',
   boxShadow: SHADOWS.NODE_DEFAULT,
   transition: ANIMATIONS.TRANSITION_DEFAULT,
   display: 'flex',
@@ -602,6 +603,7 @@ export const DEFAULT_NODE_STYLE = {
   textAlign: 'center',
   width: 200,
   height: 60,
+  cursor: 'pointer',
 } as const;
 
 export const DEFAULT_EDGE_STYLE = {

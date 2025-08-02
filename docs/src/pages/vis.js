@@ -15,21 +15,17 @@ function VisHomepageComponent() {
   const [parseGraphJSON, setParseGraphJSON] = React.useState(null);
   const [FileDropZone, setFileDropZone] = React.useState(null);
   const [InfoPanel, setInfoPanel] = React.useState(null);
+  const [createDefaultLegendData, setCreateDefaultLegendData] = React.useState(null);
   const [NODE_STYLES, setNodeStyles] = React.useState(null);
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [visualizationState, setVisualizationState] = React.useState(null);
   const [parseMetadata, setParseMetadata] = React.useState(null);
-  // Helper function to create default legend data
-  const createDefaultLegendData = () => {
-    if (!visualizationState) return { title: "Legend", items: [] };
-    
-    // Get the node type config from parse metadata if available
-    const nodeTypeConfig = parseMetadata?.nodeTypeConfig;
-    
+  // Generate legend data based on node types present in the visualization state
+  const generateLegendData = () => {
     // Collect all unique node types from the visualization state
     const nodeTypes = new Set();
-    if (visualizationState.visibleNodes) {
+    if (visualizationState?.visibleNodes) {
       visualizationState.visibleNodes.forEach(node => {
         const nodeType = node.nodeType || node.data?.nodeType || 'Transform';
         if (nodeType) {
@@ -38,9 +34,12 @@ function VisHomepageComponent() {
       });
     }
     
+    // Get nodeTypeConfig from parseMetadata
+    const nodeTypeConfig = parseMetadata?.nodeTypeConfig;
+    
     // Create legend items based on nodeTypeConfig if available, otherwise use defaults
     let legendItems = [];
-    if (nodeTypeConfig?.types && Array.isArray(nodeTypeConfig.types)) {
+    if (nodeTypeConfig?.types && Array.isArray(nodeTypeConfig.types) && nodeTypes.size > 0) {
       // Use the types from nodeTypeConfig that are actually present in the graph
       legendItems = nodeTypeConfig.types
         .filter(typeConfig => nodeTypes.has(typeConfig.id))
@@ -48,21 +47,38 @@ function VisHomepageComponent() {
           type: typeConfig.id,
           label: typeConfig.label || typeConfig.id
         }));
-    } else {
-      // Fallback to just the node types we found
+    } else if (nodeTypes.size > 0) {
+      // Enhanced fallback with better descriptions for Hydro node types
+      const typeDescriptions = {
+        'Transform': 'Data transformation operations',
+        'Tee': 'Data splitting operations', 
+        'Sink': 'Data output destinations',
+        'Network': 'Network communication nodes',
+        'Source': 'Data input sources',
+        'Join': 'Data joining operations',
+        'Aggregation': 'Data aggregation operations'
+      };
+      
       legendItems = Array.from(nodeTypes).map(type => ({
         type: type,
-        label: type.charAt(0).toUpperCase() + type.slice(1)
+        label: type.charAt(0).toUpperCase() + type.slice(1),
+        description: typeDescriptions[type] || `${type} operations`
       }));
+    } else {
+      // Default legend when no data is loaded
+      legendItems = [
+        { type: 'Transform', label: 'Transform', description: 'Data transformation operations' },
+        { type: 'Tee', label: 'Tee', description: 'Data splitting operations' },
+        { type: 'Sink', label: 'Sink', description: 'Data output destinations' },
+        { type: 'Network', label: 'Network', description: 'Network communication nodes' }
+      ];
     }
     
     return {
       title: "Node Types",
       items: legendItems
     };
-  };
-
-  // State for collapsed containers
+  };  // State for collapsed containers
   const [collapsedContainers, setCollapsedContainers] = React.useState(new Set());
 
   React.useEffect(() => {
@@ -80,6 +96,7 @@ function VisHomepageComponent() {
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setFileDropZone(() => componentsModule.FileDropZone);
         setInfoPanel(() => componentsModule.InfoPanel);
+        setCreateDefaultLegendData(() => componentsModule.createDefaultLegendData);
         setNodeStyles(constantsModule.NODE_STYLES);
         setEdgeStyles(constantsModule.EDGE_STYLES);
       } catch (err) {
@@ -382,13 +399,13 @@ function VisHomepageComponent() {
               <div style={{ pointerEvents: 'auto' }}>
                 <InfoPanel
                   visualizationState={visualizationState}
-                  legendData={createDefaultLegendData()}
+                  legendData={generateLegendData()}
                   hierarchyChoices={parseMetadata?.availableGroupings || []}
                   currentGrouping={parseMetadata?.selectedGrouping}
                   onGroupingChange={handleGroupingChange}
                   collapsedContainers={collapsedContainers}
                   onToggleContainer={handleToggleContainer}
-                  colorPalette="Set3"
+                  colorPalette="Set2"
                   onPositionChange={(panelId, position) => {
                     console.log(`Panel ${panelId} moved to ${position}`);
                   }}

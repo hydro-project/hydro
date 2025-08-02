@@ -130,13 +130,9 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       // Apply node styling with nodeTypeConfig (similar to visualizer approach)
       const styledNodes = applyNodeStyling(
         reactFlowData.nodes, 
-        'Set3', // TODO: Make this configurable
+        'Set2', // Use Set2 for better contrast and legibility
         metadata?.nodeTypeConfig
       );
-      
-      console.log('Layout result:', layoutResult);
-      console.log('ReactFlow data:', reactFlowData);
-      console.log('Styled nodes:', styledNodes);
       
       // Update nodes and edges
       setNodes(styledNodes);

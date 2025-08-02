@@ -88,6 +88,14 @@ export class ReactFlowConverter {
     layoutResult.nodes.forEach(node => {
       const parentId = parentMap.get(node.id);
       
+      console.log(`🔄 [ReactFlowConverter] Converting node ${node.id}:`, {
+        id: node.id,
+        label: node.label,
+        nodeType: (node as any).nodeType,
+        style: node.style,
+        position: { x: node.x, y: node.y }
+      });
+      
       const standardNodeData: StandardNodeData = {
         label: node.label || node.id,
         style: node.style || 'default',

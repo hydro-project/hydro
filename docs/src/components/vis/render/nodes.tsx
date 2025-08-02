@@ -1,16 +1,7 @@
 /**
  * @fileoverview Custom ReactFlow Node Components
  * 
- * Custom node c      <Handle
-        type="target"
-        position={Position.Left}
-        style={{ background: NODE_COLORS.HANDLE }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        style={{ background: NODE_COLORS.HANDLE }}
-      />for rendering graph elements.
+ * Custom node components for rendering graph elements.
  */
 
 import React from 'react';
@@ -34,13 +25,71 @@ import {
 } from './types';
 
 // Standard Node Component with Strong Typing
-export const GraphStandardNode: React.FC<StandardNodeProps> = ({ 
-  data, 
-  selected, 
-  id 
-}) => {
+export const GraphStandardNode: React.FC<NodeProps> = (props) => {
+  const { data, selected, id } = props;
+  
   // Create display label from strongly typed data
-  const displayLabel = data.label || id;
+  const displayLabel = (data.label || id) as string;
+  
+  // Get node type and generate colors directly in component
+  const nodeType = (data as any)?.nodeType || 'Transform';
+  
+  // Simple color mapping based on node type - Set3 palette
+  const getNodeColor = (type: string) => {
+    switch (type) {
+      case 'Source': return '#8dd3c7'; // Light teal
+      case 'Transform': return '#ffffb3'; // Light yellow  
+      case 'Tee': return '#bebada'; // Light purple
+      case 'Network': return '#fb8072'; // Light red/salmon
+      case 'Sink': return '#80b1d3'; // Light blue
+      default: return '#b3de69'; // Light green
+    }
+  };
+  
+  const baseColor = getNodeColor(nodeType);
+  
+  // Create a much darker border color
+  const createDarkBorder = (color: string) => {
+    // Convert hex to RGB for manipulation
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Create darker border (multiply by 0.6 for distinguishable but still dark)
+    const darkR = Math.floor(r * 0.6);
+    const darkG = Math.floor(g * 0.6);
+    const darkB = Math.floor(b * 0.6);
+    
+    return `rgb(${darkR}, ${darkG}, ${darkB})`;
+  };
+  
+  const darkBorderColor = createDarkBorder(baseColor);
+  
+  // Create a vertical gradient: darker at top, lighter at bottom
+  const createGradient = (color: string) => {
+    // Convert hex to RGB for manipulation
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Create a darker top (multiply by 0.8) and lighter bottom (multiply by 1.2, capped at 255)
+    const topR = Math.floor(r * 0.8);
+    const topG = Math.floor(g * 0.8);
+    const topB = Math.floor(b * 0.8);
+    
+    const bottomR = Math.min(Math.floor(r * 1.2), 255);
+    const bottomG = Math.min(Math.floor(g * 1.2), 255);
+    const bottomB = Math.min(Math.floor(b * 1.2), 255);
+    
+    const topColor = `rgb(${topR}, ${topG}, ${topB})`;
+    const bottomColor = `rgb(${bottomR}, ${bottomG}, ${bottomB})`;
+    
+    return `linear-gradient(to bottom, ${topColor}, ${bottomColor})`;
+  };
+  
+  const gradient = createGradient(baseColor);
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -65,23 +114,36 @@ export const GraphStandardNode: React.FC<StandardNodeProps> = ({
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       style={{
-        // Style is now applied in the nodeStyler, so we just need basic styling here
-        border: `${SIZES.BORDER_WIDTH_DEFAULT}px solid ${getNodeBorderColor(data.style, selected, false)}`,
-        boxShadow: selected ? SHADOWS.NODE_SELECTED : SHADOWS.NODE_DEFAULT,
+        // Apply the gradient directly here
+        background: gradient,
+        border: `1px solid ${darkBorderColor}`, // Very thin border with much darker color
+        fontSize: '12px',
+        fontWeight: 600,
+        color: '#333', // Darker text for better contrast on light Set3 colors
+        textAlign: 'center',
         cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out'
+        userSelect: 'none',
+        padding: '8px 12px',
+        borderRadius: '4px',
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+        textShadow: '0 1px 1px rgba(255,255,255,0.3)' // Light text shadow for legibility
       }}
     >
       {/* Connection handles */}
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: '#555' }}
+        style={{ background: NODE_COLORS.HANDLE }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: '#555' }}
+        style={{ background: NODE_COLORS.HANDLE }}
       />
       
       {/* Node content */}
@@ -109,8 +171,6 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
   // Use ELK-calculated dimensions from strongly typed data
   const width = data.width;
   const height = data.height;
-  
-  console.log(`[GraphContainerNode] 📦 Rendering container ${id}: ${width}x${height} (ELK dimensions: ✅)`);
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();

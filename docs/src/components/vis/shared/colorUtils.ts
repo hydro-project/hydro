@@ -23,16 +23,19 @@ export function generateNodeColors(nodeType: string, paletteKey: string = 'Set3'
       colorIndex = typeConfig.colorIndex;
     }
   } else {
-    // Legacy fallback for backwards compatibility
+    // Legacy fallback for backwards compatibility - updated for Hydro node types
     const defaultMapping: Record<string, number> = {
       'Source': 0,
       'Transform': 1,
       'Sink': 2,
       'Network': 3,
-      'Operator': 4,
+      'Tee': 4,
       'Join': 5,
-      'Union': 6,
+      'Operator': 6,
       'Filter': 7,
+      // Additional mappings for common node types
+      'Aggregation': 2,
+      'Union': 5,
     };
     colorIndex = defaultMapping[nodeType] || 0;
   }
@@ -43,12 +46,14 @@ export function generateNodeColors(nodeType: string, paletteKey: string = 'Set3'
   const lighterPrimary = lightenColor(colors.primary, 0.1);
   const darkerPrimary = darkenColor(colors.primary, 0.1);
   
-  return {
+  const result = {
     primary: colors.primary,
     secondary: colors.secondary,
     border: darkenColor(colors.primary, 0.3),
     gradient: `linear-gradient(145deg, ${lighterPrimary}, ${darkerPrimary})`,
   };
+  
+  return result;
 }
 
 function darkenColor(hex: string, factor: number): string {
