@@ -2363,7 +2363,7 @@ impl HydroNode {
                                     -> [1]#chain_ident;
 
                                 #fold_ident = #chain_ident
-                                    -> fold::<#lifetime>(|| (::std::collections::BTreeMap::<#key_type, #value_type>::new(), None), {
+                                    -> fold::<#lifetime>(|| (::std::collections::HashMap::<#key_type, #value_type>::new(), None), {
                                         let __reduce_keyed_fn = #f;
                                         move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                             if let Some((k, v)) = opt_payload {
@@ -2373,10 +2373,10 @@ impl HydroNode {
                                                     }
                                                 }
                                                 match map.entry(k) {
-                                                    ::std::collections::btree_map::Entry::Vacant(e) => {
+                                                    ::std::collections::hash_map::Entry::Vacant(e) => {
                                                         e.insert(v);
                                                     }
-                                                    ::std::collections::btree_map::Entry::Occupied(mut e) => {
+                                                    ::std::collections::hash_map::Entry::Occupied(mut e) => {
                                                         __reduce_keyed_fn(e.get_mut(), v);
                                                     }
                                                 }
