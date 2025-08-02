@@ -19,7 +19,9 @@ import {
   Node,
   ReactFlowProvider,
   Panel,
-  useReactFlow
+  useReactFlow,
+  ConnectionLineType,
+  ConnectionMode
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
@@ -96,12 +98,45 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     ...renderConfig
   }), [renderConfig]);
 
+  // Container collapse handler - defined early to be used in layoutAndRender
+  const handleContainerCollapse = useCallback(async (containerId: string) => {
+    try {
+      // Collapse the container in the visualization state
+      visualizationState.collapseContainer(containerId);
+      
+    } catch (error) {
+      console.error('Container collapse error:', error);
+      onError?.(error instanceof Error ? error : new Error('Container collapse failed'));
+    }
+  }, [visualizationState, onError]);
+
+  // Container expand handler - defined early to be used in layoutAndRender  
+  const handleContainerExpand = useCallback(async (containerId: string) => {
+    try {
+      // Only log container operations for debugging purposes
+      // Only log container operations in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Expanding container: ${containerId}`);
+      }
+      
+      // Expand the container in the visualization state
+      visualizationState.expandContainer(containerId);
+      
+    } catch (error) {
+      console.error('Container expand error:', error);
+      onError?.(error instanceof Error ? error : new Error('Container expand failed'));
+    }
+  }, [visualizationState, onError]);
+
   // Layout and render the graph
   const layoutAndRender = useCallback(async () => {
     try {
       setIsLayouting(true);
       
-      console.log('Starting layout process...');
+      // Only log layout start in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Starting layout process...');
+      }
       
       // Get visible elements from visualization state
       const visibleNodes = visualizationState.visibleNodes;
@@ -109,12 +144,15 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       const visibleContainers = visualizationState.visibleContainers;
       const hyperEdges = visualizationState.allHyperEdges;
 
-      console.log('Visible elements:', {
-        nodes: visibleNodes,
-        edges: visibleEdges,
-        containers: visibleContainers,
-        hyperEdges: hyperEdges
-      });
+      // Only log layout details in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Visible elements:', {
+          nodes: visibleNodes.length,
+          containers: visibleContainers.length,
+          edges: visibleEdges.length,
+          hyperEdges: hyperEdges.length
+        });
+      }
 
       // Run layout
       const layoutResult = await layoutEngine.layout(
@@ -135,8 +173,23 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         metadata?.nodeTypeConfig
       );
       
+      // Add collapse/expand callbacks to container nodes
+      const nodesWithCallbacks = styledNodes.map(node => {
+        if (node.type === 'container') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onContainerCollapse: handleContainerCollapseWithLayout,
+              onContainerExpand: handleContainerExpandWithLayout
+            }
+          };
+        }
+        return node;
+      });
+      
       // Update nodes and edges
-      setNodes(styledNodes);
+      setNodes(nodesWithCallbacks);
       setEdges(reactFlowData.edges);
 
       // Fit view after a short delay to ensure rendering is complete
@@ -160,8 +213,22 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     fitView,
     finalRenderConfig.fitView,
     onLayoutComplete,
-    onError
+    onError,
+    metadata,
+    handleContainerCollapse,
+    handleContainerExpand
   ]);
+
+  // Update container handlers to trigger re-layout after state change
+  const handleContainerCollapseWithLayout = useCallback(async (containerId: string) => {
+    await handleContainerCollapse(containerId);
+    await layoutAndRender();
+  }, [handleContainerCollapse, layoutAndRender]);
+
+  const handleContainerExpandWithLayout = useCallback(async (containerId: string) => {
+    await handleContainerExpand(containerId);
+    await layoutAndRender();
+  }, [handleContainerExpand, layoutAndRender]);
 
   // Trigger layout when visualization state changes
   useEffect(() => {
@@ -179,11 +246,18 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     
     // Only run layout if state actually changed
     if (stateKey !== lastStateRef.current) {
-      console.log('Visualization state changed, triggering layout');
+      // Only log state changes for container collapse debugging
+      // Only log state changes in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Visualization state changed, triggering layout');
+      }
       lastStateRef.current = stateKey;
       layoutAndRender();
-    } else {
-      console.log('Visualization state unchanged, skipping layout');
+    } else if (process.env.NODE_ENV === 'development') {
+      // Only log skipped layouts in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Visualization state unchanged, skipping layout');
+      }
     }
   }, [visualizationState.visibleNodes, visualizationState.visibleEdges, visualizationState.visibleContainers, layoutAndRender]);
 
@@ -208,6 +282,18 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     },
     [eventHandlers]
   );
+
+  // Debug logging for ReactFlow data
+  if (process.env.NODE_ENV === 'development' && edges.length > 0) {
+    console.log(`📊 [GRAPHFLOW DEBUG] Rendering ReactFlow with ${nodes.length} nodes and ${edges.length} edges`);
+    console.log(`🏹 [GRAPHFLOW DEBUG] Sample edge:`, edges[0]);
+    console.log(`🏹 [GRAPHFLOW DEBUG] All edges:`, edges.map(e => ({ 
+      id: e.id, 
+      type: e.type, 
+      hasMarkerEnd: !!e.markerEnd,
+      markerEnd: e.markerEnd 
+    })));
+  }
 
   return (
     <div className={`hydro-flow ${className || ''}`} style={{ width: '100%', height: '100%', ...style }}>
@@ -240,6 +326,13 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         selectNodesOnDrag={finalRenderConfig.enableSelection}
         deleteKeyCode={null} // Disable delete key
         multiSelectionKeyCode={['Meta', 'Ctrl']}
+        connectionLineType={ConnectionLineType.SmoothStep} // Smooth edge routing for better handle utilization
+        connectionMode={ConnectionMode.Loose} // Allow connections to any handle on a node
+        defaultEdgeOptions={{
+          type: 'smoothstep',
+          animated: false,
+          style: { strokeWidth: 2 }
+        }}
       >
         {finalRenderConfig.enableControls && (
           <Controls

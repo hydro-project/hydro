@@ -56,9 +56,12 @@ export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
   });
 
   // Get edge style based on type
+  const strokeColor = getEdgeColor(edge?.style, selected, data?.isHighlighted || false);
+  const strokeWidth = style?.strokeWidth || getEdgeStrokeWidth(edge?.style);
+  
   const edgeStyle = {
-    strokeWidth: style?.strokeWidth || getEdgeStrokeWidth(edge?.style),
-    stroke: getEdgeColor(edge?.style, selected, data?.isHighlighted || false),
+    strokeWidth,
+    stroke: strokeColor,
     strokeDasharray: getEdgeDashPattern(edge?.style),
     ...style
   };

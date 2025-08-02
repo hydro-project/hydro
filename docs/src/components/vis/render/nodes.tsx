@@ -134,16 +134,145 @@ export const GraphStandardNode: React.FC<NodeProps> = (props) => {
         textShadow: '0 1px 1px rgba(255,255,255,0.3)' // Light text shadow for legibility
       }}
     >
-      {/* Connection handles */}
+      {/* Flexible connection handles - continuous positioning for ReactFlow v12 */}
+      {/* Left side handles */}
       <Handle
         type="target"
+        position={Position.Left}
+        id="left-top"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          left: -4, 
+          top: '25%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-center"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          left: -4, 
+          top: '50%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-bottom"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          left: -4, 
+          top: '75%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      
+      {/* Top side handles */}
+      <Handle
+        type="target" 
         position={Position.Top}
-        style={{ background: NODE_COLORS.HANDLE }}
+        id="top-left"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          top: -4, 
+          left: '25%',
+          transform: 'translateX(-50%)'
+        }}
+      />
+      <Handle
+        type="target" 
+        position={Position.Top}
+        id="top-center"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          top: -4, 
+          left: '50%',
+          transform: 'translateX(-50%)'
+        }}
+      />
+      <Handle
+        type="target" 
+        position={Position.Top}
+        id="top-right"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          top: -4, 
+          left: '75%',
+          transform: 'translateX(-50%)'
+        }}
+      />
+      
+      {/* Right side handles */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-top"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          right: -4, 
+          top: '25%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-center"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          right: -4, 
+          top: '50%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right-bottom"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          right: -4, 
+          top: '75%',
+          transform: 'translateY(-50%)'
+        }}
+      />
+      
+      {/* Bottom side handles */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-left"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          bottom: -4, 
+          left: '25%',
+          transform: 'translateX(-50%)'
+        }}
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: NODE_COLORS.HANDLE }}
+        id="bottom-center"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          bottom: -4, 
+          left: '50%',
+          transform: 'translateX(-50%)'
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom-right"
+        style={{ 
+          background: NODE_COLORS.HANDLE, 
+          bottom: -4, 
+          left: '75%',
+          transform: 'translateX(-50%)'
+        }}
       />
       
       {/* Node content */}
@@ -174,12 +303,23 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
-    // Container click handlers would go here
+    
+    // Check if this is a click on the container background (not on child nodes)
+    const target = event.target as HTMLElement;
+    const isBackgroundClick = target.classList.contains('graph-container-node') || 
+                              target.classList.contains('container-content');
+    
+    if (isBackgroundClick && !isCollapsed) {
+      // Request container collapse - pass to parent via data callback
+      if (data.onContainerCollapse) {
+        data.onContainerCollapse(id);
+      }
+    }
   };
 
   const handleToggleCollapse = (event: React.MouseEvent) => {
     event.stopPropagation();
-    // Collapse toggle handlers would go here
+    // Collapse toggle handlers would go here - for explicit toggle buttons
   };
 
   return (
@@ -193,7 +333,7 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
         border: `${SIZES.BORDER_WIDTH_DEFAULT}px solid ${selected ? CONTAINER_COLORS.BORDER_SELECTED : CONTAINER_COLORS.BORDER}`,
         borderRadius: '12px',
         position: 'relative',
-        cursor: 'pointer',
+        cursor: isCollapsed ? 'pointer' : 'pointer',
         transition: 'all 0.3s ease-in-out'
       }}
     >
@@ -230,6 +370,123 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
       >
         {id}
       </div>
+
+      {/* Connection handles - only show on collapsed containers with flexible positioning */}
+      {isCollapsed && (
+        <>
+          {/* Left side handles */}
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left-top"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              left: -4, 
+              top: '30%',
+              transform: 'translateY(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="left-bottom"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              left: -4, 
+              top: '70%',
+              transform: 'translateY(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          
+          {/* Top side handles */}
+          <Handle
+            type="target" 
+            position={Position.Top}
+            id="top-left"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              top: -4, 
+              left: '30%',
+              transform: 'translateX(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          <Handle
+            type="target" 
+            position={Position.Top}
+            id="top-right"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              top: -4, 
+              left: '70%',
+              transform: 'translateX(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          
+          {/* Right side handles */}
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right-top"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              right: -4, 
+              top: '30%',
+              transform: 'translateY(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="right-bottom"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              right: -4, 
+              top: '70%',
+              transform: 'translateY(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          
+          {/* Bottom side handles */}
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="bottom-left"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              bottom: -4, 
+              left: '30%',
+              transform: 'translateX(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+          <Handle
+            type="source"
+            position={Position.Bottom}
+            id="bottom-right"
+            style={{ 
+              background: CONTAINER_COLORS.BORDER, 
+              bottom: -4, 
+              left: '70%',
+              transform: 'translateX(-50%)',
+              width: 8, 
+              height: 8 
+            }}
+          />
+        </>
+      )}
     </div>
   );
 };

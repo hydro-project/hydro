@@ -5,7 +5,7 @@
  */
 
 import { LayoutResult } from '../layout/types';
-import { Node, Edge } from '@xyflow/react';
+import { Node, Edge, MarkerType } from '@xyflow/react';
 import { 
   TypedReactFlowData, 
   TypedContainerNode, 
@@ -55,8 +55,6 @@ export class ReactFlowConverter {
       
       const parentId = parentMap.get(container.id);
       
-      console.log(`[ReactFlowConverter] 📦 Converting container ${container.id}: ${container.width}x${container.height}`);
-      
       const containerNodeData: ContainerNodeData = {
         label: container.id,
         collapsed: container.collapsed || false,
@@ -88,13 +86,10 @@ export class ReactFlowConverter {
     layoutResult.nodes.forEach(node => {
       const parentId = parentMap.get(node.id);
       
-      console.log(`🔄 [ReactFlowConverter] Converting node ${node.id}:`, {
-        id: node.id,
-        label: node.label,
-        nodeType: (node as any).nodeType,
-        style: node.style,
-        position: { x: node.x, y: node.y }
-      });
+            // Only log detailed node conversion in debug mode
+      if (process.env.NODE_ENV === 'development') {
+        // Simplified node conversion logging
+      }
       
       const standardNodeData: StandardNodeData = {
         label: node.label || node.id,
@@ -128,10 +123,27 @@ export class ReactFlowConverter {
         type: 'standard',
         source: edge.source,
         target: edge.target,
+        // Let ReactFlow use default handle IDs (no explicit sourceHandle/targetHandle)
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20
+        },
         data: {
           style: edge.style || 'default'
         }
       };
+      
+      // Debug logging for edge arrowheads
+      console.log(`🏹 [EDGE DEBUG] Created edge ${edge.id}:`, {
+        id: typedEdge.id,
+        type: typedEdge.type,
+        source: typedEdge.source,
+        target: typedEdge.target,
+        hasMarkerEnd: !!typedEdge.markerEnd,
+        markerEnd: typedEdge.markerEnd
+      });
+      
       edges.push(typedEdge);
     });
 
@@ -142,14 +154,39 @@ export class ReactFlowConverter {
         type: 'hyper',
         source: hyperEdge.source,
         target: hyperEdge.target,
+        // Let ReactFlow use default handle IDs for flexibility
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 20,
+          height: 20
+        },
         data: {
           style: hyperEdge.style || 'default'
         }
       };
+      
+      // Debug logging for hyper edge arrowheads
+      console.log(`🏹 [HYPER EDGE DEBUG] Created hyper edge ${hyperEdge.id}:`, {
+        id: typedHyperEdge.id,
+        type: typedHyperEdge.type,
+        source: typedHyperEdge.source,
+        target: typedHyperEdge.target,
+        hasMarkerEnd: !!typedHyperEdge.markerEnd,
+        markerEnd: typedHyperEdge.markerEnd
+      });
+      
       edges.push(typedHyperEdge);
     });
 
     const result: TypedReactFlowData = { nodes, edges };
+    
+    // Debug logging for final ReactFlow data
+    console.log(`🎯 [REACTFLOW DEBUG] Final ReactFlow data:`, {
+      nodeCount: nodes.length,
+      edgeCount: edges.length,
+      edgesWithMarkers: edges.filter(e => e.markerEnd).length,
+      sampleEdge: edges[0] // Log first edge as sample
+    });
     
     // Validate the result before returning
     const reactFlowReport = validateReactFlowResult(result);
@@ -157,7 +194,7 @@ export class ReactFlowConverter {
     
     if (!reactFlowReport.isValid) {
       console.error('[ReactFlowConverter] ❌ Generated invalid ReactFlow data - container dimensions may be missing');
-    } else {
+    } else if (process.env.NODE_ENV === 'development') {
       console.log('[ReactFlowConverter] ✅ Generated valid typed ReactFlow data');
     }
 

@@ -94,6 +94,9 @@ export interface ContainerNodeData extends BaseNodeData {
   // CRITICAL: ELK dimensions must be passed through data
   width: number;
   height: number;
+  // Container interaction callbacks
+  onContainerCollapse?: (containerId: string) => void;
+  onContainerExpand?: (containerId: string) => void;
 }
 
 /**

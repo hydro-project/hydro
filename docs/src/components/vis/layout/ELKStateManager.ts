@@ -280,21 +280,27 @@ class ContainmentValidator {
   }
 
   private logValidationStart(): void {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} Checking containment relationships...`);
+    // Only log validation details in debug mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} Checking containment relationships...`);
+    }
   }
 
   private logValidationResults(): void {
     if (this.violations.length > 0) {
       console.error(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.ERROR} Found ${this.violations.length} containment violations!`);
-    } else {
+    } else if (process.env.NODE_ENV === 'development') {
       console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUCCESS} All containment relationships are valid`);
     }
   }
 
   private logContainerValidation(container: Container, containerNode: any, childNodes: any[]): void {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.CONTAINER} Validating container ${container.id}:`);
-    console.log(`  Container bounds: (${containerNode.position?.x || 0}, ${containerNode.position?.y || 0}) ${containerNode.width}x${containerNode.height}`);
-    console.log(`  Child nodes: ${childNodes.length}`);
+    // Only log detailed container validation in debug mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.CONTAINER} Validating container ${container.id}:`);
+      console.log(`  Container bounds: (${containerNode.position?.x || 0}, ${containerNode.position?.y || 0}) ${containerNode.width}x${containerNode.height}`);
+      console.log(`  Child nodes: ${childNodes.length}`);
+    }
   }
 
   private logWarning(message: string): void {
@@ -649,24 +655,33 @@ export function createELKStateManager(): ELKStateManager {
 // ============ Logging Utilities ============
 
 function logLayoutSummary(nodes: GraphNode[], edges: GraphEdge[], containers: Container[]): void {
-  console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUMMARY}`);
-  console.log(`  Nodes: ${nodes.length}`);
-  console.log(`  Containers: ${containers.length}`);
-  containers.forEach(container => {
-    console.log(`    Container ${container.id}: ${container.children.size} children`);
-  });
-  console.log(`  Edges: ${edges.length}`);
+  // Only log summary in debug mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.SUMMARY}`);
+    console.log(`  Nodes: ${nodes.length}`);
+    console.log(`  Containers: ${containers.length}`);
+    containers.forEach(container => {
+      console.log(`    Container ${container.id}: ${container.children.size} children`);
+    });
+    console.log(`  Edges: ${edges.length}`);
+  }
 }
 
 function logELKInput(elkGraph: ELKGraph): void {
-  console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.INPUT}:`);
-  logELKContainerHierarchy(elkGraph.children, 0, LOG_PREFIXES.INPUT);
+  // Only log ELK input in debug mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.INPUT}:`);
+    logELKContainerHierarchy(elkGraph.children, 0, LOG_PREFIXES.INPUT);
+  }
 }
 
 function logELKOutput(layoutResult: any): void {
-  console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`);
-  if (layoutResult.children) {
-    logELKContainerHierarchy(layoutResult.children, 0, LOG_PREFIXES.OUTPUT);
+  // Only log ELK output in debug mode
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`);
+    if (layoutResult.children) {
+      logELKContainerHierarchy(layoutResult.children, 0, LOG_PREFIXES.OUTPUT);
+    }
   }
 }
 

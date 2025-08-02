@@ -110,11 +110,8 @@ function VisHomepageComponent() {
 
   const handleFileLoad = React.useCallback((jsonData) => {
     try {
-      console.log('Loading JSON data:', jsonData);
-      
       // Parse the JSON data into a VisualizationState
       const parseResult = parseGraphJSON(jsonData);
-      console.log('Parse result:', parseResult);
       
       setVisualizationState(parseResult.state);
       setParseMetadata(parseResult.metadata);
@@ -139,7 +136,6 @@ function VisHomepageComponent() {
   }, []);
 
   const handleGroupingChange = React.useCallback((groupingId) => {
-    console.log('Grouping changed to:', groupingId);
     // In a real implementation, this would re-parse the data with the new grouping
     // For now, just update the metadata
     if (parseMetadata) {
@@ -290,7 +286,7 @@ function VisHomepageComponent() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '40px 20px' }}>
+    <div style={{ minHeight: '100vh', padding: '10px 20px' }}>
       {!visualizationState ? (
         <div style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
           <h1 style={{ 
@@ -307,25 +303,6 @@ function VisHomepageComponent() {
           }}>
             Interactive graph visualization with ReactFlow and ELK layout
           </p>
-          
-          <div style={{ marginBottom: '32px' }}>
-            <button 
-              onClick={createSampleGraph}
-              style={{
-                padding: '12px 24px',
-                backgroundColor: '#007acc',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                marginRight: '16px'
-              }}
-            >
-              Try Sample
-            </button>
-            <span style={{ color: '#999' }}>or drag a JSON file below</span>
-          </div>
 
           <FileDropZone onFileLoad={handleFileLoad} />
         </div>
@@ -337,8 +314,8 @@ function VisHomepageComponent() {
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            marginBottom: '20px',
-            padding: '12px 0',
+            marginBottom: '4px',
+            padding: '6px 0',
             borderBottom: '1px solid #eee'
           }}>
             <div style={{ fontSize: '14px', color: '#666' }}>
@@ -384,7 +361,7 @@ function VisHomepageComponent() {
             <GraphFlow 
               visualizationState={visualizationState}
               metadata={parseMetadata}
-              onLayoutComplete={() => console.log('Layout complete!')}
+              onLayoutComplete={() => {}}
               onError={(err) => {
                 console.error('Visualization error:', err);
                 setError('Visualization error: ' + err.message);
@@ -405,7 +382,7 @@ function VisHomepageComponent() {
                   onToggleContainer={handleToggleContainer}
                   colorPalette="Set2"
                   onPositionChange={(panelId, position) => {
-                    console.log(`Panel ${panelId} moved to ${position}`);
+                    // Panel position changed
                   }}
                 />
               </div>
