@@ -23,6 +23,7 @@ import {
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
+import './styles.css';
 
 import { VisualizationState } from '../shared/types';
 import { ELKLayoutEngine } from '../layout/index';
@@ -242,10 +243,11 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       >
         {finalRenderConfig.enableControls && (
           <Controls
-            position="top-left"
-            showZoom={finalRenderConfig.enableZoom}
-            showFitView={finalRenderConfig.fitView}
+            position="bottom-left"
+            showZoom={true}
+            showFitView={true}
             showInteractive={false}
+            style={{ zIndex: 1000 }}
           />
         )}
         

@@ -384,8 +384,6 @@ function VisHomepageComponent() {
             <GraphFlow 
               visualizationState={visualizationState}
               metadata={parseMetadata}
-              collapsedContainers={collapsedContainers}
-              onToggleContainer={handleToggleContainer}
               onLayoutComplete={() => console.log('Layout complete!')}
               onError={(err) => {
                 console.error('Visualization error:', err);
@@ -412,115 +410,6 @@ function VisHomepageComponent() {
                 />
               </div>
             </div>
-            
-            {/* Zoom Controls */}
-            <div style={{ 
-              position: 'absolute', 
-              bottom: '16px', 
-              left: '16px',
-              pointerEvents: 'auto',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px'
-            }}>
-              <button
-                onClick={() => {
-                  // TODO: Implement zoom in functionality
-                  console.log('Zoom in');
-                }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#f5f5f5';
-                  e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#fff';
-                  e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                }}
-              >
-                +
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Implement zoom out functionality
-                  console.log('Zoom out');
-                }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#f5f5f5';
-                  e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#fff';
-                  e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                }}
-              >
-                −
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Implement fit to view functionality
-                  console.log('Fit to view');
-                }}
-                style={{
-                  width: '40px',
-                  height: '40px',
-                  backgroundColor: '#fff',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.target.style.backgroundColor = '#f5f5f5';
-                  e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)';
-                }}
-                onMouseLeave={(e) => {
-                  e.target.style.backgroundColor = '#fff';
-                  e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                }}
-                title="Fit to view"
-              >
-                ⌂
-              </button>
-            </div>
           </div>
           
           {/* Instructions */}
@@ -533,8 +422,8 @@ function VisHomepageComponent() {
             color: '#666'
           }}>
             <strong>Instructions:</strong> 
-            • Drag the graph to pan • Scroll to zoom • Click containers in the hierarchy tree to collapse/expand them
-            • Drag panel headers to reposition • Click the ▼ button to collapse panels
+            • Drag the graph to pan • Scroll to zoom • Use the controls in the bottom-left for zoom and fit-to-view
+            • Click containers in the hierarchy tree to collapse/expand them • Drag panel headers to reposition • Click the ▼ button to collapse panels
           </div>
         </div>
       )}
