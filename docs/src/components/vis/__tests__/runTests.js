@@ -47,8 +47,8 @@ async function runAllTests() {
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
     console.log('✅ All symmetric function pairs verified as mathematical inverses!');
-    console.log('\n💡 To run integration/fuzz tests: node --experimental-modules integration.test.js');
-    console.log('💡 To run fuzz tests: node --experimental-modules fuzzTest.js');
+    console.log('\n💡 To run integration/fuzz tests: node __tests__/integration.test.js');
+    console.log('💡 To run fuzz tests: node __tests__/fuzzTest.js');
     
   } catch (error) {
     totalTests++;

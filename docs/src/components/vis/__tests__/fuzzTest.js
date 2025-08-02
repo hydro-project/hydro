@@ -9,7 +9,7 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseHydroGraphJSON, validateHydroGraphJSON } from '../dist/core/JSONParser.js';
+import { parseGraphJSON, validateGraphJSON } from '../dist/core/JSONParser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -345,7 +345,7 @@ class FuzzTester {
     console.log(`🎲 Running fuzz test on ${this.testName} with grouping: ${groupingId || 'default'}`);
     
     // Parse the data
-    const result = parseHydroGraphJSON(this.testData, groupingId);
+    const result = parseGraphJSON(this.testData, groupingId);
     const state = result.state;
     const checker = new InvariantChecker(state);
     
@@ -481,7 +481,7 @@ async function runFuzzTests() {
       const jsonData = await readFile(filePath, 'utf-8');
       
       // Validate the data first
-      const validation = validateHydroGraphJSON(jsonData);
+      const validation = validateGraphJSON(jsonData);
       if (!validation.isValid) {
         console.error(`❌ ${filename} failed validation:`, validation.errors);
         continue;

@@ -9,7 +9,7 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseHydroGraphJSON, validateHydroGraphJSON, getAvailableGroupings } from '../dist/core/JSONParser.js';
+import { parseGraphJSON, validateGraphJSON, getAvailableGroupings } from '../dist/core/JSONParser.js';
 import { runFuzzTest, InvariantChecker } from './fuzzTest.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ async function testRealDataParsing() {
     const jsonData = await readFile(filePath, 'utf-8');
     
     // Validate
-    const validation = validateHydroGraphJSON(jsonData);
+    const validation = validateGraphJSON(jsonData);
     assert(validation.isValid, `${filename} should be valid: ${validation.errors.join(', ')}`);
     assert(validation.nodeCount > 0, `${filename} should have nodes`);
     
@@ -43,7 +43,7 @@ async function testRealDataParsing() {
     for (const grouping of groupings) {
       console.log(`    🔧 Testing grouping: ${grouping.name}`);
       
-      const result = parseHydroGraphJSON(jsonData, grouping.id);
+      const result = parseGraphJSON(jsonData, grouping.id);
       const { state, metadata } = result;
       
       // Basic structure checks
@@ -102,17 +102,19 @@ async function testRealDataParsing() {
 async function testEdgeCases() {
   console.log('Testing edge cases...');
   
-  // Test empty data
+  // Test empty data (should be allowed in framework-independent parser)
   try {
-    parseHydroGraphJSON({ nodes: [], edges: [] });
-    assert.fail('Should reject empty node data');
+    const result = parseGraphJSON({ nodes: [], edges: [] });
+    assert(result.state, 'Should handle empty data gracefully');
+    assert.strictEqual(result.metadata.nodeCount, 0, 'Should report 0 nodes');
+    assert.strictEqual(result.metadata.edgeCount, 0, 'Should report 0 edges');
   } catch (error) {
-    assert(error.message.includes('Invalid graph data'), 'Should give helpful error message');
+    assert.fail('Should handle empty data gracefully: ' + error.message);
   }
   
   // Test malformed JSON
   try {
-    validateHydroGraphJSON('invalid json');
+    validateGraphJSON('invalid json');
     // Should not throw, but should return invalid result
   } catch (error) {
     // JSON parsing errors are expected here
@@ -124,7 +126,7 @@ async function testEdgeCases() {
     edges: [{ id: 'e1', source: '1', target: '2' }]
   };
   
-  const result = parseHydroGraphJSON(flatData);
+  const result = parseGraphJSON(flatData);
   assert.strictEqual(result.state.visibleNodes.length, 2, 'Should handle flat data');
   assert.strictEqual(result.state.visibleContainers.length, 0, 'Should have no containers');
   assert.strictEqual(result.metadata.selectedGrouping, null, 'Should have no grouping');
@@ -142,7 +144,7 @@ async function testPerformance() {
   const jsonData = await readFile(filePath, 'utf-8');
   
   const startTime = Date.now();
-  const result = parseHydroGraphJSON(jsonData);
+  const result = parseGraphJSON(jsonData);
   const parseTime = Date.now() - startTime;
   
   console.log(`  ⏱️  Parsing time: ${parseTime}ms`);
@@ -177,7 +179,7 @@ async function testStateConsistency() {
   
   const filePath = join(__dirname, '../test-data/chat.json');
   const jsonData = await readFile(filePath, 'utf-8');
-  const result = parseHydroGraphJSON(jsonData);
+  const result = parseGraphJSON(jsonData);
   const state = result.state;
   const checker = new InvariantChecker(state);
   

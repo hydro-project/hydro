@@ -139,11 +139,11 @@ function testNodeParsing() {
   const result = parseGraphJSON(sampleGraphData);
   const state = result.state;
   
-  // Test node 0 (has backtrace data)
+  // Test node 0 (has backtrace data but no explicit label - should use ID as fallback)
   const node0 = state.getGraphNode('0');
   assert(node0, 'Node 0 should exist');
   assert.strictEqual(node0.id, '0', 'Node should have correct ID');
-  assert.strictEqual(node0.label, 'broadcast_bincode', 'Should extract label from backtrace');
+  assert.strictEqual(node0.label, '0', 'Should use node ID as label when no explicit label provided');
   assert.strictEqual(node0.style, NODE_STYLES.DEFAULT, 'Should have default style');
   assert.strictEqual(node0.hidden, false, 'Should not be hidden initially');
   
