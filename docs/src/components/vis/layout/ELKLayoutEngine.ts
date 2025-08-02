@@ -8,6 +8,7 @@
 import { LayoutEngine, LayoutResult, LayoutConfig } from './types';
 import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
 import { createELKStateManager, ELKStateManager, LayoutDimensions } from './ELKStateManager';
+import { SIZES } from '../shared/config';
 import { ELK_ALGORITHMS, ELKAlgorithm } from '../shared/config';
 
 // ============ Constants ============
@@ -108,7 +109,7 @@ class LayoutResultConverter {
       const cachedDimensions = dimensionCache.get(container.id);
       
       // Priority: ELK-calculated > cached > original > fallback
-      const width = this.getDimension(
+      const baseWidth = this.getDimension(
         layoutedNode?.width,
         layoutedNode?.dimensions?.width,
         cachedDimensions?.width,
@@ -116,7 +117,7 @@ class LayoutResultConverter {
         ENGINE_CONSTANTS.DEFAULT_CONTAINER_WIDTH
       );
       
-      const height = this.getDimension(
+      const baseHeight = this.getDimension(
         layoutedNode?.height,
         layoutedNode?.dimensions?.height,
         cachedDimensions?.height,
@@ -124,12 +125,15 @@ class LayoutResultConverter {
         ENGINE_CONSTANTS.DEFAULT_CONTAINER_HEIGHT
       );
       
+      // Add padding to height for title area
+      const adjustedHeight = baseHeight + SIZES.CONTAINER_TITLE_AREA_PADDING;
+      
       return {
         ...container,
         x: layoutedNode?.position?.x || 0,
         y: layoutedNode?.position?.y || 0,
-        width,
-        height
+        width: baseWidth,
+        height: adjustedHeight
       };
     });
   }
@@ -232,9 +236,12 @@ export class ELKLayoutEngine implements LayoutEngine {
       // Check if this node is actually a container
       const correspondingContainer = containers.find(c => c.id === node.id);
       if (correspondingContainer) {
+        const baseWidth = node.width || node.dimensions?.width || ENGINE_CONSTANTS.DEFAULT_CONTAINER_WIDTH;
+        const baseHeight = node.height || node.dimensions?.height || ENGINE_CONSTANTS.DEFAULT_CONTAINER_HEIGHT;
+        
         const dimensions: LayoutDimensions = {
-          width: node.width || node.dimensions?.width || ENGINE_CONSTANTS.DEFAULT_CONTAINER_WIDTH,
-          height: node.height || node.dimensions?.height || ENGINE_CONSTANTS.DEFAULT_CONTAINER_HEIGHT
+          width: baseWidth,
+          height: baseHeight + SIZES.CONTAINER_TITLE_AREA_PADDING // Add padding for title area
         };
         this.dimensionCache.set(node.id, dimensions);
       }

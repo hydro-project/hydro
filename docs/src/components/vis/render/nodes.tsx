@@ -197,44 +197,13 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
         transition: 'all 0.3s ease-in-out'
       }}
     >
-      {/* Container header */}
-      <div 
-        className="container-header"
-        onClick={handleToggleCollapse}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '32px',
-          background: CONTAINER_COLORS.HEADER_BACKGROUND,
-          borderRadius: '10px 10px 0 0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 12px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          color: '#374151',
-          borderBottom: isCollapsed ? 'none' : '1px solid #d0d7de'
-        }}
-      >
-        <span>Container {id}</span>
-        <span style={{ 
-          transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)',
-          transition: 'transform 0.2s ease'
-        }}>
-          ▶
-        </span>
-      </div>
-
       {/* Container content area */}
       {!isCollapsed && (
         <div 
           className="container-content"
           style={{
             position: 'absolute',
-            top: '32px',
+            top: '8px',
             left: '8px',
             right: '8px',
             bottom: '8px',
@@ -242,6 +211,25 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
           }}
         />
       )}
+
+      {/* Container title - bottom right with shadow for legibility */}
+      <div 
+        className="container-title"
+        style={{
+          position: 'absolute',
+          bottom: '8px',
+          right: '12px',
+          fontSize: '11px',
+          fontWeight: '500',
+          color: '#374151',
+          textShadow: '0 1px 3px rgba(255, 255, 255, 0.9), 0 0 8px rgba(255, 255, 255, 0.8)',
+          pointerEvents: 'none', // Don't interfere with container interactions
+          userSelect: 'none',
+          zIndex: 10 // Ensure it appears above other content
+        }}
+      >
+        {id}
+      </div>
     </div>
   );
 };
