@@ -1,0 +1,12 @@
+# Dependencies
+/node_modules/
+
+# Compiled TypeScript output
+/dist/
+
+# Coverage reports
+/coverage/
+
+# Temporary debug files
+debug_*.js
+*.debug.js

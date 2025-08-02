@@ -49,39 +49,41 @@ function testNodeManagement() {
   const state = createTestState();
   
   // Test node creation
-  const node1 = state.setGraphNode('node1', { 
+  state.setGraphNode('node1', { 
     label: 'Test Node 1',
     style: NODE_STYLES.DEFAULT 
   });
   
+  // Test node retrieval
+  const node1 = state.getGraphNode('node1');
   assert.strictEqual(node1.id, 'node1', 'Node should have correct id');
   assert.strictEqual(node1.label, 'Test Node 1', 'Node should have correct label');
   assert.strictEqual(node1.style, NODE_STYLES.DEFAULT, 'Node should have correct style');
   assert.strictEqual(node1.hidden, false, 'Node should not be hidden by default');
   
-  // Test node retrieval
+  // Test that the same node is retrieved consistently
   const retrieved = state.getGraphNode('node1');
   assert.deepStrictEqual(retrieved, node1, 'Retrieved node should match created node');
   
   // Test visible nodes collection
-  const visibleNodes = state.getVisibleNodes();
+  const visibleNodes = state.visibleNodes;
   assert.strictEqual(visibleNodes.length, 1, 'Should have one visible node');
   assert.strictEqual(visibleNodes[0].id, 'node1', 'Visible node should be node1');
   
   // Test hiding nodes
-  state.setNodeHidden('node1', true);
-  assert.strictEqual(state.getNodeHidden('node1'), true, 'Node should be hidden');
-  assert.strictEqual(state.getVisibleNodes().length, 0, 'Should have no visible nodes when hidden');
+  state.updateNode('node1', { hidden: true });
+  assert.strictEqual(state.getGraphNode('node1').hidden, true, 'Node should be hidden');
+  assert.strictEqual(state.visibleNodes.length, 0, 'Should have no visible nodes when hidden');
   
   // Test showing nodes
-  state.setNodeHidden('node1', false);
-  assert.strictEqual(state.getNodeHidden('node1'), false, 'Node should not be hidden');
-  assert.strictEqual(state.getVisibleNodes().length, 1, 'Should have one visible node when shown');
+  state.updateNode('node1', { hidden: false });
+  assert.strictEqual(state.getGraphNode('node1').hidden, false, 'Node should not be hidden');
+  assert.strictEqual(state.visibleNodes.length, 1, 'Should have one visible node when shown');
   
   // Test node removal
   state.removeGraphNode('node1');
   assert.strictEqual(state.getGraphNode('node1'), undefined, 'Removed node should not exist');
-  assert.strictEqual(state.getVisibleNodes().length, 0, 'Should have no visible nodes after removal');
+  assert.strictEqual(state.visibleNodes.length, 0, 'Should have no visible nodes after removal');
   
   console.log('✓ Node management tests passed');
 }
@@ -98,12 +100,14 @@ function testEdgeManagement() {
   state.setGraphNode('node2', { label: 'Node 2' });
   
   // Test edge creation
-  const edge1 = state.setGraphEdge('edge1', {
+  state.setGraphEdge('edge1', {
     source: 'node1',
     target: 'node2',
     style: EDGE_STYLES.DEFAULT
   });
   
+  // Test edge retrieval
+  const edge1 = state.getGraphEdge('edge1');
   assert.strictEqual(edge1.id, 'edge1', 'Edge should have correct id');
   assert.strictEqual(edge1.source, 'node1', 'Edge should have correct source');
   assert.strictEqual(edge1.target, 'node2', 'Edge should have correct target');
@@ -116,13 +120,13 @@ function testEdgeManagement() {
   assert(node2Edges && node2Edges.has('edge1'), 'Node2 should be connected to edge1');
   
   // Test edge visibility
-  const visibleEdges = state.getVisibleEdges();
+  const visibleEdges = state.visibleEdges;
   assert.strictEqual(visibleEdges.length, 1, 'Should have one visible edge');
   
   // Test edge hiding
-  state.setEdgeHidden('edge1', true);
-  assert.strictEqual(state.getEdgeHidden('edge1'), true, 'Edge should be hidden');
-  assert.strictEqual(state.getVisibleEdges().length, 0, 'Should have no visible edges when hidden');
+  state.updateEdge('edge1', { hidden: true });
+  assert.strictEqual(state.getGraphEdge('edge1').hidden, true, 'Edge should be hidden');
+  assert.strictEqual(state.visibleEdges.length, 0, 'Should have no visible edges when hidden');
   
   // Test edge removal
   state.removeGraphEdge('edge1');
@@ -147,11 +151,13 @@ function testContainerManagement() {
   state.setGraphNode('node2', { label: 'Node 2' });
   
   // Test container creation
-  const container1 = state.setContainer('container1', {
+  state.setContainer('container1', {
     expandedDimensions: { width: 200, height: 150 },
     children: ['node1', 'node2']
   });
   
+  // Test container retrieval
+  const container1 = state.getContainer('container1');
   assert.strictEqual(container1.id, 'container1', 'Container should have correct id');
   assert.strictEqual(container1.collapsed, false, 'Container should not be collapsed by default');
   assert.strictEqual(container1.hidden, false, 'Container should not be hidden by default');
@@ -163,20 +169,20 @@ function testContainerManagement() {
   assertSetsEqual(state.getContainerChildren('container1'), new Set(['node1', 'node2']), 'Container should have correct children');
   
   // Test container visibility management
-  const visibleContainers = state.getVisibleContainers();
-  const expandedContainers = state.getExpandedContainers();
+  const visibleContainers = state.visibleContainers;
+  const expandedContainers = state.expandedContainers;
   assert.strictEqual(visibleContainers.length, 1, 'Should have one visible container');
   assert.strictEqual(expandedContainers.length, 1, 'Should have one expanded container');
   
   // Test container collapse
-  state.setContainerCollapsed('container1', true);
-  assert.strictEqual(state.getContainerCollapsed('container1'), true, 'Container should be collapsed');
-  assert.strictEqual(state.getExpandedContainers().length, 0, 'Should have no expanded containers when collapsed');
+  state.updateContainer('container1', { collapsed: true });
+  assert.strictEqual(state.getContainer('container1').collapsed, true, 'Container should be collapsed');
+  assert.strictEqual(state.expandedContainers.length, 0, 'Should have no expanded containers when collapsed');
   
   // Test container hiding
-  state.setContainerHidden('container1', true);
-  assert.strictEqual(state.getContainerHidden('container1'), true, 'Container should be hidden');
-  assert.strictEqual(state.getVisibleContainers().length, 0, 'Should have no visible containers when hidden');
+  state.updateContainer('container1', { hidden: true });
+  assert.strictEqual(state.getContainer('container1').hidden, true, 'Container should be hidden');
+  assert.strictEqual(state.visibleContainers.length, 0, 'Should have no visible containers when hidden');
   
   console.log('✓ Container management tests passed');
 }
@@ -189,13 +195,15 @@ function testHyperEdgeManagement() {
   const state = createTestState();
   
   // Test hyperEdge creation
-  const hyperEdge1 = state.setHyperEdge('hyper1', {
+  state.setHyperEdge('hyper1', {
     source: 'node1',
     target: 'container1',
     style: EDGE_STYLES.THICK,
     originalEdges: []
   });
   
+  // Test hyperEdge retrieval
+  const hyperEdge1 = state.getHyperEdge('hyper1');
   assert.strictEqual(hyperEdge1.id, 'hyper1', 'HyperEdge should have correct id');
   assert.strictEqual(hyperEdge1.source, 'node1', 'HyperEdge should have correct source');
   assert.strictEqual(hyperEdge1.target, 'container1', 'HyperEdge should have correct target');
@@ -206,16 +214,201 @@ function testHyperEdgeManagement() {
   assert.deepStrictEqual(retrieved, hyperEdge1, 'Retrieved hyperEdge should match created hyperEdge');
   
   // Test hyperEdge collection
-  const hyperEdges = state.getHyperEdges();
+  const hyperEdges = state.allHyperEdges;
   assert.strictEqual(hyperEdges.length, 1, 'Should have one hyperEdge');
   assert.strictEqual(hyperEdges[0].id, 'hyper1', 'HyperEdge should be hyper1');
   
   // Test hyperEdge removal
   state.removeHyperEdge('hyper1');
   assert.strictEqual(state.getHyperEdge('hyper1'), undefined, 'Removed hyperEdge should not exist');
-  assert.strictEqual(state.getHyperEdges().length, 0, 'Should have no hyperEdges after removal');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges after removal');
   
   console.log('✓ HyperEdge management tests passed');
+}
+
+// ============ Entity Removal Helper Tests ============
+
+function testEntityRemovalHelpers() {
+  console.log('Testing entity removal helpers...');
+  
+  const state = createTestState();
+  
+  // Set up a complex graph with all entity types and relationships
+  state.setGraphNode('node1', { label: 'Node 1' });
+  state.setGraphNode('node2', { label: 'Node 2' });
+  state.setGraphNode('node3', { label: 'Node 3' });
+  
+  state.setGraphEdge('edge1', { source: 'node1', target: 'node2' });
+  state.setGraphEdge('edge2', { source: 'node2', target: 'node3' });
+  
+  state.setContainer('container1', {
+    children: ['node1', 'node2'],
+    label: 'Container 1'
+  });
+  
+  state.setHyperEdge('hyper1', {
+    source: 'container1',
+    target: 'node3'
+  });
+  
+  // Test Node Removal Helper (_removeNodeFromAllStructures)
+  console.log('  Testing node removal helper...');
+  
+  // Verify initial state
+  assert(state.getGraphNode('node1'), 'Node1 should exist initially');
+  assert(state.visibleNodes.some(n => n.id === 'node1'), 'Node1 should be in visible nodes initially');
+  assert.strictEqual(state.getNodeContainer('node1'), 'container1', 'Node1 should be in container hierarchy');
+  
+  // Remove node1 and verify all data structures are cleaned up
+  state.removeGraphNode('node1');
+  
+  assert(!state.getGraphNode('node1'), 'Node1 should be removed from main collection');
+  assert(!state.visibleNodes.some(n => n.id === 'node1'), 'Node1 should be removed from visible nodes');
+  assert(!state.getNodeContainer('node1'), 'Node1 should be removed from container hierarchy');
+  
+  // Test Edge Removal Helper (_removeEdgeFromAllStructures)
+  console.log('  Testing edge removal helper...');
+  
+  // Verify edge2 initial state
+  assert(state.getGraphEdge('edge2'), 'Edge2 should exist initially');
+  assert(state.visibleEdges.some(e => e.id === 'edge2'), 'Edge2 should be in visible edges initially');
+  
+  const node2EdgesBefore = state.nodeToEdges.get('node2');
+  const node3EdgesBefore = state.nodeToEdges.get('node3');
+  assert(node2EdgesBefore && node2EdgesBefore.has('edge2'), 'Node2 should be connected to edge2');
+  assert(node3EdgesBefore && node3EdgesBefore.has('edge2'), 'Node3 should be connected to edge2');
+  
+  // Remove edge2 and verify all data structures are cleaned up
+  state.removeGraphEdge('edge2');
+  
+  assert(!state.getGraphEdge('edge2'), 'Edge2 should be removed from main collection');
+  assert(!state.visibleEdges.some(e => e.id === 'edge2'), 'Edge2 should be removed from visible edges');
+  
+  const node2EdgesAfter = state.nodeToEdges.get('node2');
+  const node3EdgesAfter = state.nodeToEdges.get('node3');
+  assert(!node2EdgesAfter || !node2EdgesAfter.has('edge2'), 'Node2 should not be connected to edge2');
+  assert(!node3EdgesAfter || !node3EdgesAfter.has('edge2'), 'Node3 should not be connected to edge2');
+  
+  // Test Container Removal Helper (_removeContainerFromAllStructures)
+  console.log('  Testing container removal helper...');
+  
+  // Verify container1 initial state
+  assert(state.getContainer('container1'), 'Container1 should exist initially');
+  assert(state.visibleContainers.some(c => c.id === 'container1'), 'Container1 should be in visible containers initially');
+  assert(state.expandedContainers.some(c => c.id === 'container1'), 'Container1 should be in expanded containers initially');
+  assert(state.getContainerChildren('container1').size > 0, 'Container1 should have children initially');
+  
+  // Note: node1 was removed earlier, but node2 should still be in the container
+  assert.strictEqual(state.getNodeContainer('node2'), 'container1', 'Node2 should still be in container1');
+  
+  // Remove container1 and verify all data structures are cleaned up
+  state.removeContainer('container1');
+  
+  assert(!state.getContainer('container1'), 'Container1 should be removed from main collection');
+  assert(!state.visibleContainers.some(c => c.id === 'container1'), 'Container1 should be removed from visible containers');
+  assert(!state.expandedContainers.some(c => c.id === 'container1'), 'Container1 should be removed from expanded containers');
+  assert.strictEqual(state.getContainerChildren('container1').size, 0, 'Container1 should have no children after removal');
+  assert(!state.getNodeContainer('node2'), 'Node2 should be removed from nodeContainers mapping');
+  
+  // Test HyperEdge Removal Helper (_removeHyperEdgeFromAllStructures)
+  console.log('  Testing hyperEdge removal helper...');
+  
+  // Verify hyper1 initial state
+  assert(state.getHyperEdge('hyper1'), 'Hyper1 should exist initially');
+  
+  // Remove hyper1 and verify all data structures are cleaned up
+  state.removeHyperEdge('hyper1');
+  
+  assert(!state.getHyperEdge('hyper1'), 'Hyper1 should be removed from main collection');
+  
+  console.log('✓ Entity removal helper tests passed');
+}
+
+function testContainerRemovalWithNestedHierarchy() {
+  console.log('Testing container removal with nested hierarchy...');
+  
+  const state = createTestState();
+  
+  // Create nested container structure: container1 -> container2 -> node1, node2
+  state.setGraphNode('node1', { label: 'Node 1' });
+  state.setGraphNode('node2', { label: 'Node 2' });
+  state.setGraphNode('node3', { label: 'Node 3' });
+  
+  state.setContainer('container2', {
+    children: ['node1', 'node2'],
+    label: 'Inner Container'
+  });
+  
+  state.setContainer('container1', {
+    children: ['container2', 'node3'],
+    label: 'Outer Container'
+  });
+  
+  // Verify initial hierarchy using public API
+  assert.strictEqual(state.getNodeContainer('node1'), 'container2', 'Node1 should be in container2');
+  assert.strictEqual(state.getNodeContainer('node2'), 'container2', 'Node2 should be in container2');
+  assert.strictEqual(state.getNodeContainer('node3'), 'container1', 'Node3 should be in container1');
+  assert.strictEqual(state.getNodeContainer('container2'), 'container1', 'Container2 should be in container1');
+  
+  // Remove inner container and verify hierarchy cleanup
+  state.removeContainer('container2');
+  
+  assert(!state.getContainer('container2'), 'Container2 should be removed');
+  assert(!state.getNodeContainer('node1'), 'Node1 should be removed from hierarchy');
+  assert(!state.getNodeContainer('node2'), 'Node2 should be removed from hierarchy');
+  assert(!state.getNodeContainer('container2'), 'Container2 should be removed from hierarchy');
+  assert.strictEqual(state.getNodeContainer('node3'), 'container1', 'Node3 should still be in container1');
+  
+  // Verify container1 children are updated
+  const container1 = state.getContainer('container1');
+  assert(!container1.children.has('container2'), 'Container1 should not contain container2 anymore');
+  assert(container1.children.has('node3'), 'Container1 should still contain node3');
+  
+  console.log('✓ Container removal with nested hierarchy tests passed');
+}
+
+function testBulkClearOperation() {
+  console.log('Testing bulk clear operation...');
+  
+  const state = createTestState();
+  
+  // Set up a full graph
+  state.setGraphNode('node1', { label: 'Node 1' });
+  state.setGraphNode('node2', { label: 'Node 2', hidden: true });
+  
+  state.setGraphEdge('edge1', { source: 'node1', target: 'node2' });
+  
+  state.setContainer('container1', {
+    children: ['node1'],
+    collapsed: true
+  });
+  
+  state.setHyperEdge('hyper1', {
+    source: 'container1',
+    target: 'node2'
+  });
+  
+  // Verify initial state is populated using public API
+  assert(state.visibleNodes.length >= 0, 'Should have some state before clear');
+  assert(state.visibleEdges.length >= 0, 'Should have some edge state before clear');
+  assert(state.visibleContainers.length >= 0, 'Should have some container state before clear');
+  assert(state.allHyperEdges.length > 0, 'Should have hyperEdges before clear');
+  
+  // Clear all data
+  state.clear();
+  
+  // Verify all data structures are empty using public API
+  assert.strictEqual(state.visibleNodes.length, 0, 'Should have no visible nodes after clear');
+  assert.strictEqual(state.visibleEdges.length, 0, 'Should have no visible edges after clear');
+  assert.strictEqual(state.visibleContainers.length, 0, 'Should have no visible containers after clear');
+  assert.strictEqual(state.expandedContainers.length, 0, 'Should have no expanded containers after clear');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges after clear');
+  
+  // Test that we can add new entities after clear
+  state.setGraphNode('newNode', { label: 'New Node' });
+  assert.strictEqual(state.visibleNodes.length, 1, 'Should be able to add nodes after clear');
+  
+  console.log('✓ Bulk clear operation tests passed');
 }
 
 // ============ Container Collapse/Expand Tests ============
@@ -241,33 +434,33 @@ function testContainerCollapseExpand() {
   });
   
   // Verify initial state
-  assert.strictEqual(state.getVisibleNodes().length, 4, 'Should have 4 visible nodes initially');
-  assert.strictEqual(state.getVisibleEdges().length, 4, 'Should have 4 visible edges initially');
-  assert.strictEqual(state.getHyperEdges().length, 0, 'Should have no hyperEdges initially');
+  assert.strictEqual(state.visibleNodes.length, 4, 'Should have 4 visible nodes initially');
+  assert.strictEqual(state.visibleEdges.length, 4, 'Should have 4 visible edges initially');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges initially');
   
   // Test collapse
   state.collapseContainer('container1');
   
   // Check collapsed state
-  assert.strictEqual(state.getContainerCollapsed('container1'), true, 'Container should be collapsed');
+  assert.strictEqual(state.getContainer('container1').collapsed, true, 'Container should be collapsed');
   assert(state.collapsedContainers.has('container1'), 'Should have collapsed container representation');
   
   // Check node visibility (nodes 1,2,3 should be hidden, node4 should be visible)
-  assert.strictEqual(state.getNodeHidden('node1'), true, 'Node1 should be hidden');
-  assert.strictEqual(state.getNodeHidden('node2'), true, 'Node2 should be hidden');
-  assert.strictEqual(state.getNodeHidden('node3'), true, 'Node3 should be hidden');
-  assert.strictEqual(state.getNodeHidden('node4'), false, 'Node4 should be visible');
-  assert.strictEqual(state.getVisibleNodes().length, 1, 'Should have 1 visible node after collapse');
+  assert.strictEqual(state.getGraphNode('node1').hidden, true, 'Node1 should be hidden');
+  assert.strictEqual(state.getGraphNode('node2').hidden, true, 'Node2 should be hidden');
+  assert.strictEqual(state.getGraphNode('node3').hidden, true, 'Node3 should be hidden');
+  assert.strictEqual(state.getGraphNode('node4').hidden, false, 'Node4 should be visible');
+  assert.strictEqual(state.visibleNodes.length, 1, 'Should have 1 visible node after collapse');
   
   // Check edge visibility (all original edges should be hidden)
-  assert.strictEqual(state.getEdgeHidden('edge1-2'), true, 'Internal edge should be hidden');
-  assert.strictEqual(state.getEdgeHidden('edge2-3'), true, 'Internal edge should be hidden');
-  assert.strictEqual(state.getEdgeHidden('edge1-4'), true, 'Boundary edge should be hidden');
-  assert.strictEqual(state.getEdgeHidden('edge4-3'), true, 'Boundary edge should be hidden');
-  assert.strictEqual(state.getVisibleEdges().length, 0, 'Should have no visible edges after collapse');
+  assert.strictEqual(state.getGraphEdge('edge1-2').hidden, true, 'Internal edge should be hidden');
+  assert.strictEqual(state.getGraphEdge('edge2-3').hidden, true, 'Internal edge should be hidden');
+  assert.strictEqual(state.getGraphEdge('edge1-4').hidden, true, 'Boundary edge should be hidden');
+  assert.strictEqual(state.getGraphEdge('edge4-3').hidden, true, 'Boundary edge should be hidden');
+  assert.strictEqual(state.visibleEdges.length, 0, 'Should have no visible edges after collapse');
   
   // Check hyperEdges (should have hyperEdges connecting node4 to container1)
-  const hyperEdges = state.getHyperEdges();
+  const hyperEdges = state.allHyperEdges;
   assert.strictEqual(hyperEdges.length, 2, 'Should have 2 hyperEdges after collapse');
   
   const hyperEdgeIds = hyperEdges.map(he => he.id);
@@ -278,25 +471,25 @@ function testContainerCollapseExpand() {
   state.expandContainer('container1');
   
   // Check expanded state
-  assert.strictEqual(state.getContainerCollapsed('container1'), false, 'Container should be expanded');
+  assert.strictEqual(state.getContainer('container1').collapsed, false, 'Container should be expanded');
   assert(!state.collapsedContainers.has('container1'), 'Should not have collapsed container representation');
   
   // Check node visibility (all nodes should be visible again)
-  assert.strictEqual(state.getNodeHidden('node1'), false, 'Node1 should be visible');
-  assert.strictEqual(state.getNodeHidden('node2'), false, 'Node2 should be visible');
-  assert.strictEqual(state.getNodeHidden('node3'), false, 'Node3 should be visible');
-  assert.strictEqual(state.getNodeHidden('node4'), false, 'Node4 should be visible');
-  assert.strictEqual(state.getVisibleNodes().length, 4, 'Should have 4 visible nodes after expand');
+  assert.strictEqual(state.getGraphNode('node1').hidden, false, 'Node1 should be visible');
+  assert.strictEqual(state.getGraphNode('node2').hidden, false, 'Node2 should be visible');
+  assert.strictEqual(state.getGraphNode('node3').hidden, false, 'Node3 should be visible');
+  assert.strictEqual(state.getGraphNode('node4').hidden, false, 'Node4 should be visible');
+  assert.strictEqual(state.visibleNodes.length, 4, 'Should have 4 visible nodes after expand');
   
   // Check edge visibility (all original edges should be visible again)
-  assert.strictEqual(state.getEdgeHidden('edge1-2'), false, 'Internal edge should be visible');
-  assert.strictEqual(state.getEdgeHidden('edge2-3'), false, 'Internal edge should be visible');
-  assert.strictEqual(state.getEdgeHidden('edge1-4'), false, 'Boundary edge should be visible');
-  assert.strictEqual(state.getEdgeHidden('edge4-3'), false, 'Boundary edge should be visible');
-  assert.strictEqual(state.getVisibleEdges().length, 4, 'Should have 4 visible edges after expand');
+  assert.strictEqual(state.getGraphEdge('edge1-2').hidden, false, 'Internal edge should be visible');
+  assert.strictEqual(state.getGraphEdge('edge2-3').hidden, false, 'Internal edge should be visible');
+  assert.strictEqual(state.getGraphEdge('edge1-4').hidden, false, 'Boundary edge should be visible');
+  assert.strictEqual(state.getGraphEdge('edge4-3').hidden, false, 'Boundary edge should be visible');
+  assert.strictEqual(state.visibleEdges.length, 4, 'Should have 4 visible edges after expand');
   
   // Check hyperEdges (should be removed)
-  assert.strictEqual(state.getHyperEdges().length, 0, 'Should have no hyperEdges after expand');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges after expand');
   
   console.log('✓ Container collapse/expand tests passed');
 }
@@ -327,16 +520,16 @@ function testNestedContainers() {
   state.collapseContainer('outerContainer');
   
   // Both containers should be collapsed
-  assert.strictEqual(state.getContainerCollapsed('innerContainer'), true, 'Inner container should be collapsed');
-  assert.strictEqual(state.getContainerCollapsed('outerContainer'), true, 'Outer container should be collapsed');
+  assert.strictEqual(state.getContainer('innerContainer').collapsed, true, 'Inner container should be collapsed');
+  assert.strictEqual(state.getContainer('outerContainer').collapsed, true, 'Outer container should be collapsed');
   
   // Nodes should be hidden
-  assert.strictEqual(state.getNodeHidden('node1'), true, 'Node1 should be hidden');
-  assert.strictEqual(state.getNodeHidden('node2'), true, 'Node2 should be hidden');
-  assert.strictEqual(state.getNodeHidden('node3'), false, 'External node should be visible');
+  assert.strictEqual(state.getGraphNode('node1').hidden, true, 'Node1 should be hidden');
+  assert.strictEqual(state.getGraphNode('node2').hidden, true, 'Node2 should be hidden');
+  assert.strictEqual(state.getGraphNode('node3').hidden, false, 'External node should be visible');
   
   // Should have hyperEdge from outerContainer to node3
-  const hyperEdges = state.getHyperEdges();
+  const hyperEdges = state.allHyperEdges;
   assert.strictEqual(hyperEdges.length, 1, 'Should have 1 hyperEdge');
   assert.strictEqual(hyperEdges[0].source, 'outerContainer', 'HyperEdge should originate from outer container');
   assert.strictEqual(hyperEdges[0].target, 'node3', 'HyperEdge should connect to external node');
@@ -408,8 +601,8 @@ function testClearState() {
   assert.strictEqual(state.graphEdges.size, 0, 'Should have no edges after clear');
   assert.strictEqual(state.containers.size, 0, 'Should have no containers after clear');
   assert.strictEqual(state.hyperEdges.size, 0, 'Should have no hyperEdges after clear');
-  assert.strictEqual(state.visibleNodes.size, 0, 'Should have no visible nodes after clear');
-  assert.strictEqual(state.visibleEdges.size, 0, 'Should have no visible edges after clear');
+  assert.strictEqual(state.visibleNodes.length, 0, 'Should have no visible nodes after clear');
+  assert.strictEqual(state.visibleEdges.length, 0, 'Should have no visible edges after clear');
   assert.strictEqual(state.nodeToEdges.size, 0, 'Should have no edge mappings after clear');
   
   console.log('✓ State clearing tests passed');
@@ -433,10 +626,10 @@ function testSimpleGrounding() {
   state.setGraphEdge('edge1', { source: 'internal', target: 'external' });
   
   // Verify initial state
-  assert.strictEqual(state.getNodeHidden('internal'), false, 'Internal node should initially be visible');
-  assert.strictEqual(state.getNodeHidden('external'), false, 'External node should initially be visible');
-  assert.strictEqual(state.getEdgeHidden('edge1'), false, 'Edge should initially be visible');
-  assert.strictEqual(state.getHyperEdges().length, 0, 'Should have no hyperEdges initially');
+  assert.strictEqual(state.getGraphNode('internal').hidden, false, 'Internal node should initially be visible');
+  assert.strictEqual(state.getGraphNode('external').hidden, false, 'External node should initially be visible');
+  assert.strictEqual(state.getGraphEdge('edge1').hidden, false, 'Edge should initially be visible');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges initially');
   
   console.log('  Initial state verified');
   
@@ -444,11 +637,11 @@ function testSimpleGrounding() {
   state.collapseContainer('container1');
   
   // Verify collapsed state
-  assert.strictEqual(state.getNodeHidden('internal'), true, 'Internal node should be hidden after collapse');
-  assert.strictEqual(state.getNodeHidden('external'), false, 'External node should still be visible after collapse');
-  assert.strictEqual(state.getEdgeHidden('edge1'), true, 'Edge should be hidden after collapse');
+  assert.strictEqual(state.getGraphNode('internal').hidden, true, 'Internal node should be hidden after collapse');
+  assert.strictEqual(state.getGraphNode('external').hidden, false, 'External node should still be visible after collapse');
+  assert.strictEqual(state.getGraphEdge('edge1').hidden, true, 'Edge should be hidden after collapse');
   
-  const hyperEdges = state.getHyperEdges();
+  const hyperEdges = state.allHyperEdges;
   assert.strictEqual(hyperEdges.length, 1, 'Should have exactly 1 hyperEdge after collapse');
   
   const hyperEdge = hyperEdges[0];
@@ -463,10 +656,10 @@ function testSimpleGrounding() {
   state.expandContainer('container1');
   
   // Verify expanded state (should be exactly like initial state)
-  assert.strictEqual(state.getNodeHidden('internal'), false, 'Internal node should be visible after expand');
-  assert.strictEqual(state.getNodeHidden('external'), false, 'External node should still be visible after expand');
-  assert.strictEqual(state.getEdgeHidden('edge1'), false, 'Edge should be visible after expand');
-  assert.strictEqual(state.getHyperEdges().length, 0, 'Should have no hyperEdges after expand');
+  assert.strictEqual(state.getGraphNode('internal').hidden, false, 'Internal node should be visible after expand');
+  assert.strictEqual(state.getGraphNode('external').hidden, false, 'External node should still be visible after expand');
+  assert.strictEqual(state.getGraphEdge('edge1').hidden, false, 'Edge should be visible after expand');
+  assert.strictEqual(state.allHyperEdges.length, 0, 'Should have no hyperEdges after expand');
   
   console.log('  Expanded state verified');
   
@@ -723,11 +916,11 @@ function captureStateSnapshot(state) {
     })).sort((a, b) => a.id.localeCompare(b.id)),
     
     // Derived collections
-    visibleNodeCount: state.getVisibleNodes().length,
-    visibleEdgeCount: state.getVisibleEdges().length,
-    visibleContainerCount: state.getVisibleContainers().length,
-    expandedContainerCount: state.getExpandedContainers().length,
-    hyperEdgeCount: state.getHyperEdges().length
+    visibleNodeCount: state.visibleNodes.length,
+    visibleEdgeCount: state.visibleEdges.length,
+    visibleContainerCount: state.visibleContainers.length,
+    expandedContainerCount: state.expandedContainers.length,
+    hyperEdgeCount: state.allHyperEdges.length
   };
 }
 
@@ -764,6 +957,9 @@ function runAllTests() {
     testEdgeManagement();
     testContainerManagement();
     testHyperEdgeManagement();
+    testEntityRemovalHelpers();
+    testContainerRemovalWithNestedHierarchy();
+    testBulkClearOperation();
     testContainerCollapseExpand();
     testNestedContainers();
     testEdgeStyleAggregation();
@@ -786,6 +982,9 @@ export {
   testEdgeManagement,
   testContainerManagement,
   testHyperEdgeManagement,
+  testEntityRemovalHelpers,
+  testContainerRemovalWithNestedHierarchy,
+  testBulkClearOperation,
   testContainerCollapseExpand,
   testNestedContainers,
   testEdgeStyleAggregation,

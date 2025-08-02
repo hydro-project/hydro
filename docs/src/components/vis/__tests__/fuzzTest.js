@@ -63,7 +63,7 @@ class InvariantChecker {
    */
   checkNodeVisibilityInvariant(context) {
     const allNodes = Array.from(this.state.graphNodes.values());
-    const visibleNodes = this.state.getVisibleNodes();
+    const visibleNodes = this.state.visibleNodes;
     const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
     
     for (const node of allNodes) {
@@ -83,12 +83,14 @@ class InvariantChecker {
    */
   checkEdgeVisibilityInvariant(context) {
     const allEdges = Array.from(this.state.graphEdges.values());
-    const visibleEdges = this.state.getVisibleEdges();
+    const visibleEdges = this.state.visibleEdges;
     const visibleEdgeIds = new Set(visibleEdges.map(e => e.id));
     
     for (const edge of allEdges) {
-      const sourceVisible = !this.state.getNodeHidden(edge.source) && !this.isNodeInCollapsedContainer(edge.source);
-      const targetVisible = !this.state.getNodeHidden(edge.target) && !this.isNodeInCollapsedContainer(edge.target);
+      const sourceNode = this.state.getGraphNode(edge.source);
+      const targetNode = this.state.getGraphNode(edge.target);
+      const sourceVisible = !sourceNode.hidden && !this.isNodeInCollapsedContainer(edge.source);
+      const targetVisible = !targetNode.hidden && !this.isNodeInCollapsedContainer(edge.target);
       const shouldBeVisible = sourceVisible && targetVisible;
       const isVisible = visibleEdgeIds.has(edge.id);
       
@@ -130,7 +132,7 @@ class InvariantChecker {
    * Invariant: HyperEdges exist only for visible, collapsed containers and connect to visible endpoints
    */
   checkHyperEdgeConsistency(context) {
-    const hyperEdges = this.state.getHyperEdges();
+    const hyperEdges = this.state.allHyperEdges;
     
     // Get container states
     const visibleCollapsedContainerIds = new Set();
@@ -201,7 +203,7 @@ class InvariantChecker {
    * Check that hidden and expanded containers have no adjacent hyperEdges
    */
   _checkContainerHyperEdgeConstraints(context, hiddenContainerIds, visibleExpandedContainerIds) {
-    const hyperEdges = this.state.getHyperEdges();
+    const hyperEdges = this.state.allHyperEdges;
     
     // Hidden containers should have NO hyperEdges
     for (const containerId of hiddenContainerIds) {
@@ -234,7 +236,7 @@ class InvariantChecker {
   checkCollectionConsistency(context) {
     // Check visible nodes collection
     const allNodes = Array.from(this.state.graphNodes.values());
-    const visibleNodes = this.state.getVisibleNodes();
+    const visibleNodes = this.state.visibleNodes;
     const expectedVisibleNodes = allNodes.filter(node => !node.hidden);
     
     assert.strictEqual(
@@ -245,7 +247,7 @@ class InvariantChecker {
     
     // Check visible edges collection
     const allEdges = Array.from(this.state.graphEdges.values());
-    const visibleEdges = this.state.getVisibleEdges();
+    const visibleEdges = this.state.visibleEdges;
     const expectedVisibleEdges = allEdges.filter(edge => !edge.hidden);
     
     assert.strictEqual(
@@ -256,7 +258,7 @@ class InvariantChecker {
     
     // Check expanded containers collection
     const allContainers = Array.from(this.state.containers.values());
-    const expandedContainers = this.state.getExpandedContainers();
+    const expandedContainers = this.state.expandedContainers;
     const expectedExpandedContainers = allContainers.filter(container => !container.collapsed);
     
     assert.strictEqual(
@@ -347,13 +349,13 @@ class FuzzTester {
     const state = result.state;
     const checker = new InvariantChecker(state);
     
-    const containers = state.getVisibleContainers();
+    const containers = state.visibleContainers;
     if (containers.length === 0) {
       console.log(`⚠️  No containers found, skipping fuzz test for ${this.testName}`);
       return;
     }
     
-    console.log(`   📊 Initial state: ${state.getVisibleNodes().length} nodes, ${state.getVisibleEdges().length} edges, ${containers.length} containers`);
+    console.log(`   📊 Initial state: ${state.visibleNodes.length} nodes, ${state.visibleEdges.length} edges, ${containers.length} containers`);
     
     // Check initial invariants
     checker.checkAll('Initial state');
@@ -397,9 +399,9 @@ class FuzzTester {
     console.log(`✅ Fuzz test completed: ${totalOperations} operations, all invariants maintained`);
     
     // Final state summary
-    const finalNodes = state.getVisibleNodes().length;
-    const finalEdges = state.getVisibleEdges().length;
-    const finalHyperEdges = state.getHyperEdges().length;
+    const finalNodes = state.visibleNodes.length;
+    const finalEdges = state.visibleEdges.length;
+    const finalHyperEdges = state.allHyperEdges.length;
     const collapsedContainers = Array.from(state.collapsedContainers.keys()).length;
     
     console.log(`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${finalHyperEdges} hyperEdges, ${collapsedContainers} collapsed containers`);
@@ -409,7 +411,7 @@ class FuzzTester {
    * Generate a random collapse or expand operation
    */
   generateRandomOperation(state) {
-    const allContainers = state.getVisibleContainers();
+    const allContainers = state.visibleContainers;
     if (allContainers.length === 0) return null;
     
     const expandedContainers = allContainers.filter(c => !c.collapsed);
@@ -453,10 +455,10 @@ class FuzzTester {
    */
   captureStateSnapshot(state) {
     return {
-      visibleNodes: state.getVisibleNodes().length,
-      visibleEdges: state.getVisibleEdges().length,
-      hyperEdges: state.getHyperEdges().length,
-      expandedContainers: state.getExpandedContainers().length,
+      visibleNodes: state.visibleNodes.length,
+      visibleEdges: state.visibleEdges.length,
+      hyperEdges: state.allHyperEdges.length,
+      expandedContainers: state.expandedContainers.length,
       collapsedContainers: Array.from(state.collapsedContainers.keys()).length
     };
   }

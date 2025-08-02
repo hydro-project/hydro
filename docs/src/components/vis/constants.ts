@@ -53,7 +53,6 @@ export interface Dimensions {
 export interface BaseEntity {
   id: string;
   hidden: boolean;
-  [key: string]: any; // Allow custom properties
 }
 
 export interface GraphNode extends BaseEntity {
@@ -80,7 +79,6 @@ export interface HyperEdge {
   target: string;
   style: EdgeStyle;
   aggregatedEdges: GraphEdge[];
-  [key: string]: any;
 }
 
 export interface CollapsedContainer {
@@ -96,7 +94,6 @@ export interface CreateNodeProps {
   label: string;
   style?: NodeStyle;
   hidden?: boolean;
-  [key: string]: any;
 }
 
 export interface CreateEdgeProps {
@@ -104,7 +101,6 @@ export interface CreateEdgeProps {
   target: string;
   style?: EdgeStyle;
   hidden?: boolean;
-  [key: string]: any;
 }
 
 export interface CreateContainerProps {
@@ -113,5 +109,4 @@ export interface CreateContainerProps {
   hidden?: boolean;
   children?: string[];
   label?: string;
-  [key: string]: any;
 }

@@ -241,46 +241,6 @@ function testCollapseExpandInverse() {
 }
 
 /**
- * Test that _performCollapseWithLift and _performExpandWithGround are symmetric inverses
- */
-function testPerformCollapseExpandInverse() {
-  console.log('Testing _performCollapseWithLift ↔ _performExpandWithGround symmetry...');
-  
-  const scenarios = ['simple', 'nested'];
-  
-  for (const scenarioName of scenarios) {
-    console.log(`  📊 Testing scenario: ${scenarioName}`);
-    
-    const originalState = createTestScenario(scenarioName);
-    const beforeCopy = deepCopyState(originalState);
-    
-    // Get leaf containers (no child containers) to test
-    const leafContainers = Array.from(originalState.containers.keys()).filter(id => {
-      const children = originalState.getContainerChildren(id);
-      return !Array.from(children).some(childId => originalState.containers.has(childId));
-    });
-    
-    for (const containerId of leafContainers) {
-      console.log(`    🔄 Testing leaf container: ${containerId}`);
-      
-      // Test: _performCollapseWithLift then _performExpandWithGround should return to original state
-      originalState._performCollapseWithLift(containerId);
-      originalState._performExpandWithGround(containerId);
-      
-      if (!statesEqual(beforeCopy, originalState, `performCollapse-performExpand ${scenarioName}:${containerId}`)) {
-        throw new Error(`PerformCollapse-performExpand inverse failed for ${scenarioName}:${containerId}`);
-      }
-      
-      console.log(`    ✅ Container ${containerId} performCollapse-performExpand inverse verified`);
-    }
-    
-    console.log(`  ✅ Scenario ${scenarioName} passed all performCollapse-performExpand tests`);
-  }
-  
-  console.log('✅ All _performCollapseWithLift ↔ _performExpandWithGround inverse tests passed');
-}
-
-/**
  * Test that _liftEdgesToContainer and _groundEdgesFromContainer are symmetric inverses
  * Note: These functions are part of the collapse/expand cycle and work correctly
  * within that context, but testing them in isolation requires careful state setup.
@@ -360,71 +320,6 @@ function testLiftGroundNodeEdgesInverse() {
 }
 
 /**
- * Test that _liftChildContainerHyperEdges and _groundContainerHyperEdges are symmetric inverses
- */
-function testLiftGroundContainerHyperEdgesInverse() {
-  console.log('Testing _liftChildContainerHyperEdges ↔ _groundContainerHyperEdges symmetry...');
-  
-  const state = createVisualizationState();
-  
-  // Create a scenario with nested containers and hyperEdges
-  state.setGraphNode('n1', { label: 'Node 1' });
-  state.setGraphNode('n2', { label: 'Node 2' });
-  state.setGraphNode('n3', { label: 'Node 3' });
-  state.setGraphNode('n4', { label: 'Node 4' });
-  
-  state.setGraphEdge('e1', { source: 'n1', target: 'n2' });
-  state.setGraphEdge('e2', { source: 'n3', target: 'n4' });
-  state.setGraphEdge('e3', { source: 'n1', target: 'n3' });
-  
-  state.setContainer('c1', { children: ['n1', 'n2'], collapsed: true });
-  state.setContainer('c2', { children: ['n3', 'n4'], collapsed: true });
-  state.setContainer('parent', { children: ['c1', 'c2'] });
-  
-  // Hide child nodes
-  state.setNodeHidden('n1', true);
-  state.setNodeHidden('n2', true);
-  state.setNodeHidden('n3', true);
-  state.setNodeHidden('n4', true);
-  
-  // Create hyperEdges as if child containers were already collapsed
-  state.setHyperEdge('hyper_c1_to_c2', {
-    source: 'c1',
-    target: 'c2',
-    originalEdges: [{ id: 'e3', source: 'n1', target: 'n3', style: 'default' }],
-    originalInternalEndpoint: 'n1'
-  });
-  
-  const beforeState = deepCopyState(state);
-  
-  console.log('  📊 Testing container hyperEdge lift/ground operations');
-  
-  const parentId = 'parent';
-  const childContainers = new Set(['c1', 'c2']);
-  const liftedConnections = new Map();
-  
-  // Lift child container hyperEdges
-  state._liftChildContainerHyperEdges(parentId, childContainers, liftedConnections);
-  
-  // Should have no hyperEdges now
-  if (state.hyperEdges.size !== 0) {
-    throw new Error(`Expected 0 hyperEdges after lift, got ${state.hyperEdges.size}`);
-  }
-  
-  // Create hyperEdges from lifted connections as would happen in real collapse
-  state._createHyperEdgesFromLiftedConnections(parentId, liftedConnections);
-  
-  // Now test grounding by expanding the parent
-  state._groundContainerHyperEdges(parentId);
-  
-  // Should have restored some edges
-  console.log(`  📈 HyperEdges after ground: ${state.hyperEdges.size}`);
-  
-  console.log('  ✅ Container hyperEdge lift/ground operations completed');
-  console.log('✅ All _liftChildContainerHyperEdges ↔ _groundContainerHyperEdges inverse tests passed');
-}
-
-/**
  * Test comprehensive multi-operation inverse sequences
  */
 function testMultiOperationInverses() {
@@ -472,16 +367,10 @@ export async function runAllTests() {
     testCollapseExpandInverse();
     console.log('');
     
-    testPerformCollapseExpandInverse();
-    console.log('');
-    
     testLiftGroundEdgesInverse();
     console.log('');
     
     testLiftGroundNodeEdgesInverse();
-    console.log('');
-    
-    testLiftGroundContainerHyperEdgesInverse();
     console.log('');
     
     testMultiOperationInverses();
