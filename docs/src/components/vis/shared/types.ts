@@ -152,11 +152,11 @@ export interface VisualizationState {
   setContainerHidden(id: string, hidden: boolean): void;
   getContainerHidden(id: string): boolean | undefined;
   
-  // Visibility methods
-  getVisibleNodes(): GraphNode[];
-  getVisibleEdges(): GraphEdge[];
-  getVisibleContainers(): Container[];
-  getHyperEdges(): HyperEdge[];
+  // Visibility properties (readonly getters)
+  readonly visibleNodes: GraphNode[];
+  readonly visibleEdges: GraphEdge[];
+  readonly visibleContainers: Container[];
+  readonly allHyperEdges: HyperEdge[];
   
   // Container hierarchy methods
   addContainerChild(containerId: string, childId: string): void;

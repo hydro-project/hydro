@@ -12,8 +12,8 @@ import {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from '../shared/constants.js';
-import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand.js';
+} from '../shared/constants';
+import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -1108,3 +1108,69 @@ export class VisualizationState implements ContainerHierarchyView {
 export function createVisualizationState() {
   return new VisualizationState();
 }
+
+// Add interface compatibility methods
+declare module './VisState.js' {
+  interface VisualizationState {
+    // Node interface methods
+    setNodeHidden(id: string, hidden: boolean): void;
+    getNodeHidden(id: string): boolean | undefined;
+    
+    // Edge interface methods  
+    setEdgeHidden(id: string, hidden: boolean): void;
+    getEdgeHidden(id: string): boolean | undefined;
+    
+    // Container interface methods
+    setContainerCollapsed(id: string, collapsed: boolean): void;
+    getContainerCollapsed(id: string): boolean | undefined;
+    setContainerHidden(id: string, hidden: boolean): void;
+    getContainerHidden(id: string): boolean | undefined;
+    
+    // Container operations
+    collapseContainer(containerId: string): void;
+    expandContainer(containerId: string): void;
+  }
+}
+
+// Implement the interface methods
+Object.assign(VisualizationState.prototype, {
+  setNodeHidden(id: string, hidden: boolean): void {
+    this.updateNode(id, { hidden });
+  },
+  
+  getNodeHidden(id: string): boolean | undefined {
+    return this.getGraphNode(id)?.hidden;
+  },
+  
+  setEdgeHidden(id: string, hidden: boolean): void {
+    this.updateEdge(id, { hidden });
+  },
+  
+  getEdgeHidden(id: string): boolean | undefined {
+    return this.getGraphEdge(id)?.hidden;
+  },
+  
+  setContainerCollapsed(id: string, collapsed: boolean): void {
+    this.updateContainer(id, { collapsed });
+  },
+  
+  getContainerCollapsed(id: string): boolean | undefined {
+    return this.getContainer(id)?.collapsed;
+  },
+  
+  setContainerHidden(id: string, hidden: boolean): void {
+    this.updateContainer(id, { hidden });
+  },
+  
+  getContainerHidden(id: string): boolean | undefined {
+    return this.getContainer(id)?.hidden;
+  },
+  
+  collapseContainer(containerId: string): void {
+    this.updateContainer(containerId, { collapsed: true });
+  },
+  
+  expandContainer(containerId: string): void {
+    this.updateContainer(containerId, { collapsed: false });
+  }
+});

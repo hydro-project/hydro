@@ -26,8 +26,13 @@
   ],
   "author": "Hydro Project",
   "license": "MIT",
+  "dependencies": {
+    "reactflow": "^12.3.0",
+    "elkjs": "^0.9.3"
+  },
   "devDependencies": {
     "c8": "^10.1.3",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "@types/react": "^18.0.0"
   }
 }

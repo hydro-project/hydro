@@ -2,7 +2,8 @@
  * @fileoverview Vis - Next Generation Hydro Graph Visualizer
  * 
  * A modern, efficient visualization system for Hydro graphs with support for hierarchical 
- * containers, edge routing, and dynamic collapse/expand operations.
+ * containers, edge routing, dynamic collapse/expand operations, and ReactFlow rendering
+ * with ELK automatic layout.
  * 
  * @version 1.0.0
  * @author Hydro Project
@@ -10,7 +11,13 @@
  * 
  * @example
  * ```typescript
- * import { createVisualizationState, NODE_STYLES, parseHydroGraphJSON } from './vis';
+ * import { 
+ *   createVisualizationState, 
+ *   NODE_STYLES, 
+ *   parseHydroGraphJSON,
+ *   GraphFlow,
+ *   ELKLayoutEngine 
+ * } from './vis';
  * 
  * // Create a new visualization state
  * const state = createVisualizationState();
@@ -18,6 +25,9 @@
  * // Add nodes and edges
  * state.setGraphNode('node1', { label: 'My Node', style: NODE_STYLES.DEFAULT });
  * state.setGraphEdge('edge1', { source: 'node1', target: 'node2' });
+ * 
+ * // Render with ReactFlow
+ * <GraphFlow visualizationState={state} />
  * 
  * // Parse existing Hydro graph data
  * const { state: parsedState } = parseHydroGraphJSON(hydroGraphData);
@@ -170,6 +180,61 @@ export { getAvailableGroupings } from './core/JSONParser.js';
  * ```
  */
 export { validateHydroGraphJSON } from './core/JSONParser.js';
+
+// ============ Layout Engine ============
+
+/**
+ * ELK-based automatic layout engine for positioning graph elements.
+ * Supports hierarchical layouts, multiple algorithms, and custom spacing.
+ */
+export { 
+  ELKLayoutEngine,
+  DEFAULT_LAYOUT_CONFIG,
+  LAYOUT_ALGORITHMS,
+  LAYOUT_DIRECTIONS
+} from './layout/index.js';
+
+/**
+ * Layout configuration and result types for the ELK layout engine.
+ */
+export type {
+  LayoutConfig,
+  LayoutPosition,
+  LayoutDimensions,
+  PositionedNode,
+  PositionedEdge,
+  PositionedContainer,
+  PositionedHyperEdge,
+  LayoutResult,
+  LayoutEngine
+} from './layout/index.js';
+
+// ============ ReactFlow Renderer ============
+
+/**
+ * ReactFlow-based graph visualization component with custom nodes and edges.
+ * Integrates with ELK layout engine for automatic positioning.
+ */
+export { 
+  GraphFlow,
+  ReactFlowConverter,
+  GraphStandardNode,
+  GraphContainerNode,
+  GraphStandardEdge,
+  GraphHyperEdge,
+  DEFAULT_RENDER_CONFIG,
+  NODE_STYLE_CLASSES,
+  EDGE_STYLE_CLASSES,
+  CONTAINER_STYLE_CLASSES
+} from './render/index.js';
+
+/**
+ * ReactFlow rendering configuration and event handler types.
+ */
+export type {
+  RenderConfig,
+  GraphFlowEventHandlers
+} from './render/index.js';
 
 /**
  * Parser and validation result types for better TypeScript integration.
