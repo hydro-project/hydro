@@ -6,8 +6,8 @@
  */
 
 import { Node } from '@xyflow/react';
-import { generateNodeColors } from '../shared/colorUtils.js';
-import { DEFAULT_NODE_STYLE, COMPONENT_COLORS } from '../shared/config.js';
+import { generateNodeColors } from '../shared/colorUtils';
+import { DEFAULT_NODE_STYLE, COMPONENT_COLORS } from '../shared/config';
 
 /**
  * Apply styling to ReactFlow nodes based on nodeType and nodeTypeConfig

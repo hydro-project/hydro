@@ -4,7 +4,7 @@
  * Bridges the existing VisualizationState implementation with the ReactFlow interface.
  */
 
-import { VisualizationState as CoreVisualizationState } from '../core/VisState.js';
+import { VisualizationState as CoreVisualizationState } from '../core/VisState';
 import type { 
   VisualizationState,
   GraphNode,
@@ -14,7 +14,7 @@ import type {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from '../shared/types.js';
+} from '../shared/types';
 
 /**
  * Adapter that implements the VisualizationState interface using the core implementation

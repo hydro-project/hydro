@@ -6,8 +6,8 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { DockablePanelProps, PANEL_POSITIONS, PanelPosition } from './types.js';
-import { COMPONENT_COLORS, SIZES, SHADOWS } from '../shared/config.js';
+import { DockablePanelProps, PANEL_POSITIONS, PanelPosition } from './types';
+import { COMPONENT_COLORS, SIZES, SHADOWS } from '../shared/config';
 
 export function DockablePanel({
   id,

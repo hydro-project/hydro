@@ -12,8 +12,8 @@ import {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from '../shared/types.js';
-import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand.js';
+} from '../shared/types';
+import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';

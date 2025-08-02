@@ -4,8 +4,8 @@
  * Simplified validation utilities for ReactFlow integration.
  */
 
-import { LayoutResult } from '../layout/types.js';
-import { TypedReactFlowData } from './types.js';
+import { LayoutResult } from '../layout/types';
+import { TypedReactFlowData } from './types';
 
 /**
  * Simple validation report

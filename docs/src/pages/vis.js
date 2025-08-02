@@ -69,11 +69,11 @@ function VisHomepageComponent() {
     // Dynamically import the visualization components
     const loadComponents = async () => {
       try {
-        const visStateModule = await import('../components/vis/dist/core/VisState');
-        const graphFlowModule = await import('../components/vis/dist/render/GraphFlow');
-        const constantsModule = await import('../components/vis/dist/shared/constants');
-        const parserModule = await import('../components/vis/dist/core/JSONParser');
-        const componentsModule = await import('../components/vis/dist/components');
+        const visStateModule = await import('../components/vis/core/VisState.ts');
+        const graphFlowModule = await import('../components/vis/render/GraphFlow.tsx');
+        const constantsModule = await import('../components/vis/shared/constants.ts');
+        const parserModule = await import('../components/vis/core/JSONParser.ts');
+        const componentsModule = await import('../components/vis/components/index.ts');
         
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
         setGraphFlow(() => graphFlowModule.GraphFlow);

@@ -5,9 +5,9 @@
  * Handles hierarchical layouts with proper container dimension management.
  */
 
-import { LayoutEngine, LayoutResult, LayoutConfig } from './types.js';
-import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types.js';
-import { createELKStateManager, ELKStateManager } from './ELKStateManager.js';
+import { LayoutEngine, LayoutResult, LayoutConfig } from './types';
+import { GraphNode, GraphEdge, Container, HyperEdge } from '../shared/types';
+import { createELKStateManager, ELKStateManager } from './ELKStateManager';
 
 export class ELKLayoutEngine implements LayoutEngine {
   private elkStateManager: ELKStateManager;

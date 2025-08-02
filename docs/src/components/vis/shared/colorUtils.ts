@@ -3,7 +3,7 @@
  * Ported from the original visualizer to ensure consistent color mapping
  */
 
-import { COLOR_PALETTES } from './constants.js';
+import { COLOR_PALETTES } from './constants';
 
 /**
  * Generate node colors dynamically based on provided node type configuration

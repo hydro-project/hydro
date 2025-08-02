@@ -4,7 +4,7 @@
  * Converts positioned layout data to ReactFlow-compatible format with strong typing.
  */
 
-import { LayoutResult } from '../layout/types.js';
+import { LayoutResult } from '../layout/types';
 import { Node, Edge } from '@xyflow/react';
 import { 
   TypedReactFlowData, 
@@ -15,8 +15,8 @@ import {
   StandardNodeData,
   validateReactFlowData,
   isValidELKContainer
-} from './types.js';
-import { validateELKResult, validateReactFlowResult, logValidationReport } from './validation.js';
+} from './types';
+import { validateELKResult, validateReactFlowResult, logValidationReport } from './validation';
 
 export class ReactFlowConverter {
   static convert(layoutResult: LayoutResult): TypedReactFlowData {
@@ -45,35 +45,7 @@ export class ReactFlowConverter {
       }
     });
 
-    // Convert nodes with proper parent relationships and strong typing
-    layoutResult.nodes.forEach(node => {
-      const parentId = parentMap.get(node.id);
-      
-      const standardNodeData: StandardNodeData = {
-        label: node.label || node.id,
-        style: node.style || 'default',
-        nodeType: (node as any).nodeType,
-        // Pass through any additional custom properties
-        ...Object.fromEntries(
-          Object.entries(node as any).filter(([key]) => 
-            !['id', 'label', 'style', 'x', 'y', 'width', 'height', 'hidden'].includes(key)
-          )
-        )
-      };
-      
-      const standardNode: TypedStandardNode = {
-        id: node.id,
-        type: 'standard',
-        position: { x: node.x || 0, y: node.y || 0 },
-        data: standardNodeData,
-        // CRITICAL: Set parent relationship for ReactFlow hierarchical layout
-        parentId: parentId,
-        extent: parentId ? 'parent' : undefined,
-      };
-      
-      nodes.push(standardNode);
-    });
-
+    // CRITICAL: Add containers FIRST so they appear before their children in the nodes array
     // Convert containers with strong typing and validation
     layoutResult.containers.forEach(container => {
       if (!isValidELKContainer(container)) {
@@ -110,6 +82,35 @@ export class ReactFlowConverter {
       };
       
       nodes.push(containerNode);
+    });
+
+    // Convert nodes with proper parent relationships and strong typing
+    layoutResult.nodes.forEach(node => {
+      const parentId = parentMap.get(node.id);
+      
+      const standardNodeData: StandardNodeData = {
+        label: node.label || node.id,
+        style: node.style || 'default',
+        nodeType: (node as any).nodeType,
+        // Pass through any additional custom properties
+        ...Object.fromEntries(
+          Object.entries(node as any).filter(([key]) => 
+            !['id', 'label', 'style', 'x', 'y', 'width', 'height', 'hidden'].includes(key)
+          )
+        )
+      };
+      
+      const standardNode: TypedStandardNode = {
+        id: node.id,
+        type: 'standard',
+        position: { x: node.x || 0, y: node.y || 0 },
+        data: standardNodeData,
+        // CRITICAL: Set parent relationship for ReactFlow hierarchical layout
+        parentId: parentId,
+        extent: parentId ? 'parent' : undefined,
+      };
+      
+      nodes.push(standardNode);
     });
 
     // Convert edges with strong typing

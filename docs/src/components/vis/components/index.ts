@@ -2,15 +2,15 @@
  * @fileoverview Components exports for the vis system
  */
 
-export { FileDropZone } from './FileDropZone.js';
+export { FileDropZone } from './FileDropZone';
 
 // InfoPanel system components
-export { InfoPanel } from './InfoPanel.js';
-export { Legend } from './Legend.js';
-export { HierarchyTree } from './HierarchyTree.js';
-export { GroupingControls } from './GroupingControls.js';
-export { CollapsibleSection } from './CollapsibleSection.js';
-export { DockablePanel, PANEL_POSITIONS } from './DockablePanel.js';
+export { InfoPanel } from './InfoPanel';
+export { Legend } from './Legend';
+export { HierarchyTree } from './HierarchyTree';
+export { GroupingControls } from './GroupingControls';
+export { CollapsibleSection } from './CollapsibleSection';
+export { DockablePanel, PANEL_POSITIONS } from './DockablePanel';
 
 // Types
 export type {
@@ -25,7 +25,7 @@ export type {
   GroupingOption,
   PanelPosition,
   BaseComponentProps
-} from './types.js';
+} from './types';
 
 // Utility functions for InfoPanel integration
 export function createDefaultLegendData() {

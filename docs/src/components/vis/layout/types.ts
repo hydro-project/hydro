@@ -2,8 +2,8 @@
  * @fileoverview Layout types with proper TypeScript and centralized constants
  */
 
-import type { VisualizationState, GraphNode, GraphEdge, Container, HyperEdge, Dimensions } from '../shared/types.js';
-import type { ELKAlgorithm, ELKDirection } from '../shared/config.js';
+import type { VisualizationState, GraphNode, GraphEdge, Container, HyperEdge, Dimensions } from '../shared/types';
+import type { ELKAlgorithm, ELKDirection } from '../shared/config';
 
 // ============ Layout Configuration ============
 

@@ -10,19 +10,19 @@
  * ```
  */
 
-export { GraphFlow } from './GraphFlow.js';
-export { ReactFlowConverter } from './ReactFlowConverter.js';
-export { GraphStandardNode, GraphContainerNode } from './nodes.js';
-export { GraphStandardEdge, GraphHyperEdge } from './edges.js';
+export { GraphFlow } from './GraphFlow';
+export { ReactFlowConverter } from './ReactFlowConverter';
+export { GraphStandardNode, GraphContainerNode } from './nodes';
+export { GraphStandardEdge, GraphHyperEdge } from './edges';
 export { 
   createNodeEventHandlers, 
   createEdgeEventHandlers, 
   createContainerEventHandlers 
-} from './eventHandlers.js';
+} from './eventHandlers';
 export { 
   DEFAULT_RENDER_CONFIG
-} from './config.js';
+} from './config';
 export type {
   RenderConfig,
   GraphFlowEventHandlers
-} from './types.js';
+} from './types';

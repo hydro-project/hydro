@@ -47,7 +47,7 @@ export const VERSION = '1.0.0' as const;
  * 
  * @see {@link ./core/VisState.ts} for full implementation details
  */
-export { VisualizationState } from './core/VisState.js';
+export { VisualizationState } from './core/VisState';
 
 /**
  * Factory function to create a new VisualizationState instance.
@@ -60,7 +60,7 @@ export { VisualizationState } from './core/VisState.js';
  * state.setGraphNode('myNode', { label: 'Hello World' });
  * ```
  */
-export { createVisualizationState } from './core/VisState.js';
+export { createVisualizationState } from './core/VisState';
 
 // ============ Types and Constants ============
 
@@ -75,7 +75,7 @@ export { createVisualizationState } from './core/VisState.js';
  * });
  * ```
  */
-export { NODE_STYLES } from './shared/constants.js';
+export { NODE_STYLES } from './shared/constants';
 
 /**
  * Pre-defined edge styling constants for consistent visual representation.
@@ -89,17 +89,17 @@ export { NODE_STYLES } from './shared/constants.js';
  * });
  * ```
  */
-export { EDGE_STYLES } from './shared/constants.js';
+export { EDGE_STYLES } from './shared/constants';
 
 /**
  * Pre-defined container styling constants for hierarchical groupings.
  */
-export { CONTAINER_STYLES } from './shared/constants.js';
+export { CONTAINER_STYLES } from './shared/constants';
 
 /**
  * Layout dimension constants for consistent spacing and sizing.
  */
-export { LAYOUT_CONSTANTS } from './shared/constants.js';
+export { LAYOUT_CONSTANTS } from './shared/constants';
 
 /**
  * TypeScript type definitions for better development experience.
@@ -116,7 +116,7 @@ export type {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from './shared/types.js';
+} from './shared/types';
 
 // ============ JSON Data Processing ============
 
@@ -135,7 +135,7 @@ export type {
  * console.log(`Used grouping: ${metadata.selectedGrouping}`);
  * ```
  */
-export { parseGraphJSON } from './core/JSONParser.js';
+export { parseGraphJSON } from './core/JSONParser';
 
 /**
  * Create a reusable parser instance for processing multiple graph datasets.
@@ -144,7 +144,7 @@ export { parseGraphJSON } from './core/JSONParser.js';
  * @param options - Parser configuration options
  * @returns Parser function that accepts JSON data
  */
-export { createGraphParser } from './core/JSONParser.js';
+export { createGraphParser } from './core/JSONParser';
 
 /**
  * Extract available hierarchical groupings from Hydro graph JSON data.
@@ -158,7 +158,7 @@ export { createGraphParser } from './core/JSONParser.js';
  * groupings.forEach(g => console.log(`${g.name} (${g.id})`));
  * ```
  */
-export { getAvailableGroupings } from './core/JSONParser.js';
+export { getAvailableGroupings } from './core/JSONParser';
 
 /**
  * Validate graph JSON data structure and content.
@@ -178,7 +178,7 @@ export { getAvailableGroupings } from './core/JSONParser.js';
  * }
  * ```
  */
-export { validateGraphJSON } from './core/JSONParser.js';
+export { validateGraphJSON } from './core/JSONParser';
 
 // ============ Layout Engine ============
 
@@ -189,7 +189,7 @@ export { validateGraphJSON } from './core/JSONParser.js';
 export { 
   ELKLayoutEngine,
   DEFAULT_LAYOUT_CONFIG
-} from './layout/index.js';
+} from './layout/index';
 
 /**
  * Layout configuration and result types for the ELK layout engine.
@@ -198,7 +198,7 @@ export type {
   LayoutConfig,
   LayoutResult,
   LayoutEngine
-} from './layout/index.js';
+} from './layout/index';
 
 // ============ ReactFlow Renderer ============
 
@@ -214,7 +214,7 @@ export {
   GraphStandardEdge,
   GraphHyperEdge,
   DEFAULT_RENDER_CONFIG
-} from './render/index.js';
+} from './render/index';
 
 /**
  * ReactFlow rendering configuration and event handler types.
@@ -222,7 +222,7 @@ export {
 export type {
   RenderConfig,
   GraphFlowEventHandlers
-} from './render/index.js';
+} from './render/index';
 
 /**
  * Parser and validation result types for better TypeScript integration.
@@ -232,4 +232,4 @@ export type {
   ValidationResult,
   GroupingOption,
   ParserOptions
-} from './core/JSONParser.js';
+} from './core/JSONParser';

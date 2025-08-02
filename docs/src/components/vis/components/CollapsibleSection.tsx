@@ -5,8 +5,8 @@
  */
 
 import React, { useState } from 'react';
-import { CollapsibleSectionProps } from './types.js';
-import { COMPONENT_COLORS } from '../shared/config.js';
+import { CollapsibleSectionProps } from './types';
+import { COMPONENT_COLORS } from '../shared/config';
 
 export function CollapsibleSection({
   title,

@@ -26,12 +26,12 @@ import {
   CONTAINER_COLORS,
   DEFAULT_NODE_STYLE,
   COMPONENT_COLORS
-} from '../shared/config.js';
+} from '../shared/config';
 import { 
   StandardNodeProps, 
   ContainerNodeProps, 
   isContainerNodeData 
-} from './types.js';
+} from './types';
 
 // Standard Node Component with Strong Typing
 export const GraphStandardNode: React.FC<StandardNodeProps> = ({ 

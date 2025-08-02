@@ -3,7 +3,7 @@
     "target": "ES2020",
     "lib": ["ES2020", "DOM"],
     "module": "ES2020",
-    "moduleResolution": "bundler",
+    "moduleResolution": "Node",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -35,6 +35,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.js"
+    "**/*.test.js",
+    "**/*.d.ts"
   ]
 }

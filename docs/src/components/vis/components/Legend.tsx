@@ -5,9 +5,9 @@
  */
 
 import React from 'react';
-import { LegendProps } from './types.js';
-import { generateNodeColors } from '../shared/colorUtils.js';
-import { COLOR_PALETTES, COMPONENT_COLORS } from '../shared/config.js';
+import { LegendProps } from './types';
+import { generateNodeColors } from '../shared/colorUtils';
+import { COLOR_PALETTES, COMPONENT_COLORS } from '../shared/config';
 
 export function Legend({
   legendData,

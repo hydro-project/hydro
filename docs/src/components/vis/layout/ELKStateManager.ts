@@ -9,9 +9,9 @@
  */
 
 import ELK from 'elkjs';
-import { LayoutConfig } from './types.js';
-import { GraphNode, GraphEdge, Container, HyperEdge, Dimensions } from '../shared/types.js';
-import { ELK_ALGORITHMS, LAYOUT_SPACING, ELK_LAYOUT_OPTIONS, ELKAlgorithm, getELKLayoutOptions } from '../shared/config.js';
+import { LayoutConfig } from './types';
+import { GraphNode, GraphEdge, Container, HyperEdge, Dimensions } from '../shared/types';
+import { ELK_ALGORITHMS, LAYOUT_SPACING, ELK_LAYOUT_OPTIONS, ELKAlgorithm, getELKLayoutOptions } from '../shared/config';
 
 // ============ Constants ============
 

@@ -12,8 +12,8 @@ import {
   getEdgeDashPattern,
   EDGE_COLORS,
   SIZES
-} from '../shared/config.js';
-import { TypedEdgeProps } from './types.js';
+} from '../shared/config';
+import { TypedEdgeProps } from './types';
 
 // Standard Edge Component
 export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({

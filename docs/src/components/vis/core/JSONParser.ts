@@ -5,8 +5,8 @@
  * Handles nodes, edges, hierarchies, and grouping assignments.
  */
 
-import { createVisualizationState, VisualizationState } from './VisState.js';
-import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/constants.js';
+import { createVisualizationState, VisualizationState } from './VisState';
+import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/constants';
 
 // ============ Type Definitions ============
 
