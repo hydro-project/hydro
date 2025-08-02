@@ -10,8 +10,8 @@ import {
   createHydroGraphParser, 
   getAvailableGroupings,
   validateHydroGraphJSON 
-} from '../dist/JSONParser.js';
-import { NODE_STYLES, EDGE_STYLES } from '../dist/constants.js';
+} from '../dist/core/JSONParser.js';
+import { NODE_STYLES, EDGE_STYLES } from '../dist/shared/constants.js';
 
 console.log('Running JSONParser tests...');
 

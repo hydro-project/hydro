@@ -9,7 +9,7 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseHydroGraphJSON, validateHydroGraphJSON } from '../dist/JSONParser.js';
+import { parseHydroGraphJSON, validateHydroGraphJSON } from '../dist/core/JSONParser.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

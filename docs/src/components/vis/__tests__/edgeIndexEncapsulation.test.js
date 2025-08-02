@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { createVisualizationState } from '../dist/VisState.js';
+import { createVisualizationState } from '../dist/core/VisState.js';
 
 /**
  * Test to verify that edge index is automatically maintained through encapsulated APIs

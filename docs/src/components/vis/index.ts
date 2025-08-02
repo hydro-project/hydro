@@ -35,9 +35,9 @@ export const VERSION = '1.0.0' as const;
  * Core visualization state class that manages all graph elements including nodes, edges, 
  * containers, and hyperEdges with efficient visibility tracking.
  * 
- * @see {@link ./VisState.ts} for full implementation details
+ * @see {@link ./core/VisState.ts} for full implementation details
  */
-export { VisualizationState } from './VisState.js';
+export { VisualizationState } from './core/VisState.js';
 
 /**
  * Factory function to create a new VisualizationState instance.
@@ -50,7 +50,7 @@ export { VisualizationState } from './VisState.js';
  * state.setGraphNode('myNode', { label: 'Hello World' });
  * ```
  */
-export { createVisualizationState } from './VisState.js';
+export { createVisualizationState } from './core/VisState.js';
 
 // ============ Types and Constants ============
 
@@ -65,7 +65,7 @@ export { createVisualizationState } from './VisState.js';
  * });
  * ```
  */
-export { NODE_STYLES } from './constants.js';
+export { NODE_STYLES } from './shared/constants.js';
 
 /**
  * Pre-defined edge styling constants for consistent visual representation.
@@ -79,17 +79,17 @@ export { NODE_STYLES } from './constants.js';
  * });
  * ```
  */
-export { EDGE_STYLES } from './constants.js';
+export { EDGE_STYLES } from './shared/constants.js';
 
 /**
  * Pre-defined container styling constants for hierarchical groupings.
  */
-export { CONTAINER_STYLES } from './constants.js';
+export { CONTAINER_STYLES } from './shared/constants.js';
 
 /**
  * Layout dimension constants for consistent spacing and sizing.
  */
-export { LAYOUT_CONSTANTS } from './constants.js';
+export { LAYOUT_CONSTANTS } from './shared/constants.js';
 
 /**
  * TypeScript type definitions for better development experience.
@@ -107,7 +107,7 @@ export type {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from './constants.js';
+} from './shared/constants.js';
 
 // ============ JSON Data Processing ============
 
@@ -126,7 +126,7 @@ export type {
  * console.log(`Used grouping: ${metadata.selectedGrouping}`);
  * ```
  */
-export { parseHydroGraphJSON } from './JSONParser.js';
+export { parseHydroGraphJSON } from './core/JSONParser.js';
 
 /**
  * Create a reusable parser instance for processing multiple Hydro graph datasets.
@@ -135,7 +135,7 @@ export { parseHydroGraphJSON } from './JSONParser.js';
  * @param options - Parser configuration options
  * @returns Parser function that accepts JSON data
  */
-export { createHydroGraphParser } from './JSONParser.js';
+export { createHydroGraphParser } from './core/JSONParser.js';
 
 /**
  * Extract available hierarchical groupings from Hydro graph JSON data.
@@ -149,7 +149,7 @@ export { createHydroGraphParser } from './JSONParser.js';
  * groupings.forEach(g => console.log(`${g.name} (${g.id})`));
  * ```
  */
-export { getAvailableGroupings } from './JSONParser.js';
+export { getAvailableGroupings } from './core/JSONParser.js';
 
 /**
  * Validate Hydro graph JSON data structure and content.
@@ -169,7 +169,7 @@ export { getAvailableGroupings } from './JSONParser.js';
  * }
  * ```
  */
-export { validateHydroGraphJSON } from './JSONParser.js';
+export { validateHydroGraphJSON } from './core/JSONParser.js';
 
 /**
  * Parser and validation result types for better TypeScript integration.
@@ -179,4 +179,4 @@ export type {
   ValidationResult,
   GroupingOption,
   ParserOptions
-} from './JSONParser.js';
+} from './core/JSONParser.js';

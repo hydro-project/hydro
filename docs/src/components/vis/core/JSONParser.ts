@@ -6,7 +6,7 @@
  */
 
 import { createVisualizationState, VisualizationState } from './VisState.js';
-import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from './constants.js';
+import { NODE_STYLES, EDGE_STYLES, NodeStyle, EdgeStyle } from '../shared/constants.js';
 
 // ============ Type Definitions ============
 
