@@ -27,7 +27,7 @@
   "author": "Hydro Project",
   "license": "MIT",
   "dependencies": {
-    "reactflow": "^12.3.0",
+    "@xyflow/react": "^12.8.2",
     "elkjs": "^0.9.3"
   },
   "devDependencies": {

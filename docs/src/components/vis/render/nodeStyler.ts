@@ -5,7 +5,7 @@
  * similar to the original visualizer approach.
  */
 
-import { Node } from 'reactflow';
+import { Node } from '@xyflow/react';
 import { generateNodeColors } from '../shared/colorUtils';
 import { DEFAULT_NODE_STYLE, COMPONENT_COLORS } from '../shared/config';
 

@@ -6,10 +6,10 @@
 
 import assert from 'assert';
 import { 
-  parseHydroGraphJSON, 
-  createHydroGraphParser, 
+  parseGraphJSON, 
+  createGraphParser, 
   getAvailableGroupings,
-  validateHydroGraphJSON 
+  validateGraphJSON 
 } from '../dist/core/JSONParser.js';
 import { NODE_STYLES, EDGE_STYLES } from '../dist/shared/constants.js';
 
@@ -117,13 +117,13 @@ function testBasicJSONParsing() {
   console.log('Testing basic JSON parsing...');
   
   // Test parsing with object input
-  const result1 = parseHydroGraphJSON(sampleGraphData);
+  const result1 = parseGraphJSON(sampleGraphData);
   assert(result1.state, 'Should return a state object');
   assert(result1.metadata, 'Should return metadata');
   
   // Test parsing with JSON string input
   const jsonString = JSON.stringify(sampleGraphData);
-  const result2 = parseHydroGraphJSON(jsonString);
+  const result2 = parseGraphJSON(jsonString);
   assert(result2.state, 'Should parse JSON string');
   
   // Verify basic structure
@@ -136,7 +136,7 @@ function testBasicJSONParsing() {
 function testNodeParsing() {
   console.log('Testing node parsing...');
   
-  const result = parseHydroGraphJSON(sampleGraphData);
+  const result = parseGraphJSON(sampleGraphData);
   const state = result.state;
   
   // Test node 0 (has backtrace data)
@@ -161,7 +161,7 @@ function testNodeParsing() {
 function testEdgeParsing() {
   console.log('Testing edge parsing...');
   
-  const result = parseHydroGraphJSON(sampleGraphData);
+  const result = parseGraphJSON(sampleGraphData);
   const state = result.state;
   
   // Test edge 0 (thick stroke)
@@ -183,7 +183,7 @@ function testEdgeParsing() {
 function testHierarchyParsing() {
   console.log('Testing hierarchy parsing...');
   
-  const result = parseHydroGraphJSON(sampleGraphData, 'location');
+  const result = parseGraphJSON(sampleGraphData, 'location');
   const state = result.state;
   
   // Check that containers were created
@@ -214,15 +214,15 @@ function testGroupingSelection() {
   console.log('Testing grouping selection...');
   
   // Test default grouping (first available)
-  const result1 = parseHydroGraphJSON(sampleGraphData);
+  const result1 = parseGraphJSON(sampleGraphData);
   assert.strictEqual(result1.metadata.selectedGrouping, 'location', 'Should default to first grouping');
   
   // Test specific grouping selection
-  const result2 = parseHydroGraphJSON(sampleGraphData, 'backtrace');
+  const result2 = parseGraphJSON(sampleGraphData, 'backtrace');
   assert.strictEqual(result2.metadata.selectedGrouping, 'backtrace', 'Should use specified grouping');
   
   // Test invalid grouping (should fall back to first)
-  const result3 = parseHydroGraphJSON(sampleGraphData, 'nonexistent');
+  const result3 = parseGraphJSON(sampleGraphData, 'nonexistent');
   assert.strictEqual(result3.metadata.selectedGrouping, 'location', 'Should fall back to first grouping');
   
   console.log('✓ Grouping selection tests passed');
@@ -231,7 +231,7 @@ function testGroupingSelection() {
 function testNestedHierarchy() {
   console.log('Testing nested hierarchy...');
   
-  const result = parseHydroGraphJSON(sampleGraphData, 'backtrace');
+  const result = parseGraphJSON(sampleGraphData, 'backtrace');
   const state = result.state;
   
   // Check that nested containers were created
@@ -254,7 +254,7 @@ function testValidation() {
   console.log('Testing JSON validation...');
   
   // Test valid data
-  const validation1 = validateHydroGraphJSON(sampleGraphData);
+  const validation1 = validateGraphJSON(sampleGraphData);
   assert.strictEqual(validation1.isValid, true, 'Valid data should pass validation');
   assert.strictEqual(validation1.errors.length, 0, 'Should have no errors');
   assert.strictEqual(validation1.nodeCount, 3, 'Should count nodes correctly');
@@ -262,12 +262,12 @@ function testValidation() {
   
   // Test invalid data
   const invalidData = { nodes: [] }; // Missing edges
-  const validation2 = validateHydroGraphJSON(invalidData);
+  const validation2 = validateGraphJSON(invalidData);
   assert.strictEqual(validation2.isValid, false, 'Invalid data should fail validation');
   assert(validation2.errors.length > 0, 'Should have errors');
   
   // Test JSON parse error
-  const validation3 = validateHydroGraphJSON('invalid json');
+  const validation3 = validateGraphJSON('invalid json');
   assert.strictEqual(validation3.isValid, false, 'Invalid JSON should fail validation');
   assert(validation3.errors.some(e => e.includes('JSON parsing error')), 'Should detect JSON error');
   
@@ -286,8 +286,8 @@ function testUtilityFunctions() {
   const groupings2 = getAvailableGroupings(JSON.stringify(sampleGraphData));
   assert.strictEqual(groupings2.length, 2, 'Should work with JSON string');
   
-  // Test createHydroGraphParser
-  const parser = createHydroGraphParser();
+  // Test createGraphParser
+  const parser = createGraphParser();
   assert(typeof parser.parse === 'function', 'Should return parser with parse method');
   
   const result = parser.parse(sampleGraphData);
@@ -332,7 +332,7 @@ function testEdgeStyleDetection() {
     ]
   };
   
-  const result = parseHydroGraphJSON(testData);
+  const result = parseGraphJSON(testData);
   const state = result.state;
   
   assert.strictEqual(state.getGraphEdge('thick').style, EDGE_STYLES.THICK, 'Should detect thick edges');
@@ -348,7 +348,7 @@ function testErrorHandling() {
   
   // Test empty data
   try {
-    parseHydroGraphJSON({});
+    parseGraphJSON({});
     assert.fail('Should throw error for empty data');
   } catch (error) {
     assert(error.message.includes('Invalid graph data'), 'Should throw descriptive error');
@@ -356,7 +356,7 @@ function testErrorHandling() {
   
   // Test missing nodes
   try {
-    parseHydroGraphJSON({ edges: [] });
+    parseGraphJSON({ edges: [] });
     assert.fail('Should throw error for missing nodes');
   } catch (error) {
     assert(error.message.includes('Invalid graph data'), 'Should throw descriptive error');
@@ -364,7 +364,7 @@ function testErrorHandling() {
   
   // Test invalid JSON string
   try {
-    parseHydroGraphJSON('invalid json');
+    parseGraphJSON('invalid json');
     assert.fail('Should throw error for invalid JSON');
   } catch (error) {
     assert(error instanceof SyntaxError, 'Should throw JSON syntax error');

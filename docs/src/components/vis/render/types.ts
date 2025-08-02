@@ -5,7 +5,7 @@
  * These types ensure that ELK-calculated dimensions are properly passed through the pipeline.
  */
 
-import type { Node, Edge, Connection, NodeProps } from 'reactflow';
+import type { Node, Edge, Connection } from '@xyflow/react';
 
 // ============ ELK Layout Result Types ============
 
@@ -74,7 +74,7 @@ export interface StrongLayoutResult {
 /**
  * Base data that must be passed to all ReactFlow nodes
  */
-export interface BaseNodeData {
+export interface BaseNodeData extends Record<string, unknown> {
   label: string;
   style: string;
 }
@@ -84,7 +84,6 @@ export interface BaseNodeData {
  */
 export interface StandardNodeData extends BaseNodeData {
   nodeType?: string;
-  [key: string]: any; // Allow additional custom properties from JSON
 }
 
 /**
@@ -136,6 +135,15 @@ export type TypedReactFlowNode = TypedStandardNode | TypedContainerNode;
 export interface TypedReactFlowEdge extends Omit<Edge, 'data'> {
   data: {
     style: string;
+    edge?: {
+      style: string;
+    };
+    onEdgeClick?: (id: string) => void;
+    onEdgeContextMenu?: (id: string, event: React.MouseEvent) => void;
+    isHighlighted?: boolean;
+    hyperEdge?: {
+      aggregatedEdges: any[];
+    };
   };
 }
 
@@ -166,17 +174,52 @@ export interface RenderConfig {
 // ============ Component Props Types ============
 
 /**
- * Props for standard node component with proper typing
+ * Standard node props for ReactFlow v12
  */
-export interface StandardNodeProps extends NodeProps {
+export interface StandardNodeProps {
+  id: string;
   data: StandardNodeData;
+  width?: number;
+  height?: number;
+  selected?: boolean;
 }
 
 /**
  * Props for container node component with enforced dimensions
  */
-export interface ContainerNodeProps extends NodeProps {
+export interface ContainerNodeProps {
+  id: string;
   data: ContainerNodeData;
+  width?: number;
+  height?: number;
+  selected?: boolean;
+}
+
+/**
+ * Typed edge props for ReactFlow v12
+ */
+export interface TypedEdgeProps {
+  id: string;
+  sourceX: number;
+  sourceY: number;
+  targetX: number;
+  targetY: number;
+  sourcePosition: any;
+  targetPosition: any;
+  style?: React.CSSProperties;
+  data?: {
+    style?: string;
+    edge?: {
+      style: string;
+    };
+    onEdgeClick?: (id: string) => void;
+    onEdgeContextMenu?: (id: string, event: React.MouseEvent) => void;
+    isHighlighted?: boolean;
+    hyperEdge?: {
+      aggregatedEdges: any[];
+    };
+  };
+  selected?: boolean;
 }
 
 // ============ Type Guards ============
@@ -267,7 +310,6 @@ export interface GraphFlowEventHandlers {
   onNodeDragStop?: (event: React.MouseEvent, node: Node) => void;
   onEdgeClick?: (event: React.MouseEvent, edge: Edge) => void;
   onEdgeContextMenu?: (event: React.MouseEvent, edge: Edge) => void;
-  onEdgeUpdate?: (oldEdge: Edge, newConnection: Connection) => void;
   onConnect?: (params: Connection) => void;
   onSelectionChange?: (selection: { nodes: Node[]; edges: Edge[] }) => void;
   onPaneClick?: (event: React.MouseEvent) => void;

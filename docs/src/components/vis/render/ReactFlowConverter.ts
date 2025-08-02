@@ -5,7 +5,7 @@
  */
 
 import { LayoutResult } from '../layout/types';
-import { Node, Edge } from 'reactflow';
+import { Node, Edge } from '@xyflow/react';
 import { 
   TypedReactFlowData, 
   TypedContainerNode, 

@@ -6,7 +6,7 @@
  */
 
 // Re-export the new comprehensive configuration
-export * from './config';
+export * from './config.js';
 
 // Legacy constants for backward compatibility
 // @deprecated Use NODE_STYLES from config.ts instead

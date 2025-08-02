@@ -2,7 +2,7 @@
  * @fileoverview Render defaults
  */
 
-import type { RenderConfig } from './types';
+import type { RenderConfig } from './types.js';
 
 export const DEFAULT_RENDER_CONFIG: Required<RenderConfig> = {
   enableMiniMap: true,

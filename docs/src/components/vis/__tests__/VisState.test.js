@@ -5,8 +5,8 @@
  */
 
 import assert from 'assert';
-import { VisualizationState, createVisualizationState } from '../dist/core/VisState.js';
-import { NODE_STYLES, EDGE_STYLES } from '../dist/shared/constants.js';
+import { VisualizationState, createVisualizationState } from '../core/VisState.js';
+import { NODE_STYLES, EDGE_STYLES } from '../shared/constants.js';
 
 // Test utilities
 function createTestState() {
@@ -443,7 +443,7 @@ function testContainerCollapseExpand() {
   
   // Check collapsed state
   assert.strictEqual(state.getContainer('container1').collapsed, true, 'Container should be collapsed');
-  assert(state.collapsedContainers.has('container1'), 'Should have collapsed container representation');
+  assert.strictEqual(state.getContainerCollapsed('container1'), true, 'Should have collapsed container representation');
   
   // Check node visibility (nodes 1,2,3 should be hidden, node4 should be visible)
   assert.strictEqual(state.getGraphNode('node1').hidden, true, 'Node1 should be hidden');

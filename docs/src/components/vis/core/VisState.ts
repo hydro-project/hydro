@@ -12,8 +12,8 @@ import {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from '../shared/types';
-import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
+} from '../shared/types.js';
+import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand.js';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -1125,10 +1125,6 @@ declare module './VisState.js' {
     getContainerCollapsed(id: string): boolean | undefined;
     setContainerHidden(id: string, hidden: boolean): void;
     getContainerHidden(id: string): boolean | undefined;
-    
-    // Container operations
-    collapseContainer(containerId: string): void;
-    expandContainer(containerId: string): void;
   }
 }
 
@@ -1164,13 +1160,5 @@ Object.assign(VisualizationState.prototype, {
   
   getContainerHidden(id: string): boolean | undefined {
     return this.getContainer(id)?.hidden;
-  },
-  
-  collapseContainer(containerId: string): void {
-    this.updateContainer(containerId, { collapsed: true });
-  },
-  
-  expandContainer(containerId: string): void {
-    this.updateContainer(containerId, { collapsed: false });
   }
 });

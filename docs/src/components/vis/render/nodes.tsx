@@ -14,7 +14,7 @@
  */
 
 import React from 'react';
-import { Handle, Position, NodeProps } from 'reactflow';
+import { Handle, Position, NodeProps } from '@xyflow/react';
 import { 
   getNodeBorderColor, 
   getNodeTextColor,

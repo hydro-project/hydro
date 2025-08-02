@@ -4,7 +4,7 @@
  * TypeScript interfaces for the InfoPanel system components.
  */
 
-import { VisualizationState } from '../core/VisState';
+import { VisualizationState } from '../core/VisState.js';
 
 // ============ Base Component Props ============
 

@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import ReactFlow, {
+import {
+  ReactFlow,
   Controls,
   MiniMap,
   Background,
@@ -19,9 +20,9 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   useReactFlow
-} from 'reactflow';
+} from '@xyflow/react';
 
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 
 import { VisualizationState } from '../shared/types';
 import { ELKLayoutEngine } from '../layout/ELKLayoutEngine';
@@ -227,7 +228,6 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         onNodeDragStop={eventHandlers.onNodeDragStop}
         onEdgeClick={eventHandlers.onEdgeClick}
         onEdgeContextMenu={eventHandlers.onEdgeContextMenu}
-        onEdgeUpdate={eventHandlers.onEdgeUpdate}
         onPaneClick={eventHandlers.onPaneClick}
         onPaneContextMenu={eventHandlers.onPaneContextMenu}
         nodeTypes={nodeTypes}

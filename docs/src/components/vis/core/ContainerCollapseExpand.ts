@@ -5,7 +5,7 @@
  * Ensures proper tree hierarchy validation and optimized edge processing.
  */
 
-import { EDGE_STYLES } from '../shared/constants';
+import { EDGE_STYLES } from '../shared/constants.js';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';

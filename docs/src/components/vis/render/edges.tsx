@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { EdgeProps, getBezierPath } from 'reactflow';
+import { getBezierPath } from '@xyflow/react';
 import { 
   getEdgeColor, 
   getEdgeStrokeWidth, 
@@ -13,9 +13,10 @@ import {
   EDGE_COLORS,
   SIZES
 } from '../shared/config';
+import { TypedEdgeProps } from './types';
 
 // Standard Edge Component
-export const GraphStandardEdge: React.FC<EdgeProps> = ({
+export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
   id,
   sourceX,
   sourceY,
@@ -56,8 +57,8 @@ export const GraphStandardEdge: React.FC<EdgeProps> = ({
 
   // Get edge style based on type
   const edgeStyle = {
-    strokeWidth: style.strokeWidth || getEdgeStrokeWidth(edge?.style),
-    stroke: getEdgeColor(edge?.style, selected, data?.isHighlighted),
+    strokeWidth: style?.strokeWidth || getEdgeStrokeWidth(edge?.style),
+    stroke: getEdgeColor(edge?.style, selected, data?.isHighlighted || false),
     strokeDasharray: getEdgeDashPattern(edge?.style),
     ...style
   };
@@ -78,7 +79,7 @@ export const GraphStandardEdge: React.FC<EdgeProps> = ({
 };
 
 // Hyper Edge Component (for aggregated edges)
-export const GraphHyperEdge: React.FC<EdgeProps> = ({
+export const GraphHyperEdge: React.FC<TypedEdgeProps> = ({
   id,
   sourceX,
   sourceY,
@@ -90,7 +91,7 @@ export const GraphHyperEdge: React.FC<EdgeProps> = ({
   data,
   selected
 }) => {
-  const hyperEdge = data?.edge;
+  const hyperEdge = data?.hyperEdge;
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
@@ -119,13 +120,13 @@ export const GraphHyperEdge: React.FC<EdgeProps> = ({
 
   // Hyper edge styling with gradient
   const edgeStyle = {
-    strokeWidth: style.strokeWidth || 2,
+    strokeWidth: style?.strokeWidth || 2,
     stroke: 'url(#hyperEdgeGradient)',
     filter: 'drop-shadow(0 1px 2px rgba(147, 51, 234, 0.3))',
     ...style
   };
 
-  const aggregatedCount = 'aggregatedEdges' in hyperEdge! ? hyperEdge.aggregatedEdges.length : 1;
+  const aggregatedCount = hyperEdge?.aggregatedEdges?.length || 1;
 
   return (
     <>
