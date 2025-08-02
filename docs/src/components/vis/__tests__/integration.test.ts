@@ -1,5 +1,5 @@
 /**
- * Integration Tests for Vis Components
+ * Integration Tests for Vis Components (TypeScript Version)
  * 
  * Tests the complete flow from JSON parsing through state management
  * using real Hydro graph data files.
@@ -9,17 +9,16 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseGraphJSON, validateGraphJSON, getAvailableGroupings } from '../dist/core/JSONParser.js';
+import { parseGraphJSON, validateGraphJSON, getAvailableGroupings, ValidationResult } from '../dist/core/JSONParser.js';
 import { runFuzzTest, InvariantChecker } from './fuzzTest.js';
+import { VisualizationState } from '../dist/core/VisState.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-
-console.log('Running Integration tests...');
 
 /**
  * Test basic JSON parsing with real data
  */
-async function testRealDataParsing() {
+async function testRealDataParsing(): Promise<void> {
   console.log('Testing real data parsing...');
   
   const testFiles = ['chat.json', 'paxos.json'];
@@ -31,7 +30,7 @@ async function testRealDataParsing() {
     const jsonData = await readFile(filePath, 'utf-8');
     
     // Validate
-    const validation = validateGraphJSON(jsonData);
+    const validation: ValidationResult = validateGraphJSON(jsonData);
     assert(validation.isValid, `${filename} should be valid: ${validation.errors.join(', ')}`);
     assert(validation.nodeCount > 0, `${filename} should have nodes`);
     
@@ -99,7 +98,7 @@ async function testRealDataParsing() {
 /**
  * Test edge cases and error handling
  */
-async function testEdgeCases() {
+async function testEdgeCases(): Promise<void> {
   console.log('Testing edge cases...');
   
   // Test empty data (should be allowed in framework-independent parser)
@@ -108,15 +107,15 @@ async function testEdgeCases() {
     assert(result.state, 'Should handle empty data gracefully');
     assert.strictEqual(result.metadata.nodeCount, 0, 'Should report 0 nodes');
     assert.strictEqual(result.metadata.edgeCount, 0, 'Should report 0 edges');
-  } catch (error) {
-    assert.fail('Should handle empty data gracefully: ' + error.message);
+  } catch (error: unknown) {
+    assert.fail('Should handle empty data gracefully: ' + (error instanceof Error ? error.message : String(error)));
   }
   
   // Test malformed JSON
   try {
     validateGraphJSON('invalid json');
     // Should not throw, but should return invalid result
-  } catch (error) {
+  } catch (error: unknown) {
     // JSON parsing errors are expected here
   }
   
@@ -137,7 +136,7 @@ async function testEdgeCases() {
 /**
  * Test performance with larger datasets
  */
-async function testPerformance() {
+async function testPerformance(): Promise<void> {
   console.log('Testing performance...');
   
   const filePath = join(__dirname, '../test-data/chat.json');
@@ -174,7 +173,7 @@ async function testPerformance() {
 /**
  * Test state consistency after complex operations
  */
-async function testStateConsistency() {
+async function testStateConsistency(): Promise<void> {
   console.log('Testing state consistency...');
   
   const filePath = join(__dirname, '../test-data/chat.json');
@@ -230,7 +229,7 @@ async function testStateConsistency() {
 /**
  * Run a quick fuzz test on real data
  */
-async function testFuzzIntegration() {
+async function testFuzzIntegration(): Promise<void> {
   console.log('Testing fuzz integration...');
   
   const filePath = join(__dirname, '../test-data/chat.json');
@@ -245,7 +244,10 @@ async function testFuzzIntegration() {
 /**
  * Run all integration tests
  */
-async function runAllTests() {
+async function runAllTests(): Promise<void> {
+  console.log('🧪 Running Integration Tests');
+  console.log('============================\n');
+  
   try {
     await testRealDataParsing();
     await testEdgeCases();
@@ -254,10 +256,12 @@ async function runAllTests() {
     await testFuzzIntegration();
     
     console.log('\n🎉 All integration tests passed! System is working correctly with real data.');
-  } catch (error) {
-    console.error('\n❌ Integration test failed:', error.message);
-    console.error(error.stack);
-    process.exit(1);
+  } catch (error: unknown) {
+    console.error('\n❌ Integration test failed:', error instanceof Error ? error.message : String(error));
+    if (error instanceof Error) {
+      console.error(error.stack);
+    }
+    throw error;
   }
 }
 
@@ -273,5 +277,5 @@ export {
 
 // Run tests if executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runAllTests();
+  runAllTests().catch(() => process.exit(1));
 }

@@ -5,15 +5,16 @@
  */
 
 import assert from 'assert';
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../dist/shared/constants.js';
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../shared/constants.js';
+import type { NodeStyle, EdgeStyle, ContainerStyle } from '../shared/types.js';
 
 console.log('Running Constants tests...');
 
-function testNodeStyles() {
+function testNodeStyles(): void {
   console.log('Testing node styles...');
   
   // Test that all expected node styles exist
-  const expectedStyles = ['DEFAULT', 'HIGHLIGHTED', 'SELECTED', 'WARNING', 'ERROR'];
+  const expectedStyles: Array<keyof typeof NODE_STYLES> = ['DEFAULT', 'HIGHLIGHTED', 'SELECTED', 'WARNING', 'ERROR'];
   
   for (const style of expectedStyles) {
     assert(NODE_STYLES.hasOwnProperty(style), `NODE_STYLES should have ${style}`);
@@ -30,11 +31,11 @@ function testNodeStyles() {
   console.log('✓ Node styles tests passed');
 }
 
-function testEdgeStyles() {
+function testEdgeStyles(): void {
   console.log('Testing edge styles...');
   
   // Test that all expected edge styles exist
-  const expectedStyles = ['DEFAULT', 'HIGHLIGHTED', 'DASHED', 'THICK', 'WARNING'];
+  const expectedStyles: Array<keyof typeof EDGE_STYLES> = ['DEFAULT', 'HIGHLIGHTED', 'DASHED', 'THICK', 'WARNING'];
   
   for (const style of expectedStyles) {
     assert(EDGE_STYLES.hasOwnProperty(style), `EDGE_STYLES should have ${style}`);
@@ -51,11 +52,11 @@ function testEdgeStyles() {
   console.log('✓ Edge styles tests passed');
 }
 
-function testContainerStyles() {
+function testContainerStyles(): void {
   console.log('Testing container styles...');
   
   // Test that all expected container styles exist
-  const expectedStyles = ['DEFAULT', 'HIGHLIGHTED', 'SELECTED', 'MINIMIZED'];
+  const expectedStyles: Array<keyof typeof CONTAINER_STYLES> = ['DEFAULT', 'HIGHLIGHTED', 'SELECTED', 'MINIMIZED'];
   
   for (const style of expectedStyles) {
     assert(CONTAINER_STYLES.hasOwnProperty(style), `CONTAINER_STYLES should have ${style}`);
@@ -71,11 +72,11 @@ function testContainerStyles() {
   console.log('✓ Container styles tests passed');
 }
 
-function testLayoutConstants() {
+function testLayoutConstants(): void {
   console.log('Testing layout constants...');
   
   // Test that all expected layout constants exist
-  const expectedConstants = [
+  const expectedConstants: Array<keyof typeof LAYOUT_CONSTANTS> = [
     'DEFAULT_NODE_WIDTH',
     'DEFAULT_NODE_HEIGHT', 
     'DEFAULT_CONTAINER_PADDING',
@@ -99,7 +100,7 @@ function testLayoutConstants() {
   console.log('✓ Layout constants tests passed');
 }
 
-function testStyleUniqueness() {
+function testStyleUniqueness(): void {
   console.log('Testing style uniqueness...');
   
   // Test that node styles are unique
@@ -120,7 +121,7 @@ function testStyleUniqueness() {
   console.log('✓ Style uniqueness tests passed');
 }
 
-function testConstantsImmutability() {
+function testConstantsImmutability(): void {
   console.log('Testing constants immutability...');
   
   // Test that we can't modify the constant objects (this is more of a documentation test)
@@ -136,7 +137,7 @@ function testConstantsImmutability() {
     
     const testValue2 = EDGE_STYLES.DEFAULT;
     assert.strictEqual(testValue2, originalEdgeDefault, 'Edge styles should remain unchanged');
-  } catch (error) {
+  } catch (error: unknown) {
     // If constants are properly frozen, this would be expected
     console.log('Constants are properly protected from modification');
   }
@@ -146,21 +147,26 @@ function testConstantsImmutability() {
 
 // ============ Run All Tests ============
 
-function runAllTests() {
-  try {
-    testNodeStyles();
-    testEdgeStyles();
-    testContainerStyles();
-    testLayoutConstants();
-    testStyleUniqueness();
-    testConstantsImmutability();
-    
-    console.log('\n🎉 All constants tests passed! Constants are properly defined.');
-  } catch (error) {
-    console.error('\n❌ Constants test failed:', error.message);
-    console.error(error.stack);
-    process.exit(1);
-  }
+function runAllTests(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      testNodeStyles();
+      testEdgeStyles();
+      testContainerStyles();
+      testLayoutConstants();
+      testStyleUniqueness();
+      testConstantsImmutability();
+      
+      console.log('\n🎉 All constants tests passed! Constants are properly defined.');
+      resolve();
+    } catch (error: unknown) {
+      console.error('\n❌ Constants test failed:', error instanceof Error ? error.message : String(error));
+      if (error instanceof Error) {
+        console.error(error.stack);
+      }
+      reject(error);
+    }
+  });
 }
 
 // Export for potential use in other test files
@@ -176,5 +182,5 @@ export {
 
 // Run tests if this file is executed directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  runAllTests();
+  runAllTests().catch(() => process.exit(1));
 }

@@ -9,11 +9,13 @@ import { runAllTests as runConstantsTests } from './constants.test.js';
 import { runAllTests as runJSONParserTests } from './JSONParser.test.js';
 import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test.js';
 import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
+import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
+import { runAllTests as runIntegrationTests } from './integration.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
 
-async function runAllTests() {
+async function runAllTests(): Promise<void> {
   let totalTests = 0;
   let passedTests = 0;
   
@@ -43,18 +45,28 @@ async function runAllTests() {
     passedTests++;
     totalTests++;
     
+    console.log('\n🧪 Running Simple Grounding Tests...');
+    await runSimpleGroundingTests();
+    passedTests++;
+    totalTests++;
+    
+    console.log('\n🔧 Running Integration Tests...');
+    await runIntegrationTests();
+    passedTests++;
+    totalTests++;
+    
     console.log('\n=====================================');
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
     console.log('✅ All symmetric function pairs verified as mathematical inverses!');
-    console.log('\n💡 To run integration/fuzz tests: node __tests__/integration.test.js');
-    console.log('💡 To run fuzz tests: node __tests__/fuzzTest.js');
+    console.log('✅ All integration tests with real data passed!');
+    console.log('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js');
     
-  } catch (error) {
+  } catch (error: unknown) {
     totalTests++;
     console.error('\n=====================================');
     console.error(`❌ Test Suite Failed: ${passedTests}/${totalTests} test modules passed`);
-    console.error('Error:', error.message);
+    console.error('Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }
