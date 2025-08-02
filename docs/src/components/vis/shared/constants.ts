@@ -1,10 +1,15 @@
 /**
  * Visualization Design Constants
  * 
- * Centralized constants for styling and configuration of the visualization system
+ * @deprecated This file is deprecated. Use ../shared/config.ts instead.
+ * Re-exports for backward compatibility.
  */
 
-// Node style constants
+// Re-export the new comprehensive configuration
+export * from './config';
+
+// Legacy constants for backward compatibility
+// @deprecated Use NODE_STYLES from config.ts instead
 export const NODE_STYLES = {
   DEFAULT: 'default',
   HIGHLIGHTED: 'highlighted',
@@ -13,7 +18,7 @@ export const NODE_STYLES = {
   ERROR: 'error'
 } as const;
 
-// Edge style constants
+// @deprecated Use EDGE_STYLES from config.ts instead
 export const EDGE_STYLES = {
   DEFAULT: 'default',
   HIGHLIGHTED: 'highlighted',
@@ -22,7 +27,7 @@ export const EDGE_STYLES = {
   WARNING: 'warning'
 } as const;
 
-// Container style constants
+// @deprecated Use CONTAINER_STYLES from config.ts instead
 export const CONTAINER_STYLES = {
   DEFAULT: 'default',
   HIGHLIGHTED: 'highlighted',
@@ -30,7 +35,7 @@ export const CONTAINER_STYLES = {
   MINIMIZED: 'minimized'
 } as const;
 
-// Layout constants
+// @deprecated Use LAYOUT_CONSTANTS from config.ts instead
 export const LAYOUT_CONSTANTS = {
   DEFAULT_NODE_WIDTH: 100,
   DEFAULT_NODE_HEIGHT: 40,
@@ -39,74 +44,8 @@ export const LAYOUT_CONSTANTS = {
   MIN_CONTAINER_HEIGHT: 100
 } as const;
 
-// ============ Type Definitions ============
-
+// Legacy type exports for backward compatibility
+// @deprecated Use types from types.ts instead
 export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
 export type EdgeStyle = typeof EDGE_STYLES[keyof typeof EDGE_STYLES];
 export type ContainerStyle = typeof CONTAINER_STYLES[keyof typeof CONTAINER_STYLES];
-
-export interface Dimensions {
-  width: number;
-  height: number;
-}
-
-export interface BaseEntity {
-  id: string;
-  hidden: boolean;
-}
-
-export interface GraphNode extends BaseEntity {
-  label: string;
-  style: NodeStyle;
-}
-
-export interface GraphEdge extends BaseEntity {
-  source: string;
-  target: string;
-  style: EdgeStyle;
-}
-
-export interface Container extends BaseEntity {
-  expandedDimensions: Dimensions;
-  collapsed: boolean;
-  children: Set<string>;
-  label?: string;
-}
-
-export interface HyperEdge {
-  id: string;
-  source: string;
-  target: string;
-  style: EdgeStyle;
-  aggregatedEdges: GraphEdge[];
-}
-
-export interface CollapsedContainer {
-  id: string;
-  originalContainer: Container;
-  position: { x: number; y: number };
-  dimensions: Dimensions;
-}
-
-// ============ Input Types for Methods ============
-
-export interface CreateNodeProps {
-  label: string;
-  style?: NodeStyle;
-  hidden?: boolean;
-}
-
-export interface CreateEdgeProps {
-  source: string;
-  target: string;
-  style?: EdgeStyle;
-  hidden?: boolean;
-}
-
-export interface CreateContainerProps {
-  expandedDimensions?: Dimensions;
-  collapsed?: boolean;
-  hidden?: boolean;
-  children?: string[];
-  label?: string;
-}

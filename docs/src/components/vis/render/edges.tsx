@@ -6,6 +6,13 @@
 
 import React from 'react';
 import { EdgeProps, getBezierPath } from 'reactflow';
+import { 
+  getEdgeColor, 
+  getEdgeStrokeWidth, 
+  getEdgeDashPattern,
+  EDGE_COLORS,
+  SIZES
+} from '../shared/config';
 
 // Standard Edge Component
 export const GraphStandardEdge: React.FC<EdgeProps> = ({
@@ -49,9 +56,9 @@ export const GraphStandardEdge: React.FC<EdgeProps> = ({
 
   // Get edge style based on type
   const edgeStyle = {
-    strokeWidth: style.strokeWidth || (edge?.style === 'thick' ? 3 : 1),
+    strokeWidth: style.strokeWidth || getEdgeStrokeWidth(edge?.style),
     stroke: getEdgeColor(edge?.style, selected, data?.isHighlighted),
-    strokeDasharray: edge?.style === 'dashed' ? '5,5' : undefined,
+    strokeDasharray: getEdgeDashPattern(edge?.style),
     ...style
   };
 
@@ -168,17 +175,4 @@ export const GraphHyperEdge: React.FC<EdgeProps> = ({
   );
 };
 
-// Helper function for edge colors
-function getEdgeColor(style?: string, selected?: boolean, highlighted?: boolean): string {
-  if (selected) return '#0078ff';
-  if (highlighted) return '#ff6b6b';
-  
-  switch (style) {
-    case 'data': return '#22c55e';
-    case 'control': return '#f59e0b';
-    case 'error': return '#ef4444';
-    case 'thick': return '#374151';
-    case 'dashed': return '#6b7280';
-    default: return '#9ca3af';
-  }
-}
+

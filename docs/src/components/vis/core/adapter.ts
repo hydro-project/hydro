@@ -143,6 +143,23 @@ export class VisualizationStateAdapter implements VisualizationState {
   expandContainer(containerId: string): void {
     this.core.updateContainer(containerId, { collapsed: false });
   }
+
+  // Visibility properties (readonly getters)
+  get visibleNodes(): GraphNode[] {
+    return this.core.visibleNodes;
+  }
+
+  get visibleEdges(): GraphEdge[] {
+    return this.core.visibleEdges;
+  }
+
+  get visibleContainers(): Container[] {
+    return this.core.visibleContainers;
+  }
+
+  get allHyperEdges(): HyperEdge[] {
+    return this.core.allHyperEdges;
+  }
 }
 
 /**

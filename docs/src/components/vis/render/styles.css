@@ -1,31 +1,31 @@
 /**
- * @fileoverview CSS styles for Hydro ReactFlow components
+ * @fileoverview CSS styles for ReactFlow components
  * 
  * Custom styles for nodes, edges, and containers.
  */
 
 /* ============ Node Styles ============ */
 
-.hydro-standard-node {
+.graph-standard-node {
   transition: all 0.2s ease-in-out;
 }
 
-.hydro-standard-node:hover {
+.graph-standard-node:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
-.hydro-standard-node.selected {
+.graph-standard-node.selected {
   box-shadow: 0 0 10px rgba(0, 123, 255, 0.5) !important;
   border-color: #007bff !important;
 }
 
-.hydro-standard-node.highlighted {
+.graph-standard-node.highlighted {
   border-color: #ffc107 !important;
   background: rgba(255, 193, 7, 0.1) !important;
 }
 
-.hydro-standard-node.default {
+.graph-standard-node.default {
   border-color: #6c757d;
 }
 

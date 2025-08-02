@@ -1,12 +1,12 @@
 /**
- * @fileoverview Vis - Next Generation Hydro Graph Visualizer
+ * @fileoverview Vis - Graph Visualization System
  * 
- * A modern, efficient visualization system for Hydro graphs with support for hierarchical 
+ * A modern, efficient visualization system for graphs with support for hierarchical 
  * containers, edge routing, dynamic collapse/expand operations, and ReactFlow rendering
  * with ELK automatic layout.
  * 
  * @version 1.0.0
- * @author Hydro Project
+ * @author Graph Visualization Team
  * @since 2025-08-01
  * 
  * @example
@@ -14,7 +14,7 @@
  * import { 
  *   createVisualizationState, 
  *   NODE_STYLES, 
- *   parseHydroGraphJSON,
+ *   parseGraphJSON,
  *   GraphFlow,
  *   ELKLayoutEngine 
  * } from './vis';
@@ -29,8 +29,8 @@
  * // Render with ReactFlow
  * <GraphFlow visualizationState={state} />
  * 
- * // Parse existing Hydro graph data
- * const { state: parsedState } = parseHydroGraphJSON(hydroGraphData);
+ * // Parse existing graph data
+ * const { state: parsedState } = parseGraphJSON(graphData);
  * ```
  */
 
@@ -113,17 +113,16 @@ export type {
   GraphEdge,
   Container,
   HyperEdge,
-  CollapsedContainer,
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from './shared/constants.js';
+} from './shared/types.js';
 
 // ============ JSON Data Processing ============
 
 /**
- * Parse Hydro graph JSON data and create a populated VisualizationState.
- * Converts legacy visualization format into the new state management system.
+ * Parse graph JSON data and create a populated VisualizationState.
+ * Converts JSON data into the state management system.
  * 
  * @param jsonData - The JSON data (object or JSON string)
  * @param selectedGrouping - Which hierarchy grouping to use (defaults to first available)
@@ -131,21 +130,21 @@ export type {
  * @throws {Error} When JSON data is invalid or malformed
  * @example
  * ```typescript
- * const { state, metadata } = parseHydroGraphJSON(hydroData, 'myGrouping');
- * console.log(`Parsed ${state.getVisibleNodes().length} nodes`);
+ * const { state, metadata } = parseGraphJSON(graphData, 'myGrouping');
+ * console.log(`Parsed ${state.visibleNodes.length} nodes`);
  * console.log(`Used grouping: ${metadata.selectedGrouping}`);
  * ```
  */
-export { parseHydroGraphJSON } from './core/JSONParser.js';
+export { parseGraphJSON } from './core/JSONParser.js';
 
 /**
- * Create a reusable parser instance for processing multiple Hydro graph datasets.
+ * Create a reusable parser instance for processing multiple graph datasets.
  * Useful when parsing multiple graphs with similar structure/settings.
  * 
  * @param options - Parser configuration options
  * @returns Parser function that accepts JSON data
  */
-export { createHydroGraphParser } from './core/JSONParser.js';
+export { createGraphParser } from './core/JSONParser.js';
 
 /**
  * Extract available hierarchical groupings from Hydro graph JSON data.
@@ -155,21 +154,21 @@ export { createHydroGraphParser } from './core/JSONParser.js';
  * @returns Array of available grouping objects
  * @example
  * ```typescript
- * const groupings = getAvailableGroupings(hydroData);
+ * const groupings = getAvailableGroupings(graphData);
  * groupings.forEach(g => console.log(`${g.name} (${g.id})`));
  * ```
  */
 export { getAvailableGroupings } from './core/JSONParser.js';
 
 /**
- * Validate Hydro graph JSON data structure and content.
+ * Validate graph JSON data structure and content.
  * Provides detailed validation results including errors and warnings.
  * 
  * @param jsonData - The JSON data (object or JSON string)
  * @returns Validation result object
  * @example
  * ```typescript
- * const validation = validateHydroGraphJSON(suspiciousData);
+ * const validation = validateGraphJSON(suspiciousData);
  * if (!validation.isValid) {
  *   console.error('Validation failed:', validation.errors);
  *   return;
@@ -179,7 +178,7 @@ export { getAvailableGroupings } from './core/JSONParser.js';
  * }
  * ```
  */
-export { validateHydroGraphJSON } from './core/JSONParser.js';
+export { validateGraphJSON } from './core/JSONParser.js';
 
 // ============ Layout Engine ============
 
@@ -189,9 +188,7 @@ export { validateHydroGraphJSON } from './core/JSONParser.js';
  */
 export { 
   ELKLayoutEngine,
-  DEFAULT_LAYOUT_CONFIG,
-  LAYOUT_ALGORITHMS,
-  LAYOUT_DIRECTIONS
+  DEFAULT_LAYOUT_CONFIG
 } from './layout/index.js';
 
 /**
@@ -199,12 +196,6 @@ export {
  */
 export type {
   LayoutConfig,
-  LayoutPosition,
-  LayoutDimensions,
-  PositionedNode,
-  PositionedEdge,
-  PositionedContainer,
-  PositionedHyperEdge,
   LayoutResult,
   LayoutEngine
 } from './layout/index.js';
@@ -222,10 +213,7 @@ export {
   GraphContainerNode,
   GraphStandardEdge,
   GraphHyperEdge,
-  DEFAULT_RENDER_CONFIG,
-  NODE_STYLE_CLASSES,
-  EDGE_STYLE_CLASSES,
-  CONTAINER_STYLE_CLASSES
+  DEFAULT_RENDER_CONFIG
 } from './render/index.js';
 
 /**

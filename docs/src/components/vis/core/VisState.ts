@@ -12,7 +12,7 @@ import {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from '../shared/constants';
+} from '../shared/types';
 import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand';
 
 // Constants for consistent string literals

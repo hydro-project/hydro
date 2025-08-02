@@ -5,7 +5,7 @@
  * Independent of any specific framework - receives data via JSON/props.
  */
 
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import ReactFlow, {
   Controls,
   MiniMap,
@@ -27,6 +27,7 @@ import { VisualizationState } from '../shared/types';
 import { ELKLayoutEngine } from '../layout/ELKLayoutEngine';
 import { LayoutConfig, DEFAULT_LAYOUT_CONFIG } from '../layout/index';
 import { ReactFlowConverter } from './ReactFlowConverter';
+import { applyNodeStyling } from './nodeStyler';
 import { GraphStandardNode, GraphContainerNode } from './nodes';
 import { GraphStandardEdge, GraphHyperEdge } from './edges';
 import { 
@@ -34,6 +35,7 @@ import {
   GraphFlowEventHandlers
 } from './types';
 import { DEFAULT_RENDER_CONFIG } from './config';
+import { MINIMAP_CONFIG, PANEL_COLORS, TYPOGRAPHY } from '../shared/config';
 
 // Node and Edge type definitions for ReactFlow
 const nodeTypes = {
@@ -49,6 +51,10 @@ const edgeTypes = {
 // Props for the main component
 export interface GraphFlowProps {
   visualizationState: VisualizationState;
+  metadata?: {
+    nodeTypeConfig?: any;
+    [key: string]: any;
+  };
   layoutConfig?: Partial<LayoutConfig>;
   renderConfig?: Partial<RenderConfig>;
   eventHandlers?: Partial<GraphFlowEventHandlers>;
@@ -61,6 +67,7 @@ export interface GraphFlowProps {
 // Internal component that uses ReactFlow hooks
 const GraphFlowInternal: React.FC<GraphFlowProps> = ({
   visualizationState,
+  metadata,
   layoutConfig = {},
   renderConfig = {},
   eventHandlers = {},
@@ -74,6 +81,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
   const [isLayouting, setIsLayouting] = useState(false);
   const [layoutEngine] = useState(() => new ELKLayoutEngine());
   const { fitView } = useReactFlow();
+  const lastStateRef = useRef<string>('');
 
   // Merge configs with defaults
   const finalLayoutConfig = useMemo(() => ({
@@ -118,11 +126,19 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       // Convert to ReactFlow format
       const reactFlowData = ReactFlowConverter.convert(layoutResult);
       
+      // Apply node styling with nodeTypeConfig (similar to visualizer approach)
+      const styledNodes = applyNodeStyling(
+        reactFlowData.nodes, 
+        'Set3', // TODO: Make this configurable
+        metadata?.nodeTypeConfig
+      );
+      
       console.log('Layout result:', layoutResult);
       console.log('ReactFlow data:', reactFlowData);
+      console.log('Styled nodes:', styledNodes);
       
       // Update nodes and edges
-      setNodes(reactFlowData.nodes);
+      setNodes(styledNodes);
       setEdges(reactFlowData.edges);
 
       // Fit view after a short delay to ensure rendering is complete
@@ -143,19 +159,35 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     visualizationState,
     layoutEngine,
     finalLayoutConfig,
-    eventHandlers,
     fitView,
     finalRenderConfig.fitView,
     onLayoutComplete,
-    onError,
-    setNodes,
-    setEdges
+    onError
   ]);
 
   // Trigger layout when visualization state changes
   useEffect(() => {
-    layoutAndRender();
-  }, [layoutAndRender]);
+    // Create a serializable representation of the state to detect actual changes
+    const stateKey = JSON.stringify({
+      nodes: visualizationState.visibleNodes.map(n => ({ id: n.id, hidden: n.hidden })),
+      edges: visualizationState.visibleEdges.map(e => ({ id: e.id, hidden: e.hidden })),
+      containers: visualizationState.visibleContainers.map(c => ({ 
+        id: c.id, 
+        hidden: c.hidden, 
+        collapsed: c.collapsed,
+        children: Array.from(c.children) 
+      }))
+    });
+    
+    // Only run layout if state actually changed
+    if (stateKey !== lastStateRef.current) {
+      console.log('Visualization state changed, triggering layout');
+      lastStateRef.current = stateKey;
+      layoutAndRender();
+    } else {
+      console.log('Visualization state unchanged, skipping layout');
+    }
+  }, [visualizationState.visibleNodes, visualizationState.visibleEdges, visualizationState.visibleContainers, layoutAndRender]);
 
   // Handle connection creation (if enabled)
   const onConnect = useCallback(
@@ -224,9 +256,9 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         {finalRenderConfig.enableMiniMap && (
           <MiniMap
             position="bottom-right"
-            nodeStrokeColor="#374151"
-            nodeColor="#e5e7eb"
-            nodeBorderRadius={4}
+            nodeStrokeColor={MINIMAP_CONFIG.NODE_STROKE_COLOR}
+            nodeColor={MINIMAP_CONFIG.NODE_COLOR}
+            nodeBorderRadius={MINIMAP_CONFIG.NODE_BORDER_RADIUS}
             pannable
             zoomable
           />
@@ -239,13 +271,13 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         {isLayouting && (
           <Panel position="top-center">
             <div style={{
-              background: 'rgba(0, 123, 255, 0.1)',
-              border: '1px solid #007bff',
+              background: PANEL_COLORS.BACKGROUND,
+              border: `1px solid ${PANEL_COLORS.BORDER}`,
               borderRadius: '6px',
               padding: '8px 16px',
-              fontSize: '14px',
-              color: '#007bff',
-              fontWeight: 500
+              fontSize: TYPOGRAPHY.FONT_SIZES.MD,
+              color: PANEL_COLORS.TEXT,
+              fontWeight: TYPOGRAPHY.FONT_WEIGHTS.MEDIUM
             }}>
               Computing layout...
             </div>

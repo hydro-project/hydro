@@ -1,7 +1,7 @@
 /**
- * JSON Parser for Hydro Graph Data
+ * JSON Parser for Graph Data
  * 
- * Converts the old visualizer's JSON format into the new VisualizationState format.
+ * Framework-independent JSON parser that converts graph data into a VisualizationState.
  * Handles nodes, edges, hierarchies, and grouping assignments.
  */
 
@@ -23,6 +23,14 @@ export interface ParseResult {
     edgeCount: number;
     containerCount: number;
     availableGroupings: GroupingOption[];
+    nodeTypeConfig?: {
+      defaultType?: string;
+      types?: Array<{
+        id: string;
+        label: string;
+        colorIndex: number;
+      }>;
+    };
   };
 }
 
@@ -84,26 +92,33 @@ interface RawGraphData {
   hierarchies?: RawHierarchy[];
   hierarchyChoices?: RawHierarchyChoice[];
   nodeAssignments?: Record<string, Record<string, string>>;
+  nodeTypeConfig?: {
+    defaultType?: string;
+    types?: Array<{
+      id: string;
+      label: string;
+      colorIndex: number;
+    }>;
+  };
   metadata?: Record<string, any>;
 }
 
 /**
- * Parse Hydro graph JSON and populate a VisualizationState
+ * Parse graph JSON and populate a VisualizationState
  * 
- * @param jsonData - The JSON data (object or JSON string)
- * @param selectedGrouping - Which hierarchy grouping to use (defaults to first available)
- * @returns Object containing the populated state and metadata
- * @throws {Error} When JSON data is invalid or malformed
+ * @param jsonData - Raw graph data or JSON string
+ * @param grouping - Optional hierarchy grouping to apply
+ * @returns Object containing the populated state and parsing metadata
+ * 
  * @example
- * ```typescript
- * const { state, metadata } = parseHydroGraphJSON(hydroData, 'myGrouping');
- * console.log(`Parsed ${state.getVisibleNodes().length} nodes`);
- * console.log(`Used grouping: ${metadata.selectedGrouping}`);
+ * ```javascript
+ * const { state, metadata } = parseGraphJSON(graphData, 'myGrouping');
+ * console.log('Parsed', metadata.nodeCount, 'nodes');
  * ```
  */
-export function parseHydroGraphJSON(
-  jsonData: RawGraphData | string, 
-  selectedGrouping: string | null = null
+export function parseGraphJSON(
+  jsonData: RawGraphData | string,
+  selectedGrouping?: string
 ): ParseResult {
   // Parse JSON if it's a string
   const data: RawGraphData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
@@ -140,29 +155,30 @@ export function parseHydroGraphJSON(
       edgeCount: metadata.edgeCount,
       selectedGrouping: grouping,
       containerCount,
-      availableGroupings: getAvailableGroupings(data)
+      availableGroupings: getAvailableGroupings(data),
+      nodeTypeConfig: metadata.nodeTypeConfig
     }
   };
 }
 
 /**
- * Create a reusable parser instance for processing multiple Hydro graph datasets.
- * Useful when parsing multiple graphs with similar structure/settings.
+ * Create a reusable parser instance for processing multiple graph datasets.
  * 
  * @param options - Parser configuration options
- * @returns Parser function that accepts JSON data
+ * @returns Configured parser instance with parse method
+ * 
  * @example
- * ```typescript
- * const parser = createHydroGraphParser({
- *   validateData: true,
- *   defaultNodeStyle: NODE_STYLES.HIGHLIGHTED
+ * ```javascript
+ * const parser = createGraphParser({
+ *   enableValidation: true,
+ *   defaultStyle: 'highlighted'
  * });
  * 
- * const result1 = parser(graphData1);
- * const result2 = parser(graphData2);
+ * const result1 = parser.parse(data1);
+ * const result2 = parser.parse(data2);
  * ```
  */
-export function createHydroGraphParser(options: ParserOptions = {}): { parse: (data: RawGraphData | string, grouping?: string) => ParseResult } {
+export function createGraphParser(options: ParserOptions = {}): { parse: (data: RawGraphData | string, grouping?: string) => ParseResult } {
   const {
     validateData = true,
     strictMode = false,
@@ -173,7 +189,7 @@ export function createHydroGraphParser(options: ParserOptions = {}): { parse: (d
   return {
     parse: (data: RawGraphData | string, grouping?: string): ParseResult => {
       if (validateData) {
-        const validation = validateHydroGraphJSON(data);
+        const validation = validateGraphJSON(data);
         if (!validation.isValid) {
           if (strictMode) {
             throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
@@ -183,19 +199,19 @@ export function createHydroGraphParser(options: ParserOptions = {}): { parse: (d
         }
       }
       
-      return parseHydroGraphJSON(data, grouping);
+      return parseGraphJSON(data, grouping);
     }
   };
 }/**
- * Extract available hierarchical groupings from Hydro graph JSON data.
- * Useful for presenting grouping options to users before parsing.
+ * Extract available hierarchical groupings from graph JSON data.
  * 
- * @param jsonData - The JSON data (object or JSON string)
- * @returns Array of available grouping objects
+ * @param jsonData - Raw graph data or JSON string
+ * @returns Array of available grouping options
+ * 
  * @example
- * ```typescript
- * const groupings = getAvailableGroupings(hydroData);
- * groupings.forEach(g => console.log(`${g.name} (${g.id})`));
+ * ```javascript
+ * const groupings = getAvailableGroupings(graphData);
+ * console.log('Available groupings:', groupings.map(g => g.name));
  * ```
  */
 export function getAvailableGroupings(jsonData: RawGraphData | string): GroupingOption[] {
@@ -238,7 +254,7 @@ export function getAvailableGroupings(jsonData: RawGraphData | string): Grouping
  * }
  * ```
  */
-export function validateHydroGraphJSON(jsonData: RawGraphData | string): ValidationResult {
+export function validateGraphJSON(jsonData: RawGraphData | string): ValidationResult {
   try {
     const data: RawGraphData = typeof jsonData === 'string' ? JSON.parse(jsonData) : jsonData;
     
@@ -358,6 +374,7 @@ function extractMetadata(data: RawGraphData): Record<string, any> {
     nodeCount: data.nodes.length,
     edgeCount: data.edges.length,
     hasHierarchies: !!(data.hierarchies && data.hierarchies.length > 0),
+    nodeTypeConfig: data.nodeTypeConfig || null,
     ...data.metadata
   };
 }
@@ -394,28 +411,21 @@ function parseNodes(nodes: RawNode[], state: VisualizationState): void {
       
       const { id, label, hidden, style: rawStyle, ...otherProps } = rawNode;
       
-      // Extract label with priority: explicit label > backtrace fn_name > data.name > data.label > id
+      // Extract label with priority: explicit label > data.name > data.label > id
       let nodeLabel = label;
       if (!nodeLabel && rawNode.data) {
-        // Try to extract from backtrace
-        if (rawNode.data.backtrace && Array.isArray(rawNode.data.backtrace) && rawNode.data.backtrace.length > 0) {
-          const firstBacktrace = rawNode.data.backtrace[0];
-          if (firstBacktrace.fn_name) {
-            // Extract the last part after :: (e.g., "broadcast_bincode" from "Stream<T,L,B,O,R>::broadcast_bincode")
-            const parts = firstBacktrace.fn_name.split('::');
-            nodeLabel = parts[parts.length - 1];
-          }
-        }
-        // Fallback to other data properties
-        if (!nodeLabel) {
-          nodeLabel = rawNode.data.label || rawNode.data.name;
-        }
+        // Use data.name or data.label as fallback
+        nodeLabel = rawNode.data.label || rawNode.data.name;
       }
+      
+      // Extract nodeType from data
+      const nodeType = rawNode.data?.nodeType || rawNode.data?.type;
       
       state.setGraphNode(id, {
         label: nodeLabel || id,
         style,
         hidden: !!hidden,
+        nodeType,
         ...otherProps
       });
     } catch (error) {

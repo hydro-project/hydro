@@ -35,7 +35,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.js",
-    "examples/ReactFlowExample.tsx"
+    "**/*.test.js"
   ]
 }

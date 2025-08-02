@@ -292,14 +292,15 @@ Enable debug mode:
 />
 ```
 
-## Examples
+## Usage
 
-See the `examples/` directory for complete working examples:
+The main entry point for the visualization system is the `vis.js` page, which provides:
 
-- `ReactFlowExample.tsx`: Basic integration
-- `ContainerExample.tsx`: Hierarchical containers
-- `LargeGraphExample.tsx`: Performance optimization
-- `CustomStylingExample.tsx`: Custom themes and styling
+- File upload and JSON parsing
+- Interactive graph visualization with ReactFlow v12
+- InfoPanel with legend and hierarchy controls
+- Zoom and pan controls
+- Container collapse/expand functionality
 
 ## Dependencies
 

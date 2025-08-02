@@ -1,62 +1,73 @@
 /**
  * @fileoverview Custom ReactFlow Node Components
  * 
- * Custom node components for rendering graph elements.
+ * Custom node c      <Handle
+        type="target"
+        position={Position.Left}
+        style={{ background: NODE_COLORS.HANDLE }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        style={{ background: NODE_COLORS.HANDLE }}
+      />for rendering graph elements.
  */
 
 import React from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
+import { 
+  getNodeBorderColor, 
+  getNodeTextColor,
+  COLORS,
+  NODE_COLORS,
+  SIZES,
+  SHADOWS,
+  TYPOGRAPHY,
+  CONTAINER_COLORS,
+  DEFAULT_NODE_STYLE,
+  COMPONENT_COLORS
+} from '../shared/config';
+import { 
+  StandardNodeProps, 
+  ContainerNodeProps, 
+  isContainerNodeData 
+} from './types';
 
-// Standard Node Component
-export const GraphStandardNode: React.FC<NodeProps> = ({ 
+// Standard Node Component with Strong Typing
+export const GraphStandardNode: React.FC<StandardNodeProps> = ({ 
   data, 
   selected, 
   id 
 }) => {
-  const node = data?.node || { label: id, style: 'default' };
+  // Create display label from strongly typed data
+  const displayLabel = data.label || id;
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (data?.onNodeClick) {
-      data.onNodeClick(id);
-    }
+    // Node click handlers would go here
   };
 
   const handleDoubleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (data?.onNodeDoubleClick) {
-      data.onNodeDoubleClick(id);
-    }
+    // Node double-click handlers would go here
   };
 
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (data?.onNodeContextMenu) {
-      data.onNodeContextMenu(id, event);
-    }
+    // Context menu handlers would go here
   };
 
   return (
     <div 
-      className={`graph-standard-node ${node.style} ${selected ? 'selected' : ''} ${data?.isHighlighted ? 'highlighted' : ''}`}
+      className={`graph-standard-node ${data.style} ${selected ? 'selected' : ''}`}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       style={{
-        width: node.width || 120,
-        height: node.height || 60,
-        padding: '8px',
-        background: 'white',
-        border: `2px solid ${getNodeBorderColor(node.style, selected, data?.isHighlighted)}`,
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '12px',
-        fontWeight: 'bold',
-        color: getNodeTextColor(node.style),
-        boxShadow: selected ? '0 0 10px rgba(0,123,255,0.5)' : '0 2px 4px rgba(0,0,0,0.1)',
+        // Style is now applied in the nodeStyler, so we just need basic styling here
+        border: `${SIZES.BORDER_WIDTH_DEFAULT}px solid ${getNodeBorderColor(data.style, selected, false)}`,
+        boxShadow: selected ? SHADOWS.NODE_SELECTED : SHADOWS.NODE_DEFAULT,
         cursor: 'pointer',
         transition: 'all 0.2s ease-in-out'
       }}
@@ -75,33 +86,40 @@ export const GraphStandardNode: React.FC<NodeProps> = ({
       
       {/* Node content */}
       <div style={{ textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {node.label}
+        {displayLabel}
       </div>
     </div>
   );
 };
 
-// Container Node Component
-export const GraphContainerNode: React.FC<NodeProps> = ({ 
+// Container Node Component with Strong Typing
+export const GraphContainerNode: React.FC<ContainerNodeProps> = ({ 
   data, 
   selected, 
-  id 
+  id
 }) => {
-  const container = data?.container || { width: 200, height: 150, collapsed: false };
-  const isCollapsed = data?.isCollapsed || container.collapsed;
+  // Type-safe access to container data
+  if (!isContainerNodeData(data)) {
+    console.error(`[GraphContainerNode] ❌ Invalid data for container ${id}: missing width/height`);
+    return <div>Invalid container data</div>;
+  }
+  
+  const isCollapsed = data.collapsed;
+  
+  // Use ELK-calculated dimensions from strongly typed data
+  const width = data.width;
+  const height = data.height;
+  
+  console.log(`[GraphContainerNode] 📦 Rendering container ${id}: ${width}x${height} (ELK dimensions: ✅)`);
   
   const handleClick = (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (data?.onContainerClick) {
-      data.onContainerClick(id);
-    }
+    // Container click handlers would go here
   };
 
   const handleToggleCollapse = (event: React.MouseEvent) => {
     event.stopPropagation();
-    if (data?.onToggleCollapse) {
-      data.onToggleCollapse(id);
-    }
+    // Collapse toggle handlers would go here
   };
 
   return (
@@ -109,10 +127,10 @@ export const GraphContainerNode: React.FC<NodeProps> = ({
       className={`graph-container-node ${selected ? 'selected' : ''}`}
       onClick={handleClick}
       style={{
-        width: container.width,
-        height: isCollapsed ? 40 : container.height,
-        background: 'rgba(240, 242, 247, 0.8)',
-        border: `2px solid ${selected ? '#007bff' : '#d0d7de'}`,
+        width: width,
+        height: isCollapsed ? 40 : height,
+        background: CONTAINER_COLORS.BACKGROUND,
+        border: `${SIZES.BORDER_WIDTH_DEFAULT}px solid ${selected ? CONTAINER_COLORS.BORDER_SELECTED : CONTAINER_COLORS.BORDER}`,
         borderRadius: '12px',
         position: 'relative',
         cursor: 'pointer',
@@ -129,7 +147,7 @@ export const GraphContainerNode: React.FC<NodeProps> = ({
           left: 0,
           right: 0,
           height: '32px',
-          background: 'rgba(100, 116, 139, 0.1)',
+          background: CONTAINER_COLORS.HEADER_BACKGROUND,
           borderRadius: '10px 10px 0 0',
           display: 'flex',
           alignItems: 'center',
@@ -167,25 +185,3 @@ export const GraphContainerNode: React.FC<NodeProps> = ({
     </div>
   );
 };
-
-// Helper functions for styling
-function getNodeBorderColor(style: string, selected?: boolean, highlighted?: boolean): string {
-  if (selected) return '#007bff';
-  if (highlighted) return '#ffc107';
-  
-  switch (style) {
-    case 'error': return '#dc3545';
-    case 'warning': return '#fd7e14';
-    case 'highlighted': return '#ffc107';
-    case 'selected': return '#007bff';
-    default: return '#6c757d';
-  }
-}
-
-function getNodeTextColor(style: string): string {
-  switch (style) {
-    case 'error': return '#721c24';
-    case 'warning': return '#856404';
-    default: return '#212529';
-  }
-}
