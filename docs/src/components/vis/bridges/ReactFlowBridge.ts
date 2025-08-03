@@ -119,10 +119,10 @@ export class ReactFlowBridge {
     visState.visibleContainers.forEach(container => {
       const parentId = parentMap.get(container.id);
       
-      // Get ELK coordinates from VisState (canonical coordinates)
+      // Get coordinates from VisState computed view (already canonical coordinates)
       const elkCoords = {
-        x: container.layout?.position?.x || 0,
-        y: container.layout?.position?.y || 0
+        x: container.x || 0,
+        y: container.y || 0
       };
       
       // Convert ELK coordinates to ReactFlow coordinates
@@ -132,8 +132,9 @@ export class ReactFlowBridge {
       
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
       
-      const width = container.layout?.dimensions?.width || (container.collapsed ? 200 : 400);
-      const height = container.layout?.dimensions?.height || (container.collapsed ? 60 : 300);
+      // Use computed dimensions from VisState (includes ELK-calculated sizes via expandedDimensions)
+      const width = container.width || (container.collapsed ? 200 : 400);
+      const height = container.height || (container.collapsed ? 60 : 300);
       
       console.log(`[ReactFlowBridge] 📦 Container ${container.id}: collapsed=${container.collapsed}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y}), size=${width}x${height}`);
       
@@ -143,12 +144,12 @@ export class ReactFlowBridge {
         position,
         data: {
           label: container.id,
-          style: container.style || 'default',
+          style: (container as any).style || 'default',
           collapsed: container.collapsed || false,
           width,
           height,
           // Pass through any custom properties
-          ...this.extractCustomProperties(container)
+          ...this.extractCustomProperties(container as any)
         },
         style: {
           width,

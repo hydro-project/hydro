@@ -141,11 +141,11 @@ export class ELKBridge {
         const containerAsNode: GraphNode = {
           id: container.id,
           label: container.id,
-          // Use collapsed dimensions if available, otherwise use defaults
-          width: container.layout?.dimensions?.width || 200,  // SIZES.COLLAPSED_CONTAINER_WIDTH
-          height: container.layout?.dimensions?.height || 60, // SIZES.COLLAPSED_CONTAINER_HEIGHT
-          x: container.layout?.position?.x || 0,
-          y: container.layout?.position?.y || 0,
+          // Use computed dimensions from VisState
+          width: container.width || 200,  // SIZES.COLLAPSED_CONTAINER_WIDTH
+          height: container.height || 60, // SIZES.COLLAPSED_CONTAINER_HEIGHT
+          x: container.x || 0,            // Use computed position
+          y: container.y || 0,            // Use computed position
           hidden: false,
           style: 'default' // Use valid NodeStyle
         };
@@ -176,6 +176,10 @@ export class ELKBridge {
     containers: Container[], 
     edges: GraphEdge[]
   ): ElkGraph {
+    console.log(`[ELKBridge] 🔨 Building ELK graph with ${nodes.length} nodes, ${containers.length} containers, ${edges.length} edges`);
+    console.log(`[ELKBridge] 🔍 Available nodes:`, nodes.map(n => n.id));
+    console.log(`[ELKBridge] 🔍 Available containers:`, containers.map(c => ({ id: c.id, children: Array.from(c.children), collapsed: c.collapsed })));
+    
     // Build hierarchy: top-level nodes and containers
     const elkNodes: ElkNode[] = [];
     
@@ -186,14 +190,17 @@ export class ELKBridge {
         return this.isNodeInContainer(node.id, container.id, container);
       });
       
+      console.log(`[ELKBridge] 🔍 Container ${container.id} has ${childNodes.length} children:`, 
+        childNodes.map(n => n.id), 'from container.children:', Array.from(container.children));
+      
       elkNodes.push({
         id: container.id,
-        width: container.layout?.dimensions?.width,
-        height: container.layout?.dimensions?.height,
+        width: 400, // Default width - ELK will calculate proper size based on content
+        height: 300, // Default height - ELK will calculate proper size based on content
         children: childNodes.map(node => ({
           id: node.id,
-          width: node.width || 180,
-          height: node.height || 60
+          width: node.width || 180,  // Use computed width
+          height: node.height || 60  // Use computed height
         })),
         layoutOptions: {
           'elk.algorithm': 'layered',
@@ -204,14 +211,15 @@ export class ELKBridge {
     });
     
     // Add top-level nodes (not in any container, including collapsed containers)
-    nodes.forEach(node => {
-      if (!this.isNodeInAnyContainer(node.id, containers)) {
-        elkNodes.push({
-          id: node.id,
-          width: node.width || 180,
-          height: node.height || 60
-        });
-      }
+    const topLevelNodes = nodes.filter(node => !this.isNodeInAnyContainer(node.id, containers));
+    console.log(`[ELKBridge] 🔍 Found ${topLevelNodes.length} top-level nodes:`, topLevelNodes.map(n => n.id));
+    
+    topLevelNodes.forEach(node => {
+      elkNodes.push({
+        id: node.id,
+        width: node.width || 180,  // Use computed width
+        height: node.height || 60  // Use computed height
+      });
     });
     
     // Convert all edges to ELK format
@@ -312,6 +320,7 @@ export class ELKBridge {
     
     if (Object.keys(layoutUpdates).length > 0) {
       visState.setContainerLayout(elkNode.id, layoutUpdates);
+      console.log(`[ELKBridge] 📏 Updated container ${elkNode.id} layout: ${JSON.stringify(layoutUpdates)}`);
     }
     
     // Update child node positions

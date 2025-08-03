@@ -639,17 +639,24 @@ export class VisualizationState implements ContainerHierarchyView {
     return Array.from(this._visibleContainers.values()).map(container => {
       // Create a computed view that exposes layout data as direct properties
       const computedContainer = {
-        ...container,
+        id: container.id,
+        collapsed: container.collapsed,
+        hidden: container.hidden,
+        children: container.children,
         // Expose layout position as direct x, y properties
         x: container.layout?.position?.x ?? 0,
         y: container.layout?.position?.y ?? 0,
         // Expose layout dimensions as direct width, height properties
+        // Priority: layout dimensions (from ELK) > expandedDimensions (internal) > default
         width: container.layout?.dimensions?.width ?? container.expandedDimensions?.width ?? 0,
-        height: container.layout?.dimensions?.height ?? container.expandedDimensions?.height ?? 0
+        height: container.layout?.dimensions?.height ?? container.expandedDimensions?.height ?? 0,
+        // Copy any other custom properties but exclude internal ones
+        ...Object.fromEntries(
+          Object.entries(container).filter(([key]) => 
+            !['layout', 'expandedDimensions', 'id', 'collapsed', 'hidden', 'children'].includes(key)
+          )
+        )
       };
-      
-      // Remove the raw layout object to prevent direct access
-      delete computedContainer.layout;
       
       return computedContainer;
     });
@@ -1253,6 +1260,18 @@ Object.assign(VisualizationState.prototype, {
       container.layout = {};
     }
     Object.assign(container.layout, layout);
+    
+    // IMPORTANT: When layout dimensions are updated, automatically update expandedDimensions
+    // This encapsulates the expandedDimensions management within VisState
+    if (layout.dimensions) {
+      if (layout.dimensions.width !== undefined || layout.dimensions.height !== undefined) {
+        container.expandedDimensions = {
+          width: layout.dimensions.width ?? container.expandedDimensions.width,
+          height: layout.dimensions.height ?? container.expandedDimensions.height
+        };
+        console.log(`[VisState] 📏 Auto-updated expandedDimensions for ${id}: ${container.expandedDimensions.width}x${container.expandedDimensions.height}`);
+      }
+    }
   },
 
   getContainerLayout(id: string): any {

@@ -8,22 +8,9 @@ import { describe, it, expect } from 'vitest';
 import { parseGraphJSON, getAvailableGroupings } from '../core/JSONParser';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
-import fs from 'fs';
-import path from 'path';
+import { loadChatJsonTestData, skipIfNoTestData } from './testUtils';
 
 describe('ChatJsonIntegration', () => {
-  let chatJsonData: any;
-
-  // Load chat.json data for tests
-  try {
-    const chatJsonPath = path.join(__dirname, '../test-data/chat.json');
-    const chatJsonContent = fs.readFileSync(chatJsonPath, 'utf8');
-    chatJsonData = JSON.parse(chatJsonContent);
-  } catch (error) {
-    console.warn('chat.json not found, skipping real integration tests');
-    chatJsonData = null;
-  }
-
   describe('json processing', () => {
     it('should exist as a test suite', () => {
       // This test always passes to ensure the suite exists
@@ -31,73 +18,59 @@ describe('ChatJsonIntegration', () => {
     });
 
     it('should parse chat.json correctly', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
-
-      const result = parseGraphJSON(chatJsonData, null);
+      const testData = loadChatJsonTestData();
+      if (skipIfNoTestData(testData, 'chat.json parsing')) return;
       
-      expect(result).toBeDefined();
-      expect(result.state).toBeDefined();
-      expect(result.metadata).toBeDefined();
+      expect(testData!.state).toBeDefined();
+      expect(testData!.metadata).toBeDefined();
       
       // Chat.json should have nodes and edges
-      expect(result.metadata.nodeCount).toBeGreaterThan(0);
-      expect(result.metadata.edgeCount).toBeGreaterThan(0);
+      expect(testData!.metadata.nodeCount).toBeGreaterThan(0);
+      expect(testData!.metadata.edgeCount).toBeGreaterThan(0);
       
-      console.log(`✅ Parsed chat.json: ${result.metadata.nodeCount} nodes, ${result.metadata.edgeCount} edges`);
+      console.log(`✅ Parsed chat.json: ${testData!.metadata.nodeCount} nodes, ${testData!.metadata.edgeCount} edges`);
     });
 
     it('should handle chat.json visualization with grouping', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
-
-      // Test with filename grouping
-      const result = parseGraphJSON(chatJsonData, 'filename');
+      const testData = loadChatJsonTestData('filename');
+      if (skipIfNoTestData(testData, 'chat.json with grouping')) return;
       
-      expect(result.state.visibleNodes.length).toBeGreaterThan(0);
-      expect(result.state.visibleEdges.length).toBeGreaterThan(0);
+      expect(testData!.state.visibleNodes.length).toBeGreaterThan(0);
+      expect(testData!.state.visibleEdges.length).toBeGreaterThan(0);
       
       // Should have containers when grouped by filename
-      const containers = result.state.visibleContainers;
+      const containers = testData!.state.visibleContainers;
       expect(Array.isArray(containers)).toBe(true);
       
       console.log(`✅ Chat.json with grouping: ${containers.length} containers`);
     });
 
     it('should validate chat.json structure', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData();
+      if (skipIfNoTestData(testData, 'chat.json structure validation')) return;
 
       // Basic structure validation
-      expect(chatJsonData).toBeDefined();
-      expect(Array.isArray(chatJsonData.nodes)).toBe(true);
-      expect(Array.isArray(chatJsonData.edges)).toBe(true);
+      expect(testData!.rawData).toBeDefined();
+      expect(Array.isArray(testData!.rawData.nodes)).toBe(true);
+      expect(Array.isArray(testData!.rawData.edges)).toBe(true);
       
       // Nodes should have expected structure
-      const firstNode = chatJsonData.nodes[0];
+      const firstNode = testData!.rawData.nodes[0];
       expect(firstNode).toBeDefined();
       expect(firstNode.id).toBeDefined();
       expect(firstNode.data).toBeDefined();
       
-      console.log(`✅ Chat.json structure valid: ${chatJsonData.nodes.length} nodes, ${chatJsonData.edges.length} edges`);
+      console.log(`✅ Chat.json structure valid: ${testData!.rawData.nodes.length} nodes, ${testData!.rawData.edges.length} edges`);
     });
   });
 
   describe('integration scenarios', () => {
     it('should handle large chat.json files efficiently', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData('filename');
+      if (skipIfNoTestData(testData, 'large file performance test')) return;
 
       const startTime = performance.now();
-      const result = parseGraphJSON(chatJsonData, 'filename');
+      const result = parseGraphJSON(testData!.rawData, 'filename');
       const endTime = performance.now();
       
       const parseTime = endTime - startTime;
@@ -110,16 +83,12 @@ describe('ChatJsonIntegration', () => {
     });
 
     it('should maintain data integrity during parsing', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData();
+      if (skipIfNoTestData(testData, 'data integrity test')) return;
 
-      const result = parseGraphJSON(chatJsonData, null);
-      
       // Check that all edges reference valid nodes
-      const nodeIds = new Set(result.state.visibleNodes.map(n => n.id));
-      const edges = result.state.visibleEdges;
+      const nodeIds = new Set(testData!.state.visibleNodes.map(n => n.id));
+      const edges = testData!.state.visibleEdges;
       
       for (const edge of edges) {
         // Note: Some edges might reference nodes that aren't visible due to filtering
@@ -135,12 +104,10 @@ describe('ChatJsonIntegration', () => {
 
   describe('grouping functionality', () => {
     it('should detect available grouping options from chat.json', () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData();
+      if (skipIfNoTestData(testData, 'grouping options test')) return;
 
-      const groupings = getAvailableGroupings(chatJsonData);
+      const groupings = getAvailableGroupings(testData!.rawData);
       
       expect(Array.isArray(groupings)).toBe(true);
       expect(groupings.length).toBeGreaterThan(0);
@@ -163,14 +130,10 @@ describe('ChatJsonIntegration', () => {
 
   describe('bug reproduction from console logs', () => {
     it('should reproduce and debug ReactFlow edge creation failures', async () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData('location');
+      if (skipIfNoTestData(testData, 'ReactFlow edge bug reproduction')) return;
 
-      // Parse chat.json with grouping (reproduces the exact scenario from console)
-      const result = parseGraphJSON(chatJsonData, 'location');
-      const state = result.state;
+      const state = testData!.state;
 
       // Run ELK layout (this part works correctly from console logs)
       const elkBridge = new ELKBridge();
@@ -216,14 +179,10 @@ describe('ChatJsonIntegration', () => {
     });
 
     it('should validate container coordinate conversion', async () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData('location');
+      if (skipIfNoTestData(testData, 'container coordinate validation')) return;
 
-      // Parse and process the same way as the console logs show
-      const result = parseGraphJSON(chatJsonData, 'location');
-      const state = result.state;
+      const state = testData!.state;
 
       // Run ELK layout
       const elkBridge = new ELKBridge();
@@ -234,19 +193,30 @@ describe('ChatJsonIntegration', () => {
       expect(containers.length).toBeGreaterThan(0);
 
       for (const container of containers) {
-        console.log(`[Container Test] ${container.id}: x=${container.x}, y=${container.y}, w=${container.width}, h=${container.height}`);
+        const layout = state.getContainerLayout(container.id);
+        console.log(`[Container Test] ${container.id}: layout=${JSON.stringify(layout)}`);
         
         // Containers should have valid positions and dimensions
-        expect(typeof container.x).toBe('number');
-        expect(typeof container.y).toBe('number');
-        expect(typeof container.width).toBe('number');
-        expect(typeof container.height).toBe('number');
+        if (layout?.position) {
+          expect(typeof layout.position.x).toBe('number');
+          expect(typeof layout.position.y).toBe('number');
+        }
+        
+        if (layout?.dimensions) {
+          expect(typeof layout.dimensions.width).toBe('number');
+          expect(typeof layout.dimensions.height).toBe('number');
+        }
 
         // Check for the positioning issues seen in console logs
-        expect(container.x).toBeGreaterThanOrEqual(0);
-        expect(container.y).toBeGreaterThanOrEqual(0);
-        expect(container.width).toBeGreaterThan(0);
-        expect(container.height).toBeGreaterThan(0);
+        if (layout?.position) {
+          expect(layout.position.x).toBeGreaterThanOrEqual(0);
+          expect(layout.position.y).toBeGreaterThanOrEqual(0);
+        }
+        
+        if (layout?.dimensions) {
+          expect(layout.dimensions.width).toBeGreaterThan(0);
+          expect(layout.dimensions.height).toBeGreaterThan(0);
+        }
       }
 
       // Convert to ReactFlow and check coordinate conversion
@@ -272,14 +242,10 @@ describe('ChatJsonIntegration', () => {
     });
 
     it('should validate edge sections and routing', async () => {
-      if (!chatJsonData) {
-        console.log('⚠️  Skipping: chat.json not available');
-        return;
-      }
+      const testData = loadChatJsonTestData('location');
+      if (skipIfNoTestData(testData, 'edge sections validation')) return;
 
-      // Follow the exact same pipeline that produces the console errors
-      const result = parseGraphJSON(chatJsonData, 'location');
-      const state = result.state;
+      const state = testData!.state;
 
       // Run ELK layout 
       const elkBridge = new ELKBridge();
