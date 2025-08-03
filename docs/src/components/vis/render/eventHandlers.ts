@@ -4,7 +4,7 @@
  * Centralized event handlers to avoid duplication across components.
  */
 
-import React from 'react';
+import * as React from 'react';
 
 /**
  * Base event handler factory for nodes

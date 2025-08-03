@@ -11,6 +11,8 @@ import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test
 import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
 import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
 import { runAllTests as runIntegrationTests } from './integration.test.js';
+import { runAllTests as runLayoutIntegrationTests } from '../layout/__tests__/integration.test.js';
+import { runAllTests as runRenderTests } from './render.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
@@ -20,7 +22,12 @@ async function runAllTests(): Promise<void> {
   let passedTests = 0;
   
   try {
-    console.log('📊 Running Constants Tests...');
+    console.log('\n🎨 Running Render Component Tests...');
+    await runRenderTests();
+    passedTests++;
+    totalTests++;
+    
+    console.log('\n📊 Running Constants Tests...');
     await runConstantsTests();
     passedTests++;
     totalTests++;
@@ -55,11 +62,17 @@ async function runAllTests(): Promise<void> {
     passedTests++;
     totalTests++;
     
+    console.log('\n🎨 Running Layout Integration Tests...');
+    await runLayoutIntegrationTests();
+    passedTests++;
+    totalTests++;
+    
     console.log('\n=====================================');
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
     console.log('✅ All symmetric function pairs verified as mathematical inverses!');
     console.log('✅ All integration tests with real data passed!');
+    console.log('✅ All render components tested and working!');
     console.log('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js');
     
   } catch (error: unknown) {

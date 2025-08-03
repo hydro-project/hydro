@@ -1,5 +1,5 @@
 /**
- * Unit Tests for JSONParser
+ * Unit Tests for JSONParser (TypeScript)
  * 
  * Tests for parsing Hydro graph JSON data into VisualizationState
  */
@@ -16,497 +16,361 @@ import type { ParseResult, ValidationResult, GroupingOption } from '../core/JSON
 
 console.log('Running JSONParser tests...');
 
-// Simple test data that matches TypeScript interfaces
-const sampleJSONString = `{
-  "nodes": [
-    {"id": "0", "data": {"label": "Node 0"}},
-    {"id": "1", "data": {"label": "Node 1"}},
-    {"id": "2", "data": {"label": "Node 2"}}
-  ],
-  "edges": [
-    {"id": "e0", "source": "0", "target": "1"},
-    {"id": "e1", "source": "1", "target": "2"}
-  ],
-  "hierarchyChoices": [
+// Sample test data based on the chat.json structure
+const sampleGraphData: any = {
+  nodes: [
     {
-      "id": "location",
-      "name": "Location",
-      "hierarchy": []
-    }
-  ]
-}`;
-
-// ============ Basic Parsing Tests ============
-
-function testBasicParsing(): void {
-  console.log('Testing basic JSON parsing...');
-  
-  // Test parsing from JSON string
-  const result: ParseResult = parseGraphJSON(sampleJSONString);
-  assert(result, 'Should return a parse result');
-  assert(result.state, 'Should return a visualization state');
-  assert(result.metadata, 'Should return metadata');
-  
-  // Verify nodes were parsed
-  const visibleNodes = result.state.visibleNodes;
-  assert.strictEqual(visibleNodes.length, 3, 'Should have 3 nodes');
-  assert.strictEqual(visibleNodes[0].id, '0', 'First node should have id "0"');
-  assert.strictEqual(visibleNodes[1].id, '1', 'Second node should have id "1"');
-  assert.strictEqual(visibleNodes[2].id, '2', 'Third node should have id "2"');
-  
-  // Verify edges were parsed
-  const visibleEdges = result.state.visibleEdges;
-  assert.strictEqual(visibleEdges.length, 2, 'Should have 2 edges');
-  assert.strictEqual(visibleEdges[0].source, '0', 'First edge should connect from node 0');
-  assert.strictEqual(visibleEdges[0].target, '1', 'First edge should connect to node 1');
-  
-  console.log('✓ Basic JSON parsing tests passed');
-}
-
-function testNodeLabelExtraction(): void {
-  console.log('Testing node label extraction...');
-  
-  const result: ParseResult = parseGraphJSON(sampleJSONString);
-  const nodes = result.state.visibleNodes;
-  
-  // Test label extraction
-  const node0 = nodes.find(n => n.id === '0');
-  const node1 = nodes.find(n => n.id === '1');
-  const node2 = nodes.find(n => n.id === '2');
-  
-  assert(node0, 'Node 0 should exist');
-  assert(node1, 'Node 1 should exist');
-  assert(node2, 'Node 2 should exist');
-  
-  // Nodes should use labels
-  assert.strictEqual(node0.label, 'Node 0', 'Node 0 should have correct label');
-  assert.strictEqual(node1.label, 'Node 1', 'Node 1 should have correct label');
-  assert.strictEqual(node2.label, 'Node 2', 'Node 2 should have correct label');
-  
-  console.log('✓ Node label extraction tests passed');
-}
-
-function testEdgeStyleMapping(): void {
-  console.log('Testing edge style mapping...');
-  
-  const result: ParseResult = parseGraphJSON(sampleJSONString);
-  const edges = result.state.visibleEdges;
-  
-  const edge0 = edges.find(e => e.id === 'e0');
-  const edge1 = edges.find(e => e.id === 'e1');
-  
-  assert(edge0, 'Edge 0 should exist');
-  assert(edge1, 'Edge 1 should exist');
-  
-  // Check that edges have styles
-  assert(edge0.style, 'Edge 0 should have a style');
-  assert(edge1.style, 'Edge 1 should have a style');
-  
-  console.log('✓ Edge style mapping tests passed');
-}
-
-// ============ Grouping Tests ============
-
-function testGetAvailableGroupings(): void {
-  console.log('Testing available groupings extraction...');
-  
-  const groupings: GroupingOption[] = getAvailableGroupings(sampleJSONString);
-  
-  assert.strictEqual(groupings.length, 1, 'Should have 1 grouping option');
-  
-  const locationGrouping = groupings.find(g => g.id === 'location');
-  assert(locationGrouping, 'Should have location grouping');
-  assert.strictEqual(locationGrouping.name, 'Location', 'Location grouping should have correct name');
-  
-  console.log('✓ Available groupings tests passed');
-}
-
-function testParsingWithSpecificGrouping(): void {
-  console.log('Testing parsing with specific grouping...');
-  
-  // Test parsing with location grouping
-  const result1: ParseResult = parseGraphJSON(sampleJSONString, 'location');
-  assert.strictEqual(result1.metadata.selectedGrouping, 'location', 'Should use location grouping');
-  
-  // Test parsing with non-existent grouping (should fall back to first available)
-  const result2: ParseResult = parseGraphJSON(sampleJSONString, 'nonexistent');
-  assert(result2.metadata.selectedGrouping, 'Should fall back to available grouping');
-  
-  console.log('✓ Parsing with specific grouping tests passed');
-}
-
-// ============ Parser Creation Tests ============
-
-function testParserCreation(): void {
-  console.log('Testing parser creation...');
-  
-  const parser = createGraphParser({});
-  
-  assert(typeof parser === 'function', 'Should return a parser function');
-  
-  // Test that parser works (simplified due to type restrictions)
-  try {
-    const result = parser(sampleJSONString);
-    assert(result, 'Parser should work');
-    assert(result.state, 'Parser should return state');
-  } catch (error) {
-    // Parser creation may have specific requirements
-    console.log('Parser creation test completed (with expected constraints)');
-  }
-  
-  console.log('✓ Parser creation tests passed');
-}
-
-// ============ Validation Tests ============
-
-function testJSONValidation(): void {
-  console.log('Testing JSON validation...');
-  
-  // Test valid data
-  const validResult: ValidationResult = validateGraphJSON(sampleJSONString);
-  assert.strictEqual(validResult.isValid, true, 'Valid data should pass validation');
-  assert.strictEqual(validResult.errors.length, 0, 'Valid data should have no errors');
-  
-  // Test invalid data - malformed JSON string
-  try {
-    const invalidResult: ValidationResult = validateGraphJSON('invalid json');
-    assert.strictEqual(invalidResult.isValid, false, 'Malformed JSON should be invalid');
-  } catch (error) {
-    // This is expected for malformed JSON
-    assert(error instanceof Error, 'Should throw error for malformed JSON');
-  }
-  
-  console.log('✓ JSON validation tests passed');
-}
-
-// ============ Error Handling Tests ============
-
-function testErrorHandling(): void {
-  console.log('Testing error handling...');
-  
-  // Test null input
-  try {
-    parseGraphJSON(null as any);
-    assert.fail('Should throw error for null input');
-  } catch (error) {
-    assert(error instanceof Error, 'Should throw error for null input');
-  }
-  
-  // Test undefined input
-  try {
-    parseGraphJSON(undefined as any);
-    assert.fail('Should throw error for undefined input');
-  } catch (error) {
-    assert(error instanceof Error, 'Should throw error for undefined input');
-  }
-  
-  console.log('✓ Error handling tests passed');
-}
-
-// ============ Integration Tests ============
-
-function testFullIntegration(): void {
-  console.log('Testing full integration...');
-  
-  // Test complete workflow: validate -> parse -> use
-  const validation: ValidationResult = validateGraphJSON(sampleJSONString);
-  assert(validation.isValid, 'Sample data should be valid');
-  
-  const result: ParseResult = parseGraphJSON(sampleJSONString);
-  assert(result.state, 'Should parse successfully');
-  
-  // Verify we can interact with the parsed state
-  const state = result.state;
-  assert(state.visibleNodes.length > 0, 'Should have nodes');
-  assert(state.visibleEdges.length > 0, 'Should have edges');
-  
-  // Test modifying the state
-  state.updateNode('0', { hidden: true });
-  assert(state.visibleNodes.length < 3, 'Should be able to modify state');
-  
-  console.log('✓ Full integration tests passed');
-}
-
-// ============ Run All Tests ============
-
-function runAllTests(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      testBasicParsing();
-      testNodeLabelExtraction();
-      testEdgeStyleMapping();
-      testGetAvailableGroupings();
-      testParsingWithSpecificGrouping();
-      testParserCreation();
-      testJSONValidation();
-      testErrorHandling();
-      testFullIntegration();
-      
-      console.log('\n🎉 All JSONParser tests passed! Parser is working correctly.');
-      resolve();
-    } catch (error: unknown) {
-      console.error('\n❌ JSONParser test failed:', error instanceof Error ? error.message : String(error));
-      if (error instanceof Error) {
-        console.error(error.stack);
+      id: "0",
+      data: {
+        backtrace: [
+          {
+            fn_name: "hydro_lang::stream::Stream<T,L,B,O,R>::broadcast_bincode",
+            filename: "/Users/test/stream.rs"
+          }
+        ]
+      },
+      position: { x: 100, y: 50 }
+    },
+    {
+      id: "1", 
+      data: {
+        label: "Test Node 1"
       }
-      reject(error);
+    },
+    {
+      id: "2",
+      data: {
+        name: "Custom Name Node"
+      }
     }
-  });
-}
-
-// Export for potential use in other test files
-export {
-  testBasicParsing,
-  testNodeLabelExtraction,
-  testEdgeStyleMapping,
-  testGetAvailableGroupings,
-  testParsingWithSpecificGrouping,
-  testParserCreation,
-  testJSONValidation,
-  testErrorHandling,
-  testFullIntegration,
-  runAllTests
+  ],
+  edges: [
+    {
+      id: "e0",
+      source: "0",
+      target: "1",
+      animated: false,
+      style: {
+        stroke: "#008800",
+        strokeWidth: 3
+      }
+    },
+    {
+      id: "e1", 
+      source: "1",
+      target: "2",
+      animated: true,
+      style: {
+        strokeDasharray: "5,5"
+      }
+    }
+  ],
+  hierarchyChoices: [
+    {
+      id: "location",
+      name: "Location",
+      hierarchy: [
+        {
+          id: "loc_0",
+          name: "Client",
+          children: []
+        },
+        {
+          id: "loc_1", 
+          name: "Server",
+          children: []
+        }
+      ]
+    },
+    {
+      id: "backtrace",
+      name: "Backtrace", 
+      hierarchy: [
+        {
+          id: "bt_1",
+          name: "examples/chat.rs",
+          children: [
+            {
+              id: "bt_2",
+              name: "main",
+              children: []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  nodeAssignments: {
+    location: {
+      "0": "loc_0",
+      "1": "loc_0", 
+      "2": "loc_1"
+    },
+    backtrace: {
+      "0": "bt_2",
+      "1": "bt_2",
+      "2": "bt_2"
+    }
+  }
 };
 
-// Run tests if this file is executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
-  runAllTests().catch(() => process.exit(1));
-}
-
-// ============ Basic Parsing Tests ============
-
-function testBasicParsing(): void {
+function testBasicJSONParsing(): void {
   console.log('Testing basic JSON parsing...');
   
-  // Test parsing from object
-  const result1: ParseResult = parseGraphJSON(sampleGraphData);
-  assert(result1, 'Should return a parse result');
-  assert(result1.state, 'Should return a visualization state');
+  // Test parsing with object input
+  const result1 = parseGraphJSON(sampleGraphData);
+  assert(result1.state, 'Should return a state object');
   assert(result1.metadata, 'Should return metadata');
   
-  // Test parsing from JSON string
-  const result2: ParseResult = parseGraphJSON(sampleJSONString);
-  assert(result2, 'Should parse JSON string');
-  assert(result2.state, 'Should return a visualization state from JSON string');
+  // Test parsing with JSON string input
+  const jsonString = JSON.stringify(sampleGraphData);
+  const result2 = parseGraphJSON(jsonString);
+  assert(result2.state, 'Should parse JSON string');
   
-  // Verify nodes were parsed
-  const visibleNodes = result1.state.visibleNodes;
-  assert.strictEqual(visibleNodes.length, 3, 'Should have 3 nodes');
-  assert.strictEqual(visibleNodes[0].id, '0', 'First node should have id "0"');
-  assert.strictEqual(visibleNodes[1].id, '1', 'Second node should have id "1"');
-  assert.strictEqual(visibleNodes[2].id, '2', 'Third node should have id "2"');
-  
-  // Verify edges were parsed
-  const visibleEdges = result1.state.visibleEdges;
-  assert.strictEqual(visibleEdges.length, 2, 'Should have 2 edges');
-  assert.strictEqual(visibleEdges[0].source, '0', 'First edge should connect from node 0');
-  assert.strictEqual(visibleEdges[0].target, '1', 'First edge should connect to node 1');
+  // Verify basic structure
+  assert.strictEqual(result1.state.visibleNodes.length, 3, 'Should have 3 nodes');
+  assert.strictEqual(result1.state.visibleEdges.length, 2, 'Should have 2 edges');
   
   console.log('✓ Basic JSON parsing tests passed');
 }
 
-function testNodeLabelExtraction(): void {
-  console.log('Testing node label extraction...');
+function testNodeParsing(): void {
+  console.log('Testing node parsing...');
   
-  const result: ParseResult = parseGraphJSON(sampleGraphData);
-  const nodes = result.state.visibleNodes;
+  const result = parseGraphJSON(sampleGraphData);
+  const state = result.state;
   
-  // Test various label extraction methods
-  const node0 = nodes.find(n => n.id === '0');
-  const node1 = nodes.find(n => n.id === '1');
-  const node2 = nodes.find(n => n.id === '2');
-  
+  // Test node 0 (has backtrace data but no explicit label - should use ID as fallback)
+  const node0 = state.getGraphNode('0');
   assert(node0, 'Node 0 should exist');
+  assert.strictEqual(node0.id, '0', 'Node should have correct ID');
+  assert.strictEqual(node0.label, '0', 'Should use node ID as label when no explicit label provided');
+  assert.strictEqual(node0.style, NODE_STYLES.DEFAULT, 'Should have default style');
+  assert.strictEqual(node0.hidden, false, 'Should not be hidden initially');
+  
+  // Test node 1 (has explicit label)
+  const node1 = state.getGraphNode('1');
   assert(node1, 'Node 1 should exist');
+  assert.strictEqual(node1.label, 'Test Node 1', 'Should use explicit label');
+  
+  // Test node 2 (has name)
+  const node2 = state.getGraphNode('2');
   assert(node2, 'Node 2 should exist');
+  assert.strictEqual(node2.label, 'Custom Name Node', 'Should use name as label');
   
-  // Node 0 should extract from backtrace function name
-  assert(node0.label.includes('broadcast_bincode'), 'Node 0 should have function name in label');
-  
-  // Node 1 should use explicit label
-  assert.strictEqual(node1.label, 'Test Node 1', 'Node 1 should use explicit label');
-  
-  // Node 2 should use name field
-  assert.strictEqual(node2.label, 'Custom Name Node', 'Node 2 should use name field');
-  
-  console.log('✓ Node label extraction tests passed');
+  console.log('✓ Node parsing tests passed');
 }
 
-function testEdgeStyleMapping(): void {
-  console.log('Testing edge style mapping...');
+function testEdgeParsing(): void {
+  console.log('Testing edge parsing...');
   
-  const result: ParseResult = parseGraphJSON(sampleGraphData);
-  const edges = result.state.visibleEdges;
+  const result = parseGraphJSON(sampleGraphData);
+  const state = result.state;
   
-  const edge0 = edges.find(e => e.id === 'e0');
-  const edge1 = edges.find(e => e.id === 'e1');
+  // Test edge 0 (thick stroke)
+  const edge0 = state.getGraphEdge('e0');
+  assert(edge0, 'Edge e0 should exist');
+  assert.strictEqual(edge0.source, '0', 'Should have correct source');
+  assert.strictEqual(edge0.target, '1', 'Should have correct target');
+  assert.strictEqual(edge0.style, EDGE_STYLES.THICK, 'Should detect thick style');
   
-  assert(edge0, 'Edge 0 should exist');
-  assert(edge1, 'Edge 1 should exist');
+  // Test edge 1 (animated and dashed)
+  const edge1 = state.getGraphEdge('e1');
+  assert(edge1, 'Edge e1 should exist');
+  assert.strictEqual(edge1.style, EDGE_STYLES.HIGHLIGHTED, 'Animated edges should be highlighted');
   
-  // Check style mapping (implementation may vary)
-  assert(edge0.style, 'Edge 0 should have a style');
-  assert(edge1.style, 'Edge 1 should have a style');
-  
-  console.log('✓ Edge style mapping tests passed');
+  console.log('✓ Edge parsing tests passed');
 }
 
-// ============ Grouping Tests ============
-
-function testGetAvailableGroupings(): void {
-  console.log('Testing available groupings extraction...');
+function testHierarchyParsing(): void {
+  console.log('Testing hierarchy parsing...');
   
-  const groupings: GroupingOption[] = getAvailableGroupings(sampleGraphData);
+  const result = parseGraphJSON(sampleGraphData, 'location');
+  const state = result.state;
   
-  assert.strictEqual(groupings.length, 2, 'Should have 2 grouping options');
+  // Check that containers were created
+  const containers = state.visibleContainers;
+  assert.strictEqual(containers.length, 2, 'Should have 2 containers');
   
-  const locationGrouping = groupings.find(g => g.id === 'location');
-  const backtraceGrouping = groupings.find(g => g.id === 'backtrace');
+  // Check container properties
+  const loc0 = state.getContainer('loc_0');
+  const loc1 = state.getContainer('loc_1');
+  assert(loc0, 'Container loc_0 should exist');
+  assert(loc1, 'Container loc_1 should exist');
   
-  assert(locationGrouping, 'Should have location grouping');
-  assert(backtraceGrouping, 'Should have backtrace grouping');
+  // Check node assignments
+  assert.strictEqual(state.getNodeContainer('0'), 'loc_0', 'Node 0 should be in loc_0');
+  assert.strictEqual(state.getNodeContainer('1'), 'loc_0', 'Node 1 should be in loc_0');
+  assert.strictEqual(state.getNodeContainer('2'), 'loc_1', 'Node 2 should be in loc_1');
   
-  assert.strictEqual(locationGrouping.name, 'Location', 'Location grouping should have correct name');
-  assert.strictEqual(backtraceGrouping.name, 'Backtrace', 'Backtrace grouping should have correct name');
+  // Check metadata
+  assert.strictEqual(result.metadata.selectedGrouping, 'location', 'Should track selected grouping');
+  assert.strictEqual(result.metadata.availableGroupings.length, 2, 'Should list available groupings');
   
-  console.log('✓ Available groupings tests passed');
+  console.log('✓ Hierarchy parsing tests passed');
 }
 
-function testParsingWithSpecificGrouping(): void {
-  console.log('Testing parsing with specific grouping...');
+function testGroupingSelection(): void {
+  console.log('Testing grouping selection...');
   
-  // Test parsing with location grouping
-  const result1: ParseResult = parseGraphJSON(sampleGraphData, 'location');
-  assert.strictEqual(result1.metadata.selectedGrouping, 'location', 'Should use location grouping');
+  // Test default grouping (first available)
+  const result1 = parseGraphJSON(sampleGraphData);
+  assert.strictEqual(result1.metadata.selectedGrouping, 'location', 'Should default to first grouping');
   
-  // Test parsing with backtrace grouping
-  const result2: ParseResult = parseGraphJSON(sampleGraphData, 'backtrace');
-  assert.strictEqual(result2.metadata.selectedGrouping, 'backtrace', 'Should use backtrace grouping');
+  // Test specific grouping selection
+  const result2 = parseGraphJSON(sampleGraphData, 'backtrace');
+  assert.strictEqual(result2.metadata.selectedGrouping, 'backtrace', 'Should use specified grouping');
   
-  // Test parsing with non-existent grouping (should fall back to first available)
-  const result3: ParseResult = parseGraphJSON(sampleGraphData, 'nonexistent');
-  assert(result3.metadata.selectedGrouping, 'Should fall back to available grouping');
+  // Test invalid grouping (should fall back to first)
+  const result3 = parseGraphJSON(sampleGraphData, 'nonexistent');
+  assert.strictEqual(result3.metadata.selectedGrouping, 'location', 'Should fall back to first grouping');
   
-  console.log('✓ Parsing with specific grouping tests passed');
+  console.log('✓ Grouping selection tests passed');
 }
 
-// ============ Parser Creation Tests ============
-
-function testParserCreation(): void {
-  console.log('Testing parser creation...');
+function testNestedHierarchy(): void {
+  console.log('Testing nested hierarchy...');
   
-  const parser = createGraphParser({ 
-    defaultGrouping: 'location',
-    validateInput: true 
-  });
+  const result = parseGraphJSON(sampleGraphData, 'backtrace');
+  const state = result.state;
   
-  assert(typeof parser === 'function', 'Should return a parser function');
+  // Check that nested containers were created
+  const bt1 = state.getContainer('bt_1');
+  const bt2 = state.getContainer('bt_2');
+  assert(bt1, 'Parent container should exist');
+  assert(bt2, 'Child container should exist');
   
-  const result: ParseResult = parser(sampleGraphData);
-  assert(result, 'Parser should work');
-  assert(result.state, 'Parser should return state');
-  assert.strictEqual(result.metadata.selectedGrouping, 'location', 'Should use default grouping');
+  // Check hierarchy relationships
+  const bt1Children = state.getContainerChildren('bt_1');
+  assert(bt1Children.has('bt_2'), 'Parent should contain child container');
   
-  console.log('✓ Parser creation tests passed');
+  // Check node assignments to leaf containers
+  assert.strictEqual(state.getNodeContainer('0'), 'bt_2', 'Nodes should be in leaf container');
+  
+  console.log('✓ Nested hierarchy tests passed');
 }
 
-// ============ Validation Tests ============
-
-function testJSONValidation(): void {
+function testValidation(): void {
   console.log('Testing JSON validation...');
   
   // Test valid data
-  const validResult: ValidationResult = validateGraphJSON(sampleGraphData);
-  assert.strictEqual(validResult.isValid, true, 'Valid data should pass validation');
-  assert.strictEqual(validResult.errors.length, 0, 'Valid data should have no errors');
+  const validation1 = validateGraphJSON(sampleGraphData);
+  assert.strictEqual(validation1.isValid, true, 'Valid data should pass validation');
+  assert.strictEqual(validation1.errors.length, 0, 'Should have no errors');
+  assert.strictEqual(validation1.nodeCount, 3, 'Should count nodes correctly');
+  assert.strictEqual(validation1.edgeCount, 2, 'Should count edges correctly');
   
-  // Test invalid data - missing nodes
-  const invalidData1 = { edges: [], hierarchyChoices: [] };
-  const invalidResult1: ValidationResult = validateGraphJSON(invalidData1);
-  assert.strictEqual(invalidResult1.isValid, false, 'Data without nodes should be invalid');
-  assert(invalidResult1.errors.length > 0, 'Should have validation errors');
+  // Test invalid data
+  const invalidData: any = { nodes: [] }; // Missing edges
+  const validation2 = validateGraphJSON(invalidData);
+  assert.strictEqual(validation2.isValid, false, 'Invalid data should fail validation');
+  assert(validation2.errors.length > 0, 'Should have errors');
   
-  // Test invalid data - malformed JSON string
-  try {
-    const invalidResult2: ValidationResult = validateGraphJSON('invalid json');
-    assert.strictEqual(invalidResult2.isValid, false, 'Malformed JSON should be invalid');
-  } catch (error) {
-    // This is expected for malformed JSON
-    assert(error instanceof Error, 'Should throw error for malformed JSON');
-  }
+  // Test JSON parse error
+  const validation3 = validateGraphJSON('invalid json');
+  assert.strictEqual(validation3.isValid, false, 'Invalid JSON should fail validation');
+  assert(validation3.errors.some(e => e.includes('JSON parsing error')), 'Should detect JSON error');
   
   console.log('✓ JSON validation tests passed');
 }
 
-// ============ Error Handling Tests ============
+function testUtilityFunctions(): void {
+  console.log('Testing utility functions...');
+  
+  // Test getAvailableGroupings
+  const groupings = getAvailableGroupings(sampleGraphData);
+  assert.strictEqual(groupings.length, 2, 'Should return all groupings');
+  assert.strictEqual(groupings[0].id, 'location', 'Should return correct grouping data');
+  
+  // Test with JSON string
+  const groupings2 = getAvailableGroupings(JSON.stringify(sampleGraphData));
+  assert.strictEqual(groupings2.length, 2, 'Should work with JSON string');
+  
+  // Test createGraphParser
+  const parser: any = createGraphParser();
+  assert(typeof parser === 'function', 'Should return parser function');
+  
+  const result: any = parser(sampleGraphData);
+  assert(result.state, 'Custom parser should work');
+  
+  console.log('✓ Utility function tests passed');
+}
+
+function testEdgeStyleDetection(): void {
+  console.log('Testing edge style detection...');
+  
+  const testData: any = {
+    nodes: [
+      { id: "1" },
+      { id: "2" }
+    ],
+    edges: [
+      {
+        id: "thick",
+        source: "1", 
+        target: "2",
+        style: { strokeWidth: 5 }
+      },
+      {
+        id: "dashed",
+        source: "1",
+        target: "2", 
+        style: { strokeDasharray: "5,5" }
+      },
+      {
+        id: "warning",
+        source: "1",
+        target: "2",
+        style: { stroke: "red" }
+      },
+      {
+        id: "animated",
+        source: "1", 
+        target: "2",
+        animated: true
+      }
+    ]
+  };
+  
+  const result = parseGraphJSON(testData);
+  const state = result.state;
+  
+  assert.strictEqual(state.getGraphEdge('thick')?.style, EDGE_STYLES.THICK, 'Should detect thick edges');
+  assert.strictEqual(state.getGraphEdge('dashed')?.style, EDGE_STYLES.DASHED, 'Should detect dashed edges');
+  assert.strictEqual(state.getGraphEdge('warning')?.style, EDGE_STYLES.WARNING, 'Should detect warning edges');
+  assert.strictEqual(state.getGraphEdge('animated')?.style, EDGE_STYLES.HIGHLIGHTED, 'Should detect animated edges');
+  
+  console.log('✓ Edge style detection tests passed');
+}
 
 function testErrorHandling(): void {
   console.log('Testing error handling...');
   
-  // Test null input
+  // Test empty data
   try {
-    parseGraphJSON(null as any);
-    assert.fail('Should throw error for null input');
+    parseGraphJSON({} as any);
+    assert.fail('Should throw error for empty data');
   } catch (error) {
-    assert(error instanceof Error, 'Should throw error for null input');
+    assert(error instanceof Error && error.message.includes('Invalid graph data'), 'Should throw descriptive error');
   }
   
-  // Test undefined input
+  // Test missing nodes
   try {
-    parseGraphJSON(undefined as any);
-    assert.fail('Should throw error for undefined input');
+    parseGraphJSON({ edges: [] } as any);
+    assert.fail('Should throw error for missing nodes');
   } catch (error) {
-    assert(error instanceof Error, 'Should throw error for undefined input');
+    assert(error instanceof Error && error.message.includes('Invalid graph data'), 'Should throw descriptive error');
   }
   
-  // Test empty object
-  const emptyResult: ParseResult = parseGraphJSON({});
-  assert(emptyResult, 'Should handle empty object gracefully');
-  assert(emptyResult.state, 'Should return empty state for empty object');
+  // Test invalid JSON string
+  try {
+    parseGraphJSON('invalid json');
+    assert.fail('Should throw error for invalid JSON');
+  } catch (error) {
+    assert(error instanceof SyntaxError, 'Should throw JSON syntax error');
+  }
   
   console.log('✓ Error handling tests passed');
-}
-
-// ============ Hierarchy Processing Tests ============
-
-function testHierarchyProcessing(): void {
-  console.log('Testing hierarchy processing...');
-  
-  const result: ParseResult = parseGraphJSON(sampleGraphData, 'backtrace');
-  
-  // Should have containers from hierarchy
-  const containers = result.state.visibleContainers;
-  assert(containers.length > 0, 'Should create containers from hierarchy');
-  
-  // Check container structure
-  const topLevelContainer = containers.find(c => c.label && c.label.includes('examples/chat.rs'));
-  assert(topLevelContainer, 'Should have top-level container');
-  
-  console.log('✓ Hierarchy processing tests passed');
-}
-
-// ============ Integration Tests ============
-
-function testFullIntegration(): void {
-  console.log('Testing full integration...');
-  
-  // Test complete workflow: validate -> parse -> use
-  const validation: ValidationResult = validateGraphJSON(sampleGraphData);
-  assert(validation.isValid, 'Sample data should be valid');
-  
-  const result: ParseResult = parseGraphJSON(sampleGraphData);
-  assert(result.state, 'Should parse successfully');
-  
-  // Verify we can interact with the parsed state
-  const state = result.state;
-  assert(state.visibleNodes.length > 0, 'Should have nodes');
-  assert(state.visibleEdges.length > 0, 'Should have edges');
-  
-  // Test modifying the state
-  state.updateNode('0', { hidden: true });
-  assert(state.visibleNodes.length < 3, 'Should be able to modify state');
-  
-  console.log('✓ Full integration tests passed');
 }
 
 // ============ Run All Tests ============
@@ -514,16 +378,16 @@ function testFullIntegration(): void {
 function runAllTests(): Promise<void> {
   return new Promise((resolve, reject) => {
     try {
-      testBasicParsing();
-      testNodeLabelExtraction();
-      testEdgeStyleMapping();
-      testGetAvailableGroupings();
-      testParsingWithSpecificGrouping();
-      testParserCreation();
-      testJSONValidation();
+      testBasicJSONParsing();
+      testNodeParsing();
+      testEdgeParsing();
+      testHierarchyParsing();
+      testGroupingSelection();
+      testNestedHierarchy();
+      testValidation();
+      testUtilityFunctions();
+      testEdgeStyleDetection();
       testErrorHandling();
-      testHierarchyProcessing();
-      testFullIntegration();
       
       console.log('\n🎉 All JSONParser tests passed! Parser is working correctly.');
       resolve();
@@ -539,16 +403,16 @@ function runAllTests(): Promise<void> {
 
 // Export for potential use in other test files
 export {
-  testBasicParsing,
-  testNodeLabelExtraction,
-  testEdgeStyleMapping,
-  testGetAvailableGroupings,
-  testParsingWithSpecificGrouping,
-  testParserCreation,
-  testJSONValidation,
+  testBasicJSONParsing,
+  testNodeParsing,
+  testEdgeParsing,
+  testHierarchyParsing,
+  testGroupingSelection,
+  testNestedHierarchy,
+  testValidation,
+  testUtilityFunctions,
+  testEdgeStyleDetection,
   testErrorHandling,
-  testHierarchyProcessing,
-  testFullIntegration,
   runAllTests
 };
 

@@ -44,6 +44,22 @@ export const LAYOUT_CONSTANTS = {
   MIN_CONTAINER_HEIGHT: 100
 } as const;
 
+// Log prefixes for consistent logging
+export const LOG_PREFIXES = {
+  STATE_MANAGER: '[ELKStateManager]',
+  FULL_LAYOUT: '🏗️ FULL_LAYOUT:',
+  VISUAL_LAYOUT: '🎯 VISUAL_LAYOUT:',
+  VALIDATION: '🔍',
+  CACHING: '💾 CACHING:',
+  SUMMARY: '📊 SUMMARY:',
+  CONTAINER: '📦',
+  INPUT: 'INPUT',
+  OUTPUT: 'OUTPUT',
+  SUCCESS: '✅',
+  WARNING: '⚠️',
+  ERROR: '❌',
+} as const;
+
 // Legacy type exports for backward compatibility
 // @deprecated Use types from types.ts instead
 export type NodeStyle = typeof NODE_STYLES[keyof typeof NODE_STYLES];
