@@ -1,28 +1,18 @@
 /**
- *import { runAllTests as runVisStateTests } from './VisState.test.js';
-import { runAllTests as runConstantsTests } from './constants.test.js';
-import { runAllTests as runJSONParserTests } from './JSONParser.test.js';
-import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test.js';
-import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
-import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
-import { runAllTests as runIntegrationTests } from '../alpha/__tests__/integration.test.js';
-import { runAllTests as runLayoutIntegrationTests } from '../alpha/layout/__tests__/integration.test.js';
-import { runAllTests as runRenderTests } from '../alpha/__tests__/render.test.js';
-import { runAllBridgeTests } from '../bridges/__tests__/index.test.js';er for Vis Components
+ * Test Runner for Vis Components
  * 
  * Runs all tests for the visualization system
  */
 
-import { runAllTests as runVisStateTests } from './VisState.test.js';
-import { runAllTests as runConstantsTests } from './constants.test.js';
-import { runAllTests as runJSONParserTests } from './JSONParser.test.js';
-import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test.js';
-import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
-import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
-import { runAllTests as runIntegrationTests } from './integration.test.js';
-import { runAllTests as runLayoutIntegrationTests } from '../alpha/layout/__tests__/integration.test.js';
-import { runAllTests as runRenderTests } from '../alpha/__tests__/render.test.js';
-import { runAllBridgeTests } from '../bridges/__tests__/index.test.js';
+import { runAllTests as runVisStateTests } from '../core/VisState.test.js';
+import { runAllTests as runConstantsTests } from '../shared/constants.test.js';
+import { runAllTests as runJSONParserTests } from '../core/JSONParser.test.js';
+import { runAllTests as runSymmetricInverseTests } from '../core/symmetricInverse.test.js';
+import { runAllTests as runEdgeIndexEncapsulationTests } from '../core/edgeIndexEncapsulation.test.js';
+import { runAllTests as runSimpleGroundingTests } from '../core/simpleGroundingTest.js';
+import { runAllBridgeTests } from '../bridges/index.test.js';
+import { runLayoutBoundaryTests } from './layoutBoundaries.test.js';
+import { runChatJsonIntegrationTests } from './chatJsonIntegration.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
@@ -32,11 +22,6 @@ async function runAllTests(): Promise<void> {
   let passedTests = 0;
   
   try {
-    console.log('\n🎨 Running Render Component Tests...');
-    await runRenderTests();
-    passedTests++;
-    totalTests++;
-    
     console.log('\n📊 Running Constants Tests...');
     await runConstantsTests();
     passedTests++;
@@ -67,18 +52,18 @@ async function runAllTests(): Promise<void> {
     passedTests++;
     totalTests++;
     
-    console.log('\n🔧 Running Integration Tests...');
-    await runIntegrationTests();
-    passedTests++;
-    totalTests++;
-    
-    console.log('\n🎨 Running Layout Integration Tests...');
-    await runLayoutIntegrationTests();
-    passedTests++;
-    totalTests++;
-    
     console.log('\n🌉 Running Bridge Tests...');
     runAllBridgeTests();
+    passedTests++;
+    totalTests++;
+    
+    console.log('\n📐 Running Layout Boundary Tests...');
+    await runLayoutBoundaryTests();
+    passedTests++;
+    totalTests++;
+    
+    console.log('\n🗨️ Running Chat.json Integration Tests...');
+    await runChatJsonIntegrationTests();
     passedTests++;
     totalTests++;
     
@@ -86,9 +71,9 @@ async function runAllTests(): Promise<void> {
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
     console.log('✅ All symmetric function pairs verified as mathematical inverses!');
-    console.log('✅ All integration tests with real data passed!');
-    console.log('✅ All render components tested and working!');
     console.log('✅ All bridge components tested and working!');
+    console.log('✅ All layout boundary validations passed!');
+    console.log('✅ Chat.json integration tests completed!');
     console.log('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js');
     
   } catch (error: unknown) {

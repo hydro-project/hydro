@@ -151,8 +151,9 @@ export class VisualizationService {
     // CRITICAL: Create layout result from CURRENT VisState, not from any cache
     const layoutResult = this.createLayoutResultFromVisState(visState);
     
-    // Convert to ReactFlow format
-    const reactFlowData = ReactFlowConverter.convert(layoutResult);
+    // Convert to ReactFlow format using the actual VisState
+    const converter = new ReactFlowConverter();
+    const reactFlowData = converter.convert(visState);
     
     console.log('[VisualizationService] 📊 REACTFLOW_DATA:', {
       nodes: reactFlowData.nodes.length,

@@ -5,8 +5,8 @@
  */
 
 import assert from 'assert';
-import { ELKBridge } from '../ELKBridge';
-import type { ElkGraph, ElkNode } from '../elk-types';
+import { ELKBridge } from './ELKBridge';
+import type { ElkGraph, ElkNode } from './elk-types';
 
 console.log('Running ELKBridge tests...');
 

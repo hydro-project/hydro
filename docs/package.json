@@ -13,7 +13,9 @@
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
     "wasm-pack": "cd ../website_playground/ && wasm-pack build",
-    "install": "rimraf node_modules/stageleft && git clone https://github.com/hydro-project/stageleft.git node_modules/stageleft"
+    "install": "rimraf node_modules/stageleft && git clone https://github.com/hydro-project/stageleft.git node_modules/stageleft",
+    "test": "node src/components/vis/__tests__/runTests.js",
+    "test:vis": "node src/components/vis/__tests__/runTests.js"
   },
   "dependencies": {
     "@docusaurus/core": "^3.6.1",

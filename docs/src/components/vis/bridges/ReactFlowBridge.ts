@@ -8,7 +8,7 @@
  */
 
 import type { VisualizationState } from '../core/VisState';
-import type { GraphNode, GraphEdge, HyperEdge, Container } from '../alpha/shared/types';
+import type { GraphNode, GraphEdge, HyperEdge, Container } from '../shared/types';
 import { MarkerType } from '@xyflow/react';
 import { CoordinateTranslator, type ContainerInfo } from './CoordinateTranslator';
 
@@ -38,6 +38,8 @@ export interface ReactFlowEdge {
   type: 'standard' | 'hyper';
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
   markerEnd?: {
     type: typeof MarkerType.ArrowClosed;
     width: number;
@@ -185,6 +187,16 @@ export class ReactFlowBridge {
         CoordinateTranslator.getContainerInfo(parentId, visState) : 
         undefined;
       
+      if (parentContainer) {
+        console.log(`[ReactFlowBridge] 🔍 Parent container ${parentId} info:`, {
+          id: parentContainer.id,
+          x: parentContainer.x,
+          y: parentContainer.y,
+          width: parentContainer.width,
+          height: parentContainer.height
+        });
+      }
+      
       const position = CoordinateTranslator.elkToReactFlow(elkCoords, parentContainer);
       
       console.log(`[ReactFlowBridge] 🔘 Node ${node.id}: parent=${parentId || 'none'}, ELK=(${elkCoords.x}, ${elkCoords.y}), ReactFlow=(${position.x}, ${position.y})`);
@@ -212,6 +224,16 @@ export class ReactFlowBridge {
    */
   private convertEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
     visState.visibleEdges.forEach(edge => {
+      // Debug: log the actual edge data to see what we're getting
+      console.log(`[ReactFlowBridge] 🔍 Debug edge ${edge.id}:`, {
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        targetHandle: edge.targetHandle,
+        sourceHandleType: typeof edge.sourceHandle,
+        targetHandleType: typeof edge.targetHandle
+      });
+      
       const reactFlowEdge: ReactFlowEdge = {
         id: edge.id,
         type: 'standard',
@@ -227,6 +249,18 @@ export class ReactFlowBridge {
           style: edge.style || 'default'
         }
       };
+      
+      // NEVER include sourceHandle/targetHandle if they are undefined, null, or string "null"
+      // Let ReactFlow use its defaults
+      if (edge.sourceHandle !== undefined && edge.sourceHandle !== null && edge.sourceHandle !== 'null') {
+        reactFlowEdge.sourceHandle = edge.sourceHandle;
+      }
+      
+      if (edge.targetHandle !== undefined && edge.targetHandle !== null && edge.targetHandle !== 'null') {
+        reactFlowEdge.targetHandle = edge.targetHandle;
+      }
+      
+      console.log(`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge);
       
       edges.push(reactFlowEdge);
     });
@@ -254,6 +288,16 @@ export class ReactFlowBridge {
           style: hyperEdge.style || 'default'
         }
       };
+      
+      // NEVER include sourceHandle/targetHandle if they are undefined, null, or string "null"
+      // Let ReactFlow use its defaults
+      if (hyperEdge.sourceHandle !== undefined && hyperEdge.sourceHandle !== null && hyperEdge.sourceHandle !== 'null') {
+        reactFlowHyperEdge.sourceHandle = hyperEdge.sourceHandle;
+      }
+      
+      if (hyperEdge.targetHandle !== undefined && hyperEdge.targetHandle !== null && hyperEdge.targetHandle !== 'null') {
+        reactFlowHyperEdge.targetHandle = hyperEdge.targetHandle;
+      }
       
       edges.push(reactFlowHyperEdge);
     });

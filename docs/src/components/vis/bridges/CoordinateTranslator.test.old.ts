@@ -5,8 +5,8 @@
  */
 
 import assert from 'assert';
-import { CoordinateTranslator } from '../CoordinateTranslator';
-import type { ContainerInfo } from '../CoordinateTranslator';
+import { CoordinateTranslator } from './CoordinateTranslator';
+import type { ContainerInfo } from './CoordinateTranslator';
 
 console.log('Running CoordinateTranslator tests...');
 

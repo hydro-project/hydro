@@ -58,7 +58,7 @@ export function Legend({
       )}
       
       {legendData.items.map(item => {
-        const colors = generateNodeColors(item.type, paletteKey, nodeTypeConfig);
+        const colors = generateNodeColors([item.type], paletteKey, nodeTypeConfig);
         return (
           <div 
             key={item.type} 

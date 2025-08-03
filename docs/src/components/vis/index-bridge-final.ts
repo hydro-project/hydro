@@ -32,12 +32,12 @@ export { createVisualizationState } from './core/VisState';
 // ============ Types and Constants ============
 
 /**
- * Pre-defined styling constants and types
+ * Pre-defined styling constants and types from shared (maintained for compatibility)
  */
-export { NODE_STYLES } from './core/constants';
-export { EDGE_STYLES } from './core/constants';
-export { CONTAINER_STYLES } from './core/constants';
-export { LAYOUT_CONSTANTS } from './core/constants';
+export { NODE_STYLES } from './shared/constants';
+export { EDGE_STYLES } from './shared/constants';
+export { CONTAINER_STYLES } from './shared/constants';
+export { LAYOUT_CONSTANTS } from './shared/constants';
 
 export type {
   NodeStyle,
@@ -51,7 +51,7 @@ export type {
   CreateNodeProps,
   CreateEdgeProps,
   CreateContainerProps
-} from './core/types';
+} from './shared/types';
 
 // ============ JSON Data Processing ============
 

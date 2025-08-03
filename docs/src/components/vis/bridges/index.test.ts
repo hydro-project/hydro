@@ -4,8 +4,8 @@
  * Runs all bridge tests and integrates with the existing test suite
  */
 
-import { runCoordinateTranslatorTests } from './CoordinateTranslator.test';
-import { runELKBridgeTests } from './ELKBridge.test';
+import { runCoordinateTranslatorTests } from './CoordinateTranslator.test.js';
+import { runELKBridgeTests } from './ELKBridge.test.js';
 // Note: ReactFlowBridge tests need interface fixes, skipping for now
 
 console.log('🧪 Running Bridge Test Suite...');

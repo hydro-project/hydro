@@ -6,7 +6,7 @@
  * the system to exactly the original state.
  */
 
-import { createVisualizationState, VisualizationState } from '../core/VisState.js';
+import { createVisualizationState, VisualizationState } from '../core/VisState';
 
 /**
  * Create a deep copy of a VisualizationState for comparison

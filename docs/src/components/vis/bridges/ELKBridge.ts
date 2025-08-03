@@ -8,7 +8,7 @@
  */
 
 import type { VisualizationState } from '../core/VisState';
-import type { GraphNode, GraphEdge, HyperEdge, Container } from '../alpha/shared/types';
+import type { GraphNode, GraphEdge, HyperEdge, Container } from '../shared/types';
 import ELK from 'elkjs';
 import type { ElkGraph, ElkNode, ElkEdge } from './elk-types';
 
@@ -25,7 +25,10 @@ export class ELKBridge {
     // 1. Extract all visible data from VisState
     const elkGraph = this.visStateToELK(visState);
     
-    // 2. Run ELK layout
+    // 2. Validate ELK input data
+    this.validateELKInput(elkGraph);
+    
+    // 3. Run ELK layout
     console.log('[ELKBridge] 📊 Sending to ELK:', {
       nodes: elkGraph.children?.length || 0,
       edges: elkGraph.edges?.length || 0
@@ -35,8 +38,64 @@ export class ELKBridge {
     
     console.log('[ELKBridge] ✅ ELK layout complete');
     
-    // 3. Apply results back to VisState
+    // 4. Apply results back to VisState
     this.elkToVisState(elkResult, visState);
+  }
+
+  /**
+   * Validate ELK input data to prevent null reference errors
+   */
+  private validateELKInput(elkGraph: ElkGraph): void {
+    // Ensure children array exists
+    if (!elkGraph.children) {
+      elkGraph.children = [];
+    }
+    
+    // Ensure edges array exists
+    if (!elkGraph.edges) {
+      elkGraph.edges = [];
+    }
+    
+    // Validate each node has required properties
+    elkGraph.children.forEach(node => {
+      if (!node.id) {
+        throw new Error(`ELK node missing ID: ${JSON.stringify(node)}`);
+      }
+      if (typeof node.width !== 'number' || node.width <= 0) {
+        node.width = 180; // Default width
+      }
+      if (typeof node.height !== 'number' || node.height <= 0) {
+        node.height = 60; // Default height
+      }
+      
+      // Validate children if this is a container
+      if (node.children) {
+        node.children.forEach(child => {
+          if (!child.id) {
+            throw new Error(`ELK child node missing ID: ${JSON.stringify(child)}`);
+          }
+          if (typeof child.width !== 'number' || child.width <= 0) {
+            child.width = 180;
+          }
+          if (typeof child.height !== 'number' || child.height <= 0) {
+            child.height = 60;
+          }
+        });
+      }
+    });
+    
+    // Validate each edge has required properties
+    elkGraph.edges.forEach(edge => {
+      if (!edge.id) {
+        throw new Error(`ELK edge missing ID: ${JSON.stringify(edge)}`);
+      }
+      if (!edge.sources || edge.sources.length === 0) {
+        throw new Error(`ELK edge missing sources: ${edge.id}`);
+      }
+      if (!edge.targets || edge.targets.length === 0) {
+        throw new Error(`ELK edge missing targets: ${edge.id}`);
+      }
+    });
   }
 
   /**
@@ -197,6 +256,7 @@ export class ELKBridge {
    */
   private elkToVisState(elkResult: ElkGraph, visState: VisualizationState): void {
     console.log('[ELKBridge] 📝 Applying ELK results back to VisState');
+    console.log('[ELKBridge] 🔍 ELK Result Structure:', JSON.stringify(elkResult, null, 2));
     
     if (!elkResult.children) {
       console.warn('[ELKBridge] ⚠️ No children in ELK result');
