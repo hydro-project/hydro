@@ -5,7 +5,7 @@
  * This serves as a simple smoke test for the core visualization state operations.
  */
 
-import { createVisualizationState, VisualizationState } from '../dist/core/VisState.js';
+import { createVisualizationState, VisualizationState } from '../core/VisState.js';
 import assert from 'assert';
 
 /**

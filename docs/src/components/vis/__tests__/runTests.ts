@@ -11,6 +11,7 @@ import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test
 import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
 import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
 import { runAllTests as runIntegrationTests } from './integration.test.js';
+import { runAllTests as runLayoutIntegrationTests } from '../layout/__tests__/integration.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
@@ -52,6 +53,11 @@ async function runAllTests(): Promise<void> {
     
     console.log('\n🔧 Running Integration Tests...');
     await runIntegrationTests();
+    passedTests++;
+    totalTests++;
+    
+    console.log('\n🎨 Running Layout Integration Tests...');
+    await runLayoutIntegrationTests();
     passedTests++;
     totalTests++;
     

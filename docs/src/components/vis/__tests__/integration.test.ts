@@ -9,9 +9,9 @@ import assert from 'assert';
 import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { parseGraphJSON, validateGraphJSON, getAvailableGroupings, ValidationResult } from '../dist/core/JSONParser.js';
+import { parseGraphJSON, validateGraphJSON, getAvailableGroupings, ValidationResult } from '../core/JSONParser.js';
 import { runFuzzTest, InvariantChecker } from './fuzzTest.js';
-import { VisualizationState } from '../dist/core/VisState.js';
+import { VisualizationState } from '../core/VisState.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
