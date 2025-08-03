@@ -210,6 +210,8 @@ export interface TypedEdgeProps {
   sourcePosition: any;
   targetPosition: any;
   style?: React.CSSProperties;
+  markerEnd?: string;
+  markerStart?: string;
   data?: {
     style?: string;
     edge?: {

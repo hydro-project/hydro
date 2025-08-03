@@ -52,6 +52,16 @@ export interface LayoutEngine {
     hyperEdges: HyperEdge[],
     config?: LayoutConfig
   ): Promise<LayoutResult>;
+  
+  layoutWithChangedContainer(
+    nodes: GraphNode[],
+    edges: GraphEdge[],
+    containers: Container[],
+    hyperEdges: HyperEdge[],
+    config?: LayoutConfig,
+    changedContainerId?: string | null,
+    visualizationState?: any
+  ): Promise<LayoutResult>;
 }
 
 // ============ Layout Engine Options ============

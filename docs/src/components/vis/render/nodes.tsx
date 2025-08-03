@@ -328,7 +328,7 @@ export const GraphContainerNode: React.FC<ContainerNodeProps> = ({
       onClick={handleClick}
       style={{
         width: width,
-        height: isCollapsed ? 40 : height,
+        height: isCollapsed ? SIZES.COLLAPSED_CONTAINER_HEIGHT : height,
         background: CONTAINER_COLORS.BACKGROUND,
         border: `${SIZES.BORDER_WIDTH_DEFAULT}px solid ${selected ? CONTAINER_COLORS.BORDER_SELECTED : CONTAINER_COLORS.BORDER}`,
         borderRadius: '12px',

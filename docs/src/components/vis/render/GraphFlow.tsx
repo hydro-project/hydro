@@ -21,16 +21,16 @@ import {
   Panel,
   useReactFlow,
   ConnectionLineType,
-  ConnectionMode
+  ConnectionMode,
+  MarkerType
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 import './styles.css';
 
-import { VisualizationState } from '../shared/types';
-import { ELKLayoutEngine } from '../layout/index';
+import { VisualizationState } from '../core/VisState';
+import { getVisualizationService, isEncapsulatedReactFlowData } from '../services/VisualizationService';
 import { LayoutConfig, DEFAULT_LAYOUT_CONFIG } from '../layout/index';
-import { ReactFlowConverter } from './ReactFlowConverter';
 import { applyNodeStyling } from './nodeStyler';
 import { GraphStandardNode, GraphContainerNode } from './nodes';
 import { GraphStandardEdge, GraphHyperEdge } from './edges';
@@ -83,7 +83,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isLayouting, setIsLayouting] = useState(false);
-  const [layoutEngine] = useState(() => new ELKLayoutEngine());
+  const [visualizationService] = useState(() => getVisualizationService());
   const { fitView } = useReactFlow();
   const lastStateRef = useRef<string>('');
 
@@ -128,44 +128,22 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     }
   }, [visualizationState, onError]);
 
-  // Layout and render the graph
+  // Layout and render the graph using ONLY VisState
   const layoutAndRender = useCallback(async () => {
     try {
       setIsLayouting(true);
       
       // Only log layout start in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('Starting layout process...');
+        console.log('[GraphFlow] 🎯 Starting layout process using VisualizationService...');
       }
       
-      // Get visible elements from visualization state
-      const visibleNodes = visualizationState.visibleNodes;
-      const visibleEdges = visualizationState.visibleEdges;
-      const visibleContainers = visualizationState.visibleContainers;
-      const hyperEdges = visualizationState.allHyperEdges;
-
-      // Only log layout details in development
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Visible elements:', {
-          nodes: visibleNodes.length,
-          containers: visibleContainers.length,
-          edges: visibleEdges.length,
-          hyperEdges: hyperEdges.length
-        });
-      }
-
-      // Run layout
-      const layoutResult = await layoutEngine.layout(
-        visibleNodes,
-        visibleEdges,
-        visibleContainers,
-        hyperEdges,
+      // CRITICAL: Use service to ensure VisState-only data flow
+      const reactFlowData = await visualizationService.layoutAndRender(
+        visualizationState,
         finalLayoutConfig
       );
 
-      // Convert to ReactFlow format
-      const reactFlowData = ReactFlowConverter.convert(layoutResult);
-      
       // Apply node styling with nodeTypeConfig (similar to visualizer approach)
       const styledNodes = applyNodeStyling(
         reactFlowData.nodes, 
@@ -201,14 +179,14 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       }, 100);
 
     } catch (error) {
-      console.error('Layout error:', error);
+      console.error('[GraphFlow] Layout error:', error);
       onError?.(error instanceof Error ? error : new Error('Layout failed'));
     } finally {
       setIsLayouting(false);
     }
   }, [
     visualizationState,
-    layoutEngine,
+    visualizationService,
     finalLayoutConfig,
     fitView,
     finalRenderConfig.fitView,
@@ -219,16 +197,94 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     handleContainerExpand
   ]);
 
-  // Update container handlers to trigger re-layout after state change
+  // Selective layout for container changes (sets up VisState flags, then calls regular layout)
+  const layoutAndRenderSelective = useCallback(async (changedContainerId: string) => {
+    try {
+      setIsLayouting(true);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Starting selective layout for container: ${changedContainerId}`);
+      }
+      
+      // STEP 1: Set up fixed/free flags in VisState using VisState APIs
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Setting up position fixing for container: ${changedContainerId}`);
+      }
+      
+      // Use VisState API to set up container position fixing
+      visualizationState.getContainersRequiringLayout(changedContainerId);
+      
+      // STEP 2: Call regular layout (which will read the fixed/free flags from VisState)
+      const reactFlowData = await visualizationService.layoutAndRender(
+        visualizationState,
+        finalLayoutConfig
+        // NO changedContainerId - just regular layout that reads VisState flags
+      );
+
+      // Apply node styling
+      const styledNodes = applyNodeStyling(
+        reactFlowData.nodes, 
+        'Set2',
+        metadata?.nodeTypeConfig
+      );
+      
+      // Add collapse/expand callbacks to container nodes
+      const nodesWithCallbacks = styledNodes.map(node => {
+        if (node.type === 'container') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onContainerCollapse: (id: string) => handleContainerCollapse(id).then(() => layoutAndRenderSelective(id)),
+              onContainerExpand: (id: string) => handleContainerExpand(id).then(() => layoutAndRenderSelective(id))
+            }
+          };
+        }
+        return node;
+      });
+
+      // Update the graph
+      setNodes(nodesWithCallbacks);
+      setEdges(reactFlowData.edges);
+
+      // Auto-fit if enabled
+      if (finalRenderConfig.fitView) {
+        setTimeout(() => {
+          fitView({ duration: 500, padding: 0.1 });
+        }, 100);
+      }
+
+      onLayoutComplete?.();
+
+    } catch (error) {
+      console.error('Selective layout error:', error);
+      onError?.(error instanceof Error ? error : new Error('Selective layout failed'));
+    } finally {
+      setIsLayouting(false);
+    }
+  }, [
+    visualizationState,
+    visualizationService,
+    finalLayoutConfig,
+    finalRenderConfig.fitView,
+    fitView,
+    onLayoutComplete,
+    onError,
+    metadata,
+    handleContainerCollapse,
+    handleContainerExpand
+  ]);
+
+  // Update container handlers to trigger selective re-layout after state change
   const handleContainerCollapseWithLayout = useCallback(async (containerId: string) => {
     await handleContainerCollapse(containerId);
-    await layoutAndRender();
-  }, [handleContainerCollapse, layoutAndRender]);
+    await layoutAndRenderSelective(containerId);
+  }, [handleContainerCollapse]);
 
   const handleContainerExpandWithLayout = useCallback(async (containerId: string) => {
     await handleContainerExpand(containerId);
-    await layoutAndRender();
-  }, [handleContainerExpand, layoutAndRender]);
+    await layoutAndRenderSelective(containerId);
+  }, [handleContainerExpand]);
 
   // Trigger layout when visualization state changes
   useEffect(() => {
@@ -283,18 +339,6 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
     [eventHandlers]
   );
 
-  // Debug logging for ReactFlow data
-  if (process.env.NODE_ENV === 'development' && edges.length > 0) {
-    console.log(`📊 [GRAPHFLOW DEBUG] Rendering ReactFlow with ${nodes.length} nodes and ${edges.length} edges`);
-    console.log(`🏹 [GRAPHFLOW DEBUG] Sample edge:`, edges[0]);
-    console.log(`🏹 [GRAPHFLOW DEBUG] All edges:`, edges.map(e => ({ 
-      id: e.id, 
-      type: e.type, 
-      hasMarkerEnd: !!e.markerEnd,
-      markerEnd: e.markerEnd 
-    })));
-  }
-
   return (
     <div className={`hydro-flow ${className || ''}`} style={{ width: '100%', height: '100%', ...style }}>
       <ReactFlow
@@ -331,7 +375,13 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: false,
-          style: { strokeWidth: 2 }
+          style: { strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 15,
+            height: 15,
+            color: '#999'
+          }
         }}
       >
         {finalRenderConfig.enableControls && (

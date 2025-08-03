@@ -282,6 +282,10 @@ export const SIZES = {
   CONTAINER_HEADER_HEIGHT: 30,
   CONTAINER_TITLE_AREA_PADDING: 30, // Space reserved for title at bottom
   
+  // Collapsed container dimensions - MUST match ELK layout calculations
+  COLLAPSED_CONTAINER_WIDTH: 200,
+  COLLAPSED_CONTAINER_HEIGHT: 60,
+  
   // MiniMap
   MINIMAP_NODE_BORDER_RADIUS: 4,
   
@@ -752,4 +756,42 @@ export function getELKLayoutOptions(algorithm: ELKAlgorithm): Record<string, any
     default:
       return baseOptions;
   }
+}
+
+// ============ ELK POSITION FIXING UTILITIES ============
+
+/**
+ * ELK node size constraint options for position fixing
+ */
+export const ELK_NODE_SIZE_CONSTRAINTS = {
+  FREE: '',
+  FIXED_SIZE: 'FIXED_SIZE',
+  FIXED_POS: 'FIXED_POS',
+  MINIMUM_SIZE: 'MINIMUM_SIZE',
+} as const;
+
+/**
+ * Create ELK layout options for fixed positioning (unchanged containers)
+ * @param x - X position to fix
+ * @param y - Y position to fix
+ * @returns ELK layout options for fixed positioning
+ */
+export function createFixedPositionOptions(x: number, y: number): Record<string, string> {
+  return {
+    'elk.position.x': x.toString(),
+    'elk.position.y': y.toString(),
+    'elk.nodeSize.constraints': ELK_NODE_SIZE_CONSTRAINTS.FIXED_POS,
+    'elk.nodeSize.options': ELK_NODE_SIZE_CONSTRAINTS.FIXED_POS,
+  };
+}
+
+/**
+ * Create ELK layout options for free positioning (containers that can move)
+ * @returns ELK layout options for free positioning
+ */
+export function createFreePositionOptions(): Record<string, string> {
+  return {
+    'elk.nodeSize.constraints': ELK_NODE_SIZE_CONSTRAINTS.FREE,
+    'elk.nodeSize.options': ELK_NODE_SIZE_CONSTRAINTS.FREE,
+  };
 }

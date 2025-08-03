@@ -11,7 +11,16 @@
 import ELK from 'elkjs';
 import { LayoutConfig } from './types';
 import { GraphNode, GraphEdge, Container, HyperEdge, Dimensions } from '../shared/types';
-import { ELK_ALGORITHMS, LAYOUT_SPACING, ELK_LAYOUT_OPTIONS, ELKAlgorithm, getELKLayoutOptions } from '../shared/config';
+import { 
+  ELK_ALGORITHMS, 
+  LAYOUT_SPACING, 
+  ELK_LAYOUT_OPTIONS, 
+  ELKAlgorithm, 
+  getELKLayoutOptions,
+  createFixedPositionOptions,
+  createFreePositionOptions,
+  SIZES
+} from '../shared/config';
 
 // ============ Constants ============
 
@@ -432,12 +441,30 @@ class ELKHierarchyBuilder {
   }
 
   private buildContainerNode(container: Container, layoutType: ELKAlgorithm): ELKNode {
-    return {
+    const elkNode: ELKNode = {
       id: container.id,
       layoutOptions: this.configManager.getConfig(layoutType, 'container'),
       children: this.buildHierarchy(container.id, layoutType),
-      // Let ELK calculate container size for dimension caching - DON'T specify width/height
     };
+
+    // Check for dimensions in container.layout.dimensions (for collapsed containers)
+    const layoutDimensions = container.layout?.dimensions;
+    if (layoutDimensions) {
+      elkNode.width = layoutDimensions.width;
+      elkNode.height = layoutDimensions.height;
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.layout: ${layoutDimensions.width}x${layoutDimensions.height} (collapsed=${container.collapsed})`);
+    }
+    // Fallback: check for direct dimensions property
+    else if (container.dimensions) {
+      elkNode.width = container.dimensions.width;
+      elkNode.height = container.dimensions.height;
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} from VisState.dimensions: ${container.dimensions.width}x${container.dimensions.height} (collapsed=${container.collapsed})`);
+    } else {
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DIMS: ${container.id} NO dimensions in VisState (collapsed=${container.collapsed}) - letting ELK calculate`);
+    }
+    // For expanded containers without explicit dimensions, let ELK calculate based on children
+
+    return elkNode;
   }
 
   private buildRegularNode(node: GraphNode): ELKNode {
@@ -619,8 +646,10 @@ export function createELKStateManager(): ELKStateManager {
   }
 
   /**
-   * Calculate layout based on current visualization state.
-   * This handles visible/hidden containers and collapsed states.
+   * Calculate layout with optional position fixing.
+   * If changedContainerId is provided, only that container can move (selective layout).
+   * If changedContainerId is null, all containers can move (full layout).
+   * ALL DATA FLOWS THROUGH VISSTATE!
    */
   async function calculateVisualLayout(
     nodes: GraphNode[],
@@ -628,21 +657,122 @@ export function createELKStateManager(): ELKStateManager {
     containers: Container[],
     hyperEdges: HyperEdge[],
     layoutType: ELKAlgorithm = ELK_ALGORITHMS.LAYERED,
-    dimensionsCache?: Map<string, LayoutDimensions>
+    dimensionsCache?: Map<string, LayoutDimensions>,
+    changedContainerId?: string | null,
+    visualizationState?: any // VisState reference for centralized state management
   ): Promise<{
     nodes: any[];
     edges: GraphEdge[];
     elkResult: any;
   }> {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VISUAL_LAYOUT} Calculating layout for current state`);
+    const isSelectiveLayout = changedContainerId !== undefined && changedContainerId !== null;
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${isSelectiveLayout ? '🔄 SELECTIVE' : '🏗️ FULL'}_LAYOUT: ${isSelectiveLayout ? `Changed: ${changedContainerId}` : 'All containers free'}`);
     
-    // For now, use the full layout approach
-    // In the future, this would filter based on collapsed/expanded states
-    const result = await calculateFullLayout(nodes, edges, containers, layoutType);
+    // For selective layout: Use full hierarchical layout with position fixing
+    if (isSelectiveLayout && visualizationState) {
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 📌 POSITION_FIXING: Setting up container fixed/free states in VisState`);
+      
+      // Use VisState method to set up position fixing - CENTRALIZED LOGIC
+      const containersWithFixing = visualizationState.getContainersRequiringLayout(changedContainerId);
+      
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🏗️ SELECTIVE_HIERARCHICAL_LAYOUT: Running full layout with position fixing`);
+      
+      // Combine regular edges and hyperEdges for ELK layout
+      // Ensure hyperEdges have the hidden property for type compatibility
+      const hyperEdgesWithHidden = hyperEdges.map(he => ({ ...he, hidden: false }));
+      const allEdges = [...edges, ...hyperEdgesWithHidden];
+      
+      // Run full hierarchical layout but with position constraints
+      const result = await calculateFullLayout(nodes, allEdges, containersWithFixing, layoutType);
+      
+      return {
+        ...result,
+        elkResult: null, // No separate ELK result for hierarchical layout
+      };
+    } else {
+      // Combine regular edges and hyperEdges for ELK layout
+      // Ensure hyperEdges have the hidden property for type compatibility
+      const hyperEdgesWithHidden = hyperEdges.map(he => ({ ...he, hidden: false }));
+      const allEdges = [...edges, ...hyperEdgesWithHidden];
+      
+      const result = await calculateFullLayout(nodes, allEdges, containers, layoutType);
+      return {
+        ...result,
+        elkResult: null,
+      };
+    }
+  }
+
+  /**
+   * Simple container repositioning with position fixing - ALL DATA FROM VISSTATE
+   */
+  async function calculateContainerLayout(
+    containers: Container[],
+    layoutType: ELKAlgorithm,
+    dimensionsCache?: Map<string, LayoutDimensions>,
+    changedContainerId?: string | null
+  ): Promise<{
+    nodes: any[];
+    edges: GraphEdge[];
+    elkResult: any;
+  }> {
+    const visibleContainers = containers.filter(c => !c.hidden);
     
+    if (visibleContainers.length === 0) {
+      return { nodes: [], edges: [], elkResult: null };
+    }
+
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🏗️ CONTAINER_LAYOUT: Building ELK graph from VisState data`);
+
+    // Create ELK nodes - ALL configuration comes from VisState
+    const elkContainers = visibleContainers.map(container => {
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍 CONTAINER_DEBUG: ${container.id}`);
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - collapsed: ${container.collapsed}`);
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - layout: ${JSON.stringify(container.layout)}`);
+      
+      // Get dimensions from VisState layout (handles collapsed/expanded automatically)
+      const layout = container.layout || {};
+      const dimensions = layout.dimensions || { 
+        width: container.collapsed ? SIZES.COLLAPSED_CONTAINER_WIDTH : (dimensionsCache?.get(container.id)?.width || 400),
+        height: container.collapsed ? SIZES.COLLAPSED_CONTAINER_HEIGHT : (dimensionsCache?.get(container.id)?.height || 300)
+      };
+
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔍   - final dimensions: ${dimensions.width}x${dimensions.height}`);
+
+      // Get position from VisState layout
+      const position = layout.position || { x: 0, y: 0 };
+
+      // Get ELK options from VisState (handles fixed/free automatically)  
+      const elkFixed = layout.elkFixed;
+      const layoutOptions = elkFixed 
+        ? createFixedPositionOptions(position.x, position.y)
+        : createFreePositionOptions();
+
+      console.log(`${LOG_PREFIXES.STATE_MANAGER} 📦 CONTAINER: ${container.id} ${dimensions.width}x${dimensions.height} at (${position.x},${position.y}) ${elkFixed ? 'FIXED' : 'FREE'}`);
+
+      return {
+        id: container.id,
+        width: dimensions.width,
+        height: dimensions.height,
+        layoutOptions
+      };
+    });
+
+    const elkGraph = {
+      id: 'container_layout',
+      layoutOptions: getELKLayoutOptions(layoutType),
+      children: elkContainers,
+      edges: []
+    };
+
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🚀 CONTAINER_LAYOUT: Running ELK with ${elkContainers.length} containers`);
+    const layoutResult = await elk.layout(elkGraph);
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} ✅ CONTAINER_LAYOUT: ELK completed`);
+
     return {
-      ...result,
-      elkResult: null, // Will contain ELK raw result when needed
+      nodes: [], // Container layout doesn't affect regular nodes
+      edges: [],
+      elkResult: layoutResult,
     };
   }
 

@@ -295,12 +295,27 @@ export class ContainerCollapseExpandEngine {
   private _markContainerAsCollapsed(containerId: string, container: any): void {
     container.collapsed = true;
     this.state._updateExpandedContainers(containerId, container);
+    
+    // Set collapsed dimensions in VisState
+    this.state.setContainerLayout(containerId, { 
+      dimensions: { 
+        width: 200,  // SIZES.COLLAPSED_CONTAINER_WIDTH
+        height: 60   // SIZES.COLLAPSED_CONTAINER_HEIGHT
+      }
+    });
   }
 
   private _markContainerAsExpandedAndCleanup(containerId: string, container: any): void {
     container.collapsed = false;
     this.state._updateExpandedContainers(containerId, container);
     this.state.collapsedContainers.delete(containerId);
+    
+    // Restore expanded dimensions from expandedDimensions property
+    if (container?.expandedDimensions) {
+      this.state.setContainerLayout(containerId, { 
+        dimensions: container.expandedDimensions
+      });
+    }
   }
 
   private _showChildNodes(containerId: string): void {

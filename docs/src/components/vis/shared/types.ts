@@ -41,11 +41,24 @@ export interface Dimensions {
   height: number;
 }
 
+export interface Position {
+  x: number;
+  y: number;
+}
+
+export interface LayoutState {
+  position?: Position;
+  dimensions?: Dimensions;
+  elkFixed?: boolean; // Whether ELK should fix this element's position
+  elkLayoutOptions?: Record<string, string>; // ELK-specific layout options
+}
+
 export interface GraphNode {
   id: string;
   label: string;
   style: NodeStyle;
   hidden: boolean;
+  layout?: LayoutState; // Layout-related properties
   [key: string]: any; // Allow custom properties
 }
 
@@ -55,6 +68,7 @@ export interface GraphEdge {
   target: string;
   style: EdgeStyle;
   hidden: boolean;
+  layout?: LayoutState; // Layout-related properties (for routing points)
   [key: string]: any; // Allow custom properties
 }
 
@@ -64,6 +78,7 @@ export interface Container {
   collapsed: boolean;
   hidden: boolean;
   children: Set<string>;
+  layout?: LayoutState; // Layout-related properties
   [key: string]: any; // Allow custom properties
 }
 
@@ -82,6 +97,7 @@ export interface CreateNodeProps {
   label: string;
   style?: NodeStyle;
   hidden?: boolean;
+  layout?: LayoutState;
   [key: string]: any;
 }
 
@@ -90,6 +106,7 @@ export interface CreateEdgeProps {
   target: string;
   style?: EdgeStyle;
   hidden?: boolean;
+  layout?: LayoutState;
   [key: string]: any;
 }
 
@@ -98,6 +115,7 @@ export interface CreateContainerProps {
   collapsed?: boolean;
   hidden?: boolean;
   children?: string[];
+  layout?: LayoutState;
   [key: string]: any;
 }
 
@@ -167,4 +185,17 @@ export interface VisualizationState {
   // Container operations
   collapseContainer(containerId: string): void;
   expandContainer(containerId: string): void;
+
+  // Layout methods - centralized layout state management
+  setNodeLayout(id: string, layout: Partial<LayoutState>): void;
+  getNodeLayout(id: string): LayoutState | undefined;
+  setEdgeLayout(id: string, layout: Partial<LayoutState>): void;
+  getEdgeLayout(id: string): LayoutState | undefined;
+  setContainerLayout(id: string, layout: Partial<LayoutState>): void;
+  getContainerLayout(id: string): LayoutState | undefined;
+
+  // ELK integration - for selective layout with position fixing
+  setContainerELKFixed(id: string, fixed: boolean): void;
+  getContainerELKFixed(id: string): boolean | undefined;
+  getContainersRequiringLayout(changedContainerId?: string): Container[];
 }

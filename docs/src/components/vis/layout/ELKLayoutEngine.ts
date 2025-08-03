@@ -168,34 +168,92 @@ export class ELKLayoutEngine implements LayoutEngine {
     hyperEdges: HyperEdge[],
     config: LayoutConfig = {}
   ): Promise<LayoutResult> {
+    return this.layoutWithChangedContainer(nodes, edges, containers, hyperEdges, config, null);
+  }
+
+  /**
+   * Layout with optional selective positioning.
+   * If changedContainerId is provided, only that container can move.
+   * ALL RESULTS APPLIED BACK TO VISSTATE!
+   */
+  async layoutWithChangedContainer(
+    nodes: GraphNode[],
+    edges: GraphEdge[],
+    containers: Container[],
+    hyperEdges: HyperEdge[],
+    config: LayoutConfig = {},
+    changedContainerId: string | null = null,
+    visualizationState?: any // VisState reference for centralized state management
+  ): Promise<LayoutResult> {
     try {
-      console.log(`${LOG_PREFIXES.ENGINE} Starting layout with proven approach...`);
+      const isSelective = changedContainerId !== null;
+      console.log(`${LOG_PREFIXES.ENGINE} ${isSelective ? 'Selective' : 'Full'} layout ${isSelective ? `(changed: ${changedContainerId})` : ''}`);
       
       const algorithm = this.getLayoutAlgorithm(config.algorithm);
       
-      // Use the proven ELK state manager approach
-      const result = await this.elkStateManager.calculateFullLayout(
-        nodes,
-        edges,
-        containers,
-        algorithm
-      );
+      if (isSelective) {
+        // Use selective layout method with VisState reference
+        const result = await this.elkStateManager.calculateVisualLayout(
+          nodes,
+          edges,
+          containers,
+          hyperEdges,
+          algorithm,
+          this.dimensionCache,
+          changedContainerId,
+          visualizationState // Pass VisState for centralized state management
+        );
 
-      // Cache container dimensions for future use - use ELK's calculated dimensions
-      this.cacheContainerDimensions(result.nodes, containers);
+        // Apply ELK results back to VisState for containers
+        if (visualizationState && result.elkResult) {
+          console.log(`${LOG_PREFIXES.ENGINE} 📝 APPLYING: ELK results back to VisState (selective)`);
+          this.applyELKResultsToVisState(result.elkResult, visualizationState, changedContainerId);
+        }
 
-      // Convert to our LayoutResult format
-      const layoutResult = this.resultConverter.convert(
-        result,
-        nodes,
-        edges,
-        containers,
-        hyperEdges,
-        this.dimensionCache
-      );
+        // Convert to our LayoutResult format
+        const layoutResult = this.resultConverter.convert(
+          result,
+          nodes,
+          edges,
+          containers,
+          hyperEdges,
+          this.dimensionCache
+        );
 
-      console.log(`${LOG_PREFIXES.ENGINE} Layout completed successfully`);
-      return layoutResult;
+        console.log(`${LOG_PREFIXES.ENGINE} Layout completed successfully`);
+        return layoutResult;
+        
+      } else {
+        // Full layout - use calculateFullLayout but still apply results to VisState
+        const result = await this.elkStateManager.calculateFullLayout(
+          nodes,
+          edges,
+          containers,
+          algorithm
+        );
+
+        // For full layout, we need to apply the node positions back to VisState
+        if (visualizationState) {
+          console.log(`${LOG_PREFIXES.ENGINE} 📝 APPLYING: Full layout results back to VisState`);
+          this.applyFullLayoutResultsToVisState(result.nodes, visualizationState);
+        }
+
+        // Cache container dimensions for future use
+        this.cacheContainerDimensions(result.nodes, containers);
+
+        // Convert to our LayoutResult format
+        const layoutResult = this.resultConverter.convert(
+          { nodes: result.nodes, edges: result.edges, elkResult: null },
+          nodes,
+          edges,
+          containers,
+          hyperEdges,
+          this.dimensionCache
+        );
+
+        console.log(`${LOG_PREFIXES.ENGINE} Layout completed successfully`);
+        return layoutResult;
+      }
 
     } catch (error) {
       console.error(`${LOG_PREFIXES.ENGINE} Layout failed:`, error);
@@ -229,6 +287,78 @@ export class ELKLayoutEngine implements LayoutEngine {
       return algorithm as ELKAlgorithm;
     }
     return ENGINE_CONSTANTS.DEFAULT_ALGORITHM;
+  }
+
+  /**
+   * Apply ELK layout results back to VisState - CENTRALIZED STATE MANAGEMENT
+   */
+  private applyELKResultsToVisState(elkResult: any, visualizationState: any, changedContainerId: string | null): void {
+    console.log(`${LOG_PREFIXES.ENGINE} 📝 APPLYING: ELK results to VisState for containers`);
+    
+    if (!elkResult.children) {
+      console.warn(`${LOG_PREFIXES.ENGINE} ⚠️ No ELK children to apply`);
+      return;
+    }
+
+    elkResult.children.forEach((elkContainer: any) => {
+      console.log(`${LOG_PREFIXES.ENGINE} 📦 UPDATING: Container ${elkContainer.id} position in VisState: (${elkContainer.x}, ${elkContainer.y})`);
+      
+      // Update position in VisState - SINGLE SOURCE OF TRUTH
+      visualizationState.setContainerLayout(elkContainer.id, {
+        position: {
+          x: elkContainer.x || 0,
+          y: elkContainer.y || 0
+        }
+      });
+    });
+    
+    console.log(`${LOG_PREFIXES.ENGINE} ✅ APPLIED: All ELK results to VisState`);
+  }
+
+  /**
+   * Apply full layout results (nodes with positions) back to VisState
+   * PUBLIC METHOD for VisualizationService
+   */
+  applyFullLayoutResultsToVisState(layoutedNodes: any[], visualizationState: any): void {
+    console.log(`${LOG_PREFIXES.ENGINE} 📝 APPLYING: Full layout results to VisState`);
+    console.log(`${LOG_PREFIXES.ENGINE} 🔍 DEBUG: Received ${layoutedNodes.length} nodes to apply`);
+    
+    layoutedNodes.forEach((node: any) => {
+      // DEBUG: Log the entire node structure to see what we're getting
+      console.log(`${LOG_PREFIXES.ENGINE} 🔍 DEBUG: Node structure for ${node.id}:`, {
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        dimensions: node.dimensions,
+        width: node.width,
+        height: node.height,
+        x: node.x,
+        y: node.y,
+        hasChildren: !!node.children
+      });
+      
+      const position = node.position || { x: node.x || 0, y: node.y || 0 };
+      const dimensions = node.dimensions || { width: node.width || 180, height: node.height || 60 };
+      
+      console.log(`${LOG_PREFIXES.ENGINE} 📍 UPDATING: ${node.id} position in VisState: (${position.x}, ${position.y})`);
+      
+      // Check if it's a container or regular node
+      if (node.type === 'container' || node.children) {
+        // Update container layout in VisState
+        visualizationState.setContainerLayout(node.id, {
+          position: position,
+          dimensions: dimensions
+        });
+      } else {
+        // Update node layout in VisState
+        visualizationState.setNodeLayout(node.id, {
+          position: position,
+          dimensions: dimensions
+        });
+      }
+    });
+    
+    console.log(`${LOG_PREFIXES.ENGINE} ✅ APPLIED: All full layout results to VisState`);
   }
 
   private cacheContainerDimensions(elkNodes: any[], containers: Container[]): void {

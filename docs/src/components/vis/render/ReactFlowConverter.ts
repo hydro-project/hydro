@@ -59,7 +59,6 @@ export class ReactFlowConverter {
         label: container.id,
         collapsed: container.collapsed || false,
         style: 'default',
-        // CRITICAL: Pass ELK-calculated dimensions in data
         width: container.width,
         height: container.height,
       };
@@ -126,23 +125,14 @@ export class ReactFlowConverter {
         // Let ReactFlow use default handle IDs (no explicit sourceHandle/targetHandle)
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          width: 20,
-          height: 20
+          width: 15,
+          height: 15,
+          color: '#999'
         },
         data: {
           style: edge.style || 'default'
         }
       };
-      
-      // Debug logging for edge arrowheads
-      console.log(`🏹 [EDGE DEBUG] Created edge ${edge.id}:`, {
-        id: typedEdge.id,
-        type: typedEdge.type,
-        source: typedEdge.source,
-        target: typedEdge.target,
-        hasMarkerEnd: !!typedEdge.markerEnd,
-        markerEnd: typedEdge.markerEnd
-      });
       
       edges.push(typedEdge);
     });
@@ -157,36 +147,19 @@ export class ReactFlowConverter {
         // Let ReactFlow use default handle IDs for flexibility
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          width: 20,
-          height: 20
+          width: 15,
+          height: 15,
+          color: '#999'
         },
         data: {
           style: hyperEdge.style || 'default'
         }
       };
       
-      // Debug logging for hyper edge arrowheads
-      console.log(`🏹 [HYPER EDGE DEBUG] Created hyper edge ${hyperEdge.id}:`, {
-        id: typedHyperEdge.id,
-        type: typedHyperEdge.type,
-        source: typedHyperEdge.source,
-        target: typedHyperEdge.target,
-        hasMarkerEnd: !!typedHyperEdge.markerEnd,
-        markerEnd: typedHyperEdge.markerEnd
-      });
-      
       edges.push(typedHyperEdge);
     });
 
     const result: TypedReactFlowData = { nodes, edges };
-    
-    // Debug logging for final ReactFlow data
-    console.log(`🎯 [REACTFLOW DEBUG] Final ReactFlow data:`, {
-      nodeCount: nodes.length,
-      edgeCount: edges.length,
-      edgesWithMarkers: edges.filter(e => e.markerEnd).length,
-      sampleEdge: edges[0] // Log first edge as sample
-    });
     
     // Validate the result before returning
     const reactFlowReport = validateReactFlowResult(result);
@@ -194,8 +167,6 @@ export class ReactFlowConverter {
     
     if (!reactFlowReport.isValid) {
       console.error('[ReactFlowConverter] ❌ Generated invalid ReactFlow data - container dimensions may be missing');
-    } else if (process.env.NODE_ENV === 'development') {
-      console.log('[ReactFlowConverter] ✅ Generated valid typed ReactFlow data');
     }
 
     return result;

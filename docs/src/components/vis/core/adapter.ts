@@ -137,11 +137,49 @@ export class VisualizationStateAdapter implements VisualizationState {
 
   // Container operations
   collapseContainer(containerId: string): void {
-    this.core.updateContainer(containerId, { collapsed: true });
+    this.core.collapseContainer(containerId);
   }
 
   expandContainer(containerId: string): void {
-    this.core.updateContainer(containerId, { collapsed: false });
+    this.core.expandContainer(containerId);
+  }
+
+  // Layout methods - delegate to core
+  setNodeLayout(id: string, layout: Partial<any>): void {
+    this.core.setNodeLayout(id, layout);
+  }
+
+  getNodeLayout(id: string): any {
+    return this.core.getNodeLayout(id);
+  }
+
+  setEdgeLayout(id: string, layout: Partial<any>): void {
+    this.core.setEdgeLayout(id, layout);
+  }
+
+  getEdgeLayout(id: string): any {
+    return this.core.getEdgeLayout(id);
+  }
+
+  setContainerLayout(id: string, layout: Partial<any>): void {
+    this.core.setContainerLayout(id, layout);
+  }
+
+  getContainerLayout(id: string): any {
+    return this.core.getContainerLayout(id);
+  }
+
+  // ELK integration methods
+  setContainerELKFixed(id: string, fixed: boolean): void {
+    this.core.setContainerELKFixed(id, fixed);
+  }
+
+  getContainerELKFixed(id: string): boolean | undefined {
+    return this.core.getContainerELKFixed(id);
+  }
+
+  getContainersRequiringLayout(changedContainerId?: string): Container[] {
+    return this.core.getContainersRequiringLayout(changedContainerId);
   }
 
   // Visibility properties (readonly getters)

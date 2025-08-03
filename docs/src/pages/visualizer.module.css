@@ -417,7 +417,7 @@
 }
 
 /* ReactFlow global overrides */
-:global(.react-flow__node) {
+:global(.react-flow__node:not(.react-flow__node-group):not(.react-flow__node-container)) {
   cursor: pointer;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -434,7 +434,7 @@
   border: var(--node-border) !important;
 }
 
-:global(.react-flow__node:hover) {
+:global(.react-flow__node:not(.react-flow__node-group):not(.react-flow__node-container):hover) {
   box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
@@ -606,6 +606,47 @@
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Remove ReactFlow default styling from collapsed container nodes */
+:global(.react-flow__node-collapsedContainer) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Also target any nodes with collapsed data attribute */
+:global(.react-flow__node[data-id*="container"][style*="width: 1"]) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* More comprehensive override for any ReactFlow container-style nodes */
+:global(.react-flow__node[data-id*="container"]) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+/* Force override any ReactFlow default container background */
+:global(.react-flow__node[data-id*="container"] > *) {
+  background: none !important;
+}
+
+/* Remove any shadow from container ReactFlow nodes */
+:global(.react-flow__node[data-id*="container"]) {
+  box-shadow: none !important;
+}
+
+/* Override ReactFlow CSS variables to disable default group node styling */
+:global(.react-flow) {
+  --xy-node-group-background-color-default: transparent;
+  --xy-node-boxshadow-hover-default: none;
+  --xy-node-background-color-default: transparent;
 }
 
 /* Hierarchy Tree */

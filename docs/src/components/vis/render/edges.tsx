@@ -26,7 +26,9 @@ export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
   targetPosition,
   style = {},
   data,
-  selected
+  selected,
+  markerEnd,
+  markerStart
 }) => {
   const edge = data?.edge;
   
@@ -77,6 +79,8 @@ export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
       fill="none"
       strokeLinecap="round"
       strokeLinejoin="round"
+      markerEnd={markerEnd}
+      markerStart={markerStart}
     />
   );
 };
@@ -92,7 +96,9 @@ export const GraphHyperEdge: React.FC<TypedEdgeProps> = ({
   targetPosition,
   style = {},
   data,
-  selected
+  selected,
+  markerEnd,
+  markerStart
 }) => {
   const hyperEdge = data?.hyperEdge;
   
@@ -152,6 +158,8 @@ export const GraphHyperEdge: React.FC<TypedEdgeProps> = ({
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
+        markerEnd={markerEnd}
+        markerStart={markerStart}
       />
       
       {/* Edge label showing aggregated count */}

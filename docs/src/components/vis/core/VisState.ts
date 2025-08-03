@@ -1125,6 +1125,23 @@ declare module './VisState.js' {
     getContainerCollapsed(id: string): boolean | undefined;
     setContainerHidden(id: string, hidden: boolean): void;
     getContainerHidden(id: string): boolean | undefined;
+
+    // Layout interface methods - CENTRALIZED LAYOUT STATE
+    setNodeLayout(id: string, layout: Partial<import('../shared/types').LayoutState>): void;
+    getNodeLayout(id: string): import('../shared/types').LayoutState | undefined;
+    setEdgeLayout(id: string, layout: Partial<import('../shared/types').LayoutState>): void;
+    getEdgeLayout(id: string): import('../shared/types').LayoutState | undefined;
+    setContainerLayout(id: string, layout: Partial<import('../shared/types').LayoutState>): void;
+    getContainerLayout(id: string): import('../shared/types').LayoutState | undefined;
+
+    // ELK integration methods
+    setContainerELKFixed(id: string, fixed: boolean): void;
+    getContainerELKFixed(id: string): boolean | undefined;
+    getContainersRequiringLayout(changedContainerId?: string): import('../shared/types').Container[];
+
+    // Enhanced collapse/expand with layout state management
+    collapseContainer(containerId: string): void;
+    expandContainer(containerId: string): void;
   }
 }
 
@@ -1160,5 +1177,80 @@ Object.assign(VisualizationState.prototype, {
   
   getContainerHidden(id: string): boolean | undefined {
     return this.getContainer(id)?.hidden;
+  }
+});
+
+// ============ CENTRALIZED LAYOUT STATE MANAGEMENT ============
+// ALL layout information flows through VisState - ELK and ReactFlow get data from here
+
+Object.assign(VisualizationState.prototype, {
+  // Node layout methods
+  setNodeLayout(id: string, layout: Partial<any>): void {
+    const node = this.getGraphNode(id);
+    this._validateEntity(node);
+    
+    if (!node.layout) {
+      node.layout = {};
+    }
+    Object.assign(node.layout, layout);
+  },
+
+  getNodeLayout(id: string): any {
+    return this.getGraphNode(id)?.layout;
+  },
+
+  // Edge layout methods
+  setEdgeLayout(id: string, layout: Partial<any>): void {
+    const edge = this.getGraphEdge(id);
+    this._validateEntity(edge);
+    
+    if (!edge.layout) {
+      edge.layout = {};
+    }
+    Object.assign(edge.layout, layout);
+  },
+
+  getEdgeLayout(id: string): any {
+    return this.getGraphEdge(id)?.layout;
+  },
+
+  // Container layout methods
+  setContainerLayout(id: string, layout: Partial<any>): void {
+    const container = this.getContainer(id);
+    this._validateEntity(container);
+    
+    if (!container.layout) {
+      container.layout = {};
+    }
+    Object.assign(container.layout, layout);
+  },
+
+  getContainerLayout(id: string): any {
+    return this.getContainer(id)?.layout;
+  },
+
+  // ELK position fixing methods
+  setContainerELKFixed(id: string, fixed: boolean): void {
+    this.setContainerLayout(id, { elkFixed: fixed });
+  },
+
+  getContainerELKFixed(id: string): boolean | undefined {
+    return this.getContainerLayout(id)?.elkFixed;
+  },
+
+  // Get containers requiring layout with position fixing logic
+  getContainersRequiringLayout(changedContainerId?: string): any[] {
+    const containers = this.visibleContainers;
+    
+    // Apply CENTRALIZED position fixing logic: 
+    // Everything FIXED except the container that changed
+    return containers.map(container => {
+      const shouldBeFixed = changedContainerId && container.id !== changedContainerId;
+      
+      // Ensure elkFixed is set in VisState
+      this.setContainerELKFixed(container.id, shouldBeFixed);
+      
+      return container;
+    });
   }
 });
