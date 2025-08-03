@@ -89,6 +89,13 @@ export function StandardNode({ id, data }: NodeProps) {
  * Container node component
  */
 export function ContainerNode({ id, data }: NodeProps) {
+  // Use dimensions from ELK layout via ReactFlowBridge data
+  const width = data.width || 180; // fallback to default
+  const height = data.height || (data.collapsed ? 60 : 120); // fallback to default
+  
+  // Debug: Log container dimensions
+  console.log(`[ContainerNode] 📏 Container ${id}: data.width=${data.width}, data.height=${data.height}, using ${width}x${height}`);
+  
   return (
     <div
       style={{
@@ -98,9 +105,10 @@ export function ContainerNode({ id, data }: NodeProps) {
         borderRadius: '8px',
         fontSize: '12px',
         textAlign: 'center',
-        minWidth: '180px',
-        minHeight: data.collapsed ? '60px' : '120px',
-        position: 'relative'
+        width: `${width}px`,  // Use ELK-calculated width
+        height: `${height}px`, // Use ELK-calculated height
+        position: 'relative',
+        boxSizing: 'border-box' // Ensure padding is included in dimensions
       }}
     >
       {renderHandles()}

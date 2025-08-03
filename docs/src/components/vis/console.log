@@ -1,6 +1,6 @@
 main.js:1550 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
 GraphFlow.tsx:48 [GraphFlow] 🔄 Visualization state changed, updating...
-ELKBridge.ts:21 [ELKBridge] 🚀 Starting ELK layout from VisState
+ [ELKBridge] 🚀 Starting ELK layout from VisState
  [ELKBridge] 📋 Extracted from VisState: {visibleNodes: 10, visibleContainers: 2, totalEdges: 9, regularEdges: 9, hyperEdges: 0}
  [ELKBridge] 🔨 Building ELK graph with 10 nodes, 2 containers, 9 edges
  [ELKBridge] 🔍 Available nodes: (10) ['6', '3', '7', '9', '5', '2', '1', '4', '8', '0']
@@ -367,55 +367,55 @@ ELKBridge.ts:269 --- ELKBRIDGE_EDGE_PROCESSING_END ---
 ELKBridge.ts:269 [ELKBridge] ✅ Applied all ELK results to VisState
 ReactFlowConverter.ts:21 [ReactFlowConverter] 🔄 Converting with bridge architecture...
 ReactFlowBridge.ts:63 [ReactFlowBridge] 🔄 Converting VisState to ReactFlow format
-ReactFlowBridge.ts:129 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, ELK=(0, 0), ReactFlow=(0, 0), size=400x300
-ReactFlowBridge.ts:129 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, ELK=(0, 0), ReactFlow=(0, 0), size=400x300
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_0: collapsed=false, ELK=(12, 12), ReactFlow=(12, 12), size=204x324
+ReactFlowBridge.ts:136 [ReactFlowBridge] 📦 Container loc_1: collapsed=false, ELK=(236, 12), ReactFlow=(236, 12), size=204x484
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 332) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 6: parent=loc_1, ELK=(12, 332), ReactFlow=(12, 332)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 6: parent=loc_1, ELK=(12, 332), ReactFlow=(12, 332)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 3: parent=loc_1, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 3: parent=loc_1, ELK=(12, 92), ReactFlow=(12, 92)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 412) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 7: parent=loc_1, ELK=(12, 412), ReactFlow=(12, 412)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 7: parent=loc_1, ELK=(12, 412), ReactFlow=(12, 412)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 92) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 9: parent=loc_0, ELK=(12, 92), ReactFlow=(12, 92)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 9: parent=loc_0, ELK=(12, 92), ReactFlow=(12, 92)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 5: parent=loc_1, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 5: parent=loc_1, ELK=(12, 252), ReactFlow=(12, 252)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 2: parent=loc_1, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 2: parent=loc_1, ELK=(12, 12), ReactFlow=(12, 12)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 252) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 1: parent=loc_0, ELK=(12, 252), ReactFlow=(12, 252)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 1: parent=loc_0, ELK=(12, 252), ReactFlow=(12, 252)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_1 info: {id: 'loc_1', x: 236, y: 12, width: 204, height: 484}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_1 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 4: parent=loc_1, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 4: parent=loc_1, ELK=(12, 172), ReactFlow=(12, 172)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 12) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 8: parent=loc_0, ELK=(12, 12), ReactFlow=(12, 12)
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 8: parent=loc_0, ELK=(12, 12), ReactFlow=(12, 12)
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔍 Parent container loc_0 info: {id: 'loc_0', x: 12, y: 12, width: 204, height: 324}
 CoordinateTranslator.ts:67 [CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (12, 172) are already relative to container loc_0 - using as-is
-ReactFlowBridge.ts:183 [ReactFlowBridge] 🔘 Node 0: parent=loc_0, ELK=(12, 172), ReactFlow=(12, 172)
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e0: {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e0: {id: 'e0', type: 'standard', source: '0', target: '1', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e1: {source: '1', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e1: {id: 'e1', type: 'standard', source: '1', target: '2', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e2: {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e2: {id: 'e2', type: 'standard', source: '2', target: '3', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e3: {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e3: {id: 'e3', type: 'standard', source: '3', target: '4', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e4: {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e4: {id: 'e4', type: 'standard', source: '4', target: '5', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e5: {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e5: {id: 'e5', type: 'standard', source: '5', target: '6', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e6: {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e6: {id: 'e6', type: 'standard', source: '6', target: '7', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e7: {source: '7', target: '8', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e7: {id: 'e7', type: 'standard', source: '7', target: '8', markerEnd: {…}, …}
-ReactFlowBridge.ts:225 [ReactFlowBridge] 🔍 Debug edge e8: {source: '8', target: '9', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
-ReactFlowBridge.ts:260 [ReactFlowBridge] ✅ Created ReactFlow edge e8: {id: 'e8', type: 'standard', source: '8', target: '9', markerEnd: {…}, …}
+ReactFlowBridge.ts:184 [ReactFlowBridge] 🔘 Node 0: parent=loc_0, ELK=(12, 172), ReactFlow=(12, 172)
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e0: {source: '0', target: '1', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e0: {id: 'e0', type: 'standard', source: '0', target: '1', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e1: {source: '1', target: '2', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e1: {id: 'e1', type: 'standard', source: '1', target: '2', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e2: {source: '2', target: '3', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e2: {id: 'e2', type: 'standard', source: '2', target: '3', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e3: {source: '3', target: '4', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e3: {id: 'e3', type: 'standard', source: '3', target: '4', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e4: {source: '4', target: '5', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e4: {id: 'e4', type: 'standard', source: '4', target: '5', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e5: {source: '5', target: '6', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e5: {id: 'e5', type: 'standard', source: '5', target: '6', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e6: {source: '6', target: '7', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e6: {id: 'e6', type: 'standard', source: '6', target: '7', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e7: {source: '7', target: '8', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e7: {id: 'e7', type: 'standard', source: '7', target: '8', markerEnd: {…}, …}
+ReactFlowBridge.ts:226 [ReactFlowBridge] 🔍 Debug edge e8: {source: '8', target: '9', sourceHandle: undefined, targetHandle: undefined, sourceHandleType: 'undefined', …}
+ReactFlowBridge.ts:261 [ReactFlowBridge] ✅ Created ReactFlow edge e8: {id: 'e8', type: 'standard', source: '8', target: '9', markerEnd: {…}, …}
 ReactFlowBridge.ts:80 [ReactFlowBridge] ✅ Conversion complete: {nodes: 12, edges: 9, containers: 2, hyperEdges: 0}
 GraphFlow.tsx:60 [GraphFlow] ✅ Updated ReactFlow data: {nodes: 12, edges: 9}
