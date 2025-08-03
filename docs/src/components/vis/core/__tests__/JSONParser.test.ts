@@ -10,9 +10,9 @@ import {
   createGraphParser, 
   getAvailableGroupings,
   validateGraphJSON 
-} from '../core/JSONParser';
-import { NODE_STYLES, EDGE_STYLES } from '../shared/constants';
-import type { ParseResult, ValidationResult, GroupingOption } from '../core/JSONParser';
+} from '../JSONParser';
+import { NODE_STYLES, EDGE_STYLES } from '../../shared/constants';
+import type { ParseResult, ValidationResult, GroupingOption } from '../JSONParser';
 
 describe('JSONParser', () => {
   // Sample test data based on the chat.json structure

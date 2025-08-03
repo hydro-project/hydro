@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createVisualizationState, VisualizationState } from '../core/VisState';
+import { createVisualizationState, VisualizationState } from '../VisState';
 
 describe('SymmetricInverse', () => {
   describe('basic state operations', () => {

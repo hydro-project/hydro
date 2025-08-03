@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from './constants';
+import { NODE_STYLES, EDGE_STYLES, CONTAINER_STYLES, LAYOUT_CONSTANTS } from '../constants';
 
 describe('Constants', () => {
   describe('NODE_STYLES', () => {

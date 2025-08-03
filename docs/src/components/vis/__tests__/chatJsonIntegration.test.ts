@@ -294,12 +294,14 @@ describe('ChatJsonIntegration', () => {
       let crossContainerEdges = 0;
 
       for (const edge of edges) {
-        if (edge.sections) {
+        // Check for sections in the edge layout (where ELKBridge stores them)
+        const edgeLayout = state.getEdgeLayout(edge.id);
+        if (edgeLayout?.sections && edgeLayout.sections.length > 0) {
           edgesWithSections++;
-          console.log(`[Edge Sections] ${edge.id}: ${edge.sections.length} sections`);
+          console.log(`[Edge Sections] ${edge.id}: ${edgeLayout.sections.length} sections`);
           
           // Validate section structure
-          for (const section of edge.sections) {
+          for (const section of edgeLayout.sections) {
             expect(section.startPoint).toBeDefined();
             expect(section.endPoint).toBeDefined();
             expect(typeof section.startPoint.x).toBe('number');
