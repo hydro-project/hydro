@@ -54,13 +54,21 @@ export class ReactFlowConverter {
       }
       
       const parentId = parentMap.get(container.id);
+      const isCollapsed = container.collapsed || false;
+      
+      // � PASS-THROUGH DIMENSIONS: Use whatever dimensions VisState/ELK provided
+      // ReactFlowConverter should NOT make dimension decisions - that's VisState's job
+      const width = container.width;
+      const height = container.height;
+      
+      console.log(`[ReactFlowConverter] 📦 CONTAINER ${container.id}: collapsed=${isCollapsed}, dims=${width}x${height} (using dimensions from VisState/ELK)`);
       
       const containerNodeData: ContainerNodeData = {
         label: container.id,
-        collapsed: container.collapsed || false,
+        collapsed: isCollapsed,
         style: 'default',
-        width: container.width,
-        height: container.height,
+        width: width,
+        height: height,
       };
       
       const containerNode: TypedContainerNode = {
@@ -68,10 +76,10 @@ export class ReactFlowConverter {
         type: 'container',
         position: { x: container.x || 0, y: container.y || 0 },
         data: containerNodeData,
-        // Set explicit dimensions from ELK in style as well for ReactFlow
+        // Pass through the dimensions that VisState determined are correct
         style: {
-          width: container.width,
-          height: container.height,
+          width: width,
+          height: height,
         },
         // Containers can also have parents (nested containers)
         parentId: parentId,
@@ -84,6 +92,9 @@ export class ReactFlowConverter {
     // Convert nodes with proper parent relationships and strong typing
     layoutResult.nodes.forEach(node => {
       const parentId = parentMap.get(node.id);
+      
+      // 🔥 PARENT RELATIONSHIP LOGGING
+      console.log(`[ReactFlowConverter] 🔗 NODE PARENT: ${node.id} parent=${parentId || 'none'}`);
       
             // Only log detailed node conversion in debug mode
       if (process.env.NODE_ENV === 'development') {
@@ -139,11 +150,50 @@ export class ReactFlowConverter {
 
     // Convert hyperEdges with strong typing
     layoutResult.hyperEdges.forEach(hyperEdge => {
+      console.log(`[ReactFlowConverter] 🔥 CONVERTING HYPEREDGE ${hyperEdge.id}:`);
+      console.log(`  Source: ${hyperEdge.source}, Target: ${hyperEdge.target}`);
+      
+      // Find the source and target nodes in our converted nodes to verify positions
+      const sourceNode = nodes.find(n => n.id === hyperEdge.source);
+      const targetNode = nodes.find(n => n.id === hyperEdge.target);
+      
+      if (sourceNode && targetNode) {
+        console.log(`  Source position: (${sourceNode.position.x}, ${sourceNode.position.y})`);
+        console.log(`  Target position: (${targetNode.position.x}, ${targetNode.position.y})`);
+        
+        // 🔥 HANDLE AND CONNECTION ANALYSIS
+        console.log(`  🔗 SOURCE NODE: ${sourceNode.id} type=${sourceNode.type}`);
+        if (sourceNode.type === 'container') {
+          const containerData = sourceNode.data as ContainerNodeData;
+          console.log(`    📦 CONTAINER collapsed=${containerData.collapsed}, size=${containerData.width}x${containerData.height}`);
+          console.log(`    🎯 HANDLES: Container should have connection handles for hyperedges`);
+        }
+        
+        console.log(`  🔗 TARGET NODE: ${targetNode.id} type=${targetNode.type}`);
+        if (targetNode.parentId) {
+          console.log(`    👶 CHILD NODE: parent=${targetNode.parentId}, position relative to parent`);
+        }
+        
+        const dx = targetNode.position.x - sourceNode.position.x;
+        const dy = targetNode.position.y - sourceNode.position.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        console.log(`  📏 DIRECT DISTANCE: ${distance.toFixed(2)}px (may not reflect actual rendered distance due to parent-child relationships)`);
+        
+        if (distance < 10) {
+          console.log(`  ⚠️  WARNING: Hyperedge endpoints are very close/overlapping!`);
+        }
+      } else {
+        console.log(`  ❌ ERROR: Could not find nodes for hyperedge endpoints`);
+        console.log(`    Source ${hyperEdge.source}: ${sourceNode ? 'FOUND' : 'NOT FOUND'}`);
+        console.log(`    Target ${hyperEdge.target}: ${targetNode ? 'FOUND' : 'NOT FOUND'}`);
+      }
+      
       const typedHyperEdge: TypedReactFlowEdge = {
         id: hyperEdge.id,
         type: 'hyper',
         source: hyperEdge.source,
         target: hyperEdge.target,
+        // 🔥 HANDLE CONNECTION LOGGING
         // Let ReactFlow use default handle IDs for flexibility
         markerEnd: {
           type: MarkerType.ArrowClosed,
@@ -155,6 +205,9 @@ export class ReactFlowConverter {
           style: hyperEdge.style || 'default'
         }
       };
+      
+      console.log(`  🎯 REACTFLOW EDGE: ${typedHyperEdge.id} type=${typedHyperEdge.type}`);
+      console.log(`    sourceHandle: ${typedHyperEdge.sourceHandle || 'default'}, targetHandle: ${typedHyperEdge.targetHandle || 'default'}`);
       
       edges.push(typedHyperEdge);
     });

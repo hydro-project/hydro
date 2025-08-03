@@ -1,5 +1,14 @@
 /**
- * Test Runner for Vis Components
+ *import { runAllTests as runVisStateTests } from './VisState.test.js';
+import { runAllTests as runConstantsTests } from './constants.test.js';
+import { runAllTests as runJSONParserTests } from './JSONParser.test.js';
+import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test.js';
+import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
+import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
+import { runAllTests as runIntegrationTests } from '../alpha/__tests__/integration.test.js';
+import { runAllTests as runLayoutIntegrationTests } from '../alpha/layout/__tests__/integration.test.js';
+import { runAllTests as runRenderTests } from '../alpha/__tests__/render.test.js';
+import { runAllBridgeTests } from '../bridges/__tests__/index.test.js';er for Vis Components
  * 
  * Runs all tests for the visualization system
  */
@@ -11,8 +20,9 @@ import { runAllTests as runSymmetricInverseTests } from './symmetricInverse.test
 import { runAllTests as runEdgeIndexEncapsulationTests } from './edgeIndexEncapsulation.test.js';
 import { runAllTests as runSimpleGroundingTests } from './simpleGroundingTest.js';
 import { runAllTests as runIntegrationTests } from './integration.test.js';
-import { runAllTests as runLayoutIntegrationTests } from '../layout/__tests__/integration.test.js';
-import { runAllTests as runRenderTests } from './render.test.js';
+import { runAllTests as runLayoutIntegrationTests } from '../alpha/layout/__tests__/integration.test.js';
+import { runAllTests as runRenderTests } from '../alpha/__tests__/render.test.js';
+import { runAllBridgeTests } from '../bridges/__tests__/index.test.js';
 
 console.log('🧪 Running Vis Component Test Suite\n');
 console.log('=====================================\n');
@@ -67,12 +77,18 @@ async function runAllTests(): Promise<void> {
     passedTests++;
     totalTests++;
     
+    console.log('\n🌉 Running Bridge Tests...');
+    runAllBridgeTests();
+    passedTests++;
+    totalTests++;
+    
     console.log('\n=====================================');
     console.log(`🎉 Test Suite Complete: ${passedTests}/${totalTests} test modules passed`);
     console.log('All visualization components are working correctly!');
     console.log('✅ All symmetric function pairs verified as mathematical inverses!');
     console.log('✅ All integration tests with real data passed!');
     console.log('✅ All render components tested and working!');
+    console.log('✅ All bridge components tested and working!');
     console.log('\n💡 To run fuzz tests separately: node __tests__/fuzzTest.js');
     
   } catch (error: unknown) {

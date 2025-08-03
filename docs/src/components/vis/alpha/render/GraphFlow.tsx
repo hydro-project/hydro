@@ -166,6 +166,54 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
         return node;
       });
       
+      // 🔥 FINAL REACTFLOW DATA LOGGING - What actually gets passed to ReactFlow
+      console.log('[GraphFlow] 🔥 FINAL DATA PASSED TO REACTFLOW:');
+      console.log(`  📊 SUMMARY: ${nodesWithCallbacks.length} nodes, ${reactFlowData.edges.length} edges`);
+      
+      // Log hyperedge nodes and edges that ReactFlow will actually render
+      const finalHyperEdges = reactFlowData.edges.filter(e => e.type === 'hyper');
+      const finalHyperEdgeNodeIds = new Set();
+      finalHyperEdges.forEach(edge => {
+        finalHyperEdgeNodeIds.add(edge.source);
+        finalHyperEdgeNodeIds.add(edge.target);
+      });
+      
+      console.log(`  🔘 FINAL NODES involved in hyperedges:`);
+      nodesWithCallbacks.forEach(node => {
+        if (finalHyperEdgeNodeIds.has(node.id)) {
+          console.log(`    ${node.id} (${node.type}): pos=(${node.position?.x || 0}, ${node.position?.y || 0}), size=${node.width || 'auto'}x${node.height || 'auto'}`);
+        }
+      });
+      
+      console.log(`  🔥 FINAL HYPEREDGES that ReactFlow will render:`);
+      finalHyperEdges.forEach(edge => {
+        console.log(`    ${edge.id}: ${edge.source} → ${edge.target}`);
+        
+        // Find the actual final nodes
+        const finalSourceNode = nodesWithCallbacks.find(n => n.id === edge.source);
+        const finalTargetNode = nodesWithCallbacks.find(n => n.id === edge.target);
+        
+        if (finalSourceNode && finalTargetNode) {
+          const finalSourcePos = finalSourceNode.position || { x: 0, y: 0 };
+          const finalTargetPos = finalTargetNode.position || { x: 0, y: 0 };
+          console.log(`      📍 FINAL REACTFLOW POSITIONS: ${edge.source}(${finalSourcePos.x}, ${finalSourcePos.y}) → ${edge.target}(${finalTargetPos.x}, ${finalTargetPos.y})`);
+          
+          // Calculate distance
+          const dx = finalTargetPos.x - finalSourcePos.x;
+          const dy = finalTargetPos.y - finalSourcePos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          console.log(`      📏 FINAL DISTANCE: ${distance.toFixed(2)}px`);
+          
+          if (distance < 10) {
+            console.log(`      ⚠️  FINAL WARNING: Hyperedge endpoints are very close/overlapping in final ReactFlow data!`);
+          }
+        } else {
+          console.log(`      ❌ FINAL ERROR: Could not find final ReactFlow nodes for hyperedge endpoints`);
+          console.log(`        Final Source ${edge.source}: ${finalSourceNode ? 'FOUND' : 'NOT FOUND'}`);
+          console.log(`        Final Target ${edge.target}: ${finalTargetNode ? 'FOUND' : 'NOT FOUND'}`);
+        }
+      });
+      
       // Update nodes and edges
       setNodes(nodesWithCallbacks);
       setEdges(reactFlowData.edges);
@@ -241,6 +289,54 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
           };
         }
         return node;
+      });
+
+      // 🔥 FINAL REACTFLOW DATA LOGGING - What actually gets passed to ReactFlow (SELECTIVE)
+      console.log('[GraphFlow] 🔥 FINAL DATA PASSED TO REACTFLOW (SELECTIVE):');
+      console.log(`  📊 SUMMARY: ${nodesWithCallbacks.length} nodes, ${reactFlowData.edges.length} edges`);
+      
+      // Log hyperedge nodes and edges that ReactFlow will actually render
+      const finalHyperEdges = reactFlowData.edges.filter(e => e.type === 'hyper');
+      const finalHyperEdgeNodeIds = new Set();
+      finalHyperEdges.forEach(edge => {
+        finalHyperEdgeNodeIds.add(edge.source);
+        finalHyperEdgeNodeIds.add(edge.target);
+      });
+      
+      console.log(`  🔘 FINAL NODES involved in hyperedges:`);
+      nodesWithCallbacks.forEach(node => {
+        if (finalHyperEdgeNodeIds.has(node.id)) {
+          console.log(`    ${node.id} (${node.type}): pos=(${node.position?.x || 0}, ${node.position?.y || 0}), size=${node.width || 'auto'}x${node.height || 'auto'}`);
+        }
+      });
+      
+      console.log(`  🔥 FINAL HYPEREDGES that ReactFlow will render:`);
+      finalHyperEdges.forEach(edge => {
+        console.log(`    ${edge.id}: ${edge.source} → ${edge.target}`);
+        
+        // Find the actual final nodes
+        const finalSourceNode = nodesWithCallbacks.find(n => n.id === edge.source);
+        const finalTargetNode = nodesWithCallbacks.find(n => n.id === edge.target);
+        
+        if (finalSourceNode && finalTargetNode) {
+          const finalSourcePos = finalSourceNode.position || { x: 0, y: 0 };
+          const finalTargetPos = finalTargetNode.position || { x: 0, y: 0 };
+          console.log(`      📍 FINAL REACTFLOW POSITIONS: ${edge.source}(${finalSourcePos.x}, ${finalSourcePos.y}) → ${edge.target}(${finalTargetPos.x}, ${finalTargetPos.y})`);
+          
+          // Calculate distance
+          const dx = finalTargetPos.x - finalSourcePos.x;
+          const dy = finalTargetPos.y - finalSourcePos.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          console.log(`      📏 FINAL DISTANCE: ${distance.toFixed(2)}px`);
+          
+          if (distance < 10) {
+            console.log(`      ⚠️  FINAL WARNING: Hyperedge endpoints are very close/overlapping in final ReactFlow data!`);
+          }
+        } else {
+          console.log(`      ❌ FINAL ERROR: Could not find final ReactFlow nodes for hyperedge endpoints`);
+          console.log(`        Final Source ${edge.source}: ${finalSourceNode ? 'FOUND' : 'NOT FOUND'}`);
+          console.log(`        Final Target ${edge.target}: ${finalTargetNode ? 'FOUND' : 'NOT FOUND'}`);
+        }
       });
 
       // Update the graph

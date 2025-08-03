@@ -234,7 +234,7 @@ export class VisualizationService {
   }
 
   /**
-   * Comprehensive VisState debugging
+   * Comprehensive VisState debugging - FOCUSED ON HYPEREDGES
    */
   private logVisStateDetailed(visState: VisualizationState, stage: string): void {
     console.log(`[VisualizationService] 📊 VISSTATE_${stage}:`);
@@ -246,46 +246,117 @@ export class VisualizationService {
     const expandedContainers = visState.expandedContainers;
     const allHyperEdges = visState.allHyperEdges;
     
-    console.log(`  📦 CONTAINERS (${visibleContainers.length} visible, ${expandedContainers.length} expanded):`);
+    console.log(`  � SUMMARY: ${visibleContainers.length} containers, ${visibleNodes.length} nodes, ${visibleEdges.length} edges, ${allHyperEdges.length} hyperEdges`);
+    
+    // Only log detailed info for containers and nodes involved in hyperedges
+    const hyperEdgeNodeIds = new Set();
+    allHyperEdges.forEach(edge => {
+      hyperEdgeNodeIds.add(edge.source);
+      hyperEdgeNodeIds.add(edge.target);
+    });
+    
+    console.log(`  📦 CONTAINERS involved in hyperedges:`);
     visibleContainers.forEach(container => {
-      console.log(`    ${container.id}: collapsed=${container.collapsed}, hidden=${container.hidden}, children=${container.children?.size || 0}`);
-      if (container.layout) {
-        console.log(`      layout: pos=(${container.layout.position?.x || 0}, ${container.layout.position?.y || 0}), size=${container.layout.dimensions?.width || 'auto'}x${container.layout.dimensions?.height || 'auto'}`);
+      if (hyperEdgeNodeIds.has(container.id)) {
+        console.log(`    ${container.id}: collapsed=${container.collapsed}, hidden=${container.hidden}, children=${container.children?.size || 0}`);
+        if (container.layout) {
+          console.log(`      layout: pos=(${container.layout.position?.x || 0}, ${container.layout.position?.y || 0}), size=${container.layout.dimensions?.width || 'auto'}x${container.layout.dimensions?.height || 'auto'}`);
+        }
       }
     });
     
-    console.log(`  🔘 NODES (${visibleNodes.length} visible):`);
+    console.log(`  🔘 NODES involved in hyperedges:`);
     visibleNodes.forEach(node => {
-      console.log(`    ${node.id} (${node.type}): hidden=${node.hidden}`);
-      if (node.layout) {
-        console.log(`      layout: pos=(${node.layout.position?.x || 0}, ${node.layout.position?.y || 0}), size=${node.layout.dimensions?.width || node.dimensions?.width || 'auto'}x${node.layout.dimensions?.height || node.dimensions?.height || 'auto'}`);
+      if (hyperEdgeNodeIds.has(node.id)) {
+        console.log(`    ${node.id} (${node.type}): hidden=${node.hidden}`);
+        if (node.layout) {
+          console.log(`      layout: pos=(${node.layout.position?.x || 0}, ${node.layout.position?.y || 0}), size=${node.layout.dimensions?.width || node.dimensions?.width || 'auto'}x${node.layout.dimensions?.height || node.dimensions?.height || 'auto'}`);
+        }
       }
-    });
-    
-    console.log(`  🔗 EDGES (${visibleEdges.length} visible):`);
-    visibleEdges.forEach(edge => {
-      console.log(`    ${edge.id}: ${edge.source} → ${edge.target}`);
     });
     
     console.log(`  ⚡ HYPER_EDGES (${allHyperEdges.length} total):`);
     allHyperEdges.forEach(edge => {
       const aggregatedCount = edge.originalEdges?.length || edge.edgeIds?.length || 0;
-      console.log(`    ${edge.id}: ${aggregatedCount} aggregated edges`);
+      console.log(`    ${edge.id}: ${edge.source} → ${edge.target} (${aggregatedCount} aggregated edges)`);
+      
+      // DETAILED HYPEREDGE ENDPOINT ANALYSIS
+      const sourceContainer = visibleContainers.find(c => c.id === edge.source);
+      const sourceNode = visibleNodes.find(n => n.id === edge.source);
+      const targetContainer = visibleContainers.find(c => c.id === edge.target);
+      const targetNode = visibleNodes.find(n => n.id === edge.target);
+      
+      if (sourceContainer) {
+        const sourcePos = sourceContainer.layout?.position || { x: 0, y: 0 };
+        console.log(`      🔗 SOURCE: Container ${edge.source} at (${sourcePos.x}, ${sourcePos.y})`);
+      } else if (sourceNode) {
+        const sourcePos = sourceNode.layout?.position || { x: 0, y: 0 };
+        console.log(`      🔗 SOURCE: Node ${edge.source} at (${sourcePos.x}, ${sourcePos.y})`);
+      } else {
+        console.log(`      ❌ SOURCE: ${edge.source} NOT FOUND in visible nodes/containers`);
+      }
+      
+      if (targetContainer) {
+        const targetPos = targetContainer.layout?.position || { x: 0, y: 0 };
+        console.log(`      🔗 TARGET: Container ${edge.target} at (${targetPos.x}, ${targetPos.y})`);
+      } else if (targetNode) {
+        const targetPos = targetNode.layout?.position || { x: 0, y: 0 };
+        console.log(`      🔗 TARGET: Node ${edge.target} at (${targetPos.x}, ${targetPos.y})`);
+      } else {
+        console.log(`      ❌ TARGET: ${edge.target} NOT FOUND in visible nodes/containers`);
+      }
     });
   }
 
   /**
-   * Log ReactFlow data details
+   * Log ReactFlow data details - FOCUSED ON HYPEREDGES
    */
   private logReactFlowData(data: TypedReactFlowData, stage: string): void {
     console.log(`[VisualizationService] 🎯 REACTFLOW_${stage}:`);
-    console.log(`  Nodes: ${data.nodes.length}`);
-    data.nodes.forEach(node => {
-      console.log(`    ${node.id} (${node.type}): pos=(${node.position?.x || 0}, ${node.position?.y || 0}), size=${node.width || 'auto'}x${node.height || 'auto'}`);
+    console.log(`  📊 SUMMARY: ${data.nodes.length} nodes, ${data.edges.length} edges`);
+    
+    // Only log detailed node info for nodes involved in hyperedges
+    const hyperEdges = data.edges.filter(e => e.type === 'hyper');
+    const hyperEdgeNodeIds = new Set();
+    hyperEdges.forEach(edge => {
+      hyperEdgeNodeIds.add(edge.source);
+      hyperEdgeNodeIds.add(edge.target);
     });
-    console.log(`  Edges: ${data.edges.length}`);
-    data.edges.forEach(edge => {
+    
+    console.log(`  🔘 NODES involved in hyperedges:`);
+    data.nodes.forEach(node => {
+      if (hyperEdgeNodeIds.has(node.id)) {
+        console.log(`    ${node.id} (${node.type}): pos=(${node.position?.x || 0}, ${node.position?.y || 0}), size=${node.width || 'auto'}x${node.height || 'auto'}`);
+      }
+    });
+    
+    console.log(`  🔥 HYPEREDGES (${hyperEdges.length} total):`);
+    hyperEdges.forEach(edge => {
       console.log(`    ${edge.id}: ${edge.source} → ${edge.target}`);
+      
+      // Find source and target node positions in ReactFlow data
+      const sourceNode = data.nodes.find(n => n.id === edge.source);
+      const targetNode = data.nodes.find(n => n.id === edge.target);
+      
+      if (sourceNode && targetNode) {
+        const sourcePosReactFlow = sourceNode.position || { x: 0, y: 0 };
+        const targetPosReactFlow = targetNode.position || { x: 0, y: 0 };
+        console.log(`      📍 REACTFLOW POSITIONS: ${edge.source}(${sourcePosReactFlow.x}, ${sourcePosReactFlow.y}) → ${edge.target}(${targetPosReactFlow.x}, ${targetPosReactFlow.y})`);
+        
+        // Calculate distance
+        const dx = targetPosReactFlow.x - sourcePosReactFlow.x;
+        const dy = targetPosReactFlow.y - sourcePosReactFlow.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        console.log(`      📏 DISTANCE: ${distance.toFixed(2)}px`);
+        
+        if (distance < 10) {
+          console.log(`      ⚠️  WARNING: Hyperedge endpoints are very close/overlapping!`);
+        }
+      } else {
+        console.log(`      ❌ ERROR: Could not find ReactFlow nodes for hyperedge endpoints`);
+        console.log(`        Source ${edge.source}: ${sourceNode ? 'FOUND' : 'NOT FOUND'}`);
+        console.log(`        Target ${edge.target}: ${targetNode ? 'FOUND' : 'NOT FOUND'}`);
+      }
     });
   }
 }

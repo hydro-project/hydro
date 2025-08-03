@@ -479,11 +479,37 @@ class ELKHierarchyBuilder {
   }
 
   private buildEdges(): ELKEdge[] {
-    return this.edges.map(edge => ({
+    // Use all edges from this.edges (which now includes both regular edges and hyperedges)
+    const elkEdges = this.edges.map(edge => ({
       id: edge.id,
       sources: [edge.source],
       targets: [edge.target],
     }));
+    
+    // FOCUSED HYPEREDGE LOGGING: Log what edges are being sent to ELK
+    console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔥 BUILDING EDGES FOR ELK:`);
+    
+    const regularEdges = this.edges.filter(edge => !edge.id.includes('hyper_'));
+    const hyperEdges = this.edges.filter(edge => edge.id.includes('hyper_'));
+    
+    console.log(`  📊 Total edges: ${elkEdges.length} (${regularEdges.length} regular + ${hyperEdges.length} hyperedges)`);
+    elkEdges.forEach(edge => {
+      const originalEdge = this.edges.find(e => e.id === edge.id);
+      const isHyperEdge = edge.id.includes('hyper_');
+      const edgeType = isHyperEdge ? '🔥 HYPEREDGE' : '🔗 EDGE';
+      console.log(`    ${edgeType} ${edge.id}: ${edge.sources[0]} → ${edge.targets[0]}`);
+      
+      if (isHyperEdge && originalEdge) {
+        console.log(`      Original data:`, {
+          source: originalEdge.source,
+          target: originalEdge.target,
+          aggregatedEdges: (originalEdge as any).aggregatedEdges?.length || 0,
+          style: originalEdge.style
+        });
+      }
+    });
+    
+    return elkEdges;
   }
 }
 
@@ -806,12 +832,41 @@ function logELKInput(elkGraph: ELKGraph): void {
 }
 
 function logELKOutput(layoutResult: any): void {
-  // Only log ELK output in debug mode
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`);
-    if (layoutResult.children) {
-      logELKContainerHierarchy(layoutResult.children, 0, LOG_PREFIXES.OUTPUT);
-    }
+  // Always log ELK output for hyperedge debugging
+  console.log(`${LOG_PREFIXES.STATE_MANAGER} ${LOG_PREFIXES.VALIDATION} ELK CONTAINER ${LOG_PREFIXES.OUTPUT}:`);
+  if (layoutResult.children) {
+    logELKContainerHierarchy(layoutResult.children, 0, LOG_PREFIXES.OUTPUT);
+  }
+  
+  // FOCUSED HYPEREDGE LOGGING: Check for ELK edge routing information
+  console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔥 ELK EDGE ROUTING ANALYSIS:`);
+  if (layoutResult.edges && layoutResult.edges.length > 0) {
+    console.log(`  📊 Found ${layoutResult.edges.length} edges with routing info from ELK`);
+    layoutResult.edges.forEach((edge: any) => {
+      console.log(`    Edge ${edge.id}:`);
+      console.log(`      Sources: ${edge.sources || 'undefined'}`);
+      console.log(`      Targets: ${edge.targets || 'undefined'}`);
+      
+      if (edge.sections && edge.sections.length > 0) {
+        console.log(`      🛣️  Sections (${edge.sections.length}):`);
+        edge.sections.forEach((section: any, i: number) => {
+          console.log(`        Section ${i}:`);
+          if (section.startPoint) {
+            console.log(`          Start: (${section.startPoint.x}, ${section.startPoint.y})`);
+          }
+          if (section.endPoint) {
+            console.log(`          End: (${section.endPoint.x}, ${section.endPoint.y})`);
+          }
+          if (section.bendPoints && section.bendPoints.length > 0) {
+            console.log(`          Bend points: ${section.bendPoints.map((bp: any) => `(${bp.x},${bp.y})`).join(', ')}`);
+          }
+        });
+      } else {
+        console.log(`      ⚠️  No sections/routing info for edge ${edge.id}`);
+      }
+    });
+  } else {
+    console.log(`  ⚠️  No edge routing information provided by ELK`);
   }
 }
 
