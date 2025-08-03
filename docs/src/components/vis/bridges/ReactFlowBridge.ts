@@ -1,16 +1,16 @@
 /**
- * @fileoverview ReactFlow Bridge - Clean interface between VisState and ReactFlow
+ * @fileoverview ReactFlow Bridge - Converts VisualizationState to ReactFlow format
  * 
- * This bridge implements the core principle:
- * - VisState contains ALL positioned data after ELK layout
- * - ReactFlow gets locations, dimensions, edges, and display metadata
- * - No business logic in conversion - pure data transformation
+ * This bridge converts VisualizationState to ReactFlow's expected data structures.
+ * ReactFlow only sees unified edges (hyperedges are included transparently).
+ * Uses configurable handle system for maximum layout flexibility.
  */
 
 import type { VisualizationState } from '../core/VisState';
-import type { GraphNode, GraphEdge, HyperEdge, Container } from '../shared/types';
-import { MarkerType } from '@xyflow/react';
+import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import { CoordinateTranslator, type ContainerInfo } from './CoordinateTranslator';
+import { MarkerType } from '@xyflow/react';
+import { getHandleConfig } from '../render/handleConfig';
 
 // ReactFlow types
 export interface ReactFlowNode {
@@ -76,17 +76,14 @@ export class ReactFlowBridge {
     // Convert regular nodes to ReactFlow nodes  
     this.convertNodes(visState, nodes, parentMap);
     
-    // Convert regular edges to ReactFlow edges
+    // Convert all edges to ReactFlow edges (now includes hyperedges transparently)
     this.convertEdges(visState, edges);
-    
-    // Convert hyperedges to ReactFlow edges
-    this.convertHyperEdges(visState, edges);
     
     console.log('[ReactFlowBridge] ✅ Conversion complete:', {
       nodes: nodes.length,
       edges: edges.length,
       containers: nodes.filter(n => n.type === 'container').length,
-      hyperEdges: edges.filter(e => e.type === 'hyper').length
+      hyperEdges: 0 // Hyperedges are now transparent
     });
     
     return { nodes, edges };
@@ -234,6 +231,8 @@ export class ReactFlowBridge {
         targetHandleType: typeof edge.targetHandle
       });
       
+      const handleConfig = getHandleConfig();
+      
       const reactFlowEdge: ReactFlowEdge = {
         id: edge.id,
         type: 'standard',
@@ -250,56 +249,17 @@ export class ReactFlowBridge {
         }
       };
       
-      // NEVER include sourceHandle/targetHandle if they are undefined, null, or string "null"
-      // Let ReactFlow use its defaults
-      if (edge.sourceHandle !== undefined && edge.sourceHandle !== null && edge.sourceHandle !== 'null') {
-        reactFlowEdge.sourceHandle = edge.sourceHandle;
+      // Only add handle properties for discrete handle strategy
+      if (!handleConfig.enableContinuousHandles) {
+        // For discrete handles, use specified handles or defaults
+        reactFlowEdge.sourceHandle = edge.sourceHandle || 'default-out';
+        reactFlowEdge.targetHandle = edge.targetHandle || 'default-in';
       }
-      
-      if (edge.targetHandle !== undefined && edge.targetHandle !== null && edge.targetHandle !== 'null') {
-        reactFlowEdge.targetHandle = edge.targetHandle;
-      }
+      // For continuous handles, omit sourceHandle/targetHandle to let ReactFlow auto-connect
       
       console.log(`[ReactFlowBridge] ✅ Created ReactFlow edge ${edge.id}:`, reactFlowEdge);
       
       edges.push(reactFlowEdge);
-    });
-  }
-
-  /**
-   * Convert hyperedges to ReactFlow edges
-   */
-  private convertHyperEdges(visState: VisualizationState, edges: ReactFlowEdge[]): void {
-    visState.allHyperEdges.forEach(hyperEdge => {
-      console.log(`[ReactFlowBridge] 🔥 Converting hyperedge ${hyperEdge.id}: ${hyperEdge.source} → ${hyperEdge.target}`);
-      
-      const reactFlowHyperEdge: ReactFlowEdge = {
-        id: hyperEdge.id,
-        type: 'hyper',
-        source: hyperEdge.source,
-        target: hyperEdge.target,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 15,
-          height: 15,
-          color: '#999'
-        },
-        data: {
-          style: hyperEdge.style || 'default'
-        }
-      };
-      
-      // NEVER include sourceHandle/targetHandle if they are undefined, null, or string "null"
-      // Let ReactFlow use its defaults
-      if (hyperEdge.sourceHandle !== undefined && hyperEdge.sourceHandle !== null && hyperEdge.sourceHandle !== 'null') {
-        reactFlowHyperEdge.sourceHandle = hyperEdge.sourceHandle;
-      }
-      
-      if (hyperEdge.targetHandle !== undefined && hyperEdge.targetHandle !== null && hyperEdge.targetHandle !== 'null') {
-        reactFlowHyperEdge.targetHandle = hyperEdge.targetHandle;
-      }
-      
-      edges.push(reactFlowHyperEdge);
     });
   }
 

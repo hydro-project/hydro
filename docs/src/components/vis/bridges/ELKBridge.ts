@@ -2,13 +2,13 @@
  * @fileoverview ELK Bridge - Clean interface between VisState and ELK
  * 
  * This bridge implements the core architectural principle:
- * - VisState contains ALL data (nodes, edges, hyperEdges, containers)
- * - ELK gets visible elements only, with no distinction between edge types
+ * - VisState contains ALL data (nodes, edges, containers) 
+ * - ELK gets visible elements only through visibleEdges (hyperedges included transparently)
  * - ELK returns layout positions that get applied back to VisState
  */
 
 import type { VisualizationState } from '../core/VisState';
-import type { GraphNode, GraphEdge, HyperEdge, Container } from '../shared/types';
+import type { GraphNode, GraphEdge, Container } from '../shared/types';
 import ELK from 'elkjs';
 import type { ElkGraph, ElkNode, ElkEdge } from './elk-types';
 
@@ -108,8 +108,9 @@ export class ELKBridge {
     // Extract container hierarchy for visible containers
     const visibleContainers = this.extractVisibleContainers(visState);
     
-    // Extract ALL edges (regular + hyperedges) - this is the key fix!
-    const allEdges = this.extractAllEdges(visState);
+    // Extract ALL edges via the unified visibleEdges interface
+    // This now includes hyperedges transparently - ELK doesn't need to know the difference
+    const allEdges = visState.visibleEdges;
     
     console.log('[ELKBridge] 📋 Extracted from VisState:', {
       visibleNodes: visibleNodes.length,
@@ -168,30 +169,12 @@ export class ELKBridge {
   }
 
   /**
-   * Extract ALL edges - both regular edges and hyperedges with no distinction
-   * This is the critical fix: hyperedges were getting lost in the old implementation
-   */
-  private extractAllEdges(visState: VisualizationState): (GraphEdge | HyperEdge)[] {
-    const allEdges: (GraphEdge | HyperEdge)[] = [];
-    
-    // Add visible regular edges
-    const visibleEdges = visState.visibleEdges;
-    allEdges.push(...visibleEdges);
-    
-    // Add ALL hyperedges (this was missing in the old implementation!)
-    const hyperEdges = visState.allHyperEdges;
-    allEdges.push(...hyperEdges);
-    
-    return allEdges;
-  }
-
-  /**
    * Build ELK graph from extracted data
    */
   private buildELKGraph(
     nodes: GraphNode[], 
     containers: Container[], 
-    edges: (GraphEdge | HyperEdge)[]
+    edges: GraphEdge[]
   ): ElkGraph {
     // Build hierarchy: top-level nodes and containers
     const elkNodes: ElkNode[] = [];
@@ -274,33 +257,61 @@ export class ELKBridge {
       }
     });
     
+    // Apply edge routing information
+    console.log('--- ELKBRIDGE_EDGE_PROCESSING_START ---');
+    const allEdges = elkResult.edges || [];
+    if (allEdges.length > 0) {
+      console.log(`[ELKBridge] 🔍 Processing ${allEdges.length} edges for sections`);
+      allEdges.forEach(elkEdge => {
+        this.updateEdgeFromELK(elkEdge, visState);
+      });
+    } else {
+      console.log('[ELKBridge] ⚠️ No edges array in ELK result');
+    }
+    console.log('--- ELKBRIDGE_EDGE_PROCESSING_END ---');
+    
     console.log('[ELKBridge] ✅ Applied all ELK results to VisState');
+  }
+  
+  /**
+   * Update edge routing information from ELK result
+   */
+  private updateEdgeFromELK(elkEdge: ElkEdge, visState: VisualizationState): void {
+    // Use VisState's proper layout method instead of direct property access
+    if (elkEdge.sections && elkEdge.sections.length > 0) {
+      console.log(`[ELKBridge] 🔧 About to set layout for edge ${elkEdge.id} with ${elkEdge.sections.length} sections`);
+      visState.setEdgeLayout(elkEdge.id, { sections: elkEdge.sections });
+      console.log(`[ELKBridge] 📍 Updated edge ${elkEdge.id} with ${elkEdge.sections.length} sections`);
+      
+      // Debug: Try to read back the edge to see if it was set
+      const edge = visState.getGraphEdge(elkEdge.id);
+      console.log(`[ELKBridge] 🔍 Debug: Edge ${elkEdge.id} layout after update:`, edge?.layout);
+    } else {
+      console.log(`[ELKBridge] 📍 Edge ${elkEdge.id} has no sections (cross-container edge)`);
+    }
   }
 
   /**
    * Update container dimensions and child positions from ELK result
    */
   private updateContainerFromELK(elkNode: ElkNode, visState: VisualizationState): void {
-    const container = visState.getContainer(elkNode.id);
-    if (!container) {
-      console.warn(`[ELKBridge] Container ${elkNode.id} not found in VisState`);
-      return;
+    // Use VisState's proper layout methods instead of direct property access
+    const layoutUpdates: any = {};
+    
+    if (elkNode.x !== undefined || elkNode.y !== undefined) {
+      layoutUpdates.position = {};
+      if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
+      if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
     }
     
-    // Update container position and dimensions
-    container.layout = container.layout || {};
-    if (elkNode.x !== undefined) {
-      container.layout.position = container.layout.position || {};
-      container.layout.position.x = elkNode.x;
-    }
-    if (elkNode.y !== undefined) {
-      container.layout.position = container.layout.position || {};
-      container.layout.position.y = elkNode.y;
-    }
     if (elkNode.width !== undefined || elkNode.height !== undefined) {
-      container.layout.dimensions = container.layout.dimensions || {};
-      if (elkNode.width !== undefined) container.layout.dimensions.width = elkNode.width;
-      if (elkNode.height !== undefined) container.layout.dimensions.height = elkNode.height;
+      layoutUpdates.dimensions = {};
+      if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
+      if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+    }
+    
+    if (Object.keys(layoutUpdates).length > 0) {
+      visState.setContainerLayout(elkNode.id, layoutUpdates);
     }
     
     // Update child node positions
@@ -313,34 +324,51 @@ export class ELKBridge {
    * Update node position from ELK result
    */
   private updateNodeFromELK(elkNode: ElkNode, visState: VisualizationState): void {
-    // Try to find as regular node first
-    let node = visState.getGraphNode(elkNode.id);
-    if (node) {
-      node.x = elkNode.x || 0;
-      node.y = elkNode.y || 0;
-      if (elkNode.width) node.width = elkNode.width;
-      if (elkNode.height) node.height = elkNode.height;
-      return;
-    }
-    
-    // If not found as node, might be a collapsed container
-    const container = visState.getContainer(elkNode.id);
-    if (container && container.collapsed) {
-      container.layout = container.layout || {};
+    // Try to update as regular node first using VisState's layout methods
+    try {
+      const layoutUpdates: any = {};
+      
       if (elkNode.x !== undefined || elkNode.y !== undefined) {
-        container.layout.position = container.layout.position || {};
-        if (elkNode.x !== undefined) container.layout.position.x = elkNode.x;
-        if (elkNode.y !== undefined) container.layout.position.y = elkNode.y;
+        layoutUpdates.position = {};
+        if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
+        if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
       }
+      
       if (elkNode.width !== undefined || elkNode.height !== undefined) {
-        container.layout.dimensions = container.layout.dimensions || {};
-        if (elkNode.width !== undefined) container.layout.dimensions.width = elkNode.width;
-        if (elkNode.height !== undefined) container.layout.dimensions.height = elkNode.height;
+        layoutUpdates.dimensions = {};
+        if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
+        if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+      }
+      
+      if (Object.keys(layoutUpdates).length > 0) {
+        visState.setNodeLayout(elkNode.id, layoutUpdates);
       }
       return;
+    } catch (nodeError) {
+      // If not found as node, might be a collapsed container
+      try {
+        const layoutUpdates: any = {};
+        
+        if (elkNode.x !== undefined || elkNode.y !== undefined) {
+          layoutUpdates.position = {};
+          if (elkNode.x !== undefined) layoutUpdates.position.x = elkNode.x;
+          if (elkNode.y !== undefined) layoutUpdates.position.y = elkNode.y;
+        }
+        
+        if (elkNode.width !== undefined || elkNode.height !== undefined) {
+          layoutUpdates.dimensions = {};
+          if (elkNode.width !== undefined) layoutUpdates.dimensions.width = elkNode.width;
+          if (elkNode.height !== undefined) layoutUpdates.dimensions.height = elkNode.height;
+        }
+        
+        if (Object.keys(layoutUpdates).length > 0) {
+          visState.setContainerLayout(elkNode.id, layoutUpdates);
+        }
+        return;
+      } catch (containerError) {
+        console.warn(`[ELKBridge] Node/Container ${elkNode.id} not found in VisState`);
+      }
     }
-    
-    console.warn(`[ELKBridge] Node/Container ${elkNode.id} not found in VisState`);
   }
 
   // Helper methods for containment logic

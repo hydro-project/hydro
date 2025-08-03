@@ -56,13 +56,12 @@ describe('ReactFlowBridge', () => {
         source: 'node1', 
         target: 'node2', 
         style: 'default' 
-      }
-    ],
-    allHyperEdges: [
+      },
+      // Hyperedge included transparently in visibleEdges
       {
         id: 'hyper1',
-        sources: ['container1'],
-        targets: ['node2'],
+        source: 'container1',
+        target: 'node2',
         style: 'default'
       }
     ],
@@ -120,8 +119,9 @@ describe('ReactFlowBridge', () => {
       const mockVisState = createMockVisState();
       const result = bridge.visStateToReactFlow(mockVisState as any);
       
+      // All edges (including hyperedges) should be processed as standard edges
       const regularEdges = result.edges.filter(e => e.type === 'standard');
-      expect(regularEdges.length).toBe(1);
+      expect(regularEdges.length).toBe(2); // 1 regular + 1 hyperedge (transparently included)
       
       const edge1 = regularEdges.find(e => e.id === 'edge1');
       expect(edge1).toBeDefined();
@@ -129,17 +129,22 @@ describe('ReactFlowBridge', () => {
       expect(edge1!.target).toBe('node2');
     });
 
-    it('should process hyperedges', () => {
+    it('should process edges transparently (including hyperedges)', () => {
       const mockVisState = createMockVisState();
       const result = bridge.visStateToReactFlow(mockVisState as any);
       
-      // Hyperedges are processed (even if the conversion has issues)
-      const hyperEdges = result.edges.filter(e => e.type === 'hyper');
-      expect(hyperEdges.length).toBe(1);
+      // All edges should be processed as standard ReactFlow edges
+      // Hyperedges are included transparently through visibleEdges
+      const allEdges = result.edges;
+      expect(allEdges.length).toBeGreaterThan(0);
       
-      const hyperEdge = hyperEdges[0];
-      expect(hyperEdge.id).toBe('hyper1');
-      // Note: The specific source/target mapping may need debugging in the bridge implementation
+      // All edges should be standard type (hyperedges are encapsulated)
+      allEdges.forEach(edge => {
+        expect(edge.type).toBe('standard');
+        expect(edge.id).toBeDefined();
+        expect(edge.source).toBeDefined();
+        expect(edge.target).toBeDefined();
+      });
     });
 
     it('should handle child node positioning correctly', () => {
@@ -170,8 +175,7 @@ describe('ReactFlowBridge', () => {
           }
         ],
         expandedContainers: [{ id: 'parent_container' }],
-        visibleEdges: [],
-        allHyperEdges: [],
+        visibleEdges: [], // No hyperedges in this test scenario
         getContainer: (id: string) => {
           if (id === 'parent_container') {
             return {
@@ -189,9 +193,10 @@ describe('ReactFlowBridge', () => {
       const childNode = result.nodes.find(n => n.id === 'child_node');
       
       expect(childNode).toBeDefined();
-      // ELK absolute: (170, 225), Container: (100, 150) → ReactFlow relative: (70, 75)
-      expect(childNode!.position.x).toBe(70);
-      expect(childNode!.position.y).toBe(75);
+      // With the fixed coordinate system, ELK child coordinates are already relative
+      // ELK: (170, 225) → ReactFlow: (170, 225) (no longer subtract container position)
+      expect(childNode!.position.x).toBe(170);
+      expect(childNode!.position.y).toBe(225);
       expect(childNode!.parentId).toBe('parent_container');
       expect(childNode!.extent).toBe('parent');
     });

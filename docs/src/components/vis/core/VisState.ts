@@ -598,24 +598,61 @@ export class VisualizationState implements ContainerHierarchyView {
   // ============ Computed Properties (Idiomatic TypeScript Getters) ============
   
   /**
-   * Get all visible (non-hidden) nodes
+   * Get all visible (non-hidden) nodes with computed position/dimension properties
    */
   get visibleNodes() {
-    return Array.from(this._visibleNodes.values());
+    return Array.from(this._visibleNodes.values()).map(node => {
+      // Create a computed view that exposes layout data as direct properties
+      const computedNode = {
+        ...node,
+        // Expose layout position as direct x, y properties (ELK updates these directly)
+        x: node.x ?? node.layout?.position?.x ?? 0,
+        y: node.y ?? node.layout?.position?.y ?? 0,
+        // Expose layout dimensions as direct width, height properties
+        width: node.width ?? node.layout?.dimensions?.width ?? 180, // Default ELK width
+        height: node.height ?? node.layout?.dimensions?.height ?? 60  // Default ELK height
+      };
+      
+      return computedNode;
+    });
   }
 
   /**
-   * Get all visible (non-hidden) edges  
+   * Get all visible (non-hidden) edges, including hyperedges when appropriate
+   * This provides a unified view of edges for external systems (ELK, ReactFlow)
+   * Hyperedges are included when their corresponding containers are collapsed
    */
   get visibleEdges() {
-    return Array.from(this._visibleEdges.values());
+    const regularEdges = Array.from(this._visibleEdges.values());
+    
+    // Include non-hidden hyperedges (these represent collapsed container connections)
+    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(hyperEdge => !hyperEdge.hidden);
+    
+    // Return unified edge collection - external systems don't need to know about hyperedges
+    return [...regularEdges, ...activeHyperEdges];
   }
 
   /**
-   * Get all visible (non-hidden) containers
+   * Get all visible (non-hidden) containers with computed position/dimension properties
    */
   get visibleContainers() {
-    return Array.from(this._visibleContainers.values());
+    return Array.from(this._visibleContainers.values()).map(container => {
+      // Create a computed view that exposes layout data as direct properties
+      const computedContainer = {
+        ...container,
+        // Expose layout position as direct x, y properties
+        x: container.layout?.position?.x ?? 0,
+        y: container.layout?.position?.y ?? 0,
+        // Expose layout dimensions as direct width, height properties
+        width: container.layout?.dimensions?.width ?? container.expandedDimensions?.width ?? 0,
+        height: container.layout?.dimensions?.height ?? container.expandedDimensions?.height ?? 0
+      };
+      
+      // Remove the raw layout object to prevent direct access
+      delete computedContainer.layout;
+      
+      return computedContainer;
+    });
   }
 
   /**
@@ -623,13 +660,6 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   get expandedContainers() {
     return Array.from(this._expandedContainers.values());
-  }
-
-  /**
-   * Get all hyper edges
-   */
-  get allHyperEdges() {
-    return Array.from(this.hyperEdges.values());
   }
 
   /**

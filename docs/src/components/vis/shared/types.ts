@@ -28,6 +28,7 @@ export interface Position {
 export interface LayoutState {
   position?: Position;
   dimensions?: Dimensions;
+  sections?: any[]; // ELK edge routing sections
   elkFixed?: boolean; // Whether ELK should fix this element's position
   elkLayoutOptions?: Record<string, string>; // ELK-specific layout options
 }

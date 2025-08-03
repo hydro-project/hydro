@@ -110,9 +110,8 @@ docs/src/components/vis/
 ├── services/              # High-level services
 │   └── VisualizationService.ts
 ├── __tests__/             # Comprehensive test suite
-│   ├── render-components.test.ts
-│   ├── dry-refactoring.test.ts
-│   └── VisState.test.ts
+│   ├── chatJsonIntegration.test.ts
+│   └── layoutBoundaries.test.ts
 └── docs/                  # This documentation
     ├── VisState.md        # Complete API reference
     ├── Architecture.md    # System architecture

@@ -1,11 +1,65 @@
 /**
  * @fileoverview Bridge-Based Node Components
  * 
- * ReactFlow node components for container and standard nodes
+ * ReactFlow node components with configurable handle system for maximum layout flexibility
  */
 
 import React from 'react';
-import type { NodeProps } from '@xyflow/react';
+import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { getHandleConfig, CONTINUOUS_HANDLE_STYLE } from './handleConfig';
+
+/**
+ * Render handles based on current configuration
+ */
+function renderHandles() {
+  const config = getHandleConfig();
+  
+  if (config.enableContinuousHandles) {
+    // ReactFlow v12 continuous handles - connections anywhere on perimeter
+    return (
+      <>
+        <Handle
+          type="source"
+          position={Position.Top}
+          style={CONTINUOUS_HANDLE_STYLE}
+          isConnectable={true}
+        />
+        <Handle
+          type="target"
+          position={Position.Top}
+          style={CONTINUOUS_HANDLE_STYLE}
+          isConnectable={true}
+        />
+      </>
+    );
+  }
+  
+  // Discrete handles if configured
+  return (
+    <>
+      {config.sourceHandles.map(handle => (
+        <Handle
+          key={handle.id}
+          id={handle.id}
+          type="source"
+          position={handle.position}
+          style={handle.style}
+          isConnectable={true}
+        />
+      ))}
+      {config.targetHandles.map(handle => (
+        <Handle
+          key={handle.id}
+          id={handle.id}
+          type="target"
+          position={handle.position}
+          style={handle.style}
+          isConnectable={true}
+        />
+      ))}
+    </>
+  );
+}
 
 /**
  * Standard graph node component
@@ -21,9 +75,11 @@ export function StandardNode({ id, data }: NodeProps) {
         fontSize: '12px',
         textAlign: 'center',
         minWidth: '120px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        position: 'relative'
       }}
     >
+      {renderHandles()}
       {String(data.label || id)}
     </div>
   );
@@ -43,9 +99,11 @@ export function ContainerNode({ id, data }: NodeProps) {
         fontSize: '12px',
         textAlign: 'center',
         minWidth: '180px',
-        minHeight: data.collapsed ? '60px' : '120px'
+        minHeight: data.collapsed ? '60px' : '120px',
+        position: 'relative'
       }}
     >
+      {renderHandles()}
       <strong>{String(data.label || id)}</strong>
       {data.collapsed && (
         <div style={{ fontSize: '10px', color: '#666', marginTop: '4px' }}>

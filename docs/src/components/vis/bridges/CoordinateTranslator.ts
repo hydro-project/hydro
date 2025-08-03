@@ -58,13 +58,15 @@ export class CoordinateTranslator {
       };
     }
     
-    // Child element: convert to relative coordinates within parent container
+    // IMPORTANT: ELK already provides child coordinates relative to their container
+    // So we don't need to subtract the parent container position - ELK has already done this!
+    // The coordinates from ELK children are already relative to their parent.
     const relativeCoords = {
-      x: elkCoords.x - parentContainer.x,
-      y: elkCoords.y - parentContainer.y
+      x: elkCoords.x, // Already relative to parent container
+      y: elkCoords.y  // Already relative to parent container
     };
     
-    console.log(`[CoordinateTranslator] ELK→ReactFlow: absolute(${elkCoords.x}, ${elkCoords.y}) → relative(${relativeCoords.x}, ${relativeCoords.y}) within container ${parentContainer.id}`);
+    console.log(`[CoordinateTranslator] ELK→ReactFlow: ELK child coordinates (${elkCoords.x}, ${elkCoords.y}) are already relative to container ${parentContainer.id} - using as-is`);
     
     return relativeCoords;
   }
@@ -91,7 +93,9 @@ export class CoordinateTranslator {
       };
     }
     
-    // Child element: convert relative coordinates to absolute
+    // Since ELK expects child coordinates relative to their container,
+    // and ReactFlow provides relative coordinates, we can use them directly.
+    // We only add parent position if we need absolute coordinates in the VisState.
     const absoluteCoords = {
       x: reactFlowCoords.x + parentContainer.x,
       y: reactFlowCoords.y + parentContainer.y
