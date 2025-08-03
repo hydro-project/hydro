@@ -14,6 +14,8 @@ import {
   SIZES
 } from '../shared/config';
 import { TypedEdgeProps } from './types';
+import { createEdgeEventHandlers } from './eventHandlers';
+import { calculateBezierPath, calculateEdgeStyle, getEdgePathProps } from './edgeUtils';
 
 // Standard Edge Component
 export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
@@ -32,23 +34,11 @@ export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
 }) => {
   const edge = data?.edge;
   
-  const handleClick = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (data?.onEdgeClick) {
-      data.onEdgeClick(id);
-    }
-  };
+  // Use shared event handlers
+  const eventHandlers = createEdgeEventHandlers(id, data);
 
-  const handleContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (data?.onEdgeContextMenu) {
-      data.onEdgeContextMenu(id, event);
-    }
-  };
-
-  // Calculate bezier path
-  const [edgePath] = getBezierPath({
+  // Use shared path calculation and styling
+  const [edgePath] = calculateBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -57,28 +47,14 @@ export const GraphStandardEdge: React.FC<TypedEdgeProps> = ({
     targetPosition
   });
 
-  // Get edge style based on type
-  const strokeColor = getEdgeColor(edge?.style, selected, data?.isHighlighted || false);
-  const strokeWidth = style?.strokeWidth || getEdgeStrokeWidth(edge?.style);
-  
-  const edgeStyle = {
-    strokeWidth,
-    stroke: strokeColor,
-    strokeDasharray: getEdgeDashPattern(edge?.style),
-    ...style
-  };
+  const edgeStyle = calculateEdgeStyle(edge, selected, data?.isHighlighted || false, style);
+  const pathProps = getEdgePathProps(id, edgePath, edgeStyle, edge, selected);
 
   return (
     <path
-      id={id}
-      style={edgeStyle}
-      className={`react-flow__edge-path ${edge?.style || 'default'} ${selected ? 'selected' : ''}`}
-      d={edgePath}
-      onClick={handleClick}
-      onContextMenu={handleContextMenu}
-      fill="none"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      {...pathProps}
+      onClick={eventHandlers.handleClick}
+      onContextMenu={eventHandlers.handleContextMenu}
       markerEnd={markerEnd}
       markerStart={markerStart}
     />
@@ -102,23 +78,11 @@ export const GraphHyperEdge: React.FC<TypedEdgeProps> = ({
 }) => {
   const hyperEdge = data?.hyperEdge;
   
-  const handleClick = (event: React.MouseEvent) => {
-    event.stopPropagation();
-    if (data?.onEdgeClick) {
-      data.onEdgeClick(id);
-    }
-  };
+  // Use shared event handlers
+  const eventHandlers = createEdgeEventHandlers(id, data);
 
-  const handleContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (data?.onEdgeContextMenu) {
-      data.onEdgeContextMenu(id, event);
-    }
-  };
-
-  // Calculate bezier path
-  const [edgePath, labelX, labelY] = getBezierPath({
+  // Use shared path calculation (HyperEdge needs labelX/Y)
+  const [edgePath, labelX, labelY] = calculateBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -153,8 +117,8 @@ export const GraphHyperEdge: React.FC<TypedEdgeProps> = ({
         style={edgeStyle}
         className={`react-flow__edge-path hyper-edge ${selected ? 'selected' : ''}`}
         d={edgePath}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
+        onClick={eventHandlers.handleClick}
+        onContextMenu={eventHandlers.handleContextMenu}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"
