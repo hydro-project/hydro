@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["PartitionAttribute"],"fn":["partition"],"struct":["ClusterMembersReplace","Partitioner"]};
+window.SIDEBAR_ITEMS = {"fn":["partition"],"struct":["ClusterMembersReplace","Partitioner"]};

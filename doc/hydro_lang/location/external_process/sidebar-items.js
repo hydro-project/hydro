@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ExternalBincodeSink","ExternalBincodeStream","ExternalBytesPort","ExternalProcess"]};
+window.SIDEBAR_ITEMS = {"enum":["Many","NotMany"],"struct":["External","ExternalBincodeBidi","ExternalBincodeSink","ExternalBincodeStream","ExternalBytesPort"]};
