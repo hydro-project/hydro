@@ -186,22 +186,25 @@
 <a href=#186 id=186 data-nosnippet>186</a>                    cycle_source_to_sink_input,
 <a href=#187 id=187 data-nosnippet>187</a>                );
 <a href=#188 id=188 data-nosnippet>188</a>            },
-<a href=#189 id=189 data-nosnippet>189</a>            <span class="bool-val">true</span>,
+<a href=#189 id=189 data-nosnippet>189</a>            <span class="bool-val">false</span>,
 <a href=#190 id=190 data-nosnippet>190</a>        );
 <a href=#191 id=191 data-nosnippet>191</a>
 <a href=#192 id=192 data-nosnippet>192</a>        <span class="kw">if </span>!<span class="kw-2">*</span>missing_location.borrow() {
 <a href=#193 id=193 data-nosnippet>193</a>            <span class="macro">println!</span>(<span class="string">"Locations injected!"</span>);
-<a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">break</span>;
-<a href=#195 id=195 data-nosnippet>195</a>        }
-<a href=#196 id=196 data-nosnippet>196</a>    }
-<a href=#197 id=197 data-nosnippet>197</a>}
-<a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a><span class="kw">fn </span>remove_counter_node(node: <span class="kw-2">&amp;mut </span>HydroNode, _next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
-<a href=#200 id=200 data-nosnippet>200</a>    <span class="kw">if let </span>HydroNode::Counter { input, .. } = node {
-<a href=#201 id=201 data-nosnippet>201</a>        <span class="kw-2">*</span>node = std::mem::replace(input, HydroNode::Placeholder);
-<a href=#202 id=202 data-nosnippet>202</a>    }
-<a href=#203 id=203 data-nosnippet>203</a>}
-<a href=#204 id=204 data-nosnippet>204</a>
-<a href=#205 id=205 data-nosnippet>205</a><span class="kw">pub fn </span>remove_counter(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
-<a href=#206 id=206 data-nosnippet>206</a>    traverse_dfir(ir, |<span class="kw">_</span>, <span class="kw">_</span>| {}, remove_counter_node);
-<a href=#207 id=207 data-nosnippet>207</a>}</code></pre></div></section></main></body></html>
+<a href=#194 id=194 data-nosnippet>194</a>
+<a href=#195 id=195 data-nosnippet>195</a>            <span class="comment">// Check well-formedness here
+<a href=#196 id=196 data-nosnippet>196</a>            </span>transform_bottom_up(ir, <span class="kw-2">&amp;mut </span>|<span class="kw">_</span>| {}, <span class="kw-2">&amp;mut </span>|<span class="kw">_</span>| {}, <span class="bool-val">true</span>);
+<a href=#197 id=197 data-nosnippet>197</a>            <span class="kw">break</span>;
+<a href=#198 id=198 data-nosnippet>198</a>        }
+<a href=#199 id=199 data-nosnippet>199</a>    }
+<a href=#200 id=200 data-nosnippet>200</a>}
+<a href=#201 id=201 data-nosnippet>201</a>
+<a href=#202 id=202 data-nosnippet>202</a><span class="kw">fn </span>remove_counter_node(node: <span class="kw-2">&amp;mut </span>HydroNode, _next_stmt_id: <span class="kw-2">&amp;mut </span>usize) {
+<a href=#203 id=203 data-nosnippet>203</a>    <span class="kw">if let </span>HydroNode::Counter { input, .. } = node {
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="kw-2">*</span>node = std::mem::replace(input, HydroNode::Placeholder);
+<a href=#205 id=205 data-nosnippet>205</a>    }
+<a href=#206 id=206 data-nosnippet>206</a>}
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a><span class="kw">pub fn </span>remove_counter(ir: <span class="kw-2">&amp;mut </span>[HydroLeaf]) {
+<a href=#209 id=209 data-nosnippet>209</a>    traverse_dfir(ir, |<span class="kw">_</span>, <span class="kw">_</span>| {}, remove_counter_node);
+<a href=#210 id=210 data-nosnippet>210</a>}</code></pre></div></section></main></body></html>
