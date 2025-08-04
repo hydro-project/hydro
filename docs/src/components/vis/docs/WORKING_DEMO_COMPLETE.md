@@ -110,8 +110,7 @@ core/
 └── VisState.ts           ✅ Centralized state management
 
 utils/
-├── JSONLoader.ts         ✅ Simple JSON → VisState  
-└── EnhancedJSONLoader.ts ✅ Real data handling
+├── JSONParser.ts         ✅ Comprehensive JSON parsing with hierarchy support
 
 pages/
 └── SimpleDemoPage.tsx    ✅ Complete React demo

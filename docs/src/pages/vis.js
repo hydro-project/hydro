@@ -22,6 +22,7 @@ function VisHomepageComponent() {
   const [error, setError] = React.useState(null);
   const [visualizationState, setVisualizationState] = React.useState(null);
   const [parseMetadata, setParseMetadata] = React.useState(null);
+  const [originalJsonData, setOriginalJsonData] = React.useState(null); // Store original data for re-parsing
   const [renderCounter, setRenderCounter] = React.useState(0); // Force re-renders
   
     // Layout and color states
@@ -118,6 +119,9 @@ function VisHomepageComponent() {
 
   const handleFileLoad = React.useCallback((jsonData) => {
     try {
+      // Store the original JSON data for re-parsing with different groupings
+      setOriginalJsonData(jsonData);
+      
       // Parse the JSON data into a VisualizationState
       const parseResult = parseGraphJSON(jsonData);
       
@@ -144,15 +148,32 @@ function VisHomepageComponent() {
   }, []);
 
   const handleGroupingChange = React.useCallback((groupingId) => {
-    // In a real implementation, this would re-parse the data with the new grouping
-    // For now, just update the metadata
-    if (parseMetadata) {
-      setParseMetadata({
-        ...parseMetadata,
-        selectedGrouping: groupingId
-      });
+    console.log('[HomePage] 🔄 Grouping changed to:', groupingId);
+    
+    if (!originalJsonData) {
+      console.log('[HomePage] ⚠️ No original JSON data available for re-parsing');
+      return;
     }
-  }, [parseMetadata]);
+    
+    try {
+      // Re-parse the original data with the new grouping
+      const parseResult = parseGraphJSON(originalJsonData, groupingId);
+      
+      // Completely reinitialize the visualization state
+      setVisualizationState(parseResult.state);
+      setParseMetadata(parseResult.metadata);
+      setCollapsedContainers(new Set()); // Reset collapsed containers
+      setError(null);
+      
+      // Force a complete re-render
+      setRenderCounter(prev => prev + 1);
+      
+      console.log('[HomePage] ✅ Successfully reinitialized with grouping:', groupingId);
+    } catch (err) {
+      console.error('[HomePage] ❌ Error re-parsing data with new grouping:', err);
+      setError('Failed to apply new grouping: ' + err.message);
+    }
+  }, [originalJsonData, parseGraphJSON]);
 
   // Handle container click for collapse/expand
   const handleNodeClick = React.useCallback((event, node) => {
@@ -340,10 +361,68 @@ function VisHomepageComponent() {
       edgeCount: 5,
       containerCount: 2,
       availableGroupings: [
-        { id: 'sample_grouping', name: 'Processing Groups' }
+        { id: 'sample_grouping', name: 'Processing Groups' },
+        { id: 'functional_grouping', name: 'Functional Groups' }
       ]
     });
     setCollapsedContainers(new Set());
+    
+    // Store mock JSON data for grouping changes
+    setOriginalJsonData({
+      nodes: [
+        { id: 'source', label: 'Data Source', nodeType: 'Source' },
+        { id: 'transform', label: 'Transform', nodeType: 'Transform' },
+        { id: 'join', label: 'Join', nodeType: 'Join' },
+        { id: 'filter', label: 'Filter', nodeType: 'Filter' },
+        { id: 'sink', label: 'Data Sink', nodeType: 'Sink' },
+        { id: 'error_handler', label: 'Error Handler', nodeType: 'Operator' }
+      ],
+      edges: [
+        { id: 'edge1', source: 'source', target: 'transform' },
+        { id: 'edge2', source: 'transform', target: 'join' },
+        { id: 'edge3', source: 'join', target: 'filter' },
+        { id: 'edge4', source: 'filter', target: 'sink' },
+        { id: 'edge5', source: 'transform', target: 'error_handler' }
+      ],
+      hierarchyChoices: [
+        { id: 'sample_grouping', name: 'Processing Groups' },
+        { id: 'functional_grouping', name: 'Functional Groups' }
+      ],
+      hierarchies: [
+        {
+          id: 'sample_grouping',
+          name: 'Processing Groups',
+          containers: [
+            { 
+              id: 'processing_group', 
+              label: 'Processing Group',
+              children: ['transform', 'join'] 
+            },
+            { 
+              id: 'output_group', 
+              label: 'Output Group', 
+              children: ['filter', 'sink'] 
+            }
+          ]
+        },
+        {
+          id: 'functional_grouping', 
+          name: 'Functional Groups',
+          containers: [
+            { 
+              id: 'input_output_group', 
+              label: 'I/O Operations',
+              children: ['source', 'sink'] 
+            },
+            { 
+              id: 'processing_group', 
+              label: 'Data Processing', 
+              children: ['transform', 'join', 'filter'] 
+            }
+          ]
+        }
+      ]
+    });
   }, [createVisualizationState, NODE_STYLES, EDGE_STYLES]);
 
   if (error) {
@@ -486,6 +565,7 @@ function VisHomepageComponent() {
               onClick={() => {
                 setVisualizationState(null);
                 setParseMetadata(null);
+                setOriginalJsonData(null);
                 setCollapsedContainers(new Set());
                 setError(null);
               }}

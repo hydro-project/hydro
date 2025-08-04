@@ -26,7 +26,7 @@ We now have a **fully functional bridge architecture** that can load JSON data a
    - ✅ Loading and error state management
    - ✅ Auto-visualization pipeline
 
-5. **JSON Loader** (`utils/JSONLoader.ts`)
+5. **JSON Parser** (`core/JSONParser.ts`)
    - ✅ Simple JSON → VisState conversion
    - ✅ Sample data with collapsed containers
    - ✅ Hyperedge generation testing
@@ -72,7 +72,7 @@ We now have a **fully functional bridge architecture** that can load JSON data a
 
 ```mermaid
 JSON Data
-    ↓ JSONLoader
+    ↓ JSONParser
 VisualizationState (canonical)
     ↓ ELKBridge (ALL edges)
 ELK Layout Engine
@@ -94,7 +94,7 @@ ReactFlow Display (ready to render)
 ### **Integration Points:**
 - **HTML Page**: `demo.html` shows architecture overview
 - **React Component**: `SimpleDemoPage.tsx` ready for bundling
-- **JSON API**: `JSONLoader.ts` handles data conversion
+- **JSON API**: `JSONParser.ts` handles data conversion and hierarchy management
 - **Engine API**: `VisualizationEngine.ts` manages lifecycle
 
 ### **Sample Data Ready:**
