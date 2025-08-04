@@ -5,7 +5,6 @@ use hydro_deploy::custom_service::ServerPort;
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::graph_util::GraphConfig;
 use hydro_lang::{Location, NetworkHint};
-use stageleft::q;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -26,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
 
     output_ref.complete(hydro_test::external_client::http_hello::http_hello_server(
-        unsafe { input.map(q!(|r| r.unwrap())).assume_ordering() },
+        input,
     ));
 
     // Extract the IR BEFORE the builder is consumed by deployment methods
