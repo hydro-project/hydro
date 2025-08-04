@@ -691,6 +691,63 @@ export class VisualizationState implements ContainerHierarchyView {
     this._clearAllDataStructures();
   }
 
+  // ============ Invariant Validation ============
+  
+  /**
+   * Validate all internal hyperedge invariants
+   * @param {string} [context=''] - Optional context string for error messages
+   * @throws {Error} When any hyperedge invariant is violated
+   * @example
+   * ```javascript
+   * state.validateHyperedgeInvariants('After container collapse');
+   * ```
+   */
+  validateHyperedgeInvariants(context: string = ''): void {
+    const contextPrefix = context ? `${context}: ` : '';
+    
+    // Get all active hyperedges (not hidden ones)
+    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(he => !he.hidden);
+    
+    // Get visible nodes and containers for validation
+    const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
+    const visibleContainers = this.visibleContainers;
+    const collapsedContainerIds = new Set(
+      visibleContainers.filter(c => c.collapsed).map(c => c.id)
+    );
+    
+    for (const hyperEdge of activeHyperEdges) {
+      // INVARIANT 1: HyperEdges must have at least one collapsed container endpoint
+      const sourceIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.source);
+      const targetIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.target);
+      
+      if (!sourceIsCollapsedContainer && !targetIsCollapsedContainer) {
+        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: must have at least one collapsed container endpoint (source: ${hyperEdge.source}, target: ${hyperEdge.target})`);
+      }
+      
+      // INVARIANT 2: All hyperedge endpoints must be visible (either visible nodes or visible containers)
+      const sourceIsVisibleNode = visibleNodeIds.has(hyperEdge.source);
+      const targetIsVisibleNode = visibleNodeIds.has(hyperEdge.target);
+      const sourceIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.source);
+      const targetIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.target);
+      
+      if (!(sourceIsVisibleNode || sourceIsVisibleContainer)) {
+        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: source ${hyperEdge.source} must be a visible node or container`);
+      }
+      
+      if (!(targetIsVisibleNode || targetIsVisibleContainer)) {
+        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: target ${hyperEdge.target} must be a visible node or container`);
+      }
+    }
+    
+    // INVARIANT 3: No hyperedges should leak into visibleEdges (encapsulation check)
+    const visibleEdges = Array.from(this._visibleEdges.values());
+    for (const edge of visibleEdges) {
+      if (edge.id?.startsWith(HYPER_EDGE_PREFIX)) {
+        throw new Error(`${contextPrefix}Encapsulation violation: hyperedge ${edge.id} found in visibleEdges - hyperedges should be internal only`);
+      }
+    }
+  }
+
   // ============ Container Collapse/Expand Operations ============
   
   /**

@@ -116,7 +116,9 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   getHyperEdges(): HyperEdge[] {
-    return this.core.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+    // HyperEdges are now completely encapsulated within VisState
+    // External code should not access them directly
+    return [];
   }
 
   // Container hierarchy methods
@@ -199,8 +201,9 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   get allHyperEdges(): HyperEdge[] {
-    // Patch: return visibleEdges filtered for hyperedges
-    return this.core.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
+    // HyperEdges are now completely encapsulated within VisState
+    // External code should not access them directly
+    return [];
   }
 }
 

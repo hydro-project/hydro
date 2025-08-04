@@ -116,8 +116,8 @@ export class ELKBridge {
       visibleNodes: visibleNodes.length,
       visibleContainers: visibleContainers.length,
       totalEdges: allEdges.length,
-      regularEdges: allEdges.filter(e => !e.id.includes('hyper_')).length,
-      hyperEdges: allEdges.filter(e => e.id.includes('hyper_')).length
+      regularEdges: allEdges.length,
+      hyperEdges: 0
     });
     
     return this.buildELKGraph(visibleNodes, visibleContainers, allEdges);

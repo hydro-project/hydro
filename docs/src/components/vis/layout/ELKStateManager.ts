@@ -486,27 +486,12 @@ class ELKHierarchyBuilder {
       targets: [edge.target],
     }));
     
-    // FOCUSED HYPEREDGE LOGGING: Log what edges are being sent to ELK
+    // Log what edges are being sent to ELK
     console.log(`${LOG_PREFIXES.STATE_MANAGER} 🔥 BUILDING EDGES FOR ELK:`);
+    console.log(`  📊 Total edges: ${elkEdges.length}`);
     
-    const regularEdges = this.edges.filter(edge => !edge.id.includes('hyper_'));
-    const hyperEdges = this.edges.filter(edge => edge.id.includes('hyper_'));
-    
-    console.log(`  📊 Total edges: ${elkEdges.length} (${regularEdges.length} regular + ${hyperEdges.length} hyperedges)`);
     elkEdges.forEach(edge => {
-      const originalEdge = this.edges.find(e => e.id === edge.id);
-      const isHyperEdge = edge.id.includes('hyper_');
-      const edgeType = isHyperEdge ? '🔥 HYPEREDGE' : '🔗 EDGE';
-      console.log(`    ${edgeType} ${edge.id}: ${edge.sources[0]} → ${edge.targets[0]}`);
-      
-      if (isHyperEdge && originalEdge) {
-        console.log(`      Original data:`, {
-          source: originalEdge.source,
-          target: originalEdge.target,
-          aggregatedEdges: (originalEdge as any).aggregatedEdges?.length || 0,
-          style: originalEdge.style
-        });
-      }
+      console.log(`    🔗 EDGE ${edge.id}: ${edge.sources[0]} → ${edge.targets[0]}`);
     });
     
     return elkEdges;

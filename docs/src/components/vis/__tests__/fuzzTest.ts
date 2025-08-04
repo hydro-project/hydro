@@ -155,34 +155,20 @@ class InvariantChecker {
   
   /**
    * Invariant: HyperEdges exist only for visible, collapsed containers and connect to visible endpoints
+   * NOTE: HyperEdges are now encapsulated within VisState - external code should not see them
    */
   private checkHyperEdgeConsistency(context: string): void {
-    const hyperEdges = this.state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
-    const visibleNodes = this.state.visibleNodes;
-    const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-    const visibleContainers = this.state.visibleContainers;
-    const collapsedContainerIds = new Set(
-      visibleContainers.filter(c => c.collapsed).map(c => c.id)
-    );
+    // HyperEdges are now completely encapsulated within VisState
+    // External code should never see hyperedges in visibleEdges
+    // This invariant check is no longer needed as hyperedges are internal implementation
     
-    // Check that hyperEdges only connect to valid endpoints
-    for (const hyperEdge of hyperEdges) {
-      const sourceIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.source);
-      const targetIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.target);
-      const sourceIsVisibleNode = visibleNodeIds.has(hyperEdge.source);
-      const targetIsVisibleNode = visibleNodeIds.has(hyperEdge.target);
-      
-      // At least one endpoint should be a collapsed container
+    // Instead, we can verify that the visible edges only contain regular edges
+    const visibleEdges = this.state.visibleEdges;
+    for (const edge of visibleEdges) {
+      // All visible edges should be regular edges (no hyperedges exposed)
       assert(
-        sourceIsCollapsedContainer || targetIsCollapsedContainer,
-        `${context}: HyperEdge ${hyperEdge.id} should connect to at least one collapsed container`
-      );
-      
-      // All endpoints should be either collapsed containers or visible nodes
-      assert(
-        (sourceIsCollapsedContainer || sourceIsVisibleNode) && 
-        (targetIsCollapsedContainer || targetIsVisibleNode),
-        `${context}: HyperEdge ${hyperEdge.id} endpoints should be either collapsed containers or visible nodes`
+        !edge.id?.startsWith('hyper_'),
+        `${context}: Found hyperedge ${edge.id} in visibleEdges - hyperedges should be encapsulated!`
       );
     }
   }
@@ -289,10 +275,9 @@ class FuzzTester {
     // Final state summary
     const finalNodes = state.visibleNodes.length;
     const finalEdges = state.visibleEdges.length;
-    const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length;
     const collapsedContainers = state.visibleContainers.filter(c => c.collapsed).length;
     
-    console.log(`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${finalHyperEdges} hyperEdges, ${collapsedContainers} collapsed containers`);
+    console.log(`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${collapsedContainers} collapsed containers`);
   }
   
   /**
@@ -345,7 +330,7 @@ class FuzzTester {
     return {
       visibleNodes: state.visibleNodes.length,
       visibleEdges: state.visibleEdges.length,
-      hyperEdges: state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length,
+      hyperEdges: 0, // HyperEdges are now internal - not counted externally
       expandedContainers: state.expandedContainers.length,
       collapsedContainers: state.visibleContainers.filter(c => c.collapsed).length
     };
