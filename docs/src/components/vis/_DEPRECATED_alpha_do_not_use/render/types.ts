@@ -307,7 +307,7 @@ export function validateReactFlowData(data: any): data is TypedReactFlowData {
   });
 }
 
-export interface GraphFlowEventHandlers {
+export interface FlowGraphEventHandlers {
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   onNodeDoubleClick?: (event: React.MouseEvent, node: Node) => void;
   onNodeContextMenu?: (event: React.MouseEvent, node: Node) => void;

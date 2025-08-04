@@ -97,7 +97,7 @@ export type {
  * 🔥 KEY IMPROVEMENT: Clean coordinate translation between ELK and ReactFlow!
  */
 export { 
-  GraphFlow,
+  FlowGraph as FlowGraph,
   ReactFlowConverter,
   GraphStandardNode,
   GraphContainerNode,
@@ -108,7 +108,7 @@ export {
 
 export type {
   RenderConfig,
-  GraphFlowEventHandlers
+  FlowGraphEventHandlers as FlowGraphEventHandlers
 } from './render/index';
 
 // ============ Bridge Architecture Internals (Advanced) ============
@@ -131,7 +131,7 @@ export type { VisualizationEngineConfig } from './core/VisualizationEngine';
  * 
  * ✅ What's Replaced:
  * - ELKLayoutEngine: Now uses bridge architecture with hyperedge fix
- * - GraphFlow: Now uses bridge architecture with coordinate translation
+ * - FlowGraph: Now uses bridge architecture with coordinate translation
  * - ReactFlowConverter: Now uses bridge architecture 
  * - All rendering components: Now bridge-based
  * 

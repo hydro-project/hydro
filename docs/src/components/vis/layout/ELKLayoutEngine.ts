@@ -12,7 +12,7 @@ import type {
   EdgeStyle,
   GraphNode,
   GraphEdge,
-  Container,
+  ExternalContainer,
   HyperEdge
 } from '../shared/types';
 import type {
@@ -42,11 +42,10 @@ export class ELKLayoutEngine implements LayoutEngine {
   async layout(
     nodes: GraphNode[],
     edges: GraphEdge[],
-    containers: Container[],
-    hyperEdges: HyperEdge[],
+    containers: ExternalContainer[],
     config?: LayoutConfig
   ): Promise<LayoutResult> {
-    console.log('[ELKLayoutEngine] 🚀 Starting layout with bridge architecture...');
+    // ...existing code...
     
     const finalConfig = { ...this.config, ...config };
     const startTime = Date.now();
@@ -104,14 +103,13 @@ export class ELKLayoutEngine implements LayoutEngine {
       const result: LayoutResult = {
         nodes: this.convertNodes(visState.visibleNodes),
         edges: this.convertEdges(visState.visibleEdges),
-        containers: this.convertContainers(visState.visibleContainers),
-        hyperEdges: this.convertHyperEdges(visState.allHyperEdges)
+        containers: this.convertContainers(visState.visibleContainers)
       };
       
       // Update statistics
       this.lastStatistics = {
         totalNodes: result.nodes.length,
-        totalEdges: result.edges.length + result.hyperEdges.length,
+        totalEdges: result.edges.length,
         totalContainers: result.containers.length,
         layoutDuration: duration
       };
@@ -122,7 +120,7 @@ export class ELKLayoutEngine implements LayoutEngine {
         statistics: this.lastStatistics 
       });
       
-      console.log(`[ELKLayoutEngine] ✅ Layout complete in ${duration}ms`);
+      // ...existing code...
       engine.dispose();
       return result;
       
@@ -143,14 +141,13 @@ export class ELKLayoutEngine implements LayoutEngine {
   async layoutWithChangedContainer(
     nodes: GraphNode[],
     edges: GraphEdge[],
-    containers: Container[],
-    hyperEdges: HyperEdge[],
+    containers: ExternalContainer[],
     config?: LayoutConfig,
     changedContainerId?: string | null,
     visualizationState?: any
   ): Promise<LayoutResult> {
     // For now, just call regular layout - the bridge architecture handles changes efficiently
-    return this.layout(nodes, edges, containers, hyperEdges, config);
+    return this.layout(nodes, edges, containers, config);
   }
 
   /**
@@ -182,20 +179,10 @@ export class ELKLayoutEngine implements LayoutEngine {
   private convertContainers(containers: any[]): PositionedContainer[] {
     return containers.map(container => ({
       ...container,
-      x: container.layout?.position?.x || 0,
-      y: container.layout?.position?.y || 0,
-      width: container.layout?.dimensions?.width || 400,
-      height: container.layout?.dimensions?.height || 300
-    }));
-  }
-
-  /**
-   * Convert hyperedges to positioned format
-   */
-  private convertHyperEdges(hyperEdges: any[]): PositionedHyperEdge[] {
-    return hyperEdges.map(edge => ({
-      ...edge,
-      points: [] // Simple implementation - no edge routing
+      x: container.x || 0,
+      y: container.y || 0,
+      width: container.width || 400,
+      height: container.height || 300
     }));
   }
 
@@ -249,9 +236,9 @@ export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
  * Create ELK state manager - compatibility wrapper
  */
 export function createELKStateManager() {
-  console.log('[ELKLayoutEngine] ⚠️ createELKStateManager is deprecated, use VisualizationEngine instead');
+  // ...existing code...
   return {
-    updatePositions: () => console.log('Use VisualizationEngine.runLayout() instead'),
+    updatePositions: () => {},
     dispose: () => {}
   };
 }

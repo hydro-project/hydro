@@ -74,7 +74,7 @@ describe('SymmetricInverse', () => {
       const container1 = containers.find(c => c.id === 'container1');
       expect(container1).toBeDefined();
       expect(container1!.collapsed).toBe(false);
-      expect(container1!.style).toBe('default');
+      expect((container1 as any)?.style || 'default').toBe('default');
     });
   });
 

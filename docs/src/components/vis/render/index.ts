@@ -6,7 +6,7 @@
  */
 
 // Main components
-export { GraphFlow } from './GraphFlow';
+export { FlowGraph } from './FlowGraph';
 export { ReactFlowConverter } from './ReactFlowConverter';
 
 // Node and edge components for compatibility
@@ -26,5 +26,5 @@ export { DEFAULT_RENDER_CONFIG } from './config';
 // Re-export our own types
 export type {
   RenderConfig,
-  GraphFlowEventHandlers
+  FlowGraphEventHandlers
 } from '../core/types';

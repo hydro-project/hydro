@@ -5,10 +5,10 @@
  * No dependencies on alpha.
  */
 
-import type { NodeStyle, EdgeStyle, ContainerStyle } from './constants';
+import type { NodeStyle, EdgeStyle, ContainerStyle, ExternalContainer } from '../shared/types';
 
 // Re-export style types
-export type { NodeStyle, EdgeStyle, ContainerStyle } from './constants';
+export type { NodeStyle, EdgeStyle, ContainerStyle, ExternalContainer } from '../shared/types';
 
 // Basic dimension types
 export interface Dimensions {
@@ -85,7 +85,6 @@ export interface LayoutResult {
   nodes: PositionedNode[];
   edges: PositionedEdge[];
   containers: PositionedContainer[];
-  hyperEdges: PositionedHyperEdge[];
 }
 
 export interface PositionedNode extends GraphNode, Position, Dimensions {}
@@ -102,16 +101,14 @@ export interface LayoutEngine {
   layout(
     nodes: GraphNode[],
     edges: GraphEdge[],
-    containers: Container[],
-    hyperEdges: HyperEdge[],
+    containers: ExternalContainer[],
     config?: LayoutConfig
   ): Promise<LayoutResult>;
   
   layoutWithChangedContainer?(
     nodes: GraphNode[],
     edges: GraphEdge[],
-    containers: Container[],
-    hyperEdges: HyperEdge[],
+    containers: ExternalContainer[],
     config?: LayoutConfig,
     changedContainerId?: string | null,
     visualizationState?: any
@@ -150,7 +147,7 @@ export interface RenderConfig {
   enableSelection?: boolean;
 }
 
-export interface GraphFlowEventHandlers {
+export interface FlowGraphEventHandlers {
   onNodeClick?: (event: any, node: any) => void;
   onEdgeClick?: (event: any, edge: any) => void;
   onNodeDrag?: (event: any, node: any) => void;

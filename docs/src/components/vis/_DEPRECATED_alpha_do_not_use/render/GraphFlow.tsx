@@ -36,7 +36,7 @@ import { GraphStandardNode, GraphContainerNode } from './nodes';
 import { GraphStandardEdge, GraphHyperEdge } from './edges';
 import { 
   RenderConfig, 
-  GraphFlowEventHandlers
+  FlowGraphEventHandlers
 } from './types';
 import { DEFAULT_RENDER_CONFIG } from './config';
 import { MINIMAP_CONFIG, PANEL_COLORS, TYPOGRAPHY } from '../shared/config';
@@ -53,7 +53,7 @@ const edgeTypes = {
 };
 
 // Props for the main component
-export interface GraphFlowProps {
+export interface FlowGraphProps {
   visualizationState: VisualizationState;
   metadata?: {
     nodeTypeConfig?: any;
@@ -61,7 +61,7 @@ export interface GraphFlowProps {
   };
   layoutConfig?: Partial<LayoutConfig>;
   renderConfig?: Partial<RenderConfig>;
-  eventHandlers?: Partial<GraphFlowEventHandlers>;
+  eventHandlers?: Partial<FlowGraphEventHandlers>;
   onLayoutComplete?: () => void;
   onError?: (error: Error) => void;
   className?: string;
@@ -69,7 +69,7 @@ export interface GraphFlowProps {
 }
 
 // Internal component that uses ReactFlow hooks
-const GraphFlowInternal: React.FC<GraphFlowProps> = ({
+const FlowGraphInternal: React.FC<FlowGraphProps> = ({
   visualizationState,
   metadata,
   layoutConfig = {},
@@ -135,7 +135,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       
       // Only log layout start in development
       if (process.env.NODE_ENV === 'development') {
-        console.log('[GraphFlow] 🎯 Starting layout process using VisualizationService...');
+        console.log('[FlowGraph] 🎯 Starting layout process using VisualizationService...');
       }
       
       // CRITICAL: Use service to ensure VisState-only data flow
@@ -167,7 +167,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       });
       
       // 🔥 FINAL REACTFLOW DATA LOGGING - What actually gets passed to ReactFlow
-      console.log('[GraphFlow] 🔥 FINAL DATA PASSED TO REACTFLOW:');
+      console.log('[FlowGraph] 🔥 FINAL DATA PASSED TO REACTFLOW:');
       console.log(`  📊 SUMMARY: ${nodesWithCallbacks.length} nodes, ${reactFlowData.edges.length} edges`);
       
       // Log hyperedge nodes and edges that ReactFlow will actually render
@@ -227,7 +227,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       }, 100);
 
     } catch (error) {
-      console.error('[GraphFlow] Layout error:', error);
+      console.error('[FlowGraph] Layout error:', error);
       onError?.(error instanceof Error ? error : new Error('Layout failed'));
     } finally {
       setIsLayouting(false);
@@ -292,7 +292,7 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
       });
 
       // 🔥 FINAL REACTFLOW DATA LOGGING - What actually gets passed to ReactFlow (SELECTIVE)
-      console.log('[GraphFlow] 🔥 FINAL DATA PASSED TO REACTFLOW (SELECTIVE):');
+      console.log('[FlowGraph] 🔥 FINAL DATA PASSED TO REACTFLOW (SELECTIVE):');
       console.log(`  📊 SUMMARY: ${nodesWithCallbacks.length} nodes, ${reactFlowData.edges.length} edges`);
       
       // Log hyperedge nodes and edges that ReactFlow will actually render
@@ -526,12 +526,12 @@ const GraphFlowInternal: React.FC<GraphFlowProps> = ({
 };
 
 // Main exported component with ReactFlow provider
-export const GraphFlow: React.FC<GraphFlowProps> = (props) => {
+export const FlowGraph: React.FC<FlowGraphProps> = (props) => {
   return (
     <ReactFlowProvider>
-      <GraphFlowInternal {...props} />
+      <FlowGraphInternal {...props} />
     </ReactFlowProvider>
   );
 };
 
-export default GraphFlow;
+export default FlowGraph;

@@ -304,10 +304,10 @@ function testLayoutIntegration(): void {
   console.log('✓ Layout integration tests passed');
 }
 
-// ============ GraphFlow Integration Tests ============
+// ============ FlowGraph Integration Tests ============
 
-function testGraphFlowIntegration(): void {
-  console.log('Testing GraphFlow integration with VisualizationState...');
+function testFlowGraphIntegration(): void {
+  console.log('Testing FlowGraph integration with VisualizationState...');
   
   const state = createTestState();
   
@@ -326,7 +326,7 @@ function testGraphFlowIntegration(): void {
     style: EDGE_STYLES.DEFAULT 
   });
   
-  // Test that state provides data in correct format for GraphFlow
+  // Test that state provides data in correct format for FlowGraph
   const visibleNodes = state.visibleNodes;
   const visibleEdges = state.visibleEdges;
   const visibleContainers = state.visibleContainers;
@@ -354,7 +354,7 @@ function testGraphFlowIntegration(): void {
   assert(typeof edge.target === 'string', 'Edge should have string target');
   assert(typeof edge.style === 'string', 'Edge should have string style');
   
-  console.log('✓ GraphFlow integration tests passed');
+  console.log('✓ FlowGraph integration tests passed');
 }
 
 // ============ Run All Tests ============
@@ -370,7 +370,7 @@ export async function runAllTests(): Promise<void> {
     testRenderConfiguration();
     testValidation();
     testLayoutIntegration();
-    testGraphFlowIntegration();
+    testFlowGraphIntegration();
     
     console.log('\n======================================');
     console.log('🎉 All render component tests passed!');

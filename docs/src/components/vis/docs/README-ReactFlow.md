@@ -13,7 +13,7 @@ npm install reactflow elkjs
 ```typescript
 import React from 'react';
 import { 
-  GraphFlow,
+  FlowGraph,
   createVisualizationState,
   NODE_STYLES,
   EDGE_STYLES
@@ -45,7 +45,7 @@ function MyGraph() {
 
   return (
     <div style={{ width: '100%', height: '600px' }}>
-      <GraphFlow 
+      <FlowGraph 
         visualizationState={visualizationState}
         onLayoutComplete={() => console.log('Layout done!')}
       />
@@ -77,7 +77,7 @@ const layoutConfig = {
   }
 };
 
-<GraphFlow 
+<FlowGraph 
   visualizationState={state}
   layoutConfig={layoutConfig}
 />
@@ -134,7 +134,7 @@ const eventHandlers = {
   }
 };
 
-<GraphFlow 
+<FlowGraph 
   visualizationState={state}
   eventHandlers={eventHandlers}
 />
@@ -218,7 +218,7 @@ interface RenderConfig {
 
 1. **ELKLayoutEngine**: Handles automatic layout using ELK.js
 2. **ReactFlowConverter**: Converts layout results to ReactFlow format
-3. **GraphFlow**: Main React component
+3. **FlowGraph**: Main React component
 4. **Custom Nodes/Edges**: Specialized ReactFlow components
 5. **VisualizationState**: Generic graph state management (JSON-driven)
 
@@ -232,7 +232,7 @@ JSON Graph Data -> VisualizationState -> ELKLayoutEngine -> LayoutResult -> Reac
 
 ```
 render/
-├── GraphFlow.tsx          # Main component
+├── FlowGraph.tsx          # Main component
 ├── ReactFlowConverter.ts  # Data conversion
 ├── nodes.tsx             # Custom node components  
 ├── edges.tsx             # Custom edge components
@@ -285,7 +285,7 @@ For large graphs (1000+ nodes):
 Enable debug mode:
 
 ```typescript
-<GraphFlow 
+<FlowGraph 
   visualizationState={state}
   onError={(error) => console.error('Viz error:', error)}
   onLayoutComplete={() => console.log('Layout complete')}

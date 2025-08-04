@@ -1,3 +1,12 @@
+// External-facing container type (no expandedDimensions)
+export interface ExternalContainer {
+  id: string;
+  collapsed: boolean;
+  hidden: boolean;
+  children: Set<string>;
+  layout?: LayoutState;
+  [key: string]: any;
+}
 /**
  * @fileoverview Type definitions for the Vis component
  * 
@@ -134,34 +143,34 @@ export interface VisualizationState {
   setNodeHidden(id: string, hidden: boolean): void;
   getNodeHidden(id: string): boolean | undefined;
   removeGraphNode(id: string): void;
-  
+
   // Edge methods
   setGraphEdge(id: string, props: CreateEdgeProps): GraphEdge;
   getGraphEdge(id: string): GraphEdge | undefined;
   setEdgeHidden(id: string, hidden: boolean): void;
   getEdgeHidden(id: string): boolean | undefined;
   removeGraphEdge(id: string): void;
-  
+
   // Container methods
-  setContainer(id: string, props: CreateContainerProps): Container;
-  getContainer(id: string): Container | undefined;
+  setContainer(id: string, props: CreateContainerProps): ExternalContainer;
+  getContainer(id: string): ExternalContainer | undefined;
   setContainerCollapsed(id: string, collapsed: boolean): void;
   getContainerCollapsed(id: string): boolean | undefined;
   setContainerHidden(id: string, hidden: boolean): void;
   getContainerHidden(id: string): boolean | undefined;
-  
+
   // Visibility properties (readonly getters)
   readonly visibleNodes: GraphNode[];
   readonly visibleEdges: GraphEdge[];
-  readonly visibleContainers: Container[];
+  readonly visibleContainers: ExternalContainer[];
   readonly allHyperEdges: HyperEdge[];
-  
+
   // Container hierarchy methods
   addContainerChild(containerId: string, childId: string): void;
   removeContainerChild(containerId: string, childId: string): void;
   getContainerChildren(containerId: string): Set<string> | undefined;
   getNodeContainer(nodeId: string): string | undefined;
-  
+
   // Container operations
   collapseContainer(containerId: string): void;
   expandContainer(containerId: string): void;

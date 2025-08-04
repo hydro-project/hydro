@@ -5,12 +5,12 @@
  * 
  * @example
  * ```typescript
- * import { GraphFlow } from './vis/render';
+ * import { FlowGraph } from './vis/render';
  * import './vis/render/styles.css'; // Import styles
  * ```
  */
 
-export { GraphFlow } from './GraphFlow';
+export { FlowGraph } from './FlowGraph';
 export { ReactFlowConverter } from './ReactFlowConverter';
 export { GraphStandardNode, GraphContainerNode } from './nodes';
 export { GraphStandardEdge, GraphHyperEdge } from './edges';
@@ -24,5 +24,5 @@ export {
 } from './config';
 export type {
   RenderConfig,
-  GraphFlowEventHandlers
+  FlowGraphEventHandlers
 } from './types';

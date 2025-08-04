@@ -157,7 +157,7 @@ class InvariantChecker {
    * Invariant: HyperEdges exist only for visible, collapsed containers and connect to visible endpoints
    */
   private checkHyperEdgeConsistency(context: string): void {
-    const hyperEdges = this.state.allHyperEdges;
+    const hyperEdges = this.state.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
     const visibleNodes = this.state.visibleNodes;
     const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
     const visibleContainers = this.state.visibleContainers;
@@ -289,7 +289,7 @@ class FuzzTester {
     // Final state summary
     const finalNodes = state.visibleNodes.length;
     const finalEdges = state.visibleEdges.length;
-    const finalHyperEdges = state.allHyperEdges.length;
+    const finalHyperEdges = state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length;
     const collapsedContainers = state.visibleContainers.filter(c => c.collapsed).length;
     
     console.log(`   📈 Final state: ${finalNodes} visible nodes, ${finalEdges} visible edges, ${finalHyperEdges} hyperEdges, ${collapsedContainers} collapsed containers`);
@@ -345,7 +345,7 @@ class FuzzTester {
     return {
       visibleNodes: state.visibleNodes.length,
       visibleEdges: state.visibleEdges.length,
-      hyperEdges: state.allHyperEdges.length,
+      hyperEdges: state.visibleEdges.filter(e => e.id?.startsWith('hyper_')).length,
       expandedContainers: state.expandedContainers.length,
       collapsedContainers: state.visibleContainers.filter(c => c.collapsed).length
     };

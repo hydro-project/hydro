@@ -12,8 +12,8 @@ We have successfully completed the **complete replacement** of the alpha impleme
 - 🔥 **KEY FIX**: Now includes ALL edges (regular + hyperedges) in layout calculations
 - 🚀 **RESULT**: No more overlapping between collapsed containers and external nodes
 
-#### **2. ReactFlow Renderer - `GraphFlow`**
-- ✅ **NEW**: Bridge-based implementation in `/render/GraphFlow.tsx`
+#### **2. ReactFlow Renderer - `FlowGraph`**
+- ✅ **NEW**: Bridge-based implementation in `/render/FlowGraph.tsx`
 - ✅ **SAME API**: Exact same props and behavior as alpha
 - 🔥 **KEY FIX**: Clean coordinate translation between ELK canonical and ReactFlow relative positioning
 - 🚀 **RESULT**: Perfect positioning with no coordinate system mismatches
@@ -59,7 +59,7 @@ We have successfully completed the **complete replacement** of the alpha impleme
 | `createVisualizationState()` | ✅ Same | ✅ Same | ✅ **100%** |
 | `parseGraphJSON()` | ✅ Same | ✅ Same | ✅ **100%** |
 | `ELKLayoutEngine` | ✅ Same | ✅ Same | ✅ **100%** |
-| `GraphFlow` | ✅ Same | ✅ Same | ✅ **100%** |
+| `FlowGraph` | ✅ Same | ✅ Same | ✅ **100%** |
 | `ReactFlowConverter` | ✅ Same | ✅ Same | ✅ **100%** |
 | `NODE_STYLES` | ✅ Same | ✅ Same | ✅ **100%** |
 | `EDGE_STYLES` | ✅ Same | ✅ Same | ✅ **100%** |
@@ -72,7 +72,7 @@ We have successfully completed the **complete replacement** of the alpha impleme
 ```typescript
 // This exact code worked with alpha and works with bridge architecture:
 import { 
-  GraphFlow, 
+  FlowGraph, 
   parseGraphJSON, 
   ELKLayoutEngine,
   NODE_STYLES,
@@ -91,7 +91,7 @@ const engine = new ELKLayoutEngine();
 await engine.layout(nodes, edges, containers, hyperEdges);
 
 // Same ReactFlow rendering
-<GraphFlow visualizationState={state} config={{ fitView: true }} />
+<FlowGraph visualizationState={state} config={{ fitView: true }} />
 ```
 
 **This code works identically - just with better performance and no bugs!**
@@ -111,7 +111,7 @@ NEW BRIDGE ARCHITECTURE:
 │   ├── ELKLayoutEngine.ts        ✅ Bridge-based replacement
 │   └── index.ts                  ✅ Export module
 ├── render/
-│   ├── GraphFlow.tsx             ✅ Bridge-based replacement
+│   ├── FlowGraph.tsx             ✅ Bridge-based replacement
 │   ├── ReactFlowConverter.ts     ✅ Bridge-based replacement
 │   ├── nodes.tsx                 ✅ Node components
 │   ├── edges.tsx                 ✅ Edge components

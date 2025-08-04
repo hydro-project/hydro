@@ -103,10 +103,9 @@ describe('Bug Fix Tests', () => {
       // Check that containers have proper ELK coordinates before conversion
       const containers = state.visibleContainers;
       for (const container of containers) {
-        const elkX = container.layout?.position?.x || 0;
-        const elkY = container.layout?.position?.y || 0;
+        const elkX = container.x || 0;
+        const elkY = container.y || 0;
         console.log(`[Container Positioning] ${container.id}: ELK=(${elkX}, ${elkY})`);
-        
         // Containers should have valid ELK positions after layout
         expect(elkX).toBeGreaterThanOrEqual(0);
         expect(elkY).toBeGreaterThanOrEqual(0);
@@ -124,10 +123,9 @@ describe('Bug Fix Tests', () => {
         const visStateContainer = containers.find(c => c.id === containerNode.id);
         if (visStateContainer) {
           // Container ReactFlow positioning should match ELK positioning
-          // BUG: Containers show (0, 0) but should show their actual ELK coordinates
-          // Fix: Check the correct layout structure
-          const expectedX = visStateContainer.layout?.position?.x || 0;
-          const expectedY = visStateContainer.layout?.position?.y || 0;
+          // Fix: Check the correct structure
+          const expectedX = visStateContainer.x || 0;
+          const expectedY = visStateContainer.y || 0;
           expect(containerNode.position.x).toBe(expectedX);
           expect(containerNode.position.y).toBe(expectedY);
         }

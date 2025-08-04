@@ -15,7 +15,7 @@
  * CRITICAL: No external code should call ELK or ReactFlow directly - everything must go through this service.
  */
 
-import { VisualizationState } from '../core/VisState';
+import type { VisualizationState, ExternalContainer } from '../shared/types';
 import { ELKLayoutEngine } from '../layout/ELKLayoutEngine';
 import { ReactFlowConverter } from '../render/ReactFlowConverter';
 import { TypedReactFlowData, TypedReactFlowNode, TypedReactFlowEdge } from '../render/types';
@@ -113,7 +113,7 @@ export class VisualizationService {
     const visibleNodes = visState.visibleNodes;
     const visibleEdges = visState.visibleEdges;
     const visibleContainers = visState.visibleContainers; // Send ALL visible containers for hyperedge positioning
-    const hyperEdges = visState.allHyperEdges;
+    const hyperEdges = visState.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
 
     console.log('[VisualizationService] 📊 VISSTATE_DATA:', {
       nodes: visibleNodes.length,
@@ -126,9 +126,8 @@ export class VisualizationService {
     // Use layoutWithChangedContainer with null to get full layout that applies to VisState
     const layoutResult = await this.layoutEngine.layoutWithChangedContainer(
       visibleNodes,
-      visibleEdges,
-      visibleContainers, // Send all visible containers for hyperedge positioning
-      hyperEdges,
+      visibleEdges, // Include ALL visible edges (regular + hyperedge representations)
+      visibleContainers as ExternalContainer[], // Send all visible containers for positioning
       layoutConfig,
       null, // null = full layout
       visState // Pass VisState for automatic result application
@@ -153,7 +152,7 @@ export class VisualizationService {
     
     // Convert to ReactFlow format using the actual VisState
     const converter = new ReactFlowConverter();
-    const reactFlowData = converter.convert(visState);
+    const reactFlowData = converter.convert(visState as any);
     
     console.log('[VisualizationService] 📊 REACTFLOW_DATA:', {
       nodes: reactFlowData.nodes.length,
@@ -173,7 +172,7 @@ export class VisualizationService {
     const visibleNodes = visState.visibleNodes;
     const visibleEdges = visState.visibleEdges;
     const visibleContainers = visState.visibleContainers;
-    const allHyperEdges = visState.allHyperEdges;
+    const allHyperEdges = visState.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
 
     console.log('[VisualizationService] 📊 CURRENT_VISSTATE:', {
       visibleNodes: visibleNodes.length,
@@ -195,10 +194,10 @@ export class VisualizationService {
       containers: visibleContainers.map(container => ({
         ...container,
         // Use position from VisState layout if available, otherwise default
-        x: container.layout?.position?.x || 0,
-        y: container.layout?.position?.y || 0,
-        width: container.layout?.dimensions?.width || container.dimensions?.width || 400,
-        height: container.layout?.dimensions?.height || container.dimensions?.height || 300
+      x: container.x || 0,
+      y: container.y || 0,
+      width: container.width || 400,
+      height: container.height || 300
       })),
       hyperEdges: allHyperEdges
     };
@@ -244,8 +243,8 @@ export class VisualizationService {
     const visibleNodes = visState.visibleNodes;
     const visibleEdges = visState.visibleEdges;
     const visibleContainers = visState.visibleContainers;
-    const expandedContainers = visState.expandedContainers;
-    const allHyperEdges = visState.allHyperEdges;
+    const expandedContainers = visState.visibleContainers.filter(c => !c.collapsed);
+    const allHyperEdges = visState.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
     
     console.log(`  � SUMMARY: ${visibleContainers.length} containers, ${visibleNodes.length} nodes, ${visibleEdges.length} edges, ${allHyperEdges.length} hyperEdges`);
     
@@ -260,9 +259,8 @@ export class VisualizationService {
     visibleContainers.forEach(container => {
       if (hyperEdgeNodeIds.has(container.id)) {
         console.log(`    ${container.id}: collapsed=${container.collapsed}, hidden=${container.hidden}, children=${container.children?.size || 0}`);
-        if (container.layout) {
-          console.log(`      layout: pos=(${container.layout.position?.x || 0}, ${container.layout.position?.y || 0}), size=${container.layout.dimensions?.width || 'auto'}x${container.layout.dimensions?.height || 'auto'}`);
-        }
+        // No layout property; use top-level x/y/width/height if needed
+        // console.log(`      pos=(${container.x || 0}, ${container.y || 0}), size=${container.width || 'auto'}x${container.height || 'auto'}`);
       }
     });
     
@@ -288,7 +286,7 @@ export class VisualizationService {
       const targetNode = visibleNodes.find(n => n.id === edge.target);
       
       if (sourceContainer) {
-        const sourcePos = sourceContainer.layout?.position || { x: 0, y: 0 };
+        const sourcePos = { x: sourceContainer.x || 0, y: sourceContainer.y || 0 };
         console.log(`      🔗 SOURCE: Container ${edge.source} at (${sourcePos.x}, ${sourcePos.y})`);
       } else if (sourceNode) {
         const sourcePos = sourceNode.layout?.position || { x: 0, y: 0 };
@@ -298,7 +296,7 @@ export class VisualizationService {
       }
       
       if (targetContainer) {
-        const targetPos = targetContainer.layout?.position || { x: 0, y: 0 };
+        const targetPos = { x: targetContainer.x || 0, y: targetContainer.y || 0 };
         console.log(`      🔗 TARGET: Container ${edge.target} at (${targetPos.x}, ${targetPos.y})`);
       } else if (targetNode) {
         const targetPos = targetNode.layout?.position || { x: 0, y: 0 };

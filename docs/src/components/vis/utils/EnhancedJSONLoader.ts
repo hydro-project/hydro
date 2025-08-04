@@ -93,7 +93,7 @@ export async function loadGraphFromFile(
   visState: VisualizationState,
   maxNodes: number = 15
 ): Promise<void> {
-  console.log(`[EnhancedLoader] 📁 Loading graph from ${filePath}...`);
+  // ...existing code...
   
   try {
     // In a real browser environment, you'd use fetch()
@@ -111,7 +111,7 @@ export async function loadGraphFromFile(
     // Subset the data to keep it manageable
     const subsetData = subsetGraphData(graphData, maxNodes);
     
-    console.log(`[EnhancedLoader] 📊 Processing subset: ${subsetData.nodes.length} nodes, ${subsetData.edges.length} edges`);
+    // ...existing code...
     
     // Load into VisState
     loadGraphFromJSON(subsetData, visState);
@@ -129,7 +129,7 @@ export function loadGraphFromJSON(
   jsonData: SimpleGraphData, 
   visState: VisualizationState
 ): void {
-  console.log('[EnhancedLoader] 🔄 Converting to VisState...');
+  // ...existing code...
   
   // Clear existing data
   visState.clear();
@@ -169,11 +169,7 @@ export function loadGraphFromJSON(
     });
   }
   
-  console.log('[EnhancedLoader] ✅ VisState loaded:', {
-    nodes: jsonData.nodes.length,
-    edges: jsonData.edges.length,
-    containers: jsonData.containers?.length || 0
-  });
+  // ...existing code...
 }
 
 /**

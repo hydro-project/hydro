@@ -246,11 +246,6 @@ export function ExampleVisualization({ visState }: ExampleVisualizationProps): J
         }}
         style={{ height: '700px' }}
       />
-      
-      <div style={{ marginTop: '16px', fontSize: '12px', color: '#666' }}>
-        💡 The hyperedge layout bug is now fixed! Collapsed containers and external nodes 
-        will no longer overlap because hyperedges are included in ELK calculations.
-      </div>
     </div>
   );
 }

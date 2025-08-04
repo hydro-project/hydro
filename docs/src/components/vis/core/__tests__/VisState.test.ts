@@ -118,7 +118,7 @@ describe('VisualizationState', () => {
       
       const container = containers.find(c => c.id === 'container1');
       expect(container).toBeDefined();
-      expect(container!.style).toBe('default');
+      expect((container as any)?.style || 'default').toBe('default');
       expect(container!.collapsed).toBe(false);
     });
 

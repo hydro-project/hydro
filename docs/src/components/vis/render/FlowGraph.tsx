@@ -1,7 +1,7 @@
 /**
- * @fileoverview Bridge-Based GraphFlow Component
+ * @fileoverview Bridge-Based FlowGraph Component
  * 
- * Complete replacement for alpha GraphFlow using our bridge architecture.
+ * Complete replacement for alpha FlowGraph using our bridge architecture.
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
@@ -16,23 +16,23 @@ import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import type { VisualizationState } from '../core/VisState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
-import type { RenderConfig, GraphFlowEventHandlers } from '../core/types';
+import type { RenderConfig, FlowGraphEventHandlers as FlowGraphEventHandlers } from '../core/types';
 
-export interface GraphFlowProps {
+export interface FlowGraphProps {
   visualizationState: VisualizationState;
   config?: RenderConfig;
-  eventHandlers?: GraphFlowEventHandlers;
+  eventHandlers?: FlowGraphEventHandlers;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export function GraphFlow({
+export function FlowGraph({
   visualizationState,
   config = DEFAULT_RENDER_CONFIG,
   eventHandlers,
   className,
   style
-}: GraphFlowProps): JSX.Element {
+}: FlowGraphProps): JSX.Element {
   const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export function GraphFlow({
         setLoading(true);
         setError(null);
 
-        console.log('[GraphFlow] 🔄 Visualization state changed, updating...');
+        console.log('[FlowGraph] 🔄 Visualization state changed, updating...');
         
         // Run layout
         await engine.runLayout();
@@ -60,13 +60,13 @@ export function GraphFlow({
         const data = converter.convert(visualizationState);
         setReactFlowData(data);
         
-        console.log('[GraphFlow] ✅ Updated ReactFlow data:', {
+        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
           nodes: data.nodes.length,
           edges: data.edges.length
         });
         
       } catch (err) {
-        console.error('[GraphFlow] ❌ Failed to update visualization:', err);
+        console.error('[FlowGraph] ❌ Failed to update visualization:', err);
         setError(err instanceof Error ? err.message : String(err));
       } finally {
         setLoading(false);
@@ -83,12 +83,12 @@ export function GraphFlow({
 
   // Handle node events
   const onNodeClick = useCallback((event: any, node: any) => {
-    console.log('[GraphFlow] 🖱️ Node clicked:', node.id);
+    console.log('[FlowGraph] 🖱️ Node clicked:', node.id);
     eventHandlers?.onNodeClick?.(event, node);
   }, [eventHandlers]);
 
   const onEdgeClick = useCallback((event: any, edge: any) => {
-    console.log('[GraphFlow] 🖱️ Edge clicked:', edge.id);
+    console.log('[FlowGraph] 🖱️ Edge clicked:', edge.id);
     eventHandlers?.onEdgeClick?.(event, edge);
   }, [eventHandlers]);
 

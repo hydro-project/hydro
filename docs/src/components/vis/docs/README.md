@@ -62,11 +62,11 @@ const state = createVisualizationState()
 
 ### React Component
 ```typescript
-import { GraphFlow } from './render/GraphFlow';
+import { FlowGraph } from './render/FlowGraph';
 
 function MyVisualization() {
   return (
-    <GraphFlow 
+    <FlowGraph 
       visualizationState={state}
       layoutConfig={{ algorithm: 'layered' }}
       renderConfig={{ enableMiniMap: true }}
@@ -94,7 +94,7 @@ docs/src/components/vis/
 │   ├── ContainerCollapseExpand.ts
 │   └── adapter.ts
 ├── render/                # React rendering components
-│   ├── GraphFlow.tsx      # Main ReactFlow component
+│   ├── FlowGraph.tsx      # Main ReactFlow component
 │   ├── nodes.tsx          # Custom node components
 │   ├── edges.tsx          # Custom edge components
 │   ├── colorUtils.ts      # Shared color utilities

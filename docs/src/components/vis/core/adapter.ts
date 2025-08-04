@@ -5,15 +5,16 @@
  */
 
 import { VisualizationState as CoreVisualizationState } from '../core/VisState';
+
 import type { 
   VisualizationState,
   GraphNode,
   GraphEdge,
-  Container,
   HyperEdge,
   CreateNodeProps,
   CreateEdgeProps,
-  CreateContainerProps
+  CreateContainerProps,
+  ExternalContainer
 } from '../shared/types';
 
 /**
@@ -73,12 +74,12 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   // Container methods
-  setContainer(id: string, props: CreateContainerProps): Container {
+  setContainer(id: string, props: CreateContainerProps): ExternalContainer {
     this.core.setContainer(id, props);
     return this.core.getContainer(id);
   }
 
-  getContainer(id: string): Container | undefined {
+  getContainer(id: string): ExternalContainer | undefined {
     return this.core.getContainer(id);
   }
 
@@ -109,12 +110,13 @@ export class VisualizationStateAdapter implements VisualizationState {
     return this.core.visibleEdges;
   }
 
-  getVisibleContainers(): Container[] {
-    return this.core.visibleContainers;
+  getVisibleContainers(): ExternalContainer[] {
+    // Cast is safe: VisState never exposes expandedDimensions externally
+    return this.core.visibleContainers as ExternalContainer[];
   }
 
   getHyperEdges(): HyperEdge[] {
-    return this.core.allHyperEdges;
+    return this.core.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
   }
 
   // Container hierarchy methods
@@ -178,7 +180,7 @@ export class VisualizationStateAdapter implements VisualizationState {
     return this.core.getContainerELKFixed(id);
   }
 
-  getContainersRequiringLayout(changedContainerId?: string): Container[] {
+  getContainersRequiringLayout(changedContainerId?: string): ExternalContainer[] {
     return this.core.getContainersRequiringLayout(changedContainerId);
   }
 
@@ -191,12 +193,14 @@ export class VisualizationStateAdapter implements VisualizationState {
     return this.core.visibleEdges;
   }
 
-  get visibleContainers(): Container[] {
-    return this.core.visibleContainers;
+  get visibleContainers(): ExternalContainer[] {
+    // Cast is safe: VisState never exposes expandedDimensions externally
+    return this.core.visibleContainers as ExternalContainer[];
   }
 
   get allHyperEdges(): HyperEdge[] {
-    return this.core.allHyperEdges;
+    // Patch: return visibleEdges filtered for hyperedges
+    return this.core.visibleEdges.filter(e => e.id?.startsWith('hyper_'));
   }
 }
 

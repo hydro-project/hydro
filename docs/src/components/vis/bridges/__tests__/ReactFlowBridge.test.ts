@@ -42,6 +42,10 @@ describe('ReactFlowBridge', () => {
         collapsed: false,
         hidden: false,
         children: new Set(['node1']),
+        x: 50,
+        y: 75,
+        width: 350,
+        height: 250,
         layout: {
           position: { x: 50, y: 75 },
           dimensions: { width: 350, height: 250 }

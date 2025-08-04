@@ -89,11 +89,11 @@ state
 
 ## React Integration
 
-### Basic GraphFlow Component
+### Basic FlowGraph Component
 
 ```typescript
 import React from 'react';
-import { GraphFlow } from './render/GraphFlow';
+import { FlowGraph } from './render/FlowGraph';
 import { createVisualizationState } from './core/VisState';
 
 function MyVisualization() {
@@ -105,7 +105,7 @@ function MyVisualization() {
 
   return (
     <div style={{ height: '400px', width: '600px' }}>
-      <GraphFlow 
+      <FlowGraph 
         visualizationState={state}
         layoutConfig={{ algorithm: 'layered' }}
         renderConfig={{ enableMiniMap: true }}
@@ -132,7 +132,7 @@ function InteractiveVisualization() {
   };
 
   return (
-    <GraphFlow 
+    <FlowGraph 
       visualizationState={state}
       eventHandlers={{ onNodeClick: handleNodeClick }}
     />
@@ -193,7 +193,7 @@ const customLayout = {
 };
 
 // Use custom layout
-<GraphFlow 
+<FlowGraph 
   visualizationState={state}
   layoutConfig={customLayout}
 />

@@ -12,7 +12,7 @@ The Hydro visualization system is built on a modular architecture that separates
 ├─────────────────────────────────────────────────────────────┤
 │                    Render Components                        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ GraphFlow   │  │    Nodes    │  │       Edges         │  │
+│  │ FlowGraph   │  │    Nodes    │  │       Edges         │  │
 │  │   .tsx      │  │   .tsx      │  │      .tsx           │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────┘  │
 ├─────────────────────────────────────────────────────────────┤
@@ -82,7 +82,7 @@ Layout Results → ReactFlow Converter → React Components → DOM
 - **Layout Types**: Layout-specific interfaces
 
 #### Rendering (Render)
-- **GraphFlow**: Main ReactFlow component
+- **FlowGraph**: Main ReactFlow component
 - **Nodes/Edges**: Custom React components
 - **ReactFlowConverter**: Layout-to-ReactFlow translation
 
