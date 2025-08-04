@@ -1,14 +1,15 @@
+use hydro_lang::keyed_stream::KeyedStream;
 use hydro_lang::*;
 
 pub fn http_hello_server<'a, P>(
-    in_stream: Stream<(u64, String), Process<'a, P>, Unbounded, TotalOrder>,
-) -> Stream<(u64, String), Process<'a, P>, Unbounded, TotalOrder> {
+    in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
+) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder> {
     in_stream
-        .inspect(q!(|(id, line)| println!(
+        .inspect_with_key(q!(|(id, line)| println!(
             "Received line from client #{}: '{}'",
             id, line
         )))
-        .fold_keyed_early_stop(
+        .fold_early_stop(
             q!(|| String::new()),
             q!(|buffer, line| {
                 buffer.push_str(&line);
@@ -18,7 +19,7 @@ pub fn http_hello_server<'a, P>(
                 line.trim().is_empty()
             }),
         )
-        .map(q!(|(id, raw_request)| {
+        .map_with_key(q!(|(id, raw_request)| {
             let lines: Vec<&str> = raw_request.lines().collect();
 
             // Parse request line
@@ -77,9 +78,9 @@ pub fn http_hello_server<'a, P>(
                 html_content.len(),
                 html_content
             );
-            (id, response)
+            response
         }))
-        .inspect(q!(|(id, response)| println!(
+        .inspect_with_key(q!(|(id, response)| println!(
             "Sending HTTP response to client #{}: {} bytes",
             id,
             response.len()
