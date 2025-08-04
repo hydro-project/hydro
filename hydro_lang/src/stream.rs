@@ -16,6 +16,7 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
+use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
@@ -1684,6 +1685,15 @@ where
                 metadata: self.location.new_node_metadata::<(K, V1)>(),
             },
         )
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+    pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream {
+            underlying: unsafe { self.assume_ordering::<NoOrder>() },
+            _phantom_order: Default::default(),
+        }
     }
 }
 
