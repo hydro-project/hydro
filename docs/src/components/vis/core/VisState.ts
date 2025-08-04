@@ -756,6 +756,9 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   collapseContainer(containerId: string): void {
     this.collapseExpandEngine.collapseContainer(containerId);
+    
+    // Validate hyperedge invariants after collapse operation
+    this.validateHyperedgeInvariants(`After collapsing container ${containerId}`);
   }
   
   /**
@@ -764,6 +767,9 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   expandContainer(containerId: string): void {
     this.collapseExpandEngine.expandContainer(containerId);
+    
+    // Validate hyperedge invariants after expand operation
+    this.validateHyperedgeInvariants(`After expanding container ${containerId}`);
   }
 
   // ============ Private Helper Methods ============
