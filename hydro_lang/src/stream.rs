@@ -16,6 +16,7 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
+use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
@@ -289,7 +290,7 @@ impl<'a, T, L, B, O, R> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
-    /// Produces a stream based on invoking `f` on each element in order.
+    /// Produces a stream based on invoking `f` on each element.
     /// If you do not want to modify the stream and instead only want to view
     /// each item use [`Stream::inspect`] instead.
     ///
@@ -1684,6 +1685,15 @@ where
                 metadata: self.location.new_node_metadata::<(K, V1)>(),
             },
         )
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+    pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream {
+            underlying: unsafe { self.assume_ordering::<NoOrder>() },
+            _phantom_order: Default::default(),
+        }
     }
 }
 
