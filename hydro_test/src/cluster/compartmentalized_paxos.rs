@@ -257,7 +257,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
             ((slot, ballot), payload)
         ))))
         .all_ticks()
-        .send_bincode_anonymous(proxy_leaders);
+        .demux_bincode(proxy_leaders)
+        .values();
 
     // Send to a specific acceptor row
     let num_acceptor_rows = config.acceptor_grid_rows;
@@ -282,7 +283,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
             }
             p2as
         }))
-        .send_bincode_anonymous(acceptors);
+        .demux_bincode(acceptors)
+        .values();
 
     let (a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
         acceptor_tick,
@@ -307,7 +309,9 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
     let pl_failed_p2b_to_proposer = fails
         .map(q!(|(_, ballot)| (ballot.proposer_id, ballot)))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
-        .send_bincode_anonymous(proposers);
+        .end_atomic()
+        .demux_bincode(proposers)
+        .values();
 
     (
         pl_to_replicas

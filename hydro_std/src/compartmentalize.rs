@@ -40,7 +40,7 @@ impl<'a, T, C1, C2, Order> PartitionStream<'a, T, C1, C2, Order>
                 Min = NoOrder,
             >,
     {
-        self.map(dist_policy).send_bincode_anonymous(other)
+        self.map(dist_policy).demux_bincode(other).values()
     }
 }
 
@@ -78,7 +78,8 @@ impl<'a, T, C1, B, Order> DecoupleClusterStream<'a, T, C1, B, Order>
                 ClusterId::from_raw(CLUSTER_SELF_ID.raw_id),
                 b.clone()
             )))
-            .send_bincode_anonymous(other);
+            .demux_bincode(other)
+            .values();
 
         unsafe {
             // SAFETY: this is safe because we are mapping clusters 1:1
@@ -101,21 +102,16 @@ pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order> {
             >;
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B, Order> DecoupleProcessStream<'a, T, L, B, Order>
-    for Stream<T, L, B, Order>
+impl<'a, T, L, B, Order> DecoupleProcessStream<'a, T, Process<'a, L>, B, Order>
+    for Stream<T, Process<'a, L>, B, Order>
 {
     fn decouple_process<P2>(
         self,
         other: &Process<'a, P2>,
     ) -> Stream<T, Process<'a, P2>, Unbounded, Order>
     where
-        L::Root: CanSend<'a, Process<'a, P2>, In<T> = T, Out<T> = T>,
         T: Clone + Serialize + DeserializeOwned,
-        Order: MinOrder<
-                <L::Root as CanSend<'a, Process<'a, P2>>>::OutStrongestOrder<Order>,
-                Min = Order,
-            >,
     {
-        self.send_bincode::<Process<'a, P2>, T>(other)
+        self.send_bincode(other)
     }
 }

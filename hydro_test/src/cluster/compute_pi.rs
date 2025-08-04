@@ -30,7 +30,8 @@ pub fn compute_pi<'a>(
         .all_ticks();
 
     let estimate = trials
-        .send_bincode_anonymous(&process)
+        .send_bincode(&process)
+        .values()
         .reduce_commutative(q!(|(inside, total), (inside_batch, total_batch)| {
             *inside += inside_batch;
             *total += total_batch;

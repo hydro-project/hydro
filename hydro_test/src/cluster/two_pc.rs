@@ -25,7 +25,7 @@ where
 
     // participant 1 aborts transaction 1
     // TODO: Participants log
-    let c_votes = p_prepare.send_bincode_anonymous(coordinator);
+    let c_votes = p_prepare.send_bincode(coordinator).values();
 
     // collect votes from participant.
     let coordinator_tick = coordinator.tick();
@@ -40,10 +40,10 @@ where
     // TODO: Coordinator log
 
     // broadcast commit transactions to participants.
-    let p_commit = c_all_vote_yes.broadcast_bincode(participants);
+    let p_commit = c_all_vote_yes.end_atomic().broadcast_bincode(participants);
     // TODO: Participants log
 
-    let c_commits = p_commit.send_bincode_anonymous(coordinator);
+    let c_commits = p_commit.send_bincode(coordinator).values();
     let (c_all_commit, _) = collect_quorum(
         c_commits
             .map(q!(|kv| (kv, Ok::<(), ()>(()))))
