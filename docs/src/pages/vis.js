@@ -15,6 +15,7 @@ function VisHomepageComponent() {
   const [parseGraphJSON, setParseGraphJSON] = React.useState(null);
   const [FileDropZone, setFileDropZone] = React.useState(null);
   const [InfoPanel, setInfoPanel] = React.useState(null);
+  const [LayoutControls, setLayoutControls] = React.useState(null);
   const [createDefaultLegendData, setCreateDefaultLegendData] = React.useState(null);
   const [NODE_STYLES, setNodeStyles] = React.useState(null);
   const [EDGE_STYLES, setEdgeStyles] = React.useState(null);
@@ -22,6 +23,11 @@ function VisHomepageComponent() {
   const [visualizationState, setVisualizationState] = React.useState(null);
   const [parseMetadata, setParseMetadata] = React.useState(null);
   const [renderCounter, setRenderCounter] = React.useState(0); // Force re-renders
+  
+  // Layout control state
+  const [currentLayout, setCurrentLayout] = React.useState('layered');
+  const [colorPalette, setColorPalette] = React.useState('Set2');
+  const [autoFit, setAutoFit] = React.useState(false);
   // Generate legend data based on node types present in the visualization state
   const generateLegendData = () => {
     // Collect all unique node types from the visualization state
@@ -97,6 +103,7 @@ function VisHomepageComponent() {
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setFileDropZone(() => componentsModule.FileDropZone);
         setInfoPanel(() => componentsModule.InfoPanel);
+        setLayoutControls(() => componentsModule.LayoutControls);
         setCreateDefaultLegendData(() => componentsModule.createDefaultLegendData);
         setNodeStyles(constantsModule.NODE_STYLES);
         setEdgeStyles(constantsModule.EDGE_STYLES);
@@ -184,6 +191,70 @@ function VisHomepageComponent() {
       console.log(`[HomePage] ℹ️ Non-container node clicked: ${node.id} (type: ${node.type})`);
     }
   }, [visualizationState]);
+
+  // Layout control handlers
+  const handleLayoutChange = React.useCallback(async (layout) => {
+    setCurrentLayout(layout);
+    console.log('[HomePage] 🔧 Layout changed to:', layout);
+    
+    // Force a re-render to apply the new layout config
+    setRenderCounter(prev => prev + 1);
+    
+    console.log('[HomePage] ✅ Layout change applied successfully');
+  }, []);
+
+  const handlePaletteChange = React.useCallback((palette) => {
+    setColorPalette(palette);
+    // TODO: Implement color palette change
+    console.log('Color palette changed to:', palette);
+  }, []);
+
+  const handleCollapseAll = React.useCallback(() => {
+    if (!visualizationState) return;
+    
+    try {
+      // Collapse all expanded containers
+      visualizationState.visibleContainers.forEach(container => {
+        if (!container.collapsed) {
+          visualizationState.collapseContainer(container.id);
+        }
+      });
+      
+      setRenderCounter(prev => prev + 1);
+      console.log('[HomePage] 📦 Collapsed all containers');
+    } catch (error) {
+      console.error('[HomePage] ❌ Error collapsing all containers:', error);
+    }
+  }, [visualizationState]);
+
+  const handleExpandAll = React.useCallback(() => {
+    if (!visualizationState) return;
+    
+    try {
+      // Expand all collapsed containers
+      visualizationState.visibleContainers.forEach(container => {
+        if (container.collapsed) {
+          visualizationState.expandContainer(container.id);
+        }
+      });
+      
+      setRenderCounter(prev => prev + 1);
+      console.log('[HomePage] 📤 Expanded all containers');
+    } catch (error) {
+      console.error('[HomePage] ❌ Error expanding all containers:', error);
+    }
+  }, [visualizationState]);
+
+  const handleAutoFitToggle = React.useCallback((enabled) => {
+    setAutoFit(enabled);
+    console.log('[HomePage] 🔄 Auto fit toggled:', enabled);
+  }, []);
+
+  const handleFitView = React.useCallback(() => {
+    console.log('[HomePage] 🎯 Fit view requested');
+    // Force a re-render which will cause ReactFlow to fit view on mount
+    setRenderCounter(prev => prev + 1);
+  }, []);
 
   const createSampleGraph = React.useCallback(() => {
     if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
@@ -309,7 +380,7 @@ function VisHomepageComponent() {
     );
   }
 
-  if (!FlowGraph || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseGraphJSON || !InfoPanel) {
+  if (!FlowGraph || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseGraphJSON || !InfoPanel || !LayoutControls) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -344,20 +415,42 @@ function VisHomepageComponent() {
           </p>
 
           <FileDropZone onFileLoad={handleFileLoad} />
+          
+          <div style={{ marginTop: '20px' }}>
+            <button
+              onClick={createSampleGraph}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Load Sample Data
+            </button>
+          </div>
         </div>
       ) : (
         // Visualization Section
         <div style={{ maxWidth: '1400px', margin: '0 auto', position: 'relative' }}>
-          {/* Simple Controls */}
+          {/* Combined Controls Bar */}
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
-            marginBottom: '4px',
-            padding: '6px 0',
-            borderBottom: '1px solid #eee'
+            marginBottom: '8px',
+            padding: '8px',
+            backgroundColor: '#f8f9fa',
+            border: '1px solid #dee2e6',
+            borderRadius: '6px',
+            flexWrap: 'wrap',
+            gap: '8px'
           }}>
-            <div style={{ fontSize: '14px', color: '#666' }}>
+            {/* Left: Graph Info */}
+            <div style={{ fontSize: '14px', color: '#666', minWidth: '0', flex: '0 0 auto' }}>
               {parseMetadata && (
                 <>
                   {parseMetadata.nodeCount} nodes, {parseMetadata.edgeCount} edges
@@ -366,6 +459,29 @@ function VisHomepageComponent() {
                 </>
               )}
             </div>
+            
+            {/* Center: Layout Controls */}
+            <div style={{ flex: '1 1 auto', display: 'flex', justifyContent: 'center', minWidth: '0' }}>
+              <LayoutControls
+                visualizationState={visualizationState}
+                currentLayout={currentLayout}
+                onLayoutChange={handleLayoutChange}
+                colorPalette={colorPalette}
+                onPaletteChange={handlePaletteChange}
+                onCollapseAll={handleCollapseAll}
+                onExpandAll={handleExpandAll}
+                autoFit={autoFit}
+                onAutoFitToggle={handleAutoFitToggle}
+                onFitView={handleFitView}
+                style={{ 
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  padding: '0'
+                }}
+              />
+            </div>
+
+            {/* Right: Reset Button */}
             <button 
               onClick={() => {
                 setVisualizationState(null);
@@ -375,12 +491,13 @@ function VisHomepageComponent() {
               }}
               style={{
                 padding: '6px 12px',
-                backgroundColor: '#f5f5f5',
-                color: '#666',
-                border: '1px solid #ddd',
+                backgroundColor: '#6c757d',
+                color: 'white',
+                border: 'none',
                 borderRadius: '4px',
                 cursor: 'pointer',
-                fontSize: '12px'
+                fontSize: '12px',
+                flex: '0 0 auto'
               }}
             >
               Reset
@@ -400,6 +517,7 @@ function VisHomepageComponent() {
             <FlowGraph 
               key={renderCounter} // Force re-render when container state changes
               visualizationState={visualizationState}
+              layoutConfig={{ algorithm: currentLayout }}
               metadata={parseMetadata}
               eventHandlers={{
                 onNodeClick: handleNodeClick

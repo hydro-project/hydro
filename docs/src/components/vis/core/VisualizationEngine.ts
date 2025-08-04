@@ -13,6 +13,7 @@ import type { VisualizationState } from './VisState';
 import { ELKBridge } from '../bridges/ELKBridge';
 import { ReactFlowBridge } from '../bridges/ReactFlowBridge';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
+import type { LayoutConfig } from './types';
 
 // Visualization states
 export type VisualizationPhase = 
@@ -34,6 +35,7 @@ export interface VisualizationEngineConfig {
   autoLayout: boolean;          // Automatically run layout on data changes
   layoutDebounceMs: number;     // Debounce layout calls
   enableLogging: boolean;       // Enable detailed logging
+  layoutConfig?: LayoutConfig;  // Layout configuration
 }
 
 const DEFAULT_CONFIG: VisualizationEngineConfig = {
@@ -56,7 +58,7 @@ export class VisualizationEngine {
     config: Partial<VisualizationEngineConfig> = {}
   ) {
     this.visState = visState;
-    this.elkBridge = new ELKBridge();
+    this.elkBridge = new ELKBridge(config.layoutConfig);
     this.reactFlowBridge = new ReactFlowBridge();
     this.config = { ...DEFAULT_CONFIG, ...config };
     
@@ -83,6 +85,20 @@ export class VisualizationEngine {
    */
   getVisState(): VisualizationState {
     return this.visState;
+  }
+
+  /**
+   * Update layout configuration and optionally re-run layout
+   */
+  updateLayoutConfig(layoutConfig: LayoutConfig, autoReLayout: boolean = true): void {
+    this.config.layoutConfig = { ...this.config.layoutConfig, ...layoutConfig };
+    this.elkBridge.updateLayoutConfig(layoutConfig);
+    
+    this.log(`🔧 Layout config updated: ${JSON.stringify(layoutConfig)}`);
+    
+    if (autoReLayout) {
+      this.runLayout();
+    }
   }
 
   /**

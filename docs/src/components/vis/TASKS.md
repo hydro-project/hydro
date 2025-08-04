@@ -5,6 +5,6 @@ TASKS:
 
 
 FIXS:
-- expand container visual logic
 - collapse all after initialization
 - re-init after changing group by
+- node count on collapsed containers

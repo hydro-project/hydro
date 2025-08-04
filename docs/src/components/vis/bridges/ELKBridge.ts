@@ -7,13 +7,33 @@
  * - ELK returns layout positions that get applied back to VisState
  */
 
-import type { VisualizationState } from '../core/VisState';
-import type { GraphNode, GraphEdge, Container } from '../shared/types';
+import { VisualizationState } from '../core/VisState';
+import type { 
+  GraphNode, 
+  GraphEdge, 
+  Container,
+  HyperEdge
+} from '../shared/types';
+import type { LayoutConfig } from '../core/types';
+import { getELKLayoutOptions } from '../shared/config';
+
 import ELK from 'elkjs';
 import type { ElkGraph, ElkNode, ElkEdge } from './elk-types';
 
 export class ELKBridge {
   private elk = new ELK();
+  private layoutConfig: LayoutConfig;
+
+  constructor(layoutConfig: LayoutConfig = {}) {
+    this.layoutConfig = { algorithm: 'layered', ...layoutConfig };
+  }
+
+  /**
+   * Update layout configuration
+   */
+  updateLayoutConfig(config: LayoutConfig): void {
+    this.layoutConfig = { ...this.layoutConfig, ...config };
+  }
 
   /**
    * Convert VisState to ELK format and run layout
@@ -202,11 +222,7 @@ export class ELKBridge {
           width: node.width || 180,  // Use computed width
           height: node.height || 60  // Use computed height
         })),
-        layoutOptions: {
-          'elk.algorithm': 'layered',
-          'elk.direction': 'DOWN',
-          'elk.spacing.nodeNode': '75'
-        }
+        layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
       });
     });
     
@@ -233,12 +249,7 @@ export class ELKBridge {
       id: 'root',
       children: elkNodes,
       edges: elkEdges,
-      layoutOptions: {
-        'elk.algorithm': 'layered',
-        'elk.direction': 'DOWN',
-        'elk.spacing.nodeNode': '100',
-        'elk.spacing.edgeNode': '50'
-      }
+      layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
     };
   }
 

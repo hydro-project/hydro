@@ -5,8 +5,8 @@
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
+import React, { useEffect, useState, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
+import { ReactFlow, Background, Controls, MiniMap, useReactFlow, ReactFlowProvider } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
 import { createVisualizationEngine } from '../core/VisualizationEngine';
@@ -16,19 +16,25 @@ import { nodeTypes } from './nodes';
 import { edgeTypes } from './edges';
 import type { VisualizationState } from '../core/VisState';
 import type { ReactFlowData } from '../bridges/ReactFlowBridge';
-import type { RenderConfig, FlowGraphEventHandlers as FlowGraphEventHandlers } from '../core/types';
+import type { RenderConfig, FlowGraphEventHandlers, LayoutConfig } from '../core/types';
 
 export interface FlowGraphProps {
   visualizationState: VisualizationState;
   config?: RenderConfig;
+  layoutConfig?: LayoutConfig;
   eventHandlers?: FlowGraphEventHandlers;
   className?: string;
   style?: React.CSSProperties;
 }
 
+export interface FlowGraphRef {
+  fitView: () => void;
+}
+
 export function FlowGraph({
   visualizationState,
   config = DEFAULT_RENDER_CONFIG,
+  layoutConfig,
   eventHandlers,
   className,
   style
@@ -47,7 +53,8 @@ export function FlowGraph({
   const [converter] = useState(() => new ReactFlowConverter());
   const [engine] = useState(() => createVisualizationEngine(visualizationState, {
     autoLayout: true, // Always auto-layout for alpha compatibility
-    enableLogging: false
+    enableLogging: false,
+    layoutConfig: layoutConfig
   }));
 
   // Function to apply manual positions to existing ReactFlow data
@@ -68,6 +75,14 @@ export function FlowGraph({
       })
     };
   }, []);
+
+  // Listen to layout config changes
+  useEffect(() => {
+    if (layoutConfig) {
+      console.log('[FlowGraph] 🔧 Layout config changed, updating engine...');
+      engine.updateLayoutConfig(layoutConfig, false); // Don't auto re-layout yet
+    }
+  }, [layoutConfig, engine]);
 
   // Listen to visualization state changes
   useEffect(() => {
@@ -266,8 +281,8 @@ export function FlowGraph({
   return (
     <div className={className} style={{ height: '400px', ...style }}>
       <ReactFlow
-        nodes={reactFlowData.nodes}
-        edges={reactFlowData.edges}
+        nodes={reactFlowData?.nodes || []}
+        edges={reactFlowData?.edges || []}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
