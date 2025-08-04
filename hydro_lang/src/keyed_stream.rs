@@ -14,6 +14,17 @@ pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOn
     pub(crate) _phantom_order: PhantomData<Order>,
 }
 
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
+    for KeyedStream<K, V, Loc, Bound, Order, Retries>
+{
+    fn clone(&self) -> Self {
+        KeyedStream {
+            underlying: self.underlying.clone(),
+            _phantom_order: PhantomData,
+        }
+    }
+}
+
 impl<'a, K, V, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -56,6 +67,10 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// ```
     pub fn interleave(self) -> Stream<(K, V), L, B, NoOrder, R> {
         self.underlying
+    }
+
+    pub fn values(self) -> Stream<V, L, B, NoOrder, R> {
+        self.underlying.map(q!(|(_, v)| v))
     }
 
     /// Transforms each value by invoking `f` on each element, with keys staying the same
