@@ -21,6 +21,7 @@ function VisHomepageComponent() {
   const [error, setError] = React.useState(null);
   const [visualizationState, setVisualizationState] = React.useState(null);
   const [parseMetadata, setParseMetadata] = React.useState(null);
+  const [renderCounter, setRenderCounter] = React.useState(0); // Force re-renders
   // Generate legend data based on node types present in the visualization state
   const generateLegendData = () => {
     // Collect all unique node types from the visualization state
@@ -145,6 +146,44 @@ function VisHomepageComponent() {
       });
     }
   }, [parseMetadata]);
+
+  // Handle container click for collapse/expand
+  const handleNodeClick = React.useCallback((event, node) => {
+    console.log(`[HomePage] 🖱️ Node click received: ${node.id}, type: ${node.type}`);
+    
+    // Check if this is a container node that can be collapsed/expanded
+    if (node.type === 'container' && visualizationState) {
+      event.stopPropagation();
+      
+      try {
+        // Find the container in the visualization state
+        const container = visualizationState.getContainer(node.id);
+        if (container) {
+          console.log(`[HomePage] 🖱️ Container ${node.id} clicked, currently ${container.collapsed ? 'collapsed' : 'expanded'}`);
+          
+          // Toggle the container state
+          if (container.collapsed) {
+            visualizationState.expandContainer(node.id);
+            console.log(`[HomePage] ↗️ Expanded container ${node.id}`);
+          } else {
+            visualizationState.collapseContainer(node.id);
+            console.log(`[HomePage] ↙️ Collapsed container ${node.id}`);
+          }
+          
+          // Force a re-render by incrementing the counter
+          // This tells React to re-render components that depend on the VisState
+          setRenderCounter(prev => prev + 1);
+          
+        } else {
+          console.log(`[HomePage] ❌ Container ${node.id} not found in visualization state`);
+        }
+      } catch (error) {
+        console.error('[HomePage] ❌ Error toggling container:', error);
+      }
+    } else {
+      console.log(`[HomePage] ℹ️ Non-container node clicked: ${node.id} (type: ${node.type})`);
+    }
+  }, [visualizationState]);
 
   const createSampleGraph = React.useCallback(() => {
     if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
@@ -359,8 +398,12 @@ function VisHomepageComponent() {
           }}>
             {/* Main Graph Visualization */}
             <FlowGraph 
+              key={renderCounter} // Force re-render when container state changes
               visualizationState={visualizationState}
               metadata={parseMetadata}
+              eventHandlers={{
+                onNodeClick: handleNodeClick
+              }}
               onLayoutComplete={() => {}}
               onError={(err) => {
                 console.error('Visualization error:', err);

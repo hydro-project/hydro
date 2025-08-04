@@ -5,7 +5,7 @@
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -36,6 +36,12 @@ export function FlowGraph({
   const [reactFlowData, setReactFlowData] = useState<ReactFlowData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Store manual drag positions to preserve user positioning
+  const [manualPositions, setManualPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  
+  // Ref to track the base layout data (before manual positioning)
+  const baseReactFlowDataRef = useRef<ReactFlowData | null>(null);
 
   // Create converter and engine
   const [converter] = useState(() => new ReactFlowConverter());
@@ -43,6 +49,25 @@ export function FlowGraph({
     autoLayout: true, // Always auto-layout for alpha compatibility
     enableLogging: false
   }));
+
+  // Function to apply manual positions to existing ReactFlow data
+  const applyManualPositions = useCallback((baseData: ReactFlowData, manualPosMap: Map<string, { x: number; y: number }>) => {
+    if (manualPosMap.size === 0) return baseData;
+    
+    return {
+      ...baseData,
+      nodes: baseData.nodes.map(node => {
+        const manualPos = manualPosMap.get(node.id);
+        if (manualPos) {
+          return {
+            ...node,
+            position: { x: manualPos.x, y: manualPos.y }
+          };
+        }
+        return node;
+      })
+    };
+  }, []);
 
   // Listen to visualization state changes
   useEffect(() => {
@@ -57,12 +82,19 @@ export function FlowGraph({
         await engine.runLayout();
         
         // Convert to ReactFlow format
-        const data = converter.convert(visualizationState);
-        setReactFlowData(data);
+        const baseData = converter.convert(visualizationState);
+        
+        // Store the base data for reference
+        baseReactFlowDataRef.current = baseData;
+        
+        // Apply any existing manual positions
+        const dataWithManualPositions = applyManualPositions(baseData, manualPositions);
+        
+        setReactFlowData(dataWithManualPositions);
         
         console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
-          nodes: data.nodes.length,
-          edges: data.edges.length
+          nodes: dataWithManualPositions.nodes.length,
+          edges: dataWithManualPositions.edges.length
         });
         
       } catch (err) {
@@ -79,7 +111,16 @@ export function FlowGraph({
     // For alpha compatibility, we just do initial render
     // Real change detection would be implemented with proper state listeners
     
-  }, [visualizationState, engine, converter]);
+  }, [visualizationState, engine, converter, applyManualPositions]);
+
+  // Separate effect to update positions when manual positions change (without re-running layout)
+  useEffect(() => {
+    if (baseReactFlowDataRef.current && manualPositions.size > 0) {
+      console.log('[FlowGraph] 📍 Applying updated manual positions');
+      const updatedData = applyManualPositions(baseReactFlowDataRef.current, manualPositions);
+      setReactFlowData(updatedData);
+    }
+  }, [manualPositions, applyManualPositions]);
 
   // Handle node events
   const onNodeClick = useCallback((event: any, node: any) => {
@@ -87,10 +128,66 @@ export function FlowGraph({
     eventHandlers?.onNodeClick?.(event, node);
   }, [eventHandlers]);
 
+  // Handle edge events
   const onEdgeClick = useCallback((event: any, edge: any) => {
     console.log('[FlowGraph] 🖱️ Edge clicked:', edge.id);
     eventHandlers?.onEdgeClick?.(event, edge);
   }, [eventHandlers]);
+
+  // Handle node drag events for debugging
+  const onNodeDrag = useCallback((event: any, node: any) => {
+    // Don't update positions during drag - let ReactFlow handle the visual updates
+    // We'll only store the final position on drag stop
+    eventHandlers?.onNodeDrag?.(event, node);
+  }, [eventHandlers]);
+
+  const onNodeDragStart = useCallback((event: any, node: any) => {
+    console.log('[FlowGraph] 🖱️ Node drag start:', node.id);
+  }, []);
+
+  const onNodeDragStop = useCallback((event: any, node: any) => {
+    console.log('[FlowGraph] 🖱️ Node drag stop:', node.id, 'final position:', node.position);
+    
+    // Store the manual position so it persists across re-renders
+    setManualPositions(prev => {
+      const newMap = new Map(prev);
+      newMap.set(node.id, { x: node.position.x, y: node.position.y });
+      return newMap;
+    });
+  }, []);
+
+  // Handle ReactFlow node changes (including drag position updates)
+  const onNodesChange = useCallback((changes: any[]) => {
+    console.log('[FlowGraph] 📝 Nodes changing:', changes.length, 'changes');
+    
+    // Apply changes to current ReactFlow data
+    if (reactFlowData) {
+      setReactFlowData(prev => {
+        if (!prev) return prev;
+        
+        const updatedNodes = prev.nodes.map(node => {
+          // Find position changes for this node
+          const positionChange = changes.find(change => 
+            change.id === node.id && change.type === 'position'
+          );
+          
+          if (positionChange && positionChange.position) {
+            return {
+              ...node,
+              position: positionChange.position
+            };
+          }
+          
+          return node;
+        });
+        
+        return {
+          ...prev,
+          nodes: updatedNodes
+        };
+      });
+    }
+  }, [reactFlowData]);
 
   // Loading state
   if (loading && !reactFlowData) {
@@ -175,6 +272,10 @@ export function FlowGraph({
         edgeTypes={edgeTypes}
         onNodeClick={onNodeClick}
         onEdgeClick={onEdgeClick}
+        onNodeDrag={onNodeDrag}
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
+        onNodesChange={onNodesChange}
         fitView={config.fitView !== false}
         fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
         attributionPosition="bottom-left"
