@@ -10,7 +10,6 @@ use hydro_lang::ir::{HydroIrMetadata, HydroLeaf, HydroNode, traverse_dfir};
 use hydro_lang::location::LocationId;
 
 use super::rewrites::{NetworkType, get_network_type, relevant_inputs};
-use crate::debug::print_id;
 
 /// Each operator is assigned either 0 or 1
 /// 0 means that its output will go to the original node, 1 means that it will go to the decoupled node
@@ -493,8 +492,6 @@ pub(crate) fn decouple_analysis(
             }
         }
     }
-
-    print_id(ir);
 
     orig_machine.sort();
     decoupled_machine.sort();
