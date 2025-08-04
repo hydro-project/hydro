@@ -90,7 +90,7 @@ export class VisualizationState implements ContainerHierarchyView {
   // Edge tracking for hyperEdge management
   private readonly nodeToEdges: Map<string, Set<string>>;
 
-  // Container collapse/expand engine
+    // Container collapse/expand engine V2
   private readonly collapseExpandEngine: ContainerCollapseExpandEngine;
 
   /**
@@ -132,7 +132,7 @@ export class VisualizationState implements ContainerHierarchyView {
     /** @type {Map<string, Set<string>>} Node ID to Set of connected edge IDs */
     this.nodeToEdges = new Map(); 
 
-    // Initialize container collapse/expand engine
+        // Initialize container collapse/expand engine V2
     this.collapseExpandEngine = new ContainerCollapseExpandEngine(this);
   }
 
@@ -540,8 +540,8 @@ export class VisualizationState implements ContainerHierarchyView {
    * @param {string} props.source - Source node/container ID
    * @param {string} props.target - Target node/container ID
    * @param {string} [props.style=EDGE_STYLES.DEFAULT] - Visual style identifier
-   * @param {Array<Object>} [props.originalEdges] - Original edges aggregated into this hyperEdge
-   * @param {string} [props.originalInternalEndpoint] - Original internal endpoint for grounding
+   * @param {boolean} [props.hidden=false] - Whether the hyperedge is hidden
+   * @param {Set<string>} [props.aggregatedChildren] - IDs of (hyper)edges this aggregated
    * @param {Object} [props.otherProps] - Additional custom properties
    * @returns {VisualizationState} This instance for method chaining
    * @throws {Error} When required properties are missing or invalid
@@ -552,11 +552,11 @@ export class VisualizationState implements ContainerHierarchyView {
    *     source: 'container1',
    *     target: 'node3',
    *     style: EDGE_STYLES.THICK,
-   *     originalEdges: [edge1, edge2]
+   *     aggregatedChildren: new Set(['edge1', 'edge2'])
    *   });
    * ```
    */
-  setHyperEdge(id: string, { source, target, style = EDGE_STYLES.DEFAULT, ...otherProps }: { source: string; target: string; style?: string; [key: string]: any }) {
+  setHyperEdge(id: string, { source, target, style = EDGE_STYLES.DEFAULT, hidden = false, ...otherProps }: { source: string; target: string; style?: string; hidden?: boolean; [key: string]: any }) {
     this._validateRequiredString(id, 'HyperEdge ID');
     this._validateRequiredString(source, 'HyperEdge source');
     this._validateRequiredString(target, 'HyperEdge target');
@@ -567,6 +567,7 @@ export class VisualizationState implements ContainerHierarchyView {
       source,
       target,
       style,
+      hidden,
       ...otherProps
     };
     
