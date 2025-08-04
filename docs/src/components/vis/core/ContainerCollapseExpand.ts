@@ -452,7 +452,37 @@ export class ContainerCollapseExpandEngine {
     const externalId = isSourceContainer ? hyperEdge.target : hyperEdge.source;
     const internalEndpoint = hyperEdge.originalInternalEndpoint;
     
-    this._groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer);
+    // Check if the external endpoint is a collapsed container
+    const externalContainer = this.state.getContainer(externalId);
+    const externalIsCollapsedContainer = externalContainer && externalContainer.collapsed;
+    
+    if (externalIsCollapsedContainer) {
+      // The other end is still collapsed, so we need to maintain a cross-container hyperedge
+      // but now connecting the internal endpoint to the external container
+      
+      // CRITICAL FIX: Only create the hyperedge if the internal endpoint is visible
+      const internalNode = this.state.graphNodes.get(internalEndpoint);
+      const internalNodeIsVisible = internalNode && !internalNode.hidden;
+      
+      if (internalNodeIsVisible) {
+        const newHyperEdgeId = isSourceContainer 
+          ? `${HYPER_EDGE_PREFIX}${internalEndpoint}_to_${externalId}`
+          : `${HYPER_EDGE_PREFIX}${externalId}_to_${internalEndpoint}`;
+          
+        this.state.setHyperEdge(newHyperEdgeId, {
+          source: isSourceContainer ? internalEndpoint : externalId,
+          target: isSourceContainer ? externalId : internalEndpoint,
+          style: hyperEdge.style,
+          originalEdges: hyperEdge.originalEdges,
+          originalInternalEndpoint: internalEndpoint
+        });
+      }
+      // If internal endpoint is not visible, we simply don't create the hyperedge
+      // The connection will be restored when both containers are expanded
+    } else {
+      // The external endpoint is a visible node, try to restore the original connections
+      this._groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer);
+    }
   }
 
   private _rerouteHyperEdgesToCollapsedContainer(containerId: string, containerNodes: Set<string>): void {
@@ -580,7 +610,9 @@ export class ContainerCollapseExpandEngine {
 
   private _groundConnection(externalId: string, internalEndpoint: string, hyperEdge: any, isSourceContainer: boolean): void {
     if (hyperEdge.originalEdges) {
-      // Restore original edges only if both endpoints are visible
+      const restoredEdges: any[] = [];
+      
+      // Try to restore original edges only if both endpoints are visible
       for (const originalEdge of hyperEdge.originalEdges) {
         const sourceNode = this.state.graphNodes.get(originalEdge.source);
         const targetNode = this.state.graphNodes.get(originalEdge.target);
@@ -588,7 +620,37 @@ export class ContainerCollapseExpandEngine {
         // Only restore edge if both endpoints are visible nodes
         if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
           this.state.updateEdge(originalEdge.id, { hidden: false });
+          restoredEdges.push(originalEdge);
         }
+      }
+      
+      // If we couldn't restore all original edges, we need to create a new hyperedge
+      // for the connections that couldn't be restored
+      const unrestoredEdges = hyperEdge.originalEdges.filter((orig: any) => 
+        !restoredEdges.some((restored: any) => restored.id === orig.id)
+      );
+      
+      if (unrestoredEdges.length > 0) {
+        // Check if the external endpoint is still a collapsed container
+        const externalContainer = this.state.getContainer(externalId);
+        const externalIsCollapsedContainer = externalContainer && externalContainer.collapsed;
+        
+        if (externalIsCollapsedContainer) {
+          // Create a new hyperedge for the unrestored connections
+          const newHyperEdgeId = isSourceContainer 
+            ? `${HYPER_EDGE_PREFIX}${internalEndpoint}_to_${externalId}`
+            : `${HYPER_EDGE_PREFIX}${externalId}_to_${internalEndpoint}`;
+            
+          this.state.setHyperEdge(newHyperEdgeId, {
+            source: isSourceContainer ? internalEndpoint : externalId,
+            target: isSourceContainer ? externalId : internalEndpoint,
+            style: hyperEdge.style,
+            originalEdges: unrestoredEdges,
+            originalInternalEndpoint: internalEndpoint
+          });
+        }
+        // If external endpoint is not a collapsed container, we can't create a valid hyperedge
+        // The original edges will remain hidden, which is correct behavior
       }
     }
   }

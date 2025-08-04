@@ -3,6 +3,7 @@
  */
 
 export { FileDropZone } from './FileDropZone';
+export { LayoutControls } from './LayoutControls';
 
 // InfoPanel system components
 export { InfoPanel } from './InfoPanel';
@@ -26,6 +27,8 @@ export type {
   PanelPosition,
   BaseComponentProps
 } from './types';
+
+export type { LayoutControlsProps } from './LayoutControls';
 
 // Utility functions for InfoPanel integration
 export function createDefaultLegendData() {

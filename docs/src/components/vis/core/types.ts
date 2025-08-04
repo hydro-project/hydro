@@ -151,4 +151,5 @@ export interface FlowGraphEventHandlers {
   onNodeClick?: (event: any, node: any) => void;
   onEdgeClick?: (event: any, edge: any) => void;
   onNodeDrag?: (event: any, node: any) => void;
+  onFitViewRequested?: () => void;
 }
