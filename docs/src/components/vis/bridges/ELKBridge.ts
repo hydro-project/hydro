@@ -49,14 +49,15 @@ export class ELKBridge {
     this.validateELKInput(elkGraph);
     
     // 3. Run ELK layout
-    console.log('[ELKBridge] 📊 Sending to ELK:', {
-      nodes: elkGraph.children?.length || 0,
-      edges: elkGraph.edges?.length || 0
+    console.log(`[ELKBridge] 📊 Sending to ELK children count:`, elkGraph.children?.length);
+    console.log(`[ELKBridge] 📊 ELK Graph structure:`, {
+      id: elkGraph.id,
+      childrenCount: elkGraph.children?.length,
+      childrenIds: elkGraph.children?.map(c => c.id),
+      edgesCount: elkGraph.edges?.length
     });
     
-    const elkResult = await this.elk.layout(elkGraph);
-    
-    console.log('[ELKBridge] ✅ ELK layout complete');
+    const elkResult = await this.elk.layout(elkGraph);    console.log('[ELKBridge] ✅ ELK layout complete');
     
     // 4. Apply results back to VisState
     this.elkToVisState(elkResult, visState);
@@ -200,31 +201,65 @@ export class ELKBridge {
     console.log(`[ELKBridge] 🔍 Available nodes:`, nodes.map(n => n.id));
     console.log(`[ELKBridge] 🔍 Available containers:`, containers.map(c => ({ id: c.id, children: Array.from(c.children), collapsed: c.collapsed })));
     
-    // Build hierarchy: top-level nodes and containers
+    // Build hierarchy: create nested ELK structure
     const elkNodes: ElkNode[] = [];
     
-    // Add expanded containers as ELK nodes with children
-    containers.forEach(container => {
-      const childNodes = nodes.filter(node => {
-        // Find nodes that belong to this container using VisState's hierarchy info
-        return this.isNodeInContainer(node.id, container.id, container);
+    // Find root containers (containers with no parent container)
+    const rootContainers = containers.filter(container => {
+      // Check if this container has a parent that's also a container
+      const hasContainerParent = containers.some(otherContainer => 
+        otherContainer.children.has(container.id)
+      );
+      return !hasContainerParent;
+    });
+    
+    console.log(`[ELKBridge] 🔍 Found ${rootContainers.length} root containers:`, rootContainers.map(c => c.id));
+    
+    // Recursively build ELK hierarchy starting from root containers
+    const buildContainerHierarchy = (container: Container): ElkNode => {
+      // Find child nodes (regular nodes)
+      const childNodes = nodes.filter(node => container.children.has(node.id));
+      
+      // Find child containers (nested containers)
+      const childContainers = containers.filter(childContainer => 
+        container.children.has(childContainer.id)
+      );
+      
+      console.log(`[ELKBridge] 🔍 Container ${container.id} has ${childNodes.length} nodes and ${childContainers.length} containers:`, {
+        nodes: childNodes.map(n => n.id),
+        containers: childContainers.map(c => c.id),
+        allChildren: Array.from(container.children)
       });
       
-      console.log(`[ELKBridge] 🔍 Container ${container.id} has ${childNodes.length} children:`, 
-        childNodes.map(n => n.id), 'from container.children:', Array.from(container.children));
+      // Create ELK children array with both nodes and nested containers
+      const elkChildren: ElkNode[] = [
+        // Add child nodes
+        ...childNodes.map(node => ({
+          id: node.id,
+          width: node.width || 180,
+          height: node.height || 60
+        })),
+        // Add child containers (recursively)
+        ...childContainers.map(childContainer => buildContainerHierarchy(childContainer))
+      ];
       
-      elkNodes.push({
+      return {
         id: container.id,
         width: 400, // Default width - ELK will calculate proper size based on content
         height: 300, // Default height - ELK will calculate proper size based on content
-        children: childNodes.map(node => ({
-          id: node.id,
-          width: node.width || 180,  // Use computed width
-          height: node.height || 60  // Use computed height
-        })),
+        children: elkChildren,
         layoutOptions: getELKLayoutOptions(this.layoutConfig.algorithm)
-      });
+      };
+    };
+    
+    // Build hierarchy for each root container
+    rootContainers.forEach(container => {
+      const hierarchyNode = buildContainerHierarchy(container);
+      console.log(`[ELKBridge] 🏗️ Built hierarchy for ${container.id}:`, JSON.stringify(hierarchyNode, null, 2));
+      elkNodes.push(hierarchyNode);
     });
+    
+    console.log(`[ELKBridge] 🔍 Final elkNodes array length: ${elkNodes.length}`);
     
     // Add top-level nodes (not in any container, including collapsed containers)
     const topLevelNodes = nodes.filter(node => !this.isNodeInAnyContainer(node.id, containers));
@@ -334,9 +369,15 @@ export class ELKBridge {
       console.log(`[ELKBridge] 📏 Updated container ${elkNode.id} layout: ${JSON.stringify(layoutUpdates)}`);
     }
     
-    // Update child node positions
+    // Update child positions (recursively handle containers vs nodes)
     elkNode.children?.forEach(elkChildNode => {
-      this.updateNodeFromELK(elkChildNode, visState);
+      if (elkChildNode.children && elkChildNode.children.length > 0) {
+        // This child is also a container - recurse into it
+        this.updateContainerFromELK(elkChildNode, visState);
+      } else {
+        // This child is a leaf node - update its position
+        this.updateNodeFromELK(elkChildNode, visState);
+      }
     });
   }
 
@@ -344,6 +385,8 @@ export class ELKBridge {
    * Update node position from ELK result
    */
   private updateNodeFromELK(elkNode: ElkNode, visState: VisualizationState): void {
+    console.log(`[ELKBridge] 🔧 Attempting to update node ${elkNode.id} with ELK coords (${elkNode.x}, ${elkNode.y})`);
+    
     // Try to update as regular node first using VisState's layout methods
     try {
       const layoutUpdates: any = {};
@@ -361,10 +404,13 @@ export class ELKBridge {
       }
       
       if (Object.keys(layoutUpdates).length > 0) {
+        console.log(`[ELKBridge] 📏 Calling setNodeLayout for ${elkNode.id} with:`, layoutUpdates);
         visState.setNodeLayout(elkNode.id, layoutUpdates);
+        console.log(`[ELKBridge] ✅ Successfully updated node ${elkNode.id}`);
       }
       return;
     } catch (nodeError) {
+      console.log(`[ELKBridge] ⚠️ Node ${elkNode.id} not found as regular node, trying as container:`, nodeError.message);
       // If not found as node, might be a collapsed container
       try {
         const layoutUpdates: any = {};

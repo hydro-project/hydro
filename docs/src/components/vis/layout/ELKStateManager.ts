@@ -347,6 +347,7 @@ class ELKConfigurationManager {
     return {
       'elk.algorithm': algorithm,
       'elk.direction': 'DOWN',
+      'elk.hierarchyHandling': 'INCLUDE_CHILDREN', // FIX: Maintain visual hierarchy without extent: 'parent'
       'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
       'elk.spacing.edgeEdge': LAYOUT_SPACING.EDGE_TO_EDGE.toString(),
       'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE.toString(),

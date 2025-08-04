@@ -30,7 +30,7 @@ export interface ReactFlowNode {
     height?: number;
   };
   parentId?: string;
-  extent?: 'parent';
+  // extent?: 'parent'; // REMOVED: Causes drag coordinate issues in ReactFlow
 }
 
 export interface ReactFlowEdge {
@@ -78,13 +78,6 @@ export class ReactFlowBridge {
     
     // Convert all edges to ReactFlow edges (now includes hyperedges transparently)
     this.convertEdges(visState, edges);
-    
-    console.log('[ReactFlowBridge] ✅ Conversion complete:', {
-      nodes: nodes.length,
-      edges: edges.length,
-      containers: nodes.filter(n => n.type === 'container').length,
-      hyperEdges: 0 // Hyperedges are now transparent
-    });
     
     return { nodes, edges };
   }
@@ -155,8 +148,9 @@ export class ReactFlowBridge {
           width,
           height
         },
-        parentId,
-        extent: parentId ? 'parent' : undefined
+        parentId
+        // FIX: Remove extent: 'parent' - causes ReactFlow drag coordinate issues
+        // extent: parentId ? 'parent' : undefined
       };
       
       nodes.push(containerNode);
@@ -174,10 +168,12 @@ export class ReactFlowBridge {
     visState.visibleNodes.forEach(node => {
       const parentId = parentMap.get(node.id);
       
-      // Get ELK coordinates from node (canonical coordinates)
+      // Get ELK coordinates from node layout (where ELKBridge stores them)
+      const nodeLayout = visState.getNodeLayout(node.id);
+      console.log(`[ReactFlowBridge] 🔍 Node ${node.id} layout:`, nodeLayout, 'raw node coords:', { x: node.x, y: node.y });
       const elkCoords = {
-        x: node.x || 0,
-        y: node.y || 0
+        x: nodeLayout?.position?.x || node.x || 0,
+        y: nodeLayout?.position?.y || node.y || 0
       };
       
       // Convert ELK coordinates to ReactFlow coordinates
@@ -209,8 +205,9 @@ export class ReactFlowBridge {
           // Pass through any custom properties
           ...this.extractCustomProperties(node)
         },
-        parentId,
-        extent: parentId ? 'parent' : undefined
+        parentId
+        // FIX: Remove extent: 'parent' - causes ReactFlow drag coordinate issues
+        // extent: parentId ? 'parent' : undefined
       };
       
       nodes.push(standardNode);

@@ -202,7 +202,7 @@ describe('ReactFlowBridge', () => {
       expect(childNode!.position.x).toBe(170);
       expect(childNode!.position.y).toBe(225);
       expect(childNode!.parentId).toBe('parent_container');
-      expect(childNode!.extent).toBe('parent');
+      // expect(childNode!.extent).toBe('parent'); // REMOVED: No longer setting extent
     });
   });
 
