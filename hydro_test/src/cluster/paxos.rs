@@ -288,7 +288,8 @@ pub unsafe fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwne
         .then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
-        .broadcast_bincode_anonymous(acceptors);
+        .broadcast_bincode(acceptors)
+        .values();
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
         acceptor_tick,
@@ -388,7 +389,8 @@ unsafe fn p_leader_heartbeat<'a>(
             .latest()
             .sample_every(q!(Duration::from_secs(i_am_leader_send_timeout)))
     }
-    .broadcast_bincode_anonymous(proposers);
+    .broadcast_bincode(proposers)
+    .values();
 
     let p_leader_expired = unsafe {
         // Delayed timeouts only affect which leader wins re-election. If the leadership flag
@@ -460,7 +462,8 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
                 )
             )))
             .all_ticks()
-            .send_bincode_anonymous(proposers),
+            .demux_bincode(proposers)
+            .values(),
     )
 }
 
@@ -677,7 +680,8 @@ unsafe fn sequence_payload<'a, P: PaxosPayload>(
                 slot,
                 value
             }))
-            .broadcast_bincode_anonymous(acceptors),
+            .broadcast_bincode(acceptors)
+            .values(),
         a_checkpoint,
         proposers,
     );
@@ -834,6 +838,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             )
         )))
         .all_ticks()
-        .send_bincode_anonymous(proposers);
+        .demux_bincode(proposers)
+        .values();
     (a_log, a_to_proposers_p2b)
 }
