@@ -10,7 +10,7 @@ import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 
 function VisHomepageComponent() {
-  const [GraphFlow, setGraphFlow] = React.useState(null);
+  const [FlowGraph, setFlowGraph] = React.useState(null);
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
   const [parseGraphJSON, setParseGraphJSON] = React.useState(null);
   const [FileDropZone, setFileDropZone] = React.useState(null);
@@ -86,13 +86,13 @@ function VisHomepageComponent() {
     const loadComponents = async () => {
       try {
         const visStateModule = await import('../components/vis/core/VisState.ts');
-        const graphFlowModule = await import('../components/vis/render/GraphFlow.tsx');
+        const FlowGraphModule = await import('../components/vis/render/FlowGraph.tsx');
         const constantsModule = await import('../components/vis/shared/constants.ts');
         const parserModule = await import('../components/vis/core/JSONParser.ts');
         const componentsModule = await import('../components/vis/components/index.ts');
         
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
-        setGraphFlow(() => graphFlowModule.GraphFlow);
+        setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseGraphJSON(() => parserModule.parseGraphJSON);
         setFileDropZone(() => componentsModule.FileDropZone);
         setInfoPanel(() => componentsModule.InfoPanel);
@@ -270,7 +270,7 @@ function VisHomepageComponent() {
     );
   }
 
-  if (!GraphFlow || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseGraphJSON || !InfoPanel) {
+  if (!FlowGraph || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseGraphJSON || !InfoPanel) {
     return (
       <div style={{ 
         display: 'flex', 
@@ -358,7 +358,7 @@ function VisHomepageComponent() {
             backgroundColor: '#fafafa'
           }}>
             {/* Main Graph Visualization */}
-            <GraphFlow 
+            <FlowGraph 
               visualizationState={visualizationState}
               metadata={parseMetadata}
               onLayoutComplete={() => {}}

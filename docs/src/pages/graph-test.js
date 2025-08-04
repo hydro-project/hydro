@@ -8,7 +8,7 @@ import BrowserOnly from '@docusaurus/BrowserOnly';
 import styles from './visualizer.module.css';
 
 function GraphTestComponent() {
-  const [GraphFlow, setGraphFlow] = React.useState(null);
+  const [FlowGraph, setFlowGraph] = React.useState(null);
   const [createVisualizationState, setCreateVisualizationState] = React.useState(null);
   const [parseHydroGraphJSON, setParseHydroGraphJSON] = React.useState(null);
   const [FileDropZone, setFileDropZone] = React.useState(null);
@@ -102,13 +102,13 @@ function GraphTestComponent() {
     const loadComponents = async () => {
       try {
         const visStateModule = await import('../components/vis/core/VisState');
-        const graphFlowModule = await import('../components/vis/render/GraphFlow');
+        const FlowGraphModule = await import('../components/vis/render/FlowGraph');
         const constantsModule = await import('../components/vis/shared/constants');
         const parserModule = await import('../components/vis/core/JSONParser');
         const componentsModule = await import('../components/vis/components');
         
         setCreateVisualizationState(() => visStateModule.createVisualizationState);
-        setGraphFlow(() => graphFlowModule.GraphFlow);
+        setFlowGraph(() => FlowGraphModule.FlowGraph);
         setParseHydroGraphJSON(() => parserModule.parseHydroGraphJSON);
         setFileDropZone(() => componentsModule.FileDropZone);
         setNodeStyles(constantsModule.NODE_STYLES);
@@ -126,7 +126,7 @@ function GraphTestComponent() {
   React.useEffect(() => {
     async function loadTestData() {
       // Wait for all components to be loaded
-      if (!parseHydroGraphJSON || !createVisualizationState || !GraphFlow) {
+      if (!parseHydroGraphJSON || !createVisualizationState || !FlowGraph) {
         console.log('Components not ready yet, waiting...');
         return;
       }
@@ -158,7 +158,7 @@ function GraphTestComponent() {
     }
     
     loadTestData();
-  }, [parseHydroGraphJSON, createVisualizationState, GraphFlow, visualizationState]);
+  }, [parseHydroGraphJSON, createVisualizationState, FlowGraph, visualizationState]);
 
   const handleFileLoad = React.useCallback((jsonData) => {
     try {
@@ -275,7 +275,7 @@ function GraphTestComponent() {
     );
   }
 
-  if (!GraphFlow || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseHydroGraphJSON) {
+  if (!FlowGraph || !createVisualizationState || !NODE_STYLES || !EDGE_STYLES || !FileDropZone || !parseHydroGraphJSON) {
     return (
       <div className={styles.container}>
         <div className={styles.loadingMessage}>
@@ -289,7 +289,7 @@ function GraphTestComponent() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1>Graph Visualization Test</h1>
-        <p>Testing the new GraphFlow component with ReactFlow v12 and ELK layout</p>
+        <p>Testing the new FlowGraph component with ReactFlow v12 and ELK layout</p>
         {!visualizationState && (
           <div style={{ marginTop: '16px' }}>
             <button 
@@ -329,7 +329,7 @@ function GraphTestComponent() {
         <FileDropZone onFileLoad={handleFileLoad} />
       ) : (
         <div className={styles.visualizationContainer}>
-          <GraphFlow 
+          <FlowGraph 
             visualizationState={visualizationState}
             onLayoutComplete={() => console.log('Layout complete!')}
             onError={(err) => console.error('Visualization error:', err)}
@@ -435,7 +435,7 @@ export default function GraphTestPage() {
   return (
     <Layout
       title="Graph Visualization Test"
-      description="Test page for the new GraphFlow component">
+      description="Test page for the new FlowGraph component">
       <main>
         <BrowserOnly fallback={<div>Loading...</div>}>
           {() => <GraphTestComponent />}
