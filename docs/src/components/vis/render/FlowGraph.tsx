@@ -7,6 +7,12 @@
         });
         
         setReactFlowData(dataWithManualPositions);ture.
+ * Complete replacement for alpha FlowGraph using o        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
+          nodes: dataWithManualPositions.nodes.length,
+          edges: dataWithManualPositions.edges.length
+        });
+        
+        setReactFlowData(dataWithManualPositions);ture.
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
@@ -162,6 +168,18 @@ export function FlowGraph({
           });
         });
         
+        // DEBUG: Log all container node data to find differences
+        const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
+        console.log('[FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:');
+        containerNodes.forEach(node => {
+          console.log(`[FlowGraph] 📦 ${node.id}:`, {
+            position: node.position,
+            data: node.data,
+            // extent: node.extent, // REMOVED: No longer using extent
+            parentId: node.parentId
+          });
+        });
+        
       } catch (err) {
         console.error('[FlowGraph] ❌ Failed to update visualization:', err);
         setError(err instanceof Error ? err.message : String(err));
@@ -185,6 +203,7 @@ export function FlowGraph({
       setReactFlowData(updatedData);
     }
   }, [visualizationState, applyManualPositions]);
+  }, [visualizationState, applyManualPositions]);
 
   // Handle node events
   const onNodeClick = useCallback((event: any, node: any) => {
@@ -205,9 +224,13 @@ export function FlowGraph({
 
   const onNodeDragStart = useCallback((event: any, node: any) => {
     // Drag start - no action needed
+    // Drag start - no action needed
   }, []);
 
   const onNodeDragStop = useCallback((event: any, node: any) => {
+    // Store the manual position in VisualizationState
+    visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
+  }, [visualizationState]);
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
   }, [visualizationState]);

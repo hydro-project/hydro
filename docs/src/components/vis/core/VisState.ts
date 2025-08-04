@@ -141,6 +141,10 @@ export class VisualizationState implements ContainerHierarchyView {
     /** @type {Map<string, {x: number, y: number}>} Element ID to manual position override */
     this.manualPositions = new Map();
 
+    // Manual position overrides for user drag interactions
+    /** @type {Map<string, {x: number, y: number}>} Element ID to manual position override */
+    this.manualPositions = new Map();
+
         // Initialize container collapse/expand engine V2
     this.collapseExpandEngine = new ContainerCollapseExpandEngine(this);
   }
@@ -1248,6 +1252,15 @@ declare module './VisState.js' {
     setContainerELKFixed(id: string, fixed: boolean): void;
     getContainerELKFixed(id: string): boolean | undefined;
     getContainersRequiringLayout(changedContainerId?: string): import('../shared/types').Container[];
+
+    // Manual position management methods
+    setManualPosition(elementId: string, x: number, y: number): void;
+    getManualPosition(elementId: string): {x: number, y: number} | null;
+    hasManualPosition(elementId: string): boolean;
+    clearManualPosition(elementId: string): void;
+    clearAllManualPositions(): void;
+    getAllManualPositions(): Map<string, {x: number, y: number}>;
+    hasAnyManualPositions(): boolean;
 
     // Manual position management methods
     setManualPosition(elementId: string, x: number, y: number): void;
