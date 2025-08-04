@@ -16,6 +16,7 @@ use tokio::time::Instant;
 use crate::builder::FLOW_USED_MESSAGE;
 use crate::cycle::{CycleCollection, CycleComplete, DeferTick, ForwardRefMarker, TickCycleMarker};
 use crate::ir::{DebugInstantiate, HydroLeaf, HydroNode, TeeNode};
+use crate::keyed_stream::KeyedStream;
 use crate::location::external_process::{ExternalBincodeStream, ExternalBytesPort};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{
@@ -103,19 +104,6 @@ pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
     pub(crate) ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
-}
-
-impl<'a, T, L, O, R> From<Stream<T, L, Bounded, O, R>> for Stream<T, L, Unbounded, O, R>
-where
-    L: Location<'a>,
-{
-    fn from(stream: Stream<T, L, Bounded, O, R>) -> Stream<T, L, Unbounded, O, R> {
-        Stream {
-            location: stream.location,
-            ir_node: stream.ir_node,
-            _phantom: PhantomData,
-        }
-    }
 }
 
 impl<'a, T, L, B, R> From<Stream<T, L, B, TotalOrder, R>> for Stream<T, L, B, NoOrder, R>
@@ -1684,6 +1672,15 @@ where
                 metadata: self.location.new_node_metadata::<(K, V1)>(),
             },
         )
+    }
+}
+
+impl<'a, K, V, L: Location<'a>, B, O, R> Stream<(K, V), L, B, O, R> {
+    pub fn into_keyed(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream {
+            underlying: unsafe { self.assume_ordering::<NoOrder>() },
+            _phantom_order: Default::default(),
+        }
     }
 }
 
