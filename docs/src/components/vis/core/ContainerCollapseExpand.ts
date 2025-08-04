@@ -7,6 +7,7 @@
  */
 
 import { EDGE_STYLES } from '../shared/constants';
+import { SIZES } from '../shared/config';
 
 // Constants
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -76,6 +77,15 @@ export class ContainerCollapseExpandEngine {
 
     // 3. Mark container as collapsed and hide children
     container.collapsed = true;
+    
+    // 3b. Set collapsed container dimensions
+    this.state.setContainerLayout(containerId, {
+      dimensions: {
+        width: SIZES.COLLAPSED_CONTAINER_WIDTH,
+        height: SIZES.COLLAPSED_CONTAINER_HEIGHT
+      }
+    });
+    
     this._hideContainerChildren(containerId);
 
     // 4. Group crossing edges by external endpoint (using dynamic visible ancestor lookup)
