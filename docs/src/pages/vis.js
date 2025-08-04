@@ -24,9 +24,9 @@ function VisHomepageComponent() {
   const [parseMetadata, setParseMetadata] = React.useState(null);
   const [renderCounter, setRenderCounter] = React.useState(0); // Force re-renders
   
-  // Layout control state
-  const [currentLayout, setCurrentLayout] = React.useState('layered');
-  const [colorPalette, setColorPalette] = React.useState('Set2');
+    // Layout and color states
+  const [currentLayout, setCurrentLayout] = React.useState('mrtree');
+  const [colorPalette, setColorPalette] = React.useState('Set3');
   const [autoFit, setAutoFit] = React.useState(false);
   // Generate legend data based on node types present in the visualization state
   const generateLegendData = () => {

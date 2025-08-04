@@ -28,11 +28,13 @@ const FitIcon = () => (
   </svg>
 );
 
-// Layout algorithm options (can be extended later for ELK algorithm selection)
+// Layout algorithm options (matching ELK's available algorithms)
 const layoutOptions = {
-  'layered': 'Layered (Default)',
-  'force': 'Force-directed',
-  'stress': 'Stress Minimization'
+  'mrtree': 'MR Tree (Default)',
+  'layered': 'Layered',
+  'force': 'Force-Directed',
+  'stress': 'Stress Minimization',
+  'radial': 'Radial'
 };
 
 // Color palette options

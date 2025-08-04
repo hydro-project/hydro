@@ -16,7 +16,7 @@ describe('Layout Configuration Changes', () => {
     visState.setGraphEdge('edge1', { source: 'node1', target: 'node2', hidden: false, style: 'default' });
     
     // Test different algorithms
-    const algorithms = ['layered', 'force', 'mrtree'] as const;
+    const algorithms = ['mrtree', 'layered', 'force', 'stress', 'radial'] as const;
     
     for (const algorithm of algorithms) {
       console.log(`Testing algorithm: ${algorithm}`);
@@ -45,7 +45,7 @@ describe('Layout Configuration Changes', () => {
     visState.setGraphNode('node1', { label: 'Node 1', hidden: false, style: 'default' });
     visState.setGraphNode('node2', { label: 'Node 2', hidden: false, style: 'default' });
     
-    const bridge = new ELKBridge({ algorithm: 'layered' });
+    const bridge = new ELKBridge({ algorithm: 'mrtree' });
     
     // Initial layout
     await bridge.layoutVisState(visState);

@@ -75,7 +75,7 @@ export interface CreateContainerProps {
 
 // Layout types
 export interface LayoutConfig {
-  algorithm?: 'layered' | 'force' | 'mrtree';
+  algorithm?: 'mrtree' | 'layered' | 'force' | 'stress' | 'radial';
   direction?: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT';
   spacing?: number;
   nodeSize?: { width: number; height: number };

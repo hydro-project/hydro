@@ -54,9 +54,11 @@ export const SHADOWS = {
 
 // ELK Layout exports expected by ELKStateManager
 export const ELK_ALGORITHMS = {
+  MRTREE: 'mrtree',
   LAYERED: 'layered',
   FORCE: 'force',
-  MRTREE: 'mrtree'
+  STRESS: 'stress',
+  RADIAL: 'radial'
 };
 
 export const LAYOUT_SPACING = {
@@ -72,7 +74,7 @@ export const LAYOUT_SPACING = {
 };
 
 export const ELK_LAYOUT_OPTIONS = {
-  'elk.algorithm': 'layered',
+  'elk.algorithm': 'mrtree',
   'elk.direction': 'DOWN',
   'elk.spacing.nodeNode': '20',
   'elk.layered.spacing.nodeNodeBetweenLayers': '30'
@@ -80,7 +82,7 @@ export const ELK_LAYOUT_OPTIONS = {
 
 export type ELKAlgorithm = typeof ELK_ALGORITHMS[keyof typeof ELK_ALGORITHMS];
 
-export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.LAYERED) {
+export function getELKLayoutOptions(algorithm: ELKAlgorithm = ELK_ALGORITHMS.MRTREE) {
   return {
     ...ELK_LAYOUT_OPTIONS,
     'elk.algorithm': algorithm
