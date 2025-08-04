@@ -1,7 +1,12 @@
 /**
  * @fileoverview Bridge-Based FlowGraph Component
  * 
- * Complete replacement for alpha FlowGraph using our bridge architecture.
+ * Complete replacement for alpha FlowGraph using o        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
+          nodes: dataWithManualPositions.nodes.length,
+          edges: dataWithManualPositions.edges.length
+        });
+        
+        setReactFlowData(dataWithManualPositions);ture.
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
@@ -78,11 +83,44 @@ export function FlowGraph({
 
   // Listen to layout config changes
   useEffect(() => {
-    if (layoutConfig) {
-      console.log('[FlowGraph] 🔧 Layout config changed, updating engine...');
-      engine.updateLayoutConfig(layoutConfig, false); // Don't auto re-layout yet
+    // Only run if we have all dependencies and data already exists
+    if (layoutConfig && engine && converter && visualizationState && reactFlowData) {
+      console.log('[FlowGraph] 🔧 Layout config changed, updating engine and re-running layout...');
+      engine.updateLayoutConfig(layoutConfig, false); // Update config first
+      
+      // Trigger a re-layout with the new algorithm
+      const runLayoutUpdate = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          // Run layout with new algorithm
+          await engine.runLayout();
+          
+          // Convert to ReactFlow format
+          const baseData = converter.convert(visualizationState);
+          
+          // Store the base data for reference
+          baseReactFlowDataRef.current = baseData;
+          
+          // Apply any existing manual positions
+          const dataWithManualPositions = applyManualPositions(baseData, visualizationState.getAllManualPositions());
+          
+          setReactFlowData(dataWithManualPositions);
+          
+          console.log('[FlowGraph] ✅ Layout change applied successfully');
+          
+        } catch (err) {
+          console.error('[FlowGraph] ❌ Failed to apply layout change:', err);
+          setError(err instanceof Error ? err.message : String(err));
+        } finally {
+          setLoading(false);
+        }
+      };
+      
+      runLayoutUpdate();
     }
-  }, [layoutConfig, engine]);
+  }, [layoutConfig]);
 
   // Listen to visualization state changes
   useEffect(() => {
@@ -112,6 +150,18 @@ export function FlowGraph({
           edges: dataWithManualPositions.edges.length
         });
         
+        // DEBUG: Log all container node data to find differences
+        const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
+        console.log('[FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:');
+        containerNodes.forEach(node => {
+          console.log(`[FlowGraph] 📦 ${node.id}:`, {
+            position: node.position,
+            data: node.data,
+            // extent: node.extent, // REMOVED: No longer using extent
+            parentId: node.parentId
+          });
+        });
+        
       } catch (err) {
         console.error('[FlowGraph] ❌ Failed to update visualization:', err);
         setError(err instanceof Error ? err.message : String(err));
@@ -130,22 +180,19 @@ export function FlowGraph({
 
   // Separate effect to update positions when manual positions change (without re-running layout)
   useEffect(() => {
-    if (baseReactFlowDataRef.current && manualPositions.size > 0) {
-      console.log('[FlowGraph] 📍 Applying updated manual positions');
-      const updatedData = applyManualPositions(baseReactFlowDataRef.current, manualPositions);
+    if (baseReactFlowDataRef.current && visualizationState.hasAnyManualPositions()) {
+      const updatedData = applyManualPositions(baseReactFlowDataRef.current, visualizationState.getAllManualPositions());
       setReactFlowData(updatedData);
     }
-  }, [manualPositions, applyManualPositions]);
+  }, [visualizationState, applyManualPositions]);
 
   // Handle node events
   const onNodeClick = useCallback((event: any, node: any) => {
-    console.log('[FlowGraph] 🖱️ Node clicked:', node.id);
     eventHandlers?.onNodeClick?.(event, node);
   }, [eventHandlers]);
 
   // Handle edge events
   const onEdgeClick = useCallback((event: any, edge: any) => {
-    console.log('[FlowGraph] 🖱️ Edge clicked:', edge.id);
     eventHandlers?.onEdgeClick?.(event, edge);
   }, [eventHandlers]);
 
@@ -157,24 +204,16 @@ export function FlowGraph({
   }, [eventHandlers]);
 
   const onNodeDragStart = useCallback((event: any, node: any) => {
-    console.log('[FlowGraph] 🖱️ Node drag start:', node.id);
+    // Drag start - no action needed
   }, []);
 
   const onNodeDragStop = useCallback((event: any, node: any) => {
-    console.log('[FlowGraph] 🖱️ Node drag stop:', node.id, 'final position:', node.position);
-    
-    // Store the manual position so it persists across re-renders
-    setManualPositions(prev => {
-      const newMap = new Map(prev);
-      newMap.set(node.id, { x: node.position.x, y: node.position.y });
-      return newMap;
-    });
-  }, []);
+    // Store the manual position in VisualizationState
+    visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
+  }, [visualizationState]);
 
   // Handle ReactFlow node changes (including drag position updates)
   const onNodesChange = useCallback((changes: any[]) => {
-    console.log('[FlowGraph] 📝 Nodes changing:', changes.length, 'changes');
-    
     // Apply changes to current ReactFlow data
     if (reactFlowData) {
       setReactFlowData(prev => {

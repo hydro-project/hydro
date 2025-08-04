@@ -23,7 +23,8 @@ function VisHomepageComponent() {
   const [visualizationState, setVisualizationState] = React.useState(null);
   const [parseMetadata, setParseMetadata] = React.useState(null);
   const [originalJsonData, setOriginalJsonData] = React.useState(null); // Store original data for re-parsing
-  const [renderCounter, setRenderCounter] = React.useState(0); // Force re-renders
+  const [visStateVersion, setVisStateVersion] = React.useState(0); // Track VisState mutations for re-rendering
+  const [flowGraphKey, setFlowGraphKey] = React.useState(0); // Force fresh FlowGraph instance for resets
   
     // Layout and color states
   const [currentLayout, setCurrentLayout] = React.useState('mrtree');
@@ -117,23 +118,46 @@ function VisHomepageComponent() {
     loadComponents();
   }, []);
 
+  // Synchronous resetAll function - completely reinitializes everything
+  const resetAll = React.useCallback((jsonData, groupingId = null) => {
+    console.log('[HomePage] 🔄 Starting complete reset with groupingId:', groupingId);
+    
+    try {
+      // 1. Parse JSON with new grouping to get fresh VisualizationState
+      const parseResult = parseGraphJSON(jsonData, groupingId);
+      
+      // 2. Force fresh FlowGraph instance (new ELK, new ReactFlow, new VisState)
+      const newKey = Date.now(); // Use timestamp for unique key
+      console.log('[HomePage] 🔑 Setting new flowGraphKey:', newKey);
+      setFlowGraphKey(newKey);
+      
+      // 3. Update all state atomically
+      setVisualizationState(parseResult.state);
+      setParseMetadata(parseResult.metadata);
+      setCollapsedContainers(new Set()); // Reset collapsed state
+      setError(null);
+      
+      console.log('[HomePage] ✅ Complete reset successful');
+      return parseResult;
+    } catch (err) {
+      console.error('[HomePage] ❌ Error during complete reset:', err);
+      setError('Failed to reset visualization: ' + err.message);
+      throw err;
+    }
+  }, [parseGraphJSON]);
+
   const handleFileLoad = React.useCallback((jsonData) => {
     try {
       // Store the original JSON data for re-parsing with different groupings
       setOriginalJsonData(jsonData);
       
-      // Parse the JSON data into a VisualizationState
-      const parseResult = parseGraphJSON(jsonData);
-      
-      setVisualizationState(parseResult.state);
-      setParseMetadata(parseResult.metadata);
-      setCollapsedContainers(new Set());
-      setError(null);
+      // Use resetAll for clean initialization
+      resetAll(jsonData);
     } catch (err) {
       console.error('Error parsing JSON:', err);
       setError('Failed to parse JSON data: ' + err.message);
     }
-  }, [parseGraphJSON]);
+  }, [resetAll]);
 
   const handleToggleContainer = React.useCallback((containerId) => {
     setCollapsedContainers(prev => {
@@ -155,25 +179,9 @@ function VisHomepageComponent() {
       return;
     }
     
-    try {
-      // Re-parse the original data with the new grouping
-      const parseResult = parseGraphJSON(originalJsonData, groupingId);
-      
-      // Completely reinitialize the visualization state
-      setVisualizationState(parseResult.state);
-      setParseMetadata(parseResult.metadata);
-      setCollapsedContainers(new Set()); // Reset collapsed containers
-      setError(null);
-      
-      // Force a complete re-render
-      setRenderCounter(prev => prev + 1);
-      
-      console.log('[HomePage] ✅ Successfully reinitialized with grouping:', groupingId);
-    } catch (err) {
-      console.error('[HomePage] ❌ Error re-parsing data with new grouping:', err);
-      setError('Failed to apply new grouping: ' + err.message);
-    }
-  }, [originalJsonData, parseGraphJSON]);
+    // Use resetAll for complete reinitialization
+    resetAll(originalJsonData, groupingId);
+  }, [originalJsonData, resetAll]);
 
   // Handle container click for collapse/expand
   const handleNodeClick = React.useCallback((event, node) => {
@@ -198,9 +206,8 @@ function VisHomepageComponent() {
             console.log(`[HomePage] ↙️ Collapsed container ${node.id}`);
           }
           
-          // Force a re-render by incrementing the counter
-          // This tells React to re-render components that depend on the VisState
-          setRenderCounter(prev => prev + 1);
+          // Notify React that VisState has changed
+          setVisStateVersion(prev => prev + 1);
           
         } else {
           console.log(`[HomePage] ❌ Container ${node.id} not found in visualization state`);
@@ -218,8 +225,8 @@ function VisHomepageComponent() {
     setCurrentLayout(layout);
     console.log('[HomePage] 🔧 Layout changed to:', layout);
     
-    // Force a re-render to apply the new layout config
-    setRenderCounter(prev => prev + 1);
+    // The layoutConfig prop change will trigger re-layout automatically
+    // No need to force a complete re-render which breaks drag functionality
     
     console.log('[HomePage] ✅ Layout change applied successfully');
   }, []);
@@ -241,7 +248,7 @@ function VisHomepageComponent() {
         }
       });
       
-      setRenderCounter(prev => prev + 1);
+      setVisStateVersion(prev => prev + 1);
       console.log('[HomePage] 📦 Collapsed all containers');
     } catch (error) {
       console.error('[HomePage] ❌ Error collapsing all containers:', error);
@@ -259,7 +266,7 @@ function VisHomepageComponent() {
         }
       });
       
-      setRenderCounter(prev => prev + 1);
+      setVisStateVersion(prev => prev + 1);
       console.log('[HomePage] 📤 Expanded all containers');
     } catch (error) {
       console.error('[HomePage] ❌ Error expanding all containers:', error);
@@ -273,102 +280,16 @@ function VisHomepageComponent() {
 
   const handleFitView = React.useCallback(() => {
     console.log('[HomePage] 🎯 Fit view requested');
-    // Force a re-render which will cause ReactFlow to fit view on mount
-    setRenderCounter(prev => prev + 1);
+    // TODO: This should call a method on FlowGraph directly instead of forcing re-render
+    // For now, trigger a re-render as a workaround
+    setVisStateVersion(prev => prev + 1);
   }, []);
 
   const createSampleGraph = React.useCallback(() => {
     if (!createVisualizationState || !NODE_STYLES || !EDGE_STYLES) return;
     
-    // Create a sample demonstration graph with containers
-    const sampleState = createVisualizationState();
-    
-    // Add sample nodes with different styles (using professional node types)
-    sampleState.setGraphNode('source', { 
-      label: 'Data Source', 
-      style: NODE_STYLES.DEFAULT,
-      nodeType: 'Source'
-    });
-    sampleState.setGraphNode('transform', { 
-      label: 'Transform', 
-      style: NODE_STYLES.HIGHLIGHTED,
-      nodeType: 'Transform'
-    });
-    sampleState.setGraphNode('join', { 
-      label: 'Join', 
-      style: NODE_STYLES.DEFAULT,
-      nodeType: 'Join'
-    });
-    sampleState.setGraphNode('filter', { 
-      label: 'Filter', 
-      style: NODE_STYLES.WARNING,
-      nodeType: 'Filter'
-    });
-    sampleState.setGraphNode('sink', { 
-      label: 'Data Sink', 
-      style: NODE_STYLES.DEFAULT,
-      nodeType: 'Sink'
-    });
-    sampleState.setGraphNode('error_handler', { 
-      label: 'Error Handler', 
-      style: NODE_STYLES.ERROR,
-      nodeType: 'Operator'
-    });
-    
-    // Add sample containers to demonstrate hierarchy
-    sampleState.setContainer('processing_group', {
-      expandedDimensions: { width: 300, height: 200 },
-      collapsed: false,
-      children: ['transform', 'join']
-    });
-    sampleState.setContainer('output_group', {
-      expandedDimensions: { width: 250, height: 150 },
-      collapsed: false,
-      children: ['filter', 'sink']
-    });
-    
-    // Add sample edges with different styles
-    sampleState.setGraphEdge('edge1', { 
-      source: 'source', 
-      target: 'transform',
-      style: EDGE_STYLES.DEFAULT
-    });
-    sampleState.setGraphEdge('edge2', { 
-      source: 'transform', 
-      target: 'join',
-      style: EDGE_STYLES.THICK
-    });
-    sampleState.setGraphEdge('edge3', { 
-      source: 'join', 
-      target: 'filter',
-      style: EDGE_STYLES.DEFAULT
-    });
-    sampleState.setGraphEdge('edge4', { 
-      source: 'filter', 
-      target: 'sink',
-      style: EDGE_STYLES.DEFAULT
-    });
-    sampleState.setGraphEdge('edge5', { 
-      source: 'transform', 
-      target: 'error_handler',
-      style: EDGE_STYLES.DASHED
-    });
-    
-    setVisualizationState(sampleState);
-    setParseMetadata({
-      selectedGrouping: 'sample_grouping',
-      nodeCount: 6,
-      edgeCount: 5,
-      containerCount: 2,
-      availableGroupings: [
-        { id: 'sample_grouping', name: 'Processing Groups' },
-        { id: 'functional_grouping', name: 'Functional Groups' }
-      ]
-    });
-    setCollapsedContainers(new Set());
-    
-    // Store mock JSON data for grouping changes
-    setOriginalJsonData({
+    // Create mock JSON data for sample graph
+    const sampleJsonData = {
       nodes: [
         { id: 'source', label: 'Data Source', nodeType: 'Source' },
         { id: 'transform', label: 'Transform', nodeType: 'Transform' },
@@ -422,8 +343,12 @@ function VisHomepageComponent() {
           ]
         }
       ]
-    });
-  }, [createVisualizationState, NODE_STYLES, EDGE_STYLES]);
+    };
+    
+    // Store original data and use resetAll for clean initialization
+    setOriginalJsonData(sampleJsonData);
+    resetAll(sampleJsonData, 'sample_grouping');
+  }, [createVisualizationState, NODE_STYLES, EDGE_STYLES, resetAll]);
 
   if (error) {
     return (
@@ -568,6 +493,7 @@ function VisHomepageComponent() {
                 setOriginalJsonData(null);
                 setCollapsedContainers(new Set());
                 setError(null);
+                setFlowGraphKey(prev => prev + 1); // Fresh instance for next load
               }}
               style={{
                 padding: '6px 12px',
@@ -594,11 +520,14 @@ function VisHomepageComponent() {
             backgroundColor: '#fafafa'
           }}>
             {/* Main Graph Visualization */}
+            {console.log('[HomePage] 🔑 Rendering FlowGraph with key:', flowGraphKey)}
             <FlowGraph 
-              key={renderCounter} // Force re-render when container state changes
+              key={flowGraphKey} // Force fresh instance for complete resets
+              reactFlowKey={flowGraphKey} // Force ReactFlow internal reset too
               visualizationState={visualizationState}
               layoutConfig={{ algorithm: currentLayout }}
               metadata={parseMetadata}
+              visStateVersion={visStateVersion}
               eventHandlers={{
                 onNodeClick: handleNodeClick
               }}

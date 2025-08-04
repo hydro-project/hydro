@@ -62,22 +62,27 @@ export const ELK_ALGORITHMS = {
 };
 
 export const LAYOUT_SPACING = {
-  NODE_NODE: 20,
-  NODE_EDGE: 10,
-  EDGE_EDGE: 10,
-  NODE_TO_NODE_NORMAL: 20,
-  EDGE_TO_EDGE: 10,
-  EDGE_TO_NODE: 10,
-  COMPONENT_TO_COMPONENT: 30,
-  ROOT_PADDING: 20,
-  CONTAINER_PADDING: 15
+  // Updated to match working Visualizer spacing values
+  NODE_NODE: 75,                    // Increased for better node separation
+  NODE_EDGE: 10,                    // Keep edge spacing tight
+  EDGE_EDGE: 10,                    // Keep edge spacing tight
+  NODE_TO_NODE_NORMAL: 75,          // Match Visualizer: better readability
+  EDGE_TO_EDGE: 10,                 // Keep edge spacing tight
+  EDGE_TO_NODE: 0,                  // Match Visualizer: no extra edge-node gap
+  COMPONENT_TO_COMPONENT: 60,       // Match Visualizer: better component separation
+  ROOT_PADDING: 20,                 // Keep root padding minimal
+  CONTAINER_PADDING: 60             // Match Visualizer: proper breathing room in containers
 };
 
 export const ELK_LAYOUT_OPTIONS = {
   'elk.algorithm': 'mrtree',
   'elk.direction': 'DOWN',
-  'elk.spacing.nodeNode': '20',
-  'elk.layered.spacing.nodeNodeBetweenLayers': '30'
+  'elk.hierarchyHandling': 'INCLUDE_CHILDREN',    // Added: maintain visual hierarchy
+  'elk.spacing.nodeNode': LAYOUT_SPACING.NODE_TO_NODE_NORMAL.toString(),
+  'elk.spacing.edgeNode': LAYOUT_SPACING.EDGE_TO_NODE.toString(),
+  'elk.spacing.edgeEdge': LAYOUT_SPACING.EDGE_TO_EDGE.toString(),
+  'elk.spacing.componentComponent': LAYOUT_SPACING.COMPONENT_TO_COMPONENT.toString(),
+  'elk.layered.spacing.nodeNodeBetweenLayers': '25'  // Match Visualizer layer separation
 };
 
 export type ELKAlgorithm = typeof ELK_ALGORITHMS[keyof typeof ELK_ALGORITHMS];

@@ -90,6 +90,11 @@ export class VisualizationState implements ContainerHierarchyView {
   // Edge tracking for hyperEdge management
   private readonly nodeToEdges: Map<string, Set<string>>;
 
+  // Manual position overrides for user drag interactions
+  // IMPORTANT: This is the ONLY place manual positions should be stored!
+  // Do NOT add manual position state to React components, bridges, or other classes.
+  private readonly manualPositions: Map<string, {x: number, y: number}>;
+
     // Container collapse/expand engine V2
   private readonly collapseExpandEngine: ContainerCollapseExpandEngine;
 
@@ -131,6 +136,10 @@ export class VisualizationState implements ContainerHierarchyView {
     // Edge tracking for hyperEdge management
     /** @type {Map<string, Set<string>>} Node ID to Set of connected edge IDs */
     this.nodeToEdges = new Map(); 
+
+    // Manual position overrides for user drag interactions
+    /** @type {Map<string, {x: number, y: number}>} Element ID to manual position override */
+    this.manualPositions = new Map();
 
         // Initialize container collapse/expand engine V2
     this.collapseExpandEngine = new ContainerCollapseExpandEngine(this);
@@ -1240,6 +1249,15 @@ declare module './VisState.js' {
     getContainerELKFixed(id: string): boolean | undefined;
     getContainersRequiringLayout(changedContainerId?: string): import('../shared/types').Container[];
 
+    // Manual position management methods
+    setManualPosition(elementId: string, x: number, y: number): void;
+    getManualPosition(elementId: string): {x: number, y: number} | null;
+    hasManualPosition(elementId: string): boolean;
+    clearManualPosition(elementId: string): void;
+    clearAllManualPositions(): void;
+    getAllManualPositions(): Map<string, {x: number, y: number}>;
+    hasAnyManualPositions(): boolean;
+
     // Enhanced collapse/expand with layout state management
     collapseContainer(containerId: string): void;
     expandContainer(containerId: string): void;
@@ -1365,5 +1383,82 @@ Object.assign(VisualizationState.prototype, {
       
       return container;
     });
+  },
+
+  // ============ Manual Position Management ============
+  // ARCHITECTURAL NOTE: Manual positions are stored ONLY in VisState to ensure:
+  // 1. Clean resets: new VisState = no manual positions
+  // 2. Single source of truth: no scattered React state
+  // 3. Atomic updates: positions and graph structure stay in sync
+  // 
+  // DO NOT add manual position state to:
+  // - React components (FlowGraph, etc.)
+  // - Bridge classes (ReactFlowBridge, etc.) 
+  // - Layout engines (ELK, etc.)
+  // This prevents state pollution and reset bugs.
+
+  /**
+   * Set a manual position override for a node or container
+   * @param {string} elementId - ID of the element to position
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   */
+  setManualPosition(elementId: string, x: number, y: number): void {
+    this._validateRequiredString(elementId, 'Element ID');
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      throw new Error('Position coordinates must be numbers');
+    }
+    
+    this.manualPositions.set(elementId, { x, y });
+  },
+
+  /**
+   * Get manual position override for an element
+   * @param {string} elementId - ID of the element
+   * @returns {{x: number, y: number} | null} Manual position or null if not set
+   */
+  getManualPosition(elementId: string): {x: number, y: number} | null {
+    return this.manualPositions.get(elementId) || null;
+  },
+
+  /**
+   * Check if an element has a manual position override
+   * @param {string} elementId - ID of the element
+   * @returns {boolean} True if element has manual position
+   */
+  hasManualPosition(elementId: string): boolean {
+    return this.manualPositions.has(elementId);
+  },
+
+  /**
+   * Remove manual position override for an element
+   * @param {string} elementId - ID of the element
+   */
+  clearManualPosition(elementId: string): void {
+    this.manualPositions.delete(elementId);
+  },
+
+  /**
+   * Clear all manual position overrides
+   * Called during resets to ensure clean state
+   */
+  clearAllManualPositions(): void {
+    this.manualPositions.clear();
+  },
+
+  /**
+   * Get all manual positions as a Map
+   * @returns {Map<string, {x: number, y: number}>} Copy of manual positions
+   */
+  getAllManualPositions(): Map<string, {x: number, y: number}> {
+    return new Map(this.manualPositions);
+  },
+
+  /**
+   * Check if any manual positions exist
+   * @returns {boolean} True if any manual positions are set
+   */
+  hasAnyManualPositions(): boolean {
+    return this.manualPositions.size > 0;
   }
 });
