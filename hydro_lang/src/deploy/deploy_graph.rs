@@ -14,7 +14,7 @@ use hydro_deploy::rust_crate::RustCrateService;
 use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
-use hydro_deploy_integration::{ConnectedSink, ConnectedSource, ConnectedSourceSink};
+use hydro_deploy_integration::{ConnectedSink, ConnectedSource};
 use nameof::name_of;
 use proc_macro2::Span;
 use serde::Serialize;
@@ -277,6 +277,10 @@ impl<'a> Deploy<'a> for HydroDeploy {
         codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
+        let connect_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_connect", &shared_handle),
+            Span::call_site(),
+        );
         let source_ident = syn::Ident::new(
             &format!("__hydro_deploy_many_{}_source", &shared_handle),
             Span::call_site(),
@@ -287,16 +291,19 @@ impl<'a> Deploy<'a> for HydroDeploy {
         );
 
         let root = get_this_crate();
-        let connect_expr: syn::Expr = parse_quote!(
-            #root::runtime_support::dfir_rs::util::deploy::ConnectedSourceSink::into_source_sink(
-                __hydro_lang_trybuild_cli
-                    .port(#p2_port)
-                    .connect::<#root::runtime_support::dfir_rs::util::deploy::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>()
-            )
-        );
 
         extra_stmts.push(syn::parse_quote! {
-            let (#source_ident, #sink_ident) = #connect_expr;
+            let #connect_ident = __hydro_lang_trybuild_cli
+                .port(#p2_port)
+                .connect::<#root::runtime_support::dfir_rs::util::deploy::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>();
+        });
+
+        extra_stmts.push(syn::parse_quote! {
+            let #source_ident = #connect_ident.source;
+        });
+
+        extra_stmts.push(syn::parse_quote! {
+            let #sink_ident = #connect_ident.sink;
         });
 
         parse_quote!(#source_ident)

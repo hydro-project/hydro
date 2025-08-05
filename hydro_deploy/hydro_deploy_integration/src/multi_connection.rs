@@ -14,11 +14,11 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
-use crate::{AcceptedServer, BoundServer, Connected, ConnectedSourceSink, Connection};
+use crate::{AcceptedServer, BoundServer, Connected, Connection};
 
 pub struct ConnectedMultiConnection<I, O, C: Decoder<Item = I> + Encoder<O>> {
-    source: MultiConnectionSource<I, O, C>,
-    sink: MultiConnectionSink<O, C>,
+    pub source: MultiConnectionSource<I, O, C>,
+    pub sink: MultiConnectionSink<O, C>,
 }
 
 impl<
@@ -67,25 +67,6 @@ impl<
             }
             _ => panic!("Cannot connect to a non-multi-connection pipe as a multi-connection"),
         }
-    }
-}
-
-impl<
-    I: Send,
-    O: Send + Sync + 'static,
-    C: Decoder<Item = I> + Encoder<O> + Send + Sync + Default + 'static,
-> ConnectedSourceSink for ConnectedMultiConnection<I, O, C>
-{
-    type Output = (u64, I);
-    type OutError = <C as Decoder>::Error;
-    type Stream = MultiConnectionSource<I, O, C>;
-
-    type Input = (u64, O);
-    type InError = <C as Encoder<O>>::Error;
-    type Sink = MultiConnectionSink<O, C>;
-
-    fn into_source_sink(self) -> (Self::Stream, Self::Sink) {
-        (self.source, self.sink)
     }
 }
 
