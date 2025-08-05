@@ -56,7 +56,7 @@ When sending a stream over the network, there are certain situations in which th
 
 To track this behavior, stream have an `Order` type parameter that indicates whether the elements in the stream will have a deterministic order ([`TotalOrder`](pathname:///rustdoc/hydro_lang/stream/struct.TotalOrder)) or not ([`NoOrder`](pathname:///rustdoc/hydro_lang/stream/struct.NoOrder)). When the type parameter is omitted, it defaults to `TotalOrder` for brevity.
 
-If we send a stream from a cluster to a process, the return type will be a stream with `NoOrder`:
+If we send a stream from a cluster to a process and flatten the values across senders (with `.values()`), the return type will be a stream with `NoOrder`:
 
 ```rust,no_run
 # use hydro_lang::*;
@@ -66,7 +66,7 @@ let numbers: Stream<_, Cluster<_>, Unbounded, TotalOrder> =
     workers.source_iter(q!(vec![1, 2, 3]));
 let process: Process<()> = flow.process::<()>();
 let on_p2: Stream<_, Process<_>, Unbounded, NoOrder> =
-    numbers.send_bincode(&process);
+    numbers.send_bincode(&process).values();
 ```
 
 The ordering of a stream determines which APIs are available on it. For example, `map` and `filter` are available on all streams, but `last` is only available on streams with `TotalOrder`. This ensures that even when the network introduces non-determinism, the program will not compile if it tries to use an API that requires a deterministic order.
@@ -81,7 +81,8 @@ let process: Process<()> = flow.process::<()>();
 let all_words: Stream<_, Process<_>, Unbounded, NoOrder> = workers
     .source_iter(q!(vec!["hello", "world"]))
     .map(q!(|x| x.to_string()))
-    .send_bincode_anonymous(&process);
+    .send_bincode(&process)
+    .values();
 
 let words_concat = all_words
     .fold(q!(|| "".to_string()), q!(|acc, x| acc += x));
@@ -90,7 +91,7 @@ let words_concat = all_words
 
 :::tip
 
-We use `send_bincode_anonymous` here to drop the cluster IDs which are included in `send_bincode`. See [Clusters](../locations/clusters) for more details.
+We use `values()` here to drop the cluster IDs which are included in `send_bincode`. See [Clusters](../locations/clusters) for more details.
 
 Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`, as we see in the type signature here. The `Singleton` type is still "live" in the sense of a [Live Collection](./), so updates to the `Stream` input cause updates to the `Singleton` output. See [Singletons and Optionals](./singletons-optionals) for more information.
 
@@ -107,7 +108,8 @@ To perform an aggregation with an unordered stream, you must use [`fold_commutat
 # let all_words: Stream<_, Process<_>, _, NoOrder> = workers
 #     .source_iter(q!(vec!["hello", "world"]))
 #     .map(q!(|x| x.to_string()))
-#     .send_bincode_anonymous(&process);
+#     .send_bincode(&process)
+#     .values();
 let words_count = all_words
     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += 1));
 ```

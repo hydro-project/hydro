@@ -56,7 +56,8 @@ pub trait PaxosLike<'a>: Sized {
                 move |new_leader_elected| {
                     let cur_leader_id = Self::get_recipient_from_ballot(
                         new_leader_elected
-                            .broadcast_bincode_anonymous(clients)
+                            .broadcast_bincode(clients)
+                            .values()
                             .inspect(q!(|ballot| println!(
                                 "Client notified that leader was elected: {:?}",
                                 ballot
@@ -87,7 +88,8 @@ pub trait PaxosLike<'a>: Sized {
                         all_payloads.cross_singleton(latest_leader).all_ticks()
                     }
                     .map(q!(move |(payload, leader_id)| (leader_id, payload)))
-                    .send_bincode_anonymous(&leaders);
+                    .demux_bincode(&leaders)
+                    .values();
 
                     let payloads_at_proposer = {
                         // SAFETY: documented non-determinism in interleaving of client payloads

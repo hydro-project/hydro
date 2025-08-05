@@ -31,9 +31,6 @@ pub use process::Process;
 pub mod cluster;
 pub use cluster::{Cluster, ClusterId};
 
-pub mod can_send;
-pub use can_send::CanSend;
-
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
@@ -271,7 +268,9 @@ pub trait Location<'a>: Clone {
                         codec_type: quote_type::<LengthDelimitedCodec>().into(),
                         port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
+                        deserialize_fn: Some(
+                            crate::stream::networking::deserialize_bincode::<T>(None).into(),
+                        ),
                         metadata: self.new_node_metadata::<T>(),
                     }),
                     metadata: self.new_node_metadata::<T>(),
