@@ -33,7 +33,7 @@ const ENTITY_TYPES = {
  */
 export interface ContainerHierarchyView {
   getContainerChildren(containerId: string): ReadonlySet<string>;
-  getParentContainer(nodeId: string): string | undefined;
+  getNodeContainer(nodeId: string): string | undefined;
 }
 
 /**
@@ -608,17 +608,23 @@ export class VisualizationState implements ContainerHierarchyView {
   // ============ Computed Properties (Idiomatic TypeScript Getters) ============
   
   /**
-   * Get all containers
-   */
-  get allContainers() {
-    return Array.from(this.containers.values());
-  }
-
-  /**
    * Get all visible (non-hidden) nodes with computed position/dimension properties
    */
   get visibleNodes() {
-    return Array.from(this._visibleNodes.values());
+    return Array.from(this._visibleNodes.values()).map(node => {
+      // Create a computed view that exposes layout data as direct properties
+      const computedNode = {
+        ...node,
+        // Expose layout position as direct x, y properties (ELK updates these directly)
+        x: node.x ?? node.layout?.position?.x ?? 0,
+        y: node.y ?? node.layout?.position?.y ?? 0,
+        // Expose layout dimensions as direct width, height properties
+        width: node.width ?? node.layout?.dimensions?.width ?? 180, // Default ELK width
+        height: node.height ?? node.layout?.dimensions?.height ?? 60  // Default ELK height
+      };
+      
+      return computedNode;
+    });
   }
 
   /**
@@ -627,7 +633,13 @@ export class VisualizationState implements ContainerHierarchyView {
    * Hyperedges are included when their corresponding containers are collapsed
    */
   get visibleEdges() {
-    return Array.from(this._visibleEdges.values());
+    const regularEdges = Array.from(this._visibleEdges.values());
+    
+    // Include non-hidden hyperedges (these represent collapsed container connections)
+    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(hyperEdge => !hyperEdge.hidden);
+    
+    // Return unified edge collection - external systems don't need to know about hyperedges
+    return [...regularEdges, ...activeHyperEdges];
   }
 
   /**
@@ -668,429 +680,18 @@ export class VisualizationState implements ContainerHierarchyView {
   }
 
   /**
-   * Get all collapsed containers
+   * Get container children for a container id
+   * Returns a readonly Set to prevent external modification
    */
-  get collapsedContainerNodes() {
-    return Array.from(this.collapsedContainers.values());
-  }
-
-  /**
-   * Get all hyper-edges that are currently visible
-   */
-  get visibleHyperEdges() {
-    const regularEdges = Array.from(this._visibleEdges.values());
-    
-    // Include non-hidden hyperedges (these represent collapsed container connections)
-    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(hyperEdge => !hyperEdge.hidden);
-    
-    // Return unified edge collection - external systems don't need to know about hyperedges
-    return [...regularEdges, ...activeHyperEdges];
-  }
-
-  /**
-   * Get all edges connected to a node
-   */
-  getEdgesForNode(nodeId: string): Set<string> {
-    return this.nodeToEdges.get(nodeId) || new Set();
-  }
-
-  /**
-   * Clear all data
-   */
-  clear(): void {
-    this._clearAllDataStructures();
-  }
-
-  // ============ Invariant Validation ============
-  
-  /**
-   * Validate all internal hyperedge invariants
-   * @param {string} [context=''] - Optional context string for error messages
-   * @throws {Error} When any hyperedge invariant is violated
-   * @example
-   * ```javascript
-   * state.validateHyperedgeInvariants('After container collapse');
-   * ```
-   */
-  validateHyperedgeInvariants(context: string = ''): void {
-    const contextPrefix = context ? `${context}: ` : '';
-    
-    // Get all active hyperedges (not hidden ones)
-    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(he => !he.hidden);
-    
-    // Get visible nodes and containers for validation
-    const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
-    const visibleContainers = this.visibleContainers;
-    const collapsedContainerIds = new Set(
-      visibleContainers.filter(c => c.collapsed).map(c => c.id)
-    );
-    
-    for (const hyperEdge of activeHyperEdges) {
-      // INVARIANT 1: HyperEdges must have at least one collapsed container endpoint
-      const sourceIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.source);
-      const targetIsCollapsedContainer = collapsedContainerIds.has(hyperEdge.target);
-      
-      if (!sourceIsCollapsedContainer && !targetIsCollapsedContainer) {
-        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: must have at least one collapsed container endpoint (source: ${hyperEdge.source}, target: ${hyperEdge.target})`);
-      }
-      
-      // INVARIANT 2: All hyperedge endpoints must be visible (either visible nodes or visible containers)
-      const sourceIsVisibleNode = visibleNodeIds.has(hyperEdge.source);
-      const targetIsVisibleNode = visibleNodeIds.has(hyperEdge.target);
-      const sourceIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.source);
-      const targetIsVisibleContainer = visibleContainers.some(c => c.id === hyperEdge.target);
-      
-      if (!(sourceIsVisibleNode || sourceIsVisibleContainer)) {
-        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: source ${hyperEdge.source} must be a visible node or container`);
-      }
-      
-      if (!(targetIsVisibleNode || targetIsVisibleContainer)) {
-        throw new Error(`${contextPrefix}HyperEdge ${hyperEdge.id} violates invariant: target ${hyperEdge.target} must be a visible node or container`);
-      }
-    }
-    
-    // INVARIANT 3: No hyperedges should leak into visibleEdges (encapsulation check)
-    const visibleEdges = Array.from(this._visibleEdges.values());
-    for (const edge of visibleEdges) {
-      if (edge.id?.startsWith(HYPER_EDGE_PREFIX)) {
-        throw new Error(`${contextPrefix}Encapsulation violation: hyperedge ${edge.id} found in visibleEdges - hyperedges should be internal only`);
-      }
-    }
-  }
-
-  // ============ Container Collapse/Expand Operations ============
-  
-  /**
-   * Collapse a container (depth-first, bottom-up with edge lifting)
-   * Uses optimized engine with tree hierarchy validation and edge indexing
-   */
-  collapseContainer(containerId: string): void {
-    this.collapseExpandEngine.collapseContainer(containerId);
-  }
-  
-  /**
-   * Expand a container (depth-first, top-down with edge grounding)
-   * SYMMETRIC INVERSE of collapseContainer()
-   */
-  expandContainer(containerId: string): void {
-    this.collapseExpandEngine.expandContainer(containerId);
-  }
-
-  /**
-   * Get the children of a container
-   */
-  getContainerChildren(containerId: string): Set<string> {
+  getContainerChildren(containerId: string): ReadonlySet<string> {
     return this.#containerChildren.get(containerId) || new Set();
   }
 
   /**
-   * Get the parent container of a node or container
+   * Get the container that contains a given node
    */
-  getParentContainer(childId: string): string | undefined {
-    return this.#nodeContainers.get(childId);
-  }
-
-  /**
-   * Get a specific graph node by ID
-   */
-  getGraphNode(id: string): any {
-    return this.graphNodes.get(id);
-  }
-
-  /**
-   * Get a specific graph edge by ID
-   */
-  getGraphEdge(id: string): any {
-    return this.graphEdges.get(id);
-  }
-
-  /**
-   * Get a specific container by ID
-   */
-  getContainer(id: string): any {
-    return this.containers.get(id);
-  }
-
-  /**
-   * Get a specific hyper-edge by ID
-   */
-  getHyperEdge(id: string): any {
-    return this.hyperEdges.get(id);
-  }
-
-  /**
-   * Get a specific node, edge, or container by ID
-   */
-  getEntity(id: string): any {
-    const node = this.getGraphNode(id);
-    if (node) {
-      return node;
-    }
-    
-    const edge = this.getGraphEdge(id);
-    if (edge) {
-      return edge;
-    }
-    
-    const container = this.getContainer(id);
-    if (container) {
-      return container;
-    }
-    
-    return this.getHyperEdge(id);
-  }
-
-  /**
-   * Add a node to the graph
-   */
-  addNode(node: any): void {
-    this._validateEntity(node, ['id']);
-    this.graphNodes.set(node.id, node);
-    this._updateVisibility(node.id, node);
-  }
-
-  /**
-   * Add an edge to the graph
-   */
-  addEdge(edge: any): void {
-    this._validateEntity(edge, ['id', 'source', 'target']);
-    this.graphEdges.set(edge.id, edge);
-    this._updateVisibility(edge.id, edge);
-  }
-
-  /**
-   * Add a container to the graph
-   */
-  addContainer(container: any): void {
-    this._validateEntity(container, ['id']);
-    this.containers.set(container.id, container);
-    this._updateVisibility(container.id, container);
-  }
-
-  /**
-   * Add a hyper-edge to the graph
-   */
-  addHyperEdge(hyperEdge: any): void {
-    this._validateEntity(hyperEdge, ['id']);
-    this.hyperEdges.set(hyperEdge.id, hyperEdge);
-    this._updateVisibility(hyperEdge.id, hyperEdge);
-  }
-
-  /**
-   * Update a node's properties
-   */
-  updateNode(id: string, updates: Partial<any>): void {
-    const node = this.getGraphNode(id);
-    this._validateEntity(node);
-    Object.assign(node, updates);
-    this._updateVisibility(id, node);
-  }
-
-  /**
-   * Update an edge's properties
-   */
-  updateEdge(id: string, updates: Partial<any>): void {
-    const edge = this.getGraphEdge(id);
-    this._validateEntity(edge);
-    Object.assign(edge, updates);
-    this._updateVisibility(id, edge);
-  }
-
-  /**
-   * Update a container's properties
-   */
-  updateContainer(id: string, updates: Partial<any>): void {
-    const container = this.getContainer(id);
-    this._validateEntity(container);
-    Object.assign(container, updates);
-    this._updateVisibility(id, container);
-  }
-
-  /**
-   * Update a hyper-edge's properties
-   */
-  updateHyperEdge(id: string, updates: Partial<any>): void {
-    const hyperEdge = this.getHyperEdge(id);
-    this._validateEntity(hyperEdge);
-    Object.assign(hyperEdge, updates);
-    this._updateVisibility(id, hyperEdge);
-  }
-
-  /**
-   * Remove a node from the graph
-   */
-  removeNode(id: string): void {
-    if (!this.graphNodes.has(id)) {
-      throw new Error(`Cannot remove node: node '${id}' does not exist`);
-    }
-    this._removeNodeFromAllStructures(id);
-  }
-
-  /**
-   * Remove an edge from the graph
-   */
-  removeEdge(id: string): void {
-    this.graphEdges.delete(id);
-    this._updateVisibility(id, undefined);
-  }
-
-  /**
-   * Remove a container from the graph
-   */
-  removeContainer(id: string): void {
-    if (!this.containers.has(id)) {
-      throw new Error(`Cannot remove container: container '${id}' does not exist`);
-    }
-    this._removeContainerFromAllStructures(id);
-  }
-
-  /**
-   * Remove a hyper-edge from the graph
-   */
-  removeHyperEdge(id: string): void {
-    if (!this.hyperEdges.has(id)) {
-      throw new Error(`Cannot remove hyperEdge: hyperEdge '${id}' does not exist`);
-    }
-    this._removeHyperEdgeFromAllStructures(id);
-  }
-
-  /**
-   * Clear the entire graph
-   */
-  clearAll(): void {
-    this.graphNodes.clear();
-    this.graphEdges.clear();
-    this.containers.clear();
-    this.hyperEdges.clear();
-    this.manualPositions.clear();
-    this.collapsedContainers.clear();
-    this._visibleNodes.clear();
-    this._visibleEdges.clear();
-    this._visibleContainers.clear();
-    this._expandedContainers.clear();
-  }
-
-  /**
-   * Get all manual positions
-   * @returns {Map<string, {x: number, y: number}>} Copy of manual positions
-   */
-  get allManualPositions(): Map<string, {x: number, y: number}> {
-    return new Map(this.manualPositions);
-  }
-
-  /**
-   * Set a manual position for a node or container
-   * @param {string} id - The element ID
-   * @param {{x: number, y: number}} position - The position object
-   */
-  setManualPosition(id: string, position: {x: number, y: number}): void {
-    this._validateRequiredString(id, 'Element ID');
-    this.manualPositions.set(id, position);
-  }
-
-  /**
-   * Get manual position for a node or container
-   * @param {string} id - The element ID
-   * @returns {{x: number, y: number} | undefined} The position object or undefined if not set
-   */
-  getManualPosition(id: string): {x: number, y: number} | undefined {
-    return this.manualPositions.get(id);
-  }
-
-  /**
-   * Clear manual position for a node or container
-   * @param {string} id - The element ID
-   */
-  clearManualPosition(id: string): void {
-    this.manualPositions.delete(id);
-  }
-
-  /**
-   * Clear all manual position overrides
-   * Called during resets to ensure clean state
-   */
-  clearAllManualPositions(): void {
-    this.manualPositions.clear();
-  }
-
-  /**
-   * Get all visible (non-hidden) nodes with computed position/dimension properties
-   */
-  get visibleNodes() {
-    return Array.from(this._visibleNodes.values());
-  }
-
-  /**
-   * Get all visible (non-hidden) edges, including hyperedges when appropriate
-   * This provides a unified view of edges for external systems (ELK, ReactFlow)
-   * Hyperedges are included when their corresponding containers are collapsed
-   */
-  get visibleEdges() {
-    return Array.from(this._visibleEdges.values());
-  }
-
-  /**
-   * Get all visible (non-hidden) containers with computed position/dimension properties
-   */
-  get visibleContainers() {
-    return Array.from(this._visibleContainers.values()).map(container => {
-      // Create a computed view that exposes layout data as direct properties
-      const computedContainer = {
-        id: container.id,
-        collapsed: container.collapsed,
-        hidden: container.hidden,
-        children: container.children,
-        // Expose layout position as direct x, y properties
-        x: container.layout?.position?.x ?? 0,
-        y: container.layout?.position?.y ?? 0,
-        // Expose layout dimensions as direct width, height properties
-        // Priority: layout dimensions (from ELK) > expandedDimensions (internal) > default
-        width: container.layout?.dimensions?.width ?? container.expandedDimensions?.width ?? 0,
-        height: container.layout?.dimensions?.height ?? container.expandedDimensions?.height ?? 0,
-        // Copy any other custom properties but exclude internal ones
-        ...Object.fromEntries(
-          Object.entries(container).filter(([key]) => 
-            !['layout', 'expandedDimensions', 'id', 'collapsed', 'hidden', 'children'].includes(key)
-          )
-        )
-      };
-      
-      return computedContainer;
-    });
-  }
-
-  /**
-   * Get all expanded (non-collapsed) containers
-   */
-  get expandedContainers() {
-    return Array.from(this._expandedContainers.values());
-  }
-
-  /**
-   * Get all collapsed containers
-   */
-  get collapsedContainerNodes() {
-    return Array.from(this.collapsedContainers.values());
-  }
-
-  /**
-   * Get all hyper-edges that are currently visible
-   */
-  get visibleHyperEdges() {
-    const regularEdges = Array.from(this._visibleEdges.values());
-    
-    // Include non-hidden hyperedges (these represent collapsed container connections)
-    const activeHyperEdges = Array.from(this.hyperEdges.values()).filter(hyperEdge => !hyperEdge.hidden);
-    
-    // Return unified edge collection - external systems don't need to know about hyperedges
-    return [...regularEdges, ...activeHyperEdges];
-  }
-
-  /**
-   * Get all edges connected to a node
-   */
-  getEdgesForNode(nodeId: string): Set<string> {
-    return this.nodeToEdges.get(nodeId) || new Set();
+  getNodeContainer(nodeId: string): string | undefined {
+    return this.#nodeContainers.get(nodeId);
   }
 
   /**
@@ -1165,6 +766,9 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   collapseContainer(containerId: string): void {
     this.collapseExpandEngine.collapseContainer(containerId);
+    
+    // Validate hyperedge invariants after collapse operation
+    this.validateHyperedgeInvariants(`After collapsing container ${containerId}`);
   }
   
   /**
@@ -1173,6 +777,9 @@ export class VisualizationState implements ContainerHierarchyView {
    */
   expandContainer(containerId: string): void {
     this.collapseExpandEngine.expandContainer(containerId);
+    
+    // Validate hyperedge invariants after expand operation
+    this.validateHyperedgeInvariants(`After expanding container ${containerId}`);
   }
 
   // ============ Private Helper Methods ============
@@ -1191,43 +798,6 @@ export class VisualizationState implements ContainerHierarchyView {
     
     // Update visibility collection
     this._updateVisibleNodes(id, node);
-  }
-
-  /**
-   * Add edge to node mapping for tracking
-   * @private
-   */
-  _addEdgeToNodeMapping(edgeId: string, source: string, target: string): void {
-    // Add edge to source node's edge set
-    if (!this.nodeToEdges.has(source)) {
-      this.nodeToEdges.set(source, new Set());
-    }
-    this.nodeToEdges.get(source)!.add(edgeId);
-    
-    // Add edge to target node's edge set
-    if (!this.nodeToEdges.has(target)) {
-      this.nodeToEdges.set(target, new Set());
-    }
-    this.nodeToEdges.get(target)!.add(edgeId);
-  }
-
-  /**
-   * Remove edge from node mapping
-   * @private
-   */
-  _removeEdgeFromNodeMapping(edgeId: string, source: string, target: string): void {
-    // Remove edge from source node's edge set
-    this.nodeToEdges.get(source)?.delete(edgeId);
-    // Remove edge from target node's edge set
-    this.nodeToEdges.get(target)?.delete(edgeId);
-  }
-
-  /**
-   * Update expanded containers visibility
-   * @private
-   */
-  _updateExpandedContainers(id: string, container: any): void {
-    this._updateVisibilityMap(this._expandedContainers, id, container && !container.collapsed ? container : undefined);
   }
 
   /**
@@ -1538,18 +1108,11 @@ export class VisualizationState implements ContainerHierarchyView {
   /**
    * Generic visibility update method - consolidates _updateVisibleNodes, _updateVisibleEdges, _updateVisibleContainers
    */
-  _updateVisibility(id, entity) {
+  _updateVisibilityMap(visibilityMap, id, entity) {
     if (entity.hidden) {
-      this._visibleNodes.delete(id);
-      this._visibleEdges.delete(id);
-      this._visibleContainers.delete(id);
-      this._expandedContainers.delete(id);
-    } else if (this.graphNodes.has(id)) {
-      this._updateVisibleNodes(id, entity);
-    } else if (this.graphEdges.has(id)) {
-      this._updateVisibleEdges(id, entity);
-    } else if (this.containers.has(id)) {
-      this._updateVisibleContainers(id, entity);
+      visibilityMap.delete(id);
+    } else {
+      visibilityMap.set(id, entity);
     }
   }
 
@@ -1563,134 +1126,75 @@ export class VisualizationState implements ContainerHierarchyView {
 
   _updateVisibleContainers(id, container) {
     this._updateVisibilityMap(this._visibleContainers, id, container);
-    this._updateVisibilityMap(this._expandedContainers, id, container && !container.collapsed ? container : undefined);
   }
 
-  _updateVisibilityMap(map, id, entity) {
-    if (entity.hidden) {
-      map.delete(id);
+  _updateExpandedContainers(id, container) {
+    if (container.collapsed) {
+      this._expandedContainers.delete(id);
     } else {
-      map.set(id, entity);
+      this._expandedContainers.set(id, container);
     }
   }
 
   /**
-   * Get the layout of a node
+   * Add edge to node mapping for efficient edge lookup
    */
-  setNodeLayout(id: string, layout: Partial<any>): void {
-    const node = this.getGraphNode(id);
-    this._validateEntity(node);
-    
-    if (!node.layout) {
-      node.layout = {};
+  _addEdgeToNodeMapping(edgeId, sourceId, targetId) {
+    if (!this.nodeToEdges.has(sourceId)) {
+      this.nodeToEdges.set(sourceId, new Set());
     }
-    Object.assign(node.layout, layout);
-  }
-
-  getNodeLayout(id: string): any {
-    return this.getGraphNode(id)?.layout;
-  }
-
-  setEdgeLayout(id: string, layout: Partial<any>): void {
-    const edge = this.getGraphEdge(id);
-    this._validateEntity(edge);
-    
-    if (!edge.layout) {
-      edge.layout = {};
+    if (!this.nodeToEdges.has(targetId)) {
+      this.nodeToEdges.set(targetId, new Set());
     }
-    Object.assign(edge.layout, layout);
-  }
-
-  getEdgeLayout(id: string): any {
-    return this.getGraphEdge(id)?.layout;
-  }
-
-  setContainerLayout(id: string, layout: Partial<any>): void {
-    const container = this.getContainer(id);
-    this._validateEntity(container);
-    
-    if (!container.layout) {
-      container.layout = {};
-    }
-    Object.assign(container.layout, layout);
-  }
-
-  getContainerLayout(id: string): any {
-    return this.getContainer(id)?.layout;
-  }
-
-  getContainerCollapsed(id: string): boolean | undefined {
-    return this.getContainer(id)?.collapsed;
-  }
-
-  setContainerCollapsed(id: string, collapsed: boolean): void {
-    this.updateContainer(id, { collapsed });
-  }
-
-  getContainersRequiringLayout(changedContainerId?: string): any[] {
-    // For now, return all containers. In the future, optimize this.
-    return Array.from(this.containers.values());
+    this.nodeToEdges.get(sourceId).add(edgeId);
+    this.nodeToEdges.get(targetId).add(edgeId);
   }
 
   /**
-   * Get all nodes that are currently visible and require layouting
+   * Remove edge from node mapping
    */
-  getNodesRequiringLayout(changedNodeId?: string): any[] {
-    const nodes = this.visibleNodes;
-    
-    // Apply CENTRALIZED position fixing logic: 
-    // Everything FIXED except the node that changed
-    return nodes.map(node => {
-      const shouldBeFixed = changedNodeId && node.id !== changedNodeId;
-      
-      // Ensure elkFixed is set in VisState
-      this.setContainerELKFixed(node.id, shouldBeFixed);
-      
-      return node;
-    });
-  }
-
-  /**
-   * Get all edges that are currently visible and require layouting
-   */
-  getEdgesRequiringLayout(changedEdgeId?: string): any[] {
-    // For now, return all visible edges. In the future, optimize this.
-    return this.visibleEdges;
-  }
-
-  /**
-   * Get all hyper-edges that are currently visible and require layouting
-   */
-  getHyperEdgesRequiringLayout(changedHyperEdgeId?: string): any[] {
-    // For now, return all visible hyperEdges. In the future, optimize this.
-    return Array.from(this.hyperEdges.values()).filter(he => !he.hidden);
-  }
-
-  /**
-   * Get all entities that are currently visible and require layouting
-   */
-  getEntitiesRequiringLayout(changedEntityId?: string): { nodes: any[], edges: any[], containers: any[], hyperEdges: any[] } {
-    return {
-      nodes: this.getNodesRequiringLayout(changedEntityId),
-      edges: this.getEdgesRequiringLayout(changedEntityId),
-      containers: this.getContainersRequiringLayout(changedEntityId),
-      hyperEdges: this.getHyperEdgesRequiringLayout(changedEntityId)
-    };
-  }
-
-  /**
-   * Validate that an entity exists
-   */
-  _validateEntity(entity: any, requiredFields: string[] = []): void {
-    if (!entity) {
-      throw new Error(`Entity does not exist`);
-    }
-    
-    for (const field of requiredFields) {
-      if (entity[field] === undefined) {
-        throw new Error(`Entity is missing required field: ${field}`);
+  _removeEdgeFromNodeMapping(edgeId, sourceId, targetId) {
+    const sourceEdges = this.nodeToEdges.get(sourceId);
+    if (sourceEdges) {
+      sourceEdges.delete(edgeId);
+      if (sourceEdges.size === 0) {
+        this.nodeToEdges.delete(sourceId);
       }
     }
+    const targetEdges = this.nodeToEdges.get(targetId);
+    if (targetEdges) {
+      targetEdges.delete(edgeId);
+      if (targetEdges.size === 0) {
+        this.nodeToEdges.delete(targetId);
+      }
+    }
+  }
+
+  /**
+   * Aggregate multiple edge styles into a single hyperEdge style
+   */
+  _aggregateEdgeStyles(edges) {
+    // Priority order: ERROR > WARNING > THICK > HIGHLIGHTED > DEFAULT
+    const stylePriority = {
+      'error': 5,
+      'warning': 4,
+      'thick': 3,
+      'highlighted': 2,
+      'default': 1
+    };
+    
+    let highestPriority = 0;
+    let resultStyle = EDGE_STYLES.DEFAULT;
+    
+    for (const edge of edges) {
+      const priority = stylePriority[edge.style] || 1;
+      if (priority > highestPriority) {
+        highestPriority = priority;
+        resultStyle = edge.style;
+      }
+    }
+    
+    return resultStyle;
   }
 }
 
@@ -1865,6 +1369,7 @@ Object.assign(VisualizationState.prototype, {
     return this.getContainerLayout(id)?.elkFixed;
   },
 
+  // Get containers requiring layout with position fixing logic
   getContainersRequiringLayout(changedContainerId?: string): any[] {
     const containers = this.visibleContainers;
     
@@ -1880,16 +1385,6 @@ Object.assign(VisualizationState.prototype, {
     });
   },
 
-<<<<<<< HEAD
-  /**
-   * Set a manual position for a node or container
-   * @param {string} id - The element ID
-   * @param {{x: number, y: number}} position - The position object
-   */
-  setManualPosition(id: string, position: {x: number, y: number}): void {
-    this._validateRequiredString(id, 'Element ID');
-    this.manualPositions.set(id, position);
-=======
   // ============ Manual Position Management ============
   // ARCHITECTURAL NOTE: Manual positions are stored ONLY in VisState to ensure:
   // 1. Clean resets: new VisState = no manual positions
@@ -1965,6 +1460,5 @@ Object.assign(VisualizationState.prototype, {
    */
   hasAnyManualPositions(): boolean {
     return this.manualPositions.size > 0;
->>>>>>> feature/cleanflow
   }
 });
