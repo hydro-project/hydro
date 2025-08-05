@@ -37,7 +37,6 @@ pub enum LocationId {
     Process(usize),
     Cluster(usize),
     Tick(usize, Box<LocationId>),
-    External(usize),
 }
 
 impl LocationId {
@@ -46,13 +45,12 @@ impl LocationId {
             LocationId::Process(_) => self,
             LocationId::Cluster(_) => self,
             LocationId::Tick(_, id) => id.root(),
-            LocationId::External(_) => self,
         }
     }
 
     pub fn is_root(&self) -> bool {
         match self {
-            LocationId::Process(_) | LocationId::Cluster(_) | LocationId::External(_) => true,
+            LocationId::Process(_) | LocationId::Cluster(_) => true,
             LocationId::Tick(_, _) => false,
         }
     }
@@ -62,7 +60,6 @@ impl LocationId {
             LocationId::Process(id) => *id,
             LocationId::Cluster(id) => *id,
             LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
-            LocationId::External(id) => *id,
         }
     }
 
@@ -215,9 +212,8 @@ pub trait Location<'a>: Clone {
                 self.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::ExternalInput {
-                        from_location: LocationId::External(from.id),
-                        from_key: Some(next_external_port_id),
-                        to_key: None,
+                        from_external_id: from.id,
+                        from_key: next_external_port_id,
                         instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(deser_expr.into()),
                         metadata: self.new_node_metadata::<Bytes>(),
@@ -256,9 +252,8 @@ pub trait Location<'a>: Clone {
                 self.clone(),
                 HydroNode::Persist {
                     inner: Box::new(HydroNode::ExternalInput {
-                        from_location: LocationId::External(from.id),
-                        from_key: Some(next_external_port_id),
-                        to_key: None,
+                        from_external_id: from.id,
+                        from_key: next_external_port_id,
                         instantiate_fn: DebugInstantiate::Building,
                         deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
                         metadata: self.new_node_metadata::<T>(),

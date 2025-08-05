@@ -61,8 +61,6 @@ fn add_network(node: &mut HydroNode, new_location: &LocationId) {
     // Set up the network node
     let output_type = output_debug_type.clone().0;
     let network_node = HydroNode::Network {
-        from_key: None,
-        to_key: None,
         serialize_fn: Some(serialize_bincode_with_type(true, &output_type)).map(|e| e.into()),
         instantiate_fn: DebugInstantiate::Building,
         deserialize_fn: Some(deserialize_bincode_with_type(

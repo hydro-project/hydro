@@ -120,8 +120,6 @@ fn persist_pullup_node(
             },
 
             HydroNode::Network {
-                from_key,
-                to_key,
                 serialize_fn,
                 instantiate_fn,
                 deserialize_fn,
@@ -129,8 +127,6 @@ fn persist_pullup_node(
                 metadata,
             } => HydroNode::Persist {
                 inner: Box::new(HydroNode::Network {
-                    from_key,
-                    to_key,
                     serialize_fn,
                     instantiate_fn,
                     deserialize_fn,
