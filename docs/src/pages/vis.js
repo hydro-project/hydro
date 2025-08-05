@@ -133,7 +133,6 @@ function VisHomepageComponent() {
       // 3. Update all state atomically
       setVisualizationState(parseResult.state);
       setParseMetadata(parseResult.metadata);
-      setCollapsedContainers(new Set()); // Reset collapsed state
       setError(null);
       
       console.log('[HomePage] ✅ Complete reset successful');
@@ -554,7 +553,6 @@ function VisHomepageComponent() {
                   hierarchyChoices={parseMetadata?.availableGroupings || []}
                   currentGrouping={parseMetadata?.selectedGrouping}
                   onGroupingChange={handleGroupingChange}
-                  collapsedContainers={collapsedContainers}
                   onToggleContainer={handleToggleContainer}
                   colorPalette="Set2"
                   onPositionChange={(panelId, position) => {
