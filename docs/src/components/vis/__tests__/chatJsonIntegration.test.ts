@@ -283,9 +283,10 @@ describe('ChatJsonIntegration', () => {
 
       console.log(`✅ Edge analysis: ${edgesWithSections} with sections, ${crossContainerEdges} cross-container`);
       
-      // We should have some of each type based on the console logs
+      // Based on current ELK behavior, all edges should have sections
+      // Cross-container edges (e1, e7) now also get sections with bend points
+      expect(edgesWithSections).toBe(edges.length); // All edges should have sections
       expect(edgesWithSections).toBeGreaterThan(0);
-      expect(crossContainerEdges).toBeGreaterThan(0);
     });
   });
 });

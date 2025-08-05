@@ -1880,6 +1880,7 @@ Object.assign(VisualizationState.prototype, {
     });
   },
 
+<<<<<<< HEAD
   /**
    * Set a manual position for a node or container
    * @param {string} id - The element ID
@@ -1888,5 +1889,82 @@ Object.assign(VisualizationState.prototype, {
   setManualPosition(id: string, position: {x: number, y: number}): void {
     this._validateRequiredString(id, 'Element ID');
     this.manualPositions.set(id, position);
+=======
+  // ============ Manual Position Management ============
+  // ARCHITECTURAL NOTE: Manual positions are stored ONLY in VisState to ensure:
+  // 1. Clean resets: new VisState = no manual positions
+  // 2. Single source of truth: no scattered React state
+  // 3. Atomic updates: positions and graph structure stay in sync
+  // 
+  // DO NOT add manual position state to:
+  // - React components (FlowGraph, etc.)
+  // - Bridge classes (ReactFlowBridge, etc.) 
+  // - Layout engines (ELK, etc.)
+  // This prevents state pollution and reset bugs.
+
+  /**
+   * Set a manual position override for a node or container
+   * @param {string} elementId - ID of the element to position
+   * @param {number} x - X coordinate
+   * @param {number} y - Y coordinate
+   */
+  setManualPosition(elementId: string, x: number, y: number): void {
+    this._validateRequiredString(elementId, 'Element ID');
+    if (typeof x !== 'number' || typeof y !== 'number') {
+      throw new Error('Position coordinates must be numbers');
+    }
+    
+    this.manualPositions.set(elementId, { x, y });
+  },
+
+  /**
+   * Get manual position override for an element
+   * @param {string} elementId - ID of the element
+   * @returns {{x: number, y: number} | null} Manual position or null if not set
+   */
+  getManualPosition(elementId: string): {x: number, y: number} | null {
+    return this.manualPositions.get(elementId) || null;
+  },
+
+  /**
+   * Check if an element has a manual position override
+   * @param {string} elementId - ID of the element
+   * @returns {boolean} True if element has manual position
+   */
+  hasManualPosition(elementId: string): boolean {
+    return this.manualPositions.has(elementId);
+  },
+
+  /**
+   * Remove manual position override for an element
+   * @param {string} elementId - ID of the element
+   */
+  clearManualPosition(elementId: string): void {
+    this.manualPositions.delete(elementId);
+  },
+
+  /**
+   * Clear all manual position overrides
+   * Called during resets to ensure clean state
+   */
+  clearAllManualPositions(): void {
+    this.manualPositions.clear();
+  },
+
+  /**
+   * Get all manual positions as a Map
+   * @returns {Map<string, {x: number, y: number}>} Copy of manual positions
+   */
+  getAllManualPositions(): Map<string, {x: number, y: number}> {
+    return new Map(this.manualPositions);
+  },
+
+  /**
+   * Check if any manual positions exist
+   * @returns {boolean} True if any manual positions are set
+   */
+  hasAnyManualPositions(): boolean {
+    return this.manualPositions.size > 0;
+>>>>>>> feature/cleanflow
   }
 });

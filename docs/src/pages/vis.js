@@ -133,6 +133,7 @@ function VisHomepageComponent() {
       // 3. Update all state atomically
       setVisualizationState(parseResult.state);
       setParseMetadata(parseResult.metadata);
+      setCollapsedContainers(new Set()); // Reset collapsed state
       setError(null);
       
       console.log('[HomePage] ✅ Complete reset successful');
@@ -156,18 +157,6 @@ function VisHomepageComponent() {
       setError('Failed to parse JSON data: ' + err.message);
     }
   }, [resetAll]);
-
-  // Get collapsed containers from VisualizationState (single source of truth)
-  const collapsedContainers = React.useMemo(() => {
-    if (!visualizationState) return new Set();
-    
-    // Get all collapsed container IDs from VisualizationState
-    const collapsedIds = visualizationState.visibleContainers
-      .filter(container => container.collapsed)
-      .map(container => container.id);
-    
-    return new Set(collapsedIds);
-  }, [visualizationState]);
 
   const handleToggleContainer = React.useCallback((containerId) => {
     if (!visualizationState) return;

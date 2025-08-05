@@ -493,70 +493,110 @@ function detectEdgeStyleFromObject(styleObj: any): string {
 function parseHierarchy(data: RawGraphData, groupingId: string, state: VisualizationState): number {
   let containerCount = 0;
   
-  // Find the requested hierarchy choice
-  const hierarchyChoice = data.hierarchyChoices?.find(choice => choice.id === groupingId);
+  // Find the requested hierarchy - check both new and old formats
+  let hierarchyChoice: any = null;
+  let groupsData: any = null;
+  
+  // Check new format (hierarchyChoices)
+  if (data.hierarchyChoices) {
+    hierarchyChoice = data.hierarchyChoices.find(choice => choice.id === groupingId);
+  }
+  
+  // Check old format (hierarchies) if not found in new format
+  if (!hierarchyChoice && data.hierarchies) {
+    const oldHierarchy = data.hierarchies.find(h => h.id === groupingId);
+    if (oldHierarchy) {
+      // Convert old format to expected structure
+      hierarchyChoice = oldHierarchy;
+      groupsData = oldHierarchy.groups; // Old format has groups object
+    }
+  }
+  
   if (!hierarchyChoice) {
     console.warn(`Hierarchy choice '${groupingId}' not found`);
     return 0;
   }
   
-  // Create containers from the hierarchy structure
-  function createContainersFromHierarchy(hierarchyItems: any[], parentId?: string): void {
-    for (const item of hierarchyItems) {
-      // Create the container
-      const children: string[] = [];
-      
-      // Add child containers if they exist
-      if (item.children && Array.isArray(item.children)) {
-        for (const childItem of item.children) {
-          children.push(childItem.id);
-        }
-      }
-      
-      state.setContainer(item.id, {
-        label: item.name || item.id,
-        children,
-        collapsed: false
-      });
-      containerCount++;
-      
-      // If this container has a parent, add it to the parent's children
-      if (parentId) {
-        const parent = state.getContainer(parentId);
-        if (parent) {
-          const parentChildren = state.getContainerChildren(parentId);
-          if (!parentChildren.has(item.id)) {
-            state.setContainer(parentId, {
-              ...parent,
-              children: [...parentChildren, item.id]
-            });
+  // Handle both old and new formats
+  if (groupsData) {
+    // Old format: groups is an object { containerID: [nodeID1, nodeID2, ...] }
+    for (const [containerId, nodeIds] of Object.entries(groupsData)) {
+      if (Array.isArray(nodeIds)) {
+        state.setContainer(containerId, {
+          label: containerId,
+          children: nodeIds,
+          collapsed: false
+        });
+        containerCount++;
+        
+        // Add nodes to container children
+        for (const nodeId of nodeIds) {
+          if (state.getGraphNode(nodeId)) {
+            state.addContainerChild(containerId, nodeId);
           }
         }
       }
-      
-      // Recursively create child containers
-      if (item.children && Array.isArray(item.children)) {
-        createContainersFromHierarchy(item.children, item.id);
+    }
+  } else if (hierarchyChoice.hierarchy) {
+    // New format: hierarchical structure
+    // Create containers from the hierarchy structure
+    function createContainersFromHierarchy(hierarchyItems: any[], parentId?: string): void {
+      for (const item of hierarchyItems) {
+        // Create the container
+        const children: string[] = [];
+        
+        // Add child containers if they exist
+        if (item.children && Array.isArray(item.children)) {
+          for (const childItem of item.children) {
+            children.push(childItem.id);
+          }
+        }
+        
+        state.setContainer(item.id, {
+          label: item.name || item.id,
+          children,
+          collapsed: false
+        });
+        containerCount++;
+        
+        // If this container has a parent, add it to the parent's children
+        if (parentId) {
+          const parent = state.getContainer(parentId);
+          if (parent) {
+            const parentChildren = state.getContainerChildren(parentId);
+            if (!parentChildren.has(item.id)) {
+              state.setContainer(parentId, {
+                ...parent,
+                children: [...parentChildren, item.id]
+              });
+            }
+          }
+        }
+        
+        // Recursively create child containers
+        if (item.children && Array.isArray(item.children)) {
+          createContainersFromHierarchy(item.children, item.id);
+        }
       }
     }
-  }
-  
-  // Create all containers first
-  createContainersFromHierarchy(hierarchyChoice.hierarchy);
-  
-  // Assign nodes to containers based on nodeAssignments
-  const assignments = data.nodeAssignments?.[groupingId];
-  if (assignments) {
-    for (const [nodeId, containerId] of Object.entries(assignments)) {
-      const container = state.getContainer(containerId);
-      if (container && state.getGraphNode(nodeId)) {
-        // Add node to container's children
-        const currentChildren = state.getContainerChildren(containerId);
-        if (!currentChildren.has(nodeId)) {
-          state.setContainer(containerId, {
-            ...container,
-            children: [...currentChildren, nodeId]
-          });
+    
+    // Create all containers first
+    createContainersFromHierarchy(hierarchyChoice.hierarchy);
+    
+    // Assign nodes to containers based on nodeAssignments
+    const assignments = data.nodeAssignments?.[groupingId];
+    if (assignments) {
+      for (const [nodeId, containerId] of Object.entries(assignments)) {
+        const container = state.getContainer(containerId);
+        if (container && state.getGraphNode(nodeId)) {
+          // Add node to container's children
+          const currentChildren = state.getContainerChildren(containerId);
+          if (!currentChildren.has(nodeId)) {
+            state.setContainer(containerId, {
+              ...container,
+              children: [...currentChildren, nodeId]
+            });
+          }
         }
       }
     }
