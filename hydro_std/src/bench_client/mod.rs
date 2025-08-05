@@ -51,6 +51,7 @@ pub struct BenchResult<'a, Client> {
 pub unsafe fn bench_client<'a, Client, Payload>(
     clients: &Cluster<'a, Client>,
     workload_generator: impl FnOnce(
+        &Cluster<'a, Client>,
         Stream<u32, Cluster<'a, Client>, Unbounded, NoOrder>,
     )
         -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
@@ -84,6 +85,7 @@ where
     };
 
     let c_new_payloads = workload_generator(
+        clients,
         c_new_payloads_on_start
             .chain(c_received_quorum_payloads.clone())
             .all_ticks(),
