@@ -1,18 +1,7 @@
 /**
  * @fileoverview Bridge-Based FlowGraph Component
  * 
- * Complete replacement for alpha FlowGraph using o        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
-          nodes: dataWithManualPositions.nodes.length,
-          edges: dataWithManualPositions.edges.length
-        });
-        
-        setReactFlowData(dataWithManualPositions);ture.
- * Complete replacement for alpha FlowGraph using o        console.log('[FlowGraph] ✅ Updated ReactFlow data:', {
-          nodes: dataWithManualPositions.nodes.length,
-          edges: dataWithManualPositions.edges.length
-        });
-        
-        setReactFlowData(dataWithManualPositions);ture.
+ * Complete replacement for alpha FlowGraph using the new VisualizationEngine architecture.
  * Maintains identical API while using the new VisualizationEngine internally.
  */
 
@@ -168,18 +157,6 @@ export function FlowGraph({
           });
         });
         
-        // DEBUG: Log all container node data to find differences
-        const containerNodes = dataWithManualPositions.nodes.filter(n => n.type === 'container');
-        console.log('[FlowGraph] 🔍 CONTAINER NODES BEING PASSED TO REACTFLOW:');
-        containerNodes.forEach(node => {
-          console.log(`[FlowGraph] 📦 ${node.id}:`, {
-            position: node.position,
-            data: node.data,
-            // extent: node.extent, // REMOVED: No longer using extent
-            parentId: node.parentId
-          });
-        });
-        
       } catch (err) {
         console.error('[FlowGraph] ❌ Failed to update visualization:', err);
         setError(err instanceof Error ? err.message : String(err));
@@ -203,7 +180,6 @@ export function FlowGraph({
       setReactFlowData(updatedData);
     }
   }, [visualizationState, applyManualPositions]);
-  }, [visualizationState, applyManualPositions]);
 
   // Handle node events
   const onNodeClick = useCallback((event: any, node: any) => {
@@ -224,47 +200,97 @@ export function FlowGraph({
 
   const onNodeDragStart = useCallback((event: any, node: any) => {
     // Drag start - no action needed
-    // Drag start - no action needed
   }, []);
 
   const onNodeDragStop = useCallback((event: any, node: any) => {
     // Store the manual position in VisualizationState
     visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
   }, [visualizationState]);
-    // Store the manual position in VisualizationState
-    visualizationState.setManualPosition(node.id, node.position.x, node.position.y);
-  }, [visualizationState]);
 
-  // Handle ReactFlow node changes (including drag position updates)
+  // Handle ReactFlow node changes - simplified approach to prevent infinite loops
   const onNodesChange = useCallback((changes: any[]) => {
-    // Apply changes to current ReactFlow data
-    if (reactFlowData) {
-      setReactFlowData(prev => {
-        if (!prev) return prev;
+    // Filter out changes that might cause infinite loops
+    const filteredChanges = changes.filter(change => {
+      // Only handle certain types of changes to prevent infinite loops
+      return change.type === 'position' || change.type === 'select' || change.type === 'remove';
+    });
+    
+    if (filteredChanges.length === 0) return;
+    
+    // Log only the filtered changes
+    console.log('[FlowGraph] 📝 onNodesChange handling:', filteredChanges.map(c => `${c.id}:${c.type}`).join(', '));
+    
+    // Apply only the filtered changes
+    setReactFlowData(prev => {
+      if (!prev) return prev;
+      
+      let hasChanges = false;
+      const updatedNodes = prev.nodes.map(node => {
+        const nodeChanges = filteredChanges.filter(change => change.id === node.id);
         
-        const updatedNodes = prev.nodes.map(node => {
-          // Find position changes for this node
-          const positionChange = changes.find(change => 
-            change.id === node.id && change.type === 'position'
-          );
-          
-          if (positionChange && positionChange.position) {
-            return {
-              ...node,
-              position: positionChange.position
-            };
+        if (nodeChanges.length === 0) return node;
+        
+        let updatedNode = { ...node };
+        hasChanges = true;
+        
+        nodeChanges.forEach(change => {
+          switch (change.type) {
+            case 'position':
+              if (change.position && JSON.stringify(change.position) !== JSON.stringify(node.position)) {
+                updatedNode.position = change.position;
+              }
+              break;
+            case 'select':
+              (updatedNode as any).selected = change.selected;
+              break;
+            // Don't handle other types to prevent loops
           }
-          
-          return node;
         });
         
-        return {
-          ...prev,
-          nodes: updatedNodes
-        };
+        return updatedNode;
       });
-    }
-  }, [reactFlowData]);
+      
+      return hasChanges ? { ...prev, nodes: updatedNodes } : prev;
+    });
+  }, []);
+
+  // Handle ReactFlow edge changes - simplified approach
+  const onEdgesChange = useCallback((changes: any[]) => {
+    // Filter out changes that might cause infinite loops
+    const filteredChanges = changes.filter(change => {
+      return change.type === 'select' || change.type === 'remove';
+    });
+    
+    if (filteredChanges.length === 0) return;
+    
+    console.log('[FlowGraph] 🔗 onEdgesChange handling:', filteredChanges.map(c => `${c.id}:${c.type}`).join(', '));
+    
+    setReactFlowData(prev => {
+      if (!prev) return prev;
+      
+      let hasChanges = false;
+      const updatedEdges = prev.edges.map(edge => {
+        const edgeChanges = filteredChanges.filter(change => change.id === edge.id);
+        
+        if (edgeChanges.length === 0) return edge;
+        
+        let updatedEdge = { ...edge };
+        hasChanges = true;
+        
+        edgeChanges.forEach(change => {
+          switch (change.type) {
+            case 'select':
+              (updatedEdge as any).selected = change.selected;
+              break;
+          }
+        });
+        
+        return updatedEdge;
+      });
+      
+      return hasChanges ? { ...prev, edges: updatedEdges } : prev;
+    });
+  }, []);
 
   // Loading state
   if (loading && !reactFlowData) {
@@ -353,6 +379,7 @@ export function FlowGraph({
         onNodeDragStart={onNodeDragStart}
         onNodeDragStop={onNodeDragStop}
         onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
         fitView={config.fitView !== false}
         fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
         attributionPosition="bottom-left"
