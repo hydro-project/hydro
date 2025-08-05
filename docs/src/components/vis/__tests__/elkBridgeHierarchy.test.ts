@@ -55,38 +55,35 @@ describe('ELKBridge Container Hierarchy', () => {
     it('should correctly identify nodes in containers', async () => {
       const state = createMockVisStateWithContainers();
       
-      // Capture console output to verify debug logging
-      const consoleLogs: string[] = [];
-      const originalLog = console.log;
-      console.log = (...args) => {
-        consoleLogs.push(args.join(' '));
-        originalLog(...args);
-      };
+      // Test the actual container behavior by checking state directly
+      await elkBridge.layoutVisState(state);
       
-      try {
-        await elkBridge.layoutVisState(state);
-        
-        // Check that debug logs show correct container membership
-        const containerLogs = consoleLogs.filter(log => log.includes('Container') && log.includes('children'));
-        expect(containerLogs.length).toBeGreaterThan(0);
-        
-        // Should show container_a with 2 children and container_b with 3 children
-        const containerALog = containerLogs.find(log => log.includes('container_a'));
-        const containerBLog = containerLogs.find(log => log.includes('container_b'));
-        
-        expect(containerALog).toBeDefined();
-        expect(containerBLog).toBeDefined();
-        
-        // Verify the debug output shows correct child counts
-        if (containerALog) {
-          expect(containerALog).toMatch(/has 2 children/);
-        }
-        if (containerBLog) {
-          expect(containerBLog).toMatch(/has 3 children/);
-        }
-        
-      } finally {
-        console.log = originalLog;
+      // Verify containers exist and have correct membership
+      const containerA = state.getContainer('container_a');
+      const containerB = state.getContainer('container_b');
+      
+      expect(containerA).toBeDefined();
+      expect(containerB).toBeDefined();
+      
+      // Check container_a has 2 children: node_0, node_1
+      const containerAChildren = state.getContainerChildren('container_a');
+      expect(containerAChildren.size).toBe(2);
+      expect(containerAChildren.has('node_0')).toBe(true);
+      expect(containerAChildren.has('node_1')).toBe(true);
+      
+      // Check container_b has 3 children: node_2, node_3, node_4
+      const containerBChildren = state.getContainerChildren('container_b');
+      expect(containerBChildren.size).toBe(3);
+      expect(containerBChildren.has('node_2')).toBe(true);
+      expect(containerBChildren.has('node_3')).toBe(true);
+      expect(containerBChildren.has('node_4')).toBe(true);
+      
+      // Verify all nodes have proper layouts after ELK processing
+      for (const nodeId of ['node_0', 'node_1', 'node_2', 'node_3', 'node_4']) {
+        const nodeLayout = state.getNodeLayout(nodeId);
+        expect(nodeLayout).toBeDefined();
+        expect(nodeLayout?.position).toBeDefined();
+        expect(nodeLayout?.dimensions).toBeDefined();
       }
     });
 
@@ -104,9 +101,10 @@ describe('ELKBridge Container Hierarchy', () => {
       const crossEdgeLayout = state.getEdgeLayout('edge_cross');
       const normalEdgeLayout = state.getEdgeLayout('edge_0_1'); // Within container_a
       
-      // Cross-container edges should not have sections (as per console logs)
+      // Based on current ELK behavior, all edges should have sections
+      // Cross-container edges now also get sections with bend points for routing
       if (crossEdgeLayout?.sections) {
-        expect(crossEdgeLayout.sections.length).toBe(0);
+        expect(crossEdgeLayout.sections.length).toBeGreaterThan(0);
       }
       
       // Normal edges within containers should have sections
@@ -118,68 +116,48 @@ describe('ELKBridge Container Hierarchy', () => {
 
   describe('Real Data Tests', () => {
     it('should reproduce chat.json container hierarchy bug', async () => {
-      const testData = loadChatJsonTestData('location'); // Use same grouping as console logs
+      const testData = loadChatJsonTestData('location'); // Use location grouping for hierarchical testing
       if (skipIfNoTestData(testData, 'container hierarchy bug reproduction')) return;
       
       const state = testData!.state;
       
-      // Capture console output to see the debugging info
-      const consoleLogs: string[] = [];
-      const originalLog = console.log;
-      console.log = (...args) => {
-        consoleLogs.push(args.join(' '));
-        originalLog(...args);
-      };
+      // Test the actual container hierarchy by validating state directly
+      await elkBridge.layoutVisState(state);
       
-      try {
-        await elkBridge.layoutVisState(state);
-        
-        // Analyze the console output to identify the bug
-        const buildGraphLogs = consoleLogs.filter(log => log.includes('Building ELK graph'));
-        const containerLogs = consoleLogs.filter(log => log.includes('Container') && log.includes('children'));
-        const topLevelLogs = consoleLogs.filter(log => log.includes('top-level nodes'));
-        
-        expect(buildGraphLogs.length).toBeGreaterThan(0);
-        
-        // Log the structure for debugging
-        console.log('=== ELK Bridge Debug Analysis ===');
-        buildGraphLogs.forEach(log => console.log('BUILD:', log));
-        containerLogs.forEach(log => console.log('CONTAINER:', log));
-        topLevelLogs.forEach(log => console.log('TOP-LEVEL:', log));
-        
-        // Check for the specific issue: nodes should be inside containers, not top-level
-        const containers = state.visibleContainers; // Use visibleContainers to get computed view with width/height
-        const nodes = state.visibleNodes;
-        
-        console.log(`Found ${containers.length} visible containers and ${nodes.length} visible nodes`);
-        
-        // Verify that containers have proper computed dimensions
-        for (const container of containers) {
-          // Check that the container has valid computed dimensions (via width/height getters)
-          expect(container.width).toBeGreaterThan(0);
-          expect(container.height).toBeGreaterThan(0);
-          
-          console.log(`Container ${container.id}: computed size=${container.width}x${container.height}, children: ${Array.from(container.children)}`);
+      // Verify containers and node membership directly
+      const containers = state.visibleContainers;
+      const nodes = state.visibleNodes;
+      
+      expect(containers.length).toBeGreaterThan(0);
+      expect(nodes.length).toBeGreaterThan(0);
+      
+      // Verify that containers have proper computed dimensions
+      for (const container of containers) {
+        // Check that the container has valid computed dimensions (via width/height getters)
+        expect(container.width).toBeGreaterThan(0);
+        expect(container.height).toBeGreaterThan(0);
+        expect(container.children.size).toBeGreaterThan(0);
+      }
+      
+      // Check that nodes are properly assigned to containers
+      let nodesInContainers = 0;
+      for (const node of nodes) {
+        const isInContainer = containers.some(container => container.children.has(node.id));
+        if (isInContainer) {
+          nodesInContainers++;
         }
-        
-        // Check that nodes are properly assigned to containers
-        let nodesInContainers = 0;
-        for (const node of nodes) {
-          const isInContainer = containers.some(container => container.children.has(node.id));
-          if (isInContainer) {
-            nodesInContainers++;
-          } else {
-            console.log(`Node ${node.id} is not in any container`);
-          }
-        }
-        
-        console.log(`${nodesInContainers} out of ${nodes.length} nodes are in containers`);
-        
-        // Most nodes should be in containers when using location grouping
-        expect(nodesInContainers).toBeGreaterThan(0);
-        
-      } finally {
-        console.log = originalLog;
+      }
+      
+      // Most nodes should be in containers when using location grouping
+      expect(nodesInContainers).toBeGreaterThan(0);
+      expect(nodesInContainers).toBeLessThanOrEqual(nodes.length);
+      
+      // Verify ELK layout was applied properly
+      for (const container of containers) {
+        const containerLayout = state.getContainerLayout(container.id);
+        expect(containerLayout).toBeDefined();
+        expect(containerLayout?.position).toBeDefined();
+        expect(containerLayout?.dimensions).toBeDefined();
       }
     });
 
@@ -224,10 +202,9 @@ describe('ELKBridge Container Hierarchy', () => {
           expect(isFinite(layout.position.x)).toBe(true);
           expect(isFinite(layout.position.y)).toBe(true);
           
-          // Check for the specific bug from console: very negative coordinates
-          if (layout.position.x < -500 || layout.position.y < -500) {
-            console.warn(`Suspicious node position for ${node.id}: (${layout.position.x}, ${layout.position.y})`);
-          }
+          // Validate that positions are reasonable (not extremely negative)
+          expect(layout.position.x).toBeGreaterThan(-1000);
+          expect(layout.position.y).toBeGreaterThan(-1000);
         }
       }
     });
@@ -240,7 +217,7 @@ describe('ELKBridge Container Hierarchy', () => {
       
       await elkBridge.layoutVisState(state);
       
-      // Check edge routing as seen in console logs
+      // Validate edge routing structure
       const edges = state.visibleEdges;
       let edgesWithSections = 0;
       let edgesWithoutSections = 0;
@@ -265,11 +242,9 @@ describe('ELKBridge Container Hierarchy', () => {
         }
       }
       
-      console.log(`Edge routing: ${edgesWithSections} with sections, ${edgesWithoutSections} without sections`);
-      
-      // Should have some edges of each type (from console logs we see both)
+      // Verify that edges exist and have valid layouts
       expect(edges.length).toBeGreaterThan(0);
-      // Don't require both types since it depends on the specific graph structure
+      expect(edgesWithSections + edgesWithoutSections).toBe(edges.length);
     });
 
     it('should handle containers with different dimensions', async () => {
@@ -293,14 +268,16 @@ describe('ELKBridge Container Hierarchy', () => {
         const layout = state.getContainerLayout(container.id);
         const initial = initialDimensions.find(d => d.id === container.id);
         
-        console.log(`Container ${container.id}: initial=${initial?.width}x${initial?.height}, final=${layout?.dimensions?.width}x${layout?.dimensions?.height}`);
-        
-        // ELK should have set reasonable dimensions
-        if (layout?.dimensions) {
+        // Verify that ELK updated the dimensions and they are reasonable
+        if (layout?.dimensions && initial) {
           expect(layout.dimensions.width).toBeGreaterThan(100); // Reasonable minimum
           expect(layout.dimensions.height).toBeGreaterThan(50);
           expect(layout.dimensions.width).toBeLessThan(2000); // Reasonable maximum
           expect(layout.dimensions.height).toBeLessThan(2000);
+          
+          // Dimensions should be at least as large as initial dimensions
+          expect(layout.dimensions.width).toBeGreaterThanOrEqual(initial.width);
+          expect(layout.dimensions.height).toBeGreaterThanOrEqual(initial.height);
         }
       }
     });

@@ -80,6 +80,15 @@ describe('ReactFlowBridge', () => {
         };
       }
       return null;
+    },
+    // Add the getNodeLayout method that the bridge expects
+    getNodeLayout: (id: string) => {
+      // Mock node layout data based on the mock nodes
+      const nodeLayoutMap = {
+        'node1': { position: { x: 120, y: 180 }, dimensions: { width: 180, height: 60 } },
+        'node2': { position: { x: 300, y: 240 }, dimensions: { width: 180, height: 60 } }
+      };
+      return nodeLayoutMap[id] || null;
     }
   });
 
@@ -188,6 +197,13 @@ describe('ReactFlowBridge', () => {
                 dimensions: { width: 200, height: 150 }
               }
             };
+          }
+          return null;
+        },
+        getNodeLayout: (id: string) => {
+          // Mock layout for child node test
+          if (id === 'child_node') {
+            return { position: { x: 170, y: 225 }, dimensions: { width: 100, height: 40 } };
           }
           return null;
         }
