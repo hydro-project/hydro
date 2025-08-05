@@ -136,7 +136,7 @@ export class VisualizationStateAdapter implements VisualizationState {
   }
 
   getNodeContainer(nodeId: string): string | undefined {
-    return this.core.getNodeContainer(nodeId);
+    return this.core.getParentContainer(nodeId);
   }
 
   // Container operations

@@ -90,7 +90,7 @@ class InvariantChecker {
         `${context}: Visible node ${node.id} should not be hidden`
       );
       
-      const container = this.state.getNodeContainer(node.id);
+      const container = this.state.getParentContainer(node.id);
       if (container) {
         const containerData = this.state.getContainer(container);
         assert.strictEqual(
@@ -141,7 +141,7 @@ class InvariantChecker {
       
       // Check that all children reference this container as parent
       for (const childId of children) {
-        const nodeContainer = this.state.getNodeContainer(childId);
+        const nodeContainer = this.state.getParentContainer(childId);
         if (nodeContainer) {
           assert.strictEqual(
             nodeContainer,
