@@ -24,6 +24,32 @@ COMPLETED:
     - CONTAINER_PADDING: 15→60 (proper breathing room)
     - COMPONENT_TO_COMPONENT: 30→60 (better container separation)
     - Added comprehensive ELK spacing options matching Visualizer
+✅ ELK nested container recursion fix - critical fix for node positioning
+    - Root cause: updateContainerFromELK() was calling updateNodeFromELK() for ALL children
+    - Fix: Added proper container vs node detection in recursive processing
+    - Now correctly processes: containers → updateContainerFromELK(), leaf nodes → updateNodeFromELK()
+    - Result: All nodes now get proper positions from ELK instead of defaulting to (0,0)
+✅ InfoPanel hierarchy tree synchronization with visualization state
+    - Replaced local React collapsedContainers state with VisualizationState single source of truth
+    - InfoPanel now reads collapse state via visualizationState.getContainerCollapsed()
+    - handleToggleContainer() calls visualizationState.collapseContainer()/expandContainer()
+    - Two-way sync: InfoPanel tree reflects current state AND controls visualization
+    - Matches Visualizer functionality for unified container control interface
+✅ Container label display fixes for proper hierarchy names
+    - Fixed ReactFlowBridge to use container.data?.label || container.label || container.id
+    - Fixed InfoPanel hierarchy tree to use proper labels from container data
+    - Container names now show actual function names instead of "bt_x" internal IDs
+    - Added collapsedContainers dependency to InfoPanel useMemo for proper tree updates
+✅ Fixed method name mismatches in container expand/collapse
+    - Fixed ContainerCollapseExpand.ts to call getParentContainer() instead of getNodeContainer()
+    - Fixed FlowGraph.tsx to use allManualPositions getter instead of getAllManualPositions()
+    - Updated ContainerHierarchyView interface to use getParentContainer for consistency
+✅ VisState missing method implementations
+    - Added missing _addEdgeToNodeMapping() for edge-to-node relationship tracking
+    - Added missing _removeEdgeFromNodeMapping() for cleanup
+    - Added missing _updateExpandedContainers() for visibility management
+    - Fixed Object.assign prototype conflicts (allManualPositions getter)
+    - All JSON parsing and state management now works correctly
 
 FIXS:
 - collapse all after initialization

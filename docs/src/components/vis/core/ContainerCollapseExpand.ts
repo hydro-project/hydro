@@ -44,7 +44,7 @@ export class ContainerCollapseExpandEngine {
       }
       
       // Move up to parent container
-      current = this.state.getNodeContainer(current) || '';
+      current = this.state.getParentContainer(current) || '';
     }
     
     // Fallback: return original nodeId
@@ -504,7 +504,7 @@ export class ContainerCollapseExpandEngine {
       visited.add(currentId);
       
       // Check all ancestors of currentId
-      const parent = this.state.getNodeContainer(currentId);
+      const parent = this.state.getParentContainer(currentId);
       if (parent) {
         return dfs(parent);
       }

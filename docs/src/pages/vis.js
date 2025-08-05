@@ -87,8 +87,7 @@ function VisHomepageComponent() {
       title: "Node Types",
       items: legendItems
     };
-  };  // State for collapsed containers
-  const [collapsedContainers, setCollapsedContainers] = React.useState(new Set());
+  };
 
   React.useEffect(() => {
     // Dynamically import the visualization components
@@ -134,7 +133,6 @@ function VisHomepageComponent() {
       // 3. Update all state atomically
       setVisualizationState(parseResult.state);
       setParseMetadata(parseResult.metadata);
-      setCollapsedContainers(new Set()); // Reset collapsed state
       setError(null);
       
       console.log('[HomePage] ✅ Complete reset successful');
@@ -159,17 +157,37 @@ function VisHomepageComponent() {
     }
   }, [resetAll]);
 
+  // Get collapsed containers from VisualizationState (single source of truth)
+  const collapsedContainers = React.useMemo(() => {
+    if (!visualizationState) return new Set();
+    
+    // Get all collapsed container IDs from VisualizationState
+    const collapsedIds = visualizationState.visibleContainers
+      .filter(container => container.collapsed)
+      .map(container => container.id);
+    
+    return new Set(collapsedIds);
+  }, [visualizationState]);
+
   const handleToggleContainer = React.useCallback((containerId) => {
-    setCollapsedContainers(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(containerId)) {
-        newSet.delete(containerId);
-      } else {
-        newSet.add(containerId);
-      }
-      return newSet;
-    });
-  }, []);
+    if (!visualizationState) return;
+    
+    console.log('[HomePage] 🔄 Toggling container:', containerId);
+    
+    // Check current state and toggle via VisualizationState
+    const isCurrentlyCollapsed = visualizationState.getContainerCollapsed(containerId);
+    
+    if (isCurrentlyCollapsed) {
+      console.log('[HomePage] 📖 Expanding container:', containerId);
+      visualizationState.expandContainer(containerId);
+    } else {
+      console.log('[HomePage] 📁 Collapsing container:', containerId);
+      visualizationState.collapseContainer(containerId);
+    }
+    
+    // Force re-render by updating the FlowGraph key (triggers layout recalculation)
+    setFlowGraphKey(prev => prev + 1);
+  }, [visualizationState]);
 
   const handleGroupingChange = React.useCallback((groupingId) => {
     console.log('[HomePage] 🔄 Grouping changed to:', groupingId);
@@ -491,7 +509,6 @@ function VisHomepageComponent() {
                 setVisualizationState(null);
                 setParseMetadata(null);
                 setOriginalJsonData(null);
-                setCollapsedContainers(new Set());
                 setError(null);
                 setFlowGraphKey(prev => prev + 1); // Fresh instance for next load
               }}

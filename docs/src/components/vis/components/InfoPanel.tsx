@@ -51,7 +51,7 @@ export function InfoPanel({
   // Get the current grouping name for the section title
   const currentGroupingName = hierarchyChoices?.find(choice => choice.id === currentGrouping)?.name || 'Container';
 
-  // Build hierarchy tree structure from visualization state
+    // Build hierarchy tree structure from visualization state
   const hierarchyTree = useMemo((): HierarchyTreeNode[] => {
     if (!visualizationState) {
       return [];
@@ -62,34 +62,47 @@ export function InfoPanel({
       return [];
     }
 
-    // Create a map of container ID to container info
-    const containerMap = new Map();
+    // Create a map of container ID to container info with proper parent detection
+    const containerMap = new Map<string, HierarchyTreeNode & { parentId: string | null }>();
+    
     containers.forEach(container => {
-      const children = visualizationState.getContainerChildren(container.id);
+      // Find parent by checking which container has this container as a child
+      let parentId: string | null = null;
+      for (const potentialParent of containers) {
+        if (potentialParent.id !== container.id && potentialParent.children && potentialParent.children.has && potentialParent.children.has(container.id)) {
+          parentId = potentialParent.id;
+          break;
+        }
+      }
+      
       containerMap.set(container.id, {
         id: container.id,
-        label: container.id, // Could extract label from container data if available
+        label: (container as any).data?.label || (container as any).label || container.id, // Try data.label, then label, then fallback to id
         children: [],
-        nodeCount: children ? children.size : 0,
-        parentId: null // This would need to be determined from container hierarchy
+        nodeCount: container.children ? container.children.size : 0,
+        parentId: parentId,
       });
     });
 
-    // Build tree structure - for now, assume flat structure
-    // In a real implementation, you'd need to determine parent-child relationships
-    const buildTree = (parentId: string | null = null): HierarchyTreeNode[] => {
-      return Array.from(containerMap.values())
-        .filter((container: any) => container.parentId === parentId)
-        .map((container: any) => ({
-          id: container.id,
-          label: container.label,
-          children: buildTree(container.id),
-          nodeCount: container.nodeCount
-        }));
+    // Recursively build tree structure 
+    const buildTree = (parentId: string | null): HierarchyTreeNode[] => {
+      const children: HierarchyTreeNode[] = [];
+      for (const container of containerMap.values()) {
+        if (container.parentId === parentId) {
+          const grandchildren = buildTree(container.id);
+          children.push({
+            id: container.id,
+            label: container.label,
+            children: grandchildren,
+            nodeCount: container.nodeCount
+          });
+        }
+      }
+      return children;
     };
 
-    return buildTree();
-  }, [visualizationState, collapsedContainers]);
+    return buildTree(null); // Start with root containers (no parent)
+  }, [visualizationState, collapsedContainers]); // Add collapsedContainers as dependency
 
   // Count immediate leaf (non-container) children of a container
   const countLeafChildren = (containerId: string): number => {

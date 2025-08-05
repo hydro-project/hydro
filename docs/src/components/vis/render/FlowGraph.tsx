@@ -104,7 +104,7 @@ export function FlowGraph({
           baseReactFlowDataRef.current = baseData;
           
           // Apply any existing manual positions
-          const dataWithManualPositions = applyManualPositions(baseData, visualizationState.getAllManualPositions());
+          const dataWithManualPositions = applyManualPositions(baseData, visualizationState.allManualPositions);
           
           setReactFlowData(dataWithManualPositions);
           
@@ -181,7 +181,7 @@ export function FlowGraph({
   // Separate effect to update positions when manual positions change (without re-running layout)
   useEffect(() => {
     if (baseReactFlowDataRef.current && visualizationState.hasAnyManualPositions()) {
-      const updatedData = applyManualPositions(baseReactFlowDataRef.current, visualizationState.getAllManualPositions());
+      const updatedData = applyManualPositions(baseReactFlowDataRef.current, visualizationState.allManualPositions);
       setReactFlowData(updatedData);
     }
   }, [visualizationState, applyManualPositions]);

@@ -136,7 +136,7 @@ export class ReactFlowBridge {
         type: 'container',
         position,
         data: {
-          label: container.id,
+          label: (container as any).data?.label || (container as any).label || container.id, // Use proper label like InfoPanel
           style: (container as any).style || 'default',
           collapsed: container.collapsed || false,
           width,
