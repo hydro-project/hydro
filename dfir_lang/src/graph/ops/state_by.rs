@@ -105,7 +105,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let write_prologue = quote_spanned! {op_span=>
             let #state_ident = {
                 let data_struct: #lattice_type = (#factory_fn)();
-                ::std::debug_assert!(::lattices::IsBot::is_bot(&data_struct));
+                ::std::debug_assert!(#root::lattices::IsBot::is_bot(&data_struct));
                 #df_ident.add_state(::std::cell::RefCell::new(data_struct))
             };
         };

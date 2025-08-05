@@ -3,7 +3,7 @@ name = "hydro_lang"
 publish = true
 version = "0.14.0"
 documentation = "https://docs.rs/hydro_lang/"
-description = "Choreographic programming  for Hydro, built on DFIR"
+description = "A Rust framework for correct and performant distributed systems"
 edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
