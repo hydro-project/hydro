@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let process = flow.process::<()>();
     let external = flow.external::<()>();
 
-    let (port, input, output_ref) = process
+    let (port, input, _membership, output_ref) = process
         .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
 
     output_ref.complete(hydro_test::external_client::http_hello::http_hello_server(
