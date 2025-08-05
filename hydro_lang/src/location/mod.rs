@@ -31,9 +31,6 @@ pub use process::Process;
 pub mod cluster;
 pub use cluster::{Cluster, ClusterId};
 
-pub mod can_send;
-pub use can_send::CanSend;
-
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
@@ -271,7 +268,9 @@ pub trait Location<'a>: Clone {
                         codec_type: quote_type::<LengthDelimitedCodec>().into(),
                         port_hint: NetworkHint::Auto,
                         instantiate_fn: DebugInstantiate::Building,
-                        deserialize_fn: Some(crate::stream::deserialize_bincode::<T>(None).into()),
+                        deserialize_fn: Some(
+                            crate::stream::networking::deserialize_bincode::<T>(None).into(),
+                        ),
                         metadata: self.new_node_metadata::<T>(),
                     }),
                     metadata: self.new_node_metadata::<T>(),
@@ -313,7 +312,7 @@ pub trait Location<'a>: Clone {
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.interleave().ir_node.into_inner()),
+                inner: Box::new(to_sink.entries().ir_node.into_inner()),
                 metadata: self.new_node_metadata::<(u64, T)>(),
             }),
         });
@@ -401,7 +400,7 @@ pub trait Location<'a>: Clone {
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
             input: Box::new(HydroNode::Unpersist {
-                inner: Box::new(to_sink.interleave().ir_node.into_inner()),
+                inner: Box::new(to_sink.entries().ir_node.into_inner()),
                 metadata: self.new_node_metadata::<(u64, Bytes)>(),
             }),
         });
@@ -589,7 +588,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
-        let out = input.interleave().send_bincode_external(&external);
+        let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
 
         let nodes = flow
@@ -623,7 +622,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let (in_port, input, complete_sink) = first_node.bidi_external_many_bincode(&external);
-        let out = input.interleave().send_bincode_external(&external);
+        let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
 
         let nodes = flow
@@ -655,7 +654,7 @@ mod tests {
 
         let (in_port, input, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
-        let out = input.interleave().send_bincode_external(&external);
+        let out = input.entries().send_bincode_external(&external);
         complete_sink.complete(first_node.source_iter(q!([])).into_keyed());
 
         let nodes = flow

@@ -5,6 +5,7 @@ pub fn many_to_many<'a>(flow: &FlowBuilder<'a>) -> Cluster<'a, ()> {
     cluster
         .source_iter(q!(0..2))
         .broadcast_bincode(&cluster)
+        .entries()
         .for_each(q!(|n| println!("cluster received: {:?}", n)));
 
     cluster

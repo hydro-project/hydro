@@ -14,6 +14,17 @@ pub struct KeyedStream<K, V, Loc, Bound, Order = TotalOrder, Retries = ExactlyOn
     pub(crate) _phantom_order: PhantomData<Order>,
 }
 
+impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound, Order, Retries> Clone
+    for KeyedStream<K, V, Loc, Bound, Order, Retries>
+{
+    fn clone(&self) -> Self {
+        KeyedStream {
+            underlying: self.underlying.clone(),
+            _phantom_order: PhantomData,
+        }
+    }
+}
+
 impl<'a, K, V, L, B, O, R> CycleCollection<'a, ForwardRefMarker> for KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a> + NoTick,
@@ -36,7 +47,7 @@ where
 
 impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// Flattens the keyed stream into a single stream of key-value pairs, with non-deterministic
-    /// interleaving across keys.
+    /// element ordering.
     ///
     /// # Example
     /// ```rust
@@ -46,16 +57,39 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     /// process
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
-    ///     .interleave()
+    ///     .entries()
     /// # }, |mut stream| async move {
-    /// // (1, 2), (1, 3), (2, 4) in any order, but (1, 2) will always appear before (1, 3)
+    /// // (1, 2), (1, 3), (2, 4) in any order
     /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
     /// ```
-    pub fn interleave(self) -> Stream<(K, V), L, B, NoOrder, R> {
+    pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R> {
         self.underlying
+    }
+
+    /// Flattens the keyed stream into a single stream of only the values, with non-deterministic
+    /// element ordering.
+    ///
+    /// # Example
+    /// ```rust
+    /// # use hydro_lang::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .values()
+    /// # }, |mut stream| async move {
+    /// // 2, 3, 4 in any order
+    /// # for w in vec![2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// ```
+    pub fn values(self) -> Stream<V, L, B, NoOrder, R> {
+        self.underlying.map(q!(|(_, v)| v))
     }
 
     /// Transforms each value by invoking `f` on each element, with keys staying the same
@@ -73,7 +107,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
     ///     .map(q!(|v| v + 1))
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3, 4], 2: [5] }
     /// # for w in vec![(1, 3), (1, 4), (2, 5)] {
@@ -110,7 +144,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
     ///     .map_with_key(q!(|(k, v)| k + v))
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3, 4], 2: [6] }
     /// # for w in vec![(1, 3), (1, 4), (2, 6)] {
@@ -152,7 +186,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
     ///     .inspect(q!(|v| println!("{}", v)))
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -186,7 +220,7 @@ impl<'a, K, V, L: Location<'a>, B, O, R> KeyedStream<K, V, L, B, O, R> {
     ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
     ///     .into_keyed()
     ///     .inspect(q!(|v| println!("{}", v)))
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
@@ -237,7 +271,7 @@ where
     ///             Some(*acc)
     ///         }),
     ///     )
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: [1, 3], 1: [3, 7] }
     /// # for w in vec![(0, 1), (0, 3), (1, 3), (1, 7)] {
@@ -287,7 +321,7 @@ where
     ///             x % 2 == 0
     ///         }),
     ///     )
-    /// #   .interleave()
+    /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: 2, 1: 9 }
     /// # for w in vec![(0, 2), (1, 9)] {
