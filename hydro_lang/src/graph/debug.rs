@@ -9,6 +9,10 @@ use std::io::Result;
 use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
 use crate::ir::HydroLeaf;
 
+/// URLs longer than ~2000 characters may fail in some browsers.
+/// Use a conservative limit of 1800 characters for the base URL + encoded data.
+const MAX_SAFE_URL_LENGTH: usize = 1800;
+
 /// Opens Hydro IR leaves as a single mermaid diagram.
 pub fn open_mermaid(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
     let mermaid_src = render_with_config(leaves, config, render_hydro_ir_mermaid);
@@ -70,36 +74,12 @@ pub fn save_dot(
 /// Generates JSON and opens it via URL encoding in the docs visualizer.
 pub fn open_json_visualizer(leaves: &[HydroLeaf], config: Option<HydroWriteConfig>) -> Result<()> {
     let json_content = render_with_config(leaves, config, render_hydro_ir_json);
-
-    // Debug: Print a snippet of the JSON to see if backtrace is included
-    println!("=== JSON CONTENT SAMPLE (for backtrace verification) ===");
-    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&json_content) {
-        if let Some(nodes) = parsed["nodes"].as_array() {
-            if let Some(first_node) = nodes.first() {
-                if let Some(backtrace) = first_node["data"]["backtrace"].as_array() {
-                    println!("First node has backtrace with {} elements", backtrace.len());
-                    if !backtrace.is_empty() {
-                        println!(
-                            "Sample backtrace element: {}",
-                            serde_json::to_string_pretty(&backtrace[0]).unwrap_or_default()
-                        );
-                    }
-                } else {
-                    println!("First node does not have backtrace data");
-                }
-            }
-        }
-    }
-    println!("=== END JSON SAMPLE ===");
-
+    print_json_debug_info(&json_content);
     open_json_browser_impl(&json_content)
 }
 
 fn open_mermaid_browser(mermaid_src: &str) -> Result<()> {
-    // Debug: Print the mermaid source being sent to browser
-    println!("=== MERMAID SOURCE BEING SENT TO BROWSER ===");
-    println!("{}", mermaid_src);
-    println!("=== END MERMAID SOURCE ===");
+    print_debug_content("MERMAID SOURCE BEING SENT TO BROWSER", mermaid_src);
 
     let state = serde_json::json!({
         "code": mermaid_src,
@@ -127,59 +107,33 @@ fn open_dot_browser(dot_src: &str) -> Result<()> {
 }
 
 fn open_json_browser_impl(json_content: &str) -> Result<()> {
+    open_json_visualizer_with_fallback(json_content, "new JSON visualizer")
+}
+
+/// Helper function to create a complete HTML file with JSON visualization and open it in browser.
+/// Creates files in temporary directory to avoid cluttering the workspace.
+pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result<()> {
+    open_json_visualizer_with_fallback(json_content, "JSON visualizer in docs")
+}
+
+/// Centralized function to handle JSON visualization with URL length checks and fallbacks.
+fn open_json_visualizer_with_fallback(json_content: &str, context_name: &str) -> Result<()> {
     #[cfg(feature = "viz")]
     {
         use data_encoding::BASE64URL_NOPAD;
 
         // Encode the JSON data for URL
         let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
-
-<<<<<<< HEAD
-        // URLs longer than ~2000 characters may fail in some browsers
-        // Use a conservative limit of 1800 characters for the base URL + encoded data
-        const MAX_SAFE_URL_LENGTH: usize = 1800;
         let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
 
         if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
             // Large graph - save to temp file and give instructions
-            let temp_file = save_json_to_temp(json_content)?;
-
-            println!(
-                "📊 Graph is too large for URL encoding ({} chars)",
-                encoded_data.len()
-            );
-            println!("💾 Saved JSON to temporary file: {}", temp_file.display());
-            println!();
-            println!("🎯 To visualize this graph:");
-            println!("   1. Open https://hydro.run/docs/visualizer");
-            println!("   2. Drag and drop the JSON file onto the visualizer");
-            println!("   3. Or use the file upload button in the visualizer");
-            println!();
-            println!(
-                "💡 Alternatively, you can copy the file path above and use it with your preferred method."
-            );
-
+            handle_large_graph_fallback(json_content, encoded_data.len())?;
             return Ok(());
         }
 
-        // Small graph - use URL encoding as before
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
-        // Try localhost first (for development), then fall back to docs site
-        let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
-        let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
-
-        // Try to open localhost first
-        match webbrowser::open(&localhost_url) {
-            Ok(_) => {
-                println!("Opened new JSON visualizer (localhost): {}", localhost_url);
-            }
-            Err(_) => {
-                // If localhost fails, try the main docs site
-                webbrowser::open(&docs_url)?;
-                println!("Opened new JSON visualizer: {}", docs_url);
-            }
-        }
+        // Small graph - use URL encoding
+        try_open_visualizer_urls(&encoded_data, context_name)?;
     }
 
     #[cfg(not(feature = "viz"))]
@@ -190,7 +144,28 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
     Ok(())
 }
 
-<<<<<<< HEAD
+/// Handle the case where the graph is too large for URL encoding.
+fn handle_large_graph_fallback(json_content: &str, encoded_size: usize) -> Result<()> {
+    let temp_file = save_json_to_temp(json_content)?;
+
+    println!(
+        "📊 Graph is too large for URL encoding ({} chars)",
+        encoded_size
+    );
+    println!("💾 Saved JSON to temporary file: {}", temp_file.display());
+    println!();
+    println!("🎯 To visualize this graph:");
+    println!("   1. Open https://hydro.run/docs/visualizer");
+    println!("   2. Drag and drop the JSON file onto the visualizer");
+    println!("   3. Or use the file upload button in the visualizer");
+    println!();
+    println!(
+        "💡 Alternatively, you can copy the file path above and use it with your preferred method."
+    );
+
+    Ok(())
+}
+
 /// Save JSON content to a temporary file with a descriptive name
 fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
     use std::io::Write;
@@ -212,75 +187,22 @@ fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
     Ok(temp_file)
 }
 
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
-/// Helper function to create a complete HTML file with JSON visualization and open it in browser.
-/// Creates files in temporary directory to avoid cluttering the workspace.
-pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result<()> {
-    // Use the new docs-based approach instead of creating temp HTML files
-    #[cfg(feature = "viz")]
-    {
-        use data_encoding::BASE64URL_NOPAD;
+/// Try to open the visualizer URLs, with localhost fallback to docs site.
+fn try_open_visualizer_urls(encoded_data: &str, context_name: &str) -> Result<()> {
+    let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
+    let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
 
-        // Encode the JSON data for URL
-        let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
-
-<<<<<<< HEAD
-        // URLs longer than ~2000 characters may fail in some browsers
-        // Use a conservative limit of 1800 characters for the base URL + encoded data
-        const MAX_SAFE_URL_LENGTH: usize = 1800;
-        let base_url_length = "https://hydro.run/docs/visualizer#data=".len();
-
-        if base_url_length + encoded_data.len() > MAX_SAFE_URL_LENGTH {
-            // Large graph - save to temp file and give instructions
-            let temp_file = save_json_to_temp(json_content)?;
-
-            println!(
-                "📊 Graph is too large for URL encoding ({} chars)",
-                encoded_data.len()
-            );
-            println!("💾 Saved JSON to temporary file: {}", temp_file.display());
-            println!();
-            println!("🎯 To visualize this graph:");
-            println!("   1. Open https://hydro.run/docs/visualizer");
-            println!("   2. Drag and drop the JSON file onto the visualizer");
-            println!("   3. Or use the file upload button in the visualizer");
-            println!();
-            println!(
-                "💡 Alternatively, you can copy the file path above and use it with your preferred method."
-            );
-
-            return Ok(());
+    // Try to open localhost first
+    match webbrowser::open(&localhost_url) {
+        Ok(_) => {
+            println!("Opened {} (localhost): {}", context_name, localhost_url);
         }
-
-        // Small graph - use URL encoding as before
-=======
->>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
-        // Try localhost first (for development), then fall back to docs site
-        let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
-        let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
-
-        // Try to open localhost first
-        match webbrowser::open(&localhost_url) {
-            Ok(_) => {
-                println!(
-                    "Opened JSON visualizer in docs (localhost): {}",
-                    localhost_url
-                );
-            }
-            Err(_) => {
-                // If localhost fails, try the main docs site
-                webbrowser::open(&docs_url)?;
-                println!("Opened JSON visualizer in docs: {}", docs_url);
-            }
+        Err(_) => {
+            // If localhost fails, try the main docs site
+            webbrowser::open(&docs_url)?;
+            println!("Opened {}: {}", context_name, docs_url);
         }
     }
-
-    #[cfg(not(feature = "viz"))]
-    {
-        println!("viz feature not enabled, cannot open browser");
-    }
-
     Ok(())
 }
 
@@ -319,4 +241,34 @@ where
 {
     let config = config.unwrap_or_default();
     renderer(leaves, &config)
+}
+
+/// Helper function to print debug content with consistent formatting.
+fn print_debug_content(title: &str, content: &str) {
+    println!("=== {} ===", title);
+    println!("{}", content);
+    println!("=== END {} ===", title.split_whitespace().last().unwrap_or("CONTENT"));
+}
+
+/// Helper function to print JSON debug information including backtrace verification.
+fn print_json_debug_info(json_content: &str) {
+    println!("=== JSON CONTENT SAMPLE (for backtrace verification) ===");
+    if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(json_content) {
+        if let Some(nodes) = parsed["nodes"].as_array() {
+            if let Some(first_node) = nodes.first() {
+                if let Some(backtrace) = first_node["data"]["backtrace"].as_array() {
+                    println!("First node has backtrace with {} elements", backtrace.len());
+                    if !backtrace.is_empty() {
+                        println!(
+                            "Sample backtrace element: {}",
+                            serde_json::to_string_pretty(&backtrace[0]).unwrap_or_default()
+                        );
+                    }
+                } else {
+                    println!("First node does not have backtrace data");
+                }
+            }
+        }
+    }
+    println!("=== END JSON SAMPLE ===");
 }
