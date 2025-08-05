@@ -89,7 +89,7 @@ function VisV4Component() {
         }
         
         const parsedData = parseGraphJSON(jsonData);
-        setCurrentVisualizationState(parsedData);
+        setCurrentVisualizationState(parsedData.state);
         setGraphData(jsonData);
         
         console.log('✅ Successfully loaded graph from URL');
@@ -118,9 +118,9 @@ function VisV4Component() {
       }
       
       // Parse the JSON
-      const parsedData = parseGraphJSON(jsonData);
-      setCurrentVisualizationState(parsedData);
-      setGraphData(jsonData);
+        const parsedData = parseGraphJSON(jsonData);
+        setCurrentVisualizationState(parsedData.state);
+        setGraphData(jsonData);
       setError(null);
       
       console.log('✅ File loaded successfully');
