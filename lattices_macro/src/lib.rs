@@ -22,18 +22,21 @@ fn root() -> TokenStream {
         return quote! { lattices };
     }
 
-    let lattices_crate = proc_macro_crate::crate_name("lattices")
-        .expect("`lattices` should be present in `Cargo.toml`");
+    let lattices_crate_name = env!("CARGO_PKG_NAME").strip_suffix("_macro").unwrap();
+    let lattices_crate_ident = lattices_crate_name.replace('-', "_");
+    let lattices_crate = proc_macro_crate::crate_name(lattices_crate_name)
+        .unwrap_or_else(|_| panic!("`{lattices_crate_name}` should be present in `Cargo.toml`"));
     match lattices_crate {
         FoundCrate::Itself => {
             if Err(VarError::NotPresent) == env_var("CARGO_BIN_NAME")
-                && Ok("lattices") == env_var("CARGO_CRATE_NAME").as_deref()
+                && Ok(&*lattices_crate_ident) == env_var("CARGO_CRATE_NAME").as_deref()
             {
                 // In the crate itself, including unit tests.
                 quote! { crate }
             } else {
                 // In an integration test, example, bench, etc.
-                quote! { ::lattices }
+                let ident = Ident::new(&lattices_crate_ident, Span::call_site());
+                quote! { ::#ident }
             }
         }
         FoundCrate::Name(name) => {

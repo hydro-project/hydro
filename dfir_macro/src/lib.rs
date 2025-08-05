@@ -35,23 +35,29 @@ pub fn dfir_syntax_noemit(input: proc_macro::TokenStream) -> proc_macro::TokenSt
 fn root() -> proc_macro2::TokenStream {
     use std::env::{VarError, var as env_var};
 
-    let root_crate =
-        proc_macro_crate::crate_name("dfir_rs").expect("dfir_rs should be present in `Cargo.toml`");
+    let root_crate_name = format!(
+        "{}_rs",
+        env!("CARGO_PKG_NAME").strip_suffix("_macro").unwrap()
+    );
+    let root_crate_ident = root_crate_name.replace('-', "_");
+    let root_crate = proc_macro_crate::crate_name(&root_crate_name)
+        .unwrap_or_else(|_| panic!("{root_crate_name} should be present in `Cargo.toml`"));
     match root_crate {
         proc_macro_crate::FoundCrate::Itself => {
             if Err(VarError::NotPresent) == env_var("CARGO_BIN_NAME")
                 && Err(VarError::NotPresent) != env_var("CARGO_PRIMARY_PACKAGE")
-                && Ok("dfir_rs") == env_var("CARGO_CRATE_NAME").as_deref()
+                && Ok(&*root_crate_ident) == env_var("CARGO_CRATE_NAME").as_deref()
             {
                 // In the crate itself, including unit tests.
                 quote! { crate }
             } else {
                 // In an integration test, example, bench, etc.
-                quote! { ::dfir_rs }
+                let ident: Ident = Ident::new(&root_crate_ident, Span::call_site());
+                quote! { ::#ident }
             }
         }
         proc_macro_crate::FoundCrate::Name(name) => {
-            let ident: Ident = Ident::new(&name, Span::call_site());
+            let ident = Ident::new(&name, Span::call_site());
             quote! { ::#ident }
         }
     }
