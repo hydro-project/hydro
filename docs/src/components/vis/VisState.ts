@@ -8,8 +8,12 @@
 import {
   NODE_STYLES,
   EDGE_STYLES, 
-  CONTAINER_STYLES
+  CONTAINER_STYLES,
+  CreateNodeProps,
+  CreateEdgeProps,
+  CreateContainerProps
 } from './constants.js';
+import { ContainerCollapseExpandEngine } from './ContainerCollapseExpand.js';
 
 // Constants for consistent string literals
 const HYPER_EDGE_PREFIX = 'hyper_';
@@ -24,32 +28,78 @@ const ENTITY_TYPES = {
 };
 
 /**
+<<<<<<< HEAD
  * Core visualization state class that manages all graph elements
  */
 export class VisualizationState {
 <<<<<<< HEAD:docs/src/components/vis/VisState.js
 =======
+=======
+ * Read-only interface for container hierarchy information
+ * Prevents external code from modifying the internal structure
+ */
+export interface ContainerHierarchyView {
+  getContainerChildren(containerId: string): ReadonlySet<string>;
+  getNodeContainer(nodeId: string): string | undefined;
+}
+
+/**
+ * Core visualization state class that manages all graph elements including nodes, edges, 
+ * containers, and hyperEdges with efficient visibility tracking and hierarchy management.
+ * 
+ * Features:
+ * - O(1) element lookups using Maps
+ * - Automatic visibility management
+ * - Hierarchical container support with collapse/expand
+ * - Edge <-> hyperEdge conversion for collapse/expand
+ * - Efficient update operations
+ * - Runtime-enforced encapsulation for container hierarchy
+ * 
+ * @class VisualizationState
+ * @example
+ * ```javascript
+ * // Modern idiomatic usage with getters
+ * const state = createVisualizationState()
+ *   .setGraphNode('n1', { label: 'Node 1' })
+ *   .setGraphNode('n2', { label: 'Node 2' })
+ *   .setGraphEdge('e1', { source: 'n1', target: 'n2' })
+ *   .setContainer('c1', { children: ['n1', 'n2'] });
+ * 
+ * // Access data with TypeScript getters (no parentheses!)
+ * console.log(state.visibleNodes);     // Array of visible nodes
+ * console.log(state.expandedContainers); // Array of expanded containers
+ * 
+ * // Update properties idiomatically  
+ * state.updateNode('n1', { hidden: true, style: 'highlighted' });
+ * state.updateContainer('c1', { collapsed: true });
+ * ```
+ */
+export class VisualizationState implements ContainerHierarchyView {
+>>>>>>> 336632b29 (code review of VisState)
   // Core graph elements
   private readonly graphNodes: Map<string, any>;
   private readonly graphEdges: Map<string, any>;
   private readonly containers: Map<string, any>;
   private readonly hyperEdges: Map<string, any>;
   
-  // Efficient access collections for visible elements
-  private readonly visibleNodes: Map<string, any>;
-  private readonly visibleEdges: Map<string, any>;
-  private readonly visibleContainers: Map<string, any>;
-  private readonly expandedContainers: Map<string, any>;
+  // Efficient access collections for visible elements (internal maps)
+  private readonly _visibleNodes: Map<string, any>;
+  private readonly _visibleEdges: Map<string, any>;
+  private readonly _visibleContainers: Map<string, any>;
+  private readonly _expandedContainers: Map<string, any>;
   
   // Collapsed container representations
   private readonly collapsedContainers: Map<string, any>;
   
-  // Container hierarchy tracking
-  private readonly containerChildren: Map<string, Set<string>>;
-  private readonly nodeContainers: Map<string, string>;
+  // Container hierarchy tracking (truly private with # syntax)
+  readonly #containerChildren: Map<string, Set<string>>;
+  readonly #nodeContainers: Map<string, string>;
   
   // Edge tracking for hyperEdge management
   private readonly nodeToEdges: Map<string, Set<string>>;
+
+  // Container collapse/expand engine
+  private readonly collapseExpandEngine: ContainerCollapseExpandEngine;
 
   /**
    * Create a new VisualizationState instance
@@ -64,41 +114,108 @@ export class VisualizationState {
     this.hyperEdges = new Map(); // id -> HyperEdge
     
     // Efficient access collections for visible elements
+<<<<<<< HEAD
     this.visibleNodes = new Map(); // id -> GraphNode (non-hidden)
     this.visibleEdges = new Map(); // id -> GraphEdge (non-hidden)
     this.visibleContainers = new Map(); // id -> Container (non-hidden)
     this.expandedContainers = new Map(); // id -> Container (non-collapsed)
+=======
+    /** @type {Map<string, Object>} Non-hidden nodes for rendering */
+    this._visibleNodes = new Map(); 
+    /** @type {Map<string, Object>} Non-hidden edges for rendering */
+    this._visibleEdges = new Map(); 
+    /** @type {Map<string, Object>} Non-hidden containers for rendering */
+    this._visibleContainers = new Map(); 
+    /** @type {Map<string, Object>} Non-collapsed containers */
+    this._expandedContainers = new Map(); 
+>>>>>>> 336632b29 (code review of VisState)
     
     // Collapsed container representations
     this.collapsedContainers = new Map(); // id -> CollapsedContainer
     
     // Container hierarchy tracking
+<<<<<<< HEAD
     this.containerChildren = new Map(); // containerId -> Set of child node/container ids
     this.nodeContainers = new Map(); // nodeId -> containerId
     
     // Edge tracking for hyperEdge management
     this.nodeToEdges = new Map(); // nodeId -> Set of edge ids connected to this node
+=======
+    /** @type {Map<string, Set<string>>} Container ID to Set of child IDs */
+    this.#containerChildren = new Map(); 
+    /** @type {Map<string, string>} Node ID to parent container ID */
+    this.#nodeContainers = new Map(); 
+    
+    // Edge tracking for hyperEdge management
+    /** @type {Map<string, Set<string>>} Node ID to Set of connected edge IDs */
+    this.nodeToEdges = new Map(); 
+
+    // Initialize container collapse/expand engine
+    this.collapseExpandEngine = new ContainerCollapseExpandEngine(this);
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   // ============ Generic Entity Management ============
 
   /**
    * Validate that an entity exists and optionally check a condition
+<<<<<<< HEAD
    */
   _validateEntity(entity, conditionFn = null) {
     if (!entity) return false;
     return conditionFn ? conditionFn(entity) : true;
+=======
+   * @param {Object|null} entity - The entity object to validate
+   * @param {Function} [conditionFn] - Optional condition function to check
+   * @throws {Error} When entity doesn't exist or condition fails
+   */
+  _validateEntity(entity, conditionFn = null) {
+    if (!entity) {
+      throw new Error(`Entity does not exist`);
+    }
+    if (conditionFn && !conditionFn(entity)) {
+      throw new Error(`Entity '${entity.id}' does not support this operation`);
+    }
+    return true;
+  }
+
+  /**
+   * Validate required string parameter
+   * @param {any} value - The value to validate
+   * @param {string} fieldName - Name of the field for error messages
+   * @throws {Error} When value is not a non-empty string
+   */
+  _validateRequiredString(value, fieldName) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(`${fieldName} must be a non-empty string`);
+    }
+  }
+
+  /**
+   * Validate style parameter against allowed values
+   * @param {any} style - The style value to validate
+   * @param {Object} allowedStyles - Object containing allowed style values
+   * @param {string} entityType - Type of entity for error messages
+   * @throws {Error} When style is not in allowed values
+   */
+  _validateStyle(style, allowedStyles, entityType) {
+    const validStyles = Object.values(allowedStyles);
+    if (!validStyles.includes(style)) {
+      throw new Error(`${entityType} style must be one of: ${validStyles.join(', ')}`);
+    }
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Generic method to get an entity from any collection
    */
-  _getEntity(entityType, id) {
+  _getEntity(entityType: string, id: string): any {
     const collection = this._getEntityCollection(entityType);
     return collection.get(id);
   }
 
   /**
+<<<<<<< HEAD
    * Generic method to set hidden flag for any entity type that supports it
    */
   _setEntityHidden(entityType, id, hidden) {
@@ -118,9 +235,11 @@ export class VisualizationState {
   }
 
   /**
+=======
+>>>>>>> 336632b29 (code review of VisState)
    * Get the main collection for an entity type
    */
-  _getEntityCollection(entityType) {
+  _getEntityCollection(entityType: string): Map<string, any> {
     switch (entityType) {
       case ENTITY_TYPES.NODE: return this.graphNodes;
       case ENTITY_TYPES.EDGE: return this.graphEdges;
@@ -130,28 +249,11 @@ export class VisualizationState {
     }
   }
 
-  /**
-   * Update visibility collections based on entity type and hidden state
-   */
-  _updateVisibilityCollection(entityType, id, entity) {
-    switch (entityType) {
-      case ENTITY_TYPES.NODE:
-        this._updateVisibleNodes(id, entity);
-        break;
-      case ENTITY_TYPES.EDGE:
-        this._updateVisibleEdges(id, entity);
-        break;
-      case ENTITY_TYPES.CONTAINER:
-        this._updateVisibleContainers(id, entity);
-        break;
-      // HyperEdges don't have visibility collections
-    }
-  }
-
   // ============ Graph Nodes ============
   
   /**
    * Add or update a graph node
+<<<<<<< HEAD
    */
 <<<<<<< HEAD:docs/src/components/vis/VisState.js
   setGraphNode(id, { label, style = NODE_STYLES.DEFAULT, hidden = false, ...otherProps }) {
@@ -163,6 +265,33 @@ export class VisualizationState {
     if (!label || typeof label !== 'string') {
       throw new Error('Node label must be a non-empty string');
     }
+=======
+   * @param {string} id - Unique identifier for the node
+   * @param {Object} props - Node properties
+   * @param {string} props.label - Display label for the node
+   * @param {string} [props.style=NODE_STYLES.DEFAULT] - Visual style identifier
+   * @param {boolean} [props.hidden=false] - Whether the node is hidden
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {VisualizationState} This instance for method chaining
+   * @throws {Error} When required properties are missing
+   * @example
+   * ```javascript
+   * const state = createVisualizationState()
+   *   .setGraphNode('node1', {
+   *     label: 'My Node',
+   *     style: NODE_STYLES.HIGHLIGHTED,
+   *     customData: { type: 'processor' }
+   *   })
+   *   .setGraphNode('node2', { label: 'Another Node' });
+   * ```
+   */
+  setGraphNode(id: string, props: CreateNodeProps) {
+    const { label, style = NODE_STYLES.DEFAULT, hidden = false, ...otherProps } = props;
+    
+    this._validateRequiredString(id, 'Node ID');
+    this._validateRequiredString(label, 'Node label');
+    this._validateStyle(style, NODE_STYLES, 'Node');
+>>>>>>> 336632b29 (code review of VisState)
 
 >>>>>>> bddb2f97e (typescript port):docs/src/components/vis/VisState.ts
     const node = {
@@ -173,19 +302,19 @@ export class VisualizationState {
       ...otherProps
     };
     
-    this.graphNodes.set(id, node);
-    this._updateVisibleNodes(id, node);
-    return node;
+    this._addNodeToAllStructures(id, node);
+    return this;
   }
 
   /**
    * Get a graph node by id
    */
-  getGraphNode(id) {
+  getGraphNode(id: string): any {
     return this._getEntity(ENTITY_TYPES.NODE, id);
   }
 
   /**
+<<<<<<< HEAD
    * Set hidden flag for a graph node
    */
   setNodeHidden(id, hidden) {
@@ -197,23 +326,82 @@ export class VisualizationState {
    */
   getNodeHidden(id) {
     return this._getEntityHidden(ENTITY_TYPES.NODE, id);
+=======
+   * Update a node's properties. More idiomatic than separate getters/setters.
+   * @param {string} id - The node ID
+   * @param {Partial<{hidden: boolean, style: string, label: string}>} updates - Properties to update
+   * @throws {Error} When node doesn't exist
+   * @example
+   * ```javascript
+   * state.updateNode('node1', { hidden: true, style: 'highlighted' });
+   * ```
+   */
+  updateNode(id: string, updates: { hidden?: boolean; style?: string; label?: string }) {
+    const node = this.getGraphNode(id);
+    this._validateEntity(node);
+    
+    // Apply updates
+    Object.assign(node, updates);
+    
+    // Update visibility if hidden changed
+    if ('hidden' in updates) {
+      this._updateVisibleNodes(id, node);
+    }
+    
+    return this;
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Remove a graph node
    */
+<<<<<<< HEAD
   removeGraphNode(id) {
     this.graphNodes.delete(id);
     this.visibleNodes.delete(id);
     this.nodeContainers.delete(id);
+=======
+  removeGraphNode(id: string): void {
+    if (!this.graphNodes.has(id)) {
+      throw new Error(`Cannot remove node: node '${id}' does not exist`);
+    }
+    this._removeNodeFromAllStructures(id);
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   // ============ Graph Edges ============
   
   /**
    * Add or update a graph edge
+   * @param {string} id - Unique identifier for the edge
+   * @param {Object} props - Edge properties
+   * @param {string} props.source - Source node/container ID
+   * @param {string} props.target - Target node/container ID
+   * @param {string} [props.style=EDGE_STYLES.DEFAULT] - Visual style identifier
+   * @param {boolean} [props.hidden=false] - Whether the edge is hidden
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {VisualizationState} This instance for method chaining
+   * @throws {Error} When required properties are missing or invalid
+   * @example
+   * ```javascript
+   * const state = createVisualizationState()
+   *   .setGraphEdge('edge1', {
+   *     source: 'node1',
+   *     target: 'node2',
+   *     style: EDGE_STYLES.HIGHLIGHTED,
+   *     weight: 5
+   *   })
+   *   .setGraphEdge('edge2', { source: 'node2', target: 'node3' });
+   * ```
    */
-  setGraphEdge(id: string, { source, target, style = EDGE_STYLES.DEFAULT as any, hidden = false, ...otherProps }: any) {
+  setGraphEdge(id: string, props: CreateEdgeProps) {
+    const { source, target, style = EDGE_STYLES.DEFAULT, hidden = false, ...otherProps } = props;
+    
+    this._validateRequiredString(id, 'Edge ID');
+    this._validateRequiredString(source, 'Edge source');
+    this._validateRequiredString(target, 'Edge target');
+    this._validateStyle(style, EDGE_STYLES, 'Edge');
+
     const edge = {
       id,
       source,
@@ -223,52 +411,61 @@ export class VisualizationState {
       ...otherProps
     };
     
-    this.graphEdges.set(id, edge);
-    this._updateVisibleEdges(id, edge);
-    
-    // Maintain nodeToEdges mapping
-    this._addEdgeToNodeMapping(id, source, target);
-    
-    return edge;
+    this._addEdgeToAllStructures(id, edge, source, target);
+    return this;
   }
 
   /**
    * Get a graph edge by id
+   * @param {string} id - The edge ID to retrieve
+   * @returns {Object|undefined} The edge object or undefined if not found
    */
-  getGraphEdge(id) {
+  getGraphEdge(id: string): any {
     return this._getEntity(ENTITY_TYPES.EDGE, id);
   }
 
   /**
-   * Set hidden flag for a graph edge
+   * Update an edge's properties. More idiomatic than separate getters/setters.
+   * @param {string} id - The edge ID
+   * @param {Partial<{hidden: boolean, style: string}>} updates - Properties to update
+   * @throws {Error} When edge doesn't exist
+   * @example
+   * ```javascript
+   * state.updateEdge('edge1', { hidden: true, style: 'highlighted' });
+   * ```
    */
-  setEdgeHidden(id, hidden) {
-    this._setEntityHidden(ENTITY_TYPES.EDGE, id, hidden);
-  }
-
-  /**
-   * Get hidden flag for a graph edge
-   */
-  getEdgeHidden(id) {
-    return this._getEntityHidden(ENTITY_TYPES.EDGE, id);
+  updateEdge(id: string, updates: { hidden?: boolean; style?: string }) {
+    const edge = this.getGraphEdge(id);
+    this._validateEntity(edge);
+    
+    // Apply updates
+    Object.assign(edge, updates);
+    
+    // Update visibility if hidden changed
+    if ('hidden' in updates) {
+      this._updateVisibleEdges(id, edge);
+    }
+    
+    return this;
   }
 
   /**
    * Remove a graph edge
+   * @param {string} id - The edge ID to remove
+   * @throws {Error} When edge doesn't exist
    */
-  removeGraphEdge(id) {
-    const edge = this.graphEdges.get(id);
-    if (edge) {
-      this._removeEdgeFromNodeMapping(id, edge.source, edge.target);
+  removeGraphEdge(id: string): void {
+    if (!this.graphEdges.has(id)) {
+      throw new Error(`Cannot remove edge: edge '${id}' does not exist`);
     }
-    this.graphEdges.delete(id);
-    this.visibleEdges.delete(id);
+    this._removeEdgeFromAllStructures(id);
   }
 
   // ============ Containers ============
   
   /**
    * Add or update a container
+<<<<<<< HEAD
    */
   setContainer(id, { 
     expandedDimensions = { width: 0, height: 0 }, 
@@ -277,6 +474,45 @@ export class VisualizationState {
     children = [],
     ...otherProps 
   }) {
+=======
+   * @param {string} id - Unique identifier for the container
+   * @param {Object} props - Container properties
+   * @param {Object} [props.expandedDimensions={width: 0, height: 0}] - Dimensions when expanded
+   * @param {number} props.expandedDimensions.width - Width in pixels
+   * @param {number} props.expandedDimensions.height - Height in pixels
+   * @param {boolean} [props.collapsed=false] - Whether the container is collapsed
+   * @param {boolean} [props.hidden=false] - Whether the container is hidden
+   * @param {Array<string>} [props.children=[]] - Array of child node/container IDs
+   * @param {string} [props.label] - Display label for the container
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {VisualizationState} This instance for method chaining
+   * @throws {Error} When required properties are missing or invalid
+   * @example
+   * ```javascript
+   * const state = createVisualizationState()
+   *   .setContainer('container1', {
+   *     expandedDimensions: { width: 200, height: 150 },
+   *     children: ['node1', 'node2'],
+   *     label: 'My Container'
+   *   });
+   * ```
+   */
+  setContainer(id: string, props: CreateContainerProps) {
+    const { 
+      expandedDimensions = { width: 0, height: 0 }, 
+      collapsed = false, 
+      hidden = false,
+      children = [],
+      ...otherProps 
+    } = props;
+
+    this._validateRequiredString(id, 'Container ID');
+    
+    if (!Array.isArray(children)) {
+      throw new Error('Container children must be an array');
+    }
+
+>>>>>>> 336632b29 (code review of VisState)
     const container = {
       id,
       expandedDimensions,
@@ -286,31 +522,36 @@ export class VisualizationState {
       ...otherProps
     };
     
-    this.containers.set(id, container);
-    this._updateVisibleContainers(id, container);
-    this._updateExpandedContainers(id, container);
-    
-    // Update container hierarchy
-    this.containerChildren.set(id, container.children);
-    for (const childId of children) {
-      this.nodeContainers.set(childId, id);
-    }
-    
-    return container;
+    this._addContainerToAllStructures(id, container);
+    return this;
   }
 
   /**
    * Get a container by id
    */
-  getContainer(id) {
+  getContainer(id: string): any {
     return this._getEntity(ENTITY_TYPES.CONTAINER, id);
   }
 
   /**
+<<<<<<< HEAD
    * Set collapsed flag for a container
+=======
+   * Update a container's properties. More idiomatic than separate getters/setters.
+   * @param {string} id - The container ID
+   * @param {Partial<{collapsed: boolean, hidden: boolean, label: string}>} updates - Properties to update
+   * @throws {Error} When container doesn't exist or parameters are invalid
+   * @example
+   * ```javascript
+   * state.updateContainer('container1', { collapsed: true, hidden: false });
+   * ```
+>>>>>>> 336632b29 (code review of VisState)
    */
-  setContainerCollapsed(id, collapsed) {
+  updateContainer(id: string, updates: { collapsed?: boolean; hidden?: boolean; label?: string }) {
+    this._validateRequiredString(id, 'Container ID');
+    
     const container = this.getContainer(id);
+<<<<<<< HEAD
     if (this._validateEntity(container)) {
       container.collapsed = collapsed;
       this._updateExpandedContainers(id, container);
@@ -337,48 +578,134 @@ export class VisualizationState {
    */
   getContainerHidden(id) {
     return this._getEntityHidden(ENTITY_TYPES.CONTAINER, id);
+=======
+    this._validateEntity(container);
+    
+    // Apply updates
+    Object.assign(container, updates);
+    
+    // Update expanded containers if collapsed changed
+    if ('collapsed' in updates) {
+      this._updateExpandedContainers(id, container);
+    }
+    
+    // Update visibility if hidden changed  
+    if ('hidden' in updates) {
+      this._updateVisibleContainers(id, container);
+    }
+    
+    return this;
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Add a child to a container
+<<<<<<< HEAD
+=======
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to add
+   * @throws {Error} When container doesn't exist or parameters are invalid
+>>>>>>> 336632b29 (code review of VisState)
    */
-  addContainerChild(containerId, childId) {
+  addContainerChild(containerId: string, childId: string): void {
+    this._validateRequiredString(containerId, 'Container ID');
+    this._validateRequiredString(childId, 'Child ID');
+    
     const container = this.getContainer(containerId);
+<<<<<<< HEAD
     if (this._validateEntity(container)) {
       container.children.add(childId);
       this.containerChildren.set(containerId, container.children);
       this.nodeContainers.set(childId, containerId);
     }
+=======
+    this._validateEntity(container);
+    
+    // Validate tree hierarchy (no cycles/DAGs)
+    this.collapseExpandEngine.validateTreeHierarchy(containerId, childId);
+    
+    // Use helper to maintain consistency
+    this._addChildToContainerHierarchy(containerId, childId);
+    
+    // Update edge index
+    this.collapseExpandEngine.rebuildEdgeIndex();
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Remove a child from a container
+<<<<<<< HEAD
+=======
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to remove
+   * @throws {Error} When container doesn't exist or parameters are invalid
+>>>>>>> 336632b29 (code review of VisState)
    */
-  removeContainerChild(containerId, childId) {
+  removeContainerChild(containerId: string, childId: string): void {
+    this._validateRequiredString(containerId, 'Container ID');
+    this._validateRequiredString(childId, 'Child ID');
+    
     const container = this.getContainer(containerId);
+<<<<<<< HEAD
     if (this._validateEntity(container)) {
       container.children.delete(childId);
       this.containerChildren.set(containerId, container.children);
       this.nodeContainers.delete(childId);
     }
+=======
+    this._validateEntity(container);
+    
+    // Use helper to maintain consistency
+    this._removeChildFromContainerHierarchy(containerId, childId);
+    
+    // Update edge index
+    this.collapseExpandEngine.rebuildEdgeIndex();
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Remove a container
+   * @param {string} id - The container ID to remove
+   * @throws {Error} When container doesn't exist
    */
-  removeContainer(id) {
-    this.containers.delete(id);
-    this.visibleContainers.delete(id);
-    this.expandedContainers.delete(id);
-    this.containerChildren.delete(id);
+  removeContainer(id: string): void {
+    if (!this.containers.has(id)) {
+      throw new Error(`Cannot remove container: container '${id}' does not exist`);
+    }
+    this._removeContainerFromAllStructures(id);
   }
 
   // ============ Hyper Edges ============
   
   /**
    * Add or update a hyper edge
+   * @param {string} id - Unique identifier for the hyperEdge
+   * @param {Object} props - HyperEdge properties
+   * @param {string} props.source - Source node/container ID
+   * @param {string} props.target - Target node/container ID
+   * @param {string} [props.style=EDGE_STYLES.DEFAULT] - Visual style identifier
+   * @param {Array<Object>} [props.originalEdges] - Original edges aggregated into this hyperEdge
+   * @param {string} [props.originalInternalEndpoint] - Original internal endpoint for grounding
+   * @param {Object} [props.otherProps] - Additional custom properties
+   * @returns {VisualizationState} This instance for method chaining
+   * @throws {Error} When required properties are missing or invalid
+   * @example
+   * ```javascript
+   * const state = createVisualizationState()
+   *   .setHyperEdge('hyper1', {
+   *     source: 'container1',
+   *     target: 'node3',
+   *     style: EDGE_STYLES.THICK,
+   *     originalEdges: [edge1, edge2]
+   *   });
+   * ```
    */
-  setHyperEdge(id, { source, target, style = EDGE_STYLES.DEFAULT, ...otherProps }) {
+  setHyperEdge(id: string, { source, target, style = EDGE_STYLES.DEFAULT, ...otherProps }: { source: string; target: string; style?: string; [key: string]: any }) {
+    this._validateRequiredString(id, 'HyperEdge ID');
+    this._validateRequiredString(source, 'HyperEdge source');
+    this._validateRequiredString(target, 'HyperEdge target');
+    this._validateStyle(style, EDGE_STYLES, 'HyperEdge');
+
     const hyperEdge = {
       id,
       source,
@@ -387,102 +714,106 @@ export class VisualizationState {
       ...otherProps
     };
     
+<<<<<<< HEAD
     this.hyperEdges.set(id, hyperEdge);
     
     // Check invariants after adding hyperEdge
     this._checkHyperEdgeInvariants();
     
     return hyperEdge;
+=======
+    this._addHyperEdgeToAllStructures(id, hyperEdge);
+    return this;
+>>>>>>> 336632b29 (code review of VisState)
   }
 
   /**
    * Get a hyper edge by id
+   * @param {string} id - The hyperEdge ID to retrieve
+   * @returns {Object|undefined} The hyperEdge object or undefined if not found
    */
-  getHyperEdge(id) {
+  getHyperEdge(id: string): any {
     return this._getEntity(ENTITY_TYPES.HYPER_EDGE, id);
   }
 
   /**
    * Remove a hyper edge
+   * @param {string} id - The hyperEdge ID to remove
+   * @throws {Error} When hyperEdge doesn't exist
    */
-  removeHyperEdge(id) {
-    this.hyperEdges.delete(id);
+  removeHyperEdge(id: string): void {
+    if (!this.hyperEdges.has(id)) {
+      throw new Error(`Cannot remove hyperEdge: hyperEdge '${id}' does not exist`);
+    }
+    this._removeHyperEdgeFromAllStructures(id);
   }
 
-  // ============ Bulk Operations ============
+  // ============ Computed Properties (Idiomatic TypeScript Getters) ============
   
   /**
    * Get all visible (non-hidden) nodes
    */
-  getVisibleNodes() {
-    return Array.from(this.visibleNodes.values());
+  get visibleNodes() {
+    return Array.from(this._visibleNodes.values());
   }
 
   /**
-   * Get all visible (non-hidden) edges
+   * Get all visible (non-hidden) edges  
    */
-  getVisibleEdges() {
-    return Array.from(this.visibleEdges.values());
+  get visibleEdges() {
+    return Array.from(this._visibleEdges.values());
   }
 
   /**
    * Get all visible (non-hidden) containers
    */
-  getVisibleContainers() {
-    return Array.from(this.visibleContainers.values());
+  get visibleContainers() {
+    return Array.from(this._visibleContainers.values());
   }
 
   /**
    * Get all expanded (non-collapsed) containers
    */
-  getExpandedContainers() {
-    return Array.from(this.expandedContainers.values());
+  get expandedContainers() {
+    return Array.from(this._expandedContainers.values());
   }
 
   /**
    * Get all hyper edges
    */
-  getHyperEdges() {
+  get allHyperEdges() {
     return Array.from(this.hyperEdges.values());
   }
 
   /**
    * Get container children for a container id
+   * Returns a readonly Set to prevent external modification
    */
-  getContainerChildren(containerId) {
-    return this.containerChildren.get(containerId) || new Set();
+  getContainerChildren(containerId: string): ReadonlySet<string> {
+    return this.#containerChildren.get(containerId) || new Set();
   }
 
   /**
    * Get the container that contains a given node
    */
-  getNodeContainer(nodeId) {
-    return this.nodeContainers.get(nodeId);
+  getNodeContainer(nodeId: string): string | undefined {
+    return this.#nodeContainers.get(nodeId);
   }
 
   /**
    * Clear all data
    */
-  clear() {
-    this.graphNodes.clear();
-    this.graphEdges.clear();
-    this.containers.clear();
-    this.hyperEdges.clear();
-    this.visibleNodes.clear();
-    this.visibleEdges.clear();
-    this.visibleContainers.clear();
-    this.expandedContainers.clear();
-    this.collapsedContainers.clear();
-    this.containerChildren.clear();
-    this.nodeContainers.clear();
-    this.nodeToEdges.clear();
+  clear(): void {
+    this._clearAllDataStructures();
   }
 
-  // ============ Container Collapse/Expand Symmetric Operations ============
+  // ============ Container Collapse/Expand Operations ============
   
   /**
    * Collapse a container (depth-first, bottom-up with edge lifting)
+   * Uses optimized engine with tree hierarchy validation and edge indexing
    */
+<<<<<<< HEAD
   collapseContainer(containerId) {
     const container = this.getContainer(containerId);
     // Allow collapsing containers even if they're hidden by parent containers
@@ -507,12 +838,17 @@ export class VisualizationState {
     
     // Check invariants after collapse operation
     this._checkHyperEdgeInvariants();
+=======
+  collapseContainer(containerId: string): void {
+    this.collapseExpandEngine.collapseContainer(containerId);
+>>>>>>> 336632b29 (code review of VisState)
   }
   
   /**
    * Expand a container (depth-first, top-down with edge grounding)
    * SYMMETRIC INVERSE of collapseContainer()
    */
+<<<<<<< HEAD
   expandContainer(containerId) {
     const container = this.getContainer(containerId);
     // Allow expanding containers even if they're hidden by parent containers
@@ -537,426 +873,267 @@ export class VisualizationState {
     
     // Check invariants after expand operation
     this._checkHyperEdgeInvariants();
+=======
+  expandContainer(containerId: string): void {
+    this.collapseExpandEngine.expandContainer(containerId);
+>>>>>>> 336632b29 (code review of VisState)
   }
-
-  // ============ Collapse/Expand Core Implementation (Symmetric Pair) ============
-
-  /**
-   * Perform the actual collapse operation for a single container
-   * This includes lifting edges and hyperEdges from child containers
-   */
-  _performCollapseWithLift(containerId) {
-    const container = this.getContainer(containerId);
-    
-    // 1. Create collapsed container representation
-    this._createCollapsedContainerRepresentation(containerId, container);
-    
-    // 2. Mark container as collapsed
-    this._markContainerAsCollapsed(containerId, container);
-    
-    // 3. Get and categorize children
-    const children = this.getContainerChildren(containerId);
-    const { containerNodes, childContainers } = this._categorizeChildren(children);
-    
-    // 4. Hide child nodes and handle edge rerouting
-    this._hideChildNodesAndRerouteEdges(containerId, containerNodes);
-    
-    // 5. Lift edges and hyperEdges to this container level
-    this._liftEdgesToContainer(containerId, containerNodes, childContainers);
-  }
-
-  /**
-   * Create collapsed container representation
-   */
-  _createCollapsedContainerRepresentation(containerId, container) {
-    this.collapsedContainers.set(containerId, {
-      id: containerId,
-      originalContainer: container,
-      style: container.style || DEFAULT_STYLE
-    });
-  }
-
-  /**
-   * Mark container as collapsed and update tracking
-   */
-  _markContainerAsCollapsed(containerId, container) {
-    container.collapsed = true;
-    this._updateExpandedContainers(containerId, container);
-  }
-
-  /**
-   * Hide child nodes and reroute existing hyperEdges
-   */
-  _hideChildNodesAndRerouteEdges(containerId, containerNodes) {
-    // Hide all direct child nodes
-    this._setNodesVisibility(containerNodes, true);
-    
-    // Handle existing hyperEdges that point to nodes we're hiding
-    this._rerouteHyperEdgesToCollapsedContainer(containerId, containerNodes);
-  }
-
-  /**
-   * Perform the actual expansion operation for a single container
-   * This includes grounding edges and hyperEdges to child containers
-   * SYMMETRIC INVERSE of _performCollapseWithLift()
-   */
-  _performExpandWithGround(containerId) {
-    const container = this.getContainer(containerId);
-    const collapsedContainer = this.collapsedContainers.get(containerId);
-    
-    if (!collapsedContainer) return;
-    
-    // 1. Mark container as expanded and cleanup
-    this._markContainerAsExpandedAndCleanup(containerId, container);
-    
-    // 2. Show child nodes
-    this._showChildNodes(containerId);
-    
-    // 3. Ground hyperEdges and edges from this container to child level
-    this._groundEdgesFromContainer(containerId);
-  }
-
-  /**
-   * Mark container as expanded and remove collapsed representation
-   */
-  _markContainerAsExpandedAndCleanup(containerId, container) {
-    // Mark container as expanded
-    container.collapsed = false;
-    this._updateExpandedContainers(containerId, container);
-    
-    // Remove collapsed container representation
-    this.collapsedContainers.delete(containerId);
-  }
-
-  /**
-   * Show all direct child nodes
-   */
-  _showChildNodes(containerId) {
-    const children = this.getContainerChildren(containerId);
-    const { containerNodes } = this._categorizeChildren(children);
-    this._setNodesVisibility(containerNodes, false);
-  }
-
-  /**
-   * Reroute existing hyperEdges that point to nodes we're about to hide
-   * when collapsing a container
-   */
-  _rerouteHyperEdgesToCollapsedContainer(containerId, containerNodes) {
-    const hyperEdgesToUpdate = [];
-    
-    // Find hyperEdges that need rerouting
-    for (const [hyperEdgeId, hyperEdge] of this.hyperEdges) {
-      const update = this._calculateHyperEdgeReroute(hyperEdge, containerNodes, containerId);
-      if (update) {
-        hyperEdgesToUpdate.push({ id: hyperEdgeId, originalHyperEdge: hyperEdge, ...update });
-      }
-    }
-    
-    // Apply the updates
-    for (const update of hyperEdgesToUpdate) {
-      this.removeHyperEdge(update.id);
-      
-      // Only create a new hyperEdge if source and target are different
-      if (update.newSource !== update.newTarget) {
-        const newHyperEdgeId = `${HYPER_EDGE_PREFIX}${update.newSource}_to_${update.newTarget}`;
-        this.setHyperEdge(newHyperEdgeId, {
-          source: update.newSource,
-          target: update.newTarget,
-          style: update.originalHyperEdge.style,
-          originalEdges: update.originalHyperEdge.originalEdges,
-          originalInternalEndpoint: update.originalHyperEdge.originalInternalEndpoint
-        });
-      }
-    }
-  }
-
-  /**
-   * Calculate if a hyperEdge needs rerouting and return the new endpoints
-   */
-  _calculateHyperEdgeReroute(hyperEdge, containerNodes, containerId) {
-    let needsUpdate = false;
-    let newSource = hyperEdge.source;
-    let newTarget = hyperEdge.target;
-    
-    // Check if source is a node we're hiding
-    if (containerNodes.has(hyperEdge.source)) {
-      newSource = containerId;
-      needsUpdate = true;
-    }
-    
-    // Check if target is a node we're hiding
-    if (containerNodes.has(hyperEdge.target)) {
-      newTarget = containerId;
-      needsUpdate = true;
-    }
-    
-    return needsUpdate ? { newSource, newTarget } : null;
-  }
-
-  // ============ Edge Lifting/Grounding Coordination (Symmetric Pair) ============
-
-  /**
-   * Lift edges and hyperEdges from nodes and child containers to the parent container
-   */
-  _liftEdgesToContainer(containerId, containerNodes, childContainers) {
-    const liftedConnections = new Map(); // externalId -> {incoming: Set, outgoing: Set}
-    
-    // Process direct node edges
-    this._liftNodeEdges(containerId, containerNodes, liftedConnections);
-    
-    // Process hyperEdges from child containers (lift them to this level)
-    this._liftChildContainerHyperEdges(containerId, childContainers, liftedConnections);
-    
-    // Create new hyperEdges for all lifted connections
-    this._createHyperEdgesFromLiftedConnections(containerId, liftedConnections);
-  }
-
-  /**
-   * Ground hyperEdges and edges connected to the expanding container
-   * This is the inverse of lifting: restore connections to the correct child endpoints
-   * SYMMETRIC INVERSE of _liftEdgesToContainer()
-   */
-  _groundEdgesFromContainer(containerId) {
-    const children = this.getContainerChildren(containerId);
-    
-    // Process hyperEdges connected to this container
-    this._groundContainerHyperEdges(containerId);
-    
-    // Process direct node edges that were hidden during collapse
-    this._groundNodeEdges(containerId, children);
-  }
-
-  // ============ Node Edge Processing (Symmetric Pair) ============
-
-  /**
-   * Lift edges from direct child nodes
-   */
-  _liftNodeEdges(containerId, containerNodes, liftedConnections) {
-    const processedEdges = new Set();
-    
-    for (const nodeId of containerNodes) {
-      const connectedEdges = this.nodeToEdges.get(nodeId) || new Set();
-      
-      for (const edgeId of connectedEdges) {
-        if (processedEdges.has(edgeId)) continue;
-        processedEdges.add(edgeId);
-        
-        const edge = this.graphEdges.get(edgeId);
-        if (!edge) continue;
-        
-        this._processNodeEdge(edge, containerNodes, liftedConnections);
-      }
-    }
-  }
-
-  /**
-   * Process a single node edge during lifting
-   */
-  _processNodeEdge(edge, containerNodes, liftedConnections) {
-    const sourceInContainer = containerNodes.has(edge.source);
-    const targetInContainer = containerNodes.has(edge.target);
-    
-    if (sourceInContainer && targetInContainer) {
-      // Both endpoints in container - hide the edge (internal edge)
-      this.setEdgeHidden(edge.id, true);
-    } else if (sourceInContainer || targetInContainer) {
-      // One endpoint in container, one external
-      const externalId = sourceInContainer ? edge.target : edge.source;
-      const internalId = sourceInContainer ? edge.source : edge.target;
-      
-      // Only create hyperEdge if the external endpoint should be connected
-      if (this._isEndpointConnectable(externalId)) {
-        const isOutgoing = sourceInContainer; // container -> external
-        this._addToLiftedConnections(liftedConnections, externalId, edge, isOutgoing, internalId);
-      }
-      
-      // Hide the original edge regardless
-      this.setEdgeHidden(edge.id, true);
-    }
-  }
-
-  /**
-   * Ground edges from direct child nodes
-   * SYMMETRIC INVERSE of _liftNodeEdges()
-   */
-  _groundNodeEdges(containerId, children) {
-    // Restore internal edges (edges between nodes in this container)
-    for (const [edgeId, edge] of this.graphEdges) {
-      if (!edge.hidden) continue; // Skip already visible edges
-      
-      const sourceNode = this.graphNodes.get(edge.source);
-      const targetNode = this.graphNodes.get(edge.target);
-      
-      // Both endpoints must be nodes (not containers) and visible
-      if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
-        this.setEdgeHidden(edgeId, false);
-      }
-    }
-  }
-
-  // ============ Container HyperEdge Processing (Symmetric Pair) ============
-
-  /**
-   * Lift hyperEdges from child containers to this container level
-   */
-  _liftChildContainerHyperEdges(containerId, childContainers, liftedConnections) {
-    this._processHyperEdges(
-      (hyperEdge) => childContainers.has(hyperEdge.source) || childContainers.has(hyperEdge.target),
-      (hyperEdge) => this._liftChildContainerHyperEdge(hyperEdge, childContainers, liftedConnections)
-    );
-  }
-
-  /**
-   * Lift a single child container hyperEdge
-   */
-  _liftChildContainerHyperEdge(hyperEdge, childContainers, liftedConnections) {
-    const sourceIsChild = childContainers.has(hyperEdge.source);
-    const targetIsChild = childContainers.has(hyperEdge.target);
-    
-    if (sourceIsChild || targetIsChild) {
-      const externalId = sourceIsChild ? hyperEdge.target : hyperEdge.source;
-      const isOutgoing = sourceIsChild; // child container -> external
-      
-      // Only lift if the external endpoint is connectable
-      if (this._isEndpointConnectable(externalId) && hyperEdge.originalEdges) {
-        for (const originalEdge of hyperEdge.originalEdges) {
-          const childInternalEndpoint = hyperEdge.originalInternalEndpoint || 
-            (sourceIsChild ? hyperEdge.source : hyperEdge.target);
-          this._addToLiftedConnections(liftedConnections, externalId, originalEdge, isOutgoing, childInternalEndpoint);
-        }
-      }
-    }
-  }
-
-  /**
-   * Ground hyperEdges connected to the expanding container
-   * SYMMETRIC INVERSE of _liftChildContainerHyperEdges()
-   */
-  _groundContainerHyperEdges(containerId) {
-    this._processHyperEdges(
-      (hyperEdge) => hyperEdge.source === containerId || hyperEdge.target === containerId,
-      (hyperEdge) => this._groundSingleContainerHyperEdge(hyperEdge, containerId)
-    );
-  }
-
-  /**
-   * Ground a single container hyperEdge
-   */
-  _groundSingleContainerHyperEdge(hyperEdge, containerId) {
-    const isSourceContainer = hyperEdge.source === containerId;
-    const externalId = isSourceContainer ? hyperEdge.target : hyperEdge.source;
-    const internalEndpoint = hyperEdge.originalInternalEndpoint;
-    
-    this._groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer);
-  }
-
-  // ============ Helper Functions (Symmetric Pairs) ============
-
-  /**
-   * Helper to add an edge to lifted connections with proper direction
-   */
-  _addToLiftedConnections(liftedConnections, externalId, edge, isOutgoing, internalEndpoint) {
-    if (!liftedConnections.has(externalId)) {
-      liftedConnections.set(externalId, { incoming: new Set(), outgoing: new Set() });
-    }
-    
-    const direction = isOutgoing ? 'outgoing' : 'incoming';
-    const connections = liftedConnections.get(externalId);
-    
-    // Store the edge with its original internal endpoint
-    const edgeWithEndpoint = { 
-      ...edge, 
-      originalInternalEndpoint: internalEndpoint 
-    };
-    
-    connections[direction].add(edgeWithEndpoint);
-  }
-
-  /**
-   * Ground a single connection during container expansion
-   * SYMMETRIC INVERSE of _addToLiftedConnections()
-   */
-  _groundConnection(externalId, internalEndpoint, hyperEdge, isSourceContainer) {
-    if (hyperEdge.originalEdges) {
-      // Restore original edges only if both endpoints are visible
-      for (const originalEdge of hyperEdge.originalEdges) {
-        const sourceNode = this.graphNodes.get(originalEdge.source);
-        const targetNode = this.graphNodes.get(originalEdge.target);
-        
-        // Only restore edge if both endpoints are visible nodes
-        if (sourceNode && !sourceNode.hidden && targetNode && !targetNode.hidden) {
-          this.setEdgeHidden(originalEdge.id, false);
-        }
-      }
-    }
-  }
-
-  /**
-   * Create hyperEdges from lifted connections
-   */
-  _createHyperEdgesFromLiftedConnections(containerId, liftedConnections) {
-    for (const [externalId, connections] of liftedConnections) {
-      this._createDirectionalHyperEdges(containerId, externalId, connections);
-    }
-  }
-
-  /**
-   * Create hyperEdges for both directions (incoming and outgoing)
-   */
-  _createDirectionalHyperEdges(containerId, externalId, connections) {
-    if (connections.incoming.size > 0) {
-      this._createHyperEdge(externalId, containerId, Array.from(connections.incoming));
-    }
-    
-    if (connections.outgoing.size > 0) {
-      this._createHyperEdge(containerId, externalId, Array.from(connections.outgoing));
-    }
-  }
-
-  /**
-   * Create a single hyperEdge with proper metadata
-   */
-  _createHyperEdge(sourceId, targetId, edgesArray) {
-    const hyperEdgeId = `${HYPER_EDGE_PREFIX}${sourceId}_to_${targetId}`;
-    this.setHyperEdge(hyperEdgeId, {
-      source: sourceId,
-      target: targetId,
-      style: this._aggregateEdgeStyles(edgesArray),
-      originalEdges: edgesArray.map(e => ({ id: e.id, source: e.source, target: e.target, style: e.style })),
-      originalInternalEndpoint: edgesArray[0].originalInternalEndpoint || 
-        this._findOriginalInternalEndpoint(edgesArray, targetId === sourceId ? sourceId : targetId)
-    });
-  }
-
-  /**
-   * Find the original internal endpoint that should receive grounded connections
-   * For multiple edges, prefer containers over nodes, then use the first one
-   */
-  _findOriginalInternalEndpoint(edges, containerId) {
-    const children = this.getContainerChildren(containerId);
-    const internalEndpoints = new Set();
-    
-    for (const edge of edges) {
-      const internalEndpoint = children.has(edge.source) ? edge.source : edge.target;
-      internalEndpoints.add(internalEndpoint);
-    }
-    
-    // If multiple internal endpoints, prefer containers over nodes
-    const containerEndpoints = Array.from(internalEndpoints).filter(id => this.containers.has(id as string));
-    const nodeEndpoints = Array.from(internalEndpoints).filter(id => this.graphNodes.has(id as string));
-    
-    if (containerEndpoints.length > 0) {
-      return containerEndpoints[0]; // Prefer containers
-    } else if (nodeEndpoints.length > 0) {
-      return nodeEndpoints[0]; // Fall back to nodes
-    }
-    
-    return Array.from(internalEndpoints)[0]; // Fallback
-  }
-
-
 
   // ============ Private Helper Methods ============
+  
+  // ============ Entity Creation Helpers ============
+  
+  /**
+   * Add a node to all related data structures
+   * @param {string} id - The node ID
+   * @param {Object} node - The node object
+   * @private
+   */
+  _addNodeToAllStructures(id: string, node: any): void {
+    // Add to main collection
+    this.graphNodes.set(id, node);
+    
+    // Update visibility collection
+    this._updateVisibleNodes(id, node);
+  }
+
+  /**
+   * Add an edge to all related data structures
+   * @param {string} id - The edge ID
+   * @param {Object} edge - The edge object
+   * @param {string} source - The source node/container ID
+   * @param {string} target - The target node/container ID
+   * @private
+   */
+  _addEdgeToAllStructures(id: string, edge: any, source: string, target: string): void {
+    // Add to main collection
+    this.graphEdges.set(id, edge);
+    
+    // Update visibility collection
+    this._updateVisibleEdges(id, edge);
+    
+    // Maintain nodeToEdges mapping
+    this._addEdgeToNodeMapping(id, source, target);
+    
+    // Update collapse/expand engine edge index
+    this.collapseExpandEngine.rebuildEdgeIndex();
+  }
+
+  /**
+   * Add a container to all related data structures
+   * @param {string} id - The container ID
+   * @param {Object} container - The container object
+   * @private
+   */
+  _addContainerToAllStructures(id: string, container: any): void {
+    // Add to main collection
+    this.containers.set(id, container);
+    
+    // Update visibility collections
+    this._updateVisibleContainers(id, container);
+    this._updateExpandedContainers(id, container);
+    
+    // Update container hierarchy using helper
+    this._initializeContainerHierarchy(id, container.children);
+    
+    // Update collapse/expand engine edge index (containers affect edge routing)
+    this.collapseExpandEngine.rebuildEdgeIndex();
+  }
+
+  /**
+   * Add a hyperEdge to all related data structures
+   * @param {string} id - The hyperEdge ID
+   * @param {Object} hyperEdge - The hyperEdge object
+   * @private
+   */
+  _addHyperEdgeToAllStructures(id, hyperEdge) {
+    // Add to main collection (hyperEdges don't have other index structures)
+    this.hyperEdges.set(id, hyperEdge);
+  }
+
+  // ============ Entity Removal Helpers ============
+  
+  /**
+   * Remove a node from all related data structures
+   * @param {string} id - The node ID to remove
+   * @private
+   */
+  _removeNodeFromAllStructures(id) {
+    // Remove from main collection
+    this.graphNodes.delete(id);
+    
+    // Remove from visibility collection
+    this._visibleNodes.delete(id);
+    
+    // Remove from container hierarchy using encapsulated method
+    const parentId = this.#nodeContainers.get(id);
+    if (parentId) {
+      this._removeChildFromContainerHierarchy(parentId, id);
+    }
+    
+    // Update collapse/expand engine edge index (node removal affects edge routing)
+    this.collapseExpandEngine.rebuildEdgeIndex();
+    
+    // Note: nodeToEdges cleanup handled by edge removal
+  }
+
+  /**
+   * Remove an edge from all related data structures
+   * @param {string} id - The edge ID to remove
+   * @private
+   */
+  _removeEdgeFromAllStructures(id) {
+    const edge = this.graphEdges.get(id);
+    
+    // Remove from node-edge mapping first (needs edge data)
+    if (edge) {
+      this._removeEdgeFromNodeMapping(id, edge.source, edge.target);
+    }
+    
+    // Remove from main collection
+    this.graphEdges.delete(id);
+    
+    // Remove from visibility collection
+    this._visibleEdges.delete(id);
+    
+    // Update collapse/expand engine edge index
+    this.collapseExpandEngine.rebuildEdgeIndex();
+  }
+
+  /**
+   * Remove a container from all related data structures
+   * @param {string} id - The container ID to remove
+   * @private
+   */
+  _removeContainerFromAllStructures(id) {
+    // Clean up container hierarchy first (needs container data)
+    this._cleanupContainerHierarchy(id);
+    
+    // Remove from main collection
+    this.containers.delete(id);
+    
+    // Remove from visibility collections
+    this._visibleContainers.delete(id);
+    this._expandedContainers.delete(id);
+    
+    // Remove from collapsed representations if present
+    this.collapsedContainers.delete(id);
+    
+    // Update collapse/expand engine edge index (containers affect edge routing)
+    this.collapseExpandEngine.rebuildEdgeIndex();
+  }
+
+  /**
+   * Remove a hyperEdge from all related data structures
+   * @param {string} id - The hyperEdge ID to remove
+   * @private
+   */
+  _removeHyperEdgeFromAllStructures(id) {
+    // Remove from main collection (hyperEdges don't have other index structures)
+    this.hyperEdges.delete(id);
+  }
+
+  // ============ Bulk Operations Helpers ============
+  
+  /**
+   * Clear all data structures in the correct order
+   * @private
+   */
+  _clearAllDataStructures() {
+    // Clear main entity collections
+    this.graphNodes.clear();
+    this.graphEdges.clear();
+    this.containers.clear();
+    this.hyperEdges.clear();
+    
+    // Clear visibility collections
+    this._visibleNodes.clear();
+    this._visibleEdges.clear();
+    this._visibleContainers.clear();
+    this._expandedContainers.clear();
+    
+    // Clear specialized collections
+    this.collapsedContainers.clear();
+    
+    // Clear index structures
+    this.#containerChildren.clear();
+    this.#nodeContainers.clear();
+    this.nodeToEdges.clear();
+  }
+
+  // ============ Container Hierarchy Helpers ============
+  
+  /**
+   * Add a child to container hierarchy and maintain all indexes
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to add
+   * @private
+   */
+  _addChildToContainerHierarchy(containerId, childId) {
+    const container = this.containers.get(containerId);
+    if (container) {
+      container.children.add(childId);
+      this.#containerChildren.set(containerId, container.children);
+      this.#nodeContainers.set(childId, containerId);
+    }
+  }
+
+  /**
+   * Remove a child from container hierarchy and maintain all indexes
+   * @param {string} containerId - The container ID
+   * @param {string} childId - The child node/container ID to remove
+   * @private
+   */
+  _removeChildFromContainerHierarchy(containerId, childId) {
+    const container = this.containers.get(containerId);
+    if (container) {
+      container.children.delete(childId);
+      this.#containerChildren.set(containerId, container.children);
+      this.#nodeContainers.delete(childId);
+    }
+  }
+
+  /**
+   * Initialize container hierarchy for a new container with children
+   * @param {string} containerId - The container ID
+   * @param {Set<string>} children - The Set of child IDs
+   * @private
+   */
+  _initializeContainerHierarchy(containerId, children) {
+    // Sync the containerChildren map with the container's children Set
+    this.#containerChildren.set(containerId, children);
+    
+    // Add each child to the nodeContainers mapping
+    for (const childId of children) {
+      this.#nodeContainers.set(childId, containerId);
+    }
+  }
+
+  /**
+   * Clean up container hierarchy when removing a container
+   * @param {string} containerId - The container ID being removed
+   * @private
+   */
+  _cleanupContainerHierarchy(containerId) {
+    // First, remove this container from its parent's children list
+    const parentId = this.#nodeContainers.get(containerId);
+    if (parentId) {
+      this._removeChildFromContainerHierarchy(parentId, containerId);
+    }
+    
+    // Then clean up this container's children using encapsulated method
+    const children = this.#containerChildren.get(containerId);
+    if (children) {
+      // Create a copy to avoid modification during iteration
+      const childrenArray = Array.from(children);
+      for (const childId of childrenArray) {
+        this._removeChildFromContainerHierarchy(containerId, childId);
+      }
+    }
+    
+    // Final cleanup of the container's own mapping
+    this.#containerChildren.delete(containerId);
+  }
   
   /**
    * Check if an endpoint (node or container) is visible and should be connected to
@@ -1000,7 +1177,7 @@ export class VisualizationState {
    */
   _setNodesVisibility(nodeIds, hidden) {
     for (const nodeId of nodeIds) {
-      this.setNodeHidden(nodeId, hidden);
+      this.updateNode(nodeId, { hidden });
     }
   }
 
@@ -1037,22 +1214,22 @@ export class VisualizationState {
   }
 
   _updateVisibleNodes(id, node) {
-    this._updateVisibilityMap(this.visibleNodes, id, node);
+    this._updateVisibilityMap(this._visibleNodes, id, node);
   }
 
   _updateVisibleEdges(id, edge) {
-    this._updateVisibilityMap(this.visibleEdges, id, edge);
+    this._updateVisibilityMap(this._visibleEdges, id, edge);
   }
 
   _updateVisibleContainers(id, container) {
-    this._updateVisibilityMap(this.visibleContainers, id, container);
+    this._updateVisibilityMap(this._visibleContainers, id, container);
   }
 
   _updateExpandedContainers(id, container) {
     if (container.collapsed) {
-      this.expandedContainers.delete(id);
+      this._expandedContainers.delete(id);
     } else {
-      this.expandedContainers.set(id, container);
+      this._expandedContainers.set(id, container);
     }
   }
 
@@ -1204,7 +1381,25 @@ export class VisualizationState {
 }
 
 /**
+<<<<<<< HEAD
  * Create a new visualization state instance
+=======
+ * Factory function to create a new VisualizationState instance.
+ * Preferred over direct constructor usage for consistency and potential future initialization logic.
+ * 
+ * @function createVisualizationState
+ * @returns {VisualizationState} A new, empty visualization state instance
+ * @example
+ * ```javascript
+ * // Fluent interface with method chaining
+ * const state = createVisualizationState()
+ *   .setGraphNode('node1', { label: 'My First Node' })
+ *   .setGraphNode('node2', { label: 'My Second Node' })
+ *   .setGraphEdge('edge1', { source: 'node1', target: 'node2' });
+ * 
+ * console.log(state.getGraphNode('node1')); // { id: 'node1', label: 'My First Node', ... }
+ * ```
+>>>>>>> 336632b29 (code review of VisState)
  */
 export function createVisualizationState() {
   return new VisualizationState();

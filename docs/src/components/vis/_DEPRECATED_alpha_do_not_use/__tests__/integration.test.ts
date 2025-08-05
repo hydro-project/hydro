@@ -125,7 +125,11 @@ async function testEdgeCases(): Promise<void> {
     edges: [{ id: 'e1', source: '1', target: '2' }]
   };
   
+<<<<<<< HEAD:docs/src/components/vis/_DEPRECATED_alpha_do_not_use/__tests__/integration.test.ts
   const result = parseGraphJSON(flatData);
+=======
+  const result = parseHydroGraphJSON(flatData);
+>>>>>>> 336632b29 (code review of VisState):docs/src/components/vis/__tests__/integration.test.js
   assert.strictEqual(result.state.visibleNodes.length, 2, 'Should handle flat data');
   assert.strictEqual(result.state.visibleContainers.length, 0, 'Should have no containers');
   assert.strictEqual(result.metadata.selectedGrouping, null, 'Should have no grouping');

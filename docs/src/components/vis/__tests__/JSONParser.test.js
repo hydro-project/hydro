@@ -127,8 +127,8 @@ function testBasicJSONParsing() {
   assert(result2.state, 'Should parse JSON string');
   
   // Verify basic structure
-  assert.strictEqual(result1.state.getVisibleNodes().length, 3, 'Should have 3 nodes');
-  assert.strictEqual(result1.state.getVisibleEdges().length, 2, 'Should have 2 edges');
+  assert.strictEqual(result1.state.visibleNodes.length, 3, 'Should have 3 nodes');
+  assert.strictEqual(result1.state.visibleEdges.length, 2, 'Should have 2 edges');
   
   console.log('✓ Basic JSON parsing tests passed');
 }
@@ -187,7 +187,7 @@ function testHierarchyParsing() {
   const state = result.state;
   
   // Check that containers were created
-  const containers = state.getVisibleContainers();
+  const containers = state.visibleContainers;
   assert.strictEqual(containers.length, 2, 'Should have 2 containers');
   
   // Check container properties
