@@ -134,6 +134,7 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
         // Encode the JSON data for URL
         let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
 
+<<<<<<< HEAD
         // URLs longer than ~2000 characters may fail in some browsers
         // Use a conservative limit of 1800 characters for the base URL + encoded data
         const MAX_SAFE_URL_LENGTH: usize = 1800;
@@ -162,6 +163,8 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
         }
 
         // Small graph - use URL encoding as before
+=======
+>>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         // Try localhost first (for development), then fall back to docs site
         let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
         let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
@@ -187,6 +190,7 @@ fn open_json_browser_impl(json_content: &str) -> Result<()> {
     Ok(())
 }
 
+<<<<<<< HEAD
 /// Save JSON content to a temporary file with a descriptive name
 fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
     use std::io::Write;
@@ -208,6 +212,8 @@ fn save_json_to_temp(json_content: &str) -> Result<std::path::PathBuf> {
     Ok(temp_file)
 }
 
+=======
+>>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
 /// Helper function to create a complete HTML file with JSON visualization and open it in browser.
 /// Creates files in temporary directory to avoid cluttering the workspace.
 pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result<()> {
@@ -219,6 +225,7 @@ pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result
         // Encode the JSON data for URL
         let encoded_data = BASE64URL_NOPAD.encode(json_content.as_bytes());
 
+<<<<<<< HEAD
         // URLs longer than ~2000 characters may fail in some browsers
         // Use a conservative limit of 1800 characters for the base URL + encoded data
         const MAX_SAFE_URL_LENGTH: usize = 1800;
@@ -247,6 +254,8 @@ pub fn save_and_open_json_browser(json_content: &str, _filename: &str) -> Result
         }
 
         // Small graph - use URL encoding as before
+=======
+>>>>>>> 10acb642d (rename reactflow->JSON in the Rust code)
         // Try localhost first (for development), then fall back to docs site
         let localhost_url = format!("http://localhost:3000/visualizer#data={}", encoded_data);
         let docs_url = format!("https://hydro.run/docs/visualizer#data={}", encoded_data);
