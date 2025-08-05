@@ -39,7 +39,8 @@ impl<
                         tcp_listener: None,
                         _dir_holder: Some(dir),
                         next_connection_id: 0,
-                        active_connections: HashMap::new(),
+                        active_connections: Vec::new(),
+                        poll_cursor: 0,
                         new_sink_sender,
                         _phantom: Default::default(),
                     },
@@ -50,7 +51,8 @@ impl<
                         #[cfg(unix)]
                         _dir_holder: None,
                         next_connection_id: 0,
-                        active_connections: HashMap::new(),
+                        active_connections: Vec::new(),
+                        poll_cursor: 0,
                         new_sink_sender,
                         _phantom: Default::default(),
                     },
@@ -81,7 +83,8 @@ pub struct MultiConnectionSource<I, O, C: Decoder<Item = I> + Encoder<O>> {
     #[cfg(unix)]
     _dir_holder: Option<TempDir>, // keeps the folder containing the socket alive
     next_connection_id: u64,
-    active_connections: HashMap<u64, DynDecodedStream<I, C>>,
+    active_connections: Vec<(u64, DynDecodedStream<I, C>)>, // ordered list for fair polling
+    poll_cursor: usize,                                     // cursor for fair round-robin polling
     new_sink_sender: mpsc::UnboundedSender<(u64, DynEncodedSink<O, C>)>,
     _phantom: PhantomData<(Box<O>, Box<C>)>,
 }
@@ -126,7 +129,7 @@ impl<
                             Box<dyn Sink<O, Error = <C as Encoder<O>>::Error> + Send + Sync>,
                         > = Box::pin(sink.buffer(1024));
 
-                        me.active_connections.insert(connection_id, boxed_stream);
+                        me.active_connections.push((connection_id, boxed_stream));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
                     }
@@ -164,7 +167,7 @@ impl<
                             Box<dyn Sink<O, Error = <C as Encoder<O>>::Error> + Send + Sync>,
                         > = Box::pin(sink.buffer(1024));
 
-                        me.active_connections.insert(connection_id, boxed_stream);
+                        me.active_connections.push((connection_id, boxed_stream));
 
                         let _ = me.new_sink_sender.send((connection_id, boxed_sink));
                     }
@@ -182,24 +185,46 @@ impl<
             }
         }
 
-        // Poll all active connections for data
-        let mut connections_to_remove = Vec::new();
+        // Poll all active connections for data using fair round-robin cursor
+        let mut indices_to_remove = Vec::new();
         let mut out = Poll::Pending;
-        for (&connection_id, stream) in self.active_connections.iter_mut() {
-            match stream.as_mut().poll_next(cx) {
-                Poll::Ready(Some(Ok(data))) => {
-                    out = Poll::Ready(Some(Ok((connection_id, data))));
-                    break; // TODO(shadaj): this is unfair
+
+        if !me.active_connections.is_empty() {
+            let start_cursor = me.poll_cursor;
+
+            loop {
+                let (connection_id, stream) = &mut me.active_connections[me.poll_cursor];
+                let connection_id = *connection_id; // Copy the ID before borrowing stream
+
+                match stream.as_mut().poll_next(cx) {
+                    Poll::Ready(Some(Ok(data))) => {
+                        out = Poll::Ready(Some(Ok((connection_id, data))));
+                        // Move cursor to next connection for next poll
+                        me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
+                        break;
+                    }
+                    Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
+                        indices_to_remove.push(me.poll_cursor);
+                    }
+                    Poll::Pending => {}
                 }
-                Poll::Ready(Some(Err(_))) | Poll::Ready(None) => {
-                    connections_to_remove.push(connection_id);
+
+                // Move to next connection
+                me.poll_cursor = (me.poll_cursor + 1) % me.active_connections.len();
+
+                // Check if we've completed a full round
+                if me.poll_cursor == start_cursor {
+                    break;
                 }
-                Poll::Pending => {}
             }
         }
 
-        for connection_id in connections_to_remove {
-            self.active_connections.remove(&connection_id);
+        // Remove closed connections (iterate in reverse to maintain indices)
+        for index in indices_to_remove.into_iter().rev() {
+            let _ = me.active_connections.remove(index);
+            if index <= me.poll_cursor && me.poll_cursor > 0 {
+                me.poll_cursor -= 1;
+            }
         }
 
         out
