@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use colored::{Color, Colorize};
@@ -33,26 +32,24 @@ pub fn chat_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
-    let current_members = unsafe { membership.entries().assume_ordering::<TotalOrder>() }.fold(
-        q!(|| HashSet::new()),
-        q!(|set, (id, event)| {
-            match event {
-                MembershipEvent::Joined => {
-                    set.insert(id);
+    let current_members = membership
+        .fold(
+            q!(|| false),
+            q!(|present, event| {
+                match event {
+                    MembershipEvent::Joined => *present = true,
+                    MembershipEvent::Left => *present = false,
                 }
-                MembershipEvent::Left => {
-                    set.remove(&id);
-                }
-            }
-        }),
-    );
+            }),
+        )
+        .filter(q!(|v| *v));
 
     let tick = process.tick();
 
     unsafe {
         current_members
-            .latest_tick(&tick)
-            .flatten_unordered()
+            .tick_batch(&tick)
+            .keys()
             .cross_product(in_stream.entries().tick_batch(&tick))
             .into_keyed()
     }

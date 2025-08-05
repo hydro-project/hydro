@@ -95,7 +95,7 @@ impl MinRetries<AtLeastOnce> for ExactlyOnce {
 /// - `Order`: the ordering of the stream, which is either [`TotalOrder`]
 ///   or [`NoOrder`] (default is [`TotalOrder`])
 pub struct Stream<Type, Loc, Bound, Order = TotalOrder, Retries = ExactlyOnce> {
-    location: Loc,
+    pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
 
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retries)>,
